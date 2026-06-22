@@ -2,6 +2,7 @@ use anyhow::{Result, anyhow};
 use cluaize_shared::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
 use system_booster::BoosterControl;
 use std::path::PathBuf;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 use tokio::sync::mpsc;
 
@@ -52,6 +53,10 @@ pub struct NeuralDispatcher {
     pub booster_state: BoosterControl,
     pub current_signature: KernelSignature,
     pub cached_engine: std::sync::Arc<tokio::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
+    /// 🔢 Limits concurrent LLM dispatches to prevent system overload (acts as an inference queue)
+    pub inference_semaphore: Arc<tokio::sync::Semaphore>,
+    /// 🛑 Per-instance cancellation flag — set to true to stop the active generation
+    pub cancel_flag: Arc<AtomicBool>,
 }
 
 impl NeuralDispatcher {
@@ -60,6 +65,9 @@ impl NeuralDispatcher {
             booster_state,
             current_signature: signature,
             cached_engine: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            // Max 4 concurrent LLM generations — extras wait in queue
+            inference_semaphore: Arc::new(tokio::sync::Semaphore::new(4)),
+            cancel_flag: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -78,7 +86,21 @@ impl NeuralDispatcher {
         match backend {
             BackendType::RuntimeB | BackendType::RuntimeC | BackendType::RuntimeA => {
                 let cached_engine_lock = self.cached_engine.clone();
+                let semaphore = self.inference_semaphore.clone();
+                let cancel_flag = self.cancel_flag.clone();
+                // Reset cancellation for this new request
+                cancel_flag.store(false, Ordering::Relaxed);
                 tokio::spawn(async move {
+                    // 🔢 Inference Queue: acquire a slot before proceeding (blocks if 4 already running)
+                    let _permit = match semaphore.acquire().await {
+                        Ok(permit) => permit,
+                        Err(_) => {
+                            let _ = tx.send("Error: Inference queue closed.".to_string()).await;
+                            return;
+                        }
+                    };
+                    tracing::info!("🔢 [Dispatcher] Inference slot acquired. Running generation...");
+
                     let active_path = resolve_active_model_path();
                     let model_path = if let Some(ref path) = active_path {
                         path.clone()
@@ -173,13 +195,26 @@ impl NeuralDispatcher {
                             if let Ok(gen_stream_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void)>(b"cluaize_kernel_generate_stream") {
                                 let c_prompt = std::ffi::CString::new(prompt_clone).unwrap();
 
-                                extern "C" fn callback(token_ptr: *const std::os::raw::c_char, user_data: *mut std::ffi::c_void) -> bool {
-                                    let tx = unsafe { &*(user_data as *const tokio::sync::mpsc::Sender<String>) };
-                                    let token = unsafe { std::ffi::CStr::from_ptr(token_ptr) }.to_string_lossy().into_owned();
-                                    tx.blocking_send(token).is_ok()
+                                // 🛑 CANCELLATION-AWARE CALLBACK
+                                // user_data carries (tx, cancel_flag) packed as raw ptr.
+                                struct CallbackData {
+                                    tx: tokio::sync::mpsc::Sender<String>,
+                                    cancel_flag: Arc<AtomicBool>,
                                 }
 
-                                let tx_ptr = &tx as *const _ as *mut std::ffi::c_void;
+                                extern "C" fn callback(token_ptr: *const std::os::raw::c_char, user_data: *mut std::ffi::c_void) -> bool {
+                                    let data = unsafe { &*(user_data as *const CallbackData) };
+                                    // Check cancellation flag first — return false to stop generation
+                                    if data.cancel_flag.load(Ordering::Relaxed) {
+                                        tracing::info!("🛑 [Dispatcher] Inference cancelled via cancel_flag.");
+                                        return false;
+                                    }
+                                    let token = unsafe { std::ffi::CStr::from_ptr(token_ptr) }.to_string_lossy().into_owned();
+                                    data.tx.blocking_send(token).is_ok()
+                                }
+
+                                let callback_data = CallbackData { tx: tx.clone(), cancel_flag: cancel_flag.clone() };
+                                let tx_ptr = &callback_data as *const CallbackData as *mut std::ffi::c_void;
                                 let engine_raw = safe_ptr.0;
                                 let prompt_raw = c_prompt.as_ptr();
 

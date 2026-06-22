@@ -5,7 +5,18 @@ use ort::session::SessionOutputs;
 
 impl OnnxEngine {
     pub fn execute_text_embedding(&self, text: &str) -> Result<Vec<f32>, EngineError> {
-        let session = self.session.as_ref().ok_or_else(|| EngineError::Internal("Model not loaded".to_string()))?;
+        // 🔢 Track active inferences for hot swap safety
+        self.active_inferences.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+        let result = self._execute_text_embedding_inner(text);
+
+        self.active_inferences.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        result
+    }
+
+    fn _execute_text_embedding_inner(&self, text: &str) -> Result<Vec<f32>, EngineError> {
+        // 🏊 Acquire a free session from the pool
+        let session_arc = self.acquire_session()?;
         let tokenizer = self.tokenizer.as_ref().ok_or_else(|| EngineError::Internal("Tokenizer not loaded".to_string()))?;
 
         // 1. Tokenize Text
@@ -20,8 +31,8 @@ impl OnnxEngine {
         let ids_val = Value::from_array(([batch_size, seq_len], ids)).map_err(|_| EngineError::Internal("Bad Alloc".into()))?;
         let mask_val = Value::from_array(([batch_size, seq_len], mask)).map_err(|_| EngineError::Internal("Bad Alloc".into()))?;
 
-        // 3. Run Inference (Microseconds on CPU)
-        let mut locked_session = session.lock().map_err(|_| EngineError::Internal("Mutex Poised".into()))?;
+        // 3. Run Inference inside block_in_place to avoid blocking the async executor
+        let mut locked_session = session_arc.lock().map_err(|_| EngineError::Internal("Mutex Poisoned".into()))?;
         
         // Dynamically probe required inputs
         let required_inputs: Vec<String> = locked_session.inputs().iter().map(|i| i.name().to_string()).collect();

@@ -45,17 +45,25 @@ pub fn preprocess_image_for_clip(bytes: &[u8]) -> anyhow::Result<Vec<f32>> {
 
 impl OnnxEngine {
     pub fn execute_vision_embedding(&self, bytes: &[u8]) -> Result<Vec<f32>, EngineError> {
+        // 🔢 Track active inferences for hot swap safety
+        self.active_inferences.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let result = self._execute_vision_inner(bytes);
+        self.active_inferences.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+        result
+    }
+
+    fn _execute_vision_inner(&self, bytes: &[u8]) -> Result<Vec<f32>, EngineError> {
         let tensor_data = preprocess_image_for_clip(bytes)
             .map_err(|e| EngineError::EmbeddingFailed(e.to_string()))?;
             
         let input_value = ort::value::Value::from_array(([1usize, 3usize, 224usize, 224usize], tensor_data))
             .map_err(|e| EngineError::EmbeddingFailed(format!("Failed to create value: {}", e)))?;
 
-        let session_mutex = self.session.as_ref()
-            .ok_or_else(|| EngineError::EmbeddingFailed("ONNX Vision graph not loaded in memory.".into()))?;
+        // 🏊 Acquire a free session from the pool
+        let session_arc = self.acquire_session()?;
 
         info!("🚀 [Vision-Router] Injecting tensor into ONNX Engine...");
-        let mut session = session_mutex.lock().unwrap();
+        let mut session = session_arc.lock().map_err(|_| EngineError::Internal("Mutex Poisoned".into()))?;
         let required_inputs: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
         let output_names: Vec<String> = session.outputs().iter().map(|o| o.name().to_string()).collect();
         let target_idx = output_names.iter().position(|name| name == "image_embeds" || name == "embedding").unwrap_or(0);
