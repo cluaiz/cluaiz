@@ -44,28 +44,9 @@ impl NativeLlama {
         unsafe { llama_cpp::llama_log_set(None, std::ptr::null_mut()) };
 
         // 🚀 Step 1: Initialize all native backends (loads CPU, etc.)
-        unsafe { llama_cpp::llama_backend_init() };
+        // Removed llama_backend_init() to prevent double wipe. Already handled globally.
 
-        // 🚀 Step 2: AFTER init, manually inject CUDA backend so it isn't overwritten
-        #[cfg(feature = "cuda")]
-        unsafe {
-            if model_params.n_gpu_layers != 0 {
-                eprintln!("🔥 [Sovereign-Llama] Manually injecting CUDA backend AFTER llama_backend_init...");
-                let reg = llama_cpp::ggml_backend_cuda_reg();
-                if !reg.is_null() {
-                    llama_cpp::ggml_backend_register(reg);
-                    eprintln!("✅ [Sovereign-Llama] CUDA backend registered successfully!");
-                } else {
-                    eprintln!(
-                        "❌ [Sovereign-Llama] CUDA reg pointer is NULL! Check CUDA runtime DLLs."
-                    );
-                }
-            } else {
-                eprintln!(
-                    "❄️ [Sovereign-Llama] CPU-only mode selected. Skipping CUDA backend injection."
-                );
-            }
-        }
+        // 🚀 Step 2: Removed manual CUDA registration to prevent VRAM double allocation. Modern llama.cpp auto-registers during global init.
 
         let c_path = CString::new(model_path)?;
 
@@ -199,7 +180,7 @@ impl NativeLlama {
     pub fn load_prompt_cache(&self, path: &str) -> anyhow::Result<Vec<i32>> {
         info!("💾 [Native-Llama] Loading prompt cache from: {}", path);
         let c_path = std::ffi::CString::new(path)?;
-        let mut tokens = vec![0i32; 8192];
+        let mut tokens = vec![0i32; self.n_ctx as usize];
         let mut n_tokens_out: usize = 0;
 
         unsafe {

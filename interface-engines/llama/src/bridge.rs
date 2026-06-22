@@ -36,23 +36,17 @@ impl InternalPrismBridge {
         
         if let Ok(env_path) = std::env::var("ARCHER_PRISM_PATH") {
             lib_path = PathBuf::from(env_path).join(lib_name);
-        } else if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(parent) = exe_path.parent() {
-                let candidate = parent.join("engines/llama/bin").join(lib_name);
-                if candidate.exists() {
-                    lib_path = candidate;
-                }
+        } else {
+            // 🚀 FIX: Use dynamic router resolution instead of fragile hardcoded relative paths
+            let base_path = crate::router::BinaryRouter::resolve_binary().parent().map(|p| p.to_path_buf()).unwrap_or_default();
+            let candidate = base_path.join(lib_name);
+            if candidate.exists() {
+                lib_path = candidate;
             }
         }
 
         if !lib_path.exists() {
-            // Fallback for development workspace
-            let dev_candidate = PathBuf::from("interface-engines/llama_backend/bin").join(lib_name);
-            if dev_candidate.exists() {
-                lib_path = dev_candidate;
-            } else {
-                return Err(format!("❌ Prism-Inference Kernel not found for {}. Please set ARCHER_PRISM_PATH or ensure the binary is in the correct relative directory.", lib_name));
-            }
+            return Err(format!("❌ Prism-Inference Kernel not found for {}. Please set ARCHER_PRISM_PATH or ensure the DLL is placed alongside the dynamic hardware binary.", lib_name));
         }
 
         unsafe {

@@ -93,6 +93,17 @@ impl RuntimeBPipeline {
             }
         });
         
+        // 🚀 FIX: Drain stderr asynchronously to prevent pipe deadlocks
+        let stderr_thread = std::thread::spawn(move || {
+            let err_reader = BufReader::new(stderr);
+            for line in std::io::BufRead::lines(err_reader).flatten() {
+                let lower_line = line.to_lowercase();
+                if lower_line.contains("error") || lower_line.contains("assert") {
+                     error!("⚠️ [Binary Driver ERROR]: {}", line);
+                }
+            }
+        });
+        
         while let Ok(token) = rx.recv() {
             if !token.is_empty() {
                 let should_continue = callback(token);
@@ -103,14 +114,7 @@ impl RuntimeBPipeline {
         }
         
         stdout_thread.join().ok();
-        
-        let err_reader = BufReader::new(stderr);
-        for line in err_reader.lines().flatten() {
-            let lower_line = line.to_lowercase();
-            if lower_line.contains("error") || lower_line.contains("assert") {
-                 error!("⚠️ [Binary Driver ERROR]: {}", line);
-            }
-        }
+        stderr_thread.join().ok();
 
         let _ = child.wait();
         info!("🏁 [Binary Driver] Process completed.");

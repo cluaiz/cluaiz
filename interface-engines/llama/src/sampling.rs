@@ -10,14 +10,7 @@ pub struct LogitSteerDecoder {
 impl LogitSteerDecoder {
     /// Initialize the LogitSteer decoder with a specific grammar schema (e.g., JSON schema)
     pub fn new_json_steer(_schema_str: &str) -> Self {
-        info!("🧠 [LogitSteer] Initializing Zero-Cost Hardware JSON Steer...");
-        
-        // In production, this parses the JSON schema string into llama.cpp grammar rules
-        // and calls `llama_grammar_init()`.
-        
-        Self {
-            grammar_ptr: std::ptr::null_mut(),
-        }
+        unimplemented!("❌ [LogitSteer] JSON Grammar Steering is currently NOT implemented. Half-baked feature removed as per CERD.");
     }
 
     /// Masks logits at the C++ level before sampling, guaranteeing the output matches the schema.
