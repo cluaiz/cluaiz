@@ -117,19 +117,23 @@ impl NeuralDispatcher {
                         let prefix = if target_os == "windows" { "" } else { "lib" };
                         let binary_name = format!("{}cluaize-llama.{}", prefix, ext);
                         
-                        let mut binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+                        let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
                             .join("kernels")
                             .join(&binary_name);
                             
-                        if !binary_path.exists() {
-                            let cargo_name = binary_name.replace("-", "_");
-                            binary_path = std::path::PathBuf::from(format!("target/release/{}", cargo_name));
-                            if !binary_path.exists() {
-                                binary_path = std::path::PathBuf::from(format!("target/debug/{}", cargo_name));
-                            }
+                        // 🛡️ Strict FFI Validation Boundary
+                        let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+                            .join("kernels")
+                            .join("cluaize-llama.ready");
+                            
+                        if !binary_path.exists() || !marker_path.exists() {
+                            tracing::error!("❌ [Dispatcher] FFI Validation Failed: Kernel binary or manifest marker missing at {:?}", binary_path);
+                            let _ = tx.blocking_send("Error: Missing kernel binary or manifest validation failed.".to_string());
+                            let _ = tx.blocking_send("\n[DONE]\n".to_string());
+                            return; // Stop loading logic
                         }
 
-                        tracing::info!("🔗 [Dispatcher] Loading dynamic library {:?}", binary_path);
+                        tracing::info!("🔗 [Dispatcher] Loading validated dynamic library {:?}", binary_path);
 
                         let mut successfully_loaded = false;
                         unsafe {
@@ -241,17 +245,17 @@ unsafe impl Sync for EmbeddingDispatcher {}
         let binary_name = format!("{}cluaize-onnx.{}", prefix, ext);
         
         // Use persistence or fallback to target/debug
-        let mut binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+        let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
             .join("kernels")
             .join(&binary_name);
             
-        if !binary_path.exists() {
-            // Fallback to cargo target directory (cargo outputs with underscores)
-            let cargo_name = binary_name.replace("-", "_");
-            binary_path = std::path::PathBuf::from(format!("target/release/{}", cargo_name));
-            if !binary_path.exists() {
-                binary_path = std::path::PathBuf::from(format!("target/debug/{}", cargo_name));
-            }
+        // 🛡️ Strict FFI Validation Boundary
+        let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+            .join("kernels")
+            .join("cluaize-onnx.ready");
+            
+        if !binary_path.exists() || !marker_path.exists() {
+            return Err(anyhow::anyhow!("FFI Validation Failed: ONNX kernel binary or manifest missing at {:?}", binary_path));
         }
 
         unsafe {

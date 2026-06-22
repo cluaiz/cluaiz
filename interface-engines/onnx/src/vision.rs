@@ -3,7 +3,7 @@ use neural_core::interfaces::router_contract::EngineError;
 use image::imageops::FilterType;
 use tracing::info;
 
-/// 👁️ The Sovereign Vision Preprocessor
+/// 👁️ Vision Preprocessor
 /// Extracts and normalizes raw image pixels into the mathematical tensor format 
 /// required by CLIP / Vision Gatekeepers (1x3x224x224).
 pub fn preprocess_image_for_clip(bytes: &[u8]) -> anyhow::Result<Vec<f32>> {
@@ -54,7 +54,7 @@ impl OnnxEngine {
         let session_mutex = self.session.as_ref()
             .ok_or_else(|| EngineError::EmbeddingFailed("ONNX Vision graph not loaded in memory.".into()))?;
 
-        info!("🚀 [Vision-Router] Injecting tensor into ONNX Gatekeeper...");
+        info!("🚀 [Vision-Router] Injecting tensor into ONNX Engine...");
         let mut session = session_mutex.lock().unwrap();
         let required_inputs: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
         let output_names: Vec<String> = session.outputs().iter().map(|o| o.name().to_string()).collect();

@@ -3,7 +3,7 @@ use ort::session::Session;
 use tokenizers::Tokenizer;
 use std::sync::Arc;
 
-/// The Sovereign Gatekeeper: ONNX Multimodal Router
+/// ONNX Multimodal Router (Core Engine)
 pub struct OnnxEngine {
     // Real Production Engine State
     pub(crate) session: Option<Arc<std::sync::Mutex<Session>>>,
@@ -43,8 +43,9 @@ impl OnnxEngine {
             }
         }
 
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
         let mut builder = Session::builder()?
-            .with_intra_threads(4).map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
+            .with_intra_threads(threads).map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
 
         if use_gpu {
             // In a production build with CUDA feature enabled in ORT:
@@ -83,8 +84,9 @@ impl OnnxEngine {
             }
         }
 
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
         let mut builder = Session::builder()?
-            .with_intra_threads(4).map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
+            .with_intra_threads(threads).map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
 
         if use_gpu {
             tracing::info!("🚀 [ONNX] Injecting CUDA Execution Provider for Vision...");
