@@ -9,7 +9,7 @@ on:
       tag_name:
         description: 'Release Tag (e.g. v1.0.0-alpha)'
         required: true
-        default: 'dev-release'
+        default: 'alpha-release'
 
 permissions:
   contents: write
@@ -355,7 +355,7 @@ jobs:
           fi
           if [[ "${{ matrix.target }}" == *"-android"* ]]; then
             cargo install cross --git https://github.com/cross-rs/cross
-            cross build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"
+            cross build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"
           elif [[ "${{ matrix.backend }}" == "sycl" && "${{ runner.os }}" == "Windows" ]]; then
             # Clean target directory and force /MD (Dynamic CRT) globally via .cargo/config.toml
             rm -rf D:/t/*
@@ -365,12 +365,12 @@ jobs:
             
             echo 'call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"' > run_sycl.bat
             echo 'set CMAKE_GENERATOR=Ninja' >> run_sycl.bat
-            echo 'cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"' >> run_sycl.bat
+            echo 'cargo build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"' >> run_sycl.bat
             cmd.exe //c run_sycl.bat
           elif [[ "${{ matrix.backend }}" == "vulkan" && "${{ runner.os }}" == "Windows" ]]; then
             choco install ninja -y
             echo 'set CMAKE_GENERATOR=Ninja' > run_vulkan.bat
-            echo 'cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"' >> run_vulkan.bat
+            echo 'cargo build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"' >> run_vulkan.bat
             cmd.exe //c run_vulkan.bat
           elif [[ "${{ matrix.backend }}" == "cann" ]]; then
             docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace ascendai/cann:8.5.0-310p-openeuler24.03-py3.11 bash -c "
@@ -378,11 +378,11 @@ jobs:
               curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
               source \$HOME/.cargo/env
               export LD_LIBRARY_PATH=\${ASCEND_TOOLKIT_HOME}/lib64:\${ASCEND_TOOLKIT_HOME}/\$(uname -m)-linux/devlib/:\${LD_LIBRARY_PATH}
-              cargo build --release --target ${{ matrix.target }} -p llama --features \"${{ matrix.features }}\"
+              cargo build --release --target ${{ matrix.target }} -p onnx --features \"${{ matrix.features }}\"
               chown -R $(id -u):$(id -g) /workspace/target || true
             "
           else
-            cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"
+            cargo build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"
           fi
 
       - name: Prepare Driver Binary
@@ -397,16 +397,16 @@ jobs:
 
           mkdir -p artifacts
           if [ "${{ runner.os }}" == "Windows" ]; then
-            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_llama.${{ matrix.ext }}"
+            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_onnx.${{ matrix.ext }}"
           else
-            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_llama.${{ matrix.ext }}"
+            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_onnx.${{ matrix.ext }}"
           fi
           PREFIX="${{ matrix.prefix }}"
 
           if [ -n "${{ matrix.cuda_v }}" ]; then
-            DEST="artifacts/${PREFIX}cluaize-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
           else
-            DEST="artifacts/${PREFIX}cluaize-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
           fi
 
           cp "$SRC" "$DEST"
@@ -444,36 +444,49 @@ jobs:
             TAG="${{ github.ref_name }}"
           fi
           
-          cat <<EOF > cluaize-driver.json
-          {
-            "version": "$VERSION",
-            "drivers": {
-              "win-x64-cuda-13": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-driver-$VERSION-win-x64-cuda-v13.dll",
-              "win-x64-cuda-12": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-driver-$VERSION-win-x64-cuda-v12.dll",
-              "win-x64-cuda-11": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-driver-$VERSION-win-x64-cuda-v11.dll",
-              "win-x64-openvino": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-driver-$VERSION-win-x64-openvino.dll",
-              "win-x64-vulkan": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-driver-$VERSION-win-x64-vulkan.dll",
-              "linux-x64-cuda-13": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-cuda-v13.so",
-              "linux-x64-cuda-12": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-cuda-v12.so",
-              "linux-x64-cuda-11": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-cuda-v11.so",
-              "linux-x64-openvino": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-openvino.so",
-              "linux-x64-sycl": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-sycl.so",
-              "linux-x64-rocm": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-rocm.so",
-              "linux-x64-hip": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-hip.so",
-              "linux-x64-cann": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-cann.so",
-              "linux-x64-vulkan": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-linux-x64-vulkan.so",
-              "mac-arm64-metal": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-mac-arm64-metal.dylib",
-              "mac-x64-metal": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-mac-x64-metal.dylib",
-              "android-arm64-qnn": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-android-arm64-qnn.so",
-              "ios-arm64-metal": "https://github.com/${{ github.repository }}/releases/download/$TAG/libcluaize-driver-$VERSION-ios-arm64-metal.a"
-            }
-          }
+          cat << 'EOF' > generate_manifest.py
+          import urllib.request, json, sys, os
+
+          version = sys.argv[1]
+          repo = sys.argv[2]
+          tag = sys.argv[3]
+          token = os.environ.get("GITHUB_TOKEN")
+          url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+          
+          req = urllib.request.Request(url)
+          req.add_header("Accept", "application/vnd.github.v3+json")
+          if token: req.add_header("Authorization", f"token {token}")
+          
+          try:
+              with urllib.request.urlopen(req) as response:
+                  assets = json.loads(response.read().decode()).get("assets", [])
+          except Exception as e:
+              print(f"Manifest API Notice: {e}")
+              assets = []
+
+          data = { "version": version, "drivers": {} }
+          for a in assets:
+              name = a["name"]
+              if name.endswith(".json"): continue
+              if name.startswith("cluaize-onnx-driver-") or name.startswith("libcluaize-onnx-driver-"):
+                  parts = name.split(f"-{version}-")
+                  if len(parts) > 1:
+                      key = parts[-1].rsplit(".", 1)[0]
+                      data["drivers"][key] = a["browser_download_url"]
+          
+          with open("cluaize-onnx-driver.json", "w") as out:
+              json.dump(data, out, indent=2)
           EOF
+
+          python3 generate_manifest.py "$VERSION" "${{ github.repository }}" "$TAG"
+          python3 .github/scripts/registry_aggregator.py "driver_onnx" "$VERSION" "${{ github.repository }}" "$TAG"
 
       - name: 🚀 Upload Manifest to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: cluaize-driver.json
+          files: |
+            cluaize-onnx-driver.json
+            cluaize-package-registry.json
           tag_name: "${{ github.event_name == 'workflow_dispatch' && format('driver-{0}', github.event.inputs.tag_name) || github.ref_name }}"
           make_latest: true
         env:

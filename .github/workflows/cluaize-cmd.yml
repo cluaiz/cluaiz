@@ -11,7 +11,7 @@ on:
       tag_name:
         description: 'Release Tag (e.g. v1.0.0-alpha)'
         required: true
-        default: 'dev-release'
+        default: 'alpha-release'
 
 permissions:
   contents: write
@@ -135,24 +135,49 @@ jobs:
             TAG="${{ github.ref_name }}"
           fi
           
-          cat <<EOF > cluaize-cli.json
-          {
-            "version": "$VERSION",
-            "binaries": {
-              "win-x64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-win-x64.exe",
-              "win-arm64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-win-arm64.exe",
-              "linux-x64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-linux-x64",
-              "linux-arm64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-linux-arm64",
-              "mac-arm64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-mac-arm64",
-              "mac-x64": "https://github.com/${{ github.repository }}/releases/download/$TAG/cluaize-$VERSION-mac-x64"
-            }
-          }
+          cat << 'EOF' > generate_manifest.py
+          import urllib.request, json, sys, os
+
+          version = sys.argv[1]
+          repo = sys.argv[2]
+          tag = sys.argv[3]
+          token = os.environ.get("GITHUB_TOKEN")
+          url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
+          
+          req = urllib.request.Request(url)
+          req.add_header("Accept", "application/vnd.github.v3+json")
+          if token: req.add_header("Authorization", f"token {token}")
+          
+          try:
+              with urllib.request.urlopen(req) as response:
+                  assets = json.loads(response.read().decode()).get("assets", [])
+          except Exception as e:
+              print(f"Manifest API Notice: {e}")
+              assets = []
+
+          data = { "version": version, "binaries": {} }
+          for a in assets:
+              name = a["name"]
+              if name.endswith(".json"): continue
+              if name.startswith("cluaize-") and not name.startswith("cluaize-driver") and not name.startswith("cluaize-kernel") and not name.startswith("cluaize-engine"):
+                  parts = name.split(f"-{version}-")
+                  if len(parts) > 1:
+                      key = parts[-1].replace(".exe", "")
+                      data["binaries"][key] = a["browser_download_url"]
+          
+          with open("cluaize-cli.json", "w") as out:
+              json.dump(data, out, indent=2)
           EOF
+
+          python3 generate_manifest.py "$VERSION" "${{ github.repository }}" "$TAG"
+          python3 .github/scripts/registry_aggregator.py "cli" "$VERSION" "${{ github.repository }}" "$TAG"
 
       - name: 🚀 Upload Manifest to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: cluaize-cli.json
+          files: |
+            cluaize-cli.json
+            cluaize-package-registry.json
           tag_name: ${{ github.event_name == 'workflow_dispatch' && format('cli-{0}', github.event.inputs.tag_name) || github.ref_name }}
           make_latest: true
         env:
