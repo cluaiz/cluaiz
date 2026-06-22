@@ -1,10 +1,10 @@
-use crate::ffi::llama_cpp::{self, LlamaModelParams, LlamaContextParams};
+use crate::ffi::llama_cpp::{self, LlamaContextParams, LlamaModelParams};
+use cluaize_shared::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tracing::{info, warn};
-use cluaize_shared::StructuralDNA;
 
 pub struct NativeLlama {
     pub model_ptr: *mut std::ffi::c_void,
@@ -19,13 +19,18 @@ pub struct NativeLlama {
 
 /// 🤫 Sovereign Silence: Mute verbose native logs to prevent TUI visual noise.
 #[allow(dead_code)]
-extern "C" fn silent_llama_log(_level: i32, _text: *const c_char, _user_data: *mut std::ffi::c_void) {}
+extern "C" fn silent_llama_log(
+    _level: i32,
+    _text: *const c_char,
+    _user_data: *mut std::ffi::c_void,
+) {
+}
 
 impl NativeLlama {
     /// 🧬 Load a model and initialize context with industrial booster params.
     pub fn load(
-        model_path: &str, 
-        model_params: LlamaModelParams, 
+        model_path: &str,
+        model_params: LlamaModelParams,
         mut ctx_params: LlamaContextParams,
         dna: &mut cluaize_shared::metadata::dna::StructuralDNA,
         kv_cache_quantization_mode: u8,
@@ -34,10 +39,10 @@ impl NativeLlama {
     ) -> anyhow::Result<Self> {
         // ══ SOVEREIGN OPTIMIZATION (Hardware Overrides) ══
         std::env::set_var("GGML_LOG_LEVEL", "INFO");
-        
+
         // Register default callback
         unsafe { llama_cpp::llama_log_set(None, std::ptr::null_mut()) };
-        
+
         // 🚀 Step 1: Initialize all native backends (loads CPU, etc.)
         unsafe { llama_cpp::llama_backend_init() };
 
@@ -51,51 +56,67 @@ impl NativeLlama {
                     llama_cpp::ggml_backend_register(reg);
                     eprintln!("✅ [Sovereign-Llama] CUDA backend registered successfully!");
                 } else {
-                    eprintln!("❌ [Sovereign-Llama] CUDA reg pointer is NULL! Check CUDA runtime DLLs.");
+                    eprintln!(
+                        "❌ [Sovereign-Llama] CUDA reg pointer is NULL! Check CUDA runtime DLLs."
+                    );
                 }
             } else {
-                eprintln!("❄️ [Sovereign-Llama] CPU-only mode selected. Skipping CUDA backend injection.");
+                eprintln!(
+                    "❄️ [Sovereign-Llama] CPU-only mode selected. Skipping CUDA backend injection."
+                );
             }
         }
 
-        
         let c_path = CString::new(model_path)?;
-        
+
         println!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
-        info!("🧬 [Native-Llama] Loading model: {} | ctx: {} tokens", model_path, ctx_params.n_ctx);
-        let mut model_ptr = unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), model_params) };
-        
+        info!(
+            "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
+            model_path, ctx_params.n_ctx
+        );
+        let mut model_ptr =
+            unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), model_params) };
+
         // 🔒 Mlock Graceful Fallback
         if model_ptr.is_null() && model_params.use_mlock {
             warn!("🔒 [Arbiter] mlock failed. Falling back to high-speed mmap...");
             let mut fallback_params = model_params;
             fallback_params.use_mlock = false;
-            model_ptr = unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), fallback_params) };
+            model_ptr =
+                unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), fallback_params) };
         }
 
         if model_ptr.is_null() {
             return Err(anyhow::anyhow!("Model Load Failure: {}", model_path));
         }
 
-        let model_dir = std::path::Path::new(model_path).parent().unwrap_or(std::path::Path::new("."));
-        eprintln!("🧬 [Native-Llama] Starting DNA Discovery for: {:?}", model_dir);
-        
+        let model_dir = std::path::Path::new(model_path)
+            .parent()
+            .unwrap_or(std::path::Path::new("."));
+        eprintln!(
+            "🧬 [Native-Llama] Starting DNA Discovery for: {:?}",
+            model_dir
+        );
+
         dna.weights_already_loaded = true;
-        
+
         // Save the requested context size to prevent it from being overwritten by the global GPU VRAM arbiter in CPU-only mode
         let requested_n_ctx = ctx_params.n_ctx;
 
         if let Err(e) = dna.discover_from_path(model_dir) {
             eprintln!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
-        
+
         if model_params.n_gpu_layers == 0 {
             // Restore requested context size for CPU-only mode to prevent GPU VRAM capping
             dna.max_context_length = Some(requested_n_ctx as usize);
         }
 
         if let Some(ctx) = dna.max_context_length {
-            info!("🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Setting n_ctx = {} (DNA Truth)", ctx);
+            info!(
+                "🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Setting n_ctx = {} (DNA Truth)",
+                ctx
+            );
             ctx_params.n_ctx = ctx as u32;
         }
 
@@ -112,14 +133,14 @@ impl NativeLlama {
         }
 
         let ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
-        
+
         if ctx_ptr.is_null() {
             unsafe { llama_cpp::llama_model_free(model_ptr) };
             return Err(anyhow::anyhow!("Context Init Failure"));
         }
 
-        Ok(Self { 
-            model_ptr, 
+        Ok(Self {
+            model_ptr,
             ctx_ptr,
             interrupt_signal: Arc::new(AtomicBool::new(false)),
             n_ctx: ctx_params.n_ctx,
@@ -162,10 +183,10 @@ impl NativeLlama {
         let c_path = std::ffi::CString::new(path)?;
         unsafe {
             let success = llama_cpp::llama_state_save_file(
-                self.ctx_ptr, 
-                c_path.as_ptr(), 
-                tokens.as_ptr(), 
-                tokens.len()
+                self.ctx_ptr,
+                c_path.as_ptr(),
+                tokens.as_ptr(),
+                tokens.len(),
             );
             if !success {
                 return Err(anyhow::anyhow!("Failed to save prompt cache to {}", path));
@@ -180,14 +201,14 @@ impl NativeLlama {
         let c_path = std::ffi::CString::new(path)?;
         let mut tokens = vec![0i32; 8192];
         let mut n_tokens_out: usize = 0;
-        
+
         unsafe {
             let success = llama_cpp::llama_state_load_file(
-                self.ctx_ptr, 
-                c_path.as_ptr(), 
-                tokens.as_mut_ptr(), 
-                tokens.len(), 
-                &mut n_tokens_out as *mut usize
+                self.ctx_ptr,
+                c_path.as_ptr(),
+                tokens.as_mut_ptr(),
+                tokens.len(),
+                &mut n_tokens_out as *mut usize,
             );
             if !success {
                 return Err(anyhow::anyhow!("Failed to load prompt cache from {}", path));
@@ -214,35 +235,45 @@ impl NativeLlama {
             let c_prompt = std::ffi::CString::new(prompt.to_string())?;
 
             // 1. Tokenize
-            println!("🧠 [Native-Llama] Starting tokenization of prompt (len: {})...", prompt.len());
+            println!(
+                "🧠 [Native-Llama] Starting tokenization of prompt (len: {})...",
+                prompt.len()
+            );
             let mut tokens = vec![0i32; prompt.len() + 8];
             let n_tokens = llama_cpp::llama_tokenize(
-                vocab, 
-                c_prompt.as_ptr(), 
-                prompt.len() as i32, 
-                tokens.as_mut_ptr(), 
-                tokens.len() as i32, 
-                true, 
-                true
+                vocab,
+                c_prompt.as_ptr(),
+                prompt.len() as i32,
+                tokens.as_mut_ptr(),
+                tokens.len() as i32,
+                true,
+                true,
             );
-            
+
             if n_tokens < 0 {
                 println!("❌ [Native-Llama] Tokenization failed!");
                 return Err(anyhow::anyhow!("Tokenization failed"));
             }
             tokens.truncate(n_tokens as usize);
-            println!("🧠 [Native-Llama] Tokenization successful: {} tokens", tokens.len());
+            println!(
+                "🧠 [Native-Llama] Tokenization successful: {} tokens",
+                tokens.len()
+            );
 
             // 2. Initial Batch Decode (Prefill) with Chunking
             let chunk_size = self.n_batch as i32;
-            println!("🧠 [Native-Llama] Initializing llama batch of size {}...", chunk_size);
+            println!(
+                "🧠 [Native-Llama] Initializing llama batch of size {}...",
+                chunk_size
+            );
             let mut batch = llama_cpp::llama_batch_init(chunk_size, 0, 1);
-            
+
             let mut tokens_processed = 0;
-            
+
             while tokens_processed < tokens.len() {
-                let current_chunk = std::cmp::min(chunk_size as usize, tokens.len() - tokens_processed);
-                
+                let current_chunk =
+                    std::cmp::min(chunk_size as usize, tokens.len() - tokens_processed);
+
                 for i in 0..current_chunk {
                     let global_i = tokens_processed + i;
                     *batch.token.add(i) = tokens[global_i];
@@ -253,33 +284,48 @@ impl NativeLlama {
                 }
                 batch.n_tokens = current_chunk as i32;
 
-                println!("🧠 [Native-Llama] Prefilling chunk of {} tokens ({} / {})...", current_chunk, tokens_processed + current_chunk, tokens.len());
+                println!(
+                    "🧠 [Native-Llama] Prefilling chunk of {} tokens ({} / {})...",
+                    current_chunk,
+                    tokens_processed + current_chunk,
+                    tokens.len()
+                );
                 if llama_cpp::llama_decode(self.ctx_ptr, batch) != 0 {
                     println!("❌ [Native-Llama] llama_decode failed!");
                     llama_cpp::llama_batch_free(batch);
-                    return Err(anyhow::anyhow!("Prefill decode failed at chunk starting at {}", tokens_processed));
+                    return Err(anyhow::anyhow!(
+                        "Prefill decode failed at chunk starting at {}",
+                        tokens_processed
+                    ));
                 }
                 println!("🧠 [Native-Llama] Decoded chunk successfully");
-                
+
                 tokens_processed += current_chunk;
             }
-            
+
             println!("🧠 [Native-Llama] Prefill complete, freeing batch...");
             llama_cpp::llama_batch_free(batch);
-            
+
             Ok(tokens)
         }
     }
 
     pub fn stream_tokens(
-        &self, 
-        prompt: &str, 
-        max_tokens: usize, 
+        &self,
+        prompt: &str,
+        max_tokens: usize,
         dna: &StructuralDNA,
         last_prefilled_tokens: &[i32],
-        callback: Box<dyn FnMut(String) -> bool + Send + 'static>
+        callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> anyhow::Result<()> {
-        crate::native::stream::stream_tokens(self, prompt, max_tokens, dna, last_prefilled_tokens, callback)
+        crate::native::stream::stream_tokens(
+            self,
+            prompt,
+            max_tokens,
+            dna,
+            last_prefilled_tokens,
+            callback,
+        )
     }
 }
 

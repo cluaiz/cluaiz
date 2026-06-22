@@ -3,7 +3,7 @@ name: Cluaize CLI
 on:
   push:
     paths:
-      - 'Apps/cli/**'
+      - '/cmd/**'
     tags:
       - 'v*'
   workflow_dispatch:
