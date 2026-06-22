@@ -180,13 +180,25 @@ impl NeuralDispatcher {
                                 }
 
                                 let tx_ptr = &tx as *const _ as *mut std::ffi::c_void;
-                                gen_stream_fn(
-                                    safe_ptr.0,
-                                    c_prompt.as_ptr(),
-                                    4096,
-                                    callback,
-                                    tx_ptr,
-                                );
+                                let engine_raw = safe_ptr.0;
+                                let prompt_raw = c_prompt.as_ptr();
+
+                                // 🛡️ FFI PANIC BOUNDARY
+                                // Panics must NOT unwind across the C FFI boundary (undefined behaviour).
+                                // We catch any Rust panic here and convert it into a clean error token.
+                                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                    gen_stream_fn(engine_raw, prompt_raw, 4096, callback, tx_ptr);
+                                }));
+
+                                if let Err(panic_payload) = result {
+                                    let msg = panic_payload
+                                        .downcast_ref::<&str>()
+                                        .copied()
+                                        .unwrap_or("unknown FFI panic");
+                                    tracing::error!("💥 [Dispatcher] FFI Panic caught at generate_stream boundary: {}", msg);
+                                    let _ = tx.blocking_send(format!("Error: FFI kernel panicked — {}", msg));
+                                }
+
                                 generated = true;
                             }
                         }

@@ -27,6 +27,12 @@ impl OnnxEngine {
 
     /// Dynamically load a model from disk into the ONNX Runtime (e.g. bge-m3-quantized.onnx)
     pub fn load_text_model(&mut self, model_path: &str, tokenizer_path: &str) -> Result<()> {
+        // 🔒 SINGLETON OWNERSHIP GUARD (CERD Rule: exactly one owner)
+        if self.session.is_some() {
+            tracing::warn!("⚠️ [ONNX] A session is already loaded. Evicting previous session before loading new model at: {}", model_path);
+            self.session = None;
+            self.tokenizer = None;
+        }
         tracing::info!("📦 [ONNX] Loading model from: {}", model_path);
         
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING
@@ -68,6 +74,11 @@ impl OnnxEngine {
 
     /// Dynamically load a vision embedding model (like CLIP) into ONNX Runtime
     pub fn load_vision_model(&mut self, model_path: &str) -> Result<()> {
+        // 🔒 SINGLETON OWNERSHIP GUARD (CERD Rule: exactly one owner)
+        if self.session.is_some() {
+            tracing::warn!("⚠️ [ONNX] A vision session is already loaded. Evicting before loading: {}", model_path);
+            self.session = None;
+        }
         tracing::info!("👁️ [ONNX] Loading Vision Model from: {}", model_path);
         
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING (Same as text)
