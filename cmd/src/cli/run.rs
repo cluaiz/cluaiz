@@ -16,8 +16,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let mut resolved_id = model_id.to_string();
 
     let roster = CoreRoster::load_roster();
-    let home_dir = ::dirs::home_dir().ok_or_else(|| color_eyre::eyre::eyre!("Could not resolve Home Directory"))?;
-    let cluaize_root = home_dir.join(".cluaize").join("models");
+    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current().models_dir();
 
     if model_id.contains('/') {
         // ðŸš€ EXPLICIT HUGGINGFACE REQUEST
@@ -90,8 +89,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     }
 
     // ðŸš€ Trigger Skill Registry (which triggers CompilerDaemon) to provision the caches for this active model
-    let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let skills_dir = home_dir.join(".cluaize").join("skills");
+    let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
     if skills_dir.exists() {
         let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
         registry.load_from_directory(&skills_dir.to_string_lossy());

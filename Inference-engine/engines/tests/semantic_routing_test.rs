@@ -6,7 +6,7 @@ mod semantic_routing_tests {
     use std::path::{Path, PathBuf};
 
     fn get_test_skills_dir() -> PathBuf {
-        dirs::home_dir().unwrap().join(".cluaize").join("skills")
+        cluaize_shared::environment::EnvironmentManager::current().skills_dir()
     }
 
     #[tokio::test]

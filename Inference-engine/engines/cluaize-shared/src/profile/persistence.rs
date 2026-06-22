@@ -8,26 +8,16 @@
 use std::fs;
 use std::path::PathBuf;
 use crate::profile::UserProfile;
+use crate::environment::EnvironmentManager;
 
-const PROFILE_DIR: &str = ".cluaize";
 const PROFILE_FILE: &str = "user_profile.json";
 
 /// Get the sovereign directory path (The "Brain" of Cluaize)
 pub fn get_archer_dir() -> PathBuf {
-    // 1. Check for explicit environment root (Industrial Deployment)
-    if let Ok(root) = std::env::var("CLUAIZE_ROOT") {
-        let path = PathBuf::from(root);
-        if path.exists() {
-            return path.join("brain"); // The Brain is the source of truth
-        }
-    }
-
-    // 2. Fallback to Home directory brain storage
-    dirs::home_dir()
-        .map(|p| p.join(PROFILE_DIR).join("brain"))
-        .unwrap_or_else(|| PathBuf::from("brain"))
+    EnvironmentManager::current()
+        .ensure_brain_dir()
+        .unwrap_or_else(|_| EnvironmentManager::current().brain_dir())
 }
- 
 /// Get the full path to user_profile.json
 pub fn get_profile_path() -> PathBuf {
     get_archer_dir().join(PROFILE_FILE)

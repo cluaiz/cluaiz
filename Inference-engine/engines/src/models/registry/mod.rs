@@ -214,16 +214,9 @@ impl CoreRoster {
         let mut registry = std::collections::HashMap::new();
 
         // 1. Load Autonomous Local Units (The Index Master)
-        let mut model_paths = vec![
-            "models".to_string(), 
-            "../models".to_string(), 
-            "../../models".to_string(), 
-            "../../../models".to_string()
+        let model_paths = vec![
+            cluaize_shared::environment::EnvironmentManager::current().models_dir().to_string_lossy().to_string()
         ];
-        
-        if let Some(home) = dirs::home_dir() {
-            model_paths.push(home.join(".cluaize").join("models").to_string_lossy().to_string());
-        }
 
         for path in model_paths {
             let base = Path::new(&path);

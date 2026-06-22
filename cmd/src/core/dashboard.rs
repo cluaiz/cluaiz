@@ -70,7 +70,7 @@ impl DashboardEngine {
         // 🖊️ INPUT FIX: Ensure cursor is on a fresh line before inquire renders
         println!();
 
-        let mut last_booster_modified = std::fs::metadata(dirs::home_dir().unwrap_or_default().join(".cluaize").join("engine").join("system_booster.json")).and_then(|m| m.modified()).ok();
+        let mut last_booster_modified = std::fs::metadata(cluaize_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json")).and_then(|m| m.modified()).ok();
         let mut last_booster_state = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().ok();
 
         // Track global think state across pivots
@@ -198,7 +198,7 @@ impl DashboardEngine {
                         let ttft_cb = ttft_ref.clone();
                         
                         // ── 🔥 HOT RELOAD ENGINE SETTINGS ──
-                        let booster_path = dirs::home_dir().unwrap_or_default().join(".cluaize").join("engine").join("system_booster.json");
+                        let booster_path = cluaize_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json");
                         if let Ok(meta) = std::fs::metadata(&booster_path) {
                             if let Ok(modified) = meta.modified() {
                                 let mut needs_reload = false;
@@ -670,10 +670,7 @@ impl DashboardEngine {
                     println!("  {} {} activated and saved to system_booster.json.", "✅".green(), mode_ans.bold());
                     return Ok(());
                 } else if master_ans.contains("System Booster") {
-                    let mut booster_path = dirs::home_dir().unwrap_or_default();
-                    booster_path.push(".cluaize");
-                    booster_path.push("engine");
-                    booster_path.push("system_booster.json");
+                    let booster_path = cluaize_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json");
 
                     loop {
                         let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();

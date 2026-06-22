@@ -83,8 +83,7 @@ impl PermissionSchema {
     /// Loads the Permission.json from ~/.cluaize/engine/Permission.json
     /// If it doesn't exist, it creates a default one and returns it.
     pub fn load() -> Self {
-        let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        let engine_dir = home_dir.join(".cluaize").join("engine");
+        let engine_dir = cluaize_shared::environment::EnvironmentManager::current().engine_dir();
         let permission_path = engine_dir.join("Permission.json");
         let permission_bin_path = engine_dir.join("Permission.bin");
 
@@ -172,8 +171,7 @@ impl PermissionSchema {
     }
 
     pub fn save(&self) {
-        let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        let engine_dir = home_dir.join(".cluaize").join("engine");
+        let engine_dir = cluaize_shared::environment::EnvironmentManager::current().engine_dir();
         let permission_path = engine_dir.join("Permission.json");
         let permission_bin_path = engine_dir.join("Permission.bin");
 

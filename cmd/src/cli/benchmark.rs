@@ -53,10 +53,8 @@ pub async fn execute(target_model_id: Option<String>, runs: usize) -> Result<()>
             local_path.clone()
         } else {
             let folder_name = model.id.replace(':', "-");
-            let models_dir = dirs::home_dir()
-                .expect("Failed to get home directory")
-                .join(".cluaize")
-                .join("models")
+            let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+                .models_dir()
                 .join("chat");
             models_dir.join(&folder_name).to_string_lossy().to_string()
         };
@@ -200,9 +198,8 @@ fn get_benchmark_out_dir() -> PathBuf {
         path.join("test").join("benchmark")
     } else {
         // Production Environment
-        dirs::home_dir()
-            .expect("Failed to get home directory")
-            .join(".cluaize")
+        cluaize_shared::environment::EnvironmentManager::current()
+            .root_dir
             .join("reports")
             .join("benchmark")
     };
@@ -253,10 +250,8 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
     let path_str = if folder_name.contains('/') || folder_name.contains('\\') {
         folder_name.clone()
     } else {
-        let models_dir = dirs::home_dir()
-            .expect("Failed to get home directory")
-            .join(".cluaize")
-            .join("models")
+        let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .models_dir()
             .join("chat");
         models_dir.join(&folder_name).to_string_lossy().to_string()
     };

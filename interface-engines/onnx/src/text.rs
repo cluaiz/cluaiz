@@ -27,30 +27,32 @@ impl OnnxEngine {
         let required_inputs: Vec<String> = locked_session.inputs().iter().map(|i| i.name().to_string()).collect();
         let output_names: Vec<String> = locked_session.outputs().iter().map(|o| o.name().to_string()).collect();
         
-        let outputs: SessionOutputs = if required_inputs.contains(&"pixel_values".to_string()) && required_inputs.contains(&"token_type_ids".to_string()) {
-            tracing::info!("📡 [ONNX-Text] Graph expects pixel_values AND token_type_ids. Injecting dummies.");
-            let dummy = vec![0.0f32; 3 * 224 * 224];
-            let dummy_val = Value::from_array(([1usize, 3usize, 224usize, 224usize], dummy)).unwrap();
-            let dummy_types = vec![0i64; seq_len];
-            let token_types_val = Value::from_array(([batch_size, seq_len], dummy_types)).unwrap();
-            let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "token_type_ids" => token_types_val, "pixel_values" => dummy_val];
-            locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))?
-        } else if required_inputs.contains(&"pixel_values".to_string()) {
-            tracing::info!("📡 [ONNX-Text] Graph expects pixel_values. Injecting dummy image tensor.");
-            let dummy = vec![0.0f32; 3 * 224 * 224];
-            let dummy_val = Value::from_array(([1usize, 3usize, 224usize, 224usize], dummy)).unwrap();
-            let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "pixel_values" => dummy_val];
-            locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))?
-        } else if required_inputs.contains(&"token_type_ids".to_string()) {
-            tracing::info!("📡 [ONNX-Text] Graph expects token_type_ids. Injecting dummy zeros.");
-            let dummy_types = vec![0i64; seq_len];
-            let token_types_val = Value::from_array(([batch_size, seq_len], dummy_types)).unwrap();
-            let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "token_type_ids" => token_types_val];
-            locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))?
-        } else {
-            let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val];
-            locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))?
-        };
+        let outputs: SessionOutputs = tokio::task::block_in_place(|| {
+            if required_inputs.contains(&"pixel_values".to_string()) && required_inputs.contains(&"token_type_ids".to_string()) {
+                tracing::info!("📡 [ONNX-Text] Graph expects pixel_values AND token_type_ids. Injecting dummies.");
+                let dummy = vec![0.0f32; 3 * 224 * 224];
+                let dummy_val = Value::from_array(([1usize, 3usize, 224usize, 224usize], dummy)).unwrap();
+                let dummy_types = vec![0i64; seq_len];
+                let token_types_val = Value::from_array(([batch_size, seq_len], dummy_types)).unwrap();
+                let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "token_type_ids" => token_types_val, "pixel_values" => dummy_val];
+                locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))
+            } else if required_inputs.contains(&"pixel_values".to_string()) {
+                tracing::info!("📡 [ONNX-Text] Graph expects pixel_values. Injecting dummy image tensor.");
+                let dummy = vec![0.0f32; 3 * 224 * 224];
+                let dummy_val = Value::from_array(([1usize, 3usize, 224usize, 224usize], dummy)).unwrap();
+                let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "pixel_values" => dummy_val];
+                locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))
+            } else if required_inputs.contains(&"token_type_ids".to_string()) {
+                tracing::info!("📡 [ONNX-Text] Graph expects token_type_ids. Injecting dummy zeros.");
+                let dummy_types = vec![0i64; seq_len];
+                let token_types_val = Value::from_array(([batch_size, seq_len], dummy_types)).unwrap();
+                let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val, "token_type_ids" => token_types_val];
+                locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))
+            } else {
+                let inputs = ort::inputs!["input_ids" => ids_val, "attention_mask" => mask_val];
+                locked_session.run(inputs).map_err(|e: ort::Error| EngineError::EmbeddingFailed(e.to_string()))
+            }
+        })?;
 
         // 4. Extract raw tensor and apply Mean Pooling
         let target_idx = output_names.iter().position(|name| name == "text_embeds" || name == "sentence_embedding").unwrap_or(0);

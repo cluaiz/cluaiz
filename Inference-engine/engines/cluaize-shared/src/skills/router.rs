@@ -52,14 +52,12 @@ struct MinimalPermissionSchema {
 }
 
 fn get_active_embedding_model() -> Option<String> {
-    if let Some(home_dir) = dirs::home_dir() {
-        let permission_path = home_dir.join(".cluaize").join("engine").join("Permission.json");
-        if permission_path.exists() {
-            if let Ok(content) = fs::read_to_string(permission_path) {
-                if let Ok(schema) = serde_json::from_str::<MinimalPermissionSchema>(&content) {
-                    if let Some(vector_models) = schema.vector_models {
-                        return vector_models.text;
-                    }
+    let permission_path = crate::environment::EnvironmentManager::current().engine_dir().join("Permission.json");
+    if permission_path.exists() {
+        if let Ok(content) = fs::read_to_string(permission_path) {
+            if let Ok(schema) = serde_json::from_str::<MinimalPermissionSchema>(&content) {
+                if let Some(vector_models) = schema.vector_models {
+                    return vector_models.text;
                 }
             }
         }
@@ -79,8 +77,9 @@ impl SkillRouter {
 
     /// Scans the ~/.cluaize/skills/ directory and builds the FST/Trie index
     pub fn boot_index(&mut self) -> Result<()> {
-        let home_dir = dirs::home_dir().ok_or_else(|| color_eyre::eyre::eyre!("No home dir"))?;
-        let skills_dir = home_dir.join(".cluaize").join("skills");
+        let skills_dir = crate::environment::EnvironmentManager::current()
+            .ensure_skills_dir()
+            .unwrap_or_else(|_| crate::environment::EnvironmentManager::current().skills_dir());
         
         if !skills_dir.exists() {
             return Ok(());

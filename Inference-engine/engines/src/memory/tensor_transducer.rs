@@ -19,11 +19,11 @@ pub struct TensorTransducer;
 
 impl TensorTransducer {
     pub fn boot_environment() {
-        let base_path = dirs::home_dir()
-            .unwrap_or_default()
-            .join(".cluaize")
-            .join("brain")
-            .join("cluaizd");
+        let base_path = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_cluaizd_dir()
+            .unwrap_or_else(|_| {
+                cluaize_shared::environment::EnvironmentManager::current().cluaizd_dir()
+            });
 
         let mut shards = Vec::new();
         let num_shards = 4; // 4 Physical Shards
@@ -185,15 +185,15 @@ impl TensorTransducer {
     /// ⚡ Raw CDQL Execution: Passes a raw query string to the DB and returns the JSON output.
     pub fn execute_raw_cdql(query: &str) -> Result<String, String> {
         let shards = GLOBAL_LMDB_SHARDS.get().ok_or("LMDB Shards not booted")?;
-        
-        // For raw queries, we can route it to shard_0 by default, 
+
+        // For raw queries, we can route it to shard_0 by default,
         // or a specific shard if the CDQL engine handles distributed queries.
         // For now, we pass it to the first shard.
         if shards.is_empty() {
             return Err("No active shards found".to_string());
         }
         let env_ptr = &shards[0] as *const LmdbEnv as *mut c_void;
-        
+
         let null_terminated_query = format!("{}\0", query);
 
         let result = unsafe {
@@ -210,11 +210,11 @@ impl TensorTransducer {
         }
 
         tracing::info!("⚡ Successfully executed raw CDQL query");
-        
+
         // Note: Currently cluaizd_ffi_execute_parameterized returns an int status code.
-        // If the DB is expected to return JSON string results for queries like "find Neuron", 
+        // If the DB is expected to return JSON string results for queries like "find Neuron",
         // we will need an FFI function that returns a string/bytes, similar to read_neuron.
-        // For now, we return a success message. 
+        // For now, we return a success message.
         Ok("Query executed successfully".to_string())
     }
 }

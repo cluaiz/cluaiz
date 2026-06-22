@@ -50,24 +50,26 @@ impl CluaizeHealthChecker {
         println!("🚀 [Cluaize Benchmark] Initiating Deep Hardware Diagnostics...");
         let start = std::time::Instant::now();
         
-        let path = std::path::Path::new(".cluaize_io_bench.tmp");
+        let path = cluaize_shared::environment::EnvironmentManager::current()
+            .root_dir
+            .join(".cluaize_io_bench.tmp");
         let payload = vec![0u8; 50 * 1024 * 1024]; // 50MB payload
         
-        if let Ok(mut file) = std::fs::File::create(path) {
+        if let Ok(mut file) = std::fs::File::create(&path) {
             use std::io::Write;
             if file.write_all(&payload).is_ok() {
                 file.sync_all().unwrap();
             }
         }
         
-        if let Ok(data) = std::fs::read(path) {
+        if let Ok(data) = std::fs::read(&path) {
             assert_eq!(data.len(), 50 * 1024 * 1024);
         }
         
         let duration = start.elapsed();
         let speed_mbps = (100.0) / duration.as_secs_f64(); // 50 write + 50 read
         
-        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(&path);
         
         println!("✅ [Cluaize Benchmark] Storage Speed: {:.1} MB/s", speed_mbps);
         println!("✅ [Cluaize Benchmark] Complete in {:.2}s", duration.as_secs_f64());

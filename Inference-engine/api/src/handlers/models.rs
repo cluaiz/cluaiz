@@ -69,8 +69,9 @@ pub async fn tags(State(_state): State<Arc<AppState>>) -> Json<Value> {
 // ─── GET /v1/models/installed ────────────────────────────────────────
 // Directly scans ~/.cluaize/models on disk — no registry, no inference.
 pub async fn list_installed_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let home = dirs::home_dir().unwrap_or_default();
-    let models_root = home.join(".cluaize").join("models");
+    let models_root = cluaize_shared::environment::EnvironmentManager::current()
+        .ensure_models_dir()
+        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
     let mut installed = Vec::new();
 
     let categories = ["chat", "embedding", "vision", "audio", "code"];
@@ -134,8 +135,9 @@ pub async fn pull_model(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<PullPayload>,
 ) -> Json<Value> {
-    let home_dir = ::dirs::home_dir().unwrap_or_default();
-    let cluaize_root = home_dir.join(".cluaize").join("models");
+    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current()
+        .ensure_models_dir()
+        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaize_root);
     
     let model_id = payload.model_id.clone();
@@ -164,15 +166,16 @@ pub async fn rm_model(
     State(_state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
 ) -> Json<Value> {
-    if let Some(home_dir) = ::dirs::home_dir() {
-        let model_file = home_dir.join(".cluaize").join("models").join(format!("{}.gguf", model_id));
-        if model_file.exists() {
-            let _ = std::fs::remove_file(&model_file);
-            return Json(json!({
-                "status": "success",
-                "message": format!("Vault physical deletion for '{}' completed.", model_id)
-            }));
-        }
+    let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+        .ensure_models_dir()
+        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
+    let model_file = models_dir.join(format!("{}.gguf", model_id));
+    if model_file.exists() {
+        let _ = std::fs::remove_file(&model_file);
+        return Json(json!({
+            "status": "success",
+            "message": format!("Vault physical deletion for '{}' completed.", model_id)
+        }));
     }
     Json(json!({
         "status": "error",

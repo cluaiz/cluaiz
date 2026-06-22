@@ -21,27 +21,9 @@ pub struct ModelDownloader;
 
 impl ModelDownloader {
     fn get_models_dir() -> PathBuf {
-        // 1. Priority: User's Home Directory (~/.cluaize/models)
-        if let Some(home) = dirs::home_dir() {
-            let cluaize_path = home.join(".cluaize").join("models");
-            if cluaize_path.is_dir() {
-                return cluaize_path;
-            }
-        }
-
-        // 2. Fallback: Workspace/Local Search (Scans up to 3 levels)
-        let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        for _ in 0..3 {
-            let candidate = path.join("models");
-            if candidate.is_dir() {
-                return candidate;
-            }
-            if let Some(parent) = path.parent() {
-                path = parent.to_path_buf();
-            } else { break; }
-        }
-        
-        PathBuf::from("models") // Default fallback
+        cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_models_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir())
     }
 
     pub fn is_model_cached(category: &str, repo_id: &str, filename: &str) -> bool {

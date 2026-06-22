@@ -1,0 +1,132 @@
+use std::path::PathBuf;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnvironmentMode {
+    Development,
+    Installed,
+    Portable,
+    Testing,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnvironmentManager {
+    pub mode: EnvironmentMode,
+    pub root_dir: PathBuf,
+}
+
+impl EnvironmentManager {
+    /// Returns the current global environment manager, dynamically resolving the correct
+    /// Cluaize root directory based on the execution context.
+    pub fn current() -> Self {
+        // 1. Portable Mode: Ignore OS HOME if portable.flag exists next to the exe
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(parent) = exe_path.parent() {
+                if parent.join("portable.flag").exists() {
+                    return Self {
+                        mode: EnvironmentMode::Portable,
+                        root_dir: parent.to_path_buf(),
+                    };
+                }
+            }
+        }
+
+        // 2. Environment Override
+        if let Ok(env_path) = std::env::var("CLUAIZE_HOME") {
+            return Self {
+                mode: EnvironmentMode::Installed,
+                root_dir: PathBuf::from(env_path),
+            };
+        }
+
+        // 3. Development Mode
+        // We detect if we're running via cargo
+        if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
+            let mut dev_path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            dev_path = dev_path.join(".cluaize");
+            return Self {
+                mode: EnvironmentMode::Development,
+                root_dir: dev_path,
+            };
+        }
+
+        // 4. Installed Mode (Default)
+        // Check dirs package for home directory
+        let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        Self {
+            mode: EnvironmentMode::Installed,
+            root_dir: home_dir.join(".cluaize"),
+        }
+    }
+
+    pub fn engine_dir(&self) -> PathBuf { self.root_dir.join("engine") }
+    pub fn kernel_dir(&self) -> PathBuf { self.engine_dir().join("interfaces").join("kernels") }
+    pub fn drivers_dir(&self) -> PathBuf { self.engine_dir().join("interfaces").join("drivers") }
+    pub fn models_dir(&self) -> PathBuf { self.root_dir.join("models") }
+    pub fn chat_models_dir(&self) -> PathBuf { self.models_dir().join("chat") }
+    pub fn embedding_models_dir(&self) -> PathBuf { self.models_dir().join("embedding") }
+    pub fn vision_models_dir(&self) -> PathBuf { self.models_dir().join("vision") }
+    pub fn brain_dir(&self) -> PathBuf { self.root_dir.join("brain") }
+    pub fn cluaizd_dir(&self) -> PathBuf { self.brain_dir().join("cluaizd") }
+    pub fn skills_dir(&self) -> PathBuf { self.root_dir.join("skills") }
+    pub fn reports_dir(&self) -> PathBuf { self.root_dir.join("reports") }
+
+    pub fn ensure_engine_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.engine_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_kernel_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.kernel_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_drivers_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.drivers_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.models_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_chat_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.chat_models_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.embedding_models_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_vision_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.vision_models_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_brain_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.brain_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_cluaizd_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.cluaizd_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+
+    pub fn ensure_skills_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.skills_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
+}

@@ -207,8 +207,8 @@ impl CoreRouter {
 
 
         let mut foundry = crate::neural_foundry::CoreFoundry::new();
-        // Load skills from the global ~/.cluaize/skills directory
-        let skills_dir = dirs::home_dir().unwrap_or_default().join(".cluaize").join("skills");
+        // Load skills using EnvironmentManager
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
         foundry.initialize(&skills_dir.to_string_lossy());
 
 
@@ -238,8 +238,7 @@ impl CoreRouter {
             let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-");
 
             for (id, skill_manifest) in &skill_router.loaded_manifests {
-                let home_dir = dirs::home_dir().unwrap_or_default();
-                let skill_path = home_dir.join(".cluaize").join("skills").join(&skill_manifest.name);
+                let skill_path = cluaize_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
                 let cache_dir = skill_path.join(".cache");
                 let emb_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
                 let norm_skill_path = cluaize_shared::skills::router::normalize_path(&skill_path);

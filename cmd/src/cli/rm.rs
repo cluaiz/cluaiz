@@ -11,8 +11,9 @@ pub async fn execute(model_id: &str) -> Result<()> {
 
     if let Some(m) = model {
         // Resolve path to the model file
-        let home_dir = ::dirs::home_dir().ok_or_else(|| color_eyre::eyre::eyre!("Could not resolve Home Directory"))?;
-        let vault_path = home_dir.join(".cluaize").join("models");
+        let vault_path = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_models_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
         
         // This is a simplification; a real manager should handle the specific file naming
         let model_file = vault_path.join(format!("{}.gguf", m.id)); // Assuming GGUF for now

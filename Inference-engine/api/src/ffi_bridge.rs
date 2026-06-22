@@ -115,14 +115,15 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "MODEL_RM" => {
                                 if let Some(model_id) = json_cmd.get("payload").and_then(|p| p.get("model_id")).and_then(|m| m.as_str()) {
-                                    if let Some(home_dir) = ::dirs::home_dir() {
-                                        let model_file = home_dir.join(".cluaize").join("models").join(format!("{}.gguf", model_id));
-                                        if model_file.exists() {
-                                            let _ = std::fs::remove_file(&model_file);
-                                            let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Model removed\"}").await;
-                                        } else {
-                                            let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"File not found\"}").await;
-                                        }
+                                    let model_file = cluaize_shared::environment::EnvironmentManager::current()
+                                        .ensure_models_dir()
+                                        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir())
+                                        .join(format!("{}.gguf", model_id));
+                                    if model_file.exists() {
+                                        let _ = std::fs::remove_file(&model_file);
+                                        let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Model removed\"}").await;
+                                    } else {
+                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"File not found\"}").await;
                                     }
                                 } else {
                                     let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"Missing model_id\"}").await;

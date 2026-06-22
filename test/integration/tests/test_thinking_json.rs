@@ -61,10 +61,8 @@ async fn test_all_reasoning_models_dynamically() -> Result<()> {
 
 async fn run_single_model_isolated(model_name: &str) {
     let folder_name = model_name.replace(':', "-");
-    let models_dir = dirs::home_dir()
-        .expect("Failed to get home directory")
-        .join(".cluaize")
-        .join("models")
+    let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+        .get_models_dir()
         .join("chat");
     let model_folder = models_dir.join(&folder_name);
 

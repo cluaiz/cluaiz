@@ -16,9 +16,11 @@ impl EmbeddingGenerator {
         let schema = PermissionSchema::load();
         let model_id = schema.get_active_embedding_model()?;
         
-        let home = dirs::home_dir()?;
         let formatted_model_id = model_id.replace(":", "-");
-        let model_dir = home.join(".cluaize").join("models").join("embedding").join(&formatted_model_id);
+        let model_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_embedding_models_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().embedding_models_dir())
+            .join(&formatted_model_id);
         
         let model_path = model_dir.join("model.onnx");
         let tokenizer_path = model_dir.join("tokenizer.json");

@@ -18,8 +18,7 @@ impl Bootstrapper {
         let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         permissions.auto_assign_defaults();
         
-        let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-        let skills_dir = home_dir.join(".cluaize").join("skills");
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
         if skills_dir.exists() {
             let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
             registry.load_from_directory(&skills_dir.to_string_lossy());

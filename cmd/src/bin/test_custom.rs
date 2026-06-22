@@ -32,9 +32,9 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
     println!("🧪 Running Diagnostic Suite for Model: {}", model_id);
     println!("==================================================");
 
-    let home_dir = dirs::home_dir().expect("Could not resolve Home Directory");
-    let model_path = home_dir
-        .join(".cluaize").join("models").join("chat")
+    let env = cluaize_shared::environment::EnvironmentManager::current();
+    let model_path = env.ensure_chat_models_dir()
+        .unwrap_or_else(|_| env.chat_models_dir())
         .join(model_folder).join(model_filename);
 
     if !model_path.exists() {
@@ -44,7 +44,7 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
 
     engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model_id.to_string());
 
-    let skills_dir = home_dir.join(".cluaize").join("skills");
+    let skills_dir = env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir());
     let model_safe = model_id.replace(":", "-");
 
     // Clean caches for a reproducible run

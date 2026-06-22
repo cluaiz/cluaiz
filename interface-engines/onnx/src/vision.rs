@@ -60,19 +60,21 @@ impl OnnxEngine {
         let output_names: Vec<String> = session.outputs().iter().map(|o| o.name().to_string()).collect();
         let target_idx = output_names.iter().position(|name| name == "image_embeds" || name == "embedding").unwrap_or(0);
         
-        let outputs = if required_inputs.contains(&"input_ids".to_string()) && required_inputs.contains(&"attention_mask".to_string()) {
-            info!("📡 [ONNX-Vision] Graph expects text inputs (input_ids/attention_mask). Injecting dummy sequence.");
-            let dummy_ids = vec![0i64; 77];
-            let dummy_mask = vec![0i64; 77];
-            let ids_val = ort::value::Value::from_array(([1usize, 77usize], dummy_ids)).unwrap();
-            let mask_val = ort::value::Value::from_array(([1usize, 77usize], dummy_mask)).unwrap();
-            
-            let inputs = ort::inputs!["pixel_values" => input_value, "input_ids" => ids_val, "attention_mask" => mask_val];
-            session.run(inputs).map_err(|e| EngineError::EmbeddingFailed(format!("ONNX execution failed: {}", e)))?
-        } else {
-            let inputs = ort::inputs!["pixel_values" => input_value];
-            session.run(inputs).map_err(|e| EngineError::EmbeddingFailed(format!("ONNX execution failed: {}", e)))?
-        };
+        let outputs = tokio::task::block_in_place(|| {
+            if required_inputs.contains(&"input_ids".to_string()) && required_inputs.contains(&"attention_mask".to_string()) {
+                info!("📡 [ONNX-Vision] Graph expects text inputs (input_ids/attention_mask). Injecting dummy sequence.");
+                let dummy_ids = vec![0i64; 77];
+                let dummy_mask = vec![0i64; 77];
+                let ids_val = ort::value::Value::from_array(([1usize, 77usize], dummy_ids)).unwrap();
+                let mask_val = ort::value::Value::from_array(([1usize, 77usize], dummy_mask)).unwrap();
+                
+                let inputs = ort::inputs!["pixel_values" => input_value, "input_ids" => ids_val, "attention_mask" => mask_val];
+                session.run(inputs).map_err(|e| EngineError::EmbeddingFailed(format!("ONNX execution failed: {}", e)))
+            } else {
+                let inputs = ort::inputs!["pixel_values" => input_value];
+                session.run(inputs).map_err(|e| EngineError::EmbeddingFailed(format!("ONNX execution failed: {}", e)))
+            }
+        })?;
 
         let output_tensor = outputs[target_idx].try_extract_tensor::<f32>()
             .map_err(|e| EngineError::EmbeddingFailed(format!("Failed to extract output: {}", e)))?;

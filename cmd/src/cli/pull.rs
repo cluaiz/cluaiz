@@ -72,8 +72,9 @@ pub async fn execute(model_id: &str) -> Result<()> {
     }
 
     // 2. Pre-flight Silicon Audit (Universal for both HF and Registry)
-    let home_dir = ::dirs::home_dir().ok_or_else(|| color_eyre::eyre::eyre!("Could not resolve Home Directory"))?;
-    let cluaize_root = home_dir.join(".cluaize").join("models");
+    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current()
+        .ensure_models_dir()
+        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaize_root.clone());
     
     println!("  {} Fetching Deep Metadata (GGUF Binary Probe)...", "ðŸ“¡".cyan());

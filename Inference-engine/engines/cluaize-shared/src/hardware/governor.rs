@@ -167,10 +167,7 @@ impl HardwareGovernor {
     ) -> usize {
         let mut arbiter = ARBITER.lock().unwrap();
 
-        let mut path = dirs::home_dir().unwrap_or_default();
-        path.push(".cluaize");
-        path.push("engine");
-        path.push("system_booster.json");
+        let path = Self::resolve_engine_path().join("system_booster.json");
 
         // 🔍 LIVE SILICON PROBE: We don't trust cached values for safety-critical negotiation.
         if let Ok(control) = Self::load_system_control() {
@@ -430,13 +427,7 @@ impl HardwareGovernor {
     /// 2. Portable Mode: Parent directory of current executable.
     /// 3. OS Standard Config Dir.
     pub fn resolve_hub_path() -> PathBuf {
-        if let Ok(root) = std::env::var("CLUAIZE_ROOT") {
-            return PathBuf::from(root);
-        }
-
-        dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".cluaize")
+        crate::environment::EnvironmentManager::current().root_dir
     }
 
     pub fn resolve_apps_path() -> PathBuf {

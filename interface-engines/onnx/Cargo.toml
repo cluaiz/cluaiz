@@ -20,6 +20,7 @@ serde_json = "1.0"
 tokenizers = { version = "0.15", default-features = false, features = ["onig"] } # HuggingFace Tokenizers
 image = "0.24"
 ndarray = "0.15"
+tokio = { version = "1.0", features = ["rt"] }
 
 [features]
 default = []

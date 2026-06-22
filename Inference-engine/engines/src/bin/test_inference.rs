@@ -7,8 +7,10 @@ use std::path::PathBuf;
 async fn main() -> Result<()> {
     println!("🧪 [Test] Starting Dynamic Pipeline Diagnostic...");
 
-    let home_dir = dirs::home_dir().expect("Could not resolve Home Directory");
-    let model_path = home_dir.join(".cluaize").join("models").join("chat").join("bonsai1-8b").join("Bonsai-8B.gguf");
+    let env = cluaize_shared::environment::EnvironmentManager::current();
+    let model_path = env.ensure_chat_models_dir()
+        .unwrap_or_else(|_| env.chat_models_dir())
+        .join("bonsai1-8b").join("Bonsai-8B.gguf");
     
     if !model_path.exists() {
         println!("❌ Model not found at: {:?}", model_path);
@@ -49,7 +51,7 @@ async fn main() -> Result<()> {
         println!("\n✅ [Test] Generation successful!");
         
         // Let's verify that the kvcache.bin was created for the matched skill
-        let cache_file = home_dir.join(".cluaize").join("skills").join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
+        let cache_file = env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir()).join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
         if cache_file.exists() {
             println!("✅ [Test] VERIFIED: kvcache.bin was compiled successfully for minimax-music-gen!");
             println!("📁 Cache file location: {:?}", cache_file);

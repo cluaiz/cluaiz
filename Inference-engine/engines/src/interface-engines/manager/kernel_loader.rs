@@ -99,8 +99,9 @@ impl KernelLoader {
         }
 
         // 4. System Truth: Read cluaize_root (Global Installation)
-        if let Some(cluaize_root) = read_cluaize_root() {
-            let base_link = cluaize_root.join("engine").join("interfaces");
+        if let Some(_) = read_cluaize_root() {
+            let env = cluaize_shared::environment::EnvironmentManager::current();
+            let base_link = env.engine_dir().join("interfaces");
             
             for file_name in &candidates {
                 // Check root interface-engines/

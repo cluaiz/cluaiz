@@ -7,8 +7,10 @@ impl SkillRegistry {
         use std::io::Write;
         println!("\n  {} [Cluaize] Contacting Universal Skill Registry...", "ðŸ“¡".cyan());
         
-        let home_dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        let skills_dir = home_dir.join(".cluaize").join("skills").join(skill_name);
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_skills_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().skills_dir())
+            .join(skill_name);
         
         if !skills_dir.exists() {
             std::fs::create_dir_all(&skills_dir)?;
@@ -181,8 +183,9 @@ impl SkillRegistry {
     }
 
     pub fn list_installed_skills() -> anyhow::Result<Vec<String>> {
-        let home_dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        let skills_dir = home_dir.join(".cluaize").join("skills");
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_skills_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().skills_dir());
         let mut skills = Vec::new();
 
         if skills_dir.exists() {
@@ -199,8 +202,9 @@ impl SkillRegistry {
     }
 
     pub fn list_skills_cache() -> anyhow::Result<String> {
-        let home_dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        let skills_dir = home_dir.join(".cluaize").join("skills");
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_skills_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().skills_dir());
         
         if !skills_dir.exists() {
             return Ok("No skills installed.".to_string());
@@ -237,8 +241,9 @@ impl SkillRegistry {
     }
 
     pub fn clear_skills_cache(model_id: Option<String>, all: bool, force: bool) -> anyhow::Result<usize> {
-        let home_dir = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        let skills_dir = home_dir.join(".cluaize").join("skills");
+        let skills_dir = cluaize_shared::environment::EnvironmentManager::current()
+            .ensure_skills_dir()
+            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().skills_dir());
         if !skills_dir.exists() { return Ok(0); }
         
         let mut wiped = 0;

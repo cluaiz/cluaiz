@@ -54,17 +54,24 @@ To ensure zero-latency binary mapping, all artifacts MUST follow the **Sovereign
 ---
 
 ## ⚡ 5. CI/CD PIPELINE INTEGRITY (ZERO-CRASH DEPLOYMENT)
-The GitHub Actions pipelines are divided into two distinct, isolated factories:
+The GitHub Actions pipelines are divided into **5 distinct, highly-decoupled factories**:
 
-### ⚙️ 1. Baseline Inference Kernels (`inference-kernel.yml`)
-- **Compilation**: Parallel builds for exactly 9 core platforms using CPU instructions (AVX512, AVX2, NEON, ARM_NEON).
+### ⚙️ 1. `cluaize-cmd.yml` (The Edge CLI)
+- **Compilation**: Parallel builds for 6 OS/Architecture combinations (Windows, Linux, macOS for both x64 and arm64).
+- **Releases**: Uploads the main entrypoint executables to `cli-v*` release tags.
+
+### ⚙️ 2. `cluaize-kernel-llama.yml` & `cluaize-kernel-onnx.yml` (Silicon Kernels)
+- **Compilation**: Parallel builds for exactly 9 core platforms using CPU instructions (AVX512, AVX2, NEON).
 - **Tooling**: Uses `cross` for Docker-based cross-compilation on target architectures (Android, Linux Aarch64).
-- **Releases**: Uploads baseline library binaries to `kernel-v*` release tags.
+- **Releases**: Uploads baseline library binaries to `kernel-v*` and `onnx-kernel-v*` release tags.
 
-### ⚙️ 2. Dynamic Silicon Drivers (`inference-driver.yml`)
-- **Compilation**: Parallel builds for specialized backend matrices (including CUDA v13/v12/v11, Metal mac-arm64/mac-x64/ios, Vulkan Windows/Linux, OpenVINO, ROCm, HIP).
-- **Synchronization**: Automatically rewrites `registry.json` placeholders with the compiled release's `{DRIVER_TAG}` and `{VERSION}` to guarantee immediate auto-update updates.
-- **Releases**: Uploads accelerator driver library binaries to `driver-v*` release tags.
+### ⚙️ 3. `cluaize-llama-driver.yml` & `cluaize-onnx-driver.yml` (Dynamic Accelerators)
+- **Compilation**: Parallel builds for specialized backend matrices (CUDA v13/v12/v11, Metal, Vulkan, OpenVINO, ROCm, HIP, SYCL, CANN, QNN).
+- **Releases**: Uploads accelerator driver binaries to `driver-v*` and `onnx-driver-v*` release tags.
+
+### 🧠 4. Dynamic Manifest Registry (Python Automation)
+- **The Old Flaw**: Manifests were hardcoded via `cat <<EOF`. If a build (like SYCL) failed, the JSON would still include the broken link, crashing the Engine on startup.
+- **The New Standard**: Every workflow features a dynamic Python script during the `publish-registry` job. It aggressively scans the `artifacts/` folder and generates a 100% accurate `cluaize-*.json` manifest containing **ONLY successful binaries**. Failed matrix targets are safely and automatically omitted.
 
 ---
 
