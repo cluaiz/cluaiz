@@ -23,31 +23,89 @@ impl SkillRouter {
         let mut matches = Vec::new();
         let prompt_lower = prompt.to_lowercase();
 
+        let prompt_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(prompt);
+        let prompt_len = prompt_vector.len();
+        let prompt_is_valid = prompt_len > 0 && prompt_vector.iter().any(|&x| x != 0.0);
+
+        let active_model_id = crate::neural_foundry::security::permission_schema::PermissionSchema::load()
+            .get_active_embedding_model()
+            .unwrap_or_else(|| "default".to_string());
+        let safe_filename = active_model_id.replace(":", "-");
 
         for skill in &registry.skills {
             let mut is_matched = false;
             let threshold = skill.manifest.triggers.entropy_threshold.unwrap_or(0.70);
 
-            // 1. Semantic Embedding Similarity Trigger Match (Threshold > 0.8)
-            // Note: In production, this computes vector cosine similarity via ONNX.
-            for trigger in &skill.manifest.triggers.semantic {
-                // Mock similarity calculation (architecture implementation)
-                // let similarity = cosine_similarity(prompt_vector, embed(trigger));
-                let similarity: f32 = if prompt_lower.contains(&trigger.to_lowercase()) { 0.95 } else { 0.1 };
-                
-                if similarity > threshold {
-                    tracing::debug!("[Skill-Router] Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
-                    is_matched = true;
-                    break;
+            // Try loading cached skill embedding
+            let cache_path = skill.path.join(".cache").join(format!("{}.emb.bin", safe_filename));
+            let mut cached_floats = None;
+            if cache_path.exists() {
+                if let Ok(bytes) = std::fs::read(&cache_path) {
+                    if bytes.len() % 4 == 0 {
+                        let floats: Vec<f32> = bytes
+                            .chunks_exact(4)
+                            .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+                            .collect();
+                        cached_floats = Some(floats);
+                    }
                 }
             }
 
-            // 2. Full-Text Description Semantic Match (Fallback)
+            if prompt_is_valid {
+                // 1. Semantic Embedding Similarity Trigger Match (Threshold > entropy_threshold)
+                if let Some(floats) = &cached_floats {
+                    if floats.len() % prompt_len == 0 {
+                        for chunk in floats.chunks_exact(prompt_len) {
+                            let similarity = cosine_similarity(&prompt_vector, chunk);
+                            if similarity > threshold {
+                                tracing::debug!("[Skill-Router] Cached Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                                is_matched = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // If not matched yet, try matching against triggers embedded on the fly
+                if !is_matched {
+                    for trigger in &skill.manifest.triggers.semantic {
+                        let trigger_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(trigger);
+                        let similarity = cosine_similarity(&prompt_vector, &trigger_vector);
+                        if similarity > threshold {
+                            tracing::debug!("[Skill-Router] Dynamic Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                            is_matched = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. Full-Text Description Semantic Match (Fallback)
+                if !is_matched {
+                    let desc_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(&skill.manifest.description);
+                    let similarity = cosine_similarity(&prompt_vector, &desc_vector);
+                    if similarity > threshold {
+                        tracing::debug!("[Skill-Router] Description Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                        is_matched = true;
+                    }
+                }
+            }
+
+            // If semantic matching didn't trigger, or prompt was invalid/all-zeros,
+            // fall back to string containment checks so we never regress on exact/keyword matches.
             if !is_matched {
-                // let similarity = cosine_similarity(prompt_vector, embed(skill.description));
-                let similarity: f32 = if prompt_lower.contains(&skill.manifest.description.to_lowercase()) || 
-                                         skill.manifest.description.to_lowercase().contains(&prompt_lower) { 0.85 } else { 0.1 };
-                if similarity > threshold {
+                for trigger in &skill.manifest.triggers.semantic {
+                    if prompt_lower.contains(&trigger.to_lowercase()) {
+                        tracing::debug!("[Skill-Router] Fallback string match for skill {} trigger {}", skill.manifest.id, trigger);
+                        is_matched = true;
+                        break;
+                    }
+                }
+            }
+
+            if !is_matched {
+                if prompt_lower.contains(&skill.manifest.description.to_lowercase()) || 
+                   skill.manifest.description.to_lowercase().contains(&prompt_lower) {
+                    tracing::debug!("[Skill-Router] Fallback description string match for skill {}", skill.manifest.id);
                     is_matched = true;
                 }
             }
@@ -74,4 +132,22 @@ impl SkillRouter {
         tracing::warn!("🚀 [Skill-Router] Dispatching to sandboxed WASM skill logic (Mock).");
         Ok(())
     }
+}
+
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    let mut dot_product = 0.0;
+    let mut norm_a = 0.0;
+    let mut norm_b = 0.0;
+    for i in 0..a.len() {
+        dot_product += a[i] * b[i];
+        norm_a += a[i] * a[i];
+        norm_b += b[i] * b[i];
+    }
+    if norm_a == 0.0 || norm_b == 0.0 {
+        return 0.0;
+    }
+    dot_product / (norm_a.sqrt() * norm_b.sqrt())
 }

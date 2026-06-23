@@ -1,22 +1,17 @@
 use super::SkillRegistry;
 
 impl SkillRegistry {
-    /// ðŸ›°ï¸ Cluaize Pull: Downloads and installs a skill from the Global Hub.
+    /// 🚀 Cluaize Pull: Downloads and installs a skill from the Global Hub.
     pub async fn install_skill(skill_name: &str) -> anyhow::Result<()> {
         use colored::Colorize;
-        use std::io::Write;
-        println!("\n  {} [Cluaize] Contacting Universal Skill Registry...", "ðŸ“¡".cyan());
+        println!("\n  {} [Cluaize] Contacting Universal Skill Registry...", "📡".cyan());
         
         let skills_dir = cluaize_shared::environment::EnvironmentManager::current()
             .ensure_skills_dir()
             .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().skills_dir())
             .join(skill_name);
         
-        if !skills_dir.exists() {
-            std::fs::create_dir_all(&skills_dir)?;
-        }
-        
-        println!("  {} [Cluaize] Installing skill '{}' to {}...", "ðŸš€".green(), skill_name.bold(), skills_dir.display());
+        println!("  {} [Cluaize] Installing skill '{}'...", "🚀".green(), skill_name.bold());
 
         let registry_url = "https://raw.githubusercontent.com/cluaiz/skills/main/registry.json";
         let client = reqwest::Client::new();
@@ -33,7 +28,7 @@ impl SkillRegistry {
                                 if let Some(versions) = skill_data.get("versions").and_then(|v| v.as_object()) {
                                     if let Some(url) = versions.get(latest).and_then(|u| u.as_str()) {
                                         download_url = url.to_string();
-                                        println!("  {} [Registry] Found skill release: v{}", "âœ…".green(), latest.bold());
+                                        println!("  {} [Registry] Found skill release: v{}", "✅".green(), latest.bold());
                                     }
                                 }
                             }
@@ -44,104 +39,121 @@ impl SkillRegistry {
         }
 
         if download_url.is_empty() {
-            println!("  {} [Registry] Skill '{}' not found or has no valid release in the registry.", "âŒ".red(), skill_name.bold());
-            let _ = std::fs::remove_dir(&skills_dir);
+            println!("  {} [Registry] Skill '{}' not found or has no valid release in the registry.", "❌".red(), skill_name.bold());
+            let skills_dir_clone = skills_dir.clone();
+            tokio::task::spawn_blocking(move || {
+                let _ = std::fs::remove_dir(&skills_dir_clone);
+            }).await?;
             return Err(anyhow::anyhow!("Skill not found in registry"));
         }
 
-        println!("  {} [Cluaize] Downloading release package...", "â¬‡ï¸".cyan());
+        println!("  {} [Cluaize] Downloading release package...", "⬇️".cyan());
         let zip_resp = client.get(&download_url).send().await?;
         
         if !zip_resp.status().is_success() {
-            let _ = std::fs::remove_dir(&skills_dir);
+            let skills_dir_clone = skills_dir.clone();
+            tokio::task::spawn_blocking(move || {
+                let _ = std::fs::remove_dir(&skills_dir_clone);
+            }).await?;
             return Err(anyhow::anyhow!("Failed to download skill package"));
         }
         
         let zip_bytes = zip_resp.bytes().await?;
-        let temp_zip_path = skills_dir.join(format!("{}.zip", skill_name));
         
-        let mut file = std::fs::File::create(&temp_zip_path)?;
-        file.write_all(&zip_bytes)?;
-        
-        println!("  {} [Cluaize] Extracting package...", "ðŸ“¦".cyan());
-        let status = std::process::Command::new("tar")
-            .arg("-xf")
-            .arg(&temp_zip_path)
-            .arg("-C")
-            .arg(&skills_dir)
-            .status()?;
-            
-        if !status.success() {
-            let _ = std::fs::remove_file(&temp_zip_path);
-            let _ = std::fs::remove_dir(&skills_dir);
-            return Err(anyhow::anyhow!("Extraction failed"));
-        }
-        
-        let _ = std::fs::remove_file(&temp_zip_path);
+        let skill_name_string = skill_name.to_string();
+        let skills_dir_clone = skills_dir.clone();
 
-        println!("\n  {} [Cluaize] Skill '{}' successfully installed and registered!\n", "âœ…".green(), skill_name.bold());
-
-        let manifest_path = skills_dir.join("manifest.json");
-        let parsed_manifest = if manifest_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                serde_json::from_str::<crate::neural_foundry::registry::SkillManifest>(&content).ok()
-            } else {
-                None
+        tokio::task::spawn_blocking(move || {
+            use std::io::Write;
+            if !skills_dir_clone.exists() {
+                std::fs::create_dir_all(&skills_dir_clone)?;
             }
-        } else {
-            let skill_md_path = skills_dir.join("SKILL.md");
-            if skill_md_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&skill_md_path) {
-                    if let Some(start) = content.find("---\n") {
-                        if let Some(end) = content[start + 4..].find("\n---") {
-                            let yaml_content = &content[start + 4..start + 4 + end];
-                            serde_yaml::from_str::<crate::neural_foundry::registry::SkillManifest>(yaml_content).ok()
+
+            let temp_zip_path = skills_dir_clone.join(format!("{}.zip", skill_name_string));
+            
+            let mut file = std::fs::File::create(&temp_zip_path)?;
+            file.write_all(&zip_bytes)?;
+            
+            println!("  {} [Cluaize] Extracting package...", "📦".cyan());
+            let status = std::process::Command::new("tar")
+                .arg("-xf")
+                .arg(&temp_zip_path)
+                .arg("-C")
+                .arg(&skills_dir_clone)
+                .status()?;
+                
+            if !status.success() {
+                let _ = std::fs::remove_file(&temp_zip_path);
+                let _ = std::fs::remove_dir(&skills_dir_clone);
+                return Err(anyhow::anyhow!("Extraction failed"));
+            }
+            
+            let _ = std::fs::remove_file(&temp_zip_path);
+
+            println!("\n  {} [Cluaize] Skill '{}' successfully installed and registered!\n", "✅".green(), skill_name_string.bold());
+
+            let manifest_path = skills_dir_clone.join("manifest.json");
+            let parsed_manifest = if manifest_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                    serde_json::from_str::<crate::neural_foundry::registry::SkillManifest>(&content).ok()
+                } else {
+                    None
+                }
+            } else {
+                let skill_md_path = skills_dir_clone.join("SKILL.md");
+                if skill_md_path.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&skill_md_path) {
+                        if let Some(start) = content.find("---\n") {
+                            if let Some(end) = content[start + 4..].find("\n---") {
+                                let yaml_content = &content[start + 4..start + 4 + end];
+                                serde_yaml::from_str::<crate::neural_foundry::registry::SkillManifest>(yaml_content).ok()
+                            } else { None }
                         } else { None }
                     } else { None }
-                } else { None }
-            } else {
-                None
-            }
-        };
+                } else {
+                    None
+                }
+            };
 
-        if let Some(mut manifest) = parsed_manifest {
-            if manifest.id.is_empty() {
-                manifest.id = manifest.name.clone();
-            }
-            
-            let permissions = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-            if let Some(embedding_model_id) = permissions.get_active_embedding_model() {
-                let roster = crate::models::registry::CoreRoster::load_roster();
-                if let Some(model_manifest) = roster.iter().find(|m| m.id == embedding_model_id) {
-                    if let Some(local_path) = &model_manifest.local_path {
-                        let model_dir = std::path::Path::new(local_path);
-                        let model_file = model_dir.join("model.onnx");
-                        let tokenizer_file = model_dir.join("tokenizer.json");
-                        if model_file.exists() && tokenizer_file.exists() {
-                            println!("  {} [Cluaize] Compiling skill vector immediately...", "âš™ï¸".cyan());
-                            let cache_dir = skills_dir.join(".cache");
-                            let _ = std::fs::create_dir_all(&cache_dir);
-                            let safe_filename = embedding_model_id.replace(":", "-");
-                            let embedding_cache_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
-                            
-                            let skill_content = if let Some(fm) = Self::extract_frontmatter(&skills_dir) {
-                                fm
-                            } else {
-                                let semantic_triggers = manifest.triggers.semantic.join(", ");
-                                format!(
-                                    "Skill Name: {}\nDescription: {}\nTriggers: {}",
-                                    manifest.name, manifest.description, semantic_triggers
-                                )
-                            };
+            if let Some(mut manifest) = parsed_manifest {
+                if manifest.id.is_empty() {
+                    manifest.id = manifest.name.clone();
+                }
+                
+                let permissions = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
+                if let Some(embedding_model_id) = permissions.get_active_embedding_model() {
+                    let roster = crate::models::registry::CoreRoster::load_roster();
+                    if let Some(model_manifest) = roster.iter().find(|m| m.id == embedding_model_id) {
+                        if let Some(local_path) = &model_manifest.local_path {
+                            let model_dir = std::path::Path::new(local_path);
+                            let model_file = model_dir.join("model.onnx");
+                            let tokenizer_file = model_dir.join("tokenizer.json");
+                            if model_file.exists() && tokenizer_file.exists() {
+                                println!("  {} [Cluaize] Compiling skill vector immediately...", "⚙️".cyan());
+                                let cache_dir = skills_dir_clone.join(".cache");
+                                let _ = std::fs::create_dir_all(&cache_dir);
+                                let safe_filename = embedding_model_id.replace(":", "-");
+                                let embedding_cache_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
+                                
+                                let skill_content = if let Some(fm) = Self::extract_frontmatter(&skills_dir_clone) {
+                                    fm
+                                } else {
+                                    let semantic_triggers = manifest.triggers.semantic.join(", ");
+                                    format!(
+                                        "Skill Name: {}\nDescription: {}\nTriggers: {}",
+                                        manifest.name, manifest.description, semantic_triggers
+                                    )
+                                };
 
-                            if let Ok(mut engine) = cluaize_onnx::engine::OnnxEngine::new() {
-                                if engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy()).is_ok() {
-                                    if let Ok(vec) = neural_core::interfaces::router_contract::EmbeddingDriver::gen_embedding(&mut engine, &skill_content) {
-                                        let data_bytes = unsafe { std::slice::from_raw_parts(vec.as_ptr() as *const f32 as *const u8, vec.len() * 4) };
-                                        if let Err(e) = std::fs::write(&embedding_cache_path, data_bytes) {
-                                            println!("âŒ Failed to write binary embedding: {}", e);
-                                        } else {
-                                            println!("âœ… Real Router Embedding generated: {:?}", embedding_cache_path);
+                                if let Ok(mut engine) = cluaize_onnx::engine::OnnxEngine::new() {
+                                    if engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy()).is_ok() {
+                                        if let Ok(vec) = neural_core::interfaces::router_contract::EmbeddingDriver::gen_embedding(&mut engine, &skill_content) {
+                                            let data_bytes = unsafe { std::slice::from_raw_parts(vec.as_ptr() as *const f32 as *const u8, vec.len() * 4) };
+                                            if let Err(e) = std::fs::write(&embedding_cache_path, data_bytes) {
+                                                println!("❌ Failed to write binary embedding: {}", e);
+                                            } else {
+                                                println!("✅ Real Router Embedding generated: {:?}", embedding_cache_path);
+                                            }
                                         }
                                     }
                                 }
@@ -150,7 +162,8 @@ impl SkillRegistry {
                     }
                 }
             }
-        }
+            Ok(())
+        }).await?;
         Ok(())
     }
 

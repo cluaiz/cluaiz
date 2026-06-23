@@ -69,7 +69,7 @@ impl CoreFoundry {
             return Ok(result);
         }
 
-        info!("ðŸ§¬ [CoreFoundry] Multi-Skill Fusion Active: {} skills detected.", skill_ids.len());
+        info!("🧪 [CoreFoundry] Multi-Skill Fusion Active: {} skills detected.", skill_ids.len());
 
         for (i, skill_id) in skill_ids.iter().enumerate() {
             // Note: Bounding is no longer hardcoded by active skills count limit, 
@@ -114,72 +114,112 @@ impl CoreFoundry {
             }
 
             // 3. Map Cluaize Signal (Zero-Copy Dual-Cache)
-            let permissions = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-            
-            if let Some(gen_model) = permissions.get_active_chat_model() {
-                let gen_model_safe = gen_model.replace(":", "-");
-                let cache_dir = skill.path.join(".cache");
-                let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
+            // Offload the blocking disk I/O to a background thread to prevent blocking the async runtime
+            let skill_id_clone = skill_id.clone();
+            let skill_path_clone = skill.path.clone();
+            let skill_manifest_clone = skill.manifest.clone();
+
+            enum SkillLoadResult {
+                Signal {
+                    raw_data: MappedBuffer,
+                    token_count: usize,
+                    head_dim: usize,
+                },
+                MissingCache {
+                    kv_cache_path: PathBuf,
+                    content: String,
+                },
+                NoModel,
+                None,
+            }
+
+            let load_result = tokio::task::spawn_blocking(move || {
+                let permissions = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
                 
-                let mut cache_exists = kv_cache_path.exists();
-                if cache_exists {
+                if let Some(gen_model) = permissions.get_active_chat_model() {
+                    let gen_model_safe = gen_model.replace(":", "-");
+                    let cache_dir = skill_path_clone.join(".cache");
+                    let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
+                    
+                    let mut cache_exists = kv_cache_path.exists();
                     let mut layers = None;
                     let mut kv_heads = None;
-                    let roster = crate::models::registry::CoreRoster::load_roster();
-                    if let Some(manifest) = roster.iter().find(|m| m.id == gen_model) {
-                        if let Some(local_path) = &manifest.local_path {
-                            let dna_path = std::path::Path::new(local_path).join("structural_dna.json");
-                            if let Ok(dna_content) = std::fs::read_to_string(&dna_path) {
-                                if let Ok(dna) = serde_json::from_str::<cluaize_shared::StructuralDNA>(&dna_content) {
-                                    layers = dna.layer_count;
-                                    kv_heads = dna.attention_head_count_kv.or(dna.attention_head_count);
+
+                    if cache_exists {
+                        let roster = crate::models::registry::CoreRoster::load_roster();
+                        if let Some(manifest) = roster.iter().find(|m| m.id == gen_model) {
+                            if let Some(local_path) = &manifest.local_path {
+                                let dna_path = std::path::Path::new(local_path).join("structural_dna.json");
+                                if let Ok(dna_content) = std::fs::read_to_string(&dna_path) {
+                                    if let Ok(dna) = serde_json::from_str::<cluaize_shared::StructuralDNA>(&dna_content) {
+                                        layers = dna.layer_count;
+                                        kv_heads = dna.attention_head_count_kv.or(dna.attention_head_count);
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    let mut is_valid = true;
-                    if let Ok(metadata) = std::fs::metadata(&kv_cache_path) {
-                        let actual_size = metadata.len() as usize;
-                        if actual_size == 0 {
-                            is_valid = false;
-                        } else if let (Some(l), Some(h)) = (layers, kv_heads) {
-                            let head_dim = skill.manifest.Core_metadata.as_ref().map_or(128, |m| m.head_dim);
-                            let token_count = skill.manifest.Core_metadata.as_ref().map_or(0, |m| m.token_count);
-                            let expected = token_count * l * h * head_dim * 2 * 2;
-                            if actual_size != expected {
-                                warn!("âš ï¸ [CoreFoundry] Cache size mismatch for {}: expected {} bytes, got {}. Evicting.", skill_id, expected, actual_size);
+                        let mut is_valid = true;
+                        if let Ok(metadata) = std::fs::metadata(&kv_cache_path) {
+                            let actual_size = metadata.len() as usize;
+                            if actual_size == 0 {
                                 is_valid = false;
+                            } else if let (Some(l), Some(h)) = (layers, kv_heads) {
+                                let head_dim = skill_manifest_clone.Core_metadata.as_ref().map_or(128, |m| m.head_dim);
+                                let token_count = skill_manifest_clone.Core_metadata.as_ref().map_or(0, |m| m.token_count);
+                                let expected = token_count * l * h * head_dim * 2 * 2;
+                                if actual_size != expected {
+                                    tracing::warn!("⚠️ [CoreFoundry] Cache size mismatch for {}: expected {} bytes, got {}. Evicting.", skill_id_clone, expected, actual_size);
+                                    is_valid = false;
+                                }
                             }
+                        } else {
+                            is_valid = false;
+                        }
+
+                        if !is_valid {
+                            let _ = std::fs::remove_file(&kv_cache_path);
+                            cache_exists = false;
+                        }
+                    }
+                    
+                    if cache_exists {
+                        if let Ok(mapped_buffer) = MappedBuffer::from_file(&kv_cache_path) {
+                            return SkillLoadResult::Signal {
+                                raw_data: mapped_buffer,
+                                token_count: skill_manifest_clone.Core_metadata.as_ref().map_or(0, |m| m.token_count),
+                                head_dim: skill_manifest_clone.Core_metadata.as_ref().map_or(0, |m| m.head_dim),
+                            };
                         }
                     } else {
-                        is_valid = false;
-                    }
-
-                    if !is_valid {
-                        let _ = std::fs::remove_file(&kv_cache_path);
-                        cache_exists = false;
-                    }
-                }
-                
-                if cache_exists {
-                    if let Ok(mapped_buffer) = MappedBuffer::from_file(&kv_cache_path) {
-                        result.signals.push(CluaizeSignal {
-                            raw_data: Arc::new(mapped_buffer),
-                            token_count: skill.manifest.Core_metadata.as_ref().map_or(0, |m| m.token_count),
-                            head_dim: skill.manifest.Core_metadata.as_ref().map_or(0, |m| m.head_dim),
-                        });
+                        tracing::warn!("⚠️ [CoreFoundry] {} missing for skill {}. Flagging for Sovereign Compiler.", kv_cache_path.display(), skill_id_clone);
+                        
+                        let content = extract_skill_body(&skill_path_clone)
+                            .unwrap_or_else(|| skill_manifest_clone.description.clone());
+                        
+                        return SkillLoadResult::MissingCache { kv_cache_path, content };
                     }
                 } else {
-                    warn!("âš ï¸ [CoreFoundry] {} missing for skill {}. Flagging for Sovereign Compiler.", kv_cache_path.display(), skill_id);
-                    
-                    let content = extract_skill_body(&skill.path)
-                        .unwrap_or_else(|| skill.manifest.description.clone());
-                    
+                    return SkillLoadResult::NoModel;
+                }
+                SkillLoadResult::None
+            }).await?;
+
+            match load_result {
+                SkillLoadResult::Signal { raw_data, token_count, head_dim } => {
+                    result.signals.push(CluaizeSignal {
+                        raw_data: Arc::new(raw_data),
+                        token_count,
+                        head_dim,
+                    });
+                }
+                SkillLoadResult::MissingCache { kv_cache_path, content } => {
                     result.missing_caches.push((kv_cache_path, content));
                 }
-            } else {
-                warn!("âš ï¸ [CoreFoundry] No text model assigned in Permission.json. Skipping Zero-Copy injection for skill {}.", skill_id);
+                SkillLoadResult::NoModel => {
+                    warn!("⚠️ [CoreFoundry] No text model assigned in Permission.json. Skipping Zero-Copy injection for skill {}.", skill_id);
+                }
+                SkillLoadResult::None => {}
             }
             
             // WASM logic execution is handled during streaming/generation interceptor.
