@@ -1,0 +1,11 @@
+[package]
+name = "cluaize-builder"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+cluaize-shared = { path = "../../inference-engine/engines/cluaize-shared" }
+dirs = "6.0.0"

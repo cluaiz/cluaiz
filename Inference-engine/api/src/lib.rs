@@ -39,9 +39,6 @@ pub async fn run_daemon() {
         .compact()
         .try_init();
 
-    // ── Determine Cluaize root directory ──
-    let cluaize_root = env::current_dir().expect("Failed to determine current directory");
-
     // ── Initialize the Cluaize pillars ──
     tracing::info!("🔧 Initializing Cluaize Engine...");
     
@@ -76,8 +73,12 @@ pub async fn run_daemon() {
     // ── Build API Routes ──
     let app = routes::build(state.clone());
 
-    // ── Bind to Port 8000 ──
-    let addr = "0.0.0.0:8000";
+    // ── Bind to Port 8000 (configurable via CLUAIZE_PORT env var) ──
+    let port: u16 = env::var("CLUAIZE_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8000);
+    let addr = format!("0.0.0.0:{}", port);
 
     println!("\n{}", "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓".bright_blue());
     println!("{} {}", "┃".bright_blue(), "🧬 Cluaize Engine API & FFI".bright_cyan().bold());

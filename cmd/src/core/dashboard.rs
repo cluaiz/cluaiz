@@ -258,23 +258,25 @@ impl DashboardEngine {
                                 .and_then(|v| v.parse::<usize>().ok())
                                 .unwrap_or(8192); // 🚀 DYNAMIC: Allow large stream, context shifting will handle KV bounds.
 
-                            // 🔇 SURGICAL SILENCE: freopen stderr→NUL only during inference.
+                            // 🔇 SURGICAL SILENCE: Temporarily redirect stderr to NUL/dev/null
+                            let mut saved_stderr: libc::c_int = -1;
                             #[cfg(windows)]
                             unsafe {
-                                extern "C" { fn __acrt_iob_func(idx: u32) -> *mut libc::FILE; }
-                                libc::freopen(
-                                    "NUL\0".as_ptr() as *const libc::c_char,
-                                    "w\0".as_ptr() as *const libc::c_char,
-                                    __acrt_iob_func(2),
-                                );
+                                saved_stderr = libc::dup(2);
+                                let null_fd = libc::open("NUL\0".as_ptr() as *const libc::c_char, libc::O_WRONLY);
+                                if null_fd != -1 {
+                                    libc::dup2(null_fd, 2);
+                                    libc::close(null_fd);
+                                }
                             }
                             #[cfg(not(windows))]
                             unsafe {
-                                libc::freopen(
-                                    "/dev/null\0".as_ptr() as *const libc::c_char,
-                                    "w\0".as_ptr() as *const libc::c_char,
-                                    libc::fdopen(2, "w\0".as_ptr() as *const libc::c_char),
-                                );
+                                saved_stderr = libc::dup(2);
+                                let null_fd = libc::open("/dev/null\0".as_ptr() as *const libc::c_char, libc::O_WRONLY);
+                                if null_fd != -1 {
+                                    libc::dup2(null_fd, 2);
+                                    libc::close(null_fd);
+                                }
                             }
                             
                             let booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
@@ -421,23 +423,20 @@ impl DashboardEngine {
                             // ⚡ Disable raw mode safely after stream ends
                             let _ = crossterm::terminal::disable_raw_mode();
                             
-                            // 🔊 RESTORE stderr → CONOUT$ (always the active Windows console)
+                            // 🔊 RESTORE stderr properly using duplicated FD
                             #[cfg(windows)]
                             unsafe {
-                                extern "C" { fn __acrt_iob_func(idx: u32) -> *mut libc::FILE; }
-                                libc::freopen(
-                                    "CONOUT$\0".as_ptr() as *const libc::c_char,
-                                    "w\0".as_ptr() as *const libc::c_char,
-                                    __acrt_iob_func(2),
-                                );
+                                if saved_stderr != -1 {
+                                    libc::dup2(saved_stderr, 2);
+                                    libc::close(saved_stderr);
+                                }
                             }
                             #[cfg(not(windows))]
                             unsafe {
-                                libc::freopen(
-                                    "/dev/tty\0".as_ptr() as *const libc::c_char,
-                                    "w\0".as_ptr() as *const libc::c_char,
-                                    libc::fdopen(2, "w\0".as_ptr() as *const libc::c_char),
-                                );
+                                if saved_stderr != -1 {
+                                    libc::dup2(saved_stderr, 2);
+                                    libc::close(saved_stderr);
+                                }
                             }
                             
                             // 🚀 Hardware-managed Agentic Pause and Zero-Delay TTFT handled entirely by Native Router

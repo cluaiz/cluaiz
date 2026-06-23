@@ -38,10 +38,9 @@ impl NativeLlama {
         speculative_decoding_mode: u8,
     ) -> anyhow::Result<Self> {
         // ══ SOVEREIGN OPTIMIZATION (Hardware Overrides) ══
-        std::env::set_var("GGML_LOG_LEVEL", "INFO");
-
-        // Register default callback
-        unsafe { llama_cpp::llama_log_set(None, std::ptr::null_mut()) };
+        // Avoid setting env vars dynamically to prevent thread-safety warnings/panics.
+        // Instead of setting GGML_LOG_LEVEL, we use a silent logging callback.
+        unsafe { llama_cpp::llama_log_set(Some(silent_llama_log), std::ptr::null_mut()) };
 
         // 🚀 Step 1: Initialize all native backends (loads CPU, etc.)
         // Removed llama_backend_init() to prevent double wipe. Already handled globally.
@@ -107,10 +106,16 @@ impl NativeLlama {
             speculative_decoding_mode = 0;
         }
 
-        if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
-            std::env::set_var("GGML_CUDA_USE_GRAPHS", "0");
-        } else {
-            std::env::set_var("GGML_CUDA_USE_GRAPHS", "1");
+        unsafe {
+            let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
+            let target_graphs = if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
+                "0"
+            } else {
+                "1"
+            };
+            if current_graphs != target_graphs {
+                std::env::set_var("GGML_CUDA_USE_GRAPHS", target_graphs);
+            }
         }
 
         let ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };

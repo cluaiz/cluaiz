@@ -1,2 +1,5 @@
 [target.'cfg(windows)']
 rustflags = ["-C", "link-arg=/OPT:NOREF"]
+
+[alias]
+build-all = "run --manifest-path tools/cluaize-builder/Cargo.toml --"

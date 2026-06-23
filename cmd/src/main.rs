@@ -1,4 +1,3 @@
-#![allow(warnings)]
 
 use color_eyre::Result;
 use colored::Colorize;
@@ -259,26 +258,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = {
-        let mut path = std::env::current_dir().unwrap_or_default();
-        let mut root = None;
-        for _ in 0..5 {
-            if path.join("Apps").exists() && path.join("interface-engines").exists() {
-                root = Some(path.clone());
-                break;
-            }
-            if let Some(parent) = path.parent() {
-                path = parent.to_path_buf();
-            } else {
-                break;
-            }
-        }
-        if let Some(r) = root {
-            r.join("cluaiz_Core.log")
-        } else {
-            std::path::PathBuf::from("cluaiz_Core.log")
-        }
-    };
+    let log_path = cluaize_shared::environment::EnvironmentManager::current().root_dir.join("cluaiz_Core.log");
 
     if let Ok(log_file) = std::fs::File::create(&log_path) {
         let _ = tracing_subscriber::fmt()
@@ -382,7 +362,11 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Serve) => {
-            println!("  {} Starting Cluaize API Daemon on http://localhost:8000 ...", "🚀".green());
+            let port: u16 = std::env::var("CLUAIZE_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(8000);
+            println!("  {} Starting Cluaize API Daemon on http://localhost:{} ...", "🚀".green(), port);
             cluaize_api::run_daemon().await; 
         }
         Some(CliCommand::Booster { kv_quant, context_shift, mode, spec_decode }) => {

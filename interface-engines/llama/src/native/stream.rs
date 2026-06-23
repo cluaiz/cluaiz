@@ -8,6 +8,32 @@ use tracing::{info, error, warn};
 
 pub static mut SKIP_PTR: *const std::sync::atomic::AtomicBool = std::ptr::null();
 
+struct SafeBatch {
+    batch: crate::ffi::llama_cpp::LlamaBatch,
+}
+
+impl Drop for SafeBatch {
+    fn drop(&mut self) {
+        unsafe {
+            crate::ffi::llama_cpp::llama_batch_free(self.batch);
+        }
+    }
+}
+
+struct SafeSampler {
+    sampler: *mut std::ffi::c_void,
+}
+
+impl Drop for SafeSampler {
+    fn drop(&mut self) {
+        if !self.sampler.is_null() {
+            unsafe {
+                crate::ffi::llama_cpp::llama_sampler_free(self.sampler);
+            }
+        }
+    }
+}
+
 pub fn stream_tokens(
     llama: &mut NativeLlama,
     prompt: &str, 
@@ -104,7 +130,7 @@ pub fn stream_tokens(
 
         let c_prompt = CString::new(formatted_prompt.clone())?;
         let mut tokens = vec![0i32; formatted_prompt.len() + 8];
-        let n_tokens = llama_cpp::llama_tokenize(
+        let mut n_tokens = llama_cpp::llama_tokenize(
             vocab, 
             c_prompt.as_ptr(), 
             formatted_prompt.len() as i32, 
@@ -115,7 +141,21 @@ pub fn stream_tokens(
         );
         
         if n_tokens < 0 {
-            return Err(anyhow::anyhow!("Tokenization failed"));
+            let required_size = n_tokens.abs() as usize;
+            tokens.resize(required_size, 0);
+            n_tokens = llama_cpp::llama_tokenize(
+                vocab, 
+                c_prompt.as_ptr(), 
+                formatted_prompt.len() as i32, 
+                tokens.as_mut_ptr(), 
+                tokens.len() as i32, 
+                !is_pivot && !has_loaded_cache, 
+                true
+            );
+        }
+
+        if n_tokens < 0 {
+            return Err(anyhow::anyhow!("Tokenization failed even after resizing buffer"));
         }
         tokens.truncate(n_tokens as usize);
 
@@ -133,7 +173,7 @@ pub fn stream_tokens(
         }
 
         let chunk_size = llama.n_batch as i32; // Dynamic batch/chunk size
-        let mut batch = llama_cpp::llama_batch_init(chunk_size, 0, 1);
+        let mut safe_batch = SafeBatch { batch: llama_cpp::llama_batch_init(chunk_size, 0, 1) };
 
         let start_pos = if is_pivot {
             llama_cpp::llama_memory_seq_pos_max(llama_cpp::llama_get_memory(llama.ctx_ptr), 0) + 1
@@ -145,23 +185,23 @@ pub fn stream_tokens(
 
         for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
             for (i, token) in chunk.iter().enumerate() {
-                *batch.token.add(i) = *token;
-                *batch.pos.add(i) = start_pos + (chunk_idx * chunk_size as usize + i) as i32;
-                *batch.n_seq_id.add(i) = 1;
-                *(*batch.seq_id.add(i)).add(0) = 0;
+                *safe_batch.batch.token.add(i) = *token;
+                *safe_batch.batch.pos.add(i) = start_pos + (chunk_idx * chunk_size as usize + i) as i32;
+                *safe_batch.batch.n_seq_id.add(i) = 1;
+                *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
                 // Only request logits for the VERY LAST token of the ENTIRE prompt
                 let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
-                *batch.logits.add(i) = if is_last_token { 1 } else { 0 };
+                *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
             }
-            batch.n_tokens = chunk.len() as i32;
+            safe_batch.batch.n_tokens = chunk.len() as i32;
 
-            if llama_cpp::llama_decode(llama.ctx_ptr, batch) != 0 {
-                llama_cpp::llama_batch_free(batch);
+            if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
                 return Err(anyhow::anyhow!("Initial decode failed at chunk {}", chunk_idx));
             }
         }
 
-        let sampler_chain = crate::native::sampler::build_sampler_chain(dna, &tokens)?;
+        let sampler_chain_raw = crate::native::sampler::build_sampler_chain(dna, &tokens)?;
+        let safe_sampler = SafeSampler { sampler: sampler_chain_raw };
 
         let is_lookahead = llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2;
         let mut history: Vec<i32> = tokens.clone();
@@ -171,7 +211,7 @@ pub fn stream_tokens(
         let mut n_cur = start_pos + tokens.len() as i32;
         let mut n_gen = 0;
 
-        let mut next_token_id = llama_cpp::llama_sampler_sample(sampler_chain, llama.ctx_ptr, -1);
+        let mut next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         let mut injected_tokens_queue: std::collections::VecDeque<i32> = std::collections::VecDeque::new();
 
         if injected_think_tag {
@@ -213,8 +253,6 @@ pub fn stream_tokens(
                     eprintln!("🔥 [DEBUG] INJECTED {} TOKENS!", n_force);
                 } else {
                     eprintln!("🔥 [DEBUG] TOKENIZE FAILED: {}", n_force);
-                    // Fallback: Just push \n (token 198) and answer
-                    // (But token IDs differ per model, so we can't hardcode)
                 }
             }
 
@@ -261,49 +299,46 @@ pub fn stream_tokens(
                 }
                 
                 if !piece.is_empty() {
-                    if suppress_thinking {
-                        if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
-                            in_think_block = true;
-                            piece = piece.replace(&think_start_tag, "");
-                        }
-                        if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
-                            in_think_block = false;
-                            piece = piece.replace(&think_end_tag, "");
-                        }
-                        
-                        let mut stop_generation = false;
-                        for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                            if piece.contains(tag) {
-                                stop_generation = true;
-                                piece = piece.replace(tag, "");
-                            }
-                        }
-                        for tag in &["<|im_start|>", "<start_of_turn>"] {
-                            piece = piece.replace(tag, "");
-                        }
-
-                        if !in_think_block && !piece.is_empty() {
-                            if !callback(piece) { break; }
-                        }
-                        if stop_generation { break; }
-                    } else {
-                        let mut stop_generation = false;
-                        for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                            if piece.contains(tag) {
-                                stop_generation = true;
-                                piece = piece.replace(tag, "");
-                            }
-                        }
-                        for tag in &["<|im_start|>", "<start_of_turn>"] {
-                            piece = piece.replace(tag, "");
-                        }
-                        if !piece.is_empty() {
-
-
-                            if !callback(piece) { break; }
-                        }
-                        if stop_generation { break; }
+                    // Update in_think_block
+                    if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
+                        in_think_block = true;
                     }
+
+                    let mut display_piece = piece.clone();
+                    if suppress_thinking {
+                        if !think_start_tag.is_empty() && display_piece.contains(&think_start_tag) {
+                            display_piece = display_piece.replace(&think_start_tag, "");
+                        }
+                        if !think_end_tag.is_empty() && display_piece.contains(&think_end_tag) {
+                            display_piece = display_piece.replace(&think_end_tag, "");
+                        }
+                    }
+
+                    if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
+                        in_think_block = false;
+                    }
+
+                    let mut stop_generation = false;
+                    for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
+                        if display_piece.contains(tag) {
+                            stop_generation = true;
+                            display_piece = display_piece.replace(tag, "");
+                        }
+                    }
+                    for tag in &["<|im_start|>", "<start_of_turn>"] {
+                        display_piece = display_piece.replace(tag, "");
+                    }
+
+                    if suppress_thinking {
+                        if !in_think_block && !display_piece.is_empty() {
+                            if !callback(display_piece) { break; }
+                        }
+                    } else {
+                        if !display_piece.is_empty() {
+                            if !callback(display_piece) { break; }
+                        }
+                    }
+                    if stop_generation { break; }
                 }
             }
 
@@ -322,23 +357,23 @@ pub fn stream_tokens(
                 &mut lookahead_logs
             );
 
-            batch.n_tokens = 1 + drafts.len() as i32;
-            *batch.token.add(0) = next_token_id;
-            *batch.pos.add(0) = n_cur;
-            *batch.n_seq_id.add(0) = 1;
-            *(*batch.seq_id.add(0)).add(0) = 0;
-            *batch.logits.add(0) = 1;
+            safe_batch.batch.n_tokens = 1 + drafts.len() as i32;
+            *safe_batch.batch.token.add(0) = next_token_id;
+            *safe_batch.batch.pos.add(0) = n_cur;
+            *safe_batch.batch.n_seq_id.add(0) = 1;
+            *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
+            *safe_batch.batch.logits.add(0) = 1;
 
             for (i, &draft_token) in drafts.iter().enumerate() {
                 let idx = i + 1;
-                *batch.token.add(idx) = draft_token;
-                *batch.pos.add(idx) = n_cur + idx as i32;
-                *batch.n_seq_id.add(idx) = 1;
-                *(*batch.seq_id.add(idx)).add(0) = 0;
-                *batch.logits.add(idx) = 1; 
+                *safe_batch.batch.token.add(idx) = draft_token;
+                *safe_batch.batch.pos.add(idx) = n_cur + idx as i32;
+                *safe_batch.batch.n_seq_id.add(idx) = 1;
+                *(*safe_batch.batch.seq_id.add(idx)).add(0) = 0;
+                *safe_batch.batch.logits.add(idx) = 1; 
             }
 
-            let decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, batch);
+            let decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
             if decode_ret != 0 {
                 break;
             }
@@ -376,7 +411,6 @@ pub fn stream_tokens(
                 
                 if normalized_entropy > 0.85 {
                     info!("💥 [Shannon Gate] Entropy Spike Detected! H(X) = {:.2} - Model is guessing!", normalized_entropy);
-                    // TODO: Trigger cluaizd lookup and inject latent tensors into layers 16-24
                 }
 
                 // 🎯 Invisible Guidance Logit Bias (Δz Injection)
@@ -392,19 +426,16 @@ pub fn stream_tokens(
 
                 // 🧠 Deep Truth: Gentle EOS Biasing for Native "Short" Answers
                 if booster.response_length == "short" {
-                    // Encourage natural stopping after 30 tokens without hard-cutting
                     if n_gen > 30 {
                         let eos_id = llama_cpp::llama_vocab_eos(vocab);
                         if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
                             let mut logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
-                            // Bias grows progressively (0.15 per token), max cap at +5.0 (significant but natural nudge)
                             let bias_strength = ((n_gen - 30) as f32 * 0.15).min(5.0); 
                             logits_mut[eos_id as usize] += bias_strength;
                         }
                     }
                 }
             }
-
 
             n_cur += 1;
             if !in_think_block {
@@ -419,7 +450,7 @@ pub fn stream_tokens(
 
             let mut n_match = 0;
             let mut eos_detected = false;
-            next_token_id = llama_cpp::llama_sampler_sample(sampler_chain, llama.ctx_ptr, 0);
+            next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, 0);
 
             for (i, &draft_token) in drafts.iter().enumerate() {
                 if next_token_id == draft_token {
@@ -451,51 +482,53 @@ pub fn stream_tokens(
                         }
 
                         if !piece.is_empty() {
+                            if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
+                                in_think_block = true;
+                            }
+
+                            let mut display_piece = piece.clone();
                             if suppress_thinking {
-                                if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
-                                    in_think_block = true;
-                                    piece = piece.replace(&think_start_tag, "");
+                                if !think_start_tag.is_empty() && display_piece.contains(&think_start_tag) {
+                                    display_piece = display_piece.replace(&think_start_tag, "");
                                 }
-                                if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
-                                    in_think_block = false;
-                                    piece = piece.replace(&think_end_tag, "");
+                                if !think_end_tag.is_empty() && display_piece.contains(&think_end_tag) {
+                                    display_piece = display_piece.replace(&think_end_tag, "");
                                 }
-                                
-                                let mut stop_generation = false;
-                                for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                                    if piece.contains(tag) {
-                                        stop_generation = true;
-                                        piece = piece.replace(tag, "");
+                            }
+
+                            if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
+                                in_think_block = false;
+                            }
+
+                            let mut stop_generation = false;
+                            for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
+                                if display_piece.contains(tag) {
+                                    stop_generation = true;
+                                    display_piece = display_piece.replace(tag, "");
+                                }
+                            }
+                            for tag in &["<|im_start|>", "<start_of_turn>"] {
+                                display_piece = display_piece.replace(tag, "");
+                            }
+
+                            if suppress_thinking {
+                                if !in_think_block && !display_piece.is_empty() {
+                                    if !callback(display_piece) {
+                                        eos_detected = true;
+                                        break;
                                     }
-                                }
-                                for tag in &["<|im_start|>", "<start_of_turn>"] {
-                                    piece = piece.replace(tag, "");
-                                }
-                                if !in_think_block && !piece.is_empty() {
-                                    callback(piece);
-                                }
-                                if stop_generation { 
-                                    eos_detected = true;
-                                    break; 
                                 }
                             } else {
-                                let mut stop_generation = false;
-                                for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                                    if piece.contains(tag) {
-                                        stop_generation = true;
-                                        piece = piece.replace(tag, "");
+                                if !display_piece.is_empty() {
+                                    if !callback(display_piece) {
+                                        eos_detected = true;
+                                        break;
                                     }
                                 }
-                                for tag in &["<|im_start|>", "<start_of_turn>"] {
-                                    piece = piece.replace(tag, "");
-                                }
-                                if !piece.is_empty() {
-                                    if !callback(piece) { break; }
-                                }
-                                if stop_generation { 
-                                    eos_detected = true;
-                                    break; 
-                                }
+                            }
+                            if stop_generation { 
+                                eos_detected = true;
+                                break; 
                             }
                         }
                     }
@@ -517,7 +550,7 @@ pub fn stream_tokens(
                         break;
                     }
 
-                    next_token_id = llama_cpp::llama_sampler_sample(sampler_chain, llama.ctx_ptr, (i + 1) as i32);
+                    next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, (i + 1) as i32);
                 } else {
                     break;
                 }
@@ -530,9 +563,6 @@ pub fn stream_tokens(
                 break;
             }
         }
-
-        llama_cpp::llama_sampler_free(sampler_chain);
-        llama_cpp::llama_batch_free(batch);
     }
 
     Ok(())

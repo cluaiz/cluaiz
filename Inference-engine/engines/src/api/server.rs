@@ -31,7 +31,7 @@ impl TelemetryServer {
 }
 
 async fn handle_connection(mut stream: TcpStream, state: Arc<ObservableHardwareState>) -> anyhow::Result<()> {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; 8192];
     let n = stream.read(&mut buffer[..]).await?;
     let request = String::from_utf8_lossy(&buffer[..n]);
 
@@ -56,7 +56,8 @@ async fn handle_connection(mut stream: TcpStream, state: Arc<ObservableHardwareS
         stream.write_all(response.as_bytes()).await?;
     } 
     else if request.starts_with("GET /dashboard") {
-        let dashboard_html = include_str!("Cluaize_Dashboard.html");
+        let dashboard_path = cluaize_shared::environment::EnvironmentManager::current().root_dir.join("assets/Cluaize_Dashboard.html");
+        let dashboard_html = std::fs::read_to_string(dashboard_path).unwrap_or_else(|_| "<h1>Dashboard not found</h1>".to_string());
         let response_header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n";
         let response = format!(
             "{}Content-Length: {}\r\n\r\n{}",

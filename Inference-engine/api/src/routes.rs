@@ -10,10 +10,16 @@ use crate::state::AppState;
 use crate::handlers::{chat, system, models, db};
 
 pub fn build(state: Arc<AppState>) -> Router {
-    // ── CORS — Allow any origin (Desktop, Mobile, Web can all call) ──
+    // ── CORS — Restrict to localhost origins only (Desktop, Mobile apps on localhost) ──
+    // allow_origin(Any) would allow any web page to call this local engine and exfiltrate data.
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_origin([
+            "http://localhost".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://localhost:8000".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://127.0.0.1".parse::<axum::http::HeaderValue>().unwrap(),
+            "tauri://localhost".parse::<axum::http::HeaderValue>().unwrap(),
+        ])
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS, Method::DELETE])
         .allow_headers(Any);
 
     Router::new()

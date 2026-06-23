@@ -26,8 +26,26 @@ pub async fn file_ingest(
     let ingestor = DocumentIngestor::new();
     let mut returned_chunks = Vec::new();
 
-    // Foregound Processing for API response
-    match ingestor.ingest_and_vectorize(&file_path, &*state.embedding_dispatcher) {
+    // Offload blocking file I/O + ONNX vectorization to a dedicated thread
+    // to prevent Tokio async executor starvation under concurrent load.
+    let embedding_dispatcher = state.embedding_dispatcher.clone();
+    let file_path_for_closure = file_path.clone();
+    let ingest_result = tokio::task::spawn_blocking(move || {
+        ingestor.ingest_and_vectorize(&file_path_for_closure, &*embedding_dispatcher)
+    }).await
+    .map_err(|e| {
+        return Json(json!({
+            "status": "error",
+            "message": format!("Ingest task panicked: {}", e)
+        }));
+    });
+
+    let ingest_result = match ingest_result {
+        Ok(r) => r,
+        Err(resp) => return resp,
+    };
+
+    match ingest_result {
         Ok(chunks) => {
             if temp_mode.is_none() {
                 // Save to LMDB

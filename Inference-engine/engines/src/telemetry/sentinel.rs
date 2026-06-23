@@ -20,10 +20,9 @@ impl MemorySentinel {
         let mut sys = System::new();
         sys.refresh_memory();
         
-        // Pure Dynamic Architecture: No hardcoded percentages.
-        // We rely purely on the OS kernel's dynamic reporting of 'available' memory
-        // which inherently calculates cache, buffers, and kernel pages safely.
-        let buffer_pct = 0.0; 
+        // We enforce a strict 5% safety margin on top of OS reported available memory
+        // to prevent hard OOM kernel panics when large models are loaded.
+        let buffer_pct = 0.05; 
         
         Self {
             sys,

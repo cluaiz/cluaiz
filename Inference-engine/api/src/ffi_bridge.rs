@@ -11,19 +11,24 @@ const PIPE_NAME: &str = r"\\.\pipe\cluaize_engine_pipe";
 
 #[cfg(windows)]
 pub async fn start_named_pipe_server(state: Arc<AppState>) {
+    let mut consecutive_failures: u32 = 0;
     loop {
-        // Attempt to create the first instance or subsequent instances
-        let server = match ServerOptions::new().first_pipe_instance(true).create(PIPE_NAME) {
-            Ok(server) => server,
-            Err(_) => {
-                match ServerOptions::new().create(PIPE_NAME) {
-                    Ok(server) => server,
-                    Err(e) => {
-                        tracing::error!("❌ Failed to create named pipe: {}", e);
-                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                        continue;
-                    }
+        // Create the named pipe server. Do NOT use first_pipe_instance(true) — that flag
+        // causes ERROR_ACCESS_DENIED if a prior daemon instance is still alive (e.g. restart).
+        let server = match ServerOptions::new().create(PIPE_NAME) {
+            Ok(server) => {
+                consecutive_failures = 0;
+                server
+            },
+            Err(e) => {
+                consecutive_failures += 1;
+                tracing::error!("❌ [IPC] Failed to create named pipe (attempt {}): {}", consecutive_failures, e);
+                if consecutive_failures >= 10 {
+                    tracing::error!("💀 [IPC] Named pipe creation failed 10 times consecutively. IPC bridge is dead. Exiting retry loop.");
+                    return;
                 }
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                continue;
             }
         };
 
@@ -37,7 +42,7 @@ pub async fn start_named_pipe_server(state: Arc<AppState>) {
                 });
             }
             Err(e) => {
-                tracing::error!("❌ Pipe connection error: {}", e);
+                tracing::error!("❌ [IPC] Pipe connection error: {}", e);
             }
         }
     }
@@ -61,17 +66,6 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                 if let Ok(json_cmd) = serde_json::from_str::<serde_json::Value>(command) {
                     if let Some(action) = json_cmd.get("action").and_then(|a| a.as_str()) {
                         match action {
-                            "BOOSTER_UPDATE" => {
-                                if let Some(payload) = json_cmd.get("payload") {
-                                    if let Ok(booster_ctrl) = serde_json::from_value(payload.clone()) {
-                                        let _ = cluaize_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster_ctrl);
-                                        let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
-                                    } else {
-                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid payload\"}").await;
-                                    }
-                                }
-                                continue;
-                            }
                             "CDQL_FETCH_HISTORY" => {
                                 if let Some(session_id) = json_cmd.get("session_id").and_then(|s| s.as_str()) {
                                     if let Some(payload) = engines::memory::tensor_transducer::TensorTransducer::inject_context(session_id) {
@@ -130,8 +124,67 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
                                 continue;
                             }
-                            "CDQL_DELETE_SESSION" | "SKILL_LIST" | "SKILL_CACHE_CLEAR" | "SKILL_CACHE_LS" | "INGEST_DOC" => {
-                                let _ = pipe.write_all(b"{\"status\": \"pending\"}").await;
+                            "SKILL_LIST" => {
+                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let mut skill_names: Vec<String> = Vec::new();
+                                if let Ok(entries) = std::fs::read_dir(&skills_dir) {
+                                    for entry in entries.flatten() {
+                                        if entry.path().is_dir() {
+                                            if let Some(name) = entry.file_name().to_str() {
+                                                skill_names.push(name.to_string());
+                                            }
+                                        }
+                                    }
+                                }
+                                let res = serde_json::json!({"status": "success", "skills": skill_names});
+                                let _ = pipe.write_all(res.to_string().as_bytes()).await;
+                                continue;
+                            }
+                            "SKILL_CACHE_CLEAR" => {
+                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let mut cleared = 0usize;
+                                if let Ok(entries) = std::fs::read_dir(&skills_dir) {
+                                    for entry in entries.flatten() {
+                                        let cache_dir = entry.path().join(".cache");
+                                        if cache_dir.is_dir() {
+                                            if std::fs::remove_dir_all(&cache_dir).is_ok() {
+                                                cleared += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                                let res = serde_json::json!({"status": "success", "cleared_skills": cleared});
+                                let _ = pipe.write_all(res.to_string().as_bytes()).await;
+                                continue;
+                            }
+                            "SKILL_CACHE_LS" => {
+                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let mut cache_entries: Vec<serde_json::Value> = Vec::new();
+                                if let Ok(entries) = std::fs::read_dir(&skills_dir) {
+                                    for entry in entries.flatten() {
+                                        let cache_dir = entry.path().join(".cache");
+                                        if cache_dir.is_dir() {
+                                            let files: Vec<String> = std::fs::read_dir(&cache_dir)
+                                                .into_iter().flatten().flatten()
+                                                .filter_map(|e| e.file_name().to_str().map(|s| s.to_string()))
+                                                .collect();
+                                            if let Some(name) = entry.file_name().to_str() {
+                                                cache_entries.push(serde_json::json!({"skill": name, "cache_files": files}));
+                                            }
+                                        }
+                                    }
+                                }
+                                let res = serde_json::json!({"status": "success", "cache": cache_entries});
+                                let _ = pipe.write_all(res.to_string().as_bytes()).await;
+                                continue;
+                            }
+                            "CDQL_DELETE_SESSION" | "INGEST_DOC" => {
+                                let res = serde_json::json!({
+                                    "status": "not_implemented",
+                                    "action": action,
+                                    "message": "This command is reserved for a future release."
+                                });
+                                let _ = pipe.write_all(res.to_string().as_bytes()).await;
                                 continue;
                             }
                             "SYSTEM_BRAIN" => {

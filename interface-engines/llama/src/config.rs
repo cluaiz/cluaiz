@@ -43,7 +43,7 @@ impl Default for BoosterConfig {
             n_threads: -1,
             turbo_quant: "Auto".to_string(),
             dflash: "Auto".to_string(),
-            speculative_decoding: "Auto".to_string(),
+            speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
             mode_run: "balance".to_string(),
             force_vram_reclaim: "Off".to_string(),
@@ -67,7 +67,7 @@ impl BoosterConfig {
             n_threads: -1,    // Auto-detect CPU cores
             turbo_quant: "Auto".to_string(),
             dflash: "Auto".to_string(),
-            speculative_decoding: "Auto".to_string(),
+            speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
             mode_run: "balance".to_string(),
             force_vram_reclaim: "Off".to_string(),

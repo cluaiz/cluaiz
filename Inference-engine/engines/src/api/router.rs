@@ -357,8 +357,11 @@ impl CoreRouter {
         }
 
         // 🧪 Cluaize HANDSHAKE: Process Foundry Intent
-        let mut intent_result = rt.block_on(self.foundry.process_intent(prompt, Some(matched_skill_ids.clone())))
-            .map_err(|e| format!("Skill Discovery Error: {}", e))?;
+        let mut intent_result = std::thread::scope(|s| {
+            s.spawn(|| {
+                rt.block_on(self.foundry.process_intent(prompt, Some(matched_skill_ids.clone())))
+            }).join().unwrap()
+        }).map_err(|e| format!("Skill Discovery Error: {}", e))?;
 
         // 🧠 CONTEXT BUDGET CALCULATION
         let n_ctx = self.active_dna.as_ref().and_then(|dna| dna.max_context_length).unwrap_or(2048) as usize;
@@ -422,30 +425,34 @@ impl CoreRouter {
                         locks.insert(cache_path.clone());
                     }
                     
-                    let background_success = rt.block_on(async move {
-                        let _guard = CompilationGuard { path: cache_path_clone.clone() };
-                        use cluaize_shared::{CluaizeContext, StructuralDNA, UnifiedBackend, CluaizeInference};
-                        let mut temp_dna = StructuralDNA::default();
-                        temp_dna.max_context_length = Some(expanded_ctx);
-                        let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
-                        
-                        println!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
-                        let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                        booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
-                        
-                        if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
-                            &path_clone.to_string_lossy(),
-                            "llama", 
-                            ctx,
-                            Some(booster)
-                        ).await {
-                            println!("⚙️ [Arbiter] Background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
-                            if bg_engine.prefill(&skill_content_clone).is_ok() {
-                                let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
-                                return true;
-                            }
-                        }
-                        false
+                    let background_success = std::thread::scope(|s| {
+                        s.spawn(|| {
+                            rt.block_on(async move {
+                                let _guard = CompilationGuard { path: cache_path_clone.clone() };
+                                use cluaize_shared::{CluaizeContext, StructuralDNA, UnifiedBackend, CluaizeInference};
+                                let mut temp_dna = StructuralDNA::default();
+                                temp_dna.max_context_length = Some(expanded_ctx);
+                                let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
+                                
+                                println!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
+                                let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
+                                
+                                if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
+                                    &path_clone.to_string_lossy(),
+                                    "llama", 
+                                    ctx,
+                                    Some(booster)
+                                ).await {
+                                    println!("⚙️ [Arbiter] Background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
+                                    if bg_engine.prefill(&skill_content_clone).is_ok() {
+                                        let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
+                                        return true;
+                                    }
+                                }
+                                false
+                            })
+                        }).join().unwrap()
                     });
                     
                     // Record the Agentic Pause decision with success/failure outcome

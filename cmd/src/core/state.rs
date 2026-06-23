@@ -318,7 +318,12 @@ impl AppState {
         };
 
         let live_pulse = ::cluaize_shared::hardware::telemetry::get_pulse();
-        let is_client_mode = std::net::TcpStream::connect("127.0.0.1:8000").is_ok();
+        let port: u16 = std::env::var("CLUAIZE_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(8000);
+        let addr = format!("127.0.0.1:{}", port).parse().unwrap();
+        let _is_client_mode = std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_millis(50)).is_ok();
 
         let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         let mut _active_model_id = schema.chat_models.text.clone();

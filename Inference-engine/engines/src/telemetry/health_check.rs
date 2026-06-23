@@ -40,9 +40,26 @@ impl CluaizeHealthChecker {
     /// Estimates disk I/O capabilities without writing large files to avoid slowing down boot.
     /// In a deeper implementation, this reads sysfs on Linux or WMI on Windows.
     fn estimate_disk_io() -> f64 {
-        // Return a safe NVMe default (3000 MB/s) to keep boot fast.
-        // Deep profiling should be a separate manual `--benchmark` command.
-        3000.0
+        let path = cluaize_shared::environment::EnvironmentManager::current()
+            .root_dir
+            .join(".cluaize_boot_bench.tmp");
+        let payload = vec![0u8; 5 * 1024 * 1024]; // 5MB payload
+        let start = std::time::Instant::now();
+        if let Ok(mut file) = std::fs::File::create(&path) {
+            use std::io::Write;
+            if file.write_all(&payload).is_ok() {
+                let _ = file.sync_all();
+            }
+        }
+        let _ = std::fs::read(&path);
+        let duration = start.elapsed().as_secs_f64();
+        let _ = std::fs::remove_file(&path);
+        
+        if duration > 0.0 {
+            10.0 / duration // 5MB write + 5MB read = 10MB total
+        } else {
+            0.0
+        }
     }
 
     /// Runs a deep manual benchmark consisting of a 50MB disk I/O write/read test
