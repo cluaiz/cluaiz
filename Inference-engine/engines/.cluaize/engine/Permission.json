@@ -1,0 +1,18 @@
+{
+  "vector_models": {
+    "text": null,
+    "vision": null,
+    "audio": null
+  },
+  "chat_models": {
+    "text": null,
+    "vision": null,
+    "audio": null
+  },
+  "wasm_firewall": "auto",
+  "vectorize_user_input": true,
+  "vectorize_ai_response": true,
+  "stream_telemetry": false,
+  "lazy_load_model": false,
+  "temporary_chat_ttl_hours": 24
+}

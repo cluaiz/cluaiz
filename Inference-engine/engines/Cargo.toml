@@ -37,6 +37,7 @@ tracing = "0.1.44"
 
 # ──  Unified Core ──
 uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
 
 # ── Shared Workspace Member Links ──
 cluaize-shared = { path = "cluaize-shared" }

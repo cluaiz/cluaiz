@@ -9,7 +9,7 @@ pub trait CognitiveStorageBridge: Send + Sync {
     fn inject_context(&self, memory_key: &str) -> Option<Vec<u8>>;
 
     /// ⚡ Direct Brain Write: Saves a Memory/Skill Vector directly to the database.
-    fn save_context(&self, memory_id: &str, payload: &str, vector: [f32; 16]) -> Result<(), String>;
+    fn save_context(&self, memory_id: &str, payload: &str, vector: &[f32]) -> Result<(), String>;
 }
 
 /// Fallback / Brain-off implementation of the Storage Bridge
@@ -21,7 +21,7 @@ impl CognitiveStorageBridge for FallbackBridge {
         None
     }
 
-    fn save_context(&self, _memory_id: &str, _payload: &str, _vector: [f32; 16]) -> Result<(), String> {
+    fn save_context(&self, _memory_id: &str, _payload: &str, _vector: &[f32]) -> Result<(), String> {
         tracing::debug!("FallbackBridge: FFI database connection is disabled.");
         Ok(())
     }

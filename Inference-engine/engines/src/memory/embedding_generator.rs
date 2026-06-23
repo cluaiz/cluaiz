@@ -37,13 +37,12 @@ impl EmbeddingGenerator {
         Some(engine)
     }
 
-    /// Generates a 16-dimensional float vector from text.
-    /// If model fails to load or infer, it returns a safe zero-filled fallback vector [0.0; 16].
-    pub fn generate_vector(text: &str) -> [f32; 16] {
-        let mut vector = [0.0f32; 16];
+    /// Generates a float vector from text.
+    /// If model fails to load or infer, it returns a safe zero-filled fallback vector.
+    pub fn generate_vector(text: &str) -> Vec<f32> {
         let mut lock = match GLOBAL_EMBEDDING_ENGINE.lock() {
             Ok(l) => l,
-            Err(_) => return vector,
+            Err(_) => return vec![0.0f32; 16],
         };
 
         if lock.is_none() {
@@ -54,19 +53,16 @@ impl EmbeddingGenerator {
 
         if let Some(engine) = &*lock {
             match engine.gen_embedding(text) {
-                Ok(full_vec) => {
-                    for (i, &val) in full_vec.iter().take(16).enumerate() {
-                        vector[i] = val;
-                    }
-                }
+                Ok(full_vec) => full_vec,
                 Err(e) => {
                     tracing::warn!("ONNX embedding inference failed: {:?}. Using fallback zero-vector.", e);
+                    vec![0.0f32; 16]
                 }
             }
         } else {
             tracing::debug!("Embedding engine not initialized. Using fallback zero-vector.");
+            vec![0.0f32; 16]
         }
-        vector
     }
 
     /// Generates a full float vector from text for semantic routing.

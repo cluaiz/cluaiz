@@ -64,12 +64,19 @@ impl HardwareOrchestrator {
 
 
         // 3. Prepare Engine: Hardware Probe + Binary Linkage
-        let binary_path = manager.prepare_engine(engine_type)
-            .await
-            .map_err(|e| anyhow!("Hardware Linkage Failure: {}", e))?;
+        let binary_path = match manager.prepare_engine(engine_type).await {
+            Ok(p) => p,
+            Err(e) => {
+                tracing::warn!("🚨 [Orchestrator] Hardware Provisioning Failed: {}. Degrading gracefully to CPU execution...", e);
+                return Err(anyhow!("Hardware Linkage Failure: {}", e));
+            }
+        };
 
         // 🚀 [FFI Handshake]: Map the binary to process memory
-        manager.load_and_link(binary_path)?;
+        if let Err(e) = manager.load_and_link(binary_path) {
+            tracing::warn!("🚨 [Orchestrator] FFI Linkage Failed: {}. Degrading gracefully to CPU execution...", e);
+            return Err(anyhow!("Hardware Linkage Failure: {}", e));
+        }
 
         // 🏛️ [Core Instantiation]: Create the active engine instance with User Truth
         let booster_control = if let Some(booster) = booster_override {

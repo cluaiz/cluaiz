@@ -150,7 +150,7 @@ impl NativeLlama {
         Ok(())
     }
 
-    pub fn stitch_signal(&self, signal_id: i32, offset: i32, length: i32) -> anyhow::Result<()> {
+    pub fn stitch_signal(&mut self, signal_id: i32, offset: i32, length: i32) -> anyhow::Result<()> {
         unsafe {
             let memory = llama_cpp::llama_get_memory(self.ctx_ptr);
             llama_cpp::llama_memory_seq_cp(memory, signal_id, 0, 0, length);
@@ -177,7 +177,7 @@ impl NativeLlama {
     }
 
     /// 💾 Load Prompt Cache from disk
-    pub fn load_prompt_cache(&self, path: &str) -> anyhow::Result<Vec<i32>> {
+    pub fn load_prompt_cache(&mut self, path: &str) -> anyhow::Result<Vec<i32>> {
         info!("💾 [Native-Llama] Loading prompt cache from: {}", path);
         let c_path = std::ffi::CString::new(path)?;
         let mut tokens = vec![0i32; self.n_ctx as usize];
@@ -200,7 +200,7 @@ impl NativeLlama {
     }
 
     /// 🧠 Prefill a prompt into the KV cache (Context State) without generating tokens.
-    pub fn prefill_prompt(&self, prompt: &str) -> anyhow::Result<Vec<i32>> {
+    pub fn prefill_prompt(&mut self, prompt: &str) -> anyhow::Result<Vec<i32>> {
         unsafe {
             // 🧹 Sovereign Flush: Ensure KV cache is clear before starting new prefill
             let mem = llama_cpp::llama_get_memory(self.ctx_ptr);
@@ -292,7 +292,7 @@ impl NativeLlama {
     }
 
     pub fn stream_tokens(
-        &self,
+        &mut self,
         prompt: &str,
         max_tokens: usize,
         dna: &StructuralDNA,

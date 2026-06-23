@@ -12,7 +12,7 @@ mod tests {
             "id": "{}",
             "name": "Skill {}",
             "version": "1.0.0",
-            "author": "Aryan",
+            "author": "Cluaiz Technologies",
             "description": "Stress Test Skill",
             "triggers": {{
                 "semantic": ["{}"],

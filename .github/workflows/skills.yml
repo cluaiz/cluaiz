@@ -11,7 +11,7 @@ on:
       tag_name:
         description: 'Release Tag (e.g. v1.0.0-alpha)'
         required: true
-        default: 'dev-release'
+        default: 'alpha-release'
 
 permissions:
   contents: write

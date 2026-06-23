@@ -67,7 +67,7 @@ This is a secure system skill that handles diagnostic memory allocation.
         println!("🤖 [Test] Active Chat Model: {:?}", chat_model_id);
 
         if let Some(ref model_id) = embedding_model_id {
-            let safe_filename = model_id.replace(":", "-");
+            let safe_filename = model_id.as_str().replace(":", "-");
             
             // Generate semantic vector immediately using ONNX engine if model is cached locally
             let roster = engines::models::registry::CoreRoster::load_roster();

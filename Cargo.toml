@@ -4,7 +4,7 @@ members = [
     "inference-engine/engines",
     "inference-engine/engines/cluaize-shared",
     "inference-engine/engines/system-booster",
-    "cmd", "interface-engines/onnx", "interface-engines/llama",
+    "cmd"
 ]
 
 resolver = "2"
@@ -12,4 +12,8 @@ resolver = "2"
 [workspace.package]
 version = "0.0.1-alpha"
 edition = "2021"
-authors = ["Aryan (Founder)"]
+authors = ["Cluaiz Technologies"]
+
+[profile.dev]
+debug = false
+split-debuginfo = "off"

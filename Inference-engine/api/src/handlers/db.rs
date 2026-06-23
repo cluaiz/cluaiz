@@ -27,7 +27,7 @@ pub async fn execute_cdql(
     let query = payload.query;
     
     // Pass the raw CDQL query directly to the FFI bridge
-    match TensorTransducer::execute_raw_cdql(&query) {
+    match TensorTransducer::execute_raw_cdql(&query, None) {
         Ok(result) => Json(serde_json::json!({ "result": result })).into_response(),
         Err(err) => Json(serde_json::json!({ "error": err })).into_response(),
     }

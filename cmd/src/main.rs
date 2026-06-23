@@ -229,6 +229,15 @@ pub enum SkillCacheCommand {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // 🚀 SOVEREIGN GHOST EXECUTION GUARD
+    if let Ok(current_exe) = std::env::current_exe() {
+        let global_bin_dir = cluaize_shared::HardwareGovernor::resolve_bin_gateway();
+        if !current_exe.starts_with(&global_bin_dir) {
+            eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
+            eprintln!("  {} To use the Sovereign System, run the global 'cluaiz' command.\n", "💡".cyan());
+        }
+    }
+
     // ══ FORCE UTF-8 FOR WINDOWS CONSOLE ══
     #[cfg(windows)]
     unsafe {

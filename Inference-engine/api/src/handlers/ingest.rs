@@ -32,12 +32,8 @@ pub async fn file_ingest(
             if temp_mode.is_none() {
                 // Save to LMDB
                 for (chunk, vec) in &chunks {
-                    let mut vector16 = [0.0; 16];
-                    for (i, &v) in vec.iter().take(16).enumerate() {
-                        vector16[i] = v;
-                    }
                     let memory_id = format!("api-file-{}-{}", file_path, Utc::now().timestamp_nanos_opt().unwrap_or(0));
-                    let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&memory_id, chunk, vector16);
+                    let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&memory_id, chunk, vec);
                 }
             }
 

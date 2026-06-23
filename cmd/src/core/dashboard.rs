@@ -168,7 +168,7 @@ impl DashboardEngine {
                         if schema.vectorize_user_input {
                             let prompt_vector = engines::memory::embedding_generator::EmbeddingGenerator::generate_vector(&final_message);
                             let prompt_id = format!("prompt-{}", uuid::Uuid::new_v4());
-                            let _ = storage_bridge.save_context(&prompt_id, &final_message, prompt_vector);
+                            let _ = storage_bridge.save_context(&prompt_id, &final_message, &prompt_vector);
                         }
 
                         // ── 🧿 NEURAL DISPATCH ──
@@ -483,7 +483,7 @@ impl DashboardEngine {
                         if schema.vectorize_ai_response {
                             let response_vector = engines::memory::embedding_generator::EmbeddingGenerator::generate_vector(&response);
                             let response_id = format!("response-{}", uuid::Uuid::new_v4());
-                            let _ = storage_bridge.save_context(&response_id, &response, response_vector);
+                            let _ = storage_bridge.save_context(&response_id, &response, &response_vector);
                         }
 
                         if cluaize_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {

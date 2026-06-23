@@ -258,7 +258,7 @@ impl UnifiedBackend for RuntimeB {
     }
 
     fn prefill(&mut self, prompt: &str) -> Result<()> {
-        if let Some(ref native) = self.native {
+        if let Some(ref mut native) = self.native {
             let tokens = native.prefill_prompt(prompt)?;
             self.last_prefilled_tokens = tokens;
             Ok(())
@@ -299,7 +299,7 @@ impl CluaizeInference for RuntimeB {
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             // 🚀 High-Performance Native Path
-            if let Some(ref native) = self.native {
+            if let Some(ref mut native) = self.native {
                 let res = native.stream_tokens(
                     prompt,
                     max_tokens,

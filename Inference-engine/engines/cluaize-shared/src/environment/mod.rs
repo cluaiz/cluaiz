@@ -67,8 +67,15 @@ impl EnvironmentManager {
     pub fn vision_models_dir(&self) -> PathBuf { self.models_dir().join("vision") }
     pub fn brain_dir(&self) -> PathBuf { self.root_dir.join("brain") }
     pub fn cluaizd_dir(&self) -> PathBuf { self.brain_dir().join("cluaizd") }
+    pub fn kv_cache_dir(&self) -> PathBuf { self.brain_dir().join("kv_cache") }
     pub fn skills_dir(&self) -> PathBuf { self.root_dir.join("skills") }
     pub fn reports_dir(&self) -> PathBuf { self.root_dir.join("reports") }
+
+    pub fn ensure_kv_cache_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.kv_cache_dir();
+        if !dir.exists() { std::fs::create_dir_all(&dir)?; }
+        Ok(dir)
+    }
 
     pub fn ensure_engine_dir(&self) -> std::io::Result<PathBuf> {
         let dir = self.engine_dir();

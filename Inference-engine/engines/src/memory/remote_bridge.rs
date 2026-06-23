@@ -5,6 +5,8 @@ use super::storage_bridge::CognitiveStorageBridge;
 use std::time::Duration;
 use reqwest::Client;
 use serde_json::json;
+use crate::neural_foundry::security::permission_schema::PermissionSchema;
+use sha2::Digest;
 
 pub struct RemoteBridge {
     client: Client,
@@ -53,12 +55,12 @@ impl RemoteBridge {
 
 impl CognitiveStorageBridge for RemoteBridge {
     fn inject_context(&self, memory_key: &str) -> Option<Vec<u8>> {
-        // 1. Generate 16-byte UUID from the memory_key string
+        // 1. Generate 16-byte UUID from the memory_key string using stable Sha256 hashing
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(memory_key.as_bytes());
+        let hash_result = hasher.finalize();
         let mut id_array = [0u8; 16];
-        let key_bytes = memory_key.as_bytes();
-        for (i, &b) in key_bytes.iter().take(16).enumerate() {
-            id_array[i] = b;
-        }
+        id_array.copy_from_slice(&hash_result[..16]);
         let uuid = uuid::Uuid::from_bytes(id_array);
         let uuid_str = uuid.to_string();
 
@@ -68,35 +70,25 @@ impl CognitiveStorageBridge for RemoteBridge {
         
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async move {
-                // 2. Perform GET query with retry strategy
-                let mut retries = 3;
-                let mut response_body = None;
-                
-                while retries > 0 {
-                    match client.get(&url).header("x-tenant-id", "default_sandbox").send().await {
-                        Ok(res) if res.status().is_success() => {
-                            if let Ok(text) = res.text().await {
-                                response_body = Some(text);
-                                break;
-                            }
+                // 2. Perform GET query with retry strategy using execute_with_retry helper
+                let response_body = self.execute_with_retry(|| {
+                    let client = client.clone();
+                    let url = url.clone();
+                    async move {
+                        let res = client.get(&url)
+                            .header("x-tenant-id", "default_sandbox")
+                            .send()
+                            .await?;
+                        if !res.status().is_success() {
+                            anyhow::bail!("HTTP Error: {}", res.status());
                         }
-                        Ok(res) => {
-                            tracing::warn!("Remote DB HTTP Error: {}", res.status());
-                        }
-                        Err(e) => {
-                            tracing::warn!("Remote database query failed ({} retries left): {}", retries - 1, e);
-                        }
+                        let text = res.text().await?;
+                        Ok(text)
                     }
-                    retries -= 1;
-                    if retries > 0 {
-                        tokio::time::sleep(Duration::from_millis(100)).await;
-                    }
-                }
-                
-                let body = response_body?;
+                }).await?;
                 
                 // 3. Parse and extract payload bytes
-                let json_val: serde_json::Value = serde_json::from_str(&body).ok()?;
+                let json_val: serde_json::Value = serde_json::from_str(&response_body).ok()?;
                 if let Some(payload_val) = json_val.get("raw_payload") {
                     if let Ok(bytes) = serde_json::from_value::<Vec<u8>>(payload_val.clone()) {
                         tracing::info!("🧠 Successfully injected Remote Context: {} bytes", bytes.len());
@@ -109,11 +101,14 @@ impl CognitiveStorageBridge for RemoteBridge {
         })
     }
 
-    fn save_context(&self, memory_id: &str, payload: &str, vector: [f32; 16]) -> Result<(), String> {
+    fn save_context(&self, memory_id: &str, payload: &str, vector: &[f32]) -> Result<(), String> {
         let url = format!("{}/neuron", self.base_url);
         
-        // Create dummy SHA-256 creator hash for compatibility
-        let creator_hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string();
+        // Pull the active embedding model ID directly from the active PermissionSchema
+        let schema = PermissionSchema::load();
+        let creator_hash = schema.get_active_embedding_model().unwrap_or_else(|| {
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string()
+        });
         
         let body = json!({
             "raw_payload": payload,
@@ -128,25 +123,27 @@ impl CognitiveStorageBridge for RemoteBridge {
         
         tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async move {
-                let mut retries = 3;
-                while retries > 0 {
-                    match client.post(&url).header("x-tenant-id", "default_sandbox").json(&body).send().await {
-                        Ok(res) if res.status().is_success() => {
-                            return Ok(());
+                let res = self.execute_with_retry(|| {
+                    let client = client.clone();
+                    let url = url.clone();
+                    let body = body.clone();
+                    async move {
+                        let res = client.post(&url)
+                            .header("x-tenant-id", "default_sandbox")
+                            .json(&body)
+                            .send()
+                            .await?;
+                        if !res.status().is_success() {
+                            anyhow::bail!("HTTP Error: {}", res.status());
                         }
-                        Ok(res) => {
-                            tracing::warn!("Remote DB HTTP Error: {}", res.status());
-                        }
-                        Err(e) => {
-                            tracing::warn!("Remote database query failed ({} retries left): {}", retries - 1, e);
-                        }
+                        Ok(())
                     }
-                    retries -= 1;
-                    if retries > 0 {
-                        tokio::time::sleep(Duration::from_millis(100)).await;
-                    }
+                }).await;
+                if res.is_some() {
+                    Ok(())
+                } else {
+                    Err("Failed to execute remote network database write after retries".to_string())
                 }
-                Err("Failed to execute remote network database write after retries".to_string())
             })
         })
     }

@@ -1,28 +1,25 @@
 use anyhow::Result;
 use memmap2::MmapOptions;
 use std::fs::File;
-use std::path::Path;
+use std::path::PathBuf;
 use tracing::{info, warn};
+use cluaize_shared::environment::EnvironmentManager;
 
 /// 🧠 Zero-Copy KV-Cache Injector
 /// This module handles reading/writing context memory directly to/from VRAM via mmap.
 /// It bypasses the CPU and standard filesystem buffers for instantaneous context restoration.
-pub struct KvInjector {
-    cache_dir: String,
-}
+pub struct KvInjector;
 
 impl KvInjector {
-    pub fn new(cache_dir: &str) -> Self {
-        Self {
-            cache_dir: cache_dir.to_string(),
-        }
+    pub fn new() -> Self {
+        Self
     }
 
     /// Injects a saved KV-Cache state directly into the LLaMA context.
     /// This uses `memmap2` to map the `.kvcache.bin` file directly to memory.
     pub fn inject_cache(&self, session_id: &str) -> Result<memmap2::Mmap> {
-        let path_str = format!("{}/{}.kvcache.bin", self.cache_dir, session_id);
-        let path = Path::new(&path_str);
+        let cache_dir = EnvironmentManager::current().kv_cache_dir();
+        let path = cache_dir.join(format!("{}.kvcache.bin", session_id));
         
         if !path.exists() {
             return Err(anyhow::anyhow!("KV-Cache not found for session: {}", session_id));
@@ -37,10 +34,12 @@ impl KvInjector {
         Ok(mmap)
     }
 
-    /// Snapshots the current VRAM KV-Cache to disk asynchronously.
-    pub fn snapshot_cache(&self, session_id: &str, _raw_bytes: &[u8]) -> Result<()> {
-        warn!("💾 [KV-Injector] Snapshotting VRAM context to: {}.kvcache.bin", session_id);
-        // Implementation for dumping raw bytes to disk
+    /// Snapshots the current VRAM KV-Cache to disk.
+    pub fn snapshot_cache(&self, session_id: &str, raw_bytes: &[u8]) -> Result<()> {
+        let cache_dir = EnvironmentManager::current().ensure_kv_cache_dir()?;
+        let path = cache_dir.join(format!("{}.kvcache.bin", session_id));
+        warn!("💾 [KV-Injector] Snapshotting VRAM context to: {:?}", path);
+        std::fs::write(&path, raw_bytes)?;
         Ok(())
     }
 }

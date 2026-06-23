@@ -9,7 +9,7 @@ use tracing::{info, error, warn};
 pub static mut SKIP_PTR: *const std::sync::atomic::AtomicBool = std::ptr::null();
 
 pub fn stream_tokens(
-    llama: &NativeLlama,
+    llama: &mut NativeLlama,
     prompt: &str, 
     max_tokens: usize, 
     dna: &StructuralDNA,

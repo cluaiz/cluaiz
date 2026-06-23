@@ -19,7 +19,7 @@ impl CognitiveStorageBridge for LocalBridge {
         TensorTransducer::inject_context(memory_key)
     }
 
-    fn save_context(&self, memory_id: &str, payload: &str, vector: [f32; 16]) -> Result<(), String> {
+    fn save_context(&self, memory_id: &str, payload: &str, vector: &[f32]) -> Result<(), String> {
         TensorTransducer::save_context(memory_id, payload, vector)
     }
 }

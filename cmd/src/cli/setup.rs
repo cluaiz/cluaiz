@@ -9,7 +9,7 @@ pub async fn execute(command: SetupCommand) -> color_eyre::Result<()> {
             let prompt_vector = engines::memory::embedding_generator::EmbeddingGenerator::generate_vector("SKILL_NODE_ROOT");
             
             let storage_bridge = engines::memory::storage_bridge::load_storage_bridge();
-            let _ = storage_bridge.save_context("SKILL_NODE_ROOT_IDENTITY", "System Profile Node", prompt_vector)
+            let _ = storage_bridge.save_context("SKILL_NODE_ROOT_IDENTITY", "System Profile Node", &prompt_vector)
                 .map_err(|e| color_eyre::eyre::eyre!("Failed to save vector to Cluaizd brain: {}", e))?;
                 
             println!("✅ [Cluaize Setup] Purpose Vectorization saved to Local Brain.");

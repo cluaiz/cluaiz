@@ -1,7 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tracing::{info, warn};
+use super::embedding_generator::EmbeddingGenerator;
+use super::storage_bridge::load_storage_bridge;
 
 /// Configuration for the Transit Lounge (Ring Buffer)
 pub struct TransitConfig {
@@ -34,6 +36,7 @@ pub struct TransitLounge {
     config: TransitConfig,
     token_count: Arc<AtomicUsize>,
     tx: mpsc::Sender<TransitToken>,
+    buffer: Mutex<Vec<TransitToken>>,
 }
 
 impl TransitLounge {
@@ -43,6 +46,7 @@ impl TransitLounge {
             config,
             token_count: Arc::new(AtomicUsize::new(0)),
             tx,
+            buffer: Mutex::new(Vec::new()),
         }
     }
 
@@ -50,6 +54,12 @@ impl TransitLounge {
     pub async fn push_token(&self, token: TransitToken) -> anyhow::Result<()> {
         let current_count = self.token_count.fetch_add(1, Ordering::Relaxed);
         
+        // Push a clone of the token into the buffer before transmitting it.
+        {
+            let mut buf = self.buffer.lock().unwrap();
+            buf.push(token.clone());
+        }
+
         // 1. Check for Hybrid Control Flush Triggers
         let mut should_flush = false;
 
@@ -78,7 +88,32 @@ impl TransitLounge {
     /// Triggers the background SSD sync
     async fn trigger_batch_commit(&self) {
         info!("💾 [TransitLounge] Sentence Boundary / Threshold Reached. Triggering SSD Batch Flush...");
-        // Here we will eventually hook into `tensor_transducer::cluaizd_ffi_execute_parameterized`
-        // or the local/remote storage bridges to commit to LMDB shards.
+        
+        // Drain the tokens buffer
+        let tokens = {
+            let mut buf = self.buffer.lock().unwrap();
+            std::mem::take(&mut *buf)
+        };
+
+        if tokens.is_empty() {
+            return;
+        }
+
+        // We assume all tokens in this batch belong to the same session/session_id
+        let session_id = tokens[0].session_id.clone();
+
+        // Concatenate the tokens' text fields
+        let combined_text: String = tokens.into_iter().map(|t| t.text).collect();
+
+        // Generate a dynamic embedding vector
+        let vector = EmbeddingGenerator::generate_vector(&combined_text);
+
+        // Instantiate the storage bridge and save context to LMDB/Remote
+        let bridge = load_storage_bridge();
+        if let Err(e) = bridge.save_context(&session_id, &combined_text, &vector) {
+            warn!("❌ [TransitLounge] Failed to commit batch context to storage: {}", e);
+        } else {
+            info!("✅ [TransitLounge] Successfully committed batch context ({} bytes) for session '{}'", combined_text.len(), session_id);
+        }
     }
 }

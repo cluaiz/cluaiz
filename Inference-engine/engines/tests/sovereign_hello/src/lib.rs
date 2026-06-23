@@ -19,7 +19,7 @@ pub extern "C" fn run(ptr: *mut u8, len: usize) -> *mut u8 {
     };
 
     // 🧠 Logic: Greet the Founder
-    let response = format!("Hello Founder Aryan! Cluaize-OS received your intent: '{}'. Sandbox is LOCKED. Neural Pulse sent.", input);
+    let response = format!("Hello Cluaiz Technologies! Cluaize-OS received your intent: '{}'. Sandbox is LOCKED. Neural Pulse sent.", input);
     
     // 2. Return the result as a null-terminated string (Sovereign Format)
     let mut resp_bytes = response.into_bytes();

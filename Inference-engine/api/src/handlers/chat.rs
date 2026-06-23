@@ -119,12 +119,8 @@ pub async fn chat_completions(
 
                     // 🧠 Save to Engine Brain
                     if let Ok(vec) = state_clone.embedding_dispatcher.dispatch_embedding(&full_response) {
-                        let mut vector16 = [0.0; 16];
-                        for (i, &v) in vec.iter().take(16).enumerate() {
-                            vector16[i] = v;
-                        }
                         if let Some(id) = req_session_id.clone() {
-                            let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&id, &full_response, vector16);
+                            let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&id, &full_response, &vec);
                         }
                     }
 
@@ -177,12 +173,8 @@ pub async fn chat_completions(
 
         // 🧠 Save to Engine Brain
         if let Ok(vec) = state.embedding_dispatcher.dispatch_embedding(&content) {
-            let mut vector16 = [0.0; 16];
-            for (i, &v) in vec.iter().take(16).enumerate() {
-                vector16[i] = v;
-            }
             if let Some(id) = request.session_id.clone() {
-                let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&id, &content, vector16);
+                let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&id, &content, &vec);
             }
         }
 
