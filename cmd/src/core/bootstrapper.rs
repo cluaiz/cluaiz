@@ -10,7 +10,8 @@ impl Bootstrapper {
 
     /// 🚀 Cluaize BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite() -> Result<()> {
-        let _ = Self::sync_dev_artifacts("all", None);
+        let local_dir = cluaize_shared::environment::EnvironmentManager::current().local_dir;
+        let _ = Self::sync_dev_artifacts("all", None, local_dir);
         Self::ensure_global_path();
         
         // 🚀 0. Neural Foundry Genesis (Create Permission.json and Trigger Compiler Daemons)
@@ -209,8 +210,7 @@ impl Bootstrapper {
 
     /// 🛠️ Artifact Sync: Synchronizes local build artifacts to .cluaize.
     /// This ensures cargo run or the first boot always uses the latest compiled binaries.
-    pub fn sync_dev_artifacts(target: &str, driver_name: Option<&str>) -> Result<()> {
-        let hub_path = cluaize_shared::HardwareGovernor::resolve_hub_path();
+    pub fn sync_dev_artifacts(target: &str, driver_name: Option<&str>, hub_path: PathBuf) -> Result<()> {
         let root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         
         let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
@@ -295,7 +295,7 @@ impl Bootstrapper {
             ("onnxruntime_providers_nv_tensorrt_rtx", "onnxruntime_providers_nv_tensorrt_rtx"),
         ];
 
-        let interface_path = cluaize_shared::HardwareGovernor::resolve_interface_path();
+        let interface_path = hub_path.join("engine");
 
         for (src_name, dest_name) in kernels_to_sync {
             // Apply filtering logic
@@ -343,7 +343,8 @@ impl Bootstrapper {
             if !exe_src.exists() {
                 exe_src = debug_dir.join(exe_name);
             }
-            let bin_dir = cluaize_shared::HardwareGovernor::resolve_bin_gateway();
+            let bin_dir = hub_path.join("bin");
+            let _ = std::fs::create_dir_all(&bin_dir);
             let exe_dest = bin_dir.join(exe_name);
             
             if exe_src.exists() {

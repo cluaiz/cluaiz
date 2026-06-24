@@ -372,12 +372,12 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name }) => {
-            let local_dir = cluaize_shared::environment::EnvironmentManager::current().local_dir;
-            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, local_dir.display());
+            let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
+            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
             if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
             }
-            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref())?;
+            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir)?;
             println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
