@@ -11,7 +11,8 @@ pub enum EnvironmentMode {
 #[derive(Debug, Clone)]
 pub struct EnvironmentManager {
     pub mode: EnvironmentMode,
-    pub root_dir: PathBuf,
+    pub local_dir: PathBuf,
+    pub global_dir: PathBuf,
 }
 
 impl EnvironmentManager {
@@ -24,7 +25,8 @@ impl EnvironmentManager {
                 if parent.join("portable.flag").exists() {
                     return Self {
                         mode: EnvironmentMode::Portable,
-                        root_dir: parent.to_path_buf(),
+                        local_dir: parent.to_path_buf(),
+                        global_dir: parent.to_path_buf(),
                     };
                 }
             }
@@ -34,7 +36,8 @@ impl EnvironmentManager {
         if let Ok(env_path) = std::env::var("CLUAIZE_HOME") {
             return Self {
                 mode: EnvironmentMode::Installed,
-                root_dir: PathBuf::from(env_path),
+                local_dir: PathBuf::from(&env_path),
+                global_dir: PathBuf::from(&env_path),
             };
         }
 
@@ -42,23 +45,27 @@ impl EnvironmentManager {
         // We detect if we're running via cargo
         if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
             let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+            let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             return Self {
                 mode: EnvironmentMode::Development,
-                root_dir: home_dir.join(".cluaize"),
+                local_dir: current_dir.join(".cluaize"),
+                global_dir: home_dir.join(".cluaize"),
             };
         }
 
         // 4. Installed Mode (Default)
         // Check dirs package for home directory
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let global_path = home_dir.join(".cluaize");
         Self {
             mode: EnvironmentMode::Installed,
-            root_dir: home_dir.join(".cluaize"),
+            local_dir: global_path.clone(),
+            global_dir: global_path,
         }
     }
 
     pub fn engine_dir(&self) -> PathBuf {
-        self.root_dir.join("engine")
+        self.local_dir.join("engine")
     }
     pub fn kernel_dir(&self) -> PathBuf {
         self.engine_dir()
@@ -70,7 +77,7 @@ impl EnvironmentManager {
         self.engine_dir().join("config")
     }
     pub fn models_dir(&self) -> PathBuf {
-        self.root_dir.join("models")
+        self.global_dir.join("models")
     }
     pub fn chat_models_dir(&self) -> PathBuf {
         self.models_dir().join("chat")
@@ -82,7 +89,7 @@ impl EnvironmentManager {
         self.models_dir().join("vision")
     }
     pub fn brain_dir(&self) -> PathBuf {
-        self.root_dir.join("brain")
+        self.local_dir.join("brain")
     }
     pub fn cluaizd_dir(&self) -> PathBuf {
         self.brain_dir().join("cluaizd")
@@ -91,10 +98,10 @@ impl EnvironmentManager {
         self.brain_dir().join("kv_cache")
     }
     pub fn skills_dir(&self) -> PathBuf {
-        self.root_dir.join("skills")
+        self.global_dir.join("skills")
     }
     pub fn reports_dir(&self) -> PathBuf {
-        self.root_dir.join("reports")
+        self.local_dir.join("reports")
     }
 
     pub fn ensure_kv_cache_dir(&self) -> std::io::Result<PathBuf> {

@@ -41,7 +41,7 @@ impl CluaizeHealthChecker {
     /// In a deeper implementation, this reads sysfs on Linux or WMI on Windows.
     fn estimate_disk_io() -> f64 {
         let path = cluaize_shared::environment::EnvironmentManager::current()
-            .root_dir
+            .local_dir
             .join(".cluaize_boot_bench.tmp");
         let payload = vec![0u8; 5 * 1024 * 1024]; // 5MB payload
         let start = std::time::Instant::now();
@@ -68,7 +68,7 @@ impl CluaizeHealthChecker {
         let start = std::time::Instant::now();
         
         let path = cluaize_shared::environment::EnvironmentManager::current()
-            .root_dir
+            .local_dir
             .join(".cluaize_io_bench.tmp");
         let payload = vec![0u8; 50 * 1024 * 1024]; // 50MB payload
         

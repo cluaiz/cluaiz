@@ -268,7 +268,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = cluaize_shared::environment::EnvironmentManager::current().root_dir.join("cluaiz_Core.log");
+    let log_path = cluaize_shared::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
 
     if let Ok(log_file) = std::fs::File::create(&log_path) {
         let _ = tracing_subscriber::fmt()
@@ -372,7 +372,8 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name }) => {
-            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to ~/.cluaize...", target);
+            let local_dir = cluaize_shared::environment::EnvironmentManager::current().local_dir;
+            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, local_dir.display());
             if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
             }

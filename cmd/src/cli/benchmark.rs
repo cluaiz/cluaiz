@@ -199,7 +199,7 @@ fn get_benchmark_out_dir() -> PathBuf {
     } else {
         // Production Environment
         cluaize_shared::environment::EnvironmentManager::current()
-            .root_dir
+            .local_dir
             .join("reports")
             .join("benchmark")
     };

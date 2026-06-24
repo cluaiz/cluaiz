@@ -428,7 +428,7 @@ impl HardwareGovernor {
     /// 2. Portable Mode: Parent directory of current executable.
     /// 3. OS Standard Config Dir.
     pub fn resolve_hub_path() -> PathBuf {
-        crate::environment::EnvironmentManager::current().root_dir
+        crate::environment::EnvironmentManager::current().local_dir
     }
 
     pub fn resolve_apps_path() -> PathBuf {
