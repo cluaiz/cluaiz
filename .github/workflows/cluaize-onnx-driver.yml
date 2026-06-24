@@ -397,19 +397,22 @@ jobs:
 
           mkdir -p artifacts
           if [ "${{ runner.os }}" == "Windows" ]; then
-            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_onnx.${{ matrix.ext }}"
+            RELEASE_DIR="D:/t/${{ matrix.target }}/release"
           else
-            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_onnx.${{ matrix.ext }}"
+            RELEASE_DIR="target/${{ matrix.target }}/release"
           fi
           PREFIX="${{ matrix.prefix }}"
 
           if [ -n "${{ matrix.cuda_v }}" ]; then
-            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.zip"
           else
-            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.zip"
           fi
 
-          cp "$SRC" "$DEST"
+          cd "$RELEASE_DIR"
+          zip -j "$GITHUB_WORKSPACE/$DEST" ${PREFIX}cluaize_onnx.${{ matrix.ext }} onnxruntime*.${{ matrix.ext }} || true
+          cd "$GITHUB_WORKSPACE"
+          
           echo "binary_path=${DEST}" >> $GITHUB_OUTPUT
 
       - name: 🚀 Release Driver

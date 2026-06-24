@@ -3,27 +3,14 @@ use ratatui::widgets::{TableState, ListState};
 use std::sync::Arc;
 
 // ── Re-export shared types for CLI use ──
-pub use ::cluaize_shared::onboarding::OnboardingStep;
 pub use ::cluaize_shared::profile::UserProfile;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum OsState {
-    Onboarding(OnboardingStep),
     MainMenu,
     Dashboard,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum AuthMode {
-    Google,
-    Email,
-}
-
-impl Default for AuthMode {
-    fn default() -> Self {
-        AuthMode::Email
-    }
-}
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MenuApp {
@@ -182,19 +169,7 @@ pub struct AppState {
     // ── Shared Profile ──
     pub user_profile: UserProfile,
 
-    // ── Onboarding UI State ──
-    pub completed_steps: Vec<OnboardingStep>,
-    pub auth_mode: AuthMode,
-    pub auth_sub_step: u8,
-    pub auth_email_input: String,
-    pub auth_password_input: String,
-    pub _auth_focused_field: u8,
-    pub typing_char_index: usize,
-    pub profile_field_index: usize,
-    pub _model_category_index: usize,
-    pub scroll_offset: u16,
-    pub business_name_input: String,
-    pub personal_name_input: String,
+    // ── UI State ──
     pub is_dirty: bool,
     pub printed_logo: bool,
     pub rendered_actions_count: usize,
@@ -209,7 +184,6 @@ pub struct AppState {
     pub last_input_time: std::time::Instant,
     pub logo_index: usize,
     pub activity_stream: Vec<ActivityBlock>,
-    pub onboarding_status: String,
     pub auto_mount_triggered: bool,
     pub is_client_mode: bool,
 }
@@ -304,18 +278,14 @@ impl AppState {
         let mut settings_state = ListState::default();
         settings_state.select(Some(0));
 
-        // Check if onboarding already completed or override provided
-        let (os_state, user_profile) = if let Some(p) = profile_override {
-            (starting_state.unwrap_or(OsState::Dashboard), p)
-        } else if ::cluaize_shared::onboarding::should_skip_onboarding() {
-            let profile = ::cluaize_shared::profile::load_profile()
+        // Initialize state
+        let os_state = starting_state.unwrap_or(OsState::Dashboard);
+        let user_profile = profile_override.unwrap_or_else(|| {
+            ::cluaize_shared::profile::load_profile()
                 .ok()
                 .flatten()
-                .unwrap_or_else(UserProfile::new);
-            (starting_state.unwrap_or(OsState::Dashboard), profile)
-        } else {
-            (OsState::Onboarding(OnboardingStep::LogoAnimation), UserProfile::new())
-        };
+                .unwrap_or_else(UserProfile::new)
+        });
 
         let live_pulse = ::cluaize_shared::hardware::telemetry::get_pulse();
         let port: u16 = std::env::var("CLUAIZE_PORT")
@@ -369,18 +339,6 @@ impl AppState {
 
             user_profile,
 
-            completed_steps: Vec::new(),
-            auth_mode: AuthMode::default(),
-            auth_sub_step: 0,
-            auth_email_input: String::new(),
-            auth_password_input: String::new(),
-            _auth_focused_field: 0,
-            typing_char_index: 0,
-            profile_field_index: 0,
-            _model_category_index: 0,
-            scroll_offset: 0,
-            business_name_input: String::new(),
-            personal_name_input: String::new(),
             is_dirty: true,
             printed_logo: false,
             rendered_actions_count: 0,
@@ -395,7 +353,6 @@ impl AppState {
             last_input_time: std::time::Instant::now(),
             logo_index: crate::assets::logos::logo_gallery::LOGO_VARIANTS.len() - 1,
             activity_stream: Vec::new(),
-            onboarding_status: "OPTIMIZED ✓".to_string(),
             auto_mount_triggered: false,
             is_client_mode: false,
         }

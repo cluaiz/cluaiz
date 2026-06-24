@@ -1,7 +1,6 @@
 pub mod chat;
 pub mod help;
 pub mod menu;
-pub mod onboarding;
 pub mod palette;
 pub mod stream;
 pub mod roster;

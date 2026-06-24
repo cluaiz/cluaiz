@@ -41,11 +41,10 @@ impl EnvironmentManager {
         // 3. Development Mode
         // We detect if we're running via cargo
         if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
-            let mut dev_path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-            dev_path = dev_path.join(".cluaize");
+            let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
             return Self {
                 mode: EnvironmentMode::Development,
-                root_dir: dev_path,
+                root_dir: home_dir.join(".cluaize"),
             };
         }
 
@@ -62,10 +61,13 @@ impl EnvironmentManager {
         self.root_dir.join("engine")
     }
     pub fn kernel_dir(&self) -> PathBuf {
-        self.engine_dir().join("interfaces").join("kernels")
+        self.engine_dir()
     }
     pub fn drivers_dir(&self) -> PathBuf {
-        self.engine_dir().join("interfaces").join("drivers")
+        self.engine_dir().join("drivers")
+    }
+    pub fn config_dir(&self) -> PathBuf {
+        self.engine_dir().join("config")
     }
     pub fn models_dir(&self) -> PathBuf {
         self.root_dir.join("models")
@@ -124,6 +126,31 @@ impl EnvironmentManager {
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
+        Ok(dir)
+    }
+
+    pub fn ensure_config_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.config_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        
+        // GAP C FIX: Legacy Config Migration Block
+        let engine_dir = self.engine_dir();
+        let legacy_files = vec!["Permission.json", "system_control.json", "system_control.bin"];
+        for file in legacy_files {
+            let legacy_path = engine_dir.join(file);
+            let new_path = dir.join(file);
+            if legacy_path.exists() && !new_path.exists() {
+                if let Err(e) = std::fs::copy(&legacy_path, &new_path) {
+                    tracing::warn!("⚠️ Failed to migrate legacy config {}: {}", file, e);
+                } else {
+                    let _ = std::fs::remove_file(&legacy_path);
+                    tracing::info!("✅ Migrated legacy config {} to {:?}", file, new_path);
+                }
+            }
+        }
+        
         Ok(dir)
     }
 

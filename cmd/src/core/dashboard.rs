@@ -56,15 +56,50 @@ impl DashboardEngine {
         // 🚀 CLUAIZE AUTO-BOOT: Activate the latest engine silently only if no model is loaded
         let is_engine_loaded = state.Core_engine.is_loaded.load(std::sync::atomic::Ordering::SeqCst);
         if !is_engine_loaded {
-            let auto_boot_name = if let Some(ref active_id) = state._active_model_id {
-                state.sorted_models.iter().find(|m| m.manifest.id == *active_id).map(|m| m.manifest.name.clone())
-            } else {
-                state.sorted_models.iter().filter(|m| m.is_cached).next().map(|m| m.manifest.name.clone())
-            };
+            // Find the best cached model to boot: prefer the last active one from Permission.json
+            let active_schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let active_chat_id = active_schema.get_active_chat_model().unwrap_or_default();
             
-            if let Some(name) = auto_boot_name {
-                println!("\n  {} Auto-Booting Neural Kernel: {}...", "🚀".magenta(), name.bold());
-                let _ = Self::handle_model_switch(state, tx, rx, "", Some(&name));
+            let mut boot_target = state.sorted_models.iter().find(|m| {
+                if !active_chat_id.is_empty() {
+                    m.manifest.id == active_chat_id && m.is_cached
+                } else {
+                    false
+                }
+            }).map(|m| (m.manifest.name.clone(), m.manifest.local_path.clone()));
+
+            if boot_target.is_none() {
+                // ⚠️ Active model not cached (e.g. deleted or moved). Fall back to any cached model.
+                boot_target = state.sorted_models.iter().find(|m| {
+                    m.is_cached && m.manifest.category != "embedding" && m.manifest.architecture_type != "onnx"
+                }).map(|m| (m.manifest.name.clone(), m.manifest.local_path.clone()));
+            }
+
+            match boot_target {
+                Some((ref name, Some(ref path_str))) => {
+                    // ✅ Model is on disk with a known path — load it directly
+                    println!("\n  {} Auto-Booting Neural Kernel: {}...", "🚀".magenta(), name.bold());
+                    let path = std::path::PathBuf::from(path_str);
+                    tokio::task::block_in_place(|| {
+                        let handle = tokio::runtime::Handle::current();
+                        let result = handle.block_on(engines::CoreRouter::load_model(path, cluaize_shared::BackendType::RuntimeA));
+                        match result {
+                            Ok(router) => {
+                                let mut lock = state.Core_engine.router.blocking_lock();
+                                *lock = router;
+                                state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
+                                println!("  {} {} loaded and ready.", "✅".green(), name.bold());
+                            }
+                            Err(e) => println!("  {} Auto-Boot failed: {}", "❌".red(), e),
+                        }
+                    });
+                }
+                _ => {
+                    // ⚠️ No cached model found
+                    if !state.sorted_models.is_empty() {
+                        println!("\n  {} No local weights found. Use '@' or '/menu' → Model List to download one.", "⚠️".yellow());
+                    }
+                }
             }
         }
         // 🖊️ INPUT FIX: Ensure cursor is on a fresh line before inquire renders

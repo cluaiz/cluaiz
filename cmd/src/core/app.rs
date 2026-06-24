@@ -66,10 +66,6 @@ impl App {
     pub async fn run(mut self) -> Result<()> {
         while self.mode != Mode::Quit {
             match self.state.os_state {
-                OsState::Onboarding(_) => {
-                    crate::ui::apps::onboarding::native::run_native_flow()?;
-                    self.state.os_state = OsState::MainMenu;
-                }
                 OsState::MainMenu => {
                     crate::ui::menu::run_native(&mut self.state, &self.tx, &mut self.mode).await?;
                 }

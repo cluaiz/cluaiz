@@ -101,21 +101,14 @@ impl KernelLoader {
         // 4. System Truth: Read cluaize_root (Global Installation)
         if let Some(_) = read_cluaize_root() {
             let env = cluaize_shared::environment::EnvironmentManager::current();
-            let base_link = env.engine_dir().join("interfaces");
+            let base_link = env.engine_dir();
             
             for file_name in &candidates {
-                // Check root interface-engines/
+                // Check flat engine directory
                 let path = base_link.join(file_name);
                 if path.exists() {
                     tracing::info!("🎯 [KernelLoader] Cluaize path resolved: {:?}", path);
                     return path;
-                }
-                
-                // Check kernels/ subdirectory
-                let path_kernels = base_link.join("kernels").join(file_name);
-                if path_kernels.exists() {
-                    tracing::info!("🎯 [KernelLoader] Cluaize path resolved (kernels/): {:?}", path_kernels);
-                    return path_kernels;
                 }
             }
         }

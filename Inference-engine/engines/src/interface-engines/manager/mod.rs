@@ -35,12 +35,8 @@ impl EngineManager {
 
     /// Handshake: Identify the target Hardware and ensure correct kernel/driver presence.
     pub async fn prepare_engine(&self, engine_type: &str) -> Result<PathBuf, String> {
-        let config_path = self.get_system_control_path();
-        let content = std::fs::read_to_string(&config_path)
-            .map_err(|e| format!("Hardware Config Missing: {}", e))?;
-        
-        let control: SystemControl = serde_json::from_str(&content)
-            .map_err(|e| format!("Hardware Config Parse Error: {}", e))?;
+        let control = HardwareGovernor::load_system_control()
+            .map_err(|e| format!("Hardware Config Missing or Corrupt: {}", e))?;
 
         // 🚀 Cluaize Detection Logic: The Triple Handshake
         let os = control.identity.os_target.to_lowercase();
@@ -403,9 +399,6 @@ impl EngineManager {
         }
     }
 
-    fn get_system_control_path(&self) -> PathBuf {
-        HardwareGovernor::resolve_engine_path().join("system_control.json")
-    }
 }
 
 impl Drop for EngineManager {

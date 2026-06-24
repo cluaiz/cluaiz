@@ -167,7 +167,7 @@ impl HardwareGovernor {
     ) -> usize {
         let mut arbiter = ARBITER.lock().unwrap();
 
-        let path = Self::resolve_engine_path().join("system_booster.json");
+        let path = Self::resolve_engine_path().join("config").join("system_booster.json");
 
         // 🔍 LIVE SILICON PROBE: We don't trust cached values for safety-critical negotiation.
         if let Ok(control) = Self::load_system_control() {
@@ -361,7 +361,7 @@ impl HardwareGovernor {
 
     /// Load the cross-process registry of active LLMs.
     pub fn load_process_registry() -> HashMap<String, ProcessInfo> {
-        let path = Self::resolve_engine_path().join("active_processes.json");
+        let path = Self::resolve_engine_path().join("config").join("active_processes.json");
         if let Ok(data) = std::fs::read_to_string(&path) {
             serde_json::from_str(&data).unwrap_or_default()
         } else {
@@ -371,7 +371,7 @@ impl HardwareGovernor {
 
     /// Save the cross-process registry.
     pub fn save_process_registry(registry: &HashMap<String, ProcessInfo>) {
-        let path = Self::resolve_engine_path().join("active_processes.json");
+        let path = Self::resolve_engine_path().join("config").join("active_processes.json");
         if let Ok(data) = serde_json::to_string_pretty(registry) {
             let _ = std::fs::write(&path, data);
         }
@@ -414,7 +414,8 @@ impl HardwareGovernor {
         }
 
         // Save back the updated control
-        let base = Self::resolve_engine_path();
+        let base = Self::resolve_engine_path().join("config");
+        let _ = std::fs::create_dir_all(&base);
         let json_data = serde_json::to_string_pretty(&control)?;
         std::fs::write(base.join("system_control.json"), json_data)?;
 
@@ -449,7 +450,7 @@ impl HardwareGovernor {
     }
 
     pub fn resolve_interface_path() -> PathBuf {
-        let path = Self::resolve_engine_path().join("interfaces");
+        let path = Self::resolve_engine_path();
         let _ = std::fs::create_dir_all(&path);
         path
     }
@@ -483,7 +484,7 @@ impl HardwareGovernor {
     /// 🏛️ Loads the sovereign hardware fingerprint from the binary truth (.bin).
     /// If missing, it triggers an automatic "Self-Healing" recovery scan.
     pub fn load_binary_truth() -> anyhow::Result<SystemControl> {
-        let path = Self::resolve_engine_path().join("system_control.bin");
+        let path = Self::resolve_engine_path().join("config").join("system_control.bin");
 
         if !path.exists() {
             return Err(anyhow::anyhow!("Binary truth missing"));
@@ -514,7 +515,7 @@ impl HardwareGovernor {
     }
 
     pub fn load_system_control() -> anyhow::Result<SystemControl> {
-        let base = Self::resolve_engine_path();
+        let base = Self::resolve_engine_path().join("config");
         let path = base.join("system_control.json");
         let bin_path = base.join("system_control.bin");
 
@@ -540,7 +541,7 @@ impl HardwareGovernor {
     }
 
     pub fn save_system_control(control: &SystemControl) -> anyhow::Result<()> {
-        let base = Self::resolve_engine_path();
+        let base = Self::resolve_engine_path().join("config");
         std::fs::create_dir_all(&base)?;
 
         let json_path = base.join("system_control.json");
@@ -566,7 +567,7 @@ impl HardwareGovernor {
     // ─── 🚀 BOOSTER CONTROL (USER SETTINGS) ───
 
     pub fn load_booster_settings() -> anyhow::Result<BoosterControl> {
-        let base = Self::resolve_engine_path();
+        let base = Self::resolve_engine_path().join("config");
         let bin_path = base.join("system_booster.bin");
         let json_path = base.join("system_booster.json");
 
@@ -613,7 +614,7 @@ impl HardwareGovernor {
     }
 
     pub fn save_booster_settings(control: &BoosterControl) -> anyhow::Result<()> {
-        let base = Self::resolve_engine_path();
+        let base = Self::resolve_engine_path().join("config");
         std::fs::create_dir_all(&base)?;
 
         let json_path = base.join("system_booster.json");
@@ -649,7 +650,7 @@ pub struct RegistryGovernor;
 impl RegistryGovernor {
     /// Resolves the local path for the master package registry.
     pub fn resolve_registry_path() -> (PathBuf, PathBuf) {
-        let engine_dir = HardwareGovernor::resolve_engine_path();
+        let engine_dir = HardwareGovernor::resolve_engine_path().join("config");
         (
             engine_dir.join("package.json"),
             engine_dir.join("package.bin"),
@@ -659,6 +660,11 @@ impl RegistryGovernor {
     /// 🏛️ Synchronizes the master registry from remote and seals it into binary truth.
     pub fn seal_registry(data: serde_json::Value) -> anyhow::Result<()> {
         let (json_path, bin_path) = Self::resolve_registry_path();
+        
+        if let Some(parent) = json_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
         let temp_json = json_path.with_extension("json.tmp");
         let temp_bin = bin_path.with_extension("bin.tmp");
 

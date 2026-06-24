@@ -34,7 +34,7 @@ impl DriverProvisioner {
 
     /// 🛠️ Provision Kernel Binary: Auto-detects and deploys specialized engine kernels (llama-cuda, etc.)
     pub async fn provision_kernel(kernel_type: &str, backend: &str, manifest_url: &str) -> Result<PathBuf> {
-        let kernel_dir = HardwareGovernor::resolve_interface_path().join("kernels");
+        let kernel_dir = HardwareGovernor::resolve_interface_path();
         
         if !kernel_dir.exists() {
             fs::create_dir_all(&kernel_dir)?;
@@ -133,7 +133,31 @@ impl DriverProvisioner {
 
         let bin_response = client.get(download_url).send().await?;
         let bytes = bin_response.bytes().await?;
-        fs::write(&dest_path, bytes)?;
+        
+        if dest_filename.ends_with(".zip") {
+            let cursor = std::io::Cursor::new(bytes);
+            let mut archive = zip::ZipArchive::new(cursor).map_err(|e| anyhow::anyhow!("Zip extraction failed: {}", e))?;
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i).map_err(|e| anyhow::anyhow!("Failed to read zip entry: {}", e))?;
+                let outpath = match file.enclosed_name() {
+                    Some(path) => driver_dir.join(path),
+                    None => continue,
+                };
+                if file.name().ends_with('/') {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        if !p.exists() {
+                            fs::create_dir_all(p)?;
+                        }
+                    }
+                    let mut outfile = fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+            }
+        } else {
+            fs::write(&dest_path, bytes)?;
+        }
 
         fs::write(marker, manifest_version)?;
         Ok(())

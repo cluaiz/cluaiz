@@ -1,49 +1,87 @@
-# Cluaize Unified Build System (`cluaize-builder`)
+# Cluaize Workflow: Build & Sync
 
-Welcome to the **Unified Build System** for the Cluaize Inference Engine.
+This document provides a simple, deep, and 1:1 clear explanation of how to compile the Cluaize ecosystem and how to synchronize those compiled files into your local `.cluaize` system folder.
 
-## ⚙️ How It Works (Zero Hardcoding)
-This builder acts as an orchestrator. It does **not** hardcode any installation paths like `C:\Users\Aryan\.cluaize`. 
-Instead, it dynamically links to `cluaize_shared::environment::EnvironmentManager` and asks the **Single Source of Truth** where the engine and drivers should go.
-
-1. **Compiles the Workspace:** Builds the `cluaize.exe` kernel and APIs.
-2. **Compiles the Drivers:** Triggers independent builds for `interface-engines/llama` and `onnx`.
-3. **Resolves Paths:** Calls the Environment Manager to get `kernel_dir()` and `drivers_dir()`.
-4. **Deploys:** Copies all `.exe` and `.dll` files to the perfectly resolved paths.
+The philosophy is strict:
+1. **Building** only compiles the code. It does NOT touch your system files.
+2. **Syncing** is a manual step. You explicitly tell the system when to update your production/dev `.cluaize` environment with your newly compiled code.
 
 ---
 
-## 🚀 How to Run (Command Line Control)
-You have full control over the build process via simple command-line flags. 
+## 🛠️ Step 1: Building (Compilation)
 
-### Basic Run (Defaults to Dev + Release Optimized)
+Use the `cluaize-builder` to compile specific components. This gives you 1:1 granular control so you don't build "extra nonsense" you don't need.
+
+> [!TIP]
+> **Profiles:**
+> Add `--profile release` for max performance (slow build, fast run). 
+> Default is debug (fast build, slow run).
+
+### 1. Build a Specific Single Driver
+Builds *only* the requested hardware driver in isolation.
 ```bash
-cargo build-all
+cargo run -p cluaize-builder -- driver llama --profile release
+cargo run -p cluaize-builder -- driver onnx --profile release
 ```
 
-### Full Control
-You can pass the `--mode` and `--profile` arguments:
+### 2. Build All Drivers
+Builds all available hardware drivers (Llama, ONNX, etc) without building the core engine.
 ```bash
-cargo build-all --mode <dev|public> --profile <debug|release>
+cargo run -p cluaize-builder -- drivers --profile release
 ```
 
-#### 1. The `--mode` Flag
-Controls **WHERE** the files are copied.
-- `--mode dev`: (Default) Copies all files to a local `./.cluaize` folder inside the project. Safe for testing without breaking your main system.
-- `--mode public`: Copies all files directly to your global production path (e.g., `C:\Users\Username\.cluaize`).
-
-#### 2. The `--profile` Flag
-Controls **HOW** the code is compiled.
-- `--profile release`: (Default) Compiles with maximum optimizations (`cargo build --release`). Slower build, fastest runtime.
-- `--profile debug`: Compiles without optimizations (`cargo build`). Faster build, good for quick syntax checks.
-
-### Examples:
-**1. Fast Local Dev Build:**
+### 3. Build Core Engine
+Builds *only* the core inference engine and CLI, ignoring the dynamic drivers.
 ```bash
-cargo build-all --mode dev --profile debug
+cargo run -p cluaize-builder -- core --profile release
 ```
 
-**2. Full Production Global Release:**
+### 4. Build Entire Workspace (Everything)
+Builds the Core Engine + CLI + All Drivers at once.
 ```bash
-cargo build-all --mode public --profile release
+cargo run -p cluaize-builder -- all --profile release
+```
+
+---
+
+## 🔄 Step 2: Synchronization (Deployment)
+
+After building, your compiled `.dll` or executable files are sitting in `target/release/`. **They will NOT be used by the system automatically.**
+To push these updates to your `~/.cluaize` system folder, you must run the `dev-sync` command via the main CLI.
+
+### 1. Sync Everything
+Copies the newly compiled Core Engine, CLI, and All Drivers into `~/.cluaize`.
+```bash
+cargo run -- dev-sync all
+# Or simply:
+cargo run -- dev-sync
+```
+
+### 2. Sync Core Only
+Copies *only* the Core Engine (`engines.dll`) and CLI executable into `~/.cluaize`, leaving your drivers untouched.
+```bash
+cargo run -- dev-sync core
+```
+
+### 3. Sync All Drivers Only
+Copies *only* the compiled drivers (LLaMA, ONNX, etc.) into `~/.cluaize/engine/interfaces/`.
+```bash
+cargo run -- dev-sync drivers
+```
+
+### 4. Sync a Specific Driver Only
+Copies *only* the specific driver you specify. Highly useful when you only made a code change in one driver.
+```bash
+cargo run -- dev-sync driver llama
+cargo run -- dev-sync driver onnx
+```
+
+---
+
+## 🚨 Troubleshooting
+
+If you run `cargo run -p cmd` on a fresh system and get a **`Bootstrap Failed`** or **`os error 3`**, it means your `.cluaize` folder is completely empty and missing the core engine files.
+**Fix:** Run a full sync to populate it:
+```bash
+cargo run -p cmd -- dev-sync all
 ```

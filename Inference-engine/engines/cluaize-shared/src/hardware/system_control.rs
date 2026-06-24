@@ -56,7 +56,7 @@ impl HardwareOrchestrator {
         // Preserve existing brain toggle if possible, otherwise check Env Variable, default to "off"
         let mut ffi_val = "off".to_string();
 
-        let engine_path = crate::hardware::governor::HardwareGovernor::resolve_engine_path();
+        let engine_path = crate::hardware::governor::HardwareGovernor::resolve_engine_path().join("config");
         // Prevent infinite auto-calibration loop by checking if files exist before loading
         if engine_path.join("system_control.bin").exists()
             || engine_path.join("system_control.json").exists()
@@ -558,7 +558,7 @@ impl HardwareOrchestrator {
     }
 
     pub fn persist_sovereign_state(control: &SystemControl) -> anyhow::Result<()> {
-        let base = crate::hardware::governor::HardwareGovernor::resolve_engine_path();
+        let base = crate::hardware::governor::HardwareGovernor::resolve_engine_path().join("config");
         std::fs::create_dir_all(&base)?;
 
         let json_path = base.join("system_control.json");

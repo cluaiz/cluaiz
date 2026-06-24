@@ -140,12 +140,10 @@ impl NeuralDispatcher {
                         let binary_name = format!("{}cluaize-llama.{}", prefix, ext);
                         
                         let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-                            .join("kernels")
                             .join(&binary_name);
                             
                         // 🛡️ Strict FFI Validation Boundary
                         let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-                            .join("kernels")
                             .join("cluaize-llama.ready");
                             
                         if !binary_path.exists() || !marker_path.exists() {
@@ -293,12 +291,10 @@ unsafe impl Sync for EmbeddingDispatcher {}
         
         // Use persistence or fallback to target/debug
         let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-            .join("kernels")
             .join(&binary_name);
             
         // 🛡️ Strict FFI Validation Boundary
         let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-            .join("kernels")
             .join("cluaize-onnx.ready");
             
         if !binary_path.exists() || !marker_path.exists() {
@@ -310,6 +306,12 @@ unsafe impl Sync for EmbeddingDispatcher {}
             let lib: libloading::Library = {
                 // LOAD_WITH_ALTERED_SEARCH_PATH (0x00000008) forces Windows to search for dependent DLLs
                 // (like onnxruntime_providers_cuda.dll) in the same directory as the kernel DLL being loaded.
+                // GAP A FIX: Inject engine/drivers/ into PATH so it can find onnxruntime.dll
+                let drivers_dir = cluaize_shared::HardwareGovernor::resolve_interface_path().join("drivers");
+                if let Ok(path) = std::env::var("PATH") {
+                    std::env::set_var("PATH", format!("{};{}", drivers_dir.display(), path));
+                }
+                
                 let flags = 0x00000008; 
                 let win_lib = libloading::os::windows::Library::load_with_flags(&binary_path, flags)
                     .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;

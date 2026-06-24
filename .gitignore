@@ -57,3 +57,7 @@ error_log.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# --- Local Overrides ---
+.cluaize/
+models/

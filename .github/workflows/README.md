@@ -67,7 +67,14 @@ The GitHub Actions pipelines are divided into **5 distinct, highly-decoupled fac
 
 ### ⚙️ 3. `cluaize-llama-driver.yml` & `cluaize-onnx-driver.yml` (Dynamic Accelerators)
 - **Compilation**: Parallel builds for specialized backend matrices (CUDA v13/v12/v11, Metal, Vulkan, OpenVINO, ROCm, HIP, SYCL, CANN, QNN).
-- **Releases**: Uploads accelerator driver binaries to `driver-v*` and `onnx-driver-v*` release tags.
+- **Packaging Strategy**: 
+  - **Llama Drivers**: Uploaded as direct `.dll` / `.so` / `.dylib` binaries.
+  - **ONNX Drivers**: Bundled as **Modular `.zip` Files** containing `cluaize_onnx.dll` AND all necessary provider libraries (e.g., `onnxruntime_providers_cuda.dll`). This guarantees that downloading one asset provides all underlying SDK dependencies for the target hardware.
+- **Releases**: Uploads accelerator driver binaries/zips to `driver-v*` and `onnx-driver-v*` release tags.
+
+### 📁 4. The Flat Engine Law (1:1 Deploy Parity)
+- **The Rule**: Production MUST exactly mirror Local Dev (`.cluaize/engine/`).
+- **No Sub-folders**: Kernels and Core binaries live directly in `engine/`. Hardware drivers (and their ONNX providers) live directly in `engine/drivers/`. Legacy `interfaces/kernels` and `interfaces/drivers` sub-directories are strictly banned to ensure the OS Loader can resolve dependencies natively.
 
 ### 🧠 4. Dynamic Manifest Registry (Python Automation)
 - **The Old Flaw**: Manifests were hardcoded via `cat <<EOF`. If a build (like SYCL) failed, the JSON would still include the broken link, crashing the Engine on startup.

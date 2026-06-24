@@ -346,18 +346,18 @@ curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaize/main/install.sh | ba
 
 ### 🛠️ Local Compilation (Manual Build)
 
-If you prefer to compile from source, you can build the entire workspace natively using Cargo:
+If you prefer to compile from source, we provide a unified compilation tool to orchestrate the workspace and out-of-workspace drivers seamlessly. For an in-depth guide on compiling the full architecture (Core, CLI, and specialized Hardware Drivers), please see the **[Cluaize Builder Documentation](tools/cluaize-builder/README.md)**.
 
 ```bash
 # 1. Clone the repository
 $ git clone https://github.com/cluaiz/cluaize.git
 $ cd cluaize
 
-# 2. Build the entire Cluaize: Rust Orchestrator for Local LLMs
-$ cargo build --release --workspace
+# 2. Build the entire ecosystem (Core + All Native Drivers) using the Cluaize Builder
+$ cargo run -p cluaize-builder -- all --profile release
 
 # 3. Run the CLI binary directly from Cargo
-$ cargo run -p cli
+$ cargo run -p cmd
 ```
 
 ---
@@ -395,7 +395,7 @@ Or pass a full **HuggingFace repo ID** — Cluaize will automatically download t
 $ cluaize run Qwen/Qwen3-VL-2B-Instruct-GGUF
 
 # Or directly from source (dev mode)
-$ cargo run -p cli -- run Qwen/Qwen3-VL-2B-Instruct-GGUF
+$ cargo run -p cmd -- run Qwen/Qwen3-VL-2B-Instruct-GGUF
 ```
 
 > [!NOTE]

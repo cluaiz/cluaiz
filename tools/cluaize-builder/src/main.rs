@@ -1,24 +1,47 @@
-use cluaize_shared::environment::EnvironmentManager;
 use std::process::Command;
-use std::path::{Path, PathBuf};
-use std::fs;
+use std::env;
+
+fn print_help() {
+    println!("🚀 Cluaize Modular Builder");
+    println!("Usage: cargo run -p cluaize-builder -- <COMMAND> [OPTIONS]");
+    println!("");
+    println!("Commands:");
+    println!("  all               Build the entire workspace (Core + All Drivers + CLI)");
+    println!("  core              Build only the Core Engine and CLI (cluaize, engines)");
+    println!("  drivers           Build all hardware drivers (llama, onnx)");
+    println!("  driver <name>     Build a specific driver (e.g., 'llama' or 'onnx')");
+    println!("");
+    println!("Options:");
+    println!("  --profile <mode>  Build profile: 'debug' (default) or 'release'");
+    println!("  --help, -h        Print this help message");
+}
 
 fn main() {
-    println!("🚀 Starting Unified Cluaize Build System...");
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() < 2 {
+        print_help();
+        std::process::exit(1);
+    }
 
-    // Default settings
-    let mut mode = "dev".to_string();
-    let mut profile = "release".to_string();
+    let mut command_type = String::new();
+    let mut driver_name = String::new();
+    let mut profile = "debug".to_string(); // Default to debug
 
-    // Parse command line arguments
-    let args: Vec<String> = std::env::args().collect();
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
-            "--mode" | "-m" => {
-                if i + 1 < args.len() {
-                    mode = args[i + 1].clone();
+            "all" | "core" | "drivers" => {
+                command_type = args[i].clone();
+            }
+            "driver" => {
+                command_type = "driver".to_string();
+                if i + 1 < args.len() && !args[i + 1].starts_with("--") {
+                    driver_name = args[i + 1].clone();
                     i += 1;
+                } else {
+                    eprintln!("❌ Error: 'driver' command requires a driver name (e.g., llama)");
+                    std::process::exit(1);
                 }
             }
             "--profile" | "-p" => {
@@ -28,159 +51,97 @@ fn main() {
                 }
             }
             "--help" | "-h" => {
-                println!("Usage: cargo run -- [OPTIONS]");
-                println!("Options:");
-                println!("  --mode, -m <dev|public>      Deployment mode (default: dev)");
-                println!("  --profile, -p <debug|release> Build profile (default: release)");
+                print_help();
                 return;
             }
             _ => {
-                eprintln!("Unknown argument: {}", args[i]);
-                std::process::exit(1);
+                // Ignore unknown args for now or skip them
             }
         }
         i += 1;
     }
 
-    if mode != "dev" && mode != "public" {
-        eprintln!("❌ Invalid mode: {}. Use 'dev' or 'public'.", mode);
+    if command_type.is_empty() {
+        eprintln!("❌ Error: No valid command provided.");
+        print_help();
         std::process::exit(1);
     }
+
     if profile != "debug" && profile != "release" {
-        eprintln!("❌ Invalid profile: {}. Use 'debug' or 'release'.", profile);
+        eprintln!("❌ Error: Invalid profile '{}'. Use 'debug' or 'release'.", profile);
         std::process::exit(1);
     }
 
-    println!("📋 Settings Loaded: Mode = [{}], Profile = [{}]", mode.to_uppercase(), profile.to_uppercase());
+    println!("📋 Target: [{}] | Profile: [{}]", command_type.to_uppercase(), profile.to_uppercase());
 
-    let mut cargo_args = vec!["build", "--workspace"];
-    if profile == "release" {
-        cargo_args.insert(1, "--release");
-    }
+    let mut commands_to_run = Vec::new();
 
-    // 1. Build entire workspace: cluaize.exe + cluaize_llama.dll + cluaize_onnx.dll
-    // NOTE: This is a unified workspace. All artifacts land in a single target/release/.
-    // There is NO separate target/ per crate. Do NOT add separate driver build steps.
-    println!("⚙️  Building entire Cluaize workspace (cluaize.exe + drivers)...");
-    let status = Command::new("cargo")
-        .args(&cargo_args)
-        .status()
-        .expect("Failed to execute cargo build --workspace");
-    
-    if !status.success() {
-        eprintln!("❌ Workspace build failed!");
-        std::process::exit(1);
-    }
+    match command_type.as_str() {
+        "all" => {
+            println!("⚙️  Building entire Cluaize workspace...");
+            let mut ws_cmd = vec!["build", "--workspace"];
+            if profile == "release" { ws_cmd.push("--release"); }
+            commands_to_run.push(("Workspace", ws_cmd));
 
-    // 4. Resolve Environments
-    println!("🔍 Resolving Environment Paths...");
-    
-    // Override EnvironmentManager logic based on 'mode' argument
-    if mode == "public" {
-        // Force the environment to Global (Installed) mode
-        let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        std::env::set_var("CLUAIZE_HOME", home_dir.join(".cluaize").to_str().unwrap());
-        // Remove CARGO var so EnvironmentManager doesn't get tricked into Dev mode
-        std::env::remove_var("CARGO"); 
-    } else {
-        // Dev Mode: Force local path
-        let current_dir = std::env::current_dir().unwrap();
-        std::env::set_var("CLUAIZE_HOME", current_dir.join(".cluaize").to_str().unwrap());
-    }
+            let mut llama_cmd = vec!["build", "--manifest-path", "interface-engines/llama/Cargo.toml"];
+            if profile == "release" { llama_cmd.push("--release"); }
+            commands_to_run.push(("Driver: Llama", llama_cmd));
 
-    let env = EnvironmentManager::current();
-    println!("   Active Deployment Mode: {:?}", env.mode);
-    println!("   Target Root Directory: {:?}", env.root_dir);
-
-    let kernel_dir = env.ensure_kernel_dir().expect("Failed to ensure kernel dir");
-    let drivers_dir = env.ensure_drivers_dir().expect("Failed to ensure drivers dir");
-    let bin_dir = env.root_dir.join("bin");
-    
-    if !bin_dir.exists() {
-        fs::create_dir_all(&bin_dir).expect("Failed to create bin dir");
-    }
-
-    // 5. Deploy Binaries
-    println!("🚚 Deploying Binaries...");
-    
-    let copy_file = |src: &Path, dest_dir: &Path| {
-        if !src.exists() {
-            eprintln!("   ⚠️ Missing artifact: {:?}", src);
-            return;
+            let mut onnx_cmd = vec!["build", "--manifest-path", "interface-engines/onnx/Cargo.toml"];
+            if profile == "release" { onnx_cmd.push("--release"); }
+            commands_to_run.push(("Driver: ONNX", onnx_cmd));
         }
-        let file_name = src.file_name().unwrap();
-        let dest = dest_dir.join(file_name);
-        fs::copy(src, &dest).unwrap_or_else(|e| {
-            panic!("Failed to copy {:?} to {:?}: {}", src, dest, e);
-        });
-        println!("   ✅ Copied {:?} -> {:?}", src.file_name().unwrap(), dest);
-    };
+        "core" => {
+            println!("⚙️  Building Core Engine & CLI...");
+            let mut cmd = vec!["build", "-p", "cmd", "-p", "engines"];
+            if profile == "release" { cmd.push("--release"); }
+            commands_to_run.push(("Core", cmd));
+        }
+        "drivers" => {
+            println!("⚙️  Building All Drivers...");
+            let mut llama_cmd = vec!["build", "--manifest-path", "interface-engines/llama/Cargo.toml"];
+            if profile == "release" { llama_cmd.push("--release"); }
+            commands_to_run.push(("Driver: Llama", llama_cmd));
 
-    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    let dll_ext = if cfg!(windows) { ".dll" } else if cfg!(target_os = "macos") { ".dylib" } else { ".so" };
-    let dll_prefix = if cfg!(windows) { "" } else { "lib" };
-
-    let current_dir = std::env::current_dir().unwrap();
-    // All artifacts from --workspace land in ONE unified target dir. No per-crate dirs.
-    let unified_target_dir = current_dir.join("target").join(&profile);
-
-    // ── Deployment Layout (traced from actual dependency chain) ──
-    //
-    // DEPENDENCY CHAIN (verified via Cargo.toml):
-    //   cmd/cluaize.exe → cluaize_api (rlib) → dispatcher (rlib) → llama (rlib)
-    //   ∴ dispatcher code is STATICALLY LINKED into cluaize.exe. No separate .dll needed.
-    //   ∴ dispatcher.dll in target/release/ is a side-effect of crate-type=["cdylib","rlib"].
-    //   ∴ No GitHub workflow exists for dispatcher. It is NOT a deployed artifact.
-    //
-    // What IS deployed as separate dynamic libraries:
-    //   cluaize_llama.dll — loaded by dispatcher code at runtime via libloading FFI
-    //   cluaize_onnx.dll  — loaded by EmbeddingDispatcher at runtime via libloading FFI
-    //   engines.dll       — core inference orchestrator (deployed via cluaize-engine.yml CI)
-    //
-    // dispatcher.rs expects files in: HardwareGovernor::resolve_interface_path()/kernels/
-    //   → engine/interfaces/kernels/
-    //   → filenames: "cluaize-llama.dll" (dash) + ".ready" marker
-
-    let cluaize_exe   = unified_target_dir.join(format!("cluaize{}", exe_ext));
-    let llama_dll_src = unified_target_dir.join(format!("{}cluaize_llama{}", dll_prefix, dll_ext));
-    let onnx_dll_src  = unified_target_dir.join(format!("{}cluaize_onnx{}", dll_prefix, dll_ext));
-    let engines_dll   = unified_target_dir.join(format!("{}engines{}", dll_prefix, dll_ext));
-
-    // Deploy: CLI binary (contains dispatcher statically) → bin/
-    copy_file(&cluaize_exe, &bin_dir);
-
-    // Deploy: Core engine orchestrator → engine/interfaces/kernels/
-    copy_file(&engines_dll, &kernel_dir);
-
-    // Deploy: LLaMA driver → kernels/ with BOTH names (underscore + dash) + .ready marker
-    // dispatcher.rs line 140 looks for "cluaize-llama.dll" (dash), build produces "cluaize_llama.dll"
-    if llama_dll_src.exists() {
-        let dash_name = format!("{}cluaize-llama{}", dll_prefix, dll_ext);
-        let dest_dash = kernel_dir.join(&dash_name);
-        let dest_us   = kernel_dir.join(format!("{}cluaize_llama{}", dll_prefix, dll_ext));
-        fs::copy(&llama_dll_src, &dest_dash).expect("Failed to copy cluaize-llama.dll");
-        fs::copy(&llama_dll_src, &dest_us).expect("Failed to copy cluaize_llama.dll");
-        // Write .ready marker that dispatcher strictly validates (lib.rs line 147-156)
-        fs::write(kernel_dir.join("cluaize-llama.ready"), b"ready").expect("Failed to write llama.ready");
-        println!("   \u{2705} Deployed cluaize-llama.dll + cluaize_llama.dll + .ready \u2192 {:?}", kernel_dir);
-    } else {
-        eprintln!("   \u{26a0}\u{fe0f} Missing artifact: {:?}", llama_dll_src);
+            let mut onnx_cmd = vec!["build", "--manifest-path", "interface-engines/onnx/Cargo.toml"];
+            if profile == "release" { onnx_cmd.push("--release"); }
+            commands_to_run.push(("Driver: ONNX", onnx_cmd));
+        }
+        "driver" => {
+            println!("⚙️  Building Specific Driver: {} ...", driver_name);
+            let manifest_path = format!("interface-engines/{}/Cargo.toml", driver_name);
+            // Verify path exists to avoid confusing errors
+            if !std::path::Path::new(&manifest_path).exists() {
+                eprintln!("❌ Error: Driver manifest not found at {}", manifest_path);
+                std::process::exit(1);
+            }
+            let manifest_path_static = Box::leak(manifest_path.into_boxed_str());
+            let mut cmd = vec!["build", "--manifest-path", manifest_path_static];
+            if profile == "release" { cmd.push("--release"); }
+            commands_to_run.push(("Driver", cmd));
+        }
+        _ => unreachable!(),
     }
 
-    // Deploy: ONNX driver → kernels/ with BOTH names + .ready marker
-    // dispatcher.rs line 292 looks for "cluaize-onnx.dll" (dash), build produces "cluaize_onnx.dll"
-    if onnx_dll_src.exists() {
-        let dash_name = format!("{}cluaize-onnx{}", dll_prefix, dll_ext);
-        let dest_dash = kernel_dir.join(&dash_name);
-        let dest_us   = kernel_dir.join(format!("{}cluaize_onnx{}", dll_prefix, dll_ext));
-        fs::copy(&onnx_dll_src, &dest_dash).expect("Failed to copy cluaize-onnx.dll");
-        fs::copy(&onnx_dll_src, &dest_us).expect("Failed to copy cluaize_onnx.dll");
-        // Write .ready marker that dispatcher strictly validates (lib.rs line 300-306)
-        fs::write(kernel_dir.join("cluaize-onnx.ready"), b"ready").expect("Failed to write onnx.ready");
-        println!("   \u{2705} Deployed cluaize-onnx.dll + cluaize_onnx.dll + .ready \u2192 {:?}", kernel_dir);
-    } else {
-        eprintln!("   \u{26a0}\u{fe0f} Missing artifact: {:?}", onnx_dll_src);
+    for (name, args) in commands_to_run {
+        println!("🚀 Executing [{}] -> cargo {}", name, args.join(" "));
+        let status = Command::new("cargo")
+            .args(&args)
+            .status()
+            .expect("Failed to execute cargo build");
+
+        if !status.success() {
+            eprintln!("❌ Build failed for target: {}", name);
+            std::process::exit(1);
+        }
     }
 
-    println!("\u{1f389} Cluaize Environment Successfully Deployed!");
+    // Since Bootstrapper inside cluaize.exe handles all the 1:1 artifact syncing
+    // (copying to ~/.cluaize/engine/ and renaming to dashed-names),
+    // we do NOT manually copy files here.
+    // JSON configs (Permission.json, system_control.json) are auto-generated
+    // by the engine natively upon first startup.
+    
+    println!("✅ Build Successful!");
+    println!("💡 Note: The Cluaize Bootstrapper will automatically sync these artifacts to your ~/.cluaize directory the next time you run 'cluaize'.");
 }

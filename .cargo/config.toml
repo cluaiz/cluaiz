@@ -2,4 +2,6 @@
 rustflags = ["-C", "link-arg=/OPT:NOREF"]
 
 [alias]
-build-all = "run --manifest-path tools/cluaize-builder/Cargo.toml --"
+build-all = "run --manifest-path tools/cluaize-builder/Cargo.toml -- all"
+build-core = "run --manifest-path tools/cluaize-builder/Cargo.toml -- core"
+build-drivers = "run --manifest-path tools/cluaize-builder/Cargo.toml -- drivers"

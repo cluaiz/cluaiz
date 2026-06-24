@@ -83,15 +83,19 @@ impl PermissionSchema {
     /// Loads the Permission.json from ~/.cluaize/engine/Permission.json
     /// If it doesn't exist, it creates a default one and returns it.
     pub fn load() -> Self {
-        let engine_dir = cluaize_shared::environment::EnvironmentManager::current().engine_dir();
-        let permission_path = engine_dir.join("Permission.json");
-        let permission_bin_path = engine_dir.join("Permission.bin");
+        let env_manager = cluaize_shared::environment::EnvironmentManager::current();
+        let config_dir = env_manager.config_dir();
+        let permission_path = config_dir.join("Permission.json");
+        let permission_bin_path = config_dir.join("Permission.bin");
+
+        // Ensure config dir exists
+        let _ = env_manager.ensure_config_dir();
 
         if !permission_path.exists() {
             warn!("⚠️ Permission.json not found at {:?}. Creating default.", permission_path);
             let default_schema = Self::default();
-            if let Err(e) = fs::create_dir_all(&engine_dir) {
-                warn!("Failed to create engine directory: {}", e);
+            if let Err(e) = fs::create_dir_all(&config_dir) {
+                warn!("Failed to create config directory: {}", e);
                 return default_schema;
             }
             if let Ok(json) = serde_json::to_string_pretty(&default_schema) {
@@ -171,12 +175,14 @@ impl PermissionSchema {
     }
 
     pub fn save(&self) {
-        let engine_dir = cluaize_shared::environment::EnvironmentManager::current().engine_dir();
-        let permission_path = engine_dir.join("Permission.json");
-        let permission_bin_path = engine_dir.join("Permission.bin");
+        let env_manager = cluaize_shared::environment::EnvironmentManager::current();
+        let config_dir = env_manager.config_dir();
+        let permission_path = config_dir.join("Permission.json");
+        let permission_bin_path = config_dir.join("Permission.bin");
 
-        if let Err(e) = fs::create_dir_all(&engine_dir) {
-            warn!("Failed to create engine directory for saving Permission.json: {}", e);
+        let _ = env_manager.ensure_config_dir();
+        if let Err(e) = fs::create_dir_all(&config_dir) {
+            warn!("Failed to create config directory for saving Permission.json: {}", e);
             return;
         }
 

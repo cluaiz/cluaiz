@@ -14,4 +14,3 @@
 
 pub mod profile;
 pub mod auth;
-pub mod onboarding;

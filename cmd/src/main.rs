@@ -119,6 +119,16 @@ enum CliCommand {
     /// Test JIT KV Cache compilation and memory footprint
     TestJit,
 
+    /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaize manually
+    DevSync {
+        /// Target to sync (all, core, driver)
+        #[arg(default_value = "all")]
+        target: String,
+
+        /// Specific driver name if target is 'driver' (e.g., llama, onnx)
+        driver_name: Option<String>,
+    },
+
     /// Manage the Cluaizd Brain Connection
     Brain {
         #[command(subcommand)]
@@ -360,6 +370,14 @@ async fn main() -> Result<()> {
                 eprintln!("\n  {} [Cluaiz] Process Status Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
+        }
+        Some(CliCommand::DevSync { target, driver_name }) => {
+            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to ~/.cluaize...", target);
+            if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
+                let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
+            }
+            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref())?;
+            println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
             let port: u16 = std::env::var("CLUAIZE_PORT")
