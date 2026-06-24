@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 
 fn resolve_active_model_path() -> Option<PathBuf> {
     let hub_path = cluaize_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
-    let perm_path = hub_path.join("engine").join("Permission.json");
+    let perm_path = hub_path.join("engine").join("config").join("Permission.json");
     let perm_str = std::fs::read_to_string(perm_path).ok()?;
     let perm_json: serde_json::Value = serde_json::from_str(&perm_str).ok()?;
     let active_id = perm_json
