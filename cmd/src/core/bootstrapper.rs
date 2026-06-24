@@ -90,7 +90,11 @@ impl Bootstrapper {
             let manifest_url = engine_info["manifest_url"].as_str().ok_or_else(|| eyre!("Engine Manifest URL missing."))?;
             
             match async {
-                let engine_manifest: serde_json::Value = client.get(manifest_url).send().await?.json().await?;
+                let res = client.get(manifest_url).send().await?;
+                if !res.status().is_success() {
+                    return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
+                }
+                let engine_manifest: serde_json::Value = res.json().await?;
                 Self::download_engine_with_manifest(&engine_path, &engine_manifest).await?;
                 std::fs::write(&engine_marker, manifest_version)?;
                 Ok::<(), color_eyre::Report>(())
@@ -159,7 +163,11 @@ impl Bootstrapper {
             let manifest_url = kernel_info["manifest_url"].as_str().ok_or_else(|| eyre!("Kernel Manifest URL missing."))?;
             
             match async {
-                let manifest: serde_json::Value = client.get(manifest_url).send().await?.json().await?;
+                let res = client.get(manifest_url).send().await?;
+                if !res.status().is_success() {
+                    return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
+                }
+                let manifest: serde_json::Value = res.json().await?;
 
                 let mut spec_key = platform.to_string();
                 if platform == "win-x64" || platform == "linux-x64" {

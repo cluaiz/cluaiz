@@ -144,16 +144,27 @@ impl EnvironmentManager {
         
         // GAP C FIX: Legacy Config Migration Block
         let engine_dir = self.engine_dir();
-        let legacy_files = vec!["Permission.json", "system_control.json", "system_control.bin"];
+        let legacy_files = vec![
+            "Permission.json", "Permission.bin", 
+            "system_control.json", "system_control.bin",
+            "package.json", "package.bin"
+        ];
+        
         for file in legacy_files {
             let legacy_path = engine_dir.join(file);
             let new_path = dir.join(file);
-            if legacy_path.exists() && !new_path.exists() {
-                if let Err(e) = std::fs::copy(&legacy_path, &new_path) {
-                    tracing::warn!("⚠️ Failed to migrate legacy config {}: {}", file, e);
+            if legacy_path.exists() {
+                if !new_path.exists() {
+                    if let Err(e) = std::fs::copy(&legacy_path, &new_path) {
+                        tracing::warn!("⚠️ Failed to migrate legacy config {}: {}", file, e);
+                    } else {
+                        let _ = std::fs::remove_file(&legacy_path);
+                        tracing::info!("✅ Migrated legacy config {} to {:?}", file, new_path);
+                    }
                 } else {
+                    // New path already exists, just clean up the legacy zombie file
                     let _ = std::fs::remove_file(&legacy_path);
-                    tracing::info!("✅ Migrated legacy config {} to {:?}", file, new_path);
+                    tracing::info!("🧹 Cleaned up legacy zombie config {}", file);
                 }
             }
         }
