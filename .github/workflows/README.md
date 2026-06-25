@@ -1,4 +1,4 @@
-# 🏛️ CLUAIZE-OS: CI/CD & RELEASE ARCHITECTURE
+# 🏛️ CLUAIZE: CI/CD & RELEASE ARCHITECTURE
 
 This document serves as the **Single Source of Truth** for the Cluaize Neural Ecosystem's CI/CD pipeline and release architecture. It defines the automated workflows, security protocols, and deployment laws that govern this repository.
 
@@ -8,7 +8,7 @@ This document serves as the **Single Source of Truth** for the Cluaize Neural Ec
 
 ## 🧬 1. MODULAR ARCHITECTURE (THE NEURAL STACK)
 
-The ecosystem is divided into four sovereign, decoupled layers. They are built independently but distributed together.
+The ecosystem is divided into four sovereign, decoupled layers. They are built separately but distributed together.
 
 | Layer | Component | Responsibility |
 | :--- | :--- | :--- |
@@ -24,7 +24,7 @@ The ecosystem is divided into four sovereign, decoupled layers. They are built i
 We have abandoned fragmented, per-component releases (e.g., `cli-v1`, `kernel-v1`) in favor of a **Unified, Professional Release Architecture**. The pipeline operates in two distinct phases to ensure maximum stability and security.
 
 ### Phase 1: Parallel Matrix Compilation
-When a new tag (e.g., `v1.2.0`) is pushed, 5 independent workflows trigger simultaneously:
+When a new tag (e.g., `v1.2.0`) is pushed, 5 separate workflows trigger simultaneously:
 1. `cluaize-cmd.yml` (Builds Windows/Linux/macOS CLI bundles)
 2. `cluaize-engine.yml` (Builds the core orchestrators)
 3. `cluaize-kernel-llama.yml` & `cluaize-kernel-onnx.yml` (Builds CPU instructions: AVX512, AVX2, NEON)
