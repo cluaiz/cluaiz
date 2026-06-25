@@ -18,23 +18,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download Release Assets
+      - name: Download Build Artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p artifacts
-          # Download all assets from the target release
-          gh release download ${{ github.event.inputs.tag_name }} -D artifacts || true
+          # Download all artifacts from the workflow runs associated with the tag's commit
+          COMMIT_SHA=$(git rev-list -n 1 ${{ github.event.inputs.tag_name }})
+          gh run download -c $COMMIT_SHA --dir artifacts || true
 
       - name: Run Secure Registry Builder
         run: |
           python3 .github/scripts/secure_registry_builder.py "${{ github.event.inputs.tag_name }}" "${{ github.repository }}"
 
-      - name: 🚀 Upload Registry to Release
+      - name: 🚀 Upload Registry and Binaries to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: cluaize-registry.json
+          files: |
+            cluaize-registry.json
+            artifacts/**/*
           tag_name: ${{ github.event.inputs.tag_name }}
+          name: "Cluaize Release ${{ github.event.inputs.tag_name }}"
           append_body: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
