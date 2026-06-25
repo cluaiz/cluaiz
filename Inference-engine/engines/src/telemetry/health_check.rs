@@ -6,7 +6,7 @@ pub struct CluaizeHealthChecker;
 impl CluaizeHealthChecker {
     /// Conducts a macro-benchmark of the entire system on first boot
     pub fn execute_initial_diagnostic(mut profile: SiliconTruth) -> SiliconTruth {
-        println!("🩺 [Cluaize Health] Initiating Deep Profiling Sequence...");
+        cluaize_shared::dev_info!("🩺 [Cluaize Health] Initiating Deep Profiling Sequence...");
 
         // 1. RAM Profiling via sysinfo (Lightweight)
         let mut sys = System::new();
@@ -15,7 +15,7 @@ impl CluaizeHealthChecker {
         
         profile.memory.total_capacity_gb = total_ram_gb;
         
-        println!("📊 [Memory] Total: {:.1} GB Detected.", total_ram_gb);
+        cluaize_shared::dev_info!("📊 [Memory] Total: {:.1} GB Detected.", total_ram_gb);
 
         // 2. Storage Profiling (Lightweight Metadata Read)
         let storage_speed = Self::estimate_disk_io();
@@ -31,7 +31,7 @@ impl CluaizeHealthChecker {
             ..Default::default()
         }];
 
-        println!("💾 [Storage] Speed Estimate: {:.1} MB/s | Type: {}", 
+        cluaize_shared::dev_info!("💾 [Storage] Speed Estimate: {:.1} MB/s | Type: {}", 
                  storage_speed, if is_nvme { "NVMe (Optimal)" } else { "SATA SSD" });
 
         profile
@@ -64,7 +64,7 @@ impl CluaizeHealthChecker {
 
     /// Runs a deep manual benchmark consisting of a 50MB disk I/O write/read test
     pub fn run_full_benchmark() {
-        println!("🚀 [Cluaize Benchmark] Initiating Deep Hardware Diagnostics...");
+        cluaize_shared::dev_info!("🚀 [Cluaize Benchmark] Initiating Deep Hardware Diagnostics...");
         let start = std::time::Instant::now();
         
         let path = cluaize_shared::environment::EnvironmentManager::current()
@@ -88,7 +88,7 @@ impl CluaizeHealthChecker {
         
         let _ = std::fs::remove_file(&path);
         
-        println!("✅ [Cluaize Benchmark] Storage Speed: {:.1} MB/s", speed_mbps);
-        println!("✅ [Cluaize Benchmark] Complete in {:.2}s", duration.as_secs_f64());
+        cluaize_shared::dev_info!("✅ [Cluaize Benchmark] Storage Speed: {:.1} MB/s", speed_mbps);
+        cluaize_shared::dev_info!("✅ [Cluaize Benchmark] Complete in {:.2}s", duration.as_secs_f64());
     }
 }

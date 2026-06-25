@@ -19,12 +19,12 @@ impl SkillScanner {
     pub fn scan_manifests(&self) -> Vec<PathBuf> {
         let mut manifests = Vec::new();
         if !self.base_path.exists() {
-            println!("[Cluaize] [WARN] Skills directory not found: {:?}", self.base_path);
+            cluaize_shared::dev_info!("[Cluaize] [WARN] Skills directory not found: {:?}", self.base_path);
             return manifests;
         }
 
         self.walk_dir(&self.base_path, &mut manifests);
-        println!("[Cluaize] Found {} skill manifests.", manifests.len());
+        cluaize_shared::dev_info!("[Cluaize] Found {} skill manifests.", manifests.len());
         manifests
     }
 

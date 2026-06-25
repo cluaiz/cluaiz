@@ -28,9 +28,9 @@ impl SovereignMapper {
         let is_ssd = self.silicon.storage.iter().any(|s| s.drive_type.to_lowercase().contains("ssd"));
         
         if !is_ssd {
-            println!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
+            cluaize_shared::dev_info!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
         } else {
-            println!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
+            cluaize_shared::dev_info!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
         }
 
         Ok(buffer)
@@ -80,6 +80,6 @@ impl KVSteering {
         let ptr = buffer.as_ptr();
         let len = buffer.len();
         
-        println!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
+        cluaize_shared::dev_info!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
     }
 }

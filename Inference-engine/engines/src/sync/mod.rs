@@ -60,7 +60,7 @@ impl CluaizeSync {
                 if let Ok((size, addr)) = socket.recv_from(&mut buf) {
                     let msg = String::from_utf8_lossy(&buf[..size]);
                     if let Ok(peer) = serde_json::from_str::<DeviceIdentity>(&msg) {
-                        println!("🛰️ [P2P] Peer Found: {} at {} ({})", peer.machine_name, addr, peer.device_id);
+                        cluaize_shared::dev_info!("🛰️ [P2P] Peer Found: {} at {} ({})", peer.machine_name, addr, peer.device_id);
                         // Future: Add to peer registry and start handshake
                     }
                 }

@@ -127,6 +127,10 @@ enum CliCommand {
 
         /// Specific driver name if target is 'driver' (e.g., llama, onnx)
         driver_name: Option<String>,
+
+        /// Profile to sync (debug or release). Defaults to release.
+        #[arg(long, default_value = "release")]
+        profile: String,
     },
 
     /// Manage the Cluaizd Brain Connection
@@ -372,13 +376,13 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
-        Some(CliCommand::DevSync { target, driver_name }) => {
+        Some(CliCommand::DevSync { target, driver_name, profile }) => {
             let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
             if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
             }
-            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone())?;
+            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
             
             // 🚀 Force base configuration into the Global Directory so the user doesn't have an empty config!
             std::env::set_var("CLUAIZE_HOME", global_dir.to_string_lossy().to_string());

@@ -103,7 +103,7 @@ impl StructuralDNA {
 
     /// 🧬 Neural Discovery: Learns model behavior and cross-references with Hardware Truth.
     pub fn discover_from_path(&mut self, model_dir: &std::path::Path) -> anyhow::Result<()> {
-        println!(
+        crate::dev_info!(
             "🧬 [DNA] Discovery Heartbeat: Investigating -> {:?}",
             model_dir
         );
@@ -263,7 +263,11 @@ impl StructuralDNA {
                             self.reliable_think_close = false;
                         }
                         
-                        println!("🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})", self.think_tag_schema, self.think_end_schema);
+                        crate::dev_info!(
+                            "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
+                            self.think_tag_schema,
+                            self.think_end_schema
+                        );
                     }
                 }
 

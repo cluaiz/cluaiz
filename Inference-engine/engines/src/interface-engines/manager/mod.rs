@@ -44,7 +44,7 @@ impl EngineManager {
         let gpu_vendor = control.silicon_truth.accelerators.gpus.first().map(|g| g.vendor.to_lowercase());
         let has_drivers = !control.silicon_truth.active_drivers.is_empty();
 
-        println!("🎯 Engine Prep: OS={}, Arch={}, GPU={:?}, Drivers={}", os, arch, gpu_vendor, has_drivers);
+        cluaize_shared::dev_info!("🎯 Engine Prep: OS={}, Arch={}, GPU={:?}, Drivers={}", os, arch, gpu_vendor, has_drivers);
 
         // 🧠 Mission 12: Chronicle Core Activity
         // Temporarily commented out due to missing CoreGraph in cluaize_shared
@@ -58,13 +58,13 @@ impl EngineManager {
         let registry = cluaize_shared::RegistryGovernor::load_registry().unwrap_or_default();
         let suffix = cluaize_shared::RegistryGovernor::resolve_backend(&control, &registry);
         
-        println!("🎯 Engine Prep: OS={}, Arch={}, Backend={}", os, arch, suffix);
+        cluaize_shared::dev_info!("🎯 Engine Prep: OS={}, Arch={}, Backend={}", os, arch, suffix);
 
         // 🚀 NATIVE PROVISIONING: Ensure silicon drivers exist before linkage
         if suffix != "cpu" {
             let manifest_url = registry["components"]["drivers"]["manifest_url"].as_str().unwrap_or_default();
             if let Err(e) = DriverProvisioner::provision_for_hardware(&suffix, manifest_url).await {
-                println!("  {} [PROVISIONER] Silicon Handshake Error: {}", "⚠️".yellow(), e);
+                cluaize_shared::dev_info!("  {} [PROVISIONER] Silicon Handshake Error: {}", "⚠️".yellow(), e);
             }
         }
 
@@ -98,7 +98,7 @@ impl EngineManager {
         } else {
             // 🚀 ATOMIC PROVISIONING: Attempt to download specialized kernel from registry
             if target_suffix != "cpu" {
-                println!("  {} [LINKER] Specialized Kernel '{}' missing. Initiating Sovereign Provisioning...", "🧬".cyan(), target_binary_id);
+                cluaize_shared::dev_info!("  {} [LINKER] Specialized Kernel '{}' missing. Initiating Sovereign Provisioning...", "🧬".cyan(), target_binary_id);
                 match DriverProvisioner::provision_kernel(engine_type, target_suffix, registry_engines_url).await {
                     Ok(path) => path,
                     Err(e) => {
@@ -131,7 +131,7 @@ impl EngineManager {
 
     /// 🔗 Cluaize Linker: Maps the binary kernel to process memory and resolves symbols.
     pub fn load_and_link(&mut self, binary_path: PathBuf) -> anyhow::Result<()> {
-        println!("🧬 [Linker] Mapping binary: {:?}", binary_path);
+        cluaize_shared::dev_info!("🧬 [Linker] Mapping binary: {:?}", binary_path);
         tracing::info!("🧬 [Linker] Mapping binary: {:?}", binary_path);
         
         // 🪟 WINDOWS SEARCH PATCH: Add drivers directory to DLL search path

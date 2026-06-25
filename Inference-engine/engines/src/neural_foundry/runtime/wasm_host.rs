@@ -167,7 +167,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_Core_pulse_generation() {
-        println!("🚀 Testing Cluaize Core Pulse...");
+        cluaize_shared::dev_info!("🚀 Testing Cluaize Core Pulse...");
         // let activity = "Foundry Simulation Pulse";
         // let skill_id = "test_skill_v1";
         
@@ -178,6 +178,6 @@ mod tests {
         // );
 
         // assert!(result.is_ok(), "Core Graph should be writable");
-        // println!("✅ Pulse Chronicled in thing.ai.nurale.md");
+        // cluaize_shared::dev_info!("✅ Pulse Chronicled in thing.ai.nurale.md");
     }
 }

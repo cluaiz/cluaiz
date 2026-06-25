@@ -1,6 +1,15 @@
 //! archer-shared: Common traits and types for the  Engine ecosystem.
 #![allow(warnings)]
 
+#[macro_export]
+macro_rules! dev_info {
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        println!($($arg)*);
+    };
+}
+
+
 pub struct CluaizDNA;
 
 use std::sync::atomic::{AtomicBool, Ordering};

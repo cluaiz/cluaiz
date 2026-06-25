@@ -11,7 +11,8 @@ impl Bootstrapper {
     /// 🚀 Cluaize BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite(is_dev_sync: bool) -> Result<()> {
         let local_dir = cluaize_shared::environment::EnvironmentManager::current().local_dir;
-        let _ = Self::sync_dev_artifacts("all", None, local_dir);
+        let profile = if cfg!(debug_assertions) { "debug" } else { "release" };
+        let _ = Self::sync_dev_artifacts("all", None, local_dir, profile);
         Self::ensure_global_path();
         
         // 🚀 0. Neural Foundry Genesis (Create Permission.json and Trigger Compiler Daemons)
@@ -223,7 +224,7 @@ impl Bootstrapper {
 
     /// 🛠️ Artifact Sync: Synchronizes local build artifacts to .cluaize.
     /// This ensures cargo run or the first boot always uses the latest compiled binaries.
-    pub fn sync_dev_artifacts(target: &str, driver_name: Option<&str>, hub_path: PathBuf) -> Result<()> {
+    pub fn sync_dev_artifacts(target: &str, driver_name: Option<&str>, hub_path: PathBuf, profile: &str) -> Result<()> {
         let root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         
         let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
@@ -265,18 +266,14 @@ impl Bootstrapper {
                 format!("lib{}.{}", base_name, ext), // For linux/mac
             ];
             
+            let target_dir = if profile == "release" { &release_dir } else { &debug_dir };
+            let is_release = profile == "release";
+            
             for name in &names {
-                // Check Release
-                let p = release_dir.join(name);
-                if p.exists() { return Some((p, true)); }
-                let p = release_dir.join("deps").join(name);
-                if p.exists() { return Some((p, true)); }
-                
-                // Check Debug
-                let p = debug_dir.join(name);
-                if p.exists() { return Some((p, false)); }
-                let p = debug_dir.join("deps").join(name);
-                if p.exists() { return Some((p, false)); }
+                let p = target_dir.join(name);
+                if p.exists() { return Some((p, is_release)); }
+                let p = target_dir.join("deps").join(name);
+                if p.exists() { return Some((p, is_release)); }
             }
             None
         };
@@ -354,10 +351,8 @@ impl Bootstrapper {
         // 3. CLI Executable Sync (cluaize.exe -> bin/cluaize.exe)
         if target == "all" || target == "core" {
             let exe_name = if cfg!(windows) { "cluaize.exe" } else { "cluaize" };
-            let mut exe_src = release_dir.join(exe_name);
-            if !exe_src.exists() {
-                exe_src = debug_dir.join(exe_name);
-            }
+            let target_dir = if profile == "release" { &release_dir } else { &debug_dir };
+            let exe_src = target_dir.join(exe_name);
             let bin_dir = hub_path.join("bin");
             let _ = std::fs::create_dir_all(&bin_dir);
             let exe_dest = bin_dir.join(exe_name);

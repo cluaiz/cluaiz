@@ -2,13 +2,13 @@
 
 This document serves as the **Single Source of Truth** for the Cluaize Neural Ecosystem's CI/CD pipeline and release architecture. It defines the automated workflows, security protocols, and deployment laws that govern this repository.
 
-> **AI Agent & Developer Notice:** Before modifying any workflow or release script, read this document thoroughly. The architecture is heavily decoupled and relies on a specific sequence to achieve Zero-Trust Security and seamless cross-platform deployments.
+> **Note:** Before modifying any workflow or release script, read this document thoroughly. The architecture is heavily decoupled and relies on a specific sequence to achieve Zero-Trust Security and seamless cross-platform deployments.
 
 ---
 
 ## 🧬 1. MODULAR ARCHITECTURE (THE NEURAL STACK)
 
-The ecosystem is divided into four sovereign, decoupled layers. They are built separately but distributed together.
+The ecosystem is divided into four decoupled layers. They are built separately but distributed together.
 
 | Layer | Component | Responsibility |
 | :--- | :--- | :--- |
@@ -75,4 +75,4 @@ To maintain professional, OpenClaw-style Release Notes without manual overhead, 
 2. **Standard over Ad-hoc**: Every fix must be architectural. Do not create inline quick-fixes.
 3. **Decoupled by Design**: Workflows must never wait on each other. Phase 1 is purely for compilation; Phase 2 is purely for aggregation and security.
 
-**This is the Cluaize Standard. Professional. Optimized. Sovereign.**
+**This is the Cluaize Standard. Professional and Optimized.**

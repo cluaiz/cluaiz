@@ -78,7 +78,8 @@ impl DashboardEngine {
             match boot_target {
                 Some((ref name, Some(ref path_str))) => {
                     // ✅ Model is on disk with a known path — load it directly
-                    println!("\n  {} Auto-Booting Neural Kernel: {}...", "🚀".magenta(), name.bold());
+                    let mut spinner = cluaize_shared::utils::spinner::CluaizeSpinner::new();
+                    spinner.start(&format!("Auto-Booting Neural Kernel: {}...", name));
                     let path = std::path::PathBuf::from(path_str);
                     tokio::task::block_in_place(|| {
                         let handle = tokio::runtime::Handle::current();
@@ -88,9 +89,13 @@ impl DashboardEngine {
                                 let mut lock = state.Core_engine.router.blocking_lock();
                                 *lock = router;
                                 state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
+                                spinner.stop(None);
                                 println!("  {} {} loaded and ready.", "✅".green(), name.bold());
                             }
-                            Err(e) => println!("  {} Auto-Boot failed: {}", "❌".red(), e),
+                            Err(e) => {
+                                spinner.stop(None);
+                                println!("  {} Auto-Boot failed: {}", "❌".red(), e);
+                            }
                         }
                     });
                 }
@@ -1068,75 +1073,77 @@ impl DashboardEngine {
 
             println!("  {} Loading {}, please wait a moment...", "⏳".yellow(), model.manifest.name.bold());
 
-            if let Some(path_str) = &model.manifest.local_path {
-                let path = std::path::PathBuf::from(path_str);
+            let is_vector = master_ans.contains("Vector");
+            
+            if is_vector {
+                // For vector models, just update Permission.json, DO NOT load them into CoreRouter!
+                engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.manifest.id.clone());
+                println!("  {} Vector Model switched successfully. (Saved to Permission.json)", "✅".green());
+            } else {
+                if let Some(path_str) = &model.manifest.local_path {
+                    let path = std::path::PathBuf::from(path_str);
 
-                // 🧬 Cluaize DISPATCH:
-                // High bit-depth -> Native Rust
-                // 1-bit BitNet -> MANDATORY Llama (Binary)
-                let runtime = if model.manifest.bit_depth < 2.0 {
-                    cluaize_shared::BackendType::RuntimeB
-                } else {
-                    cluaize_shared::BackendType::RuntimeA
-                };
+                    // 🧬 Cluaize DISPATCH:
+                    // High bit-depth -> Native Rust
+                    // 1-bit BitNet -> MANDATORY Llama (Binary)
+                    let runtime = if model.manifest.bit_depth < 2.0 {
+                        cluaize_shared::BackendType::RuntimeB
+                    } else {
+                        cluaize_shared::BackendType::RuntimeA
+                    };
 
-                let result = tokio::task::block_in_place(|| {
-                    let handle = tokio::runtime::Handle::current();
-                    
-                    // 🛑 SURGICAL FIX: Destroy old router to free VRAM BEFORE loading new model!
-                    {
-                        let mut lock = state.Core_engine.router.blocking_lock();
-                        *lock = engines::CoreRouter::new();
-                    }
-                    state.Core_engine.is_loaded.store(false, std::sync::atomic::Ordering::SeqCst);
-                    
-                    match handle.block_on(engines::CoreRouter::load_model(
-                        path,
-                        runtime.clone(),
-                    )) {
-                        Ok(router) => {
+                    let result = tokio::task::block_in_place(|| {
+                        let handle = tokio::runtime::Handle::current();
+                        
+                        // 🛑 SURGICAL FIX: Destroy old router to free VRAM BEFORE loading new model!
+                        {
                             let mut lock = state.Core_engine.router.blocking_lock();
-                            *lock = router;
-                            state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
-                            Ok(())
+                            *lock = engines::CoreRouter::new();
                         }
-                        Err(e) => {
-                            // ⚠️ NATIVE FALLBACK: Only for standard models (Bit-depth >= 2.0)!
-                            // BitNet MUST NOT use RuntimeA (Candle) as it will crash with tensor errors.
-                            if runtime == cluaize_shared::BackendType::RuntimeB
-                                && model.manifest.bit_depth >= 2.0
-                            {
-                                let path_inner = std::path::PathBuf::from(path_str);
-                                handle
-                                    .block_on(engines::CoreRouter::load_model(
-                                        path_inner,
-                                        cluaize_shared::BackendType::RuntimeA
-                                    ))
-                                    .map(|router| {
-                                        let mut lock = state.Core_engine.router.blocking_lock();
-                                        *lock = router;
-                                        state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
-                                    })
-                            } else {
-                                Err(e)
+                        state.Core_engine.is_loaded.store(false, std::sync::atomic::Ordering::SeqCst);
+                        
+                        match handle.block_on(engines::CoreRouter::load_model(
+                            path,
+                            runtime.clone(),
+                        )) {
+                            Ok(router) => {
+                                let mut lock = state.Core_engine.router.blocking_lock();
+                                *lock = router;
+                                state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
+                                Ok(())
+                            }
+                            Err(e) => {
+                                // ⚠️ NATIVE FALLBACK: Only for standard models (Bit-depth >= 2.0)!
+                                // BitNet MUST NOT use RuntimeA (Candle) as it will crash with tensor errors.
+                                if runtime == cluaize_shared::BackendType::RuntimeB
+                                    && model.manifest.bit_depth >= 2.0
+                                {
+                                    let path_inner = std::path::PathBuf::from(path_str);
+                                    handle
+                                        .block_on(engines::CoreRouter::load_model(
+                                            path_inner,
+                                            cluaize_shared::BackendType::RuntimeA
+                                        ))
+                                        .map(|router| {
+                                            let mut lock = state.Core_engine.router.blocking_lock();
+                                            *lock = router;
+                                            state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
+                                        })
+                                } else {
+                                    Err(e)
+                                }
                             }
                         }
-                    }
-                });
+                    });
 
-                match result {
-                    Ok(_) => {
-                        let is_vector = master_ans.contains("Vector");
-                        if is_vector {
-                            engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.manifest.id.clone());
-                            println!("  {} Vector Model switched successfully. (Saved to Permission.json)", "✅".green());
-                        } else {
+                    match result {
+                        Ok(_) => {
                             state._active_model_id = Some(model.manifest.id.clone());
                             engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model.manifest.id.clone());
                             println!("  {} Mounted successfully. (Saved to Permission.json)", "✅".green());
                         }
+                        Err(e) => println!("  {} Load failed: {}", "❌".red(), e),
                     }
-                    Err(e) => println!("  {} Load failed: {}", "❌".red(), e),
                 }
             }
             state

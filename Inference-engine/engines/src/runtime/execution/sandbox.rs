@@ -25,7 +25,7 @@ impl CluaizeSandbox {
             .spawn()?;
 
         let pid = child.id();
-        println!("🛡️ [Sandbox] Kernel Spawned in Isolate: PID={}", pid);
+        cluaize_shared::dev_info!("🛡️ [Sandbox] Kernel Spawned in Isolate: PID={}", pid);
 
         Ok(Self {
             process_id: pid,
@@ -37,7 +37,7 @@ impl CluaizeSandbox {
     pub fn kill(&mut self) -> anyhow::Result<()> {
         if let Some(mut child) = self.child.take() {
             child.kill()?;
-            println!("🛑 [Sandbox] Isolate PID={} terminated safely.", self.process_id);
+            cluaize_shared::dev_info!("🛑 [Sandbox] Isolate PID={} terminated safely.", self.process_id);
         }
         Ok(())
     }

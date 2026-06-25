@@ -51,7 +51,7 @@ impl PermissionGuard {
         self.audit_log.lock().unwrap().push(entry);
 
         if (skill_level as u8) < (requested_level as u8) {
-            println!("🚨 [SECURITY ALERT] Unauthorized Access Attempt by skill '{}'!", manifest.id);
+            cluaize_shared::dev_info!("🚨 [SECURITY ALERT] Unauthorized Access Attempt by skill '{}'!", manifest.id);
             return Err(anyhow!("Security Violation: Permission Denied for skill '{}'", manifest.id));
         }
 

@@ -162,8 +162,8 @@ impl RuntimeB {
         if is_ssm_model {
             // 🚨 For hybrid/recurrent models (Qwen3.5 GDN, Mamba, RWKV):
             // Speculative decoding is incompatible with non-transformer architectures.
-            eprintln!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
-            eprintln!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
+            cluaize_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
+            cluaize_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
             self.booster.speculative_decoding = "off".to_string();
             // Note: We DO NOT force context_shifting off here anymore, as it breaks continuous generation.
             // We let system_booster.json decide the context_shifting mode.
@@ -178,7 +178,7 @@ impl RuntimeB {
         } else {
             "off"
         };
-        eprintln!(
+        cluaize_shared::dev_info!(
             "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (booster: {})",
             speculative_mode, self.booster.speculative_decoding
         );

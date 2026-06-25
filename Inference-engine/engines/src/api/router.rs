@@ -134,7 +134,7 @@ impl Drop for CompilationGuard {
     fn drop(&mut self) {
         if let Ok(mut locks) = COMPILATION_LOCKS.write() {
             locks.remove(&self.path);
-            println!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
+            cluaize_shared::dev_info!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
         }
     }
 }
@@ -183,7 +183,7 @@ impl CoreRouter {
                 if let Ok(content) = std::fs::read_to_string(&dna_path) {
                     if let Ok(loaded_dna) = serde_json::from_str::<StructuralDNA>(&content) {
                         dna = loaded_dna;
-                        println!("🧬 [Router] Neural DNA synchronized from local manifest.");
+                        cluaize_shared::dev_info!("🧬 [Router] Neural DNA synchronized from local manifest.");
                     }
                 }
             }
@@ -199,7 +199,7 @@ impl CoreRouter {
         );
 
         // 🚀 THE Cluaize HANDSHAKE: Dispatching to the Dynamic Linker
-        println!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage...");
+        cluaize_shared::dev_info!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage...");
         let engine = HardwareOrchestrator::instantiate(&path.to_string_lossy(), "llama", context)
             .await
             .map_err(|e| format!("Cluaize Handshake Failure: {}", e))?;
@@ -245,7 +245,7 @@ impl CoreRouter {
                 let has_vector = skill_router.skill_vectors.contains_key(&norm_skill_path);
 
                 if !has_vector || !emb_path.exists() {
-                    println!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
+                    cluaize_shared::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
                     let mut combined_vec = Vec::new();
                     
                     if skill_manifest.triggers.semantic.is_empty() {
@@ -398,12 +398,12 @@ impl CoreRouter {
             };
 
             if is_compiling {
-                println!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
+                cluaize_shared::dev_info!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
                 continue;
             }
 
             if skill_tokens_est > available_ctx {
-                println!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
+                cluaize_shared::dev_info!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
                 
                 // Extract skill id for telemetry before the closure moves cache_path
                 let skill_id_for_decision = cache_path
@@ -434,7 +434,7 @@ impl CoreRouter {
                                 temp_dna.max_context_length = Some(expanded_ctx);
                                 let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
                                 
-                                println!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
+                                cluaize_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
                                 let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                                 booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
                                 
@@ -444,7 +444,7 @@ impl CoreRouter {
                                     ctx,
                                     Some(booster)
                                 ).await {
-                                    println!("⚙️ [Arbiter] Background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
+                                    cluaize_shared::dev_info!("⚙️ [Arbiter] Background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
                                     if bg_engine.prefill(&skill_content_clone).is_ok() {
                                         let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
                                         return true;
@@ -462,22 +462,22 @@ impl CoreRouter {
                     });
                     
                     if background_success {
-                        println!("✅ [Agentic Pause] Dual-Cache `.kvcache.bin` safely generated to SSD.");
+                        cluaize_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.bin` safely generated to SSD.");
                         // Only attempt KV load if the cache was saved at a size the main engine can handle.
                         // The background engine used expanded_ctx tokens, but main engine has hardware_n_ctx.
                         if expanded_ctx <= self.hardware_n_ctx {
-                            println!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
+                            cluaize_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
                             if let Err(e) = self.active_backend.load_kv_cache(&cache_path.to_string_lossy()) {
-                                println!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
+                                cluaize_shared::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
                                 // 🛡️ Force full memory reset to prevent hybrid SSM/KV state corruption
                                 let _ = self.active_backend.prefill("");
                             }
                         } else {
-                            println!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
+                            cluaize_shared::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
                                 expanded_ctx, self.hardware_n_ctx);
                         }
                     } else {
-                        println!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
+                        cluaize_shared::dev_info!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
                     }
                 }
             } else {
@@ -496,7 +496,7 @@ impl CoreRouter {
                 // Reserve 512 tokens for prompt + generation headroom.
                 let injection_char_cap = self.hardware_n_ctx.saturating_sub(512) * 3;
                 let safe_skill_content = if skill_content.len() > injection_char_cap && injection_char_cap > 0 {
-                    println!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
+                    cluaize_shared::dev_info!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
                         skill_content.len(), injection_char_cap);
                     skill_content[..injection_char_cap].to_string()
                 } else {
@@ -522,7 +522,7 @@ impl CoreRouter {
                         temp_dna.max_context_length = Some(expanded_ctx);
                         let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
                         
-                        println!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
+                        cluaize_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
                         let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                         booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
                         
@@ -532,10 +532,10 @@ impl CoreRouter {
                             ctx,
                             Some(booster)
                         ).await {
-                            println!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
+                            cluaize_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
                             if bg_engine.prefill(&skill_content_clone).is_ok() {
                                 let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
-                                println!("✅ [Arbiter] Async background KV cache compiled and dumped successfully.");
+                                cluaize_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and dumped successfully.");
                             }
                         }
                     });
@@ -557,17 +557,17 @@ impl CoreRouter {
                             .map(|m| m.token_count)
                             .unwrap_or(0);
                         if skill_tokens_est > 0 && skill_tokens_est + 256 > self.hardware_n_ctx {
-                            println!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
+                            cluaize_shared::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
                                 skill_id, skill_tokens_est + 256, self.hardware_n_ctx);
                             continue;
                         }
-                        println!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
+                        cluaize_shared::dev_info!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
                         // Only override if Agentic Pause didn't already set the decision
                         if self.last_route_decision.is_none() {
                             self.last_route_decision = Some(RouteDecision::WarmCacheHit { skill_id: skill_id.clone() });
                         }
                         if let Err(e) = self.active_backend.load_kv_cache(&kv_cache_path.to_string_lossy()) {
-                            println!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
+                            cluaize_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
                             let _ = self.active_backend.prefill("");
                         }
                     }
@@ -580,7 +580,7 @@ impl CoreRouter {
 
                 // If Core signals (skill souls) were identified, inject them into the kernel
                 if !intent_result.signals.is_empty() {
-                    println!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
+                    cluaize_shared::dev_info!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
                     b.inject_signals(intent_result.signals).map_err(|e| format!("Signal Injection Failure: {}", e))?;
                 }
 
@@ -593,7 +593,7 @@ impl CoreRouter {
                         tool_context, 
                         formatted_prompt
                     );
-                    println!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
+                    cluaize_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
                 }
 
                 b.generate_stream(&formatted_prompt, max_tokens, callback)

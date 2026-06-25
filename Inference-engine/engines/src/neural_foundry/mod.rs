@@ -56,7 +56,7 @@ impl CoreFoundry {
 
     /// Initializes the foundry by scanning the skills directory.
     pub fn initialize(&mut self, skills_dir: &str) {
-        println!("[Cluaize] Initializing Core Foundry from: {}", skills_dir);
+        cluaize_shared::dev_info!("[Cluaize] Initializing Core Foundry from: {}", skills_dir);
         self.registry.load_from_directory(skills_dir);
     }
 
@@ -103,7 +103,7 @@ impl CoreFoundry {
                 while (active_ids.len() as f32 + 1.0) * skill_est_size_mb >= available_ram_mb as f32 * 0.8 {
                     if !active_ids.is_empty() {
                         let evicted_id = active_ids.remove(0);
-                        println!("[Cluaize] [VRAM] Bounding limit hit. Evicting LRU skill: {}", evicted_id);
+                        cluaize_shared::dev_info!("[Cluaize] [VRAM] Bounding limit hit. Evicting LRU skill: {}", evicted_id);
                     } else {
                         break;
                     }

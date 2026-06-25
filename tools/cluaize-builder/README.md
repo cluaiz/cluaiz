@@ -20,26 +20,26 @@ Use the `cluaize-builder` to compile specific components. This gives you 1:1 gra
 ### 1. Build a Specific Single Driver
 Builds *only* the requested hardware driver in isolation.
 ```bash
-cargo run -p cluaize-builder -- driver llama --profile release
-cargo run -p cluaize-builder -- driver onnx --profile release
+cargo run -p cluaize-builder -- driver llama --profile <debug|release>
+cargo run -p cluaize-builder -- driver onnx --profile <debug|release>
 ```
 
 ### 2. Build All Drivers
 Builds all available hardware drivers (Llama, ONNX, etc) without building the core engine.
 ```bash
-cargo run -p cluaize-builder -- drivers --profile release
+cargo run -p cluaize-builder -- drivers --profile <debug|release>
 ```
 
 ### 3. Build Core Engine
 Builds *only* the core inference engine and CLI, ignoring the dynamic drivers.
 ```bash
-cargo run -p cluaize-builder -- core --profile release
+cargo run -p cluaize-builder -- core --profile <debug|release>
 ```
 
 ### 4. Build Entire Workspace (Everything)
 Builds the Core Engine + CLI + All Drivers at once.
 ```bash
-cargo run -p cluaize-builder -- all --profile release
+cargo run -p cluaize-builder -- all --profile <debug|release>
 ```
 
 ---
@@ -52,28 +52,26 @@ To push these updates to your `~/.cluaize` system folder, you must run the `dev-
 ### 1. Sync Everything
 Copies the newly compiled Core Engine, CLI, and All Drivers into `~/.cluaize`.
 ```bash
-cargo run -- dev-sync all
-# Or simply:
-cargo run -- dev-sync
+cargo run -- dev-sync all --profile <debug|release>
 ```
 
 ### 2. Sync Core Only
 Copies *only* the Core Engine (`engines.dll`) and CLI executable into `~/.cluaize`, leaving your drivers untouched.
 ```bash
-cargo run -- dev-sync core
+cargo run -- dev-sync core --profile <debug|release>
 ```
 
 ### 3. Sync All Drivers Only
 Copies *only* the compiled drivers (LLaMA, ONNX, etc.) into `~/.cluaize/engine/interfaces/`.
 ```bash
-cargo run -- dev-sync drivers
+cargo run -- dev-sync drivers --profile <debug|release>
 ```
 
 ### 4. Sync a Specific Driver Only
 Copies *only* the specific driver you specify. Highly useful when you only made a code change in one driver.
 ```bash
-cargo run -- dev-sync driver llama
-cargo run -- dev-sync driver onnx
+cargo run -- dev-sync driver llama --profile <debug|release>
+cargo run -- dev-sync driver onnx --profile <debug|release>
 ```
 
 ---

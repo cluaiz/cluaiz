@@ -119,9 +119,13 @@ impl HardwareGovernor {
         let available = arbiter.total_vram_gb * (1.0 - safety_margin) - arbiter.allocated_vram_gb;
 
         if required_gb > available {
-            return Err(anyhow::anyhow!(
+            crate::dev_info!(
                 "❌ [VRAM Arbiter] Out of Memory! Requested: {:.2}GB, Available: {:.2}GB (Limit: {:.0}% Utilization)",
                 required_gb, available, (1.0 - safety_margin) * 100.0
+            );
+            return Err(anyhow::anyhow!(
+                "❌ [VRAM Arbiter] Out of Memory! Requested: {:.2}GB, Available: {:.2}GB",
+                required_gb, available
             ));
         }
 
@@ -131,7 +135,7 @@ impl HardwareGovernor {
             .active_allocations
             .insert(engine_id.to_string(), required_gb);
 
-        println!(
+        crate::dev_info!(
             "✅ [VRAM Arbiter] Allocated {:.2}GB to '{}'. Current Load: {:.2}/{:.2}GB",
             required_gb, engine_id, arbiter.allocated_vram_gb, arbiter.total_vram_gb
         );
@@ -345,7 +349,7 @@ impl HardwareGovernor {
 
         if let Some(freed_gb) = arbiter.active_allocations.remove(engine_id) {
             arbiter.allocated_vram_gb -= freed_gb;
-            println!(
+            crate::dev_info!(
                 "🔓 [VRAM Arbiter] Released {:.2}GB from '{}'. Current Load: {:.2}/{:.2}GB",
                 freed_gb, engine_id, arbiter.allocated_vram_gb, arbiter.total_vram_gb
             );

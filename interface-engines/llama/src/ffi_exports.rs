@@ -56,7 +56,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
         let model_path = std::path::Path::new(&path_str);
         let model_dir = model_path.parent().unwrap_or(model_path);
 
-        tracing::info!(
+        cluaize_shared::dev_info!(
             "🧬 [Llama-Lib] Initiating Sovereign DNA Handshake for: {:?}",
             model_dir
         );
@@ -64,23 +64,23 @@ pub extern "C" fn cluaize_kernel_instantiate(
             &model_dir.join("structural_dna.json"),
         )
         .unwrap_or_else(|_| {
-            println!("⚠️ [Llama-Lib] DNA Manifest missing. Creating transient skeleton...");
+            cluaize_shared::dev_info!("⚠️ [Llama-Lib] DNA Manifest missing. Creating transient skeleton...");
             cluaize_shared::metadata::dna::StructuralDNA::default()
         });
 
         // ALWAYS perform real-time discovery to sync with LIVE hardware state
-        eprintln!("📂 [Llama-Lib] Discovering real-time truth...");
+        cluaize_shared::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");
         if let Err(e) = dna.discover_from_path(model_dir) {
-            eprintln!(
+            cluaize_shared::dev_info!(
                 "⚠️ [Llama-Lib] DNA Discovery Failed: {}. Using best-effort constraints.",
                 e
             );
         }
-        eprintln!(
+        cluaize_shared::dev_info!(
             "✅ [Llama-Lib] DNA Discovery Complete. Negotiated Context: {:?}",
             dna.max_context_length
         );
-        eprintln!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
+        cluaize_shared::dev_info!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
 
         let context = CluaizeContext::boot(dna, cluaize_shared::TemplateManager::default());
         let mut engine = Box::new(RuntimeB::new(&path_str, context));
@@ -88,7 +88,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
         // Inject Booster Configuration from Caller
         if !booster_ptr.is_null() {
             let booster_ctx = unsafe { *booster_ptr };
-            println!(
+            cluaize_shared::dev_info!(
                 "🚀 [Llama.cpp-Kernel] Received CluaizeBoosterContext via FFI: {:?}",
                 booster_ctx
             );
@@ -139,7 +139,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
 
         // 🧬 Trigger Native Load immediately on instantiation
         if let Err(e) = engine.load_native() {
-            eprintln!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
+            cluaize_shared::dev_info!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             tracing::error!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             return std::ptr::null_mut();
         }

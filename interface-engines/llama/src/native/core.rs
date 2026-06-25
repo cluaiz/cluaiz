@@ -49,7 +49,7 @@ impl NativeLlama {
 
         let c_path = CString::new(model_path)?;
 
-        println!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
+        cluaize_shared::dev_info!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
@@ -73,7 +73,7 @@ impl NativeLlama {
         let model_dir = std::path::Path::new(model_path)
             .parent()
             .unwrap_or(std::path::Path::new("."));
-        eprintln!(
+        cluaize_shared::dev_info!(
             "🧬 [Native-Llama] Starting DNA Discovery for: {:?}",
             model_dir
         );
@@ -84,7 +84,7 @@ impl NativeLlama {
         let requested_n_ctx = ctx_params.n_ctx;
 
         if let Err(e) = dna.discover_from_path(model_dir) {
-            eprintln!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
+            cluaize_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
         if model_params.n_gpu_layers == 0 {
@@ -221,7 +221,7 @@ impl NativeLlama {
             let c_prompt = std::ffi::CString::new(prompt.to_string())?;
 
             // 1. Tokenize
-            println!(
+            cluaize_shared::dev_info!(
                 "🧠 [Native-Llama] Starting tokenization of prompt (len: {})...",
                 prompt.len()
             );
