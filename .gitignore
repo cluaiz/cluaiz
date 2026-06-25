@@ -61,3 +61,4 @@ desktop.ini
 # --- Local Overrides ---
 .cluaize/
 models/
+deps_tool/
