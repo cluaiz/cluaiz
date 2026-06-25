@@ -1,22 +1,14 @@
-# 🏛️ CLUAIZE-OS: THE SOVEREIGN SYSTEM DESIGN
+# 🏛️ CLUAIZE-OS: CI/CD & RELEASE ARCHITECTURE
 
-This document serves as the **Single Source of Truth** for the Cluaize Neural Ecosystem. It defines the architectural DNA, industrial standards, and universal deployment laws that govern every line of code in this repository.
+This document serves as the **Single Source of Truth** for the Cluaize Neural Ecosystem's CI/CD pipeline and release architecture. It defines the automated workflows, security protocols, and deployment laws that govern this repository.
 
----
-
-## 🛰️ 1. THE VISION: UNIVERSAL NEURAL SOVEREIGNTY
-Cluaize-OS is designed to be a **Universal Neural Kernel**. Our mission is to provide high-performance, native inference for any model, on any silicon, under any operating system, eliminating hardware boundaries.
-
-### 🚀 Core Directives:
-- **Silicon Mastery**: Extract peak performance from CPU, GPU, NPU, and TPU natively.
-- **Hardware Agnosticism**: Unified execution across Windows, Linux, Android, iOS, and macOS.
-- **Modular Integrity**: Decoupled architecture where components communicate via standardized FFI handshakes.
+> **AI Agent & Developer Notice:** Before modifying any workflow or release script, read this document thoroughly. The architecture is heavily decoupled and relies on a specific sequence to achieve Zero-Trust Security and seamless cross-platform deployments.
 
 ---
 
-## 🧬 2. MODULAR ARCHITECTURE (THE NEURAL STACK)
+## 🧬 1. MODULAR ARCHITECTURE (THE NEURAL STACK)
 
-The ecosystem is divided into four sovereign, decoupled layers. Any change to one layer MUST NOT break the handshake of others.
+The ecosystem is divided into four sovereign, decoupled layers. They are built independently but distributed together.
 
 | Layer | Component | Responsibility |
 | :--- | :--- | :--- |
@@ -27,64 +19,58 @@ The ecosystem is divided into four sovereign, decoupled layers. Any change to on
 
 ---
 
-## 🛰️ 3. THE UNIVERSAL MATRIX LAW
-Cluaize-OS MUST run everywhere. The baseline CPU kernels and drivers support:
+## 🚀 2. UNIFIED RELEASE PIPELINE (HOW IT WORKS)
 
-- **Windows**: x64 (Desktop/Surface/Server).
-- **Linux**: x86_64 (Server), aarch64 (Cloud/Edge), armv7 (IoT).
-- **Android**: aarch64 (Mobile/Tablet/Auto).
-- **macOS**: arm64 (Apple Silicon), x86_64 (Intel Mac).
-- **iOS**: arm64 (iPhone/iPad).
+We have abandoned fragmented, per-component releases (e.g., `cli-v1`, `kernel-v1`) in favor of a **Unified, Professional Release Architecture**. The pipeline operates in two distinct phases to ensure maximum stability and security.
 
----
+### Phase 1: Parallel Matrix Compilation
+When a new tag (e.g., `v1.2.0`) is pushed, 5 independent workflows trigger simultaneously:
+1. `cluaize-cmd.yml` (Builds Windows/Linux/macOS CLI bundles)
+2. `cluaize-engine.yml` (Builds the core orchestrators)
+3. `cluaize-kernel-llama.yml` & `cluaize-kernel-onnx.yml` (Builds CPU instructions: AVX512, AVX2, NEON)
+4. `cluaize-llama-driver.yml` & `cluaize-onnx-driver.yml` (Builds GPU/Hardware accelerators: CUDA, Metal, etc.)
 
-## 💎 4. THE NAMING & VERSIONING CONSTITUTION
-To ensure zero-latency binary mapping, all artifacts MUST follow the **Sovereign Naming Convention**:
+**The Unified Tag Rule:** 
+All workflows push their compiled binaries (`.exe`, `.so`, `.dylib`, `.zip`) directly to the **SAME** GitHub Release tag (`v1.2.0`). 
 
-### 📦 Baseline CPU Kernels:
-`cluaize-kernel-<version>-<platform>.<ext>`
-- **Platform**: Matches the 9 core OS targets (e.g., `win-x64-avx512`, `linux-x64-avx2`, `linux-arm64`, `mac-arm64`, etc.).
-- **Releases**: Pushed to `kernel-v*` release tags.
+**Fault Tolerance (Partial Success):** 
+The build matrices are designed with `fail-fast: false`. If an experimental driver (e.g., `linux-x64-cann`) fails to compile due to network timeouts or SDK issues, the workflow will **NOT** crash the entire release. The successful binaries will still be uploaded, and the failed binary will simply be omitted.
 
-### 🔌 Specialized Accelerator Drivers:
-`cluaize-driver-<version>-<platform>-<backend>.<ext>`
-- **Backend**: Specialized silicon modules (e.g., `cuda-v13`, `cuda-v12`, `cuda-v11`, `metal`, `vulkan`, `openvino`, `rocm`, `hip`).
-- **Releases**: Pushed to `driver-v*` release tags and indexed in `registry.json`.
+### Phase 2: Master Orchestration & Security (`publish-registry.yml`)
+Because the 5 workflows run in parallel and finish at different times, they cannot generate the final registry themselves. 
 
----
-
-## ⚡ 5. CI/CD PIPELINE INTEGRITY (ZERO-CRASH DEPLOYMENT)
-The GitHub Actions pipelines are divided into **5 distinct, highly-decoupled factories**:
-
-### ⚙️ 1. `cluaize-cmd.yml` (The Edge CLI)
-- **Compilation**: Parallel builds for 6 OS/Architecture combinations (Windows, Linux, macOS for both x64 and arm64).
-- **Releases**: Uploads the main entrypoint executables to `cli-v*` release tags.
-
-### ⚙️ 2. `cluaize-kernel-llama.yml` & `cluaize-kernel-onnx.yml` (Silicon Kernels)
-- **Compilation**: Parallel builds for exactly 9 core platforms using CPU instructions (AVX512, AVX2, NEON).
-- **Tooling**: Uses `cross` for Docker-based cross-compilation on target architectures (Android, Linux Aarch64).
-- **Releases**: Uploads baseline library binaries to `kernel-v*` and `onnx-kernel-v*` release tags.
-
-### ⚙️ 3. `cluaize-llama-driver.yml` & `cluaize-onnx-driver.yml` (Dynamic Accelerators)
-- **Compilation**: Parallel builds for specialized backend matrices (CUDA v13/v12/v11, Metal, Vulkan, OpenVINO, ROCm, HIP, SYCL, CANN, QNN).
-- **Packaging Strategy**: 
-  - **Llama Drivers**: Uploaded as direct `.dll` / `.so` / `.dylib` binaries.
-  - **ONNX Drivers**: Bundled as **Modular `.zip` Files** containing `cluaize_onnx.dll` AND all necessary provider libraries (e.g., `onnxruntime_providers_cuda.dll`). This guarantees that downloading one asset provides all underlying SDK dependencies for the target hardware.
-- **Releases**: Uploads accelerator driver binaries/zips to `driver-v*` and `onnx-driver-v*` release tags.
-
-### 📁 4. The Flat Engine Law (1:1 Deploy Parity)
-- **The Rule**: Production MUST exactly mirror Local Dev (`.cluaize/engine/`).
-- **No Sub-folders**: Kernels and Core binaries live directly in `engine/`. Hardware drivers (and their ONNX providers) live directly in `engine/drivers/`. Legacy `interfaces/kernels` and `interfaces/drivers` sub-directories are strictly banned to ensure the OS Loader can resolve dependencies natively.
-
-### 🧠 4. Dynamic Manifest Registry (Python Automation)
-- **The Old Flaw**: Manifests were hardcoded via `cat <<EOF`. If a build (like SYCL) failed, the JSON would still include the broken link, crashing the Engine on startup.
-- **The New Standard**: Every workflow features a dynamic Python script during the `publish-registry` job. It aggressively scans the `artifacts/` folder and generates a 100% accurate `cluaize-*.json` manifest containing **ONLY successful binaries**. Failed matrix targets are safely and automatically omitted.
+Once all parallel builds finish, the **Publish Secure Registry** workflow is triggered manually via GitHub Actions (`workflow_dispatch`).
+1. It downloads all raw binaries that were just uploaded to the GitHub Release.
+2. It executes `.github/scripts/secure_registry_builder.py`.
+3. It uploads the resulting `cluaize-registry.json` back to the GitHub Release.
 
 ---
 
-## 🏛️ 6. THE FOUNDER'S MANDATE
-1. **Never Drift**: Do not change naming conventions or matrix structures once established.
-2. **Standard over Ad-hoc**: Every fix must be architectural, not a "Kach-Khas" (quick-fix).
-3. **Total Coverage**: A build is only successful if ALL platforms in the matrix pass.
+## 🔒 3. ZERO-TRUST SECURITY REGISTRY
+
+The core of the dynamic installation system is `secure_registry_builder.py`. 
+
+Instead of hardcoding URLs or blindly trusting the build pipeline, this Python script performs cryptographic verification:
+- It scans the downloaded release artifacts.
+- It calculates a **SHA-256 checksum** for every single `.exe`, `.so`, `.dll`, and `.zip`.
+- It dynamically generates `cluaize-registry.json`, categorizing assets into `components`, `kernels`, and `drivers`.
+- **Self-Healing:** If a specific driver failed to compile in Phase 1, its binary won't exist. The Python script dynamically detects this and safely omits it from the JSON. The `cluaize-cli` will therefore never attempt to download a broken or non-existent driver.
+
+---
+
+## 📝 4. AUTOMATED CHANGELOGS (RELEASE DRAFTER)
+
+To maintain professional, OpenClaw-style Release Notes without manual overhead, we utilize **Release Drafter** (`.github/workflows/release-drafter.yml`).
+
+- As developers merge Pull Requests into `main`, the Drafter quietly categorizes them based on labels (`feature`, `bug`, `performance`, `documentation`).
+- It continuously updates a **Draft Release** on the GitHub Releases page.
+- When the team is ready to launch, the beautiful, formatted changelog (with `🚀 Highlights`, `⚡ Changes & Optimizations`, `🐛 Fixes`) is already written and ready to be published.
+
+---
+
+## 🏛️ 5. THE FOUNDER'S MANDATE
+1. **Never Drift**: Do not change naming conventions or matrix structures once established. The Python registry builder relies on strict parsing of filenames (e.g., `cluaize-driver-v1.0.0-linux-x64-cuda-12.so`).
+2. **Standard over Ad-hoc**: Every fix must be architectural. Do not create inline quick-fixes.
+3. **Decoupled by Design**: Workflows must never wait on each other. Phase 1 is purely for compilation; Phase 2 is purely for aggregation and security.
 
 **This is the Cluaize Standard. Professional. Optimized. Sovereign.**
