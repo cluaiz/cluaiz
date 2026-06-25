@@ -43,9 +43,7 @@
         "linux-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-linux-x64-avx2.so",
         "linux-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-linux-arm64.so",
         "mac-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-mac-arm64.dylib",
-        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-mac-x64.dylib",
-        "ios-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-ios-arm64.a",
-        "android-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-android-arm64.so"
+        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-mac-x64.dylib"
       },
       "failed": []
     }
