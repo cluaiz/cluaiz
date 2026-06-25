@@ -41,6 +41,7 @@ sha2 = "0.10"
 
 # ── Shared Workspace Member Links ──
 cluaize-shared = { path = "cluaize-shared" }
+inference-cel = { path = "../../inference-cel" }
 # Engines (Llama, Candle, BitNet) are now loaded dynamically via libloading from interface-engines
 system-booster = { path = "system-booster", optional = true }
 neural_core = { package = "neural-core", path = "../../interface-engines/neural_core" }
@@ -48,8 +49,8 @@ neural_core = { package = "neural-core", path = "../../interface-engines/neural_
 # ── Dynamic Neural Bridge (The Soul Linker) ──
 libloading = "0.8"
 cluaize_onnx = { package = "onnx", path = "../../interface-engines/onnx" }
-engine-lmdb = { path = "../../../cluaizd/crates/storage/engine-lmdb" }
-cluaizd-types = { path = "../../../cluaizd/components/cluaizd-types" }
+# We no longer statically link to engine-lmdb or cluaizd-types
+# The Core Engine is now a Dumb Router that dynamically loads cluaizd_engine.dll
 
 # ── Common Utilities (Used by All) ──
 tokenizers          = { version = "0.22.2", default-features = false, features = ["onig"] }

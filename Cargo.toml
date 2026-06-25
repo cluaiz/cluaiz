@@ -4,8 +4,9 @@ members = [
     "inference-engine/engines",
     "inference-engine/engines/cluaize-shared",
     "inference-engine/engines/system-booster",
-    "cmd"
-]
+    "cmd",
+    "test/dummy_plugin"
+, "inference-cel"]
 
 resolver = "2"
 

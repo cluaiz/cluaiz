@@ -234,7 +234,8 @@ fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
     // ðŸ§  1. ZERO-LATENCY FFI BRAIN INJECTION
     // If the brain is enabled, it completely bypasses disk reads.
     if let Some(skill_name) = skill_dir.file_name().map(|s| s.to_string_lossy().to_string()) {
-        if let Some(raw_bytes) = crate::memory::tensor_transducer::TensorTransducer::inject_context(&skill_name) {
+        let bridge = crate::memory::storage_bridge::load_storage_bridge();
+        if let Some(raw_bytes) = bridge.inject_context(&skill_name) {
             if let Ok(content) = String::from_utf8(raw_bytes) {
                 return Some(content);
             }
