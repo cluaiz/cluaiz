@@ -9,7 +9,7 @@ impl Bootstrapper {
     const MASTER_REGISTRY_URL: &'static str = "https://raw.githubusercontent.com/cluaiz/cluaize/main/package.json";
 
     /// 🚀 Cluaize BOOTSTRAP: The Sovereign Handshake.
-    pub async fn ignite() -> Result<()> {
+    pub async fn ignite(is_dev_sync: bool) -> Result<()> {
         let local_dir = cluaize_shared::environment::EnvironmentManager::current().local_dir;
         let _ = Self::sync_dev_artifacts("all", None, local_dir);
         Self::ensure_global_path();
@@ -35,9 +35,14 @@ impl Bootstrapper {
         let _ = colored::control::set_virtual_terminal(true);
 
         let bin_dir = HardwareGovernor::resolve_hub_path().join("bin");
+
+        if is_dev_sync {
+            tracing::info!("⚙️ [DevSync] Basic Configuration generated. Skipping network and registry sync for local deployment.");
+            return Ok(());
+        }
         
         let client = reqwest::Client::builder()
-            .user_agent("Cluaize-Bootstrapper/0.1.0")
+            .user_agent(format!("Cluaize-Bootstrapper/{}", env!("CARGO_PKG_VERSION")))
             .build()?;
 
         // 🎯 1. Fetch Master Registry (package.json)
@@ -159,7 +164,7 @@ impl Bootstrapper {
 
         if !kernel_path.exists() || local_version != manifest_version {
             println!("  {} [Cluaize] Synchronizing Neural Kernel ({})...", "📦".magenta(), manifest_version);
-            let client = reqwest::Client::builder().user_agent("Cluaize-Bootstrapper/0.1.0").build()?;
+            let client = reqwest::Client::builder().user_agent(format!("Cluaize-Bootstrapper/{}", env!("CARGO_PKG_VERSION"))).build()?;
             let manifest_url = kernel_info["manifest_url"].as_str().ok_or_else(|| eyre!("Kernel Manifest URL missing."))?;
             
             match async {
@@ -208,7 +213,7 @@ impl Bootstrapper {
 
     async fn download_asset(url: &str, dest: &Path) -> Result<()> {
         if let Some(parent) = dest.parent() { std::fs::create_dir_all(parent)?; }
-        let client = reqwest::Client::builder().user_agent("Cluaize-Bootstrapper/0.1.0").build()?;
+        let client = reqwest::Client::builder().user_agent(format!("Cluaize-Bootstrapper/{}", env!("CARGO_PKG_VERSION"))).build()?;
         let response = client.get(url).send().await.map_err(|e| eyre!("Registry Link Error: {}", e))?;
         if !response.status().is_success() { return Err(eyre!("Registry Error: {} returned {}", url, response.status())); }
         let content = response.bytes().await?;
@@ -285,10 +290,12 @@ impl Bootstrapper {
                 if let Err(e) = copy_with_rename(&engine_src, &engine_dest) {
                     tracing::warn!("⚠️ [DevSync] Engine Link Failed: {}. (File might be locked by another process)", e);
                 } else {
-                    let marker = if is_release { "prod-release" } else { "dev-release" };
+                    let marker = "dev-release";
                     let _ = std::fs::write(hub_path.join("engine").join("cluaize-engine.ready"), marker);
                     tracing::info!("🧬 [DevSync] Engine Linked (release={}): {:?}", is_release, engine_dest);
                 }
+            } else {
+                tracing::error!("❌ [DevSync] `engines.{}` NOT FOUND! Please run `cargo build --workspace` first!", ext);
             }
         }
 
@@ -332,7 +339,7 @@ impl Bootstrapper {
                     // Create a ready marker
                     if !src_name.starts_with("onnxruntime") {
                         let marker_name = format!("{}.ready", dest_name);
-                        let marker = if is_kernel_release { "prod-release" } else { "dev-release" };
+                        let marker = "dev-release";
                         let _ = std::fs::write(interface_path.join(marker_name), marker);
                     }
                     tracing::info!("🧬 [DevSync] {} Kernel Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
@@ -364,6 +371,42 @@ impl Bootstrapper {
             }
         }
 
+        // 4. Sync Dev Environment Folders (brain, skills)
+        if target == "all" || target == "core" {
+            let local_cluaize = root.join(".cluaize");
+            
+            // Sync Brain
+            let local_brain = local_cluaize.join("brain");
+            let global_brain = hub_path.join("brain");
+            if local_brain.exists() {
+                let _ = Self::copy_dir_recursive(&local_brain, &global_brain);
+                tracing::info!("🧠 [DevSync] Brain Data Synced to: {:?}", global_brain);
+            }
+
+            // Sync Skills
+            let local_skills = local_cluaize.join("skills");
+            let global_skills = hub_path.join("skills");
+            if local_skills.exists() {
+                let _ = Self::copy_dir_recursive(&local_skills, &global_skills);
+                tracing::info!("🛠️ [DevSync] Skills Synced to: {:?}", global_skills);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Recursively copy a directory
+    fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
+        std::fs::create_dir_all(dst)?;
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            if file_type.is_dir() {
+                Self::copy_dir_recursive(&entry.path(), &dst.join(entry.file_name()))?;
+            } else {
+                let _ = std::fs::copy(entry.path(), dst.join(entry.file_name()));
+            }
+        }
         Ok(())
     }
 

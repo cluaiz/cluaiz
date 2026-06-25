@@ -278,7 +278,8 @@ async fn main() -> Result<()> {
     }
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
-    if let Err(e) = Bootstrapper::ignite().await {
+    let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");
+    if let Err(e) = Bootstrapper::ignite(is_dev_sync).await {
         eprintln!("\n  {} [Cluaiz] Bootstrap Failed: {}\n", "❌".red(), e);
         std::process::exit(1);
     }
@@ -377,7 +378,23 @@ async fn main() -> Result<()> {
             if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
             }
-            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir)?;
+            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone())?;
+            
+            // 🚀 Force base configuration into the Global Directory so the user doesn't have an empty config!
+            std::env::set_var("CLUAIZE_HOME", global_dir.to_string_lossy().to_string());
+            let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            permissions.auto_assign_defaults();
+            let _ = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control();
+            
+            // 🚀 Also seal the local package.json into the global registry
+            if let Ok(pkg_data) = std::fs::read_to_string("package.json") {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&pkg_data) {
+                    let _ = cluaize_shared::hardware::governor::RegistryGovernor::seal_registry(json);
+                }
+            }
+            
+            std::env::remove_var("CLUAIZE_HOME");
+
             println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
