@@ -420,77 +420,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         with:
           files: artifacts/*
-          tag_name: "${{ github.event_name == 'workflow_dispatch' && format('driver-{0}', github.event.inputs.tag_name) || github.ref_name }}"
-          name: "Cluaize Interface Driver Release ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref_name }}"
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref_name }}
+          name: "Cluaize Release ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag_name || github.ref_name }}"
           append_body: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── STAGE 2: Registry Synchronization ──────────────────────────────
-  publish-registry:
-    name: 📂 Synchronize Driver Registry
-    needs: build-drivers
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Generate Driver Manifest JSON
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.tag_name }}"
-            TAG="driver-${{ github.event.inputs.tag_name }}"
-          else
-            VERSION="${{ github.ref_name }}"
-            TAG="${{ github.ref_name }}"
-          fi
-          
-          cat << 'EOF' > generate_manifest.py
-          import urllib.request, json, sys, os
-
-          version = sys.argv[1]
-          repo = sys.argv[2]
-          tag = sys.argv[3]
-          token = os.environ.get("GITHUB_TOKEN")
-          url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
-          
-          req = urllib.request.Request(url)
-          req.add_header("Accept", "application/vnd.github.v3+json")
-          if token: req.add_header("Authorization", f"token {token}")
-          
-          try:
-              with urllib.request.urlopen(req) as response:
-                  assets = json.loads(response.read().decode()).get("assets", [])
-          except Exception as e:
-              print(f"Manifest API Notice: {e}")
-              assets = []
-
-          data = { "version": version, "drivers": {} }
-          for a in assets:
-              name = a["name"]
-              if name.endswith(".json"): continue
-              if name.startswith("cluaize-onnx-driver-") or name.startswith("libcluaize-onnx-driver-"):
-                  parts = name.split(f"-{version}-")
-                  if len(parts) > 1:
-                      key = parts[-1].rsplit(".", 1)[0]
-                      data["drivers"][key] = a["browser_download_url"]
-          
-          with open("cluaize-onnx-driver.json", "w") as out:
-              json.dump(data, out, indent=2)
-          EOF
-
-          python3 generate_manifest.py "$VERSION" "${{ github.repository }}" "$TAG"
-          python3 .github/scripts/registry_aggregator.py "driver_onnx" "$VERSION" "${{ github.repository }}" "$TAG"
-
-      - name: 🚀 Upload Manifest to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            cluaize-onnx-driver.json
-            cluaize-package-registry.json
-          tag_name: "${{ github.event_name == 'workflow_dispatch' && format('driver-{0}', github.event.inputs.tag_name) || github.ref_name }}"
-          make_latest: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

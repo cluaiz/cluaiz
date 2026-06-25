@@ -1,0 +1,40 @@
+name: Publish Secure Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-registry:
+    name: 🔒 Generate Zero-Trust Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Release Assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p artifacts
+          # Download all assets from the target release
+          gh release download ${{ github.event.inputs.tag_name }} -D artifacts || true
+
+      - name: Run Secure Registry Builder
+        run: |
+          python3 .github/scripts/secure_registry_builder.py "${{ github.event.inputs.tag_name }}" "${{ github.repository }}"
+
+      - name: 🚀 Upload Registry to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cluaize-registry.json
+          tag_name: ${{ github.event.inputs.tag_name }}
+          append_body: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
