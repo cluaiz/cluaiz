@@ -29,9 +29,7 @@
         "linux-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-linux-x64-avx2.so",
         "linux-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-linux-arm64.so",
         "mac-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-mac-arm64.dylib",
-        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-mac-x64.dylib",
-        "ios-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-ios-arm64.a",
-        "android-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-android-arm64.so"
+        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-mac-x64.dylib"
       },
       "failed": []
     },
@@ -71,9 +69,7 @@
         "linux-x64-hip": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-hip.so",
         "linux-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-vulkan.so",
         "mac-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-mac-arm64-metal.dylib",
-        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-mac-x64-metal.dylib",
-        "android-arm64-qnn": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-android-arm64-qnn.so",
-        "ios-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-ios-arm64-metal.a"
+        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-mac-x64-metal.dylib"
       },
       "failed": [
         {
@@ -101,9 +97,7 @@
         "linux-x64-cann": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-cann.zip",
         "linux-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-vulkan.zip",
         "mac-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-mac-arm64-metal.zip",
-        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-mac-x64-metal.zip",
-        "android-arm64-qnn": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-android-arm64-qnn.zip",
-        "ios-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-ios-arm64-metal.zip"
+        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-mac-x64-metal.zip"
       },
       "failed": []
     }

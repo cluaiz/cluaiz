@@ -100,13 +100,6 @@ jobs:
             features: metal
             ext: dylib
             prefix: "lib"
-          - platform: ios-arm64
-            backend: metal
-            os: macos-latest
-            target: aarch64-apple-ios
-            features: metal
-            ext: a
-            prefix: "lib"
 
           # --- Universal Vulkan ---
           - platform: win-x64
@@ -172,14 +165,6 @@ jobs:
             ext: so
             prefix: "lib"
 
-          # --- Qualcomm QNN (Android) ---
-          - platform: android-arm64
-            backend: qnn
-            os: ubuntu-22.04
-            target: aarch64-linux-android
-            features: qnn
-            ext: so
-            prefix: "lib"
 
           # --- Huawei CANN (Ascend NPU) ---
           - platform: linux-x64

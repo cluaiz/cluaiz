@@ -74,18 +74,6 @@ jobs:
             prefix: "lib"
 
           # --- Mobile Kernels (CPU) ---
-          - platform: android-arm64
-            os: ubuntu-latest
-            target: aarch64-linux-android
-            features: "arm_neon"
-            ext: so
-            prefix: "lib"
-          - platform: ios-arm64
-            os: macos-latest
-            target: aarch64-apple-ios
-            features: ""
-            ext: a
-            prefix: "lib"
           - platform: linux-arm64
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
@@ -125,25 +113,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential cmake clang pkg-config
 
-      - name: Setup Android NDK (Modern)
-        if: matrix.platform == 'android-arm64'
-        run: |
-          sudo apt-get update && sudo apt-get install -y unzip
-          curl -L "https://dl.google.com/android/repository/android-ndk-r25c-linux.zip" -o ndk.zip
-          unzip -q ndk.zip
-          NDK_PATH=$(pwd)/android-ndk-r25c
-          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
-          echo "$NDK_PATH/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      - name: Setup iOS Toolchain
-        if: matrix.platform == 'ios-arm64'
-        shell: bash
-        run: |
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "SDKROOT=${SDK_PATH}" >> $GITHUB_ENV
-          echo "IPHONEOS_DEPLOYMENT_TARGET=16.0" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_APPLE_IOS_LINKER=clang" >> $GITHUB_ENV
-          rustup target add aarch64-apple-ios
 
       # ── The Foundry Kernel Build ──
       - name: Build Kernel (Foundry Strike)
@@ -152,7 +122,7 @@ jobs:
           if [ "${{ runner.os }}" == "Windows" ]; then
             rm -f /usr/bin/link
           fi
-          if [[ "${{ matrix.target }}" == *"-android"* || "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
             cargo install cross --git https://github.com/cross-rs/cross
             cross build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"
           else
