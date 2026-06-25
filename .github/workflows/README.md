@@ -24,11 +24,13 @@ The ecosystem is divided into four sovereign, decoupled layers. They are built s
 We have abandoned fragmented, per-component releases (e.g., `cli-v1`, `kernel-v1`) in favor of a **Unified, Professional Release Architecture**. The pipeline operates in two distinct phases to ensure maximum stability and security.
 
 ### Phase 1: Parallel Matrix Compilation
-When a new tag (e.g., `v1.2.0`) is pushed, 5 separate workflows trigger simultaneously:
+When a new tag (e.g., `v1.2.0`) is pushed, 6 separate workflows trigger simultaneously:
 1. `cluaize-cmd.yml` (Builds Windows/Linux/macOS CLI bundles)
 2. `cluaize-engine.yml` (Builds the core orchestrators)
-3. `cluaize-kernel-llama.yml` & `cluaize-kernel-onnx.yml` (Builds CPU instructions: AVX512, AVX2, NEON)
-4. `cluaize-llama-driver.yml` & `cluaize-onnx-driver.yml` (Builds GPU/Hardware accelerators: CUDA, Metal, etc.)
+3. `cluaize-kernel-llama.yml` (Builds CPU instructions for Llama: AVX512, AVX2, NEON)
+4. `cluaize-kernel-onnx.yml` (Builds CPU instructions for ONNX: AVX512, AVX2, NEON)
+5. `cluaize-llama-driver.yml` (Builds GPU accelerators for Llama: CUDA, Metal, etc.)
+6. `cluaize-onnx-driver.yml` (Builds GPU accelerators for ONNX: CUDA, CoreML, etc.)
 
 **The Unified Tag Rule:** 
 All workflows push their compiled binaries (`.exe`, `.so`, `.dylib`, `.zip`) directly to the **SAME** GitHub Release tag (`v1.2.0`). 
@@ -37,7 +39,7 @@ All workflows push their compiled binaries (`.exe`, `.so`, `.dylib`, `.zip`) dir
 The build matrices are designed with `fail-fast: false`. If an experimental driver (e.g., `linux-x64-cann`) fails to compile due to network timeouts or SDK issues, the workflow will **NOT** crash the entire release. The successful binaries will still be uploaded, and the failed binary will simply be omitted.
 
 ### Phase 2: Master Orchestration & Security (`publish-registry.yml`)
-Because the 5 workflows run in parallel and finish at different times, they cannot generate the final registry themselves. 
+Because the 6 workflows run in parallel and finish at different times, they cannot generate the final registry themselves. 
 
 Once all parallel builds finish, the **Publish Secure Registry** workflow is triggered manually via GitHub Actions (`workflow_dispatch`).
 1. It downloads all raw binaries that were just uploaded to the GitHub Release.
