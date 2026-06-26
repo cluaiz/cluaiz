@@ -15,7 +15,7 @@ Axum REST API routing tables, payload formats, SSE streaming setups, and backend
 ### ⚙️ [Configuration Files Reference](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/docs/reference/config/index.md)
 Complete guides for structure parameters inside `system_booster.json`, `Permission.json`, and `system_control.json`.
 
-### ⚙️ [CEL (Cluaiz Engine Language) Specification](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/docs/reference/cel-manual.md)
+### ⚙️ [CEL (Cluaize Expression Language) Specification](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/docs/reference/cel-manual.md)
 Syntax definitions, AST values representation, pipeline execution strategies, and engine scheduler directives.
 
 ### 📖 [Cluaize System Dictionary](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/docs/reference/dictionary.md)

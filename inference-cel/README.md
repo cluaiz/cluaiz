@@ -1,4 +1,4 @@
-# Cluaize Inference CEL (Cluaiz Engine Language) 🧠⚡
+# Cluaize Inference CEL (Cluaize Expression Language) 🧠⚡
 
 **The Cluaize Brain Router, Zero-Overhead FFI Transducer, & Turing-Complete Orchestration Engine for Autonomous AI**
 

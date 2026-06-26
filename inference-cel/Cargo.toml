@@ -18,3 +18,8 @@ uuid = { version = "1.23.4", features = ["v4"] }
 serde_yaml = "0.9.34"
 rhai = "1.25.1"
 sha2 = "0.10"
+
+[[test]]
+name = "cel_quality_mechanics"
+path = "../test/quality/cel_quality_mechanics.rs"
+

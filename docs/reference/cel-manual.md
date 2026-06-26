@@ -1,6 +1,6 @@
-# CEL (Cluaiz Engine Language) Specification & Reference Manual
+# CEL (Cluaize Expression Language) Specification & Reference Manual
 
-Cluaiz Engine Language (CEL) is the Turing-complete orchestration DSL utilized by the Cluaize Inference Engine. It acts as the single bridge language connecting AI actions, dynamic skills, state variables, and low-level engine parameters across sandboxed execution boundaries.
+Cluaize Expression Language (CEL) is the Turing-complete orchestration DSL utilized by the Cluaize Inference Engine. It acts as the single bridge language connecting AI actions, dynamic skills, state variables, and low-level engine parameters across sandboxed execution boundaries.
 
 ---
 
