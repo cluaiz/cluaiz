@@ -39,5 +39,7 @@ graph TD
 - **The "Why":** Axum handlers are stateless by design. `AppState` safely allows concurrent web requests (like a chat stream and a dashboard poll) to read the same underlying hardware state without triggering data races.
 
 ### 4. `ffi_bridge.rs`
-- **The Core Logic:** Bypasses HTTP entirely. Implements Named Pipes (Windows) and Unix Domain Sockets (Linux).
-- **The "Why":** The upcoming Cluaize Desktop App (written in C++/C#) requires 0-latency communication with the engine. HTTP serialization (JSON over TCP) adds 1-3ms of overhead. The `ffi_bridge.rs` allows the Desktop App to write raw binary structures directly into the engine's memory space, achieving native application speed.
+- **The Core Logic:** Bypasses HTTP entirely. Implements Named Pipes (Windows) and Unix Domain Sockets (Linux). It also **actively monitors the LLM's token stream** for `<cel>` tags to intercept Engine Directives mid-inference.
+- **The "Why":** 
+  - The upcoming Cluaize Desktop App requires 0-latency communication with the engine.
+  - **Dynamic AI Agency (JIT Injection):** By intercepting `<cel>` tags, the engine can execute raw scripts natively (like injecting data into the Mid-Layer) without streaming the command to the user, allowing the AI to dynamically correct itself during inference.

@@ -37,6 +37,21 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<crate::SkillCommand>,
     },
+    /// Manage Cluaize Plugins
+    Plugin {
+        #[command(subcommand)]
+        command: Option<crate::PluginCommand>,
+    },
+    /// Manage Sovereign Extensions (e.g., Core Brain, Network Router)
+    Extension {
+        #[command(subcommand)]
+        command: Option<crate::ExtensionCommand>,
+    },
+    /// Manage Model Context Protocol (MCP) integrations
+    Mcp {
+        #[command(subcommand)]
+        command: Option<crate::McpCommand>,
+    },
     /// Pull & run a model. Downloads if not cached.
     Run {
         /// Model ID (e.g. gemma2:2b, bonsai:8b)
@@ -217,6 +232,10 @@ enum SkillCommand {
         #[command(subcommand)]
         command: SkillCacheCommand,
     },
+    /// Remove an installed skill
+    Remove {
+        skill_name: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -235,6 +254,124 @@ pub enum SkillCacheCommand {
         /// Force deletion even if model is active
         #[arg(short = 'f', long)]
         force: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PluginCommand {
+    /// Install a new plugin
+    Install {
+        /// The path or URL to the plugin
+        plugin_name: String,
+    },
+    /// List all active plugins
+    List,
+    /// Remove an installed plugin
+    Remove {
+        plugin_name: String,
+    },
+    /// Clear plugin cache
+    Cache {
+        #[command(subcommand)]
+        command: PluginCacheCommand,
+    },
+    /// Link a plugin to a skill
+    Link {
+        plugin_name: String,
+        skill_name: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PluginCacheCommand {
+    /// List all active plugin caches
+    Ls,
+    /// Clear plugin caches
+    Clear {
+        /// The plugin cache name to target (optional)
+        plugin_name: Option<String>,
+        
+        /// Clear all plugin caches globally
+        #[arg(long)]
+        all: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ExtensionCommand {
+    /// Install a sovereign extension
+    Install {
+        /// The path or name of the extension
+        extension_name: String,
+    },
+    /// List all loaded extensions
+    List,
+    /// Remove an installed extension
+    Remove {
+        extension_name: String,
+    },
+    /// Clear extension cache
+    Cache {
+        #[command(subcommand)]
+        command: ExtensionCacheCommand,
+    },
+    /// Start an extension's background daemon
+    Start {
+        extension_name: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ExtensionCacheCommand {
+    /// List all active extension caches
+    Ls,
+    /// Clear extension caches
+    Clear {
+        /// The extension cache name to target (optional)
+        extension_name: Option<String>,
+        
+        /// Clear all extension caches globally
+        #[arg(long)]
+        all: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum McpCommand {
+    /// Install a new MCP server
+    Install {
+        /// Server URL or config path
+        mcp_name: String,
+    },
+    /// List active MCP connections
+    List,
+    /// Remove an MCP server
+    Remove {
+        mcp_name: String,
+    },
+    /// Clear MCP cache
+    Cache {
+        #[command(subcommand)]
+        command: McpCacheCommand,
+    },
+    /// Start a local MCP server
+    Start {
+        mcp_name: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum McpCacheCommand {
+    /// List all active MCP caches
+    Ls,
+    /// Clear MCP caches
+    Clear {
+        /// The MCP cache name to target (optional)
+        mcp_name: Option<String>,
+        
+        /// Clear all MCP caches globally
+        #[arg(long)]
+        all: bool,
     },
 }
 
@@ -419,6 +556,42 @@ async fn main() -> Result<()> {
             if let Some(cmd) = command {
                 if let Err(e) = crate::cli::skill::execute(cmd).await {
                     eprintln!("\n  {} [Cluaiz] Skill Manager Error: {}\n", "❌".red(), e);
+                    std::process::exit(1);
+                }
+            } else {
+                let mut cmd = crate::Cli::command();
+                let _ = cmd.print_help();
+                std::process::exit(2);
+            }
+        }
+        Some(CliCommand::Plugin { command }) => {
+            if let Some(cmd) = command {
+                if let Err(e) = crate::cli::plugin::execute(cmd).await {
+                    eprintln!("\n  {} [Cluaiz] Plugin Manager Error: {}\n", "❌".red(), e);
+                    std::process::exit(1);
+                }
+            } else {
+                let mut cmd = crate::Cli::command();
+                let _ = cmd.print_help();
+                std::process::exit(2);
+            }
+        }
+        Some(CliCommand::Extension { command }) => {
+            if let Some(cmd) = command {
+                if let Err(e) = crate::cli::extension::execute(cmd).await {
+                    eprintln!("\n  {} [Cluaiz] Extension Manager Error: {}\n", "❌".red(), e);
+                    std::process::exit(1);
+                }
+            } else {
+                let mut cmd = crate::Cli::command();
+                let _ = cmd.print_help();
+                std::process::exit(2);
+            }
+        }
+        Some(CliCommand::Mcp { command }) => {
+            if let Some(cmd) = command {
+                if let Err(e) = crate::cli::mcp::execute(cmd).await {
+                    eprintln!("\n  {} [Cluaiz] MCP Manager Error: {}\n", "❌".red(), e);
                     std::process::exit(1);
                 }
             } else {

@@ -55,8 +55,30 @@ pub fn build(state: Arc<AppState>) -> Router {
         // ── WASM Skills & Agents API ──
         .route("/v1/skills/list", get(crate::handlers::skills::list_skills))
         .route("/v1/skills/install", post(crate::handlers::skills::install_skill))
+        .route("/v1/skills/remove", axum::routing::delete(crate::handlers::skills::remove_skill))
         .route("/v1/skills/cache", get(crate::handlers::skills::list_cache))
         .route("/v1/skills/cache", axum::routing::delete(crate::handlers::skills::clear_cache))
+
+        // ── Plugins API ──
+        .route("/v1/plugins/list", get(crate::handlers::plugins::list_plugins))
+        .route("/v1/plugins/install", post(crate::handlers::plugins::install_plugin))
+        .route("/v1/plugins/remove", axum::routing::delete(crate::handlers::plugins::remove_plugin))
+        .route("/v1/plugins/cache", get(crate::handlers::plugins::list_cache))
+        .route("/v1/plugins/cache", axum::routing::delete(crate::handlers::plugins::clear_cache))
+
+        // ── Extensions API ──
+        .route("/v1/extensions/list", get(crate::handlers::extensions::list_extensions))
+        .route("/v1/extensions/install", post(crate::handlers::extensions::install_extension))
+        .route("/v1/extensions/remove", axum::routing::delete(crate::handlers::extensions::remove_extension))
+        .route("/v1/extensions/cache", get(crate::handlers::extensions::list_cache))
+        .route("/v1/extensions/cache", axum::routing::delete(crate::handlers::extensions::clear_cache))
+
+        // ── MCP API ──
+        .route("/v1/mcp/list", get(crate::handlers::mcp::list_mcp))
+        .route("/v1/mcp/install", post(crate::handlers::mcp::install_mcp))
+        .route("/v1/mcp/remove", axum::routing::delete(crate::handlers::mcp::remove_mcp))
+        .route("/v1/mcp/cache", get(crate::handlers::mcp::list_cache))
+        .route("/v1/mcp/cache", axum::routing::delete(crate::handlers::mcp::clear_cache))
 
         // ── Vector Ingest API ──
         .route("/v1/ingest/file", post(crate::handlers::ingest::file_ingest))
@@ -71,6 +93,14 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
         .route("/v1/system/brain", post(crate::handlers::system::toggle_brain))
         .route("/v1/system/profile", post(crate::handlers::setup::configure_profile))
+
+        // ── JIT Mid-Layer Injection API (Phase 3 / Ecosystem) ──
+        // Allows API-driven injection when AI confidence/graph drops mid-inference.
+        .route("/v1/engine/jit/inject", post(crate::handlers::system::jit_inject))
+
+        // ── Pure CEL Execution API (Phase 3 / Ecosystem) ──
+        .route("/v1/cel/execute", post(crate::handlers::cel_handler::execute_cel_script))
+
 
         // ── Hardware Calibration (Phase 2) ──
         .route("/v1/hardware/calibrate", post(crate::handlers::models::calibrate))

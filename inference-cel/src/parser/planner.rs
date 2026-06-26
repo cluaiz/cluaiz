@@ -56,6 +56,22 @@ pub enum PlanStep {
         target: Option<String>,
         args: HashMap<String, CelValue>,
     },
+
+    // ── Hardcore Engine Control Steps ──
+    EngineMemoryControl {
+        action: String,
+        target: String,
+    },
+    MidLayerInjection {
+        payload: CelValue,
+    },
+    InferenceControl {
+        command: String,
+    },
+    SystemCall {
+        command: String,
+        args: Vec<CelValue>,
+    },
 }
 
 /// A linear execution plan for a pipeline
@@ -204,6 +220,28 @@ impl CelPlanner {
                     plan.steps.push(PlanStep::ExecuteCommand {
                         action: action.clone(),
                         target: target.clone(),
+                        args: args.clone(),
+                    });
+                }
+                CelOp::EngineMemoryControl { action, target } => {
+                    plan.steps.push(PlanStep::EngineMemoryControl {
+                        action: action.clone(),
+                        target: target.clone(),
+                    });
+                }
+                CelOp::MidLayerInjection { payload } => {
+                    plan.steps.push(PlanStep::MidLayerInjection {
+                        payload: payload.clone(),
+                    });
+                }
+                CelOp::InferenceControl { command } => {
+                    plan.steps.push(PlanStep::InferenceControl {
+                        command: command.clone(),
+                    });
+                }
+                CelOp::SystemCall { command, args } => {
+                    plan.steps.push(PlanStep::SystemCall {
+                        command: command.clone(),
                         args: args.clone(),
                     });
                 }

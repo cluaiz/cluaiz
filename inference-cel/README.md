@@ -1,8 +1,8 @@
 # Cluaize Inference CEL (Cluaiz Engine Language) 🧠⚡
 
-**The Universal Brain Router, Zero-Overhead FFI Transducer, & Turing-Complete Orchestration Engine for Autonomous AI**
+**The Cluaize Brain Router, Zero-Overhead FFI Transducer, & Turing-Complete Orchestration Engine for Autonomous AI**
 
-`inference-cel` is the cornerstone architectural component of the Cluaize ecosystem. It solves the dreaded **"Monolith Trap"**—the fundamental flaw in legacy AI engines (like Ollama or vLLM) that bloat their core binaries by hardcoding database drivers, web scrapers, and external APIs in C++ or Python. 
+`inference-cel` is the cornerstone architectural component of the Cluaize ecosystem. It solves the **"Monolith Trap"**—the flaw in other platforms that bloat their core binaries by hardcoding database drivers, web scrapers, and external APIs.
 
 Instead of hardcoding logic, `inference-cel` acts as a **"Dumb, Ultra-Fast Router"**. It has zero knowledge of what a Database, Web Search, or API is. It only knows how to parse a universal orchestration language (CEL) into a Turing-Complete Abstract Syntax Tree (AST), and execute it across strict memory-safe boundaries at bare-metal speeds (0.05ms latency).
 
@@ -61,6 +61,14 @@ use plugin::database -> find Neuron -> filter age >= 18 -> sort desc
 use plugin::database -> find User -> select(id, name, email)
 ```
 
+### F. [NEW] Hardcore Native Engine Directives
+CEL acts as a direct control protocol for the `neural_foundry`. The LLM or external APIs can natively pause inference, flush Key-Value caches, or inject semantic data directly into the active layer without routing through any plugin or WASM boundary.
+```cel
+engine -> kv_cache -> clear($user_session)
+engine -> mid_layer -> inject($retrieved_data)
+engine -> inference -> pause()
+```
+
 ---
 
 ## ⚡ 3. The 4-Tier Execution Architecture (Runtimes)
@@ -115,6 +123,6 @@ When the LLM outputs a CEL script, the following exact lifecycle occurs:
 4. **Manifest Reading (`metadata_parser.rs`):** Reads `manifest.yaml` files from the `cluaize-skills/` directory to understand semantic triggers, versioning, memory constraints, and required capabilities.
 5. **Dispatch & Routing (`registry.rs`):** The router matches the `use plugin::<name>` directive to the loaded plugin.
 6. **Execution (`cxp_ffi.rs` / `wasm_sandbox.rs`):** The payload is transpiled to a C-ABI struct and dispatched. Sandboxed modules run via Wasmtime, trusted modules run via native C-Pointers.
-7. **GPU Injection (`gpu_injector.rs`):** Returned payloads are verified and injected back into the LLM's attention mechanism.
+7. **GPU Injection & Native Execution (`gpu_injector.rs` / `cel_handler.rs`):** Returned payloads from plugins are verified and injected back into the LLM's attention mechanism. For `<cel>` hooks, the Native Engine Directives bypass plugins entirely and directly execute internal hooks (like KV cache flushing) inside the active inference loop.
 
 > **"The Engine does not know what a Database is. It only knows how to speak CEL."** - Cluaize Engineering Doctrine

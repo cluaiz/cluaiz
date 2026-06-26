@@ -1,89 +1,162 @@
-{
-  "name": "Cluaize Docs",
-  "version": "1.0.0",
-  "last_updated": "2026-05-19T00:15:00Z",
-  "theme": {
-    "primary": "#10b981",
-    "dark": "#000000",
-    "light": "#ffffff",
-    "font_family": "var(--font-mono)"
+[
+  {
+    "id": "vision",
+    "title": "🌟 Why Cluaize?",
+    "groups": [
+      {
+        "group": "Vision & Value",
+        "pages": [
+          { "slug": "why-cluaize", "title": "💡 Enterprise Value", "file_path": "docs/vision/why-cluaize.md" }
+        ]
+      }
+    ]
   },
-  "navigation": {
-    "tabs": [
+  {
+    "id": "get-started",
+    "title": "🚀 Get Started",
+    "groups": [
       {
-        "id": "get-started",
-        "title": "🚀 Get Started",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
-              { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" }
-            ]
-          },
-          {
-            "group": "Quickstart",
-            "pages": [
-              { "slug": "quickstart", "title": "⚡ Quickstart", "file_path": "docs/get-started/quickstart.md" }
-            ]
-          }
+        "group": "Overview",
+        "pages": [
+          { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
+          { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" }
         ]
       },
       {
-        "id": "cli-tui",
-        "title": "💻 CLI & TUI",
-        "groups": [
-          {
-            "group": "TUI Dashboard",
-            "pages": [
-              { "slug": "tui-dashboard", "title": "🧿 TUI Dashboard", "file_path": "docs/cli/tui.md" },
-              { "slug": "onboarding", "title": "🕯️ Onboarding", "file_path": "docs/cli/onboarding.md" }
-            ]
-          },
-          {
-            "group": "Command Manual",
-            "pages": [
-              { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cli/manual.md" }
-            ]
-          }
+        "group": "Quickstart",
+        "pages": [
+          { "slug": "quickstart", "title": "⚡ Quickstart", "file_path": "docs/get-started/quickstart.md" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cli-tui",
+    "title": "💻 CLI & TUI",
+    "groups": [
+      {
+        "group": "TUI Dashboard",
+        "pages": [
+          { "slug": "tui-dashboard", "title": "🧿 TUI Dashboard", "file_path": "docs/cmd/tui.md" },
+          { "slug": "onboarding", "title": "🕯️ Onboarding", "file_path": "docs/cmd/onboarding.md" }
         ]
       },
       {
-        "id": "cluaize-engine",
-        "title": "🧠 Cluaize Engine",
-        "groups": [
-          {
-            "group": "Core Engine",
-            "pages": [
-              { "slug": "system-booster", "title": "🚀 System Booster", "file_path": "docs/engine/booster.md" }
-            ]
-          },
-          {
-            "group": "REST API Gateway",
-            "pages": [
-              { "slug": "engine-api", "title": "📡 Axum API", "file_path": "docs/engine/api.md" }
-            ]
-          }
+        "group": "Command Manual",
+        "pages": [
+          { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cmd/manual.md" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "engine-deep-dive",
+    "title": "🧠 Engine Deep Dive",
+    "groups": [
+      {
+        "group": "Core Engine",
+        "pages": [
+          { "slug": "system-booster-deep", "title": "🚀 System Booster Guide", "file_path": "docs/engine/booster.md" },
+          { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" }
         ]
       },
       {
-        "id": "deployments-matrix",
-        "title": "⚙️ CI/CD & Deployments",
-        "groups": [
-          {
-            "group": "Universal Matrix",
-            "pages": [
-              { "slug": "platforms-matrix", "title": "🌌 Platform Support", "file_path": "docs/deployments/platforms.md" }
-            ]
-          },
-          {
-            "group": "CI/CD Workflows",
-            "pages": [
-              { "slug": "cicd-workflows", "title": "⛓️ Release Workflows", "file_path": "docs/deployments/cicd.md" }
-            ]
-          }
+        "group": "Architecture & FFI",
+        "pages": [
+          { "slug": "unified-brain-ffi", "title": "🔌 Zero-Latency FFI", "file_path": "docs/architecture/unified-brain-ffi.md" },
+          { "slug": "registry-web-integration", "title": "🏛️ Registry Web Specs", "file_path": "docs/architecture/registry-web-integration.md" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reference-manual",
+    "title": "📚 Reference Manual",
+    "groups": [
+      {
+        "group": "Reference Index",
+        "pages": [
+          { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
+          { "slug": "cel-manual", "title": "⚙️ CEL Specification", "file_path": "docs/reference/cel-manual.md" },
+          { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
+        ]
+      },
+      {
+        "group": "CLI Reference",
+        "pages": [
+          { "slug": "cli-index", "title": "💻 CLI Reference Index", "file_path": "docs/reference/cli/index.md" },
+          { "slug": "cluaize-serve", "title": "⚙️ cluaize serve", "file_path": "docs/reference/cli/cluaize-serve.md" },
+          { "slug": "cluaize-run", "title": "⚙️ cluaize run", "file_path": "docs/reference/cli/cluaize-run.md" },
+          { "slug": "cluaize-pull", "title": "⚙️ cluaize pull", "file_path": "docs/reference/cli/cluaize-pull.md" },
+          { "slug": "cluaize-list", "title": "⚙️ cluaize list", "file_path": "docs/reference/cli/cluaize-list.md" },
+          { "slug": "cluaize-rm", "title": "⚙️ cluaize rm", "file_path": "docs/reference/cli/cluaize-rm.md" },
+          { "slug": "cluaize-model", "title": "⚙️ cluaize model", "file_path": "docs/reference/cli/cluaize-model.md" },
+          { "slug": "cluaize-brain", "title": "⚙️ cluaize brain", "file_path": "docs/reference/cli/cluaize-brain.md" },
+          { "slug": "cluaize-booster", "title": "⚙️ cluaize booster", "file_path": "docs/reference/cli/cluaize-booster.md" },
+          { "slug": "cluaize-permission", "title": "⚙️ cluaize permission", "file_path": "docs/reference/cli/cluaize-permission.md" },
+          { "slug": "cluaize-skill", "title": "⚙️ cluaize skill", "file_path": "docs/reference/cli/cluaize-skill.md" },
+          { "slug": "cluaize-calibrate", "title": "⚙️ cluaize calibrate", "file_path": "docs/reference/cli/cluaize-calibrate.md" },
+          { "slug": "cluaize-benchmark", "title": "⚙️ cluaize benchmark", "file_path": "docs/reference/cli/cluaize-benchmark.md" },
+          { "slug": "cluaize-status", "title": "⚙️ cluaize status", "file_path": "docs/reference/cli/cluaize-status.md" },
+          { "slug": "cluaize-ps", "title": "⚙️ cluaize ps", "file_path": "docs/reference/cli/cluaize-ps.md" },
+          { "slug": "cluaize-ingest", "title": "⚙️ cluaize ingest", "file_path": "docs/reference/cli/cluaize-ingest.md" }
+        ]
+      },
+      {
+        "group": "HTTP API Reference",
+        "pages": [
+          { "slug": "api-index", "title": "📡 HTTP API Index", "file_path": "docs/reference/api/index.md" },
+          { "slug": "post-chat", "title": "📡 POST /chat", "file_path": "docs/reference/api/post-chat.md" },
+          { "slug": "get-hardware", "title": "📡 GET /hardware", "file_path": "docs/reference/api/get-hardware.md" },
+          { "slug": "get-models-installed", "title": "📡 GET /models/installed", "file_path": "docs/reference/api/get-models-installed.md" },
+          { "slug": "get-models-tags", "title": "📡 GET /models/tags", "file_path": "docs/reference/api/get-models-tags.md" },
+          { "slug": "post-models-load", "title": "📡 POST /models/load", "file_path": "docs/reference/api/post-models-load.md" },
+          { "slug": "post-models-download", "title": "📡 POST /models/download", "file_path": "docs/reference/api/post-models-download.md" },
+          { "slug": "post-v1-db-execute", "title": "📡 POST /v1/db/execute", "file_path": "docs/reference/api/post-v1-db-execute.md" },
+          { "slug": "get-v1-permission", "title": "📡 GET /v1/permission", "file_path": "docs/reference/api/get-v1-permission.md" },
+          { "slug": "post-v1-permission-update", "title": "📡 POST /v1/permission/update", "file_path": "docs/reference/api/post-v1-permission-update.md" },
+          { "slug": "post-v1-system-brain", "title": "📡 POST /v1/system/brain", "file_path": "docs/reference/api/post-v1-system-brain.md" },
+          { "slug": "get-v1-system-control", "title": "📡 GET /v1/system/control", "file_path": "docs/reference/api/get-v1-system-control.md" },
+          { "slug": "get-v1-booster-status", "title": "📡 GET /v1/booster/status", "file_path": "docs/reference/api/get-v1-booster-status.md" },
+          { "slug": "post-v1-booster-update", "title": "📡 POST /v1/booster/update", "file_path": "docs/reference/api/post-v1-booster-update.md" },
+          { "slug": "post-v1-ingest-file", "title": "📡 POST /v1/ingest/file", "file_path": "docs/reference/api/post-v1-ingest-file.md" },
+          { "slug": "get-health", "title": "📡 GET /health", "file_path": "docs/reference/api/get-health.md" }
+        ]
+      },
+      {
+        "group": "Configuration Profiles",
+        "pages": [
+          { "slug": "config-index", "title": "⚙️ Config Profiles Index", "file_path": "docs/reference/config/index.md" },
+          { "slug": "system-booster", "title": "⚙️ system_booster.json", "file_path": "docs/reference/config/system-booster.md" },
+          { "slug": "permission", "title": "⚙️ Permission.json", "file_path": "docs/reference/config/permission.md" },
+          { "slug": "system-control", "title": "⚙️ system_control.json", "file_path": "docs/reference/config/system-control.md" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "architecture-topics",
+    "title": "⚙️ Architecture",
+    "pages": [
+      { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" }
+    ]
+  },
+  {
+    "id": "deployments",
+    "title": "🚀 Deployment",
+    "groups": [
+      {
+        "group": "Platform Matrix",
+        "pages": [
+          { "slug": "platforms", "title": "🌌 Platform Support Matrix", "file_path": "docs/deployments/platforms.md" }
+        ]
+      },
+      {
+        "group": "Release Workflows",
+        "pages": [
+          { "slug": "cicd", "title": "⛓️ Release Workflows", "file_path": "docs/deployments/cicd.md" }
         ]
       }
     ]
   }
-}
+]

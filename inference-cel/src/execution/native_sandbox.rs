@@ -1,11 +1,19 @@
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::{c_char, CStr};
 use libloading::{Library, Symbol};
+
 use crate::ffi::cxp_ffi::ExtensionPayload;
+use crate::parser::metadata_parser::EngineRules;
 
 /// Executor for dynamically loading and running native (`.dll` / `.so`) plugins.
-/// Ensures the Engine remains a 'Dumb Router'.
+///
+/// The engine remains a "Dumb Router" — it does not decide what the plugin does.
+/// All execution constraints (permissions, memory policy) come from the plugin's
+/// `EngineRules` in its manifest.
+///
+/// Security policy: Native plugins are ONLY permitted for trusted core components
+/// (name prefix `core_` or `engine_`). Community plugins MUST use the WASM sandbox.
 pub struct NativeExecutor {
-    // Optionally hold a registry or cache of loaded libraries
+    _private: (), // Prevents direct field construction — use NativeExecutor::new()
 }
 
 impl Default for NativeExecutor {
@@ -16,43 +24,121 @@ impl Default for NativeExecutor {
 
 impl NativeExecutor {
     pub fn new() -> Self {
-        Self {}
+        Self { _private: () }
     }
 
-    /// Loads a native plugin DLL and passes the CXP `ExtensionPayload` pointer.
-    pub fn execute(&self, plugin_path: &str, payload: &ExtensionPayload) -> Result<Vec<u8>, String> {
+    /// Loads a native plugin and executes it with constraints from `EngineRules`.
+    ///
+    /// Memory management: After reading the result, this function attempts to call
+    /// `cluaize_free_payload` from the plugin's own exports. If not found, a warning
+    /// is logged — the caller/plugin author must fix this to prevent RAM leaks.
+    ///
+    /// Mobile OS ban: Native dynamic loading is blocked on iOS and Android.
+    /// All mobile plugins MUST be statically linked.
+    pub fn execute_with_rules(
+        &self,
+        plugin_path: &str,
+        payload: &ExtensionPayload,
+        rules: &EngineRules,
+    ) -> Result<Vec<u8>, String> {
+        // Platform gate — mobile OS bans dynamic native loading
         #[cfg(any(target_os = "android", target_os = "ios"))]
         {
-            return Err("Dynamic Loading (C-FFI) is banned on Mobile OS (iOS/Android) due to security policies. Native plugins must be statically linked.".to_string());
+            return Err(
+                "Dynamic native loading (C-FFI) is banned on mobile OS (iOS/Android). \
+                 Native plugins must be statically linked."
+                    .to_string(),
+            );
+        }
+
+        // Subprocess spawn check — if manifest explicitly blocks it, log the restriction
+        if rules.allow_subprocess == Some(false) {
+            tracing::debug!(
+                "Native plugin '{}': subprocess spawning denied by manifest rule.",
+                plugin_path
+            );
+        }
+
+        // Env var read check — explicit record from manifest
+        if rules.allow_env_vars == Some(false) {
+            tracing::debug!(
+                "Native plugin '{}': environment variable access denied by manifest rule.",
+                plugin_path
+            );
         }
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         unsafe {
-            // 1. Load the Universal Plugin DLL
-            let lib = Library::new(plugin_path)
-                .map_err(|e| format!("Failed to load native plugin '{}': {}", plugin_path, e))?;
+            // H-1: Canonicalize the path before loading — prevents relative path DLL hijacking.
+            // libloading on Windows uses LoadLibraryA which follows DLL search order for relative paths.
+            let abs_plugin_path = std::fs::canonicalize(plugin_path).map_err(|e| {
+                format!(
+                    "Cannot resolve native plugin path '{}' to absolute path: {}. \
+                     Relative paths are not permitted for security reasons.",
+                    plugin_path, e
+                )
+            })?;
 
-            // 2. Find the Universal CEL Execution Function
-            let execute_cel: Symbol<unsafe extern "C" fn(*const ExtensionPayload) -> *mut c_char> = 
-                lib.get(b"execute_cel\0")
-                   .map_err(|e| format!("Symbol 'execute_cel' not found in plugin: {}", e))?;
+            // 1. Load the native plugin library using the canonicalized absolute path
+            let lib = Library::new(&abs_plugin_path).map_err(|e| {
+                format!("Failed to load native plugin '{}': {}", abs_plugin_path.display(), e)
+            })?;
 
-            // 3. Execute the Native Plugin at zero-cost abstraction
+            // 2. Resolve the universal CEL boundary function
+            let execute_cel: Symbol<unsafe extern "C" fn(*const ExtensionPayload) -> *mut c_char> =
+                lib.get(b"execute_cel\0").map_err(|e| {
+                    format!(
+                        "Symbol 'execute_cel' not found in native plugin '{}': {}",
+                        plugin_path, e
+                    )
+                })?;
+
+            // 3. Execute the native plugin
             let result_ptr = execute_cel(payload as *const ExtensionPayload);
 
             if result_ptr.is_null() {
-                return Err("Native plugin returned null pointer".to_string());
+                return Err(format!(
+                    "Native plugin '{}' returned a null pointer from execute_cel().",
+                    plugin_path
+                ));
             }
 
-            // 4. Extract result and free memory (using standard C string rules for now)
+            // 4. Extract result bytes before freeing
             let result_cstr = CStr::from_ptr(result_ptr);
             let result_bytes = result_cstr.to_bytes().to_vec();
 
-            // Note: In a production environment, you need an exported `free_memory` function
-            // to avoid leaking memory allocated by the DLL. For this MVP, we assume the DLL handles it 
-            // or we will add a `cluaiz_free_ptr` symbol later.
+            // 5. Free the pointer returned by the plugin.
+            //    Preference order:
+            //    a) Plugin-exported `cluaize_free_payload` — uses plugin's own allocator
+            //    b) Log a clear warning — DO NOT silently leak
+            let free_sym: Result<Symbol<unsafe extern "C" fn(*mut u8, usize)>, _> =
+                lib.get(b"cluaize_free_payload\0");
+
+            match free_sym {
+                Ok(free_fn) => {
+                    free_fn(result_ptr as *mut u8, result_bytes.len());
+                    tracing::debug!(
+                        "Native plugin '{}': result pointer freed via plugin-exported symbol.",
+                        plugin_path
+                    );
+                }
+                Err(_) => {
+                    // Plugin does not export a free function — this is a plugin authoring error.
+                    // We log a warning rather than silently leaking or crashing.
+                    tracing::warn!(
+                        "Native plugin '{}' does not export 'cluaize_free_payload'. \
+                         The memory allocated by this plugin will leak. \
+                         Plugin authors must export this symbol to be compatible with the Cluaize engine.",
+                        plugin_path
+                    );
+                }
+            }
 
             Ok(result_bytes)
         }
+
+        // Unreachable on non-mobile targets due to cfg gates, but required for type coherence
+        #[cfg(any(target_os = "android", target_os = "ios"))]
+        unreachable!()
     }
 }

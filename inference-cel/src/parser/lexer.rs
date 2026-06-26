@@ -1,11 +1,49 @@
 use super::ast::{CelAst, CelOp, CelPipeline, CelStatement, CelValue, CompareOp, Filter};
 use std::collections::HashMap;
 
+/// Maximum nesting depth for if/foreach blocks.
+/// Prevents stack overflow via deeply nested CEL input (C-2 security fix).
+const MAX_PARSE_DEPTH: usize = 32;
+
+/// Plugin name allowlist: alphanumeric, hyphen, underscore only.
+/// Prevents path traversal and injection via `use plugin::` directive (M-3 security fix).
+fn validate_plugin_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Plugin name cannot be empty.".to_string());
+    }
+    if name.len() > 128 {
+        return Err(format!(
+            "Plugin name '{}' exceeds max length (128 chars). Got {} chars.",
+            name, name.len()
+        ));
+    }
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return Err(format!(
+            "Plugin name '{}' contains invalid characters. \
+             Only alphanumeric, hyphen (-), and underscore (_) are permitted. \
+             Path separators and special characters are not allowed.",
+            name
+        ));
+    }
+    Ok(())
+}
+
 /// Parses a raw CEL string into a full Turing-Complete `CelAst`.
+/// Enforces a maximum nesting depth of `MAX_PARSE_DEPTH` to prevent stack overflows.
 pub fn parse(input: &str) -> Result<CelAst, String> {
-    let input = input.trim();
+    parse_inner(input.trim(), 0)
+}
+
+fn parse_inner(input: &str, depth: usize) -> Result<CelAst, String> {
     if input.is_empty() {
         return Err("Empty CEL expression".to_string());
+    }
+    if depth > MAX_PARSE_DEPTH {
+        return Err(format!(
+            "CEL nesting depth exceeded (max {} levels). \
+             Deeply nested if/foreach expressions are not permitted.",
+            MAX_PARSE_DEPTH
+        ));
     }
 
     let mut ast = CelAst::new();
@@ -33,7 +71,7 @@ pub fn parse(input: &str) -> Result<CelAst, String> {
             let start_brace = stmt_str.find('{').ok_or("Expected '{' for if block")?;
             let end_brace = find_closing_brace(stmt_str, start_brace)?;
             let if_body = &stmt_str[start_brace + 1..end_brace];
-            let if_ast = parse(if_body)?;
+            let if_ast = parse_inner(if_body, depth + 1)?;
 
             let mut else_ast = None;
             let remainder = stmt_str[end_brace + 1..].trim();
@@ -41,7 +79,7 @@ pub fn parse(input: &str) -> Result<CelAst, String> {
                 let else_start_brace = remainder.find('{').ok_or("Expected '{' for else block")?;
                 let else_end_brace = find_closing_brace(remainder, else_start_brace)?;
                 let else_body = &remainder[else_start_brace + 1..else_end_brace];
-                else_ast = Some(Box::new(parse(else_body)?));
+                else_ast = Some(Box::new(parse_inner(else_body, depth + 1)?));
             }
 
             ast.statements.push(CelStatement::IfElse { 
@@ -62,7 +100,7 @@ pub fn parse(input: &str) -> Result<CelAst, String> {
             let start_brace = stmt_str.find('{').ok_or("Expected '{' for foreach block")?;
             let end_brace = find_closing_brace(stmt_str, start_brace)?;
             let block_body = &stmt_str[start_brace + 1..end_brace];
-            let block_ast = parse(block_body)?;
+            let block_ast = parse_inner(block_body, depth + 1)?;
 
             ast.statements.push(CelStatement::Foreach { 
                 item_var: parts[0].trim().to_string(), 
@@ -116,15 +154,57 @@ fn find_closing_brace(input: &str, start_idx: usize) -> Result<usize, String> {
     Err("Missing closing brace '}'".to_string())
 }
 
-/// Parses a linear `->` pipeline
 fn parse_pipeline(input: &str) -> Result<CelPipeline, String> {
     let mut pipeline = CelPipeline::new();
     let segments: Vec<&str> = input.split("->").map(|s| s.trim()).collect();
+
+    // ── Hardcore Engine Directives Interception ──
+    if !segments.is_empty() && segments[0] == "engine" {
+        if segments.len() >= 3 && segments[1] == "kv_cache" {
+            let action_body = segments[2]; // e.g. clear($user_id)
+            let action = action_body.split('(').next().unwrap_or("").trim().to_string();
+            let start = action_body.find('(').unwrap_or(0);
+            let end = action_body.rfind(')').unwrap_or(action_body.len());
+            let target = if start < end { action_body[start+1..end].trim().to_string() } else { "".to_string() };
+            pipeline.ops.push(CelOp::EngineMemoryControl { action, target });
+            return Ok(pipeline);
+        } else if segments.len() >= 3 && segments[1] == "mid_layer" {
+            let action_body = segments[2]; // e.g. inject($data)
+            let start = action_body.find('(').unwrap_or(0);
+            let end = action_body.rfind(')').unwrap_or(action_body.len());
+            let payload_str = if start < end { action_body[start+1..end].trim() } else { "" };
+            let payload = parse_value(payload_str).unwrap_or(CelValue::Null);
+            pipeline.ops.push(CelOp::MidLayerInjection { payload });
+            return Ok(pipeline);
+        } else if segments.len() >= 3 && segments[1] == "inference" {
+            let action_body = segments[2]; // e.g. pause()
+            let command = action_body.split('(').next().unwrap_or("").trim().to_string();
+            pipeline.ops.push(CelOp::InferenceControl { command });
+            return Ok(pipeline);
+        } else if segments.len() >= 3 && segments[1] == "os" {
+            let action_body = segments[2]; // e.g. process("ps")
+            let command = action_body.split('(').next().unwrap_or("").trim().to_string();
+            let start = action_body.find('(').unwrap_or(0);
+            let end = action_body.rfind(')').unwrap_or(action_body.len());
+            let args_str = if start < end { action_body[start+1..end].trim() } else { "" };
+            let mut args = Vec::new();
+            if !args_str.is_empty() {
+                args.push(parse_value(args_str).unwrap_or(CelValue::Null));
+            }
+            // M-1: SystemCall is emitted here. The planner/executor MUST verify
+            // that EngineRules.allow_subprocess == Some(true) before executing this op.
+            // The parser does not enforce permissions — that is the executor's responsibility.
+            pipeline.ops.push(CelOp::SystemCall { command, args });
+            return Ok(pipeline);
+        }
+    }
 
     for segment in segments {
         if segment.is_empty() { continue; }
         if segment.starts_with("use plugin::") {
             let name = segment["use plugin::".len()..].trim().to_string();
+            // M-3: Validate plugin name against allowlist — prevents path traversal and injection
+            validate_plugin_name(&name)?;
             pipeline.ops.push(CelOp::ImportPlugin { name });
         } else if segment.starts_with("process(") {
             let body = segment.strip_prefix("process(").and_then(|s| s.strip_suffix(')')).unwrap_or("");
@@ -252,12 +332,12 @@ fn extract_float_array(body: &str, key: &str) -> Option<Vec<f32>> {
 }
 
 fn parse_generic_command(segment: &str) -> Option<CelOp> {
-    let mut action = String::new();
     let mut target = None;
     let mut args = HashMap::new();
 
     let space_idx = segment.find(' ')?;
-    action = segment[..space_idx].trim().to_string();
+    let action = segment[..space_idx].trim().to_string();
+
     
     let remainder = segment[space_idx..].trim();
     

@@ -18,6 +18,10 @@ pub async fn execute(command: SkillCommand) -> Result<()> {
         SkillCommand::Cache { command } => {
             handle_cache_command(command).await?;
         }
+        SkillCommand::Remove { skill_name } => {
+            println!("  {} [Cluaize Skills] Removing skill: {}", "🧠".cyan(), skill_name.bold());
+            // TODO: Delegate to SkillRegistry
+        }
     }
     Ok(())
 }

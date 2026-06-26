@@ -2,15 +2,15 @@
 //! Ensures Plugins cannot directly touch GPU memory.
 //! Takes CPU-bound plugin results and safely injects them into the CUDA/MPS KV Cache.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TensorData {
     pub dimensions: Vec<usize>,
     pub values: Vec<f32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ContextInjectionEnvelope {
     pub tokens: Vec<u32>,        // Raw token IDs for alignment
     pub sequence_id: u32,       // Multi-tenant chat safety

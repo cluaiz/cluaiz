@@ -154,6 +154,69 @@
       "description": "Switch the active chat or vector/embedding model dynamically.",
       "category": "models",
       "example": "cluaize model set-vector all-MiniLM-L6-v2"
+    },
+    {
+      "name": "plugin",
+      "usage": "cluaize plugin <install|list|remove|link> <plugin_name>",
+      "description": "Manage Cluaize Plugins (Native muscles).",
+      "category": "extensions",
+      "example": "cluaize plugin install web-scraper"
+    },
+    {
+      "name": "plugin cache ls",
+      "usage": "cluaize plugin cache ls",
+      "description": "List all active plugin caches.",
+      "category": "extensions",
+      "example": "cluaize plugin cache ls"
+    },
+    {
+      "name": "plugin cache clear",
+      "usage": "cluaize plugin cache clear [plugin_name]",
+      "description": "Clear specific or all plugin caches globally.",
+      "category": "extensions",
+      "example": "cluaize plugin cache clear --all"
+    },
+    {
+      "name": "extension",
+      "usage": "cluaize extension <install|list|remove|start> <extension_name>",
+      "description": "Manage Cluaize Extensions (Brain + Muscle bundles).",
+      "category": "extensions",
+      "example": "cluaize extension install cluaize-db"
+    },
+    {
+      "name": "extension cache ls",
+      "usage": "cluaize extension cache ls",
+      "description": "List all active extension caches.",
+      "category": "extensions",
+      "example": "cluaize extension cache ls"
+    },
+    {
+      "name": "extension cache clear",
+      "usage": "cluaize extension cache clear [extension_name]",
+      "description": "Clear specific or all extension caches globally.",
+      "category": "extensions",
+      "example": "cluaize extension cache clear --all"
+    },
+    {
+      "name": "mcp",
+      "usage": "cluaize mcp <install|list|remove|start> <mcp_name>",
+      "description": "Manage Model Context Protocol (MCP) integrations.",
+      "category": "extensions",
+      "example": "cluaize mcp install github-mcp"
+    },
+    {
+      "name": "mcp cache ls",
+      "usage": "cluaize mcp cache ls",
+      "description": "List all active MCP caches.",
+      "category": "extensions",
+      "example": "cluaize mcp cache ls"
+    },
+    {
+      "name": "mcp cache clear",
+      "usage": "cluaize mcp cache clear [mcp_name]",
+      "description": "Clear specific or all MCP caches globally.",
+      "category": "extensions",
+      "example": "cluaize mcp cache clear --all"
     }
   ]
 }

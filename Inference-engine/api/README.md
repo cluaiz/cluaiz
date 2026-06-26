@@ -16,6 +16,11 @@ The Cluaize API is designed to serve two entirely different paradigms simultaneo
    - **Protocol:** HTTP/1.1 and Server-Sent Events (SSE) for streaming.
    - **Rule:** Strict validation. Operates completely independently from the Native FFI pipe.
 
+3. **Pure CEL Gateway (Hardcore Engine Control)**
+   - **Target:** Internal AI feedback loops, Advanced DevOps, Docker Nodes.
+   - **Protocol:** Raw CEL Script over POST (`/v1/cel/execute`) or Mid-Inference AI Hooks (`<cel>...`).
+   - **Rule:** Direct interaction with `neural_foundry`. No intermediate plugins required for engine-level hooks like `kv_cache -> clear()` or `mid_layer -> inject()`.
+
 ---
 
 ## 📏 2. Folder Structure Guidelines
@@ -32,6 +37,7 @@ api/
 │   │   ├── chat.rs      # Inference & Token Streaming logic (SSE)
 │   │   ├── models.rs    # Model downloading, loading, and hardware probing
 │   │   ├── system.rs    # Health checks, `skip_think` interrupts, hardware telemetry
+│   │   ├── cel_handler.rs # [NEW] Pure CEL Execution API (`/v1/cel/execute`)
 │   │   └── history.rs   # [NEW] EmbeddedManager integration for DB fetch (CDQL HTTP wrapper)
 │   └── models/          # Request/Response JSON Data Structures (Strict Typing)
 ```

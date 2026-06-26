@@ -29,10 +29,6 @@ pub mod utils;
 pub mod skills;
 
 // ── Business Logic (Unified from shared) ──
-pub mod profile;
-pub mod auth;
-pub mod onboarding;
-pub mod Chat;
 pub mod environment;
 
 pub use hardware::{governor::*, telemetry::*};

@@ -11,3 +11,6 @@ pub mod ingest;
 pub mod test_jit;
 pub mod brain;
 pub mod setup;
+pub mod plugin;
+pub mod extension;
+pub mod mcp;

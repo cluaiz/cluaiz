@@ -44,3 +44,15 @@ pub async fn clear_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear cache: {}", e)}))
     }
 }
+
+// ─── DELETE /v1/skills/remove ─────────────────────────────────────────
+pub async fn remove_skill(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<InstallSkillPayload>
+) -> Json<Value> {
+    let skill_name = payload.skill_name.clone();
+    match engines::neural_foundry::registry::manager::SkillRegistry::remove_skill(&skill_name).await {
+        Ok(_) => Json(json!({"status": "success", "message": format!("WASM skill '{}' removed natively.", skill_name)})),
+        Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove skill: {}", e)}))
+    }
+}

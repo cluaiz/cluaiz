@@ -1,10 +1,23 @@
 // cluaize-engine: Core Foundry - Registry
-// Manages the lifecycle of Cluaize skills.
+// Manages the lifecycle of Cluaize skills, extensions, plugins, and MCP servers.
 
 pub mod scanner;
 pub mod compiler_daemon;
 pub mod parser;
 pub mod manager;
+pub mod extension_manager;
+pub mod plugin_manager;
+pub mod mcp_manager;
+
+// ── Phase A: Two-Tier Registry Architecture ──
+// Master registry index (registry.yaml ↔ registry.bin) and lazy-load event bus
+pub mod registry_index;
+pub mod activation_bus;
+
+// Re-export key types for convenience
+pub use registry_index::{MasterRegistry, RegistryEntry, LoadStrategy};
+pub use activation_bus::ActivationEventBus;
+
 
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};

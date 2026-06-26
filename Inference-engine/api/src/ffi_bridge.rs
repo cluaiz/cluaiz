@@ -66,13 +66,16 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                 if let Ok(json_cmd) = serde_json::from_str::<serde_json::Value>(command) {
                     if let Some(action) = json_cmd.get("action").and_then(|a| a.as_str()) {
                         match action {
-                            "CDQL_FETCH_HISTORY" => {
-                                if let Some(session_id) = json_cmd.get("session_id").and_then(|s| s.as_str()) {
-                                    if let Some(payload) = engines::memory::tensor_transducer::TensorTransducer::inject_context(session_id) {
-                                        let _ = pipe.write_all(&payload).await;
-                                    } else {
-                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"not found\"}").await;
-                                    }
+                            "EXTENSION_PAYLOAD" => {
+                                let ext_name = json_cmd.get("extension_name").and_then(|e| e.as_str()).unwrap_or("");
+                                let payload = json_cmd.get("payload").and_then(|p| p.as_str()).unwrap_or("{}");
+                                let mut manager = engines::neural_foundry::registry::extension_manager::ExtensionManager::new();
+                                // Assuming we scan the default domain or active extensions are already in memory, for FFI we might need a singleton or just scan.
+                                let base_path = cluaize_shared::environment::EnvironmentManager::current().global_dir.join("core");
+                                let _ = manager.scan_domain(&base_path);
+                                match manager.execute(ext_name, payload) {
+                                    Ok(res) => { let _ = pipe.write_all(res.as_bytes()).await; }
+                                    Err(e) => { let _ = pipe.write_all(format!("{{\"status\": \"error\", \"message\": \"{}\"}}", e).as_bytes()).await; }
                                 }
                                 continue;
                             }
@@ -447,11 +450,46 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
                             }
 
+                            let mut in_cel_block = false;
+                            let mut cel_buffer = String::new();
+
                             while let Some(mut token) = rx.recv().await {
                                 if token.trim() == "[DONE]" {
                                     let json = serde_json::json!({"type": "done", "done": true});
                                     let _ = pipe.write_all(format!("{}\n", json).as_bytes()).await;
                                     break;
+                                }
+
+                                // ── CEL Engine Directives Interception ──
+                                if token.contains("<cel>") {
+                                    in_cel_block = true;
+                                    token = token.replace("<cel>", "");
+                                }
+                                if token.contains("</cel>") {
+                                    in_cel_block = false;
+                                    cel_buffer.push_str(&token.replace("</cel>", ""));
+                                    
+                                    // 🚀 EXECUTE CEL BLOCK INTERNALLY
+                                    let cel_script = cel_buffer.clone();
+                                    cel_buffer.clear();
+                                    
+                                    tracing::info!("🧠 [FFI Bridge] Intercepted CEL Command mid-inference. Pausing stream to execute natively...");
+                                    
+                                    // Call the parser and execute natively without streaming to user
+                                    if let Ok(ast) = inference_cel::parser::lexer::parse(&cel_script) {
+                                        let planner = inference_cel::parser::planner::CelPlanner::new();
+                                        if let Ok(plan) = planner.build_plan(&ast) {
+                                            tracing::info!("🔥 [FFI Bridge] CEL Engine Plan Executing...");
+                                            let exec_result = crate::handlers::cel_handler::execute_cel_plan(plan).await;
+                                            tracing::info!("✅ [FFI Bridge] CEL execution completed: {}. Resuming stream.", exec_result);
+                                        }
+                                    }
+                                    continue;
+                                }
+
+                                if in_cel_block {
+                                    cel_buffer.push_str(&token);
+                                    continue; // Do not stream CEL logic to the user
                                 }
 
                                 if token.contains(&start_tag) {

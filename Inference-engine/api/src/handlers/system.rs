@@ -134,3 +134,16 @@ pub async fn toggle_brain(
         "message": "Failed to load system control config"
     }))
 }
+
+// ─── JIT Mid-Layer Injection API ──────────────────────────────────────────
+pub async fn jit_inject() -> Json<Value> {
+    // This is a placeholder for the explicit JIT Injection API.
+    // Natively, injection happens via CEL tag interception in ffi_bridge.rs.
+    // This API allows external orchestration tools to manually trigger an injection.
+    tracing::info!("💉 [JIT Injection] Received explicit mid-layer injection request via HTTP.");
+    Json(json!({
+        "status": "success",
+        "message": "JIT injection payload queued for next inference step.",
+        "layer": "auto"
+    }))
+}

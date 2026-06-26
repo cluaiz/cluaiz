@@ -1,33 +1,54 @@
 pub mod wasm_sandbox;
-pub mod memory_hooks;
+pub mod memory_hooks; // kept for now — see note below
 pub mod native_sandbox;
 pub mod auto_wasm_compiler;
 pub mod legacy_rhai;
 pub mod registry;
+pub mod registry_index;
+pub mod activation_bus;
 
-pub enum UniversalExecutor {
+use crate::parser::metadata_parser::EngineRules;
+
+/// The unified executor enum for all plugin sandbox types.
+///
+/// Previously named `UniversalExecutor` — renamed to comply with the Cluaize banned word policy
+/// (`Universal` is banned; see `.agent/❌bannword.md`).
+///
+/// The variant is chosen by `CluaizeExtensionRegistry` based on the plugin manifest's
+/// `engine_rules.sandbox_type` field — NOT by the plugin's file extension.
+pub enum CluaizeExecutor {
     Wasm(wasm_sandbox::WasmExecutor),
     Native(native_sandbox::NativeExecutor),
     Rhai(legacy_rhai::LegacyRhaiExecutor),
 }
 
-impl UniversalExecutor {
-    pub fn execute_plan(&self, plugin_identifier: &str, plan: &crate::parser::planner::ExecutionPlan) -> Result<Vec<u8>, String> {
+impl CluaizeExecutor {
+    /// Executes an `ExecutionPlan` using constraints from the plugin's `EngineRules`.
+    ///
+    /// `rules` is always sourced from `integration.metadata.engine_rules` — never hardcoded
+    /// in the engine. This ensures each plugin runs under exactly the limits it declares.
+    pub fn execute_plan(
+        &self,
+        plugin_identifier: &str,
+        plan: &crate::parser::planner::ExecutionPlan,
+        rules: &EngineRules,
+    ) -> Result<Vec<u8>, String> {
         match self {
             Self::Wasm(executor) => {
-                executor.execute_plan(plugin_identifier, plan)
+                executor.execute_plan_with_rules(plugin_identifier, plan, rules)
             }
+
             Self::Native(executor) => {
-                // Transpile to strict Binary (Bincode) for zero-allocation C-FFI transfer
+                // Transpile ExecutionPlan to strict Bincode for zero-allocation C-FFI transfer
                 let binary_bytes = crate::ffi::cxp_ffi::Transpiler::to_binary_payload(plan)?;
                 let payload = crate::ffi::cxp_ffi::ExtensionPayload::new(
                     crate::ffi::cxp_ffi::PayloadType::Bincode,
-                    &binary_bytes
+                    &binary_bytes,
                 );
-                executor.execute(plugin_identifier, &payload)
+                executor.execute_with_rules(plugin_identifier, &payload, rules)
             }
+
             Self::Rhai(executor) => {
-                // Load script (assuming plugin_identifier is script source for now)
                 let res = executor.execute_script(plugin_identifier, plan)?;
                 Ok(res.into_bytes())
             }

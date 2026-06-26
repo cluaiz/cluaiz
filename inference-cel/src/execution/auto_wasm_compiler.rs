@@ -6,7 +6,6 @@
 use std::path::Path;
 use std::process::Command;
 use std::fs;
-use std::io::Write;
 
 pub struct AutoWasmCompiler;
 

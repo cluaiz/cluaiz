@@ -1,5 +1,5 @@
-//! The Universal CXP Trait (Cluaize Extension Protocol)
-//! This defines the universal C-ABI compatible interface for plugins across all formats.
+//! The CXP Trait (Cluaize Extension Protocol)
+//! This defines the C-ABI compatible interface for plugins across all formats.
 
 #[repr(C)]
 pub enum PayloadType {
@@ -51,8 +51,8 @@ impl Transpiler {
     }
 }
 
-/// The engine MUST call this function after reading memory allocated by a C-FFI Plugin.
-/// Without this, any pointer returned by the plugin across the boundary will become a RAM leak.
+// The engine MUST call this function after reading memory allocated by a C-FFI Plugin.
+// Without this, any pointer returned by the plugin across the boundary will become a RAM leak.
 extern "C" {
     pub fn cluaize_free_payload(ptr: *mut u8, len: usize);
 }

@@ -24,12 +24,7 @@ impl HardwareOrchestrator {
     ) -> Result<ModelWeightsWrapper> {
         tracing::info!("🔩 [Orchestrator] Initiating Dynamic Hardware Handshake for Engine: {}", engine_type);
 
-        // 🚀 Boot the LMDB Brain Environment if enabled by Sovereign Governor
-        if let Ok(control) = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control() {
-            if control.brain.is_enabled() {
-                let _ = crate::memory::storage_bridge::load_storage_bridge();
-            }
-        }
+        // Engine boots purely as a router. Any DB/Memory extensions will be loaded via ExtensionManager.
 
         if engine_type == "onnx" {
             tracing::info!("🔮 [Orchestrator] Bypassing FFI Linker. Instantiating Native Rust ONNX Gatekeeper.");

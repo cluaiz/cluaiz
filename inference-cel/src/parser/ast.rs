@@ -86,6 +86,30 @@ pub enum CelOp {
     /// Projection / Select specific fields to save RAM
     Select {
         fields: Vec<String>,
+    },
+
+    // ── Hardcore Engine Directives (Phase 3 Ecosystem) ──
+
+    /// `engine -> kv_cache -> clear($user_id)`
+    EngineMemoryControl {
+        action: String,
+        target: String,
+    },
+    
+    /// `engine -> mid_layer -> inject($data)`
+    MidLayerInjection {
+        payload: CelValue,
+    },
+    
+    /// `engine -> inference -> pause()`
+    InferenceControl {
+        command: String,
+    },
+    
+    /// `engine -> os -> process("ps")` (If permitted)
+    SystemCall {
+        command: String,
+        args: Vec<CelValue>,
     }
 }
 

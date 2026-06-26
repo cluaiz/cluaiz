@@ -1,0 +1,25 @@
+# `cluaize model` Command Reference
+
+The `model` command configures default settings inside `Permission.json`.
+
+---
+
+## 📋 Syntax & Usage
+
+```bash
+cluaize model set-chat <model-identifier>
+cluaize model set-vector <model-identifier>
+```
+
+### Examples:
+```bash
+cluaize model set-chat gemma4:e2b
+cluaize model set-vector bge_m3:unknown:onnx:fp32
+```
+
+---
+
+## ⚙️ Configuration Targets
+
+* **`set-chat`:** Sets the active language model key used when running standard chat loops.
+* **`set-vector`:** Designates the embedding pipeline model used for document vectorization.

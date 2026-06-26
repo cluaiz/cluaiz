@@ -9,6 +9,7 @@ engines = { path = "../engines" }
 dispatcher = { path = "../../interface-engines/dispatcher", package = "dispatcher-crate" }
 system-booster = { path = "../engines/system-booster" }
 cluaize-shared = { path = "../engines/cluaize-shared" }
+inference-cel = { path = "../../inference-cel" }
 
 # ── Web Server (The Gateway) ──
 axum       = "0.8"
