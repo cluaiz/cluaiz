@@ -31,12 +31,14 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/health", get(system::health_check))
         .route("/info", get(system::system_info))
         .route("/engine/skip_think", post(system::skip_think))
+        .route("/v1/system/cmd", post(system::execute_cmd))
         
         // ── External Compatible Streaming API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
         
         // ── Internal Legacy Chat API ──
         .route("/chat", post(chat::chat))
+        .route("/v1/chat/stream", post(chat::chat_stream))
         
         // ── External Compatible Models API ──
         .route("/api/tags", get(models::tags))

@@ -81,6 +81,16 @@
         { "name": "skip", "type": "boolean", "req": true, "desc": "Whether to skip thinking tags in output.", "default": true }
       ],
       "response": "{\n  \"status\": \"success\"\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/cmd",
+      "desc": "Executes shell commands locally. STRICTLY bound to 127.0.0.1 (Localhost). Rejects any remote attempts to prevent RCE.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/cmd.md",
+      "params": [
+        { "name": "command", "type": "string", "req": true, "desc": "The raw shell command to execute.", "default": "echo Hello Cluaize" }
+      ],
+      "response": "{\n  \"status\": \"success\",\n  \"output\": \"Hello Cluaize\\n\"\n}"
     }
   ]
 }

@@ -291,3 +291,34 @@ pub async fn chat(
     Json(response)
 }
 
+// ─── POST /v1/chat/stream — Simple SSE Streaming ─────────────────────
+#[derive(Deserialize)]
+pub struct ChatStreamRequest {
+    pub message: String,
+}
+
+pub async fn chat_stream(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<ChatStreamRequest>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let dispatch_result = state.dispatcher.dispatch_stream(&request.message, false).await;
+    
+    let stream = async_stream::stream! {
+        match dispatch_result {
+            EngineResponse::TokenStream(mut rx) => {
+                while let Some(token) = rx.recv().await {
+                    yield Ok::<_, Infallible>(Event::default().data(token));
+                }
+            },
+            EngineResponse::FinalResult(text) => {
+                yield Ok::<_, Infallible>(Event::default().data(text));
+            },
+            EngineResponse::Error(e) => {
+                yield Ok::<_, Infallible>(Event::default().data(format!("Error: {}", e)));
+            }
+        }
+    };
+
+    Sse::new(stream)
+}
+

@@ -145,4 +145,62 @@ pub async fn toggle_brain(
     }))
 }
 
+// ─── Execute Local Shell Command (Secure Web Terminal) ─────────────
+#[derive(serde::Deserialize)]
+pub struct CmdPayload {
+    pub command: String,
+}
 
+pub async fn execute_cmd(
+    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<std::net::SocketAddr>,
+    Json(payload): Json<CmdPayload>,
+) -> Json<Value> {
+    // 1. Strict Security Check: Localhost ONLY.
+    if !addr.ip().is_loopback() {
+        tracing::error!("🚨 SECURITY ALERT: Remote attempt to execute command rejected from IP: {}", addr.ip());
+        return Json(json!({
+            "status": "error",
+            "output": format!("Access Denied: 403 Forbidden. Execution strictly restricted to localhost (127.0.0.1). Request from {} blocked.", addr.ip())
+        }));
+    }
+
+    // 2. Execute Command
+    tracing::info!("Executing local command from DevHub UI: {}", payload.command);
+
+    #[cfg(target_os = "windows")]
+    let output = std::process::Command::new("cmd")
+        .args(["/C", &payload.command])
+        .output();
+
+    #[cfg(not(target_os = "windows"))]
+    let output = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(&payload.command)
+        .output();
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+            
+            let final_out = if !stderr.is_empty() && stdout.is_empty() {
+                stderr
+            } else if !stderr.is_empty() {
+                format!("{}\n{}", stdout, stderr)
+            } else {
+                stdout
+            };
+
+            Json(json!({
+                "status": "success",
+                "output": final_out
+            }))
+        }
+        Err(e) => {
+            Json(json!({
+                "status": "error",
+                "output": format!("Failed to execute process: {}", e)
+            }))
+        }
+    }
+}

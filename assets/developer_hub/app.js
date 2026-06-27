@@ -94,37 +94,58 @@ function openEndpoint(ep) {
     
     document.getElementById('req-url').value = `http://localhost:8000${ep.path}`;
     
-    // Automatically switch to HTTP protocol when an endpoint is clicked
-    app.updateCustomSelect('custom-req-protocol', 'http');
-    app.onProtocolChange(false); // Trigger UI update, don't clear default endpoint payload
+    // Detect if this is a raw code endpoint (CEL or FFI)
+    let isRawCode = false;
+    let targetProtocol = 'http';
+    if (ep.path.includes('/cel/execute')) {
+        isRawCode = true;
+        targetProtocol = 'cel';
+    } else if (ep.path.includes('/execute/')) {
+        isRawCode = true;
+        targetProtocol = 'c-pointer';
+    }
 
-    // Generate default payload for HTTP
+    app.updateCustomSelect('custom-req-protocol', targetProtocol);
+    app.onProtocolChange(false); // Trigger UI update without clearing default payload
+    
+    // Generate default payload
     const bodyEditor = document.getElementById('req-body');
     const payloadDesc = document.getElementById('payload-desc');
     
-        if (ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') {
-        let obj = {};
-        if (ep.params && ep.params.length > 0) {
-            ep.params.forEach(p => {
-                if (p.default !== undefined) {
-                    obj[p.name] = p.default;
-                } else if (p.type === 'string') {
-                    obj[p.name] = "value";
-                } else if (p.type === 'integer' || p.type === 'float') {
-                    obj[p.name] = 0;
-                } else if (p.type === 'array') {
-                    obj[p.name] = [];
-                } else if (p.type === 'boolean') {
-                    obj[p.name] = false;
-                } else {
-                    obj[p.name] = null;
-                }
-            });
-            if (state.editor) state.editor.setValue(JSON.stringify(obj, null, 2));
+    if (ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') {
+        if (isRawCode) {
+            // Put raw code in editor, not wrapped in JSON
+            let rawCode = "";
+            if (ep.params && ep.params.length > 0 && ep.params[0].default !== undefined) {
+                rawCode = ep.params[0].default;
+            }
+            if (state.editor) state.editor.setValue(rawCode);
             if (state.editor) state.editor.setOption("readOnly", false);
         } else {
-            if (state.editor) state.editor.setValue("{}");
-            if (state.editor) state.editor.setOption("readOnly", false);
+            // Build JSON object
+            let obj = {};
+            if (ep.params && ep.params.length > 0) {
+                ep.params.forEach(p => {
+                    if (p.default !== undefined) {
+                        obj[p.name] = p.default;
+                    } else if (p.type === 'string') {
+                        obj[p.name] = "value";
+                    } else if (p.type === 'integer' || p.type === 'float') {
+                        obj[p.name] = 0;
+                    } else if (p.type === 'array') {
+                        obj[p.name] = [];
+                    } else if (p.type === 'boolean') {
+                        obj[p.name] = false;
+                    } else {
+                        obj[p.name] = null;
+                    }
+                });
+                if (state.editor) state.editor.setValue(JSON.stringify(obj, null, 2));
+                if (state.editor) state.editor.setOption("readOnly", false);
+            } else {
+                if (state.editor) state.editor.setValue("{}");
+                if (state.editor) state.editor.setOption("readOnly", false);
+            }
         }
     } else {
         if (state.editor) state.editor.setValue("");
@@ -166,13 +187,15 @@ window.app = {
         const tabParams = document.getElementById('tab-params');
         const tabHeaders = document.getElementById('tab-headers');
         const tabDocs = document.getElementById('tab-docs');
+        const tabTerminal = document.getElementById('tab-terminal');
         const panelParams = document.getElementById('panel-params');
         const panelHeaders = document.getElementById('panel-headers');
         const panelDocs = document.getElementById('panel-docs');
+        const panelTerminal = document.getElementById('panel-terminal');
         const panelTitle = document.getElementById('panel-left-title');
 
-        [tabParams, tabHeaders, tabDocs].forEach(t => t.classList.remove('active'));
-        [panelParams, panelHeaders, panelDocs].forEach(p => p.classList.add('hidden'));
+        [tabParams, tabHeaders, tabDocs, tabTerminal].forEach(t => t && t.classList.remove('active'));
+        [panelParams, panelHeaders, panelDocs, panelTerminal].forEach(p => p && p.classList.add('hidden'));
 
         if (tab === 'params') {
             tabParams.classList.add('active');
@@ -188,6 +211,82 @@ window.app = {
             tabDocs.classList.add('active');
             panelDocs.classList.remove('hidden');
             panelTitle.textContent = "Documentation";
+        } else if (tab === 'terminal') {
+            if(tabTerminal) tabTerminal.classList.add('active');
+            if(panelTerminal) panelTerminal.classList.remove('hidden');
+            panelTitle.textContent = "Secure Web Terminal";
+            const input = document.getElementById('terminal-input');
+            if(input) input.focus();
+        }
+    },
+    
+    async handleTerminalKeyPress(e) {
+        if (e.key === 'Enter') {
+            const input = document.getElementById('terminal-input');
+            const output = document.getElementById('terminal-output');
+            const command = input.value.trim();
+            if (!command) return;
+            
+            // Echo command
+            output.innerHTML += `\n<span style="color: #6a8759">➜</span> <span style="color: #6897bb">cluaize</span> ${command}\n`;
+            input.value = '';
+            
+            // Check if it's a chat command for streaming
+            if (command.startsWith('cluaize chat ')) {
+                const message = command.substring(13).replace(/^["']|["']$/g, '');
+                try {
+                    const response = await fetch('/v1/chat/stream', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: message })
+                    });
+                    
+                    if (!response.ok) {
+                        output.innerHTML += `<span style="color: #cc6666">Error: HTTP ${response.status}</span>`;
+                        return;
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder("utf-8");
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        for (let line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.substring(6);
+                                output.innerHTML += data.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                output.scrollTop = output.scrollHeight;
+                            }
+                        }
+                    }
+                    output.innerHTML += "\n";
+                } catch (err) {
+                    output.innerHTML += `<span style="color: #cc6666">Error streaming chat: ${err.message}</span>\n`;
+                }
+            } else {
+                // Generic CMD execution (Secure Local-Only)
+                try {
+                    const response = await fetch('/v1/system/cmd', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command: command })
+                    });
+                    const resJson = await response.json();
+                    
+                    if (resJson.status === 'success') {
+                        output.innerHTML += resJson.output.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "\n";
+                    } else {
+                        output.innerHTML += `<span style="color: #cc6666">${resJson.output || resJson.message}</span>\n`;
+                    }
+                } catch (err) {
+                    output.innerHTML += `<span style="color: #cc6666">Error executing command: ${err.message}</span>\n`;
+                }
+            }
+            output.scrollTop = output.scrollHeight;
         }
     },
     initEditor() {
@@ -476,15 +575,6 @@ window.app = {
                     urlInput.value = "http://localhost:8000/";
                 }
             }
-        } else if (protocol === 'graphql') {
-            if (state.editor) {
-                state.editor.setOption("mode", "javascript");
-                state.editor.setOption("lint", false);
-            }
-            if(resetPayload) {
-                if (state.editor) state.editor.setValue("query {\n  \n}");
-                urlInput.value = "http://localhost:8000/graphql";
-            }
         } else if (protocol === 'c-pointer') {
             methodSelect.classList.add('hidden');
             langSelect.classList.remove('hidden');
@@ -501,28 +591,29 @@ window.app = {
 
             if(resetPayload) {
                 urlInput.value = "0x000000000000";
-                app.onLanguageChange();
             }
+            app.onLanguageChange(resetPayload);
         } else if (protocol === 'cel') {
             methodSelect.classList.add('hidden');
             langSelect.classList.remove('hidden');
             
             const itemsDiv = langSelect.querySelector('.select-items');
             itemsDiv.innerHTML = `
+                <div data-value="cel">CEL (Cluaize Engine Language)</div>
                 <div data-value="rhai">Rhai Script</div>
-                <div data-value="wasm">WASM</div>
+                <div data-value="wasm">WASM (Rust)</div>
                 <div data-value="js">JavaScript (V8)</div>
             `;
             app.setupCustomSelects(); // Re-bind clicks for new items
-            app.updateCustomSelect('custom-req-language', 'rhai');
+            app.updateCustomSelect('custom-req-language', 'cel');
 
             if(resetPayload) {
                 urlInput.value = "cel://local/executor";
-                app.onLanguageChange();
             }
+            app.onLanguageChange(resetPayload);
         }
     },
-    onLanguageChange() {
+    onLanguageChange(resetPayload = true) {
         const protocol = document.getElementById('custom-req-protocol').getAttribute('data-value');
         const lang = document.getElementById('custom-req-language').getAttribute('data-value');
 
@@ -532,27 +623,30 @@ window.app = {
         if (protocol === 'c-pointer') {
             if (lang === 'rust') {
                 if (state.editor) state.editor.setOption("mode", "rust");
-                if (state.editor) state.editor.setValue("#[repr(C)]\npub struct Payload {\n    pub id: u32,\n    pub data_ptr: *const u8,\n}");
+                if (resetPayload && state.editor) state.editor.setValue("#[repr(C)]\npub struct Payload {\n    pub id: u32,\n    pub data_ptr: *const u8,\n}");
             } else if (lang === 'c') {
                 if (state.editor) state.editor.setOption("mode", "text/x-csrc");
-                if (state.editor) state.editor.setValue("typedef struct {\n    uint32_t id;\n    const char* data_ptr;\n} Payload;");
+                if (resetPayload && state.editor) state.editor.setValue("typedef struct {\n    uint32_t id;\n    const char* data_ptr;\n} Payload;");
             } else if (lang === 'python') {
                 if (state.editor) state.editor.setOption("mode", "python");
-                if (state.editor) state.editor.setValue("class Payload(ctypes.Structure):\n    _fields_ = [\n        (\"id\", ctypes.c_uint32),\n        (\"data_ptr\", ctypes.c_char_p)\n    ]");
+                if (resetPayload && state.editor) state.editor.setValue("class Payload(ctypes.Structure):\n    _fields_ = [\n        (\"id\", ctypes.c_uint32),\n        (\"data_ptr\", ctypes.c_char_p)\n    ]");
             } else if (lang === 'js') {
                 if (state.editor) state.editor.setOption("mode", "javascript");
-                if (state.editor) state.editor.setValue("const StructType = require('ref-struct-napi');\n\nconst Payload = StructType({\n  id: 'uint32',\n  data_ptr: 'string'\n});");
+                if (resetPayload && state.editor) state.editor.setValue("const StructType = require('ref-struct-napi');\n\nconst Payload = StructType({\n  id: 'uint32',\n  data_ptr: 'string'\n});");
             }
         } else if (protocol === 'cel') {
-            if (lang === 'rhai') {
+            if (lang === 'cel') {
                 if (state.editor) state.editor.setOption("mode", "rust");
-                if (state.editor) state.editor.setValue("fn process(data) {\n    return data + \"_processed\";\n}\nprocess(\"test\");");
+                if (resetPayload && state.editor) state.editor.setValue("let $users = use plugin::database -> find User -> limit 5;\nforeach ($user in $users) {\n    use plugin::email -> send(to: $user.email);\n}");
+            } else if (lang === 'rhai') {
+                if (state.editor) state.editor.setOption("mode", "rust");
+                if (resetPayload && state.editor) state.editor.setValue("fn process(data) {\n    return data + \"_processed\";\n}\nprocess(\"test\");");
             } else if (lang === 'wasm') {
                 if (state.editor) state.editor.setOption("mode", "rust");
-                if (state.editor) state.editor.setValue("(module\n  (func $main (result i32)\n    i32.const 42\n  )\n  (export \"main\" (func $main))\n)");
+                if (resetPayload && state.editor) state.editor.setValue("(module\n  (func $main (result i32)\n    i32.const 42\n  )\n  (export \"main\" (func $main))\n)");
             } else if (lang === 'js') {
                 if (state.editor) state.editor.setOption("mode", "javascript");
-                if (state.editor) state.editor.setValue("function process(data) {\n  return data + \"_processed\";\n}\nprocess(\"test\");");
+                if (resetPayload && state.editor) state.editor.setValue("function process(data) {\n  return data + \"_processed\";\n}\nprocess(\"test\");");
             }
         }
     },
@@ -573,6 +667,8 @@ window.app = {
         resBody.style.color = "#8b949e";
         btn.disabled = true;
 
+        const protocol = document.getElementById('custom-req-protocol').getAttribute('data-value');
+
         const options = {
             method: ep.method,
             headers: {
@@ -581,14 +677,24 @@ window.app = {
         };
 
         if ((ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') && bodyStr.trim() !== '') {
-            try {
-                JSON.parse(bodyStr); // Validate JSON
+            if (protocol === 'http') {
+                try {
+                    JSON.parse(bodyStr); // Validate JSON
+                    options.body = bodyStr;
+                } catch (e) {
+                    resBody.textContent = "Invalid JSON in request payload:\n" + e.message;
+                    resBody.style.color = "var(--method-delete)";
+                    btn.disabled = false;
+                    return;
+                }
+            } else if (protocol === 'cel') {
+                // Wrap raw code in script field for CEL API
+                options.body = JSON.stringify({ script: bodyStr });
+            } else if (protocol === 'c-pointer') {
+                // Wrap in generic params object for FFI APIs
+                options.body = JSON.stringify({ params: bodyStr });
+            } else {
                 options.body = bodyStr;
-            } catch (e) {
-                resBody.textContent = "Invalid JSON in request payload:\n" + e.message;
-                resBody.style.color = "var(--method-delete)";
-                btn.disabled = false;
-                return;
             }
         }
 
