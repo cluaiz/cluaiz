@@ -7,7 +7,8 @@
 
 <p align="center">
   <b>High-Performance Rust Runtime & Orchestrator for Local LLMs</b><br>
-  <i>Lightweight Rust runtime · Native FFI bindings to llama.cpp · Hardware-aware memory scheduling</i>
+  <i>Lightweight Rust runtime · Native FFI bindings to llama.cpp · Hardware-aware memory scheduling</i><br>
+  <i>Building the infrastructure to bring cloud-level agentic capabilities to local hardware with zero network overhead.</i>
 </p>
 
 <p align="center">
@@ -28,8 +29,8 @@
 > **Current Phase**: **Industrial Alpha (Research Phase)**.
 > Cluaize is an experimental Rust infrastructure for LLM orchestration. While the core architecture is build-stable, hardware-constrained guarantees and specialized ternary kernels are undergoing rigorous validation.
 > 
-> **Database Integration (`cluaizd`)**:
-> Cluaize integrates with the [cluaizd database engine](https://github.com/cluaiz/cluaizd) for persistent memory, DNA, and role-based vector management. For database setup, issues, internal logs, and database schema information, please visit the [cluaizd repository](https://github.com/cluaiz/cluaizd).
+> **Native Extensions (CEL)**:
+> Cluaize is migrating away from hardcoded external database endpoints toward the **Cluaize Expression Language (CEL)**. This allows arbitrary databases, search engines, and tools to hook directly into the inference memory space as native plugins rather than through network loopbacks.
 
 ### **Current Capabilities**
 - ✅ **Shared-Memory Signaling**: Sub-microsecond path for IPC between application and engine.
@@ -46,17 +47,19 @@
 
 ## 📖 **About Cluaize**
 
-**An open-source, high-performance local AI inference engine.**
+**A Rust-native inference orchestrator and local memory arbiter.**
 
-Cluaize is a lightweight orchestration layer written in Rust, built on top of the robust `llama.cpp` kernel. It is designed to bridge the gap between high-level applications and low-level hardware execution, providing developers with a streamlined, memory-efficient way to run Large Language Models (LLMs) locally.
+Cluaize is a unified, easy-to-use Rust orchestration layer that brings cloud-level agentic infrastructure directly to your local machine. Sitting natively on top of `llama.cpp` (for LLMs) and **ONNX Runtime** (for embeddings and vision models), it gives you full control over your AI pipeline in a single binary—bridging the gap between high-level application logic and low-level execution without any network lag or Docker overhead.
 
 ### **Our Motive & Objective**
-The primary goal of Cluaize is to democratize local AI by making it accessible and stable on everyday hardware. We aim to:
-- **Maximize Hardware Efficiency**: Squeeze the best possible performance out of constrained environments (like 4GB VRAM GPUs) using smart, real-time memory arbiters.
-- **Provide Seamless Integration**: Offer a simple, modular architecture so developers can easily integrate local AI into their existing applications via our C-API or Rust SDK.
-- **Support Modern Architectures**: Ensure out-of-the-box compatibility with the latest AI advancements, such as BitNet (1.58-bit ternary models) and standard GGUF formats.
+The core problem with current local AI setups is fragmentation. Developers are forced to run separate inference engines for LLMs, separate servers for Embeddings/Vision, and heavy Python wrappers to orchestrate tools like Web Search. This creates massive network latency and fragmented memory. We aim to solve this by bringing **cloud-level agentic infrastructure locally**, giving developers full native control over their models:
 
-Cluaize is **NOT** a new AI model, nor a new low-level math kernel—it is a specialized, lightweight engine that sits on top of existing industry-standard inference tools to manage resources intelligently and efficiently.
+- **Unified Engine Architecture**: Running both LLMs (via `llama.cpp`) and Vision/Embeddings (via `ONNX Runtime`) in a single, shared C-level memory space. Full control of your AI pipeline in one place.
+- **Native Extension via CEL (No Docker/Network Lag)**: Instead of external API calls, tools run as native plugins. The model generates Cluaize Expression Language (CEL), and the engine executes the plugin, injecting data directly into the active VRAM context via C-Pointers (`payload_ptr`) with zero network overhead. This gives you the power to build complex applications natively.
+- **Hardware-Aware Orchestration**: A strict memory arbiter that dynamically manages KV caching and context shifting across the unified stack, ensuring maximum performance on constrained hardware (4GB-8GB VRAM) and mathematically preventing OOMs.
+- **Easy-to-Use Single Binary**: Providing all this enterprise-grade orchestration through a simple, standalone executable that maps natively to your hardware, completely eliminating complex Docker setups and background dependencies.
+
+Cluaize is **NOT** a new AI model, nor a new math kernel—it is an execution infrastructure that manages existing inference tools intelligently, ensuring they survive production constraints.
 
 | Component      | Role         | Implementation                   |
 | :------------- | :----------- | :------------------------------- |
@@ -65,51 +68,28 @@ Cluaize is **NOT** a new AI model, nor a new low-level math kernel—it is a spe
 | **LogitSteer** | Steering     | Constrained Decoding & Masking   |
 | **Drivers**    | Interface    | Native FFI (CUDA, Metal, Vulkan) |
 
----
 
-## 🧠 **Why Integrate the Database (`cluaizd`) Directly into the Engine?**
 
-A common question arises: *Why unify the database and the inference engine into a single space instead of keeping them separate and using standard APIs (like typical RAG implementations)?*
+## 🧠 **The Native CEL API & Skill Extensions**
 
-**The short answer: Zero-Latency Mid-Layer Injection.**
+A core architectural pillar of Cluaize is the **Cluaize Expression Language (CEL)**. Instead of forcing developers to download heavy SDKs or manage complex state externally, Cluaize provides a deterministic execution language baked directly into the engine.
 
-Most standard AI engines only teach a model how to "remember" context window data. Cluaize teaches a model to inject new skills and memories **directly into the neurons mid-inference, without network delay.**
+<p align="center">
+  <img src="assets/devhub.png" width="100%" alt="Cluaize DevHub API Interface">
+</p>
 
-### **The Illusion of Traditional FFI/API**
-In standard systems, when a model needs external memory, it pauses, makes an HTTP/TCP request to a separate database process, serializes JSON, and waits for a response. This creates a 10ms - 50ms delay. In the deep-learning world, stopping the forward pass for 50ms destroys the model's neural activation flow (contextual lag).
+### **The Direct CEL API (No SDK Required)**
+Most standard AI engines expose basic REST endpoints for text generation. Cluaize exposes a dynamic CEL compilation endpoint. You can send raw CEL scripts directly to the engine via HTTP. 
 
-### **Dynamic Mid-Layer Micro-Injection (The Cluaize Physics)**
-Cluaize does not use network requests for internal cognition. We load the **Database (`cluaizd`)** and the **Engine (`cluaize`)** into the **exact same memory space (mmap)**.
+When your application sends a CEL script (e.g., `use plugin::filesystem -> read()`), the engine instantly parses it into an Abstract Syntax Tree (AST) and maps it to native C-Pointers in shared memory (`payload_ptr`). This allows external applications to trigger deep native operations mid-inference without any language-specific SDKs.
 
-1. **Shannon Entropy Spike:** When the model reaches a dynamic intermediate layer during inference and encounters high uncertainty (entropy spike > 0.85), the kernel pauses the forward pass.
-2. **Zero-Copy Memory Access:** Because the DB is natively shared, the Engine reaches directly into the Database's C-FFI Pointer (`payload_ptr`).
-3. **Latent Tensor Injection:** It pulls raw Float32 Tensors from the database and injects them directly into the matrix multiplication sequence of the subsequent layers.
+### **Secure MCP & Native Plugin Execution**
+Traditional tools rely on executing LLM-generated code in insecure local terminals or external containers. Cluaize takes a fundamentally different approach:
+1. **Manifest-Driven Extensions:** When you download a plugin or skill from the Cluaize Hub, it includes a `manifest.yaml`. This acts as a strict execution contract.
+2. **Native MCP Integration:** We integrate the **Model Context Protocol (MCP)** securely by wrapping MCP tools inside our native CEL execution environment.
+3. **Zero-Latency Orchestration:** Instead of the model calling a tool over localhost network ports, the model outputs a CEL command. The Engine parses the CEL and directly invokes the native plugin's FFI boundary.
 
-This bypasses all prompt generation overhead and network latency. The AI Agent can search the web, execute WASM logic, write to the RAM Ring Buffer (`transit.rs`), and inject it into the next token generation **at 0-ms latency**.
-
----
-
-## ⚙️ **Managing the Unified Brain (Control & Use Cases)**
-
-Even though the Database is intimately fused with the Engine, developers retain complete, granular control. Your local PC effectively becomes "One Unified Brain". 
-
-### **1. The 3 Core Brain Controls**
-You have absolute power over how the engine interacts with the database via the `POST /v1/system/brain` API:
-
-- **`"local"` or `"true"` (Local FFI Brain):** The Engine and Database run on the same machine. They connect natively via zero-copy FFI (mmap) for 0-ms latency injection.
-- **`"<IP_ADDRESS>"` (Remote Brain Connection):** You can pass an IP address (e.g., `192.168.1.50:8000`). This engine will run purely as an inference node (Muscle) and fetch its memory/vectors from a remote Centralized Brain over the network.
-- **`"false"` (Brain Disabled):** The Engine falls back to pure stateless inference. It runs the model but disconnects from the database completely without crashing.
-- **`"only_brain"` (Pure Brain Mode):** The Engine completely suspends LLM loading and VRAM allocation. The server remains online but acts strictly as a centralized "Brain" (Database) that serves other remote/connected inference nodes on your network.
-
-### **2. Practical Use Cases (How to Use DB + Engine)**
-Because the Engine and Database share the same FFI memory space, your local PC transforms into a unified cognitive architecture. Here is how you can use it:
-
-- **Use Case A: Infinite Local Memory (The Personal Brain)**
-  Instead of passing 50,000 tokens of chat history in every API request (which destroys VRAM and slows down generation), your application only passes a single `session_id`. The Engine uses FFI to pull only the strictly relevant vectorized memories from the database directly into the context window at runtime.
-- **Use Case B: Custom App Integration (Using `/v1/db/execute`)**
-  If you are building a custom frontend app, you don't need a separate database server. You send your `insert` or `find` CDQL queries directly to the Engine's API port. The Engine handles storing your app's custom data directly in its unified LMDB shards.
-- **Use Case C: Live Skill Upgrades (WASM + DB)**
-  You can download a new WASM skill. The Engine compiles it, stores its semantic vectors in the Database, and instantly the AI "learns" the new skill. Next time the user asks a related question, the DB automatically injects the skill into the Engine's layer without any network delay.
+By bringing tool execution, MCP handling, and logic parsing directly into the core runtime via CEL, developers get the power of an enterprise orchestrator in a single binary, securing the host system while maximizing execution speed.
 
 ---
 

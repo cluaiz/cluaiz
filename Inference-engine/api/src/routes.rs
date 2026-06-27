@@ -98,8 +98,6 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/control", get(crate::handlers::system::get_system_control))
         .route("/v1/system/permission", get(crate::handlers::permission::get_permission))
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
-        .route("/v1/system/brain", post(crate::handlers::system::toggle_brain))
-        .route("/v1/system/profile", post(crate::handlers::setup::configure_profile))
 
 
 

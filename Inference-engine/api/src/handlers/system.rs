@@ -111,39 +111,8 @@ pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Val
     }
 }
 
-// ─── POST /v1/system/brain ────────────────────────────────────────────
-#[derive(serde::Deserialize)]
-pub struct BrainControlPayload {
-    pub state: bool,
-}
 
-pub async fn toggle_brain(
-    State(_state): State<Arc<AppState>>,
-    Json(payload): Json<BrainControlPayload>,
-) -> Json<Value> {
-    use cluaize_shared::hardware::governor::HardwareGovernor;
-    use cluaize_shared::hardware::system_control::HardwareOrchestrator;
-    
-    if let Ok(mut control) = HardwareGovernor::load_system_control() {
-        control.brain.cluaizd_connect_ffi = if payload.state { "on".to_string() } else { "off".to_string() };
-        if let Err(e) = HardwareOrchestrator::persist_sovereign_state(&control) {
-            return Json(json!({
-                "status": "error",
-                "message": format!("Failed to save system control: {}", e)
-            }));
-        } else {
-            return Json(json!({
-                "status": "success",
-                "message": format!("Pure Brain Mode toggled to: {}", payload.state)
-            }));
-        }
-    }
-    
-    Json(json!({
-        "status": "error",
-        "message": "Failed to load system control config"
-    }))
-}
+
 
 // ─── Execute Local Shell Command (Secure Web Terminal) ─────────────
 #[derive(serde::Deserialize)]

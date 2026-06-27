@@ -54,26 +54,6 @@
     },
     {
       "method": "POST",
-      "path": "/v1/system/brain",
-      "desc": "Toggles the Cluaizd Brain FFI Connection state (on/off).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/brain.md",
-      "params": [
-        { "name": "state", "type": "boolean", "req": true, "desc": "True to turn on, False to turn off.", "default": true }
-      ],
-      "response": "{\n  \"status\": \"success\"\n}"
-    },
-    {
-      "method": "POST",
-      "path": "/v1/system/profile",
-      "desc": "Generates or updates the Cluaize Node Identity Profile.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/profile.md",
-      "params": [
-        { "name": "profile_name", "type": "string", "req": true, "desc": "The node profile name.", "default": "dev_node_01" }
-      ],
-      "response": "{\n  \"status\": \"success\",\n  \"profile_id\": \"usr_8829\"\n}"
-    },
-    {
-      "method": "POST",
       "path": "/engine/skip_think",
       "desc": "Instructs the engine to skip the '<think>' reasoning block during the next generation.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/skip_think.md",
