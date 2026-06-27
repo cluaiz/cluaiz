@@ -32,32 +32,21 @@
 > **Native Extensions (CEL)**:
 > Cluaize is migrating away from hardcoded external database endpoints toward the **Cluaize Expression Language (CEL)**. This allows arbitrary databases, search engines, and tools to hook directly into the inference memory space as native plugins rather than through network loopbacks.
 
-### **Current Capabilities**
-- ✅ **Shared-Memory Signaling**: Sub-microsecond path for IPC between application and engine.
-- ✅ **Modular Handshake**: Dynamic linkage to pre-compiled kernels (Llama, Candle).
-- ✅ **Hardware Fingerprinting**: Atomic silicon discovery and profiling.
-- ✅ **Cross-Platform Baseline**: Native MSVC/GNU support for Windows and Linux.
-
-### **Research Directions (In Progress)**
-- 🧪 **LogitSteer v2** *(Constrained JSON/Schema Decoding Layer)*: Fine-grained structured token masking for reliable schema adherence.
-- 🧪 **Ternary Optimizations**: Specialized Addition-Subtraction kernels for BitNet b1.58.
-- 🧪 **P2P Universal Sync**: Local context synchronization without cloud dependencies.
-
----
+ 
 
 ## 📖 **About Cluaize**
 
 **A Rust-native inference orchestrator and local memory arbiter.**
 
-Cluaize is a unified, easy-to-use Rust orchestration layer that brings cloud-level agentic infrastructure directly to your local machine. Sitting natively on top of `llama.cpp` (for LLMs) and **ONNX Runtime** (for embeddings and vision models), it gives you full control over your AI pipeline in a single binary—bridging the gap between high-level application logic and low-level execution without any network lag or Docker overhead.
+Cluaize is a unified, easy-to-use Rust orchestration layer that brings cloud-level agentic infrastructure directly to your local machine. Sitting natively on top of `llama.cpp` (for LLMs) and **ONNX Runtime** (for embeddings and vision models), it gives you full control over your AI pipeline in a single binary—bridging the gap between high-level application logic and low-level execution without any network lag or external overhead.
 
 ### **Our Motive & Objective**
-The core problem with current local AI setups is fragmentation. Developers are forced to run separate inference engines for LLMs, separate servers for Embeddings/Vision, and heavy Python wrappers to orchestrate tools like Web Search. This creates massive network latency and fragmented memory. We aim to solve this by bringing **cloud-level agentic infrastructure locally**, giving developers full native control over their models:
+The core problem with current local AI setups is fragmentation. Developers are forced to run separate inference engines for LLMs, separate servers for Embeddings/Vision, and heavy external scripting layers to orchestrate tools like Web Search. This creates massive network latency and fragmented memory. We aim to solve this by bringing **cloud-level agentic infrastructure locally**, giving developers full native control over their models:
 
 - **Unified Engine Architecture**: Running both LLMs (via `llama.cpp`) and Vision/Embeddings (via `ONNX Runtime`) in a single, shared C-level memory space. Full control of your AI pipeline in one place.
-- **Native Extension via CEL (No Docker/Network Lag)**: Instead of external API calls, tools run as native plugins. The model generates Cluaize Expression Language (CEL), and the engine executes the plugin, injecting data directly into the active VRAM context via C-Pointers (`payload_ptr`) with zero network overhead. This gives you the power to build complex applications natively.
+- **Native Extension via CEL (No External/Network Lag)**: Instead of external API calls, tools run as native plugins. The model generates Cluaize Expression Language (CEL), and the engine executes the plugin, injecting data directly into the active VRAM context via C-Pointers (`payload_ptr`) with zero network overhead. This gives you the power to build complex applications natively.
 - **Hardware-Aware Orchestration**: A strict memory arbiter that dynamically manages KV caching and context shifting across the unified stack, ensuring maximum performance on constrained hardware (4GB-8GB VRAM) and mathematically preventing OOMs.
-- **Easy-to-Use Single Binary**: Providing all this enterprise-grade orchestration through a simple, standalone executable that maps natively to your hardware, completely eliminating complex Docker setups and background dependencies.
+- **Easy-to-Use Single Binary**: Providing all this enterprise-grade orchestration through a simple, standalone executable that maps natively to your hardware, completely eliminating complex containerized setups and background dependencies.
 
 Cluaize is **NOT** a new AI model, nor a new math kernel—it is an execution infrastructure that manages existing inference tools intelligently, ensuring they survive production constraints.
 
@@ -75,7 +64,7 @@ Cluaize is **NOT** a new AI model, nor a new math kernel—it is an execution in
 A core architectural pillar of Cluaize is the **Cluaize Expression Language (CEL)**. Instead of forcing developers to download heavy SDKs or manage complex state externally, Cluaize provides a deterministic execution language baked directly into the engine.
 
 <p align="center">
-  <img src="assets/devhub.png" width="100%" alt="Cluaize DevHub API Interface">
+  <img src="assets/devhub-img.png" width="100%" alt="Cluaize DevHub API Interface">
 </p>
 
 ### **The Direct CEL API (No SDK Required)**
