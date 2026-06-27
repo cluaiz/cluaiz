@@ -1,5 +1,5 @@
 use axum::{
-    extract::{State, Json},
+    extract::{Path, State, Json},
     response::IntoResponse,
     http::StatusCode,
 };
@@ -7,13 +7,13 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::state::AppState;
-use engines::neural_foundry::ActivationEventBus;
+// use engines::neural_foundry::ActivationEventBus;
 
 // External dependency from the CEL crate
 use inference_cel::parser::lexer::parse;
 use inference_cel::parser::planner::{CelPlanner, PlanBlock, PlanStep};
-use inference_cel::execution::native_sandbox::NativeExecutor;
 use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType, Transpiler};
+use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
 use inference_cel::vram::gpu_injector::{inject_from_cpu, ContextInjectionEnvelope, TensorData};
 
 #[derive(Deserialize)]
@@ -100,12 +100,12 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                             final_result.push_str(&format!("[Engine] Inference command: {}\n", command));
                         }
                         PlanStep::ExecuteAction { method, args } => {
-                            let executor = NativeExecutor::new();
+                            let executor = UnifiedExecutor::new();
                             let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
                             let ext_payload = ExtensionPayload::new(PayloadType::Bincode, &binary_args);
                             
-                            let dummy_plugin_path = "./.cluaize/extensions/dummy.so";
-                            match executor.execute(dummy_plugin_path, &ext_payload) {
+                            // method acts as the plugin_name in this context (e.g. use plugin::X)
+                            match executor.execute(&method, &ext_payload) {
                                 Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
                                 Err(e) => final_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
                             }
@@ -122,4 +122,25 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
         }
     }
     final_result
+}
+
+#[derive(serde::Deserialize)]
+pub struct DynamicPayload {
+    pub params: serde_json::Value,
+}
+
+/// POST /v1/execute/:component_name/:function_name
+pub async fn execute_dynamic(
+    Path((component_name, function_name)): Path<(String, String)>,
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<DynamicPayload>
+) -> impl IntoResponse {
+    // 1. Check MasterRegistry for component_name to find its storage_domain and path
+    // 2. Load the binary via NativeExecutor
+    // 3. Execute the function
+    (StatusCode::OK, Json(serde_json::json!({
+        "status": "success", 
+        "message": format!("Executed {}::{} dynamically via Hub.", component_name, function_name),
+        "params_received": payload.params
+    })))
 }

@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 use engines::{DownloadEvent, InferenceEvent};
 
-use crate::core::state::{AppState, OsState, UserProfile, ActivityBlock};
+use crate::core::state::{AppState, OsState, ActivityBlock};
 use crate::theme::Theme;
 use crate::app_enums::{Mode};
 use crate::core::dashboard::DashboardEngine;
@@ -26,11 +26,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(profile_override: Option<UserProfile>, auto_start_model: Option<engines::models::registry::ModelManifest>, starting_state: Option<OsState>) -> color_eyre::Result<Self> {
+    pub fn new(auto_start_model: Option<engines::models::registry::ModelManifest>, starting_state: Option<OsState>) -> color_eyre::Result<Self> {
         let (tx, rx) = mpsc::unbounded_channel();
         let (inf_tx, _inf_rx) = mpsc::unbounded_channel();
         let flow = FlowEngine::new()?;
-        let mut state = AppState::new(profile_override, starting_state);
+        let mut state = AppState::new(starting_state);
         
         if let Some(m) = auto_start_model {
             let model_id = m.id.clone();

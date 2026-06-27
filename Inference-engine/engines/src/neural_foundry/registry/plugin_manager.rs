@@ -34,6 +34,14 @@ pub struct PluginManifest {
     #[serde(default)]
     pub ffi_bindings: FfiBindings,
 
+    /// New Schema: Execution definitions
+    #[serde(default)]
+    pub execution: Option<serde_json::Value>,
+
+    /// New Schema: Security permissions
+    #[serde(default)]
+    pub permissions: Option<serde_json::Value>,
+
     /// Storage configuration
     #[serde(default)]
     pub storage: StorageConfig,
@@ -58,10 +66,39 @@ impl PluginManager {
     }
 
     pub async fn install_plugin(plugin_name: &str) -> anyhow::Result<()> {
-        // 1. TODO: Download actual files from hub
-        tracing::info!("⬇️ [PluginManager] Plugin files downloaded for {}", plugin_name);
+        // 1. Dynamically resolve actual download URL from package.json and registry.json
+        let hub_url = crate::neural_foundry::registry::download_manager::DownloadManager::resolve_hub_url("hub", plugin_name).await?;
+        
+        // 2. Download and extract the plugin files natively
+        let _path = crate::neural_foundry::registry::download_manager::DownloadManager::download_and_extract(&hub_url, "tools", plugin_name).await?;
+        
+        tracing::info!("⬇️ [PluginManager] Plugin files downloaded for {} from {}", plugin_name, hub_url);
 
-        // 2. Write to registry.yaml
+        // 3. 🛡️ Run CEL Safety Checker (4-Step Audit) BEFORE registration
+        let manifest_path = _path.join("manifest.yaml");
+        let manifest_json_path = _path.join("manifest.json");
+        let active_manifest_path = if manifest_path.exists() { &manifest_path } else { &manifest_json_path };
+        
+        if active_manifest_path.exists() {
+            let content = std::fs::read_to_string(active_manifest_path)?;
+            let manifest_val: serde_json::Value = if active_manifest_path.extension().unwrap_or_default() == "yaml" {
+                serde_yaml::from_str(&content).map_err(|e| anyhow::anyhow!("YAML Parse error: {}", e))?
+            } else {
+                serde_json::from_str(&content)?
+            };
+            
+            let binary_name = manifest_val["ffi_bindings"]["binary_path"]
+                .as_str()
+                .unwrap_or_else(|| manifest_val["native_binary"].as_str().unwrap_or(""));
+            let binary_path = _path.join(binary_name);
+            
+            inference_cel::execution::safety_checker::SafetyChecker::audit_plugin(active_manifest_path, &binary_path, &manifest_val)
+                .map_err(|e| anyhow::anyhow!("Safety Audit Failed: {}", e))?;
+        } else {
+            return Err(anyhow::anyhow!("Safety Audit Failed: Invalid or missing manifest."));
+        }
+
+        // 4. Write to registry.yaml
         use crate::neural_foundry::registry::registry_index::{MasterRegistry, RegistryEntry, LoadStrategy};
         let domain = format!("tools/{}", plugin_name);
         let entry = RegistryEntry {
@@ -73,6 +110,7 @@ impl PluginManager {
             ],
             enabled: true,
             binary_hash: None,
+            semantic_index: None,
         };
 
         let mut registry = MasterRegistry::load()?;
@@ -191,11 +229,19 @@ impl PluginManager {
         self.active_plugins.iter()
             .find(|p| p.manifest.name == plugin_name)
             .map(|p| {
-                // Prefer ffi_bindings.binary_path, fall back to native_binary
-                let binary = if !p.manifest.ffi_bindings.binary_path.is_empty() {
-                    &p.manifest.ffi_bindings.binary_path
+                // Prefer new schema execution.binary_path, then ffi_bindings.binary_path, fall back to native_binary
+                let binary = if let Some(exec) = &p.manifest.execution {
+                    if let Some(bp) = exec.get("binary_path").and_then(|v| v.as_str()) {
+                        bp.to_string()
+                    } else if !p.manifest.ffi_bindings.binary_path.is_empty() {
+                        p.manifest.ffi_bindings.binary_path.clone()
+                    } else {
+                        p.manifest.native_binary.clone()
+                    }
+                } else if !p.manifest.ffi_bindings.binary_path.is_empty() {
+                    p.manifest.ffi_bindings.binary_path.clone()
                 } else {
-                    &p.manifest.native_binary
+                    p.manifest.native_binary.clone()
                 };
                 p.path.join(binary)
             })

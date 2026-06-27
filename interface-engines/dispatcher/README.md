@@ -1,29 +1,19 @@
-# 🚦 Backend Dispatcher (`interface-engines/dispatcher/`)
+# Component: Backend Dispatcher (`interface-engines/dispatcher`)
 
-<p align="center"><strong>Multi-Backend Execution Router</strong></p>
+## Technical Specification
+- **Purpose:** Acts as the central intelligence node that dynamically routes execution streams (GGUF/ONNX) to native backend FFI boundaries (Llama.cpp/ONNX Runtime).
+- **Platform Support:** Windows, Linux, macOS
+- **Reusability Level:** High (Core Subsystem Router)
 
----
+## API Contract (Interface)
+- **Props/Struct/Trait:** `BackendDispatcher`, `CallbackData`
+- **Export Type:** Public Module (`dispatcher-crate`)
+- **Dependencies:** `interface-engines/llama`, `interface-engines/onnx`, `cluaiz_shared`
 
-## 🎯 Deep Purpose
+## Architecture & Sub-Components
+- **`lib.rs` (The Core Logic):** Implements the `BackendDispatcher` trait. Evaluates the model manifest (quantization, precision) and selects the hardware-optimal execution backend without modifying the outer Rust engine.
+- **Two-Step Discovery Interceptor:** Contains the C-FFI `callback` wrapper that natively buffers output tokens to detect `<TRIGGER:extension:X>` or `<TRIGGER:plugin:X>` sequences. Safely aborts the underlying C++ generation loop to allow the Rust API layer to inject Skill schemas.
 
-The `dispatcher` crate acts as the central intelligence node within the `interface-engines` subsystem. The Cluaize Engine is strictly model-agnostic—it can execute `.gguf` files (using Llama.cpp) and `.onnx` files (using ONNX Runtime) seamlessly. 
-
-However, calling C++ binaries requires highly specific setup configurations. The `dispatcher` reads the structural DNA of the requested model and dynamically routes the execution stream to the correct native backend without the outer Rust Engine needing to know which backend is executing the math.
-
-## 🏛️ Architectural Flow
-
-```mermaid
-graph TD
-    Engine["Core Engine Request"] --> Dispatcher["dispatcher/src/"]
-    Dispatcher -->|"Format == GGUF"| Llama["interface-engines/llama/"]
-    Dispatcher -->|"Format == ONNX"| ONNX["interface-engines/onnx/"]
-    
-    Llama -->|"Loads libllama.so"| Execution["Native Hardware Execution"]
-    ONNX -->|"Loads libonnxruntime.so"| Execution
-```
-
-## 🧬 Significant Components
-
-### 1. `src/` (The Routing Logic)
-- **The Core Logic:** Implements the `BackendDispatcher` trait. It evaluates the model manifest (e.g., whether it is quantized to `q4_k_m` or runs on FP16) and selects the backend that has the highest physical efficiency for that format on the user's specific hardware.
-- **The "Why":** A unified interface. If a new backend (like TensorRT or ExLlamaV2) is added in the future, the outer engine does not need a single line of code changed; the `dispatcher` simply gains a new routing arm.
+## Failure & Recovery Logic
+- **Potential Failure Point:** The underlying C++ execution loop (Llama.cpp/ONNX) could enter an infinite generation state or crash due to VRAM overflow.
+- **Recovery Logic:** Uses a native `cancel_flag` bound to the `CallbackData`. When a CEL `<TRIGGER>` is detected or a memory boundary is hit, `cancel_flag` is set to `true`, forcing the C++ side to yield execution back to Rust cleanly (returning `false` in the FFI callback).

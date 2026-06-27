@@ -6,47 +6,57 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::state::AppState;
 
-// ─── Root ────────────────────────────────────────────────────────────
-pub async fn root() -> Json<Value> {
-    Json(json!({
-        "engine": "Cluaize Inference Engine",
-        "version": env!("CARGO_PKG_VERSION"),
-        "gateway": "http://localhost:8000",
-        "endpoints": {
-            "GET  /":                     "This welcome message",
-            "GET  /api/tags":             "List external compatible models",
-            "POST /api/pull":             "Pull external compatible model",
-            "GET  /models/available":     "List legacy available models",
-            "GET  /hardware":             "Detect system RAM/CPU to suggest models",
-            "POST /models/download":      "Download .gguf from Hugging Face",
-            "POST /models/load":          "Load a downloaded .gguf file",
-            "DELETE /v1/models/:model_id":"Remove a model from vault",
-            "GET  /health":               "Engine health check",
-            "GET  /history/:session":     "Chat history for a session",
-            "GET  /info":                 "System information & pillars",
-            "GET  /sessions":             "List all chat sessions",
-            "GET  /status/sidecars":      "Database sidecar status",
-            "POST /chat":                 "Send message → get AI response",
-            "POST /engine/skip_think":    "Skip thinking during generation",
-            "POST /v1/db/execute":        "FFI Database Query",
-            "POST /v1/system/brain":      "Toggle FFI Brain modes",
-            "GET  /v1/system/ps":         "Get running processes",
-            "GET  /v1/system/control":    "Get system control status",
-            "GET  /v1/system/permission": "Get system permissions",
-            "POST /v1/system/permission": "Update system permissions",
-            "POST /v1/system/profile":    "Configure hardware profile",
-            "GET  /v1/skills/list":       "List all available WASM skills",
-            "POST /v1/skills/install":    "Install a new WASM skill",
-            "GET  /v1/skills/cache":      "List skill cache",
-            "DELETE /v1/skills/cache":    "Clear skill cache",
-            "GET  /v1/booster/status":    "Get hardware booster status",
-            "POST /v1/booster/update":    "Update hardware booster configuration",
-            "POST /v1/ingest/file":       "Ingest file into vector database",
-            "POST /v1/benchmark/run":     "Run hardware benchmark suite",
-            "POST /v1/hardware/calibrate":"Calibrate hardware settings"
-        },
-        "philosophy": "Nothing Need. Just Cluaize."
-    }))
+// ─── Root API Explorer (HTML UI) ───────────────────────────────────────
+pub async fn root() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("../../../../assets/developer_hub/index.html"))
+}
+
+pub async fn style_css() -> impl axum::response::IntoResponse {
+    let css = include_bytes!("../../../../assets/developer_hub/style.css");
+    (
+        [(axum::http::header::CONTENT_TYPE, "text/css")],
+        css.as_slice()
+    )
+}
+
+pub async fn app_js() -> impl axum::response::IntoResponse {
+    let js = include_bytes!("../../../../assets/developer_hub/app.js");
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/javascript")],
+        js.as_slice()
+    )
+}
+
+// ─── Favicon (Logo) ─────────────────────────────────────────────────────
+pub async fn favicon() -> impl axum::response::IntoResponse {
+    let icon = include_bytes!("../../../../assets/logo.ico");
+    (
+        [(axum::http::header::CONTENT_TYPE, "image/x-icon")],
+        icon.as_slice()
+    )
+}
+
+// ─── API Data JSON ──────────────────────────────────────────────────────
+pub async fn api_docs_json() -> Json<Value> {
+    let system_json = include_str!("../../../../assets/developer_hub/data/system.json");
+    let inference_json = include_str!("../../../../assets/developer_hub/data/inference.json");
+    let models_json = include_str!("../../../../assets/developer_hub/data/models.json");
+    let skills_json = include_str!("../../../../assets/developer_hub/data/skills.json");
+    let plugins_json = include_str!("../../../../assets/developer_hub/data/plugins.json");
+    let extensions_json = include_str!("../../../../assets/developer_hub/data/extensions.json");
+    let mcp_json = include_str!("../../../../assets/developer_hub/data/mcp.json");
+    let tuning_json = include_str!("../../../../assets/developer_hub/data/tuning.json");
+    
+    let system: Value = serde_json::from_str(system_json).unwrap_or(json!({}));
+    let inference: Value = serde_json::from_str(inference_json).unwrap_or(json!({}));
+    let models: Value = serde_json::from_str(models_json).unwrap_or(json!({}));
+    let skills: Value = serde_json::from_str(skills_json).unwrap_or(json!({}));
+    let plugins: Value = serde_json::from_str(plugins_json).unwrap_or(json!({}));
+    let extensions: Value = serde_json::from_str(extensions_json).unwrap_or(json!({}));
+    let mcp: Value = serde_json::from_str(mcp_json).unwrap_or(json!({}));
+    let tuning: Value = serde_json::from_str(tuning_json).unwrap_or(json!({}));
+    
+    Json(json!([system, inference, models, skills, plugins, extensions, mcp, tuning]))
 }
 
 // ─── Health Check ────────────────────────────────────────────────────
@@ -135,15 +145,4 @@ pub async fn toggle_brain(
     }))
 }
 
-// ─── JIT Mid-Layer Injection API ──────────────────────────────────────────
-pub async fn jit_inject() -> Json<Value> {
-    // This is a placeholder for the explicit JIT Injection API.
-    // Natively, injection happens via CEL tag interception in ffi_bridge.rs.
-    // This API allows external orchestration tools to manually trigger an injection.
-    tracing::info!("💉 [JIT Injection] Received explicit mid-layer injection request via HTTP.");
-    Json(json!({
-        "status": "success",
-        "message": "JIT injection payload queued for next inference step.",
-        "layer": "auto"
-    }))
-}
+

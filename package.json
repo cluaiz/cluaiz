@@ -3,7 +3,7 @@
   "version": "0.1.3",
   "id": "https://github.com/cluaiz/cluaize/raw/main/package.json",
   "last_updated": "2026-05-20T10:00:00Z",
-  "author": "cluaize",
+  "author": "cluaiz",
   "cdn": "https://cdn.jsdelivr.net",
   "components": {
     "cli": {
@@ -44,9 +44,9 @@
       "version": "main",
       "manifest_url": "https://github.com/cluaiz/cluaize/blob/main/docs/registry.json"
     },
-    "skills": {
+    "hub": {
       "version": "main",
-      "manifest_url": "https://raw.githubusercontent.com/cluaiz/skills/main/registry.json"
+      "manifest_url": "https://raw.githubusercontent.com/cluaiz/cluaize-hub/main/registry.json"
     }
   }
 }

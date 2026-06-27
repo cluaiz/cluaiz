@@ -6,6 +6,7 @@ pub mod intelligence;
 pub mod runtime;
 pub mod security;
 pub mod ingestion;
+pub mod executor;
 
 use registry::SkillRegistry;
 use intelligence::skill_router::SkillRouter;

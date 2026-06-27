@@ -1,0 +1,86 @@
+{
+  "group": "System & Control",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "desc": "Checks the core engine health, memory status, and continuous uptime.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/health.md",
+      "params": [],
+      "response": "{\n  \"status\": \"healthy\",\n  \"uptime_ms\": 145020\n}"
+    },
+    {
+      "method": "GET",
+      "path": "/info",
+      "desc": "Retrieves deep architectural information, versioning, and the foundational pillars of the Cluaize system.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/info.md",
+      "params": [],
+      "response": "{\n  \"engine\": \"Cluaize Inference Engine\",\n  \"version\": \"0.0.1-alpha\"\n}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/ps",
+      "desc": "Show active neural engines in memory and their current process IDs. Crucial for load balancers.",
+      "docs_url": "https://raw.githubusercontent.com/cluaiz/cluaize/main/README.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"active_processes\": [\n    {\n      \"pid\": \"29514\",\n      \"model_id\": \"bonsai:8b\",\n      \"vram_gb\": 4.2,\n      \"context_size\": 8192,\n      \"engine\": \"llama.cpp\"\n    }\n  ]\n}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/control",
+      "desc": "Gets the overall hardware orchestrator system control states including brain connection state and hardware limits.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/control.md",
+      "params": [],
+      "response": "{\n  \"brain\": {\n    \"cluaizd_connect_ffi\": \"on\"\n  },\n  \"silicon_truth\": {\n    \"memory\": {\"total_capacity_gb\": 32.0}\n  }\n}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/permission",
+      "desc": "Gets the current active permission schema and firewall rules for the neural foundry.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/permission_get.md",
+      "params": [],
+      "response": "{\n  \"wasm_firewall\": \"strict\",\n  \"vectorize_user_input\": true,\n  \"stream_telemetry\": false\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/permission",
+      "desc": "Updates a specific permission rule natively.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/permission_post.md",
+      "params": [
+        { "name": "key", "type": "string", "req": true, "desc": "The permission key to change (e.g. 'wasm_firewall').", "default": "wasm_firewall" },
+        { "name": "value", "type": "string", "req": true, "desc": "The new value for the permission.", "default": "relaxed" }
+      ],
+      "response": "{\n  \"status\": \"success\"\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/brain",
+      "desc": "Toggles the Cluaizd Brain FFI Connection state (on/off).",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/brain.md",
+      "params": [
+        { "name": "state", "type": "boolean", "req": true, "desc": "True to turn on, False to turn off.", "default": true }
+      ],
+      "response": "{\n  \"status\": \"success\"\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/profile",
+      "desc": "Generates or updates the Cluaize Node Identity Profile.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/profile.md",
+      "params": [
+        { "name": "profile_name", "type": "string", "req": true, "desc": "The node profile name.", "default": "dev_node_01" }
+      ],
+      "response": "{\n  \"status\": \"success\",\n  \"profile_id\": \"usr_8829\"\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/engine/skip_think",
+      "desc": "Instructs the engine to skip the '<think>' reasoning block during the next generation.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/system/skip_think.md",
+      "params": [
+        { "name": "skip", "type": "boolean", "req": true, "desc": "Whether to skip thinking tags in output.", "default": true }
+      ],
+      "response": "{\n  \"status\": \"success\"\n}"
+    }
+  ]
+}

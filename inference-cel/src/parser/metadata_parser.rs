@@ -72,22 +72,73 @@ pub struct FfiBindings {
     pub abi: String,
 }
 
+/// Defines how the Engine discovers this extension and how the AI interacts with it.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Discovery {
+    /// List of keywords that trigger the engine to lazy-load this extension into the AI's context.
+    pub semantic_triggers: Option<Vec<String>>,
+    /// The exact CEL syntax the AI must use to invoke this extension.
+    pub cel_grammar: Option<String>,
+    /// Relative path to the markdown file containing the natural language instructions for the AI.
+    pub brain_manual: Option<String>,
+}
+
+/// Defines the lifecycle events that cause the Engine to load the binary into memory.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Activation {
+    /// If true, the Engine defers loading the binary until an activation event occurs.
+    pub lazy_load: Option<bool>,
+    /// List of trigger events (e.g., "onCelCommand:use extension::math") that activate the binary.
+    pub trigger_on: Option<Vec<String>>,
+}
+
+/// Defines how the operating system and Engine should execute the underlying binary.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Execution {
+    /// The execution sandbox mode (e.g., "WASM", "NATIVE").
+    pub envelope: Option<String>,
+    /// The serialized format of the data pointers passed across the FFI boundary (e.g., "MsgPack").
+    pub payload_format: Option<String>,
+    /// The relative path to the compiled binary file (e.g., "target/release/plugin.wasm").
+    pub binary_path: Option<String>,
+    /// The name of the exported C-pointer function that the Engine will call (e.g., "execute_cel").
+    pub entry_point: Option<String>,
+}
+
+/// Defines the strict hardware and security sandboxing constraints for execution.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Permissions {
+    /// Hard RAM cap in megabytes. The Engine will OOM-kill the sandbox if exceeded.
+    pub max_memory_mb: Option<u64>,
+    /// Max execution wall-time in milliseconds before the Engine forcefully terminates the call.
+    pub max_cpu_time_ms: Option<u64>,
+    /// Whether this component is permitted to make outbound HTTP/network calls.
+    pub network_access: Option<bool>,
+    /// List of explicit domains the component is allowed to contact if network_access is true.
+    pub allowed_hosts: Option<Vec<String>>,
+    /// DANGEROUS: Whether this plugin is permitted to inject data directly into the LLM's KV Cache.
+    pub vram_kv_inject: Option<bool>,
+    /// Filesystem access level (e.g., "none", "read_only", "read_write").
+    pub file_system: Option<String>,
+}
+
 /// The parsed YAML frontmatter of a plugin/skill/extension manifest file.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntegrationMetadata {
     pub name: String,
     pub version: String,
-    pub compatibility: Option<Vec<String>>,
-    pub semantic_triggers: Option<Vec<String>>,
+    pub description: Option<String>,
+    #[serde(rename = "type")]
+    pub integration_type: Option<String>,
 
-    /// Dynamically maps logical asset keys (e.g. "logic", "state") to relative file paths.
+    pub discovery: Option<Discovery>,
+    pub activation: Option<Activation>,
+    pub execution: Option<Execution>,
+    pub permissions: Option<Permissions>,
+
+    // Kept for backwards compatibility during migration
     pub links: Option<HashMap<String, String>>,
-
-    /// Execution constraints. When present, engine uses these exclusively.
-    /// When absent, engine defaults to the safest sandbox (WASM).
     pub engine_rules: Option<EngineRules>,
-
-    /// Binary binding specification for FFI dispatch.
     pub ffi_bindings: Option<FfiBindings>,
 }
 

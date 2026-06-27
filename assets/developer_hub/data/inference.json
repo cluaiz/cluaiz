@@ -1,0 +1,59 @@
+{
+  "group": "Inference & Execution",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "desc": "OpenAI-compatible chat completions endpoint. Fully supports streaming and JSON mode.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/inference/chat_completions.md",
+      "params": [
+        { "name": "messages", "type": "array", "req": true, "desc": "Array of message objects (role, content).", "default": [{"role": "user", "content": "Hello, how are you?"}] },
+        { "name": "stream", "type": "boolean", "req": false, "desc": "Whether to stream tokens via SSE.", "default": true },
+        { "name": "temperature", "type": "float", "req": false, "desc": "Creativity threshold.", "default": 0.7 },
+        { "name": "model", "type": "string", "req": false, "desc": "Model ID to use.", "default": "bonsai:8b" }
+      ],
+      "response": "{\n  \"id\": \"chatcmpl-123\",\n  \"object\": \"chat.completion\",\n  \"choices\": [{\n    \"message\": {\"role\": \"assistant\", \"content\": \"Hello!\"}\n  }]\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/chat",
+      "desc": "Legacy internal endpoint for direct model chatting.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/inference/chat_legacy.md",
+      "params": [
+        { "name": "messages", "type": "array", "req": true, "desc": "Array of message objects.", "default": [{"role": "user", "content": "Hello"}] }
+      ],
+      "response": "{\n  \"response\": \"Hello, I am Cluaize.\"\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/cel/execute",
+      "desc": "Executes raw CEL (Cluaize Execution Language) scripts natively. Used for dynamic agentic logic.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/inference/cel_execute.md",
+      "params": [
+        { "name": "script", "type": "string", "req": true, "desc": "The raw CEL script payload.", "default": "agent = Agent::new(\"researcher\");\nagent.run();" }
+      ],
+      "response": "{\n  \"success\": true,\n  \"result\": \"<output>\",\n  \"error\": null\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/execute/{component}/{function}",
+      "desc": "Dynamic ecosystem execution. Directly calls an exposed FFI function inside a component (e.g. extension, plugin).",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/inference/execute_dynamic.md",
+      "params": [
+        { "name": "args", "type": "array", "req": true, "desc": "Array of arguments to pass to the function.", "default": ["arg1", 100] }
+      ],
+      "response": "{\n  \"status\": \"success\",\n  \"result\": { \"key\": \"value\" }\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ingest/file",
+      "desc": "Directly chunks, embeds, and ingests a file into the local vector namespace (LMDB).",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/inference/ingest_file.md",
+      "params": [
+        { "name": "file_path", "type": "string", "req": true, "desc": "Absolute path to the file.", "default": "/absolute/path/to/document.pdf" },
+        { "name": "namespace", "type": "string", "req": true, "desc": "Vector database namespace.", "default": "research_docs" }
+      ],
+      "response": "{\n  \"status\": \"ingested\",\n  \"chunks\": 42,\n  \"namespace\": \"global\"\n}"
+    }
+  ]
+}

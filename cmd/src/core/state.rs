@@ -3,7 +3,7 @@ use ratatui::widgets::{TableState, ListState};
 use std::sync::Arc;
 
 // ── Re-export shared types for CLI use ──
-pub use ::cluaize_shared::profile::UserProfile;
+
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum OsState {
@@ -166,9 +166,6 @@ pub struct AppState {
     pub mem_usage_gb: f32,
     pub live_pulse: Arc<::cluaize_shared::hardware::telemetry::ObservableHardwareState>,
 
-    // ── Shared Profile ──
-    pub user_profile: UserProfile,
-
     // ── UI State ──
     pub is_dirty: bool,
     pub printed_logo: bool,
@@ -264,7 +261,7 @@ impl AppState {
         self.activity_stream.iter().rev().find(|b| b.is_live())
     }
 
-    pub fn new(profile_override: Option<::cluaize_shared::profile::UserProfile>, starting_state: Option<OsState>) -> Self {
+    pub fn new(starting_state: Option<OsState>) -> Self {
         let hardware = ::cluaize_shared::hardware::get_Cluaize_profile();
 
         let mut sys = sysinfo::System::new();
@@ -280,12 +277,6 @@ impl AppState {
 
         // Initialize state
         let os_state = starting_state.unwrap_or(OsState::Dashboard);
-        let user_profile = profile_override.unwrap_or_else(|| {
-            ::cluaize_shared::profile::load_profile()
-                .ok()
-                .flatten()
-                .unwrap_or_else(UserProfile::new)
-        });
 
         let live_pulse = ::cluaize_shared::hardware::telemetry::get_pulse();
         let port: u16 = std::env::var("CLUAIZE_PORT")
@@ -336,8 +327,6 @@ impl AppState {
             cpu_usage: 0.0,
             mem_usage_gb: 0.0,
             live_pulse,
-
-            user_profile,
 
             is_dirty: true,
             printed_logo: false,

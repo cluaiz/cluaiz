@@ -778,7 +778,7 @@ async fn start_dashboard() -> Result<()> {
     }));
 
     // ── Cluaiz PRIMARY FLOW ──
-    let app = crate::core::app::App::new(None, None, Some(crate::core::state::OsState::Dashboard))?;
+    let app = crate::core::app::App::new(None, Some(crate::core::state::OsState::Dashboard))?;
     app.run().await?;
 
     let _ = crate::core::flow::FlowEngine::restore();
@@ -798,7 +798,7 @@ async fn start_menu() -> Result<()> {
     }));
 
     // ── Cluaiz PRIMARY FLOW ──
-    let app = crate::core::app::App::new(None, None, Some(crate::core::state::OsState::MainMenu))?;
+    let app = crate::core::app::App::new(None, Some(crate::core::state::OsState::MainMenu))?;
     app.run().await?;
 
     let _ = crate::core::flow::FlowEngine::restore();

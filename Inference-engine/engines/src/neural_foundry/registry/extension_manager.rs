@@ -156,6 +156,14 @@ pub struct ExtensionManifest {
     #[serde(default)]
     pub ffi_bindings: FfiBindings,
 
+    /// New Schema: Execution definitions
+    #[serde(default)]
+    pub execution: Option<serde_json::Value>,
+
+    /// New Schema: Security permissions
+    #[serde(default)]
+    pub permissions: Option<serde_json::Value>,
+
     /// Storage configuration
     #[serde(default)]
     pub storage: StorageConfig,
@@ -195,6 +203,7 @@ impl ExtensionManager {
             ],
             enabled: true,
             binary_hash: None,
+            semantic_index: None,
         };
 
         let mut registry = MasterRegistry::load()?;

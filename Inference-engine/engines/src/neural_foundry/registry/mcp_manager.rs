@@ -89,6 +89,7 @@ impl McpManager {
             ],
             enabled: true,
             binary_hash: None,
+            semantic_index: None,
         };
 
         let mut registry = MasterRegistry::load()?;

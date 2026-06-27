@@ -286,7 +286,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     };
     let _ = engines::utils::healer::AutoHealer::heal_missing_tokenizer(&repo_id, &model_path).await;
     let tokenizer_path = model_path.join("tokenizer.json");
-    let mut state = AppState::new(None, None);
+    let mut state = AppState::new(None);
     
     state.Core_engine.load_model(model_file.clone()).await
         .map_err(|e| color_eyre::eyre::eyre!("Model loading failed: {}", e))?;

@@ -6,6 +6,7 @@ pub mod legacy_rhai;
 pub mod registry;
 pub mod registry_index;
 pub mod activation_bus;
+pub mod safety_checker;
 
 use crate::parser::metadata_parser::EngineRules;
 

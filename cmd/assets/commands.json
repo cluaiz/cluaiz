@@ -217,6 +217,20 @@
       "description": "Clear specific or all MCP caches globally.",
       "category": "extensions",
       "example": "cluaize mcp cache clear --all"
+    },
+    {
+      "name": "cel execute",
+      "usage": "cluaize cel execute <script.cel>",
+      "description": "Natively executes a Cluaize Execution Language (CEL) script.",
+      "category": "core",
+      "example": "cluaize cel execute agent_logic.cel"
+    },
+    {
+      "name": "cel test",
+      "usage": "cluaize cel test <script.cel>",
+      "description": "Compiles and validates a CEL script without executing state-mutating actions.",
+      "category": "core",
+      "example": "cluaize cel test agent_logic.cel"
     }
   ]
 }

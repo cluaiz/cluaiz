@@ -8,6 +8,7 @@ pub mod manager;
 pub mod extension_manager;
 pub mod plugin_manager;
 pub mod mcp_manager;
+pub mod download_manager;
 
 // ── Phase A: Two-Tier Registry Architecture ──
 // Master registry index (registry.yaml ↔ registry.bin) and lazy-load event bus

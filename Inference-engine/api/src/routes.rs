@@ -7,7 +7,7 @@ use tower_http::cors::{Any, CorsLayer};
 use axum::http::Method;
 
 use crate::state::AppState;
-use crate::handlers::{chat, system, models, db};
+use crate::handlers::{chat, system, models, ingest};
 
 pub fn build(state: Arc<AppState>) -> Router {
     // ── CORS — Restrict to localhost origins only (Desktop, Mobile apps on localhost) ──
@@ -24,6 +24,10 @@ pub fn build(state: Arc<AppState>) -> Router {
 
     Router::new()
         .route("/", get(system::root))
+        .route("/style.css", get(system::style_css))
+        .route("/app.js", get(system::app_js))
+        .route("/api_data.json", get(system::api_docs_json))
+        .route("/favicon.ico", get(system::favicon))
         .route("/health", get(system::health_check))
         .route("/info", get(system::system_info))
         .route("/engine/skip_think", post(system::skip_think))
@@ -49,8 +53,6 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/booster/status", get(crate::handlers::booster::status))
         .route("/v1/booster/update", post(crate::handlers::booster::update))
 
-        // ── CDQL Database API ──
-        .route("/v1/db/execute", post(db::execute_cdql))
 
         // ── WASM Skills & Agents API ──
         .route("/v1/skills/list", get(crate::handlers::skills::list_skills))
@@ -80,6 +82,9 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/mcp/cache", get(crate::handlers::mcp::list_cache))
         .route("/v1/mcp/cache", axum::routing::delete(crate::handlers::mcp::clear_cache))
 
+        // ── Dynamic Ecosystem Execution Route ──
+        .route("/v1/execute/{component_name}/{function_name}", post(crate::handlers::cel_handler::execute_dynamic))
+
         // ── Vector Ingest API ──
         .route("/v1/ingest/file", post(crate::handlers::ingest::file_ingest))
 
@@ -94,9 +99,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/brain", post(crate::handlers::system::toggle_brain))
         .route("/v1/system/profile", post(crate::handlers::setup::configure_profile))
 
-        // ── JIT Mid-Layer Injection API (Phase 3 / Ecosystem) ──
-        // Allows API-driven injection when AI confidence/graph drops mid-inference.
-        .route("/v1/engine/jit/inject", post(crate::handlers::system::jit_inject))
+
 
         // ── Pure CEL Execution API (Phase 3 / Ecosystem) ──
         .route("/v1/cel/execute", post(crate::handlers::cel_handler::execute_cel_script))

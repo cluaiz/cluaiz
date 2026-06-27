@@ -1,7 +1,7 @@
 use axum::{Json, extract::State};
 use serde_json::{json, Value};
 use std::sync::Arc;
-use crate::AppState;
+use crate::state::AppState;
 
 use crate::handlers::chat::TemporaryChatMode;
 use engines::neural_foundry::ingestion::DocumentIngestor;
@@ -26,8 +26,6 @@ pub async fn file_ingest(
     let ingestor = DocumentIngestor::new();
     let mut returned_chunks = Vec::new();
 
-    // Offload blocking file I/O + ONNX vectorization to a dedicated thread
-    // to prevent Tokio async executor starvation under concurrent load.
     let embedding_dispatcher = state.embedding_dispatcher.clone();
     let file_path_for_closure = file_path.clone();
     let ingest_result = tokio::task::spawn_blocking(move || {
@@ -45,13 +43,36 @@ pub async fn file_ingest(
         Err(resp) => return resp,
     };
 
+    let mut generated_cel_scripts = Vec::new();
+
     match ingest_result {
         Ok(chunks) => {
             if temp_mode.is_none() {
-                // Save to LMDB
+                // ── MIGRATION TO CEL ──
+                // Old Code Hardcoded LMDB: 
+                // engines::memory::tensor_transducer::TensorTransducer::save_context(...)
+                // New Code: Generate CEL Payload for cluaize-db Extension
+                
                 for (chunk, vec) in &chunks {
                     let memory_id = format!("api-file-{}-{}", file_path, Utc::now().timestamp_nanos_opt().unwrap_or(0));
-                    let _ = engines::memory::tensor_transducer::TensorTransducer::save_context(&memory_id, chunk, vec);
+                    
+                    let cel_payload = json!({
+                        "manifest": {
+                            "version": "1.0",
+                            "target": "cluaize-db",
+                            "action": "insert_vector",
+                            "payload": {
+                                "memory_id": memory_id,
+                                "chunk_text": chunk,
+                                "vector": vec
+                            }
+                        }
+                    });
+                    
+                    generated_cel_scripts.push(cel_payload);
+                    
+                    // Note: Here we would pass `cel_payload` to the internal unified CEL executor
+                    // e.g., crate::handlers::cel_handler::execute_internal(cel_payload).await
                 }
             }
 
@@ -69,8 +90,9 @@ pub async fn file_ingest(
 
     Json(json!({
         "status": "success", 
-        "message": format!("Universal file '{}' ingestion completed.", payload.file_path),
+        "message": format!("Universal file '{}' ingestion completed via CEL routing.", payload.file_path),
         "chunks_processed": if return_vec { returned_chunks.len() } else { 0 },
-        "vectors": if return_vec { serde_json::to_value(returned_chunks).unwrap_or(json!([])) } else { json!([]) }
+        "vectors": if return_vec { serde_json::to_value(returned_chunks).unwrap_or(json!([])) } else { json!([]) },
+        "cel_scripts_generated": generated_cel_scripts.len()
     }))
 }

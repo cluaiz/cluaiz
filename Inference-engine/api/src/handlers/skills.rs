@@ -51,7 +51,7 @@ pub async fn remove_skill(
     Json(payload): Json<InstallSkillPayload>
 ) -> Json<Value> {
     let skill_name = payload.skill_name.clone();
-    match engines::neural_foundry::registry::manager::SkillRegistry::remove_skill(&skill_name).await {
+    match engines::neural_foundry::registry::SkillRegistry::remove_skill(&skill_name).await {
         Ok(_) => Json(json!({"status": "success", "message": format!("WASM skill '{}' removed natively.", skill_name)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove skill: {}", e)}))
     }

@@ -225,7 +225,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
     use crate::core::state::AppState;
     use tokio::sync::mpsc;
     
-    let mut state = AppState::new(None, None);
+    let mut state = AppState::new(None);
     // Pre-load the engine into the state
     {
         let mut lock = state.Core_engine.router.lock().await;

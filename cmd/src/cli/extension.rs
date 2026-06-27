@@ -46,7 +46,7 @@ pub async fn execute(command: ExtensionCommand) -> Result<()> {
                     match MasterRegistry::load() {
                         Ok(registry) => {
                             for (name, entry) in &registry.extensions {
-                                let global_dir = engines::cluaize_shared::environment::EnvironmentManager::current().global_dir;
+                                let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
                                 let cache_path = global_dir.join(&entry.domain).join(".cache");
                                 let cache_exists = if cache_path.exists() { "📦 cached".yellow() } else { "○ empty".dimmed() };
                                 println!("    {} {} — {}", "🧩".cyan(), name.bold(), cache_exists);

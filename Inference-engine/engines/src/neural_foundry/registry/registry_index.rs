@@ -49,6 +49,11 @@ pub struct RegistryEntry {
     /// SHA256 hash of the compiled binary for integrity verification
     /// Format: "sha256:a4fbc89e3fbc..."
     pub binary_hash: Option<String>,
+
+    /// Global lookup index for semantic triggers (e.g. ["math", "calculator"])
+    /// Used by the Engine to instantly find extensions without parsing manifests.
+    #[serde(default)]
+    pub semantic_index: Option<Vec<String>>,
 }
 
 fn default_true() -> bool {

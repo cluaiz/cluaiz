@@ -1,0 +1,49 @@
+{
+  "group": "Skills (WASM)",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/v1/skills/list",
+      "desc": "Returns a list of all currently active WASM skills.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/skills/list.md",
+      "params": [],
+      "response": "[\n  { \"id\": \"sk_49f9a2\", \"name\": \"File System Reader\", \"status\": \"active\" }\n]"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/skills/install",
+      "desc": "Downloads, compiles, and registers a WebAssembly (WASM) skill.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/skills/install.md",
+      "params": [
+        { "name": "skill_uri", "type": "string", "req": true, "desc": "URL or local path to the WASM binary.", "default": "https://registry.cluaiz.com/skills/web-search.wasm" }
+      ],
+      "response": "{\n  \"status\": \"installed\",\n  \"skill_id\": \"sk_49f9a2\"\n}"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/skills/remove",
+      "desc": "Unloads and drops a WASM skill.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/skills/remove.md",
+      "params": [
+        { "name": "skill_id", "type": "string", "req": true, "desc": "The unique ID of the skill.", "default": "sk_49f9a2" }
+      ],
+      "response": "{\n  \"status\": \"success\"\n}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/skills/cache",
+      "desc": "Lists the active caches for skills.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/skills/cache_list.md",
+      "params": [],
+      "response": "[\n  { \"skill\": \"web-search\", \"cache_files\": [\"index.bin\"] }\n]"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/skills/cache",
+      "desc": "Clears skill caches.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/skills/cache_clear.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\"\n}"
+    }
+  ]
+}

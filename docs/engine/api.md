@@ -15,7 +15,7 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 *   **`GET /status/embedded`**: Confirms host environment parameters.
 
 ### 2. Conversational Engine
-*   **`POST /chat`**: Asynchronous generation endpoint. Stream outputs are sent to the client in real-time using **Server-Sent Events (SSE)**.
+*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Now includes Two-Step Discovery: Natively intercepts CEL `<TRIGGER:X>` tokens mid-generation to inject Tool/Extension `SKILL.md` schemas dynamically without crashing RAM.*
 *   **`GET /history`**: Lists active chat session IDs and metadata configurations.
 *   **`GET /history/{session_id}`**: Retrieves raw, chronological message buffers for a specific session.
 
@@ -24,3 +24,13 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 *   **`GET /hardware`**: Dynamic readout of GPU/NPU active memory limits and tensor engine loads.
 *   **`POST /models/download`**: Spawns a background task to pull and cache weight tensors from remote mirrors.
 *   **`POST /models/load`**: Dynamically allocates local RAM/VRAM to mount a specific model into active memory.
+
+### 4. CEL Execution (Direct Engine Control)
+*   **`POST /v1/cel/execute`**: Accepts a raw CEL script payload, builds an Execution Plan (AST), and natively executes VRAM/API commands bypassing standard inference workflows.
+*   **`POST /v1/execute/:component_name/:function_name`**: Dynamically routes REST calls directly to the specified extension/plugin loaded in the `MasterRegistry`.
+
+### 5. Skills & Extension Hub Management
+*   **`GET /v1/skills/list`**: Returns all installed native/WASM skills across domains.
+*   **`POST /v1/skills/install`**: Queues the download and WASM compilation of a community extension.
+*   **`DELETE /v1/skills/remove`**: Natively unloads and wipes a skill.
+*   **`GET /v1/skills/cache` & `DELETE /v1/skills/cache`**: Manages the loaded skill binary cache.

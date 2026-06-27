@@ -6,7 +6,6 @@ pub mod ingest;
 pub mod permission;
 pub mod ps;
 pub mod setup;
-pub mod db;
 pub mod booster;
 pub mod benchmark;
 pub mod plugins;

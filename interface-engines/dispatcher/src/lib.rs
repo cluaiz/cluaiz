@@ -194,24 +194,58 @@ impl NeuralDispatcher {
                                 let c_prompt = std::ffi::CString::new(prompt_clone).unwrap();
 
                                 // 🛑 CANCELLATION-AWARE CALLBACK
-                                // user_data carries (tx, cancel_flag) packed as raw ptr.
+                                // user_data carries (tx, cancel_flag, buffer) packed as raw ptr.
                                 struct CallbackData {
                                     tx: tokio::sync::mpsc::Sender<String>,
                                     cancel_flag: Arc<AtomicBool>,
+                                    buffer: std::sync::Mutex<String>,
                                 }
 
                                 extern "C" fn callback(token_ptr: *const std::os::raw::c_char, user_data: *mut std::ffi::c_void) -> bool {
                                     let data = unsafe { &*(user_data as *const CallbackData) };
-                                    // Check cancellation flag first — return false to stop generation
+                                    
                                     if data.cancel_flag.load(Ordering::Relaxed) {
                                         tracing::info!("🛑 [Dispatcher] Inference cancelled via cancel_flag.");
                                         return false;
                                     }
+                                    
                                     let token = unsafe { std::ffi::CStr::from_ptr(token_ptr) }.to_string_lossy().into_owned();
+                                    
+                                    // 🚀 Two-Step Discovery: Token Interception Buffer
+                                    if let Ok(mut buffer) = data.buffer.lock() {
+                                        buffer.push_str(&token);
+                                        if buffer.len() > 100 {
+                                            *buffer = buffer[buffer.len() - 100..].to_string();
+                                        }
+
+                                        let triggers = ["use extension::", "use plugin::"];
+                                        for trigger in triggers {
+                                            if let Some(idx) = buffer.find(trigger) {
+                                                let remainder = &buffer[idx + trigger.len()..];
+                                                if let Some(end_idx) = remainder.find(|c: char| !c.is_alphanumeric() && c != '_' && c != '-') {
+                                                    if end_idx > 0 {
+                                                        let target_name = &remainder[..end_idx];
+                                                        tracing::info!("🔍 [Dispatcher] Two-Step Discovery Triggered for: {}", target_name);
+                                                        let _ = data.tx.blocking_send(format!("<TRIGGER:{}:{}>", 
+                                                            if trigger.contains("extension") { "extension" } else { "plugin" },
+                                                            target_name
+                                                        ));
+                                                        data.cancel_flag.store(true, Ordering::Relaxed);
+                                                        return false; // Abort C-FFI Stream gracefully
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     data.tx.blocking_send(token).is_ok()
                                 }
 
-                                let callback_data = CallbackData { tx: tx.clone(), cancel_flag: cancel_flag.clone() };
+                                let callback_data = CallbackData { 
+                                    tx: tx.clone(), 
+                                    cancel_flag: cancel_flag.clone(),
+                                    buffer: std::sync::Mutex::new(String::new()),
+                                };
                                 let tx_ptr = &callback_data as *const CallbackData as *mut std::ffi::c_void;
                                 let engine_raw = safe_ptr.0;
                                 let prompt_raw = c_prompt.as_ptr();
