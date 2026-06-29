@@ -95,6 +95,36 @@ $ cluaiz skill install github-assistant
 # Install a plugin
 $ cluaiz plugin install web-scraper
 ```
+
+---
+
+## 📚 **Deep Documentation Reference**
+
+<details>
+<summary><b>Click to expand full technical documentation</b></summary>
+
+### 1. Terminal & CLI Core
+* **[Terminal Commands & CLI Reference](docs/reference/terminal-commands.md)**  
+  An exhaustive, deeply technical engineering manual for all 32 native `cluaiz` commands. It documents the exact execution flow of the kernel, internal JSON state mutations (like `Permission.json` updates), and exact API route mappings for `serve`, `pull`, `booster`, and WASM skills orchestration.
+
+### 2. Execution & Native Logic
+* **[CEL (cluaiz Execution Language)](docs/cel)**  
+  Dive into Cluaiz's custom native execution language. CEL allows you to bypass heavy Python SDKs by parsing raw syntax directly into an Abstract Syntax Tree (AST) that natively hooks into C-Pointers in shared memory (`payload_ptr`), allowing you to execute logic mid-inference with zero network latency.
+
+### 3. Core Engine Architecture
+* **[Dual Engine Architecture](docs/engine/dual_engine_architecture.md)**  
+  Understand the heart of Cluaiz: the seamless orchestration layer. It explains how `cluaiz` acts as a unified C-level memory space bridging `llama.cpp` (for LLMs) and **ONNX Runtime** (for Vision & Embeddings), eliminating the fragmented network lag typical of multi-engine local AI setups.
+* **[JIT KV-Cache Architecture](docs/engine/jit_architecture.md)**  
+  Deep dive into the Just-In-Time memory compilation pipeline. Learn how Cluaiz analyzes prompt constraints, calculates exact physical memory limits natively, and injects pre-computed KV cache states (Dual-Caches) to dramatically reduce Time To First Token (TTFT).
+
+### 4. Hardware Governance & Security
+* **[System Booster & Hardware Tuning](docs/engine/booster.md)**  
+  The ultimate guide to the `system_booster.json` configurations. Discover how the memory arbiter mathematically prevents Out-of-Memory (OOM) crashes before they hit physical silicon by configuring FlashAttention bounds, Turbo KV quantization (`kv8`, `kv16`), and aggressive Context Shifting sliding windows.
+* **[Native Permission Schema](docs/engine/permission.md)**  
+  A breakdown of the strict execution bounds. Explore how `Permission.json` acts as an OS-level gatekeeper, controlling WASM Sandboxing strictness, active telemetry buffers, vectorization permissions, and native firewall rules to ensure absolute sovereign data security.
+
+</details>
+
 ---
 
 ## 🧠 **Features & Capabilities**
