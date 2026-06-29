@@ -15,7 +15,7 @@
       "desc": "Retrieves deep architectural information, versioning, and the foundational pillars of the cluaiz system.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/info.md",
       "params": [],
-      "response": "{\n  \"engine\": \"cluaiz Inference Engine\",\n  \"version\": \"0.0.1-alpha\"\n}"
+      "response": "{\n  \"engine\": \"cluaiz Inference Engine\",\n  \"version\": \"0.1.0\"\n}"
     },
     {
       "method": "GET",
@@ -47,8 +47,20 @@
       "desc": "Updates a specific permission rule natively.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/permission_post.md",
       "params": [
-        { "name": "key", "type": "string", "req": true, "desc": "The permission key to change (e.g. 'wasm_firewall').", "default": "wasm_firewall" },
-        { "name": "value", "type": "string", "req": true, "desc": "The new value for the permission.", "default": "relaxed" }
+        {
+          "name": "key",
+          "type": "string",
+          "req": true,
+          "desc": "The permission key to change (e.g. 'wasm_firewall').",
+          "default": "wasm_firewall"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "req": true,
+          "desc": "The new value for the permission.",
+          "default": "relaxed"
+        }
       ],
       "response": "{\n  \"status\": \"success\"\n}"
     },
@@ -58,7 +70,13 @@
       "desc": "Instructs the engine to skip the '<think>' reasoning block during the next generation.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/skip_think.md",
       "params": [
-        { "name": "skip", "type": "boolean", "req": true, "desc": "Whether to skip thinking tags in output.", "default": true }
+        {
+          "name": "skip",
+          "type": "boolean",
+          "req": true,
+          "desc": "Whether to skip thinking tags in output.",
+          "default": true
+        }
       ],
       "response": "{\n  \"status\": \"success\"\n}"
     },
@@ -68,7 +86,13 @@
       "desc": "Executes shell commands locally. STRICTLY bound to 127.0.0.1 (Localhost). Rejects any remote attempts to prevent RCE.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/cmd.md",
       "params": [
-        { "name": "command", "type": "string", "req": true, "desc": "The raw shell command to execute.", "default": "echo Hello cluaiz" }
+        {
+          "name": "command",
+          "type": "string",
+          "req": true,
+          "desc": "The raw shell command to execute.",
+          "default": "echo Hello cluaiz"
+        }
       ],
       "response": "{\n  \"status\": \"success\",\n  \"output\": \"Hello cluaiz\\n\"\n}"
     }

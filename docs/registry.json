@@ -1,23 +1,12 @@
 [
   {
-    "id": "vision",
-    "title": "🌟 Why cluaiz?",
-    "groups": [
-      {
-        "group": "Vision & Value",
-        "pages": [
-          { "slug": "why-cluaiz", "title": "💡 Enterprise Value", "file_path": "docs/vision/why-cluaiz.md" }
-        ]
-      }
-    ]
-  },
-  {
     "id": "get-started",
     "title": "🚀 Get Started",
     "groups": [
       {
         "group": "Overview",
         "pages": [
+          { "slug": "welcome", "title": "🌟 Welcome", "file_path": "docs/get-started/welcome.md" },
           { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
           { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" }
         ]
@@ -30,6 +19,21 @@
       }
     ]
   },
+   {
+    "id": "reference-manual",
+    "title": "📚 Reference Manual",
+    "groups": [
+      {
+        "group": "Reference Index",
+        "pages": [
+          { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
+          { "slug": "cluaiz-expression-language", "title": "🧩 CEL Manual", "file_path": "docs/reference/cluaiz-expression-language.md" },
+          { "slug": "c-pointer-fii", "title": "🔌 C-Pointer Specifications", "file_path": "docs/reference/c-pointer-fii.md" },
+          { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
+        ]
+
+
+      },
   {
     "id": "cli-tui",
     "title": "💻 CLI & TUI",
@@ -43,7 +47,8 @@
       {
         "group": "Command Manual",
         "pages": [
-          { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cmd/manual.md" }
+          { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cmd/manual.md" },
+          { "slug": "commands-reference", "title": "📋 Commands Reference", "file_path": "docs/cmd/commands_reference.md" }
         ]
       }
     ]
@@ -56,7 +61,11 @@
         "group": "Core Engine",
         "pages": [
           { "slug": "system-booster-deep", "title": "🚀 System Booster Guide", "file_path": "docs/engine/booster.md" },
-          { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" }
+          { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" },
+          { "slug": "dual-engine-architecture", "title": "⚙️ Dual Engine Arch", "file_path": "docs/engine/dual_engine_architecture.md" },
+          { "slug": "jit-architecture", "title": "⚡ JIT Architecture", "file_path": "docs/engine/jit_architecture.md" },
+          { "slug": "permission", "title": "🔒 Permission Engine", "file_path": "docs/engine/permission.md" },
+          { "slug": "system-control", "title": "⚙️ System Control", "file_path": "docs/engine/system_control.md" }
         ]
       },
       {
@@ -69,17 +78,70 @@
     ]
   },
   {
-    "id": "reference-manual",
-    "title": "📚 Reference Manual",
+    "id": "cel-environment",
+    "title": "🧩 Common Expression Language (CEL)",
     "groups": [
       {
-        "group": "Reference Index",
+        "group": "Core Language",
         "pages": [
-          { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
-          { "slug": "cel-manual", "title": "⚙️ CEL Specification", "file_path": "docs/reference/cel-manual.md" },
-          { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
+          { "slug": "cel-language-bindings", "title": "🔗 Language Bindings", "file_path": "docs/cel/cel-language-bindings.md" },
+          { "slug": "cel-syntax-reference", "title": "📖 Syntax Reference", "file_path": "docs/cel/cel-syntax-reference.md" },
+          { "slug": "plugin-vs-extension", "title": "🔌 Plugin vs Extension", "file_path": "docs/cel/plugin_vs_extension.md" }
         ]
       },
+      {
+        "group": "Authoring",
+        "pages": [
+          { "slug": "embedding-rules", "title": "📝 Embedding Rules", "file_path": "docs/cel/authoring/embedding_rules.md" },
+          { "slug": "pure-cel-files", "title": "📄 Pure CEL Files", "file_path": "docs/cel/authoring/pure_cel_files.md" },
+          { "slug": "wasm-vs-rhai-vs-pure", "title": "⚖️ WASM vs Rhai vs Pure", "file_path": "docs/cel/authoring/wasm_vs_rhai_vs_pure.md" }
+        ]
+      },
+      {
+        "group": "SDK Integrations",
+        "pages": [
+          { "slug": "sdk-overview", "title": "📦 SDK Overview", "file_path": "docs/cel/sdk/sdk.md" },
+          { "slug": "c-ffi", "title": "C FFI", "file_path": "docs/cel/sdk/c-ffi.md" },
+          { "slug": "cpp-ffi", "title": "C++ FFI", "file_path": "docs/cel/sdk/cpp-ffi.md" },
+          { "slug": "go-ffi", "title": "Go FFI", "file_path": "docs/cel/sdk/go-ffi.md" },
+          { "slug": "nodejs-ffi", "title": "Node.js FFI", "file_path": "docs/cel/sdk/nodejs-ffi.md" },
+          { "slug": "python-cffi", "title": "Python CFFI", "file_path": "docs/cel/sdk/python-cffi.md" },
+          { "slug": "rust-native", "title": "Rust Native", "file_path": "docs/cel/sdk/rust-native.md" },
+          { "slug": "pure-cel", "title": "Pure CEL", "file_path": "docs/cel/sdk/pure-cel.md" },
+          { "slug": "custom-wasm-plugin", "title": "Custom WASM Plugin", "file_path": "docs/cel/sdk/custom-wasm-plugin.md" },
+          { "slug": "manifest-architecture", "title": "Manifest Architecture", "file_path": "docs/cel/sdk/manifest-architecture.md" }
+        ]
+      },
+      {
+        "group": "Tutorials",
+        "pages": [
+          { "slug": "getting-started", "title": "🚀 Getting Started", "file_path": "docs/cel/tutorials/getting_started.md" },
+          { "slug": "control-flow", "title": "🔀 Control Flow", "file_path": "docs/cel/tutorials/control_flow.md" },
+          { "slug": "dynamic-execution-architecture", "title": "🏗️ Dynamic Execution Arch", "file_path": "docs/cel/tutorials/dynamic_execution_architecture.md" },
+          { "slug": "dynamic-linking", "title": "🔗 Dynamic Linking", "file_path": "docs/cel/tutorials/dynamic_linking.md" },
+          { "slug": "engine-directives", "title": "⚙️ Engine Directives", "file_path": "docs/cel/tutorials/engine_directives.md" },
+          { "slug": "executor-protocol", "title": "📜 Executor Protocol", "file_path": "docs/cel/tutorials/executor_protocol.md" },
+          { "slug": "filter", "title": "🔍 Filter", "file_path": "docs/cel/tutorials/filter.md" },
+          { "slug": "hardware-vector-search", "title": "🤖 Hardware Vector Search", "file_path": "docs/cel/tutorials/hardware_vector_search.md" },
+          { "slug": "invoke", "title": "⚡ Invoke", "file_path": "docs/cel/tutorials/invoke.md" },
+          { "slug": "iterating-data", "title": "🔄 Iterating Data", "file_path": "docs/cel/tutorials/iterating_data.md" },
+          { "slug": "parameterized-queries", "title": "❓ Parameterized Queries", "file_path": "docs/cel/tutorials/parameterized_queries.md" },
+          { "slug": "process", "title": "⚙️ Process", "file_path": "docs/cel/tutorials/process.md" },
+          { "slug": "select", "title": "🎯 Select", "file_path": "docs/cel/tutorials/select.md" },
+          { "slug": "time-window", "title": "⏱️ Time Window", "file_path": "docs/cel/tutorials/time_window.md" },
+          { "slug": "variable-assignments", "title": "📝 Variable Assignments", "file_path": "docs/cel/tutorials/variable_assignments.md" }
+        ]
+      },
+      {
+        "group": "Usecases",
+        "pages": [
+          { "slug": "log-processor", "title": "📄 Log Processor", "file_path": "docs/cel/usecases/log_processor.md" },
+          { "slug": "rag-pipeline", "title": "🧠 RAG Pipeline", "file_path": "docs/cel/usecases/rag_pipeline.md" },
+          { "slug": "vision-agent", "title": "👁️ Vision Agent", "file_path": "docs/cel/usecases/vision_agent.md" }
+        ]
+      }
+    ]
+  },
       {
         "group": "CLI Reference",
         "pages": [
@@ -89,40 +151,27 @@
       {
         "group": "HTTP API Reference",
         "pages": [
-          { "slug": "api-index", "title": "📡 HTTP API Index", "file_path": "docs/reference/api/index.md" },
-          { "slug": "post-chat", "title": "📡 POST /chat", "file_path": "docs/reference/api/post-chat.md" },
-          { "slug": "get-hardware", "title": "📡 GET /hardware", "file_path": "docs/reference/api/get-hardware.md" },
-          { "slug": "get-models-installed", "title": "📡 GET /models/installed", "file_path": "docs/reference/api/get-models-installed.md" },
-          { "slug": "get-models-tags", "title": "📡 GET /models/tags", "file_path": "docs/reference/api/get-models-tags.md" },
-          { "slug": "post-models-load", "title": "📡 POST /models/load", "file_path": "docs/reference/api/post-models-load.md" },
-          { "slug": "post-models-download", "title": "📡 POST /models/download", "file_path": "docs/reference/api/post-models-download.md" },
-          { "slug": "post-v1-db-execute", "title": "📡 POST /v1/db/execute", "file_path": "docs/reference/api/post-v1-db-execute.md" },
-          { "slug": "get-v1-permission", "title": "📡 GET /v1/permission", "file_path": "docs/reference/api/get-v1-permission.md" },
-          { "slug": "post-v1-permission-update", "title": "📡 POST /v1/permission/update", "file_path": "docs/reference/api/post-v1-permission-update.md" },
-          { "slug": "post-v1-system-brain", "title": "📡 POST /v1/system/brain", "file_path": "docs/reference/api/post-v1-system-brain.md" },
-          { "slug": "get-v1-system-control", "title": "📡 GET /v1/system/control", "file_path": "docs/reference/api/get-v1-system-control.md" },
-          { "slug": "get-v1-booster-status", "title": "📡 GET /v1/booster/status", "file_path": "docs/reference/api/get-v1-booster-status.md" },
-          { "slug": "post-v1-booster-update", "title": "📡 POST /v1/booster/update", "file_path": "docs/reference/api/post-v1-booster-update.md" },
-          { "slug": "post-v1-ingest-file", "title": "📡 POST /v1/ingest/file", "file_path": "docs/reference/api/post-v1-ingest-file.md" },
-          { "slug": "get-health", "title": "📡 GET /health", "file_path": "docs/reference/api/get-health.md" }
+          { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" }
         ]
       },
       {
         "group": "Configuration Profiles",
         "pages": [
-          { "slug": "config-index", "title": "⚙️ Config Profiles Index", "file_path": "docs/reference/config/index.md" },
-          { "slug": "system-booster", "title": "⚙️ system_booster.json", "file_path": "docs/reference/config/system-booster.md" },
-          { "slug": "permission", "title": "⚙️ Permission.json", "file_path": "docs/reference/config/permission.md" },
-          { "slug": "system-control", "title": "⚙️ system_control.json", "file_path": "docs/reference/config/system-control.md" }
+          { "slug": "engine-configuration", "title": "⚙️ Engine Configurations", "file_path": "docs/reference/engine-configuration.md" }
         ]
       }
     ]
+
   },
   {
     "id": "architecture-topics",
     "title": "⚙️ Architecture",
     "pages": [
-      { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" }
+      { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
+      { "slug": "cel-ffi-api-execution", "title": "🔌 CEL FFI API Execution", "file_path": "docs/architecture/cel-ffi-api-execution.md" },
+      { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
+      { "slug": "cli-deep-audit", "title": "🔍 CLI Deep Audit", "file_path": "docs/architecture/cli-deep-audit.md" },
+      { "slug": "cli-process-design", "title": "⚙️ CLI Process Design", "file_path": "docs/architecture/cli-process-design.md" }
     ]
   },
   {

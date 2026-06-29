@@ -1,6 +1,7 @@
-# cluaiz Core CLI Reference Manual
+# Cluaiz Core CLI Reference Manual
 
 This is the definitive engineering reference for the `cluaiz` binary. It details the execution flow, internal JSON state mutations, and API route mappings for all 32 commands natively supported by the Cluaiz engine.
+
 
 ---
 
