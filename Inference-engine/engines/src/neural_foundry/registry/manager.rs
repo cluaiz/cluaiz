@@ -256,7 +256,7 @@ impl SkillRegistry {
                                 cache_count += 1;
                                 let name = cache_path.file_name().unwrap_or_default().to_string_lossy();
                                 let size_mb = meta.len() as f64 / 1_048_576.0;
-                                report.push_str(&format!("ðŸ”¹ {} | Size: {:.2} MB\n", name, size_mb));
+                                report.push_str(&format!("🔹 {} | Size: {:.2} MB\n", name, size_mb));
                             }
                         }
                     }

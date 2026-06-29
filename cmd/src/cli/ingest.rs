@@ -6,8 +6,8 @@ use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError};
 use cluaiz_onnx::engine::OnnxEngine;
 
 pub async fn execute(file_path: &str) -> Result<()> {
-    println!("\n  {} [cluaiz] Sovereign Ingestion Pipeline Initiated", "ðŸš€".green());
-    println!("  {} Target File: {}\n", "ðŸ“„".cyan(), file_path.bold());
+    println!("\n  {} [cluaiz] Sovereign Ingestion Pipeline Initiated", "🚀".green());
+    println!("  {} Target File: {}\n", "📄".cyan(), file_path.bold());
 
     let ingestor = DocumentIngestor::new();
     
@@ -41,7 +41,7 @@ pub async fn execute(file_path: &str) -> Result<()> {
                 
                 // Show the mathematical representation (Embedding Vector)
                 let vec_preview: Vec<String> = vector.iter().take(5).map(|v| format!("{:.4}", v)).collect();
-                println!("  {} [{}, ...] (Total Dimensions: {})\n", "ðŸ§¬ MATHEMATICAL SOUL:".blue(), vec_preview.join(", "), vector.len());
+                println!("  {} [{}, ...] (Total Dimensions: {})\n", "🧬 MATHEMATICAL SOUL:".blue(), vec_preview.join(", "), vector.len());
             }
 
             if results.len() > 5 {

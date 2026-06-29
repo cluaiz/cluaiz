@@ -4,7 +4,7 @@ use engines::models::registry::CoreRoster;
 use std::fs;
 
 pub async fn execute(model_id: &str) -> Result<()> {
-    println!("\n  {} [cluaiz] Preparing for Neural Deletion: '{}'...", "ðŸ—‘ï¸ ".red(), model_id.bold());
+    println!("\n  {} [cluaiz] Preparing for Neural Deletion: '{}'...", "🗑️".red(), model_id.bold());
 
     let roster = CoreRoster::load_roster();
     let model = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
@@ -20,15 +20,15 @@ pub async fn execute(model_id: &str) -> Result<()> {
         
         if model_file.exists() {
             fs::remove_file(&model_file)?;
-            println!("  {} Model weights successfully purged.", "âœ…".green());
+            println!("  {} Model weights successfully purged.", "✅".green());
         } else {
-            println!("  {} Weights file not found in vault, but metadata was present. Cleaning metadata...", "âš ï¸ ".yellow());
+            println!("  {} Weights file not found in vault, but metadata was present. Cleaning metadata...", "⚠️".yellow());
         }
         
         // Note: In a real system, we'd also update the local roster cache
-        println!("  {} Model '{}' has been removed from the registry.\n", "ðŸ›¡ï¸ ".green(), model_id.cyan());
+        println!("  {} Model '{}' has been removed from the registry.\n", "🛡️".green(), model_id.cyan());
     } else {
-        println!("  {} Model ID '{}' not found in the local vault.\n", "âŒ".red(), model_id.bold());
+        println!("  {} Model ID '{}' not found in the local vault.\n", "❌".red(), model_id.bold());
     }
 
     Ok(())

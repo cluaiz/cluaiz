@@ -2,13 +2,13 @@ use color_eyre::Result;
 use colored::Colorize;
 use engines::models::registry::CoreRoster;
 
-/// `cluaiz run <model-id>` â€” pulls the model and initiates a native chat session.
+/// `cluaiz run <model-id>` — pulls the model and initiates a native chat session.
 pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
-    // ðŸŽ¨ Display the Sovereign Logo
+    // 🎨 Display the Sovereign Logo
     let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
     println!("{}", logo.cyan());
 
-    println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "âš™ï¸".yellow(), model_id.bold());
+    println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "⚙️".yellow(), model_id.bold());
 
     let mut manifest: Option<engines::models::registry::ModelManifest> = None;
     let mut is_local = false;
@@ -19,7 +19,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current().models_dir();
 
     if model_id.contains('/') {
-        // ðŸš€ EXPLICIT HUGGINGFACE REQUEST
+        // 🚀 EXPLICIT HUGGINGFACE REQUEST
         is_hf = true;
         resolved_id = model_id.to_string();
         if !resolved_id.starts_with("hf://") && !resolved_id.starts_with("https://") {
@@ -29,7 +29,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         let repo_id = resolved_id.replace("hf://", "").replace("https://huggingface.co/", "");
         let repo_id = if repo_id.ends_with('/') { repo_id[..repo_id.len()-1].to_string() } else { repo_id };
         
-        println!("  {} Scanning HuggingFace Hub for '{}'...", "ðŸ”".cyan(), repo_id);
+        println!("  {} Scanning HuggingFace Hub for '{}'...", "🔍".cyan(), repo_id);
         
         let variants = engines::models::manager::hf_hub::HuggingFaceHub::list_variants(&repo_id).await
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
@@ -40,9 +40,9 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             
         let selected_filename = selection.split(" (").next().unwrap().to_string();
         
-        // ðŸš€ NEW: Check if this specific variant is already in the local roster!
+        // 🚀 NEW: Check if this specific variant is already in the local roster!
         if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
-            println!("\n  {} Warning: This exact variant is already downloaded locally under ID: '{}'", "âš ï¸".yellow(), existing.id.cyan());
+            println!("\n  {} Warning: This exact variant is already downloaded locally under ID: '{}'", "⚠️".yellow(), existing.id.cyan());
             println!("     To run it instantly, use: cluaiz run {}", existing.id.green());
             println!("     If you wish to re-download, please delete the old one first using: cluaiz rm {}\n", existing.id.red());
             return Ok(());
@@ -51,14 +51,14 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         let selected_size_str = selection.split(" (").nth(1).unwrap().replace(" GB)", "");
         let selected_size_gb: f64 = selected_size_str.parse().unwrap_or(0.0);
         
-        println!("  {} Fetching precise metadata...", "ðŸ“¡".cyan());
+        println!("  {} Fetching precise metadata...", "📡".cyan());
         let hf_manifest = engines::models::manager::hf_hub::HuggingFaceHub::build_manifest(&repo_id, &selected_filename, selected_size_gb).await
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
             
         manifest = Some(hf_manifest);
         is_local = false;
     } else {
-        // ðŸš€ REGISTRY OR LOCAL ID REQUEST
+        // 🚀 REGISTRY OR LOCAL ID REQUEST
         if let Some(m) = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase()) {
             let safe_id = m.id.replace(':', "-");
             let model_path = cluaiz_root.join(&m.category).join(&safe_id);
@@ -73,7 +73,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             }
         } else {
             // Not in local vault, fetch from external registry
-            println!("  {} Model missing in local vault. Synchronizing with Neural Registry...", "ðŸŒ".yellow());
+            println!("  {} Model missing in local vault. Synchronizing with Neural Registry...", "🌐".yellow());
             let remote_models = CoreRoster::fetch_external_registry(None).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
             manifest = remote_models.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
         }
@@ -81,14 +81,14 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
 
     let mut manifest = manifest.ok_or_else(|| color_eyre::eyre::eyre!("ID '{}' not found in any registry.", model_id))?;
 
-    // ðŸš€ Update the Engine Permission.json with the actively running model so CompilerDaemon knows what to compile
+    // 🚀 Update the Engine Permission.json with the actively running model so CompilerDaemon knows what to compile
     if manifest.architecture_type == "onnx" {
         engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(manifest.id.clone());
     } else {
         engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(manifest.id.clone());
     }
 
-    // ðŸš€ Trigger Skill Registry (which triggers CompilerDaemon) to provision the caches for this active model
+    // 🚀 Trigger Skill Registry (which triggers CompilerDaemon) to provision the caches for this active model
     let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
     if skills_dir.exists() {
         let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
@@ -103,7 +103,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let model_file = model_path.join(&manifest.huggingface_filename);
 
     if !is_local {
-        println!("  {} Fetching Deep Metadata (Binary Probe)...", "ðŸ“¡".cyan());
+        println!("  {} Fetching Deep Metadata (Binary Probe)...", "📡".cyan());
     }
     
     let is_onnx = manifest.architecture_type == "onnx";
@@ -111,11 +111,11 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     if is_onnx {
         // ONNX specific metadata display
         if !is_local {
-            println!("    â”œâ”€ ðŸ§  Architecture: {}", manifest.architecture.yellow());
-            println!("    â”œâ”€ ðŸ§© Type: ONNX Optimized Execution Graph");
-            println!("    â”œâ”€ ðŸ“¦ Quantization: fp32");
-            println!("    â”œâ”€ ðŸ’¾ Download Size: {:.2} GB", manifest.download_size_gb);
-            println!("    â”œâ”€ âš™ï¸ RAM Requirement: {:.2} GB", manifest.ram_required_gb);
+            println!("    ├─ 🧠 Architecture: {}", manifest.architecture.yellow());
+            println!("    ├─ 🧩 Type: ONNX Optimized Execution Graph");
+            println!("    ├─ 📦 Quantization: fp32");
+            println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
+            println!("    ├─ ⚙️ RAM Requirement: {:.2} GB", manifest.ram_required_gb);
         }
     } else {
         let probe_result = if is_local && model_file.exists() {
@@ -157,20 +157,20 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_gb;
 
             if !is_local {
-                println!("    â”œâ”€ ðŸ§  Architecture: {}", arch.yellow());
-                println!("    â”œâ”€ ðŸ“ Context Window: {} tokens", ctx_display.green());
-                println!("    â”œâ”€ ðŸ§© Parameters: {} B", params.green());
-                println!("    â”œâ”€ ðŸ“¦ Quantization / File Type: {}", file_type.cyan());
-                println!("    â”œâ”€ ðŸ“š Network Layers (Blocks): {}", blocks.magenta());
-                println!("    â”œâ”€ âš¡ Tensor Count: {}", tensor_count.to_string().cyan());
-                println!("    â”œâ”€ ðŸ’¾ Download Size: {:.2} GB", manifest.download_size_gb);
-                println!("    â”œâ”€ ðŸ§® KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
-                println!("    â”œâ”€ âš™ï¸ Base Engine Overhead: {:.2} GB", base_engine_overhead_gb);
+                println!("    ├─ 🧠 Architecture: {}", arch.yellow());
+                println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
+                println!("    ├─ 🧩 Parameters: {} B", params.green());
+                println!("    ├─ 📦 Quantization / File Type: {}", file_type.cyan());
+                println!("    ├─ 📚 Network Layers (Blocks): {}", blocks.magenta());
+                println!("    ├─ ⚡ Tensor Count: {}", tensor_count.to_string().cyan());
+                println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
+                println!("    ├─ 🧮 KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
+                println!("    ├─ ⚙️ Base Engine Overhead: {:.2} GB", base_engine_overhead_gb);
             }
         } else if let Err(e) = probe_result {
             if !is_local {
-                println!("    â”œâ”€ âš ï¸ Could not probe remote GGUF header: {}", e);
-                println!("    â”œâ”€ ðŸ’¾ Download Size: {:.2} GB", manifest.download_size_gb);
+                println!("    ├─ ⚠️ Could not probe remote GGUF header: {}", e);
+                println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
             }
         }
     }
@@ -208,32 +208,32 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
 
     if !is_local {
-        println!("\n  {} Conducting Pre-flight Silicon Audit...", "âš–ï¸".cyan());
-        println!("    â”œâ”€ ðŸ–¥ï¸ Host System RAM: {:.2} GB", user_ram);
+        println!("\n  {} Conducting Pre-flight Silicon Audit...", "⚖️".cyan());
+        println!("    ├─ 🖥️ Host System RAM: {:.2} GB", user_ram);
         if user_vram > 0.0 {
-            println!("    â”œâ”€ ðŸŽ® Target VRAM (Primary GPU): {:.2} GB", user_vram);
+            println!("    ├─ 🎮 Target VRAM (Primary GPU): {:.2} GB", user_vram);
         }
-        println!("    â”œâ”€ ðŸ“Š Target Allocation: {:.2} GB (Weights + Engine + 8K Context)", total_required);
+        println!("    ├─ 📊 Target Allocation: {:.2} GB (Weights + Engine + 8K Context)", total_required);
         
         if user_vram > 0.0 {
             if total_required <= user_vram {
-                println!("    â”œâ”€ âš¡ Offload Status: Full GPU Acceleration (100% VRAM)");
-                println!("    â”œâ”€ ðŸ§® Remaining VRAM post-load: {:.2} GB", user_vram - total_required);
+                println!("    ├─ ⚡ Offload Status: Full GPU Acceleration (100% VRAM)");
+                println!("    ├─ 🧮 Remaining VRAM post-load: {:.2} GB", user_vram - total_required);
             } else {
                 let vram_ratio = user_vram / total_required;
-                println!("    â”œâ”€ âš¡ Offload Status: Partial GPU Acceleration ({:.0}% in VRAM)", vram_ratio * 100.0);
-                println!("    â”œâ”€ ðŸ§® Remaining System RAM post-load: {:.2} GB", user_ram - (total_required - user_vram));
+                println!("    ├─ ⚡ Offload Status: Partial GPU Acceleration ({:.0}% in VRAM)", vram_ratio * 100.0);
+                println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - (total_required - user_vram));
             }
         } else {
-            println!("    â”œâ”€ âš¡ Offload Status: CPU Inference (No dedicated VRAM)");
-            println!("    â”œâ”€ ðŸ§® Remaining System RAM post-load: {:.2} GB", user_ram - total_required);
+            println!("    ├─ ⚡ Offload Status: CPU Inference (No dedicated VRAM)");
+            println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - total_required);
         }
-        println!("    â”œâ”€ ðŸš€ Projected Speed: ~{:.0} Tokens/Second (TPS)", projected_tps);
-        println!("    â”œâ”€ System Status: {:?}", status);
+        println!("    ├─ 🚀 Projected Speed: ~{:.0} Tokens/Second (TPS)", projected_tps);
+        println!("    ├─ System Status: {:?}", status);
     }
     
     if status == engines::models::manager::auditor::HealthStatus::Disabled {
-        return Err(color_eyre::eyre::eyre!("âŒ DENIED: Insufficient hardware resources for this model."));
+        return Err(color_eyre::eyre::eyre!("❌ DENIED: Insufficient hardware resources for this model."));
     }
     
     if !is_local {
@@ -244,7 +244,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             }
             manager.pull_model_with_manifest(&manifest).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
             
-            println!("\n  {} HuggingFace Model Downloaded! Launching dynamic session...", "âœ…".green());
+            println!("\n  {} HuggingFace Model Downloaded! Launching dynamic session...", "✅".green());
             is_local = true;
         } else {
             let confirm = inquire::Confirm::new("Audit passed. Proceed with model download and initialization?").with_default(true).prompt()?;
@@ -261,7 +261,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     }
 
     if is_local {
-        println!("  {} Local Audit Passed. Preparing Neural Matrix...", "âœ¨".green());
+        println!("  {} Local Audit Passed. Preparing Neural Matrix...", "✨".green());
     }
 
     // Give a small pause for visual feedback before clearing screen for dashboard
@@ -271,7 +271,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     use crate::core::state::AppState;
     use tokio::sync::mpsc;
     
-    // ðŸ§¬ Load Real Tokenizer from the model folder
+    // 🧬 Load Real Tokenizer from the model folder
     let repo_id = if manifest.download_url.contains("huggingface.co/") {
         manifest.download_url
             .split("huggingface.co/")
@@ -297,7 +297,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let mut mode = crate::app_enums::Mode::Running;
 
-        // ðŸš€ Start the Dashboard UI
+        // 🚀 Start the Dashboard UI
         crate::core::dashboard::DashboardEngine::run_native(
             &mut state,
             &tx,
@@ -305,7 +305,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             &mut mode
         )?;
     } else {
-        println!("\nâœ¨ Non-interactive Batch Mode Active.");
+        println!("\n✨ Non-interactive Batch Mode Active.");
         // Read prompts line-by-line from stdin
         use std::io::{BufRead, Write};
         let stdin = std::io::stdin();
@@ -325,11 +325,11 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 break;
             }
             
-            println!("ðŸ¤– ");
+            println!("🤖 ");
             let accumulated_output = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
             let output_clone = accumulated_output.clone();
             let res = tokio::task::block_in_place(|| -> Result<(), color_eyre::eyre::Report> {
-                // â”€â”€ Native IPC Named Pipe Client â”€â”€
+                // ── Native IPC Named Pipe Client ──
                 let pipe_name = r"\\.\pipe\cluaiz_engine_pipe";
                 let mut client = match std::fs::OpenOptions::new()
                     .read(true)
@@ -344,7 +344,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 use std::io::{Read, Write};
                 // Send the prompt natively to the daemon
                 if let Err(e) = client.write_all(prompt.as_bytes()) {
-                     return Err(color_eyre::eyre::eyre!("âŒ Failed to send command to IPC: {}", e));
+                     return Err(color_eyre::eyre::eyre!("❌ Failed to send command to IPC: {}", e));
                 }
                 
                 // Read streaming tokens with 0ms latency
@@ -362,14 +362,14 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                             }
                         }
                         Err(e) => {
-                             return Err(color_eyre::eyre::eyre!("âŒ IPC Read Error: {}", e));
+                             return Err(color_eyre::eyre::eyre!("❌ IPC Read Error: {}", e));
                         }
                     }
                 }
                 Ok(())
             });
             if let Err(e) = res {
-                println!("\nâŒ Inference Error: {}", e);
+                println!("\n❌ Inference Error: {}", e);
             } else {
                 let clean_output = accumulated_output.lock().unwrap().trim().to_string();
                 let mut json_str = None;
@@ -383,7 +383,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 if let Some(js) = json_str {
                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(&js) {
                         if let Some(action) = val.get("action").and_then(|v| v.as_str()) {
-                            println!("\nâš™ï¸ [CLI REPL] Intercepted JSON ABI tool call: {}", action.bold().cyan());
+                            println!("\n⚙️ [CLI REPL] Intercepted JSON ABI tool call: {}", action.bold().cyan());
                             
                             let mut skill_manifest = None;
                             let mut logic_path = None;
@@ -401,23 +401,23 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                             if let Some(manifest) = skill_manifest {
                                 let l_path = logic_path.unwrap();
                                 if is_allowed && l_path.exists() {
-                                    println!("âš™ï¸ [CLI REPL] Executing WASM Sandbox for: {}", manifest.name.green());
+                                    println!("⚙️ [CLI REPL] Executing WASM Sandbox for: {}", manifest.name.green());
                                     let mut router = state.Core_engine.router.lock().await;
                                     let wasm_res = router.foundry.wasm_runtime.execute_skill_logic(&l_path, "run", prompt).await;
                                     match wasm_res {
                                         Ok(output) => {
-                                            println!("\nðŸ’» [WASM Sandbox Output]:");
+                                            println!("\n💻 [WASM Sandbox Output]:");
                                             println!("{}", output.green());
                                         }
                                         Err(e) => {
-                                            println!("\nâŒ [WASM Sandbox Execution Failed]: {}", e);
+                                            println!("\n❌ [WASM Sandbox Execution Failed]: {}", e);
                                         }
                                     }
                                 } else if !l_path.exists() {
-                                    println!("âš ï¸ [CLI REPL] logic.wasm not found for skill: {}", action);
+                                    println!("⚠️ [CLI REPL] logic.wasm not found for skill: {}", action);
                                 }
                             } else {
-                                println!("âš ï¸ [CLI REPL] Skill not found in registry: {}", action);
+                                println!("⚠️ [CLI REPL] Skill not found in registry: {}", action);
                             }
                         }
                     }

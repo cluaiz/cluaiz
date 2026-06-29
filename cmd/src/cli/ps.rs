@@ -4,7 +4,7 @@ use sysinfo::System;
 use cluaiz_shared::hardware::governor::HardwareGovernor;
 
 pub async fn execute() -> Result<()> {
-    println!("\n  {} [cluaiz] Sovereign Process Audit...", "ðŸ”".cyan());
+    println!("\n  {} [cluaiz] Sovereign Process Audit...", "🔍".cyan());
 
     let mut registry = HardwareGovernor::load_process_registry();
     let mut sys = System::new_all();
@@ -36,7 +36,7 @@ pub async fn execute() -> Result<()> {
     }
 
     if active_processes.is_empty() {
-        println!("  {} No active neural engines running.", "ðŸ’¤".yellow());
+        println!("  {} No active neural engines running.", "💤".yellow());
         return Ok(());
     }
 

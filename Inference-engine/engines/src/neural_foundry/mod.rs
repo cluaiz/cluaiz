@@ -232,7 +232,7 @@ impl CoreFoundry {
 }
 
 fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
-    // ðŸ§  1. ZERO-LATENCY FFI BRAIN INJECTION
+    // 🧠 1. ZERO-LATENCY FFI BRAIN INJECTION
     // If the brain is enabled, it completely bypasses disk reads.
     if let Some(skill_name) = skill_dir.file_name().map(|s| s.to_string_lossy().to_string()) {
         let bridge = crate::memory::storage_bridge::load_storage_bridge();
@@ -243,7 +243,7 @@ fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
         }
     }
 
-    // ðŸ¢ 2. LEGACY DISK READ FALLBACK
+    // 🏢 2. LEGACY DISK READ FALLBACK
     let skill_md_path = skill_dir.join("SKILL.md");
     if skill_md_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&skill_md_path) {
