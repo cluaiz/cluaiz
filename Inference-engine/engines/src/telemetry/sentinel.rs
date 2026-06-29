@@ -40,7 +40,7 @@ impl MemorySentinel {
 
         let safe_limit = avail_mem.saturating_sub(buffer_bytes);
 
-        cluaize_shared::dev_info!("🛡️ [Sentinel] Available: {}MB | Buffer: {}MB | Safe Limit: {}MB | Required: {}MB", 
+        cluaiz_shared::dev_info!("🛡️ [Sentinel] Available: {}MB | Buffer: {}MB | Safe Limit: {}MB | Required: {}MB", 
             avail_mem / 1024 / 1024, buffer_bytes / 1024 / 1024, safe_limit / 1024 / 1024, required_bytes / 1024 / 1024);
 
         required_bytes < safe_limit

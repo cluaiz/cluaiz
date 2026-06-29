@@ -108,7 +108,7 @@ impl ActivationEventBus {
     /// Fires an event and returns the list of integration names that should be loaded.
     ///
     /// The caller is responsible for actually loading those integrations via
-    /// `CluaizeExtensionRegistry::load_integration()`.
+    /// `CluaizxtensionRegistry::load_integration()`.
     ///
     /// Returns an empty `Vec` if no integrations are registered for this event.
     pub fn fire(&self, event_key: &str) -> Vec<String> {
@@ -163,7 +163,7 @@ impl ActivationEventBus {
     }
 
     /// Returns all events currently registered in the bus.
-    /// Useful for diagnostics and CLI `cluaize status` output.
+    /// Useful for diagnostics and CLI `cluaiz status` output.
     pub fn list_events(&self) -> Vec<String> {
         self.watchers.iter().map(|e| e.key().clone()).collect()
     }

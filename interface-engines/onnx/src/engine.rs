@@ -10,13 +10,15 @@ pub struct OnnxEngine {
     pub(crate) tokenizer: Option<Arc<Tokenizer>>,
     // 🔢 Active Inference Counter: tracks in-flight requests for safe hot swap
     pub(crate) active_inferences: Arc<AtomicUsize>,
+    // 🧠 KV Cache for Chat Generation
+    pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, Vec<f32>)>>,
 }
 
 impl OnnxEngine {
     pub fn new() -> Result<Self> {
         // Initialize ONNX Runtime environment implicitly.
         ort::init()
-            .with_name("cluaize_onnx_env")
+            .with_name("cluaiz_onnx_env")
             .commit();
 
         tracing::info!("🧿 [ONNX] Runtime initialized. Ready to load models via API.");
@@ -25,6 +27,7 @@ impl OnnxEngine {
             session_pool: Vec::new(),
             tokenizer: None,
             active_inferences: Arc::new(AtomicUsize::new(0)),
+            active_kv_cache: None,
         })
     }
 
@@ -49,7 +52,12 @@ impl OnnxEngine {
 
     /// Dynamically load a model from disk into the ONNX Runtime (e.g. bge-m3-quantized.onnx).
     /// Builds a pool of N sessions for concurrent embedding requests.
-    pub fn load_text_model(&mut self, model_path: &str, tokenizer_path: &str) -> Result<()> {
+    pub fn load_text_model(
+        &mut self,
+        model_path: &str,
+        tokenizer_path: &str,
+        booster: Option<cluaiz_shared::hardware::schema::booster::cluaizBoosterContext>,
+    ) -> Result<()> {
         // 🔒 SINGLETON OWNERSHIP GUARD (CERD Rule: exactly one owner)
         if !self.session_pool.is_empty() {
             let active = self.active_inferences.load(Ordering::Relaxed);
@@ -63,7 +71,7 @@ impl OnnxEngine {
         tracing::info!("📦 [ONNX] Loading model from: {}", model_path);
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING
-        let pulse_state = cluaize_shared::hardware::system_performance::get_pulse();
+        let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
         let mut use_gpu = false;
 
         if let Ok(state) = pulse_state.pulse.read() {
@@ -73,6 +81,17 @@ impl OnnxEngine {
                 use_gpu = true;
             } else {
                 tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB). Auto-falling back ONNX to CPU AVX.", free_vram);
+            }
+        }
+        
+        // Booster Override
+        if let Some(b) = &booster {
+            if b.n_gpu_layers == 0 {
+                use_gpu = false;
+                tracing::info!("⚙️ [Booster] Force CPU mode requested by user.");
+            } else if b.n_gpu_layers > 0 {
+                use_gpu = true;
+                tracing::info!("⚙️ [Booster] Force GPU mode requested by user (Layers: {}).", b.n_gpu_layers);
             }
         }
 
@@ -107,7 +126,11 @@ impl OnnxEngine {
 
     /// Dynamically load a vision embedding model (like CLIP) into ONNX Runtime.
     /// Vision models are large — pool size is fixed at 1 to conserve VRAM.
-    pub fn load_vision_model(&mut self, model_path: &str) -> Result<()> {
+    pub fn load_vision_model(
+        &mut self,
+        model_path: &str,
+        booster: Option<cluaiz_shared::hardware::schema::booster::cluaizBoosterContext>,
+    ) -> Result<()> {
         // 🔒 SINGLETON OWNERSHIP GUARD (CERD Rule: exactly one owner)
         if !self.session_pool.is_empty() {
             let active = self.active_inferences.load(Ordering::Relaxed);
@@ -120,7 +143,7 @@ impl OnnxEngine {
         tracing::info!("👁️ [ONNX] Loading Vision Model from: {}", model_path);
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING (Same as text)
-        let pulse_state = cluaize_shared::hardware::system_performance::get_pulse();
+        let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
         let mut use_gpu = false;
 
         if let Ok(state) = pulse_state.pulse.read() {
@@ -130,6 +153,17 @@ impl OnnxEngine {
                 use_gpu = true;
             } else {
                 tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB). Auto-falling back Vision Model to CPU AVX.", free_vram);
+            }
+        }
+
+        // Booster Override
+        if let Some(b) = &booster {
+            if b.n_gpu_layers == 0 {
+                use_gpu = false;
+                tracing::info!("⚙️ [Booster] Force CPU Vision mode requested by user.");
+            } else if b.n_gpu_layers > 0 {
+                use_gpu = true;
+                tracing::info!("⚙️ [Booster] Force GPU Vision mode requested by user (Layers: {}).", b.n_gpu_layers);
             }
         }
 

@@ -3,13 +3,13 @@ use colored::Colorize;
 use engines::models::registry::CoreRoster;
 
 pub async fn execute() -> Result<()> {
-    println!("\n  {} [Cluaize] Scanning Vault for Neural Weights...\n", "ðŸ”".cyan());
+    println!("\n  {} [cluaiz] Scanning Vault for Neural Weights...\n", "ðŸ”".cyan());
 
     let roster = CoreRoster::load_roster();
     
     if roster.is_empty() {
         println!("     {} No models found in the vault.", "âš ï¸ ".yellow());
-        println!("     {} Use 'cluaize run <id>' to download your first model.\n", "ðŸ’¡".cyan());
+        println!("     {} Use 'cluaiz run <id>' to download your first model.\n", "ðŸ’¡".cyan());
         return Ok(());
     }
 

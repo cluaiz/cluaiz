@@ -1,6 +1,6 @@
-# Cluaize System Booster - Deep Technical Master Guide
+# cluaiz System Booster - Deep Technical Master Guide
 
-The `system_booster.json` file is the central nervous system of the Cluaize Inference Engine. It dictates the lowest-level hardware interactions—how neural network weights map to physical silicon (RAM/VRAM), how OS-level memory pages are managed, and how computation graphs are executed by the CPU/GPU. 
+The `system_booster.json` file is the central nervous system of the cluaiz Inference Engine. It dictates the lowest-level hardware interactions—how neural network weights map to physical silicon (RAM/VRAM), how OS-level memory pages are managed, and how computation graphs are executed by the CPU/GPU. 
 
 This guide provides an exhaustive, deep dive into every single parameter, its underlying mathematical mechanism, UI mappings, and the absolute consequences of misconfiguration.
 
@@ -63,9 +63,10 @@ This is the most critical pillar connecting the `llama.cpp` backend to the hardw
 
 * **Deep Mechanism:** Every word (token) in the chat history must be mathematically stored in the Key-Value (KV) cache so the model remembers it. By default, this is stored in FP16 (16-bit precision). If you paste 20,000 lines of code, the KV cache inflates massively, often causing OOM crashes even if the model weights fit perfectly.
 * **Options:**
-    * `Kv16`: Default 16-bit FP. Maximum accuracy, massive memory footprint.
-    * `Kv8`: 8-bit precision. Cuts history VRAM footprint by 50% with almost 0 performance loss.
-    * `Kv4`: 4-bit precision. Cuts history VRAM footprint by 75%. Essential for 128K context lengths on standard 24GB GPUs.
+    * `"Auto"`: Engine automatically selects quantization based on available VRAM vs Context Size.
+    * `"Kv16"`: Default 16-bit FP. Maximum accuracy, massive memory footprint.
+    * `"Kv8"`: 8-bit precision. Cuts history VRAM footprint by 50% with almost 0 performance loss.
+    * `"Kv4"`: 4-bit precision. Cuts history VRAM footprint by 75%. Essential for 128K context lengths on standard 24GB GPUs.
 
 ---
 
@@ -73,9 +74,12 @@ This is the most critical pillar connecting the `llama.cpp` backend to the hardw
 
 * **Deep Mechanism:** When the model reaches its maximum context limit (e.g., 8192 tokens), traditional engines crash with `LLAMA_ERROR_CONTEXT_FULL` and force you to clear the chat. Context Shifting intercepts the KV cache just before overflow. It surgically drops the oldest 50% of the conversational history (tokens 500 to 4096), shifts the recent history upward, but crucially **preserves the System Prompt (tokens 0 to 500)** at the very top.
 * **Options:**
+    * `"Auto"`: Dynamically handles shifting (Defaults to Standard/10%).
     * `"Off"`: Disabled. Engine will crash/stop on overflow.
+    * `"Minimal"`: Drops oldest 5% of tokens safely.
     * `"Standard"`: Drops oldest 10% of tokens safely.
     * `"Aggressive"`: Drops oldest 25% of tokens.
+    * `"Extreme"`: Drops oldest 50% of tokens.
 
 ---
 
@@ -92,8 +96,12 @@ This is the most critical pillar connecting the `llama.cpp` backend to the hardw
 
 * **Deep Mechanism:** Determines thread yielding and CPU spin-locks.
 * **Options:**
-    * `Balance`: Normal behavior.
-    * `MaxBoost`: Sets CPU threads to real-time priority, halting background Windows tasks.
+    * `"edge"`: Mobile/NPU/Pi (Extreme pruning).
+    * `"multitasking"`: Standard Laptop (Respects OS/Apps).
+    * `"balance"`: Normal behavior / Standard Performance.
+    * `"max_boost"`: Sets CPU threads to real-time priority, halting background Windows tasks.
+    * `"ultra_max_boost"`: Reclaims everything (Formerly Landlord).
+    * `"hyper_cluster"`: Server/H100 Cluster (Zero-margin orchestration).
 
 ---
 
@@ -140,8 +148,10 @@ This is the most critical pillar connecting the `llama.cpp` backend to the hardw
 
 * **Deep Mechanism:** By default, language models generate tokens until they emit a specialized `<|end_of_text|>` or EOS (End of Sequence) token. However, for programmatic applications, you often need to cap the absolute maximum compute spent on a single generation cycle. `response_length` acts as a hard mathematical ceiling in the generation loop. If the token count hits this integer, the engine forces an EOS token injection, instantly halting computation and saving compute resources.
 * **Options:**
-    * `""` (Empty string): Default behavior. The model decides when it is finished speaking based on its training.
-    * `"<Integer>"` (e.g., `500`): Enforces a strict ceiling of exactly 500 tokens per response.
+    * `"auto"`: Default behavior. The model decides when it is finished speaking based on its training.
+    * `"short"`: Forces concise replies and rapid EOS generation.
+    * `"long"`: Encourages exhaustive answers.
+    * `"<Integer>"` (e.g., `"500"`): Enforces a strict ceiling of exactly 500 tokens per response.
 * **Golden Rule:** Leave this blank `""` for normal usage so the AI can fully elaborate on coding solutions.
 * **Danger Zone:** If you set this to a low number (like `100`), the model will frequently get cut off mid-sentence or mid-code-block. This breaks the UI parsing and leaves you with half-written, unusable code.
 
@@ -153,9 +163,22 @@ This is the most critical pillar connecting the `llama.cpp` backend to the hardw
 * **Options:**
     * `true`: Engages the Logit Processor for strict JSON validation.
     * `false`: Normal, unrestricted text generation.
-* **Golden Rule:** Only enable `true` when Cluaize is being operated headlessly as a backend API for other software that requires mechanical parsing of the output.
+* **Golden Rule:** Only enable `true` when cluaiz is being operated headlessly as a backend API for other software that requires mechanical parsing of the output.
 * **Danger Zone:** Never, under any circumstances, enable this for general chatting in the UI. If you say "How are you?", the model cannot output normal text. It will mathematically struggle to force a conversational reply into a rigid JSON structure, which typically results in total engine crashes, infinite loops, or absolute gibberish outputs.
 
 ---
 
-*This document serves as the absolute source of truth for Cluaize Engine hardware manipulation. No configuration should be altered in production without explicitly understanding the ramifications documented above.*
+## 15. The "Llama vs ONNX" Architectural Reality
+
+It is a critical engineering fact that `system_booster.json` maps differently depending on which interface engine is actively executing the neural graph. 
+
+The `cluaiz-llama` crate is a **dynamic engine**. It loads `.gguf` files and can dynamically reshape the memory, quantize tensors on the fly, and toggle advanced attention algorithms (like Flash Attention) at runtime based on the JSON settings.
+
+The `cluaiz-onnx` crate is a **static engine**. It loads `.onnx` files, which are highly optimized, pre-compiled computational graphs. 
+Because of this fundamental architectural difference, ONNX ignores several `system_booster.json` parameters in favor of automated backend optimization:
+
+* **GPU Override (`n_gpu_layers`)**: This is the **ONLY** setting fully respected by ONNX. It maps `0` to CPU (AVX) and `>0` to GPU (CUDA). Setting `-1` triggers the auto-telemetry VRAM scanner.
+* **Flash Attention (`flash_attention`)**: ONNX ignores the manual ON/OFF toggle. If you route the model to CUDA, ONNX will *automatically* trigger Flash Attention internally if the hardware supports it.
+* **Dynamic / KV Quantization (`turbo_quant`, `kv_cache_quantization`)**: ONNX ignores these. Because ONNX graphs are static, they cannot be compressed at load time without extreme CPU latency. To get 4-bit quantization in ONNX, you must download a **pre-quantized** model (e.g., `model-int4.onnx`). For the KV Cache, ONNX natively locks it to the exact data type (`f32` or `f16`) requested by the model graph to guarantee blazing fast (makkhan) generation speeds.
+
+*This document serves as the absolute source of truth for cluaiz Engine hardware manipulation. No configuration should be altered in production without explicitly understanding the ramifications documented above.*

@@ -35,10 +35,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            cluaize-registry.json
+            cluaiz-registry.json
             artifacts/**/*
           tag_name: ${{ github.event.inputs.tag_name }}
-          name: "Cluaize Release ${{ github.event.inputs.tag_name }}"
+          name: "cluaiz Release ${{ github.event.inputs.tag_name }}"
           append_body: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,11 +8,11 @@ use anyhow::Result;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum LoadStrategy {
-    /// Load binary into RAM at engine startup (for core dependencies like cluaize-db)
+    /// Load binary into RAM at engine startup (for core dependencies like cluaiz-db)
     Eager,
     /// Register activation events only. Zero RAM until triggered at runtime.
     Lazy,
-    /// Never auto-load. Only via explicit `cluaize load <name>` CLI command.
+    /// Never auto-load. Only via explicit `cluaiz load <name>` CLI command.
     Manual,
 }
 
@@ -29,8 +29,8 @@ pub struct RegistryEntry {
     /// Unique ID for this component (e.g., "ext_core_db_001")
     pub id: String,
 
-    /// Relative path under ~/.cluaize/ where this component lives
-    /// e.g., "core/cluaize-db" or "tools/web-scraper"
+    /// Relative path under ~/.cluaiz/ where this component lives
+    /// e.g., "extension/cluaiz-db" or "plugin/web-scraper"
     pub domain: String,
 
     /// Whether to load at startup (Eager) or only on trigger (Lazy)
@@ -73,34 +73,34 @@ pub struct MasterRegistry {
     #[serde(default = "default_schema")]
     pub schema: String,
 
-    /// Extensions (Brain + Muscle bundles, stored in ~/.cluaize/core/)
+    /// Extensions (Brain + Muscle bundles, stored in ~/.cluaiz/extension/)
     #[serde(default)]
     pub extensions: HashMap<String, RegistryEntry>,
 
-    /// Plugins (Pure tool .dll, stored in ~/.cluaize/tools/)
+    /// Plugins (Pure tool .dll, stored in ~/.cluaiz/plugin/)
     #[serde(default)]
     pub plugins: HashMap<String, RegistryEntry>,
 
-    /// MCP servers (Protocol bridges, stored in ~/.cluaize/mcp/)
+    /// MCP servers (Protocol bridges, stored in ~/.cluaiz/mcp/)
     #[serde(default)]
     pub mcp: HashMap<String, RegistryEntry>,
 }
 
 fn default_version() -> String { "1.0.0".to_string() }
-fn default_schema() -> String { "cluaize-registry-v1".to_string() }
+fn default_schema() -> String { "cluaiz-registry-v1".to_string() }
 
 impl MasterRegistry {
     /// Returns the canonical path for registry.yaml
-    /// Location: ~/.cluaize/engine/config/registry.yaml
+    /// Location: ~/.cluaiz/engine/config/registry.yaml
     pub fn registry_path() -> PathBuf {
-        cluaize_shared::environment::EnvironmentManager::current()
+        cluaiz_shared::environment::EnvironmentManager::current()
             .config_dir()
             .join("registry.yaml")
     }
 
     /// Returns the canonical path for registry.bin (binary cache)
     pub fn registry_bin_path() -> PathBuf {
-        cluaize_shared::environment::EnvironmentManager::current()
+        cluaiz_shared::environment::EnvironmentManager::current()
             .config_dir()
             .join("registry.bin")
     }
@@ -182,7 +182,7 @@ impl MasterRegistry {
     }
 
     /// Add/update a component entry and persist to disk.
-    /// Called by CLI after `cluaize extension install <name>`.
+    /// Called by CLI after `cluaiz extension install <name>`.
     pub fn register_component(&mut self, component_type: &str, name: &str, entry: RegistryEntry) -> Result<()> {
         match component_type {
             "extension" | "extensions" => { self.extensions.insert(name.to_string(), entry); }
@@ -194,7 +194,7 @@ impl MasterRegistry {
     }
 
     /// Remove a component entry and persist to disk.
-    /// Called by CLI after `cluaize extension remove <name>`.
+    /// Called by CLI after `cluaiz extension remove <name>`.
     pub fn deregister_component(&mut self, component_type: &str, name: &str) -> Result<()> {
         let removed = match component_type {
             "extension" | "extensions" => self.extensions.remove(name).is_some(),
@@ -272,7 +272,7 @@ impl MasterRegistry {
         result
     }
 
-    /// List all components with their status (for `cluaize extension list` CLI)
+    /// List all components with their status (for `cluaiz extension list` CLI)
     pub fn list_all(&self) -> Vec<(String, &str, &RegistryEntry)> {
         let mut result = Vec::new();
         for (name, entry) in &self.extensions {

@@ -6,8 +6,8 @@ use tracing::info;
 pub struct AutonomousDiscovery;
 
 impl AutonomousDiscovery {
-    /// Deep-scans the models directory for Cluaize Handshake units.
-    pub fn index_Cluaize_models(base_path: &Path) -> Vec<ModelManifest> {
+    /// Deep-scans the models directory for Cluaiz Handshake units.
+    pub fn index_Cluaiz_models(base_path: &Path) -> Vec<ModelManifest> {
         // info!("🔍 Autonomous Discovery: Scouring {:?} for Core units...", base_path);
         let mut models = Vec::new();
 
@@ -32,7 +32,7 @@ impl AutonomousDiscovery {
                             if let Ok(mut manifest) = serde_json::from_str::<ModelManifest>(&content) {
                                 manifest.local_path = Some(path.to_string_lossy().to_string());
                                 
-                                // 🧬 Cluaize DNA HEALING: Trigger regeneration if DNA is missing or has nulls
+                                // 🧬 Cluaiz DNA HEALING: Trigger regeneration if DNA is missing or has nulls
                                 let mut needs_healing = !dna_path.exists();
                                 if !needs_healing {
                                     if let Ok(dna_str) = fs::read_to_string(&dna_path) {
@@ -61,7 +61,7 @@ impl AutonomousDiscovery {
         }
     }
 
-    /// 🩹 Cluaize REPAIR: Probes GGUF weights to extract full-power architectural DNA.
+    /// 🩹 Cluaiz REPAIR: Probes GGUF weights to extract full-power architectural DNA.
     fn repair_dna_from_local(dir: &Path, manifest: &ModelManifest) -> std::result::Result<(), String> {
         let weight_path = fs::read_dir(dir).map_err(|e| e.to_string())?
             .flatten()
@@ -69,17 +69,16 @@ impl AutonomousDiscovery {
             .map(|e| e.path());
 
         if let Some(_wp) = weight_path {
-            let mut signature = cluaize_shared::KernelSignature::default();
+            let mut signature = cluaiz_shared::KernelSignature::default();
             signature.is_multimodal = manifest.has_vision;
             if manifest.expert_count.is_some() { signature.has_experts = true; }
             if manifest.bit_depth < 2.0 { signature.is_bitnet = true; }
 
-            let _runtime = if manifest.bit_depth < 2.0 {
-                cluaize_shared::backend::signature::BackendType::RuntimeB
+            let backend = if manifest.has_vision || signature.is_multimodal {
+                cluaiz_shared::backend::signature::BackendType::RuntimeB // Llama.cpp for Vision
             } else {
-                cluaize_shared::backend::signature::BackendType::RuntimeA
+                cluaiz_shared::backend::signature::BackendType::RuntimeA // Neural Core for Text
             };
-
 
             let mut dna = crate::models::registry::StructuralDNA::create_skeleton(
                 manifest.id.clone(),

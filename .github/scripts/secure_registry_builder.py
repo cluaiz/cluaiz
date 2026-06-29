@@ -24,7 +24,7 @@ def main():
     artifacts_dir = "./artifacts"
     
     registry = {
-        "registry_name": "cluaize-global-registry",
+        "registry_name": "cluaiz-global-registry",
         "version": version,
         "release_date": datetime.now(timezone.utc).isoformat(),
         "build_status": "success",
@@ -56,29 +56,29 @@ def main():
                 url = f"{base_url}/{file}"
                 
                 # Categorize based on filename
-                if file.startswith("cluaize-kernel-"):
-                    platform = file.replace(f"cluaize-kernel-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
+                if file.startswith("cluaiz-kernel-"):
+                    platform = file.replace(f"cluaiz-kernel-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
                     registry["kernels"]["llama_kernel"]["binaries"][platform] = url
                     registry["kernels"]["llama_kernel"]["hashes"][platform] = file_hash
-                elif file.startswith("cluaize-onnx-kernel-"):
-                    platform = file.replace(f"cluaize-onnx-kernel-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
+                elif file.startswith("cluaiz-onnx-kernel-"):
+                    platform = file.replace(f"cluaiz-onnx-kernel-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
                     registry["kernels"]["onnx_kernel"]["binaries"][platform] = url
                     registry["kernels"]["onnx_kernel"]["hashes"][platform] = file_hash
-                elif file.startswith("cluaize-driver-"):
-                    platform = file.replace(f"cluaize-driver-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
+                elif file.startswith("cluaiz-driver-"):
+                    platform = file.replace(f"cluaiz-driver-{version}-", "").replace(".dll", "").replace("lib", "").replace(".so", "").replace(".dylib", "")
                     registry["drivers"]["llama"]["binaries"][platform] = url
                     registry["drivers"]["llama"]["hashes"][platform] = file_hash
-                elif file.startswith("cluaize-onnx-driver-"):
-                    platform = file.replace(f"cluaize-onnx-driver-{version}-", "").replace(".zip", "").replace("lib", "")
+                elif file.startswith("cluaiz-onnx-driver-"):
+                    platform = file.replace(f"cluaiz-onnx-driver-{version}-", "").replace(".zip", "").replace("lib", "")
                     registry["drivers"]["onnx"]["binaries"][platform] = url
                     registry["drivers"]["onnx"]["hashes"][platform] = file_hash
-                elif file.startswith("cluaize-"):
+                elif file.startswith("cluaiz-"):
                     # CLI
-                    platform = file.replace(f"cluaize-{version}-", "").replace(".exe", "").replace(".zip", "").replace(".tar.gz", "")
+                    platform = file.replace(f"cluaiz-{version}-", "").replace(".exe", "").replace(".zip", "").replace(".tar.gz", "")
                     registry["components"]["cli"]["binaries"][platform] = url
                     registry["components"]["cli"]["hashes"][platform] = file_hash
                     
-    with open("cluaize-registry.json", "w") as f:
+    with open("cluaiz-registry.json", "w") as f:
         json.dump(registry, f, indent=2)
         
     print(f"Secure Registry built successfully!")

@@ -37,7 +37,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_skill_activation_stress() {
-        let temp_dir = std::env::temp_dir().join("cluaize_stress_test");
+        let temp_dir = std::env::temp_dir().join("cluaiz_stress_test");
         if temp_dir.exists() { fs::remove_dir_all(&temp_dir).unwrap(); }
         fs::create_dir_all(&temp_dir).unwrap();
 

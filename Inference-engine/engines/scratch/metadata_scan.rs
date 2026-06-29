@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 fn main() -> anyhow::Result<()> {
-    let path = Path::new(r"C:\Users\Aryan\my\Cluaize-workspace\Cluaize-OS\Cluaize-ai-\terminal_ui\models\models--Qwen--Qwen3-4B-GGUF\Qwen3-4B-Q4_K_M.gguf");
+    let path = Path::new(r"C:\Users\Aryan\my\cluaiz-workspace\cluaiz-OS\cluaiz-ai-\terminal_ui\models\models--Qwen--Qwen3-4B-GGUF\Qwen3-4B-Q4_K_M.gguf");
     if !path.exists() {
         println!("❌ File not found!");
         return Ok(());

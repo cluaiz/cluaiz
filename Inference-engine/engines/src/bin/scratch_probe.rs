@@ -1,5 +1,5 @@
 use std::env;
-use cluaize_shared::utils::GGUFProber;
+use cluaiz_shared::utils::GGUFProber;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

@@ -101,7 +101,7 @@ impl RegistryTable {
         idx: usize,
         model: &ModelRecommendation,
         w: &ColumnWidths,
-        hardware: &cluaize_shared::hardware::schema::profiles::CluaizeProfile,
+        hardware: &cluaiz_shared::hardware::schema::profiles::cluaizProfile,
     ) -> String {
         let size = format!("{:.1} GB", model.manifest.download_size_gb);
         let ram = format!("{:.1} GB", model.manifest.ram_required_gb);
@@ -157,9 +157,9 @@ impl RegistryTable {
 
     pub fn calculate_health(
         model: &ModelRecommendation,
-        hardware: &cluaize_shared::hardware::schema::profiles::CluaizeProfile,
+        hardware: &cluaiz_shared::hardware::schema::profiles::cluaizProfile,
     ) -> (colored::ColoredString, i32, String) {
-        let report = cluaize_shared::hardware::speed_checker::predict_performance(
+        let report = cluaiz_shared::hardware::speed_checker::predict_performance(
             &model.manifest.parameters,
             model.manifest.bit_depth,
             &model.manifest.context_window,
@@ -175,7 +175,7 @@ impl RegistryTable {
             format!("{:.1} T/s", report.expected_tps)
         };
 
-        if report.status == cluaize_shared::hardware::speed_checker::HealthStatus::Panic {
+        if report.status == cluaiz_shared::hardware::speed_checker::HealthStatus::Panic {
             return ("⚫ ".black(), 0, tps_str);
         }
 
@@ -183,7 +183,7 @@ impl RegistryTable {
             return ("✔ ".green().bold(), 8, tps_str);
         }
 
-        use cluaize_shared::hardware::speed_checker::HealthStatus;
+        use cluaiz_shared::hardware::speed_checker::HealthStatus;
         match report.status {
             HealthStatus::GodMode => ("🟣 ".magenta(), 7, tps_str),
             HealthStatus::HyperSpeed => ("🔵 ".blue(), 6, tps_str),

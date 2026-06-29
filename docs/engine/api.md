@@ -1,6 +1,6 @@
 # Axum API
 
-The `cluaize-engine` hosts a high-performance REST API gateway built on the Axum web framework and powered by a multithreaded Tokio runtime. 
+The `cluaiz-engine` hosts a high-performance REST API gateway built on the Axum web framework and powered by a multithreaded Tokio runtime. 
 
 ---
 

@@ -228,11 +228,11 @@ window.app = {
             if (!command) return;
             
             // Echo command
-            output.innerHTML += `\n<span style="color: #6a8759">➜</span> <span style="color: #6897bb">cluaize</span> ${command}\n`;
+            output.innerHTML += `\n<span style="color: #6a8759">➜</span> <span style="color: #6897bb">cluaiz</span> ${command}\n`;
             input.value = '';
             
             // Check if it's a chat command for streaming
-            if (command.startsWith('cluaize chat ')) {
+            if (command.startsWith('cluaiz chat ')) {
                 const message = command.substring(13).replace(/^["']|["']$/g, '');
                 try {
                     const response = await fetch('/v1/chat/stream', {
@@ -599,7 +599,7 @@ window.app = {
             
             const itemsDiv = langSelect.querySelector('.select-items');
             itemsDiv.innerHTML = `
-                <div data-value="cel">CEL (Cluaize Engine Language)</div>
+                <div data-value="cel">CEL (cluaiz Engine Language)</div>
                 <div data-value="rhai">Rhai Script</div>
                 <div data-value="wasm">WASM (Rust)</div>
                 <div data-value="js">JavaScript (V8)</div>

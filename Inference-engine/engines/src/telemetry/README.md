@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `telemetry/` module is the active monitoring and safety system of the Cluaize inference engine. Loading a multi-gigabyte neural network into physical RAM or VRAM is inherently dangerous—if the OS runs out of memory, it will trigger the OOM (Out of Memory) killer and hard-crash the entire system.
+The `telemetry/` module is the active monitoring and safety system of the cluaiz inference engine. Loading a multi-gigabyte neural network into physical RAM or VRAM is inherently dangerous—if the OS runs out of memory, it will trigger the OOM (Out of Memory) killer and hard-crash the entire system.
 
 This module actively monitors system health, disk throughput, and available memory *during* inference, acting as a circuit breaker if the engine begins to consume unsafe levels of system resources.
 

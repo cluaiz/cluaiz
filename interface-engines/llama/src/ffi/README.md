@@ -26,5 +26,5 @@ graph LR
 - **The "Why":** Rust cannot naturally read C++ headers. This file manually re-declares the C structures (like `llama_token_data_array`) so the Rust compiler knows exactly how many bytes to allocate when passing arrays across the language boundary.
 
 ### 2. `lucebox.rs`
-- **The Core Logic:** Defines specialized FFI bridges for the internal Cluaize "Lucebox" telemetry and execution modifications.
-- **The "Why":** We don't just use vanilla `llama.cpp`. Cluaize injects custom telemetry and diagnostic probes into the C++ runtime. This file handles the unsafe pointers required to extract those custom metrics back into Rust space.
+- **The Core Logic:** Defines specialized FFI bridges for the internal cluaiz "Lucebox" telemetry and execution modifications.
+- **The "Why":** We don't just use vanilla `llama.cpp`. cluaiz injects custom telemetry and diagnostic probes into the C++ runtime. This file handles the unsafe pointers required to extract those custom metrics back into Rust space.

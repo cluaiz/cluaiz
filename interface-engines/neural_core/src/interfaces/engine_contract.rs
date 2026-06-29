@@ -1,5 +1,5 @@
 use std::pin::Pin;
-use cluaize_shared::backend::signature::KernelSignature;
+use cluaiz_shared::backend::signature::KernelSignature;
 
 /// The universal neural stream format.
 pub type TokenStream = Pin<Box<dyn std::future::Future<Output = String> + Send>>;
@@ -17,7 +17,7 @@ pub trait SovereignEngine: Send + Sync {
     fn unload(&mut self) -> anyhow::Result<()>;
 
     /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
-    fn apply_booster(&mut self, _control: &cluaize_shared::hardware::schema::booster::BoosterControl) -> anyhow::Result<()> {
+    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> anyhow::Result<()> {
         Ok(())
     }
 

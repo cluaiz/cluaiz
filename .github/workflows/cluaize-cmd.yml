@@ -1,4 +1,4 @@
-name: Cluaize CLI
+name: cluaiz CLI
 
 on:
   push:
@@ -56,7 +56,7 @@ jobs:
             ext: binary
 
     steps:
-      - name: Checkout Cluaize
+      - name: Checkout cluaiz
         uses: actions/checkout@v4
 
       - name: Setup Rust
@@ -100,11 +100,11 @@ jobs:
           EXT="${{ matrix.ext }}"
           
           if [ "$EXT" == "exe" ]; then
-            ORIGINAL="target/${{ matrix.target }}/release/cluaize.exe"
-            DEST="target/${{ matrix.target }}/release/cluaize-${VERSION}-${SUFFIX}.exe"
+            ORIGINAL="target/${{ matrix.target }}/release/cluaiz.exe"
+            DEST="target/${{ matrix.target }}/release/cluaiz-${VERSION}-${SUFFIX}.exe"
           else
-            ORIGINAL="target/${{ matrix.target }}/release/cluaize"
-            DEST="target/${{ matrix.target }}/release/cluaize-${VERSION}-${SUFFIX}"
+            ORIGINAL="target/${{ matrix.target }}/release/cluaiz"
+            DEST="target/${{ matrix.target }}/release/cluaiz-${VERSION}-${SUFFIX}"
           fi
           
           mv "$ORIGINAL" "$DEST"
@@ -113,7 +113,7 @@ jobs:
       - name: 🚀 Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cluaize-cli-${{ matrix.suffix }}
+          name: cluaiz-cli-${{ matrix.suffix }}
           path: ${{ steps.naming.outputs.binary_path }}
           retention-days: 1
 

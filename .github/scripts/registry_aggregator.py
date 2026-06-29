@@ -21,7 +21,7 @@ except Exception as e:
 
 # Default Skeleton
 registry_data = {
-  "registry_name": "cluaize-global-registry",
+  "registry_name": "cluaiz-global-registry",
   "version": version,
   "components": { 
       "cli": {"status": "pending", "binaries": {}, "failed": []}, 
@@ -39,7 +39,7 @@ registry_data = {
 
 # Try to merge with existing registry from release
 for a in assets:
-    if a["name"] == "cluaize-package-registry.json":
+    if a["name"] == "cluaiz-package-registry.json":
         try:
             req_dl = urllib.request.Request(a["url"]) # Must use API URL for private/auth downloads
             req_dl.add_header("Accept", "application/octet-stream")
@@ -87,7 +87,7 @@ for a in assets:
     if name.endswith(".json"): continue
     
     if component_type == "cli":
-        if name.startswith("cluaize-") and not name.startswith("cluaize-driver") and not name.startswith("cluaize-kernel") and not name.startswith("cluaize-engine"):
+        if name.startswith("cluaiz-") and not name.startswith("cluaiz-driver") and not name.startswith("cluaiz-kernel") and not name.startswith("cluaiz-engine"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].replace(".exe", "")
@@ -95,7 +95,7 @@ for a in assets:
                 actual.append(key)
                 
     elif component_type == "engine":
-        if name.startswith("cluaize-engine") or name.startswith("libcluaize-engine"):
+        if name.startswith("cluaiz-engine") or name.startswith("libcluaiz-engine"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].rsplit(".", 1)[0]
@@ -103,7 +103,7 @@ for a in assets:
                 actual.append(key)
                 
     elif component_type == "kernel_llama":
-        if name.startswith("cluaize-kernel-") or name.startswith("libcluaize-kernel-"):
+        if name.startswith("cluaiz-kernel-") or name.startswith("libcluaiz-kernel-"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].rsplit(".", 1)[0]
@@ -111,7 +111,7 @@ for a in assets:
                 actual.append(key)
                 
     elif component_type == "kernel_onnx":
-        if name.startswith("cluaize-onnx-kernel-") or name.startswith("libcluaize-onnx-kernel-"):
+        if name.startswith("cluaiz-onnx-kernel-") or name.startswith("libcluaiz-onnx-kernel-"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].rsplit(".", 1)[0]
@@ -119,7 +119,7 @@ for a in assets:
                 actual.append(key)
                 
     elif component_type == "driver_llama":
-        if name.startswith("cluaize-driver-") or name.startswith("libcluaize-driver-"):
+        if name.startswith("cluaiz-driver-") or name.startswith("libcluaiz-driver-"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].rsplit(".", 1)[0]
@@ -127,7 +127,7 @@ for a in assets:
                 actual.append(key)
                 
     elif component_type == "driver_onnx":
-        if name.startswith("cluaize-onnx-driver-") or name.startswith("libcluaize-onnx-driver-"):
+        if name.startswith("cluaiz-onnx-driver-") or name.startswith("libcluaiz-onnx-driver-"):
             parts = name.split(f"-{version}-")
             if len(parts) > 1:
                 key = parts[-1].rsplit(".", 1)[0]
@@ -144,7 +144,7 @@ elif actual:
 else:
     ptr["status"] = "failed"
 
-with open("cluaize-package-registry.json", "w") as out:
+with open("cluaiz-package-registry.json", "w") as out:
     json.dump(registry_data, out, indent=2)
 
-print(f"Generated cluaize-package-registry.json for {component_type}")
+print(f"Generated cluaiz-package-registry.json for {component_type}")

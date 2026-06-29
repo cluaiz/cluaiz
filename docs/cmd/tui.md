@@ -1,6 +1,6 @@
 # TUI Dashboard
 
-The Cluaize command center is an interactive terminal user interface (TUI) optimized for high responsiveness and zero UI flickering during heavy tensor operations.
+The cluaiz command center is an interactive terminal user interface (TUI) optimized for high responsiveness and zero UI flickering during heavy tensor operations.
 
 ---
 
@@ -20,7 +20,7 @@ The TUI maintains a distinct, dual-dimensional state machine to manage user cont
 
 ## Asynchronous Communication Channels
 
-To prevent the terminal UI from freezing or lagging during massive mathematical calculations, Cluaize decouples rendering from data processing:
+To prevent the terminal UI from freezing or lagging during massive mathematical calculations, cluaiz decouples rendering from data processing:
 
 *   **Dedicated Tokio Threads:** Inference loops and network downloads run entirely in separate background threads managed by `tokio`.
 *   **MPSC Sockets:** Telemetry data, generation tokens, and progress statuses are streamed to the interface thread using multi-producer, single-consumer (`mpsc`) message channels.

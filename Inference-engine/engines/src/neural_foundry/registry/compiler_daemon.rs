@@ -72,8 +72,8 @@ async fn process_skill(skill_path: PathBuf, manifest: SkillManifest) {
                     let model_file = model_dir.join("model.onnx");
                     let tokenizer_file = model_dir.join("tokenizer.json");
                     if model_file.exists() && tokenizer_file.exists() {
-                        if let Ok(mut engine) = cluaize_onnx::engine::OnnxEngine::new() {
-                            if engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy()).is_ok() {
+                        if let Ok(mut engine) = cluaiz_onnx::engine::OnnxEngine::new() {
+                            if engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy(), None).is_ok() {
                                 let mut combined_vec = Vec::new();
                                 if manifest.triggers.semantic.is_empty() {
                                     if let Ok(vec) = engine.gen_embedding(&manifest.name) {
@@ -95,8 +95,8 @@ async fn process_skill(skill_path: PathBuf, manifest: SkillManifest) {
                                         info!("✅ Real Router Embedding generated: {:?}", embedding_cache_path);
                                         success = true;
                                         // Update GLOBAL_SKILL_ROUTER in memory
-                                        if let Ok(mut skill_router) = cluaize_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
-                                            let norm_skill_path = cluaize_shared::skills::router::normalize_path(&skill_path);
+                                        if let Ok(mut skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
+                                            let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
                                             skill_router.skill_vectors.insert(norm_skill_path, combined_vec);
                                         }
                                     }

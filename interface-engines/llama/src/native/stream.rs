@@ -1,6 +1,6 @@
 use crate::ffi::llama_cpp;
 use crate::native::core::NativeLlama;
-use cluaize_shared::StructuralDNA;
+use cluaiz_shared::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
@@ -65,9 +65,9 @@ pub fn stream_tokens(
             }
         }
 
-        let booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+        let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
 
-        let templater = cluaize_shared::prompting::templater::TemplateManager::default();
+        let templater = cluaiz_shared::prompting::templater::TemplateManager::default();
         let mut formatted_prompt = if is_pivot {
             // 🛑 ROOT FIX: If we interrupted mid-generation, the model might have been thinking.
             // Appending a new turn without closing </think> corrupts the attention map of 1-bit models.
@@ -77,7 +77,7 @@ pub fn stream_tokens(
             let mut prompt_with_constraint = actual_prompt.clone();
             
             // 🧠 Deep Truth: Dynamic Structural Constraints Injection
-            if booster.think_mode == cluaize_shared::hardware::schema::booster::FeatureState::On {
+            if booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::On {
                 if booster.response_length == "long" {
                     prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Think deeply and explore all possibilities. Provide a comprehensive reasoning step.]");
                 } else if booster.response_length == "short" {
@@ -98,7 +98,7 @@ pub fn stream_tokens(
             templater.format(dna, &prompt_with_constraint)
         };
 
-        let mut suppress_thinking = booster.think_mode == cluaize_shared::hardware::schema::booster::FeatureState::Off;
+        let mut suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
             suppress_thinking = true;
@@ -221,7 +221,7 @@ pub fn stream_tokens(
         }
 
         while n_gen < max_tokens as i32 {
-            if llama.interrupt_signal.load(Ordering::SeqCst) || cluaize_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+            if llama.interrupt_signal.load(Ordering::SeqCst) || cluaiz_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
                 break;
             }
 
@@ -232,7 +232,7 @@ pub fn stream_tokens(
                     should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
                 } else {
                     // Fallback to library-local static if pointer not set (though usually they won't match)
-                    should_skip = cluaize_shared::GLOBAL_SKIP_THINKING_SIGNAL.swap(false, Ordering::SeqCst);
+                    should_skip = cluaiz_shared::GLOBAL_SKIP_THINKING_SIGNAL.swap(false, Ordering::SeqCst);
                 }
             }
 
@@ -378,7 +378,7 @@ pub fn stream_tokens(
                 break;
             }
 
-            // 🌟 Shannon Entropy Gate (cluaize Interception) 🌟
+            // 🌟 Shannon Entropy Gate (cluaiz Interception) 🌟
             let logits_ptr = llama_cpp::llama_get_logits_ith(llama.ctx_ptr, 0);
             if !logits_ptr.is_null() {
                 let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
@@ -446,7 +446,7 @@ pub fn stream_tokens(
                     break;
                 }
             }
-            cluaize_shared::hardware::telemetry::get_pulse().tps_counter.fetch_add(1, Ordering::SeqCst);
+            cluaiz_shared::hardware::telemetry::get_pulse().tps_counter.fetch_add(1, Ordering::SeqCst);
 
             let mut n_match = 0;
             let mut eos_detected = false;
@@ -543,7 +543,7 @@ pub fn stream_tokens(
                             break;
                         }
                     }
-                    cluaize_shared::hardware::telemetry::get_pulse().tps_counter.fetch_add(1, Ordering::SeqCst);
+                    cluaiz_shared::hardware::telemetry::get_pulse().tps_counter.fetch_add(1, Ordering::SeqCst);
 
                     if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
                         eos_detected = true;

@@ -1,4 +1,4 @@
-/* Theme management for Cluaize . 
+/* Theme management for cluaiz . 
    Unused fields removed to maintain global professional standards. */
 use ratatui::prelude::*;
 

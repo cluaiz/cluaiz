@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use reqwest;
 use std::fs;
-use cluaize_shared::HardwareGovernor;
+use cluaiz_shared::HardwareGovernor;
 use colored::Colorize;
 
 pub struct DriverProvisioner;
@@ -45,7 +45,7 @@ impl DriverProvisioner {
         let marker = kernel_dir.join(format!("{}.ready", kernel_type));
 
         let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
-        let dest_filename = format!("cluaize-{}.{}", kernel_type, ext);
+        let dest_filename = format!("cluaiz-{}.{}", kernel_type, ext);
         let dest_path = kernel_dir.join(&dest_filename);
 
         // 🛡️ SOVEREIGN GUARD: If a locally-built CUDA kernel exists (>30MB), NEVER overwrite it
@@ -55,13 +55,13 @@ impl DriverProvisioner {
             let size_mb = dest_path.metadata().map(|m| m.len()).unwrap_or(0) / (1024 * 1024);
             if size_mb > 30 {
                 tracing::info!("🛡️ [Provisioner] CUDA-linked kernel detected ({} MB). Skipping GitHub overwrite.", size_mb);
-                cluaize_shared::dev_info!("  {} [Provisioner] Sovereign CUDA kernel preserved ({} MB). Skipping registry sync.", "🛡️".green(), size_mb);
+                cluaiz_shared::dev_info!("  {} [Provisioner] Sovereign CUDA kernel preserved ({} MB). Skipping registry sync.", "🛡️".green(), size_mb);
                 return Ok(dest_path);
             }
         }
 
         let client = reqwest::Client::builder()
-            .user_agent("Cluaize-Neural-Engine/0.1.0")
+            .user_agent("cluaiz-Neural-Engine/0.1.0")
             .build()?;
 
         let response = client.get(manifest_url).send().await
@@ -76,12 +76,12 @@ impl DriverProvisioner {
         if marker.exists() {
             let local_version = fs::read_to_string(&marker).unwrap_or_default();
             if local_version == manifest_version {
-                let p = kernel_dir.join(format!("cluaize-{}.{}", kernel_type, ext));
+                let p = kernel_dir.join(format!("cluaiz-{}.{}", kernel_type, ext));
                 if p.exists() { return Ok(p); }
             }
         }
 
-        cluaize_shared::dev_info!("  {} [PROVISIONER] Missing Neural Kernel '{}'. Provisioning from Registry...", "🧬".cyan(), kernel_type);
+        cluaiz_shared::dev_info!("  {} [PROVISIONER] Missing Neural Kernel '{}'. Provisioning from Registry...", "🧬".cyan(), kernel_type);
 
         let download_url = manifest["kernel"][kernel_type][&registry_key]
             .as_str()
@@ -92,7 +92,7 @@ impl DriverProvisioner {
         fs::write(&dest_path, bytes)?;
 
         fs::write(marker, manifest_version)?;
-        cluaize_shared::dev_info!("  {} [PROVISIONER] Kernel '{}' successfully deployed.", "✅".green(), kernel_type);
+        cluaiz_shared::dev_info!("  {} [PROVISIONER] Kernel '{}' successfully deployed.", "✅".green(), kernel_type);
 
         Ok(dest_path)
     }
@@ -106,7 +106,7 @@ impl DriverProvisioner {
             fs::create_dir_all(&driver_dir)?;
         }
 
-        let client = reqwest::Client::builder().user_agent("Cluaize-Neural-Engine/0.1.0").build()?;
+        let client = reqwest::Client::builder().user_agent("cluaiz-Neural-Engine/0.1.0").build()?;
         let response = client.get(manifest_url).send().await?;
         
         let text = response.text().await?;
@@ -123,7 +123,7 @@ impl DriverProvisioner {
             }
         }
 
-        cluaize_shared::dev_info!("  {} [PROVISIONER] Provisioning Silicon Driver: {}...", "⚙️".yellow(), driver_type);
+        cluaiz_shared::dev_info!("  {} [PROVISIONER] Provisioning Silicon Driver: {}...", "⚙️".yellow(), driver_type);
         let registry_key = Self::get_registry_key(driver_type);
         let download_url = manifest["drivers"][&registry_key].as_str()
             .ok_or_else(|| anyhow!("Driver key '{}' not found.", registry_key))?;

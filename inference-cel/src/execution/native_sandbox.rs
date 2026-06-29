@@ -30,7 +30,7 @@ impl NativeExecutor {
     /// Loads a native plugin and executes it with constraints from `EngineRules`.
     ///
     /// Memory management: After reading the result, this function attempts to call
-    /// `cluaize_free_payload` from the plugin's own exports. If not found, a warning
+    /// `cluaiz_free_payload` from the plugin's own exports. If not found, a warning
     /// is logged — the caller/plugin author must fix this to prevent RAM leaks.
     ///
     /// Mobile OS ban: Native dynamic loading is blocked on iOS and Android.
@@ -109,10 +109,10 @@ impl NativeExecutor {
 
             // 5. Free the pointer returned by the plugin.
             //    Preference order:
-            //    a) Plugin-exported `cluaize_free_payload` — uses plugin's own allocator
+            //    a) Plugin-exported `cluaiz_free_payload` — uses plugin's own allocator
             //    b) Log a clear warning — DO NOT silently leak
             let free_sym: Result<Symbol<unsafe extern "C" fn(*mut u8, usize)>, _> =
-                lib.get(b"cluaize_free_payload\0");
+                lib.get(b"cluaiz_free_payload\0");
 
             match free_sym {
                 Ok(free_fn) => {
@@ -126,9 +126,9 @@ impl NativeExecutor {
                     // Plugin does not export a free function — this is a plugin authoring error.
                     // We log a warning rather than silently leaking or crashing.
                     tracing::warn!(
-                        "Native plugin '{}' does not export 'cluaize_free_payload'. \
+                        "Native plugin '{}' does not export 'cluaiz_free_payload'. \
                          The memory allocated by this plugin will leak. \
-                         Plugin authors must export this symbol to be compatible with the Cluaize engine.",
+                         Plugin authors must export this symbol to be compatible with the cluaiz engine.",
                         plugin_path
                     );
                 }

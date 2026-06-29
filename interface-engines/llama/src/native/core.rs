@@ -1,5 +1,5 @@
 use crate::ffi::llama_cpp::{self, LlamaContextParams, LlamaModelParams};
-use cluaize_shared::StructuralDNA;
+use cluaiz_shared::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::AtomicBool;
@@ -32,7 +32,7 @@ impl NativeLlama {
         model_path: &str,
         model_params: LlamaModelParams,
         mut ctx_params: LlamaContextParams,
-        dna: &mut cluaize_shared::metadata::dna::StructuralDNA,
+        dna: &mut cluaiz_shared::metadata::dna::StructuralDNA,
         kv_cache_quantization_mode: u8,
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
@@ -49,7 +49,7 @@ impl NativeLlama {
 
         let c_path = CString::new(model_path)?;
 
-        cluaize_shared::dev_info!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
+        cluaiz_shared::dev_info!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
@@ -73,7 +73,7 @@ impl NativeLlama {
         let model_dir = std::path::Path::new(model_path)
             .parent()
             .unwrap_or(std::path::Path::new("."));
-        cluaize_shared::dev_info!(
+        cluaiz_shared::dev_info!(
             "🧬 [Native-Llama] Starting DNA Discovery for: {:?}",
             model_dir
         );
@@ -84,7 +84,7 @@ impl NativeLlama {
         let requested_n_ctx = ctx_params.n_ctx;
 
         if let Err(e) = dna.discover_from_path(model_dir) {
-            cluaize_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
         if model_params.n_gpu_layers == 0 {
@@ -221,7 +221,7 @@ impl NativeLlama {
             let c_prompt = std::ffi::CString::new(prompt.to_string())?;
 
             // 1. Tokenize
-            cluaize_shared::dev_info!(
+            cluaiz_shared::dev_info!(
                 "🧠 [Native-Llama] Starting tokenization of prompt (len: {})...",
                 prompt.len()
             );

@@ -2,7 +2,7 @@
 members = [
     "inference-engine/api",
     "inference-engine/engines",
-    "inference-engine/engines/cluaize-shared",
+    "inference-engine/engines/cluaiz-shared",
     "inference-engine/engines/system-booster",
     "cmd",
     "test/dummy_plugin"

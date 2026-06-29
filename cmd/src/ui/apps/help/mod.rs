@@ -17,7 +17,7 @@ pub fn render_widget(app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut B
     // Outer chrome
     let block = Block::default()
         .title(Span::styled(
-            " 📚 Cluaize Help — Command Reference ",
+            " 📚 cluaiz Help — Command Reference ",
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
@@ -44,7 +44,7 @@ pub fn render_widget(app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut B
         Line::from(vec![
             Span::styled("  USAGE  ", Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD)),
             Span::raw("  "),
-            Span::styled("cluaize [COMMAND]", Style::default().fg(Color::White).add_modifier(Modifier::DIM)),
+            Span::styled("cluaiz [COMMAND]", Style::default().fg(Color::White).add_modifier(Modifier::DIM)),
         ]),
         Line::raw(""),
     ]);

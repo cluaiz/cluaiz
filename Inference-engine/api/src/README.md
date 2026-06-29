@@ -6,9 +6,9 @@
 
 ## 🎯 Deep Purpose
 
-The `api/src/` directory is the core entry point for the Cluaize Engine's HTTP and FFI Gateway. While the `engines/` crate performs all the heavy mathematical lifting and memory management, this module is strictly responsible for network I/O, route registration, CORS policies, and process initialization. 
+The `api/src/` directory is the core entry point for the cluaiz Engine's HTTP and FFI Gateway. While the `engines/` crate performs all the heavy mathematical lifting and memory management, this module is strictly responsible for network I/O, route registration, CORS policies, and process initialization. 
 
-It acts as the strict boundary between the unsafe external world (network requests) and the safe internal execution substrate (`cluaize-shared` types).
+It acts as the strict boundary between the unsafe external world (network requests) and the safe internal execution substrate (`cluaiz-shared` types).
 
 ## 🏛️ Architectural Flow
 
@@ -41,5 +41,5 @@ graph TD
 ### 4. `ffi_bridge.rs`
 - **The Core Logic:** Bypasses HTTP entirely. Implements Named Pipes (Windows) and Unix Domain Sockets (Linux). It also **actively monitors the LLM's token stream** for `<cel>` tags to intercept Engine Directives mid-inference.
 - **The "Why":** 
-  - The upcoming Cluaize Desktop App requires 0-latency communication with the engine.
+  - The upcoming cluaiz Desktop App requires 0-latency communication with the engine.
   - **Dynamic AI Agency (JIT Injection):** By intercepting `<cel>` tags, the engine can execute raw scripts natively (like injecting data into the Mid-Layer) without streaming the command to the user, allowing the AI to dynamically correct itself during inference.

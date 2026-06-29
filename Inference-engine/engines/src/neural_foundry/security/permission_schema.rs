@@ -80,10 +80,10 @@ fn default_temporary_chat_ttl_hours() -> u64 {
 }
 
 impl PermissionSchema {
-    /// Loads the Permission.json from ~/.cluaize/engine/Permission.json
+    /// Loads the Permission.json from ~/.cluaiz/engine/Permission.json
     /// If it doesn't exist, it creates a default one and returns it.
     pub fn load() -> Self {
-        let env_manager = cluaize_shared::environment::EnvironmentManager::current();
+        let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
         let config_dir = env_manager.config_dir();
         let permission_path = config_dir.join("Permission.json");
         let permission_bin_path = config_dir.join("Permission.bin");
@@ -175,7 +175,7 @@ impl PermissionSchema {
     }
 
     pub fn save(&self) {
-        let env_manager = cluaize_shared::environment::EnvironmentManager::current();
+        let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
         let config_dir = env_manager.config_dir();
         let permission_path = config_dir.join("Permission.json");
         let permission_bin_path = config_dir.join("Permission.bin");

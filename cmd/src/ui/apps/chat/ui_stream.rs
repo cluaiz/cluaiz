@@ -63,7 +63,7 @@ pub fn render_stream(app: &AppState, area: Rect, buf: &mut Buffer) {
         }
 
         let mut spans = vec![
-            Span::styled("  ⚡ Cluaize PULSE  ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled("  ⚡ cluaiz PULSE  ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::styled("│ CPU: ", Style::default().fg(Color::DarkGray)),
             Span::styled(format!("{:>4.1}% {:>4.1}°C", pulse.cpu.utilization_pct, pulse.cpu.temperature_c), Style::default().fg(Color::Cyan)),
             Span::styled(" │ RAM: ", Style::default().fg(Color::DarkGray)),

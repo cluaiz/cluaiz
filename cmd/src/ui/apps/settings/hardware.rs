@@ -20,7 +20,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             let vram = v["compute"]["vram_gb"].as_f64().unwrap_or(0.0);
             let ram = v["memory"]["total_ram_gb"].as_f64().unwrap_or(0.0);
 
-            let mode = "Cluaize Native";
+            let mode = "cluaiz Native";
             let flash = v["runtime_engine"]["booster_flags"]["FlashAttention_v2"].as_bool().unwrap_or(false);
             let turbo = v["runtime_engine"]["booster_flags"]["TurboQuant_Enable"].as_bool().unwrap_or(false);
 
@@ -31,7 +31,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             let timezone = ctx["timezone"].as_str().unwrap_or("?");
 
             format!(
-                " 🧬 Cluaize IDENTITY CARD \n\n\
+                " 🧬 cluaiz IDENTITY CARD \n\n\
                 NODE-ID:      {}\n\
                 OS:           {} ({})\n\
                 LOCALE:       {} | TZ: {}\n\n\

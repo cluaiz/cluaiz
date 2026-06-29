@@ -10,4 +10,4 @@ The `llama/` crate is the dedicated backend runner for the `.gguf` model format.
 
 ## 🏛️ Architectural Mechanics
 - **The Core Logic:** Binds the engine's `neural_core/` structs to the specific functions required to execute a GGUF file. It manages the specific KV Cache allocation strategies unique to the Llama architecture.
-- **The "Why":** GGUF is the industry standard for highly quantized edge models. This crate ensures Cluaize has native, zero-overhead execution paths for the most popular models in the world.
+- **The "Why":** GGUF is the industry standard for highly quantized edge models. This crate ensures cluaiz has native, zero-overhead execution paths for the most popular models in the world.

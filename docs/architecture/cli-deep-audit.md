@@ -1,5 +1,5 @@
 # 🏛️ Independent CLI Deep Audit (Research)
-**Component**: Archer Independent Console (`Cluaize-ai-/cli`)  
+**Component**: Archer Independent Console (`cluaiz-ai-/cli`)  
 **Date**: 2026-04-20  
 
 

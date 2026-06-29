@@ -58,7 +58,7 @@ pub struct EngineRules {
 /// ffi_bindings:
 ///   binary_path: "native/plugin.wasm"
 ///   entry_point: "execute_cel"
-///   abi: "cluaize-cel-v1"
+///   abi: "cluaiz-cel-v1"
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FfiBindings {
@@ -103,6 +103,12 @@ pub struct Execution {
     pub binary_path: Option<String>,
     /// The name of the exported C-pointer function that the Engine will call (e.g., "execute_cel").
     pub entry_point: Option<String>,
+    /// The OS command to execute for out-of-process servers (e.g., "npx", "python")
+    pub command: Option<String>,
+    /// Arguments to pass to the OS command
+    pub args: Option<Vec<String>>,
+    /// Environment variables injected into the OS process
+    pub env: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Defines the strict hardware and security sandboxing constraints for execution.

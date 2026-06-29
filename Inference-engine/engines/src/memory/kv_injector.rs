@@ -3,7 +3,7 @@ use memmap2::MmapOptions;
 use std::fs::File;
 use std::path::PathBuf;
 use tracing::{info, warn};
-use cluaize_shared::environment::EnvironmentManager;
+use cluaiz_shared::environment::EnvironmentManager;
 
 /// 🧠 Zero-Copy KV-Cache Injector
 /// This module handles reading/writing context memory directly to/from VRAM via mmap.

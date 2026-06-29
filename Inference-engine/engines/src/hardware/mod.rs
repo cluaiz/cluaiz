@@ -2,15 +2,15 @@
 pub mod models_runner;
 pub mod system_control_manager;
 
-// 🧬 Cluaize Profile Unification: Re-exporting from archer-shared/schema
-pub use cluaize_shared::hardware::schema::profiles::{
+// 🧬 cluaiz Profile Unification: Re-exporting from archer-shared/schema
+pub use cluaiz_shared::hardware::schema::profiles::{
     SiliconTruth, 
     MemorySubsystem, 
     StorageSubsystem, 
     CpuSubsystem,
     Accelerators
 };
-pub use cluaize_shared::hardware::schema::metrics::SiliconMetrics;
+pub use cluaiz_shared::hardware::schema::metrics::SiliconMetrics;
 
 pub struct HardwareDetector;
 impl Default for HardwareDetector {
@@ -29,7 +29,7 @@ impl HardwareDetector {
 }
 
 pub enum InferenceEngine {
-    Cluaize,
+    cluaiz,
     Llama,
     Candle,
 }

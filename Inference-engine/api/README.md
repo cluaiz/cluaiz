@@ -1,7 +1,7 @@
 # Component: Inference API Gateway (`inference-engine/api`)
 
 ## Technical Specification
-- **Purpose:** Exposes a high-performance HTTP/SSE and IPC gateway for routing client requests, CEL commands, and token streams to the Cluaize inference core. It strictly acts as a "Dumb Router", pushing database and logic overhead to CEL Extensions.
+- **Purpose:** Exposes a high-performance HTTP/SSE and IPC gateway for routing client requests, CEL commands, and token streams to the cluaiz inference core. It strictly acts as a "Dumb Router", pushing database and logic overhead to CEL Extensions.
 - **Platform Support:** Windows, Linux, macOS
 - **Reusability Level:** High (Core Subsystem Gateway)
 
@@ -22,7 +22,7 @@ graph TD
     I -->|Generates| J["CEL Manifest (JSON)"]
     J --> E
     
-    E -->|Execute| K["cluaize-db Extension (via FFI/IPC)"]
+    E -->|Execute| K["cluaiz-db Extension (via FFI/IPC)"]
     
     style A fill:#444,stroke:#fff
     style E fill:#2ca02c,color:#fff
@@ -32,7 +32,7 @@ graph TD
 ## API Contract (Interface)
 - **Props/Struct/Trait:** `AppState`, `execute_chat`, `execute_cel_script`, `file_ingest`
 - **Export Type:** Public Module (`axum` Router)
-- **Dependencies:** `axum`, `tokio`, `inference-cel`, `dispatcher-crate`, `cluaizd`
+- **Dependencies:** `axum`, `tokio`, `inference-cel`, `dispatcher-crate`, `cluaizdb`
 
 ## Deep File Breakdown
 - `chat.rs`: 
@@ -43,7 +43,7 @@ graph TD
   - **Flow:** Transpiles CEL to VRAM/IPC payloads and triggers `UnifiedExecutor`. Replaces all hardcoded DB logic.
 - `ingest.rs`:
   - **Logic:** File Vectorization Engine.
-  - **Flow:** Uses `embedding_dispatcher` to chunk and embed documents, then dynamically generates a CEL script and hands it off to `cel_handler.rs` to insert into `cluaize-db`. Hardcoded `save_context` LMDB calls are permanently eradicated.
+  - **Flow:** Uses `embedding_dispatcher` to chunk and embed documents, then dynamically generates a CEL script and hands it off to `cel_handler.rs` to insert into `cluaiz-db`. Hardcoded `save_context` LMDB calls are permanently eradicated.
 - `skills.rs`: 
   - **Logic:** Extension Hub Manager (`/v1/skills/*`).
   - **Flow:** Used to fetch, install, and wipe native/WASM plugin caches.

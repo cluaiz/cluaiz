@@ -1,9 +1,9 @@
-name: Cluaize Engine
+name: cluaiz Engine
 
 on:
   push:
     paths:
-      - 'cluaize-engine/**'
+      - 'cluaiz-engine/**'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -55,7 +55,7 @@ jobs:
             suffix: mac-x64
             ext: dylib
     steps:
-      - name: Checkout Cluaize
+      - name: Checkout cluaiz
         uses: actions/checkout@v4
 
       - name: Setup Rust
@@ -103,13 +103,13 @@ jobs:
             fi
           fi
           
-          DEST="target/${{ matrix.target }}/release/cluaize-engine-${VERSION}-${SUFFIX}.${EXT}"
+          DEST="target/${{ matrix.target }}/release/cluaiz-engine-${VERSION}-${SUFFIX}.${EXT}"
           mv "$SRC" "$DEST"
           echo "binary_path=${DEST}" >> $GITHUB_OUTPUT
 
       - name: 🚀 Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cluaize-engine-${{ matrix.suffix }}
+          name: cluaiz-engine-${{ matrix.suffix }}
           path: ${{ steps.naming.outputs.binary_path }}
           retention-days: 1

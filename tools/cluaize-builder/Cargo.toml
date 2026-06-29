@@ -1,5 +1,5 @@
 [package]
-name = "cluaize-builder"
+name = "cluaiz-builder"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -7,5 +7,5 @@ publish = false
 [workspace]
 
 [dependencies]
-cluaize-shared = { path = "../../inference-engine/engines/cluaize-shared" }
+cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 dirs = "6.0.0"

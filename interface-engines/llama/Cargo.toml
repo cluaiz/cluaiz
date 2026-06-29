@@ -6,14 +6,14 @@ authors = ["Cluaiz Technologies"]
 build = "build.rs"
 
 [lib]
-name = "cluaize_llama"
+name = "cluaiz_llama"
 crate-type = ["cdylib", "rlib", "staticlib"]
 
 [dependencies]
 # ── Sovereign LLaMA Backend (Direct C++ Bridge) ──
 anyhow = "1.0"
 tracing = "0.1"
-cluaize-shared = { path = "../../inference-engine/engines/cluaize-shared" }
+cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 tokenizers = "0.22.2"
 libloading = "0.8"
 tokio = { version = "1.37", features = ["full"] }

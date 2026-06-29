@@ -1,15 +1,15 @@
 # 🏛️ Independent Neural Registry: Web Integration & System Design
-**Software Architecture & Dynamic Routing Blueprint for cluaize.com**
+**Software Architecture & Dynamic Routing Blueprint for cluaiz.com**
 
-This document establishes the system design, data architecture, and software blueprints for dynamically linking the local/remote **Independent Neural Registry** (`cluaize/models/library`) with the front-end **Cluaize Portal** (`cluaize.com`). 
+This document establishes the system design, data architecture, and software blueprints for dynamically linking the local/remote **Independent Neural Registry** (`cluaiz/models/library`) with the front-end **cluaiz Portal** (`cluaiz.com`). 
 
 ---
 
 ## 1. The Core Architecture Problem
-Currently, the website's models page (`/models`) and its subroutes (`/[family]/[version]/[variant]`) rely on a static, hardcoded TypeScript catalog `cluaize.com/src/data/models.ts` (`SOVEREIGN_MODELS`).
+Currently, the website's models page (`/models`) and its subroutes (`/[family]/[version]/[variant]`) rely on a static, hardcoded TypeScript catalog `cluaiz.com/src/data/models.ts` (`SOVEREIGN_MODELS`).
 
 ### ⚠️ Gaps & Issues:
-1. **Catalog Desync**: If a developer adds a new version or model variant to the core CLI registry (`cluaize/models/library`), the website does not reflect it until the frontend is manually updated.
+1. **Catalog Desync**: If a developer adds a new version or model variant to the core CLI registry (`cluaiz/models/library`), the website does not reflect it until the frontend is manually updated.
 2. **Quantization Mismatch**: The frontend calculates sizes and quant labels using rough client-side approximations rather than querying the verified precision schemas in the versioned JSONs.
 3. **Empty Documentation**: The dynamic detail page attempts to fetch a `README.md` from the registry, but because legacy registries lack version-level Markdown files and static assets, pages load with empty layouts.
 
@@ -21,7 +21,7 @@ To achieve a **"Universal Neural Kernel"** standard, we decouple the UI from sta
 ```
 ┌────────────────────────────────────────────────────────┐
 │               LOCAL WORKSPACE FILESYSTEM               │
-│         cluaize/models/library/ (JSON, MD, Assets)       │
+│         cluaiz/models/library/ (JSON, MD, Assets)       │
 └───────────────────────────┬────────────────────────────┘
                             │ (Local Dev: Direct fs Read)
                             ▼
@@ -44,7 +44,7 @@ To achieve a **"Universal Neural Kernel"** standard, we decouple the UI from sta
 To keep the models metadata clean, we establish a two-tiered directory configuration.
 
 ### A. Family Level Metadata: `family.json`
-To avoid hardcoding in the frontend, each model family folder (e.g. `cluaize/models/library/Qwen/family.json`) will contain its high-level identity specs.
+To avoid hardcoding in the frontend, each model family folder (e.g. `cluaiz/models/library/Qwen/family.json`) will contain its high-level identity specs.
 
 ```json
 {
@@ -92,7 +92,7 @@ Each version folder contains its own localized documentation page and `./assets`
 ## 4. dynamic API Routing Flow
 
 ### 1. `/api/v1/registry/models` (Catalog Aggregator)
-Instead of returning a flat route map, this endpoint will dynamically traverse `cluaize/models/library/` folders, read each `family.json`, aggregate all version directories, and compile a single, unified `ModelFamily[]` array matching the exact structure expected by the front-end UI.
+Instead of returning a flat route map, this endpoint will dynamically traverse `cluaiz/models/library/` folders, read each `family.json`, aggregate all version directories, and compile a single, unified `ModelFamily[]` array matching the exact structure expected by the front-end UI.
 
 #### Server-Side Resolver Logic:
 ```typescript
@@ -100,7 +100,7 @@ import fs from "fs";
 import path from "path";
 
 export async function resolveDynamicRegistry() {
-  const libraryPath = path.join(process.cwd(), "..", "cluaize", "models", "library");
+  const libraryPath = path.join(process.cwd(), "..", "cluaiz", "models", "library");
   const families: any[] = [];
 
   const familyDirs = fs.readdirSync(libraryPath)

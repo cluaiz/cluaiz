@@ -1,6 +1,6 @@
 # `GET /models/tags` API Specification
 
-Queries the Cluaize centralized model registry to find available choices.
+Queries the cluaiz centralized model registry to find available choices.
 
 ---
 

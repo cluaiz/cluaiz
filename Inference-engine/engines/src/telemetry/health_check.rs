@@ -1,12 +1,12 @@
 use crate::hardware::{SiliconTruth, StorageSubsystem};
 use sysinfo::System;
 
-pub struct CluaizeHealthChecker;
+pub struct cluaizHealthChecker;
 
-impl CluaizeHealthChecker {
+impl cluaizHealthChecker {
     /// Conducts a macro-benchmark of the entire system on first boot
     pub fn execute_initial_diagnostic(mut profile: SiliconTruth) -> SiliconTruth {
-        cluaize_shared::dev_info!("🩺 [Cluaize Health] Initiating Deep Profiling Sequence...");
+        cluaiz_shared::dev_info!("🩺 [cluaiz Health] Initiating Deep Profiling Sequence...");
 
         // 1. RAM Profiling via sysinfo (Lightweight)
         let mut sys = System::new();
@@ -15,7 +15,7 @@ impl CluaizeHealthChecker {
         
         profile.memory.total_capacity_gb = total_ram_gb;
         
-        cluaize_shared::dev_info!("📊 [Memory] Total: {:.1} GB Detected.", total_ram_gb);
+        cluaiz_shared::dev_info!("📊 [Memory] Total: {:.1} GB Detected.", total_ram_gb);
 
         // 2. Storage Profiling (Lightweight Metadata Read)
         let storage_speed = Self::estimate_disk_io();
@@ -31,7 +31,7 @@ impl CluaizeHealthChecker {
             ..Default::default()
         }];
 
-        cluaize_shared::dev_info!("💾 [Storage] Speed Estimate: {:.1} MB/s | Type: {}", 
+        cluaiz_shared::dev_info!("💾 [Storage] Speed Estimate: {:.1} MB/s | Type: {}", 
                  storage_speed, if is_nvme { "NVMe (Optimal)" } else { "SATA SSD" });
 
         profile
@@ -40,9 +40,9 @@ impl CluaizeHealthChecker {
     /// Estimates disk I/O capabilities without writing large files to avoid slowing down boot.
     /// In a deeper implementation, this reads sysfs on Linux or WMI on Windows.
     fn estimate_disk_io() -> f64 {
-        let path = cluaize_shared::environment::EnvironmentManager::current()
+        let path = cluaiz_shared::environment::EnvironmentManager::current()
             .local_dir
-            .join(".cluaize_boot_bench.tmp");
+            .join(".cluaiz_boot_bench.tmp");
         let payload = vec![0u8; 5 * 1024 * 1024]; // 5MB payload
         let start = std::time::Instant::now();
         if let Ok(mut file) = std::fs::File::create(&path) {
@@ -64,12 +64,12 @@ impl CluaizeHealthChecker {
 
     /// Runs a deep manual benchmark consisting of a 50MB disk I/O write/read test
     pub fn run_full_benchmark() {
-        cluaize_shared::dev_info!("🚀 [Cluaize Benchmark] Initiating Deep Hardware Diagnostics...");
+        cluaiz_shared::dev_info!("🚀 [cluaiz Benchmark] Initiating Deep Hardware Diagnostics...");
         let start = std::time::Instant::now();
         
-        let path = cluaize_shared::environment::EnvironmentManager::current()
+        let path = cluaiz_shared::environment::EnvironmentManager::current()
             .local_dir
-            .join(".cluaize_io_bench.tmp");
+            .join(".cluaiz_io_bench.tmp");
         let payload = vec![0u8; 50 * 1024 * 1024]; // 50MB payload
         
         if let Ok(mut file) = std::fs::File::create(&path) {
@@ -88,7 +88,7 @@ impl CluaizeHealthChecker {
         
         let _ = std::fs::remove_file(&path);
         
-        cluaize_shared::dev_info!("✅ [Cluaize Benchmark] Storage Speed: {:.1} MB/s", speed_mbps);
-        cluaize_shared::dev_info!("✅ [Cluaize Benchmark] Complete in {:.2}s", duration.as_secs_f64());
+        cluaiz_shared::dev_info!("✅ [cluaiz Benchmark] Storage Speed: {:.1} MB/s", speed_mbps);
+        cluaiz_shared::dev_info!("✅ [cluaiz Benchmark] Complete in {:.2}s", duration.as_secs_f64());
     }
 }

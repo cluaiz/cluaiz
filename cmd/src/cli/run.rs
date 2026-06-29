@@ -2,13 +2,13 @@ use color_eyre::Result;
 use colored::Colorize;
 use engines::models::registry::CoreRoster;
 
-/// `cluaize run <model-id>` â€” pulls the model and initiates a native chat session.
+/// `cluaiz run <model-id>` â€” pulls the model and initiates a native chat session.
 pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     // ðŸŽ¨ Display the Sovereign Logo
     let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
     println!("{}", logo.cyan());
 
-    println!("\n  {} [Cluaize] Initializing Kernel for '{}'...", "âš™ï¸".yellow(), model_id.bold());
+    println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "âš™ï¸".yellow(), model_id.bold());
 
     let mut manifest: Option<engines::models::registry::ModelManifest> = None;
     let mut is_local = false;
@@ -16,7 +16,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let mut resolved_id = model_id.to_string();
 
     let roster = CoreRoster::load_roster();
-    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current().models_dir();
+    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current().models_dir();
 
     if model_id.contains('/') {
         // ðŸš€ EXPLICIT HUGGINGFACE REQUEST
@@ -43,8 +43,8 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         // ðŸš€ NEW: Check if this specific variant is already in the local roster!
         if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
             println!("\n  {} Warning: This exact variant is already downloaded locally under ID: '{}'", "âš ï¸".yellow(), existing.id.cyan());
-            println!("     To run it instantly, use: cluaize run {}", existing.id.green());
-            println!("     If you wish to re-download, please delete the old one first using: cluaize rm {}\n", existing.id.red());
+            println!("     To run it instantly, use: cluaiz run {}", existing.id.green());
+            println!("     If you wish to re-download, please delete the old one first using: cluaiz rm {}\n", existing.id.red());
             return Ok(());
         }
 
@@ -61,7 +61,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         // ðŸš€ REGISTRY OR LOCAL ID REQUEST
         if let Some(m) = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase()) {
             let safe_id = m.id.replace(':', "-");
-            let model_path = cluaize_root.join(&m.category).join(&safe_id);
+            let model_path = cluaiz_root.join(&m.category).join(&safe_id);
             let model_file = model_path.join(&m.huggingface_filename);
 
             if model_file.exists() {
@@ -89,17 +89,17 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     }
 
     // ðŸš€ Trigger Skill Registry (which triggers CompilerDaemon) to provision the caches for this active model
-    let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+    let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
     if skills_dir.exists() {
         let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
         registry.load_from_directory(&skills_dir.to_string_lossy());
     }
 
     // 2. Silicon Audit (Local Probe or HF Metadata)
-    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaize_root.clone());
+    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
     
     let safe_id = manifest.id.replace(':', "-");
-    let model_path = cluaize_root.join(&manifest.category).join(&safe_id);
+    let model_path = cluaiz_root.join(&manifest.category).join(&safe_id);
     let model_file = model_path.join(&manifest.huggingface_filename);
 
     if !is_local {
@@ -119,7 +119,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         }
     } else {
         let probe_result = if is_local && model_file.exists() {
-            cluaize_shared::utils::gguf_prober::GGUFProber::probe(&model_file).map_err(|e| e.to_string())
+            cluaiz_shared::utils::gguf_prober::GGUFProber::probe(&model_file).map_err(|e| e.to_string())
         } else {
             engines::models::manager::hf_hub::HuggingFaceHub::fetch_partial_gguf_metadata(&manifest.download_url).await
         };
@@ -176,9 +176,9 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     }
     
     // Load System Control to get real hardware stats
-    let config_path = cluaize_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
+    let config_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
     let system_control = if let Ok(content) = std::fs::read_to_string(config_path) {
-        serde_json::from_str::<cluaize_shared::hardware::schema::profiles::SystemControl>(&content).ok()
+        serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok()
     } else {
         None
     };
@@ -330,14 +330,14 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             let output_clone = accumulated_output.clone();
             let res = tokio::task::block_in_place(|| -> Result<(), color_eyre::eyre::Report> {
                 // â”€â”€ Native IPC Named Pipe Client â”€â”€
-                let pipe_name = r"\\.\pipe\cluaize_engine_pipe";
+                let pipe_name = r"\\.\pipe\cluaiz_engine_pipe";
                 let mut client = match std::fs::OpenOptions::new()
                     .read(true)
                     .write(true)
                     .open(pipe_name) {
                     Ok(client) => client,
                     Err(e) => {
-                        return Err(color_eyre::eyre::eyre!("âŒ Failed to connect to Native Daemon IPC (Is cluaizd running?): {}", e));
+                        return Err(color_eyre::eyre::eyre!("❌ Failed to connect to Native Daemon IPC (Is cluaiz daemon running?): {}", e));
                     }
                 };
                 

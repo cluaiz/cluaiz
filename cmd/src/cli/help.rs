@@ -33,39 +33,39 @@ pub fn load_commands() -> Vec<CommandEntry> {
 fn embedded_defaults() -> Vec<CommandEntry> {
     vec![
         CommandEntry {
-            name: "cluaize".into(),
-            usage: "cluaize".into(),
+            name: "cluaiz".into(),
+            usage: "cluaiz".into(),
             description: "Launch the interactive dashboard (TUI)".into(),
             category: "core".into(),
-            example: "cluaize".into(),
+            example: "cluaiz".into(),
         },
         CommandEntry {
             name: "run".into(),
-            usage: "cluaize run <model-id>".into(),
+            usage: "cluaiz run <model-id>".into(),
             description: "Pull & run a model. Downloads if not cached locally.".into(),
             category: "models".into(),
-            example: "cluaize run bonsai:8b".into(),
+            example: "cluaiz run bonsai:8b".into(),
         },
         CommandEntry {
             name: "help".into(),
-            usage: "cluaize help".into(),
+            usage: "cluaiz help".into(),
             description: "Show this help screen".into(),
             category: "core".into(),
-            example: "cluaize help".into(),
+            example: "cluaiz help".into(),
         },
         CommandEntry {
             name: "--calibrate".into(),
-            usage: "cluaize --calibrate".into(),
+            usage: "cluaiz --calibrate".into(),
             description: "Re-scan hardware and synchronize SiliconTruth profile".into(),
             category: "system".into(),
-            example: "cluaize --calibrate".into(),
+            example: "cluaiz --calibrate".into(),
         },
         CommandEntry {
             name: "--benchmark".into(),
-            usage: "cluaize --benchmark".into(),
+            usage: "cluaiz --benchmark".into(),
             description: "Run a full hardware performance benchmark".into(),
             category: "system".into(),
-            example: "cluaize --benchmark".into(),
+            example: "cluaiz --benchmark".into(),
         },
     ]
 }
@@ -79,10 +79,10 @@ pub fn print_help() -> Result<()> {
     println!(
         "  {} {}",
         "🧬".cyan(),
-        "Cluaize CLI — Universal Neural Kernel".bold()
+        "cluaiz CLI — Universal Neural Kernel".bold()
     );
     println!();
-    println!("  {}  cluaize [COMMAND]", "USAGE:".bold());
+    println!("  {}  cluaiz [COMMAND]", "USAGE:".bold());
     println!();
 
     let categories: &[(&str, &str)] = &[

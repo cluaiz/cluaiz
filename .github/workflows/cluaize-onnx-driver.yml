@@ -1,4 +1,4 @@
-name: "Cluaize Interface Drivers"
+name: "cluaiz Interface Drivers"
 
 on:
   push:
@@ -389,13 +389,13 @@ jobs:
           PREFIX="${{ matrix.prefix }}"
 
           if [ -n "${{ matrix.cuda_v }}" ]; then
-            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.zip"
+            DEST="artifacts/${PREFIX}cluaiz-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.zip"
           else
-            DEST="artifacts/${PREFIX}cluaize-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.zip"
+            DEST="artifacts/${PREFIX}cluaiz-onnx-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.zip"
           fi
 
           cd "$RELEASE_DIR"
-          zip -j "$GITHUB_WORKSPACE/$DEST" ${PREFIX}cluaize_onnx.${{ matrix.ext }} onnxruntime*.${{ matrix.ext }} || true
+          zip -j "$GITHUB_WORKSPACE/$DEST" ${PREFIX}cluaiz_onnx.${{ matrix.ext }} onnxruntime*.${{ matrix.ext }} || true
           cd "$GITHUB_WORKSPACE"
           
           echo "binary_path=${DEST}" >> $GITHUB_OUTPUT
@@ -403,6 +403,6 @@ jobs:
       - name: 🚀 Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cluaize-onnx-driver-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v || 'cpu' }}
+          name: cluaiz-onnx-driver-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v || 'cpu' }}
           path: artifacts/*
           retention-days: 1

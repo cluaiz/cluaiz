@@ -29,7 +29,7 @@ graph TD
 
 ### 1. `asm_kernels.rs` & `hybrid.rs`
 - **The Core Logic:** Directly embeds or links to platform-specific assembly instructions (like AVX2/AVX-512) for custom matrix multiplications that bypass standard C++ loops.
-- **The "Why":** Standard `llama.cpp` is fast, but Cluaize injects custom hybrid execution strategies to eke out 10-15% more Tokens-Per-Second (TPS) on older Intel/AMD processors.
+- **The "Why":** Standard `llama.cpp` is fast, but cluaiz injects custom hybrid execution strategies to eke out 10-15% more Tokens-Per-Second (TPS) on older Intel/AMD processors.
 
 ### 2. `pipeline.rs` & `router.rs`
 - **The Core Logic:** Organizes incoming requests into batches and routes them to the correct hardware (CPU vs GPU).

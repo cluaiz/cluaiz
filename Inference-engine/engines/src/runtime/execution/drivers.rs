@@ -2,12 +2,12 @@ use std::sync::Once;
 
 static STARTUP: Once = Once::new();
 
-/// 🛡️ Cluaize Archer V8: Initiating Core Discovery...
+/// 🛡️ cluaiz Archer V8: Initiating Core Discovery...
 /// This function now serves as a thin wrapper. All actual linkage happens 
 /// dynamically in the HardwareOrchestrator.
 pub fn initialize_Core_drivers() {
     STARTUP.call_once(|| {
-        tracing::info!("🧬 Cluaize Archer V8: Initiating Dynamic Core Discovery...");
+        tracing::info!("🧬 cluaiz Archer V8: Initiating Dynamic Core Discovery...");
         
         // 🔍 Probing Hardware DNA
         let (has_gpu, driver_type) = dynamic_discovery::probe_hardware();
@@ -17,7 +17,7 @@ pub fn initialize_Core_drivers() {
             tracing::info!("✅ Attached bare-metal drivers for: {}", driver_type);
         }
 
-        tracing::info!("✅ Cluaize Archer V8: Discovery Complete. Dynamic Linker is Ready.");
+        tracing::info!("✅ cluaiz Archer V8: Discovery Complete. Dynamic Linker is Ready.");
     });
 }
 

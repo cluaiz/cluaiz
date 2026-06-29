@@ -109,7 +109,7 @@ impl App {
                         print!("\x1B[2J\x1B[1;1H"); // Clear and home
                         crate::assets::logos::logo::print_native_logo(self.state.logo_index);
                         println!();
-                        println!("  {} {}", "CLUAIZE".cyan().bold(), "v0.1.0".bright_black());
+                        println!("  {} {}", "cluaiz".cyan().bold(), "v0.1.0".bright_black());
                         if self.state.is_client_mode {
                             println!("  {} {}", "Mode:        ".dimmed(), "Pure Client (Connected to Background API)".green().bold());
                         } else {

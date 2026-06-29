@@ -1,8 +1,8 @@
-# 🚀 Cluaize Hardware Benchmark Report
+# 🚀 cluaiz Hardware Benchmark Report
 
 ## 🤖 Model: gemma4:e2b
 ### 🛠️ Hardware & Environment
-- **Compute Node**: "C:\\Users\\Aryan\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaize\\test\\benchmark\\GPU\\NVIDIA_GeForce_RTX_3050_A_Laptop_GPU"
+- **Compute Node**: "C:\\Users\\Aryan\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\test\\benchmark\\GPU\\NVIDIA_GeForce_RTX_3050_A_Laptop_GPU"
 - **Approx. Parameters**: ~2B
 - **Context Window**: 19968 (Dynamic Limit)
 - **VRAM Used**: 2.00 GB

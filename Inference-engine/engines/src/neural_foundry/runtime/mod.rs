@@ -1,4 +1,4 @@
-// cluaize-engine: Core Foundry - Runtime
+// cluaiz-engine: Core Foundry - Runtime
 pub mod wasm_host;
 pub mod mcp_gateway;
 pub mod dispatcher;

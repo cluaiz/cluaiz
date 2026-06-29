@@ -1,7 +1,7 @@
 use std::slice;
 use std::str;
 
-// 🏹 Sovereign ABI: Cluaize-OS requires a malloc export to pass strings safely
+// 🏹 Sovereign ABI: cluaiz-OS requires a malloc export to pass strings safely
 #[no_mangle]
 pub extern "C" fn malloc(size: usize) -> *mut u8 {
     let mut vec = Vec::with_capacity(size);
@@ -19,7 +19,7 @@ pub extern "C" fn run(ptr: *mut u8, len: usize) -> *mut u8 {
     };
 
     // 🧠 Logic: Greet the Founder
-    let response = format!("Hello Cluaiz Technologies! Cluaize-OS received your intent: '{}'. Sandbox is LOCKED. Neural Pulse sent.", input);
+    let response = format!("Hello Cluaiz Technologies! cluaiz-OS received your intent: '{}'. Sandbox is LOCKED. Neural Pulse sent.", input);
     
     // 2. Return the result as a null-terminated string (Sovereign Format)
     let mut resp_bytes = response.into_bytes();

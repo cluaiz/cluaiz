@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub async fn execute() -> Result<()> {
     println!("🧪 [Test] Starting Dynamic Pipeline Diagnostic...");
 
-    let model_path = cluaize_shared::environment::EnvironmentManager::current().models_dir().join("chat").join("bonsai1-8b").join("Bonsai-8B.gguf");
+    let model_path = cluaiz_shared::environment::EnvironmentManager::current().models_dir().join("chat").join("bonsai1-8b").join("Bonsai-8B.gguf");
     
     if !model_path.exists() {
         println!("❌ Model not found at: {:?}", model_path);
@@ -20,8 +20,8 @@ pub async fn execute() -> Result<()> {
 
 
 
-    let dna = cluaize_shared::StructuralDNA::default();
-    let context = cluaize_shared::CluaizeContext::boot(dna, cluaize_shared::TemplateManager::default());
+    let dna = cluaiz_shared::StructuralDNA::default();
+    let context = cluaiz_shared::cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
 
     println!("⚙️ [Test] Instantiating Chat Engine (Bonsai)...");
     let engine = engines::runtime::execution::hub::HardwareOrchestrator::instantiate(
@@ -35,12 +35,12 @@ pub async fn execute() -> Result<()> {
 
     // Load active router
     let mut router = engines::api::router::CoreRouter::new();
-    let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+    let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
     router.foundry.initialize(&skills_dir.to_string_lossy());
-    router.active_backend = engines::api::router::Backend::Cluaize(engine);
+    router.active_backend = engines::api::router::Backend::cluaiz(engine);
 
     // Boot router indices
-    if let Ok(mut g_router) = cluaize_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
+    if let Ok(mut g_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
         let _ = g_router.boot_index();
     }
 
@@ -60,7 +60,7 @@ pub async fn execute() -> Result<()> {
     if res.is_ok() {
         println!("\n✅ [Test] Generation completed!");
         
-        let cache_file = cluaize_shared::environment::EnvironmentManager::current().skills_dir().join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
+        let cache_file = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
         if cache_file.exists() {
             let meta = std::fs::metadata(&cache_file)?;
             let size_mb = meta.len() as f64 / 1_048_576.0;

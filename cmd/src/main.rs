@@ -37,7 +37,7 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<crate::SkillCommand>,
     },
-    /// Manage Cluaize Plugins
+    /// Manage cluaiz Plugins
     Plugin {
         #[command(subcommand)]
         command: Option<crate::PluginCommand>,
@@ -63,7 +63,7 @@ enum CliCommand {
         interactive: bool,
     },
 
-    /// Open the Cluaize Main Menu.
+    /// Open the cluaiz Main Menu.
     Menu,
 
     /// List all downloaded models in the vault.
@@ -134,7 +134,7 @@ enum CliCommand {
     /// Test JIT KV Cache compilation and memory footprint
     TestJit,
 
-    /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaize manually
+    /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
     DevSync {
         /// Target to sync (all, core, driver)
         #[arg(default_value = "all")]
@@ -148,11 +148,7 @@ enum CliCommand {
         profile: String,
     },
 
-    /// Manage the Cluaizd Brain Connection
-    Brain {
-        #[command(subcommand)]
-        command: BrainCommand,
-    },
+
 
     /// Manage Engine Permissions
     Permission {
@@ -203,20 +199,7 @@ pub enum SetupCommand {
     Profile,
 }
 
-#[derive(Subcommand)]
-pub enum BrainCommand {
-    /// Enable the FFI Database connection (defaults to local, or specify a remote address)
-    On {
-        /// Remote database IP:Port (e.g. 10.0.0.5:8080)
-        address: Option<String>,
-    },
-    /// Disable the FFI Database connection
-    Off,
-    /// Pure Brain Mode: Enable local DB but suspend Engine LLM loading to save VRAM
-    Only,
-    /// View the connection status and background daemon health
-    Status,
-}
+
 
 #[derive(Subcommand)]
 enum SkillCommand {
@@ -381,7 +364,7 @@ pub enum McpCacheCommand {
 async fn main() -> Result<()> {
     // 🚀 SOVEREIGN GHOST EXECUTION GUARD
     if let Ok(current_exe) = std::env::current_exe() {
-        let global_bin_dir = cluaize_shared::HardwareGovernor::resolve_bin_gateway();
+        let global_bin_dir = cluaiz_shared::HardwareGovernor::resolve_bin_gateway();
         if !current_exe.starts_with(&global_bin_dir) {
             eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
             eprintln!("  {} To use the Sovereign System, run the global 'cluaiz' command.\n", "💡".cyan());
@@ -409,7 +392,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = cluaize_shared::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
+    let log_path = cluaiz_shared::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
 
     if let Ok(log_file) = std::fs::File::create(&log_path) {
         let _ = tracing_subscriber::fmt()
@@ -427,7 +410,7 @@ async fn main() -> Result<()> {
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
-    if let Ok(control) = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control() {
+    if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
         if control.brain.is_pure_brain() {
             pure_brain = true;
         }
@@ -487,7 +470,7 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Status) => {
-            engines::telemetry::health_check::CluaizeHealthChecker::run_full_benchmark();
+            engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
         }
         Some(CliCommand::Calibrate) => {
              println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
@@ -514,37 +497,37 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name, profile }) => {
-            let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
+            let global_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir;
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
-            if let Err(e) = cluaize_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
-                let _ = std::fs::create_dir_all(cluaize_shared::HardwareGovernor::resolve_engine_path());
+            if let Err(e) = cluaiz_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
+                let _ = std::fs::create_dir_all(cluaiz_shared::HardwareGovernor::resolve_engine_path());
             }
             core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
             
             // 🚀 Force base configuration into the Global Directory so the user doesn't have an empty config!
-            std::env::set_var("CLUAIZE_HOME", global_dir.to_string_lossy().to_string());
+            std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
             let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             permissions.auto_assign_defaults();
-            let _ = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control();
+            let _ = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control();
             
             // 🚀 Also seal the local package.json into the global registry
             if let Ok(pkg_data) = std::fs::read_to_string("package.json") {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&pkg_data) {
-                    let _ = cluaize_shared::hardware::governor::RegistryGovernor::seal_registry(json);
+                    let _ = cluaiz_shared::hardware::governor::RegistryGovernor::seal_registry(json);
                 }
             }
             
-            std::env::remove_var("CLUAIZE_HOME");
+            std::env::remove_var("cluaiz_HOME");
 
             println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
-            let port: u16 = std::env::var("CLUAIZE_PORT")
+            let port: u16 = std::env::var("cluaiz_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(8000);
-            println!("  {} Starting Cluaize API Daemon on http://localhost:{} ...", "🚀".green(), port);
-            cluaize_api::run_daemon().await; 
+            println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), port);
+            cluaiz_api::run_daemon().await; 
         }
         Some(CliCommand::Booster { kv_quant, context_shift, mode, spec_decode }) => {
             if let Err(e) = crate::cli::booster::execute(kv_quant, context_shift, mode, spec_decode).await {
@@ -612,12 +595,7 @@ async fn main() -> Result<()> {
                 std::process::exit(1);
             }
         }
-        Some(CliCommand::Brain { command }) => {
-            if let Err(e) = crate::cli::brain::execute(command).await {
-                eprintln!("\n  {} [Cluaiz] Brain Manager Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
+
         Some(CliCommand::Setup { command }) => {
             if let Err(e) = crate::cli::setup::execute(command).await {
                 eprintln!("\n  {} [Cluaiz] Setup Error: {}\n", "❌".red(), e);

@@ -14,13 +14,13 @@ sequenceDiagram
     participant JS/Python Agent
     participant Engine (API)
     participant CEL Handler
-    participant Cluaize DB (FFI)
+    participant cluaiz DB (FFI)
 
     JS/Python Agent->>Engine (API): POST /v1/ingest/file (High Level)
     Engine (API)->>CEL Handler: Generates CEL Manifest (Mid Level)
     JS/Python Agent-->>CEL Handler: Or Agent sends POST /v1/cel/execute directly
-    CEL Handler->>Cluaize DB (FFI): Casts JSON to *const c_char (Low Level)
-    Cluaize DB (FFI)-->>CEL Handler: Returns Success (< 10µs)
+    CEL Handler->>cluaiz DB (FFI): Transpiles to Bincode & Passes ExtensionPayload (C-ABI)
+    cluaiz DB (FFI)-->>CEL Handler: Native Execution & cluaiz_free_payload (< 10µs)
 ```
 
 ---
@@ -42,14 +42,14 @@ The Engine handles the file I/O, utilizes its `embedding_dispatcher` to generate
 ---
 
 ## 3. Level 2: CEL (Mid-Level / For Agents & Power Users)
-AI Agents or Power Users bypass the specific API endpoints and speak directly to the Engine using the **Cluaize Execution Language (CEL)** via `/v1/cel/execute`. This provides infinite flexibility without needing hardcoded endpoints in the Engine.
+AI Agents or Power Users bypass the specific API endpoints and speak directly to the Engine using the **cluaiz Execution Language (CEL)** via `/v1/cel/execute`. This provides infinite flexibility without needing hardcoded endpoints in the Engine.
 
 **CEL Script (JSON Manifest):**
 ```json
 {
     "manifest": {
         "version": "1.0",
-        "target": "extension::cluaize-db",
+        "target": "extension::cluaiz-db",
         "action": "insert_vector",
         "payload": {
             "collection": "my_private_docs",
@@ -65,20 +65,25 @@ The Engine reads the `target`, realizes it is destined for an external extension
 ---
 
 ## 4. Level 3: FFI (Low-Level / Zero-Latency Execution)
-This is where the CEL script is executed natively. To avoid the overhead of HTTP/gRPC between the Engine and the Database, Cluaize uses a direct C-ABI (FFI) bridge.
+This is where the CEL script is executed natively. To avoid the overhead of HTTP/gRPC and JSON parsing, cluaiz uses a strict C-ABI (FFI) bridge paired with a **Bincode Transpiler**.
 
 **Under the Hood (Rust FFI Call):**
 ```rust
-// The Engine casts the CEL JSON string into a raw memory pointer
-let cel_pointer = cel_json_string.as_ptr() as *const c_char;
+// 1. The Engine transpiles the CEL AST into a strict binary format (Bincode)
+let binary_plan = Transpiler::to_binary_payload(ast)?;
 
-// Direct DLL invocation (Zero TCP/HTTP overhead)
+// 2. Wraps it in a C-ABI struct
+let payload = ExtensionPayload::new(PayloadType::Bincode, &binary_plan);
+
+// 3. Direct DLL invocation via libloading (Zero TCP/HTTP/JSON overhead)
 unsafe {
-    cluaize_db_extension::execute_cel_command(cel_pointer);
+    let result_ptr = cluaiz_db_extension::execute_cel(&payload);
+    // 4. Must free the pointer using the plugin's own allocator to prevent RAM leaks
+    cluaiz_db_extension::cluaiz_free_payload(result_ptr, len);
 }
 ```
 **Extension Responsibility:**
-The native `cluaize-db` extension decodes the pointer back to JSON, parses the collection name, applies a memory-map lock (LMDB), and writes the vector in less than 10 microseconds.
+The native `cluaiz-db` extension (compiled as `.dll` or `.so`) receives the binary payload, decodes the struct natively, applies a memory-map lock (LMDB), and writes the vector in less than 10 microseconds.
 
 ---
 
@@ -96,7 +101,7 @@ import requests
 cel_manifest = {
     "manifest": {
         "version": "1.0",
-        "target": "extension::cluaize-db",
+        "target": "extension::cluaiz-db",
         "action": "insert_vector",
         "payload": {
             "collection": "agent_long_term_memory",
@@ -121,7 +126,7 @@ A frontend application can directly query the vector database for RAG (Retrieval
 const celManifest = {
     manifest: {
         version: "1.0",
-        target: "extension::cluaize-db",
+        target: "extension::cluaiz-db",
         action: "vector_search",
         payload: {
             collection: "agent_long_term_memory",
@@ -142,4 +147,4 @@ console.log("Nearest semantic matches returned from FFI:", results);
 ```
 
 ### The SDK Philosophy
-By forcing all interactions through CEL, **the Cluaize Engine never needs to be updated** when a new database feature is added. If `cluaize-db` adds a new action like `delete_collection`, the Python and JS clients simply change the `"action": "delete_collection"` in their JSON payload. The Engine router remains completely unaware and just passes the FFI pointer.
+By forcing all interactions through CEL, **the cluaiz Engine never needs to be updated** when a new database feature is added. If `cluaiz-db` adds a new action like `delete_collection`, the Python and JS clients simply change the `"action": "delete_collection"` in their JSON payload. The Engine router remains completely unaware and just passes the FFI pointer.

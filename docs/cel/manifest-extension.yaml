@@ -1,0 +1,125 @@
+# =====================================================================
+# cluaiz EXTENSION MANIFEST (manifest-extension.yaml)
+#
+# PURPOSE: An "Extension" is Brain + Muscle.
+# It has a `SKILL.md` (detailed instructions for AI) AND a binary (muscle).
+# =====================================================================
+
+# [FIXED SCHEMA] Unique name. Example: "cluaiz-db-engine"
+name: "cluaiz-db-engine"
+
+# [FIXED SCHEMA] Version string. Example: "2.0.0"
+version: "2.0.0"
+
+# [FIXED SCHEMA] Short human-readable description.
+description: "Core database engine extension with CDQL syntax."
+
+# [FIXED SCHEMA] Name of the creator.
+author: "Cluaiz"
+
+# [FIXED SCHEMA] Must be exactly "extension".
+type: "extension"
+
+# ---------------------------------------------------------------------
+# NEW SCHEMA (inference-cel)
+# ---------------------------------------------------------------------
+discovery:
+  # [FIXED SCHEMA] AI triggers. When the AI thinks of this, the engine will load the extension.
+  semantic_triggers: ["database", "cdql", "store", "fetch"]
+  
+  # [FIXED SCHEMA] Exact CEL format. The AI will write code in this format.
+  cel_grammar: "use extension::cluaiz-db-engine -> execute(...)"
+  
+
+
+activation:
+  # [FIXED SCHEMA] Lazy load means it will only be loaded into RAM when CEL is executed.
+  lazy_load: true
+  
+  # [FIXED SCHEMA] The engine will load the binary into memory upon these commands.
+  trigger_on: 
+    - "on_command:use extension::cluaiz-db-engine"
+    - "on_cel_keyword:cdql"
+
+permissions:
+  # [OPTIONAL] RAM Limit. 256MB.
+  max_memory_mb: 256
+  
+  # [OPTIONAL] Execution timeout limit. 5000ms = 5 seconds.
+  max_cpu_time_ms: 5000
+  
+  # [FIXED SCHEMA] Security flags.
+  network_access: false
+  
+  # [FIXED SCHEMA] Special extension power: Inject huge DB results straight to LLM memory.
+  vram_kv_inject: true
+  
+  # [FIXED SCHEMA] Special power: Inject tools/skills dynamically mid-generation if AI is confused (JIT injection).
+  mid_layer_jit_injection: true
+  
+  # [FIXED SCHEMA] Access to user's hard drive.
+  file_system: "read_write"
+
+# ---------------------------------------------------------------------
+# SYSTEM BINDINGS (Dynamic Hardware & Booster State)
+# ---------------------------------------------------------------------
+# [FIXED SCHEMA] Engine will resolve these dot-notation targets at runtime 
+# and inject their current values into the extension's execution payload.
+# 
+# AVAILABLE SYSTEM_BOOSTER VARIABLES:
+# - "system_booster.mode_run" (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
+# - "system_booster.turbo_quant" (Auto, On, Off)
+# - "system_booster.flash_attention" (Auto, On, Off)
+# - "system_booster.speculative_decoding" (Auto, On, Off)
+# - "system_booster.auto_round" (Auto, On, Off)
+# - "system_booster.dflash" (Auto, On, Custom)
+# - "system_booster.kv_cache_quantization" (auto, kv16, kv8, kv4)
+# - "system_booster.context_shifting" (auto, off, minimal, standard, aggressive, extreme)
+# - "system_booster.force_vram_reclaim" (Auto, On, Off)
+# - "system_booster.n_gpu_layers" (-1, 0, or Integer)
+# - "system_booster.think_mode" (Auto, On, Off)
+# - "system_booster.response_length" ("auto", "short", "long", or Integer)
+# - "system_booster.enforce_json" (true, false)
+# - "system_booster.force_memory_lock" (Auto, On, Off)
+#
+# AVAILABLE PERMISSION VARIABLES:
+# - "permission.vector_models.text" (Model string or null)
+# - "permission.vector_models.vision" (Model string or null)
+# - "permission.vector_models.audio" (Model string or null)
+# - "permission.chat_models.text" (Model string or null)
+# - "permission.chat_models.vision" (Model string or null)
+# - "permission.chat_models.audio" (Model string or null)
+# - "permission.wasm_firewall" (auto/strict)
+# - "permission.vectorize_user_input" (true/false)
+# - "permission.vectorize_ai_response" (true/false)
+# - "permission.stream_telemetry" (true/false)
+# - "permission.lazy_load_model" (true/false)
+# - "permission.temporary_chat_ttl_hours" (integer)
+#
+# AVAILABLE SYSTEM_CONTROL VARIABLES (Hardware Truth):
+# - "system_control.identity.os_target" (Windows/Linux/Mac)
+# - "system_control.silicon_truth.cpu.logical_threads" (Integer)
+# - "system_control.silicon_truth.memory.available_capacity_gb" (Float)
+# - "system_control.silicon_truth.storage[0].free_gb" (Float)
+# - "system_control.silicon_truth.accelerators.gpus[0].vram_available_gb" (Float)
+# ---------------------------------------------------------------------
+system_bindings:
+  - "system_booster.think_mode"
+  - "permission.vectorize_user_input"
+  - "permission.vector_models.vision"
+
+execution:
+  # [FIXED SCHEMA] Extensions are often "NATIVE" (.dll / .so) since they need raw OS power.
+  envelope: "NATIVE"
+  
+
+  
+  # [FIXED SCHEMA] C-FFI entry point function name.
+  entry_point: "execute_cel"
+  
+  # [FIXED SCHEMA] Data transfer format between Engine and DLL.
+  payload_format: "MsgPack"
+
+
+
+

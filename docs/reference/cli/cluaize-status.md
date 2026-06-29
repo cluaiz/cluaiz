@@ -1,4 +1,4 @@
-# `cluaize status` Command Reference
+# `cluaiz status` Command Reference
 
 The `status` command evaluates active hardware variables and engine layers.
 
@@ -7,7 +7,7 @@ The `status` command evaluates active hardware variables and engine layers.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize status
+cluaiz status
 ```
 
 ---

@@ -1,6 +1,6 @@
 use std::cmp;
 
-/// Intelligent Semantic Chunker for Cluaize OS
+/// Intelligent Semantic Chunker for cluaiz OS
 /// Parses developer documentation and codebases contextually without relying on external AST or Regex bloat.
 pub struct SemanticChunker;
 

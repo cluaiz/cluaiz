@@ -1,64 +1,12 @@
 use anyhow::Result;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
-use crate::neural_foundry::registry::extension_manager::{AiInterface, EngineRules, StorageConfig};
-
-// ─── MCP-Specific Execution Config ───────────────────────────────────────────
-// MCP Servers are protocol bridges — they run as external processes
-// (e.g., `npx -y @modelcontextprotocol/server-github`)
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct McpExecution {
-    /// Command to run (e.g., "npx", "python", "node")
-    #[serde(default)]
-    pub command: String,
-    /// Arguments to pass (e.g., ["-y", "@modelcontextprotocol/server-github"])
-    #[serde(default)]
-    pub args: Vec<String>,
-    /// Environment variables to set for this process
-    #[serde(default)]
-    pub env: std::collections::HashMap<String, String>,
-}
-
-// ─── Full MCP Manifest ────────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct McpManifest {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    #[serde(default)]
-    pub author: String,
-
-    // ── Backwards-compat fields ──
-    #[serde(default)]
-    pub storage_domain: String,
-    #[serde(default)]
-    pub execution_command: String,
-    #[serde(default)]
-    pub execution_args: Vec<String>,
-
-    /// How to start this MCP server (new standard field)
-    #[serde(default)]
-    pub execution: McpExecution,
-
-    /// AI interface: keywords and CEL syntax for model routing
-    #[serde(default)]
-    pub ai_interface: Option<AiInterface>,
-
-    /// Engine rules (mostly for network/process permissions)
-    #[serde(default)]
-    pub engine_rules: EngineRules,
-
-    /// Storage configuration
-    #[serde(default)]
-    pub storage: StorageConfig,
-}
+use inference_cel::parser::metadata_parser::IntegrationMetadata;
 
 // ─── MCP Runtime Wrapper ──────────────────────────────────────────────────────
 
 pub struct McpServer {
-    pub manifest: McpManifest,
+    pub manifest: IntegrationMetadata,
     pub path: PathBuf,
 }
 
@@ -99,7 +47,7 @@ impl McpManager {
     }
 
     pub async fn remove_mcp(mcp_name: &str) -> anyhow::Result<()> {
-        let base_path = cluaize_shared::environment::EnvironmentManager::current().global_dir.join("mcp");
+        let base_path = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join("mcp");
         let mut found_path = None;
         if base_path.exists() {
             for entry in std::fs::read_dir(&base_path)? {
@@ -130,7 +78,7 @@ impl McpManager {
     }
 
     pub async fn clear_mcp_cache(mcp_name: Option<&str>) -> anyhow::Result<usize> {
-        let base_path = cluaize_shared::environment::EnvironmentManager::current().global_dir.join("mcp");
+        let base_path = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join("mcp");
         let mut wiped = 0;
         if base_path.exists() {
             for entry in std::fs::read_dir(&base_path)? {
@@ -149,12 +97,24 @@ impl McpManager {
         Ok(wiped)
     }
 
-    /// Load manifest.yaml (preferred) or manifest.json (fallback)
-    fn load_manifest(dir: &PathBuf) -> Option<McpManifest> {
-        let yaml_path = dir.join("manifest.yaml");
+    /// Load manifest-mcp.yaml (preferred) or manifest.yaml or manifest.json (fallback)
+    fn load_manifest(dir: &PathBuf) -> Option<IntegrationMetadata> {
+        let bin_path = dir.join("manifest-mcp.bin");
+        if bin_path.exists() {
+            if let Ok(bytes) = std::fs::read(&bin_path) {
+                if let Ok(m) = bincode::deserialize::<IntegrationMetadata>(&bytes) {
+                    return Some(m);
+                }
+            }
+        }
+
+        let yaml_path = dir.join("manifest-mcp.yaml");
         if yaml_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&yaml_path) {
-                if let Ok(m) = serde_yaml::from_str::<McpManifest>(&content) {
+                if let Ok(m) = serde_yaml::from_str::<IntegrationMetadata>(&content) {
+                    if let Ok(bin_data) = bincode::serialize(&m) {
+                        let _ = std::fs::write(&bin_path, bin_data);
+                    }
                     return Some(m);
                 }
             }
@@ -162,7 +122,7 @@ impl McpManager {
         let json_path = dir.join("manifest.json");
         if json_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&json_path) {
-                if let Ok(m) = serde_json::from_str::<McpManifest>(&content) {
+                if let Ok(m) = serde_json::from_str::<IntegrationMetadata>(&content) {
                     return Some(m);
                 }
             }
@@ -180,7 +140,7 @@ impl McpManager {
             let path = entry.path();
             if path.is_dir() {
                 if let Some(manifest) = Self::load_manifest(&path) {
-                    cluaize_shared::dev_info!("🌐 [McpManager] Found MCP Server: {} at {:?}", manifest.name, path);
+                    cluaiz_shared::dev_info!("🌐 [McpManager] Found MCP Server: {} at {:?}", manifest.name, path);
                     self.active_servers.push(McpServer { manifest, path });
                 }
             }
@@ -198,17 +158,8 @@ impl McpManager {
             let _ = std::fs::create_dir_all(&cache_dir);
         }
 
-        // Prefer new `execution` field, fallback to legacy fields
-        let cmd = if !server.manifest.execution.command.is_empty() {
-            server.manifest.execution.command.clone()
-        } else {
-            server.manifest.execution_command.clone()
-        };
-        let args = if !server.manifest.execution.args.is_empty() {
-            server.manifest.execution.args.clone()
-        } else {
-            server.manifest.execution_args.clone()
-        };
+        let cmd = server.manifest.execution.as_ref().and_then(|e| e.command.clone()).unwrap_or_else(|| "".to_string());
+        let args = server.manifest.execution.as_ref().and_then(|e| e.args.clone()).unwrap_or_else(|| vec![]);
 
         tracing::info!("🚀 [McpManager] Booting MCP Server: {} via {} {:?}", server_name, cmd, args);
         // TODO: Spawn background stdio/SSE process via tokio::process

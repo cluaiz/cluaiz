@@ -3,7 +3,7 @@ use std::time::Duration;
 use std::thread;
 use serde::{Serialize, Deserialize};
 
-/// 🧠 Cluaize Sync Identity
+/// 🧠 cluaiz Sync Identity
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeviceIdentity {
     pub device_id: String,
@@ -12,27 +12,27 @@ pub struct DeviceIdentity {
     pub last_seen: u64,
 }
 
-/// 🛰️ Cluaize P2P Manager
+/// 🛰️ cluaiz P2P Manager
 /// Handles device discovery and brain fragment synchronization.
-pub struct CluaizeSync {
+pub struct cluaizSync {
     discovery_port: u16,
 }
 
-impl Default for CluaizeSync {
+impl Default for cluaizSync {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CluaizeSync {
+impl cluaizSync {
     pub fn new() -> Self {
         Self {
-            discovery_port: 7711, // Industrial Cluaize Port
+            discovery_port: 7711, // Industrial cluaiz Port
         }
     }
 
     /// 📡 Start Local Discovery (mDNS Alternative)
-    /// Broadcasts presence and listens for other Cluaize devices.
+    /// Broadcasts presence and listens for other cluaiz devices.
     pub fn start_discovery(&self, identity: DeviceIdentity) -> anyhow::Result<()> {
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         socket.set_broadcast(true)?;
@@ -60,7 +60,7 @@ impl CluaizeSync {
                 if let Ok((size, addr)) = socket.recv_from(&mut buf) {
                     let msg = String::from_utf8_lossy(&buf[..size]);
                     if let Ok(peer) = serde_json::from_str::<DeviceIdentity>(&msg) {
-                        cluaize_shared::dev_info!("🛰️ [P2P] Peer Found: {} at {} ({})", peer.machine_name, addr, peer.device_id);
+                        cluaiz_shared::dev_info!("🛰️ [P2P] Peer Found: {} at {} ({})", peer.machine_name, addr, peer.device_id);
                         // Future: Add to peer registry and start handshake
                     }
                 }

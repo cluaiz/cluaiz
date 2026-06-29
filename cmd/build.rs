@@ -2,10 +2,10 @@ fn main() {
     #[cfg(windows)]
     {
         let mut res = winres::WindowsResource::new();
-        res.set("InternalName", "cluaize.exe");
-        res.set("FileDescription", "Cluaize");
-        res.set("ProductName", "Cluaize");
-        res.set("OriginalFilename", "cluaize.exe");
+        res.set("InternalName", "cluaiz.exe");
+        res.set("FileDescription", "cluaiz");
+        res.set("ProductName", "cluaiz");
+        res.set("OriginalFilename", "cluaiz.exe");
         res.set("LegalCopyright", "Copyright © 2026 Cluaiz Technologies");
         res.set("CompanyName", "Cluaiz Technologies");
         // Alpha Version Alignment Lock
@@ -26,7 +26,7 @@ fn main() {
 "#,
         );
 
-        // 🚀 Set the Cluaize Taskbar & Executable Icon
+        // 🚀 Set the cluaiz Taskbar & Executable Icon
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let icon_path = std::path::Path::new(&manifest_dir).parent().unwrap().join("assets").join("logo.ico");
         res.set_icon(icon_path.to_str().unwrap());

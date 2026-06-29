@@ -1,5 +1,5 @@
-// cluaize-engine: Core Foundry - Registry
-// Manages the lifecycle of Cluaize skills, extensions, plugins, and MCP servers.
+// cluaiz-engine: Core Foundry - Registry
+// Manages the lifecycle of cluaiz skills, extensions, plugins, and MCP servers.
 
 pub mod scanner;
 pub mod compiler_daemon;
@@ -38,10 +38,14 @@ pub struct SkillManifest {
     #[serde(default)]
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub title: String,
     pub version: String,
     #[serde(default)]
     pub author: String,
     pub description: String,
+    #[serde(default)]
+    pub keywords: Vec<String>,
     pub triggers: Triggers,
     pub permissions: Permissions,
     #[serde(default)]

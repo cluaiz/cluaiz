@@ -1,4 +1,4 @@
-# `cluaize booster` Command Reference
+# `cluaiz booster` Command Reference
 
 The `booster` command configures the hardware acceleration profile inside `system_booster.json`.
 
@@ -7,7 +7,7 @@ The `booster` command configures the hardware acceleration profile inside `syste
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize booster [options]
+cluaiz booster [options]
 ```
 
 ### Options:
@@ -18,6 +18,6 @@ cluaize booster [options]
 
 ### Examples:
 ```bash
-cluaize booster --mode edge
-cluaize booster --mode max_boost --kv-quant kv8
+cluaiz booster --mode edge
+cluaiz booster --mode max_boost --kv-quant kv8
 ```

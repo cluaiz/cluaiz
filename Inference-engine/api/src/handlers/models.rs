@@ -67,11 +67,11 @@ pub async fn tags(State(_state): State<Arc<AppState>>) -> Json<Value> {
 }
 
 // ─── GET /v1/models/installed ────────────────────────────────────────
-// Directly scans ~/.cluaize/models on disk — no registry, no inference.
+// Directly scans ~/.cluaiz/models on disk — no registry, no inference.
 pub async fn list_installed_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let models_root = cluaize_shared::environment::EnvironmentManager::current()
+    let models_root = cluaiz_shared::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
     let mut installed = Vec::new();
 
     let categories = ["chat", "embedding", "vision", "audio", "code"];
@@ -135,10 +135,10 @@ pub async fn pull_model(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<PullPayload>,
 ) -> Json<Value> {
-    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current()
+    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
-    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaize_root);
+        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root);
     
     let model_id = payload.model_id.clone();
     // Background pull
@@ -154,7 +154,7 @@ pub async fn pull_model(
 
 // ─── POST /v1/hardware/calibrate ──────────────────────────────────────
 pub async fn calibrate(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let _ = cluaize_shared::hardware::governor::HardwareGovernor::auto_calibrate();
+    let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
     Json(json!({
         "status": "success",
         "message": "Real-time RDTSC hardware clocking & SIMD profiling completed."
@@ -166,9 +166,9 @@ pub async fn rm_model(
     State(_state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
 ) -> Json<Value> {
-    let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+    let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
     let model_file = models_dir.join(format!("{}.gguf", model_id));
     if model_file.exists() {
         let _ = std::fs::remove_file(&model_file);
@@ -198,8 +198,8 @@ pub async fn load_model(
         if let Some(local_path) = manifest.local_path {
             let model_file = std::path::Path::new(&local_path).join(&manifest.huggingface_filename);
             if model_file.exists() {
-                let dna = cluaize_shared::StructuralDNA::default();
-                let context = cluaize_shared::CluaizeContext::boot(dna, cluaize_shared::TemplateManager::default());
+                let dna = cluaiz_shared::StructuralDNA::default();
+                let context = cluaiz_shared::cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
                 
                 // We don't await the long load here, just signal success for now or wait
                 // In a production setup, this would spawn or use a channel.

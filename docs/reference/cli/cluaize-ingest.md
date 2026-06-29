@@ -1,4 +1,4 @@
-# `cluaize ingest` Command Reference
+# `cluaiz ingest` Command Reference
 
 The `ingest` command imports documents (PDF, TXT, MD) into the local vector space.
 
@@ -7,11 +7,11 @@ The `ingest` command imports documents (PDF, TXT, MD) into the local vector spac
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize ingest <file-path>
+cluaiz ingest <file-path>
 ```
 
 ### Examples:
 ```bash
-cluaize ingest ./document.pdf
-cluaize ingest "C:\Users\Aryan\Documents\notes.md"
+cluaiz ingest ./document.pdf
+cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 ```

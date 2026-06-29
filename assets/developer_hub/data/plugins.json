@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/plugins/list",
       "desc": "Returns a list of all active native plugins.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/plugins/list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/list.md",
       "params": [],
       "response": "[\n  { \"id\": \"plg_99a\", \"name\": \"Web Scraper\", \"status\": \"active\" }\n]"
     },
@@ -13,7 +13,7 @@
       "method": "POST",
       "path": "/v1/plugins/install",
       "desc": "Installs a native plugin.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/plugins/install.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/install.md",
       "params": [
         { "name": "plugin_uri", "type": "string", "req": true, "desc": "URI of the plugin.", "default": "https://registry.cluaiz.com/plugins/web-scraper-v1.zip" }
       ],
@@ -23,7 +23,7 @@
       "method": "DELETE",
       "path": "/v1/plugins/remove",
       "desc": "Removes a native plugin.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/plugins/remove.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/remove.md",
       "params": [
         { "name": "plugin_id", "type": "string", "req": true, "desc": "ID of the plugin to remove.", "default": "plg_99a" }
       ],
@@ -33,7 +33,7 @@
       "method": "GET",
       "path": "/v1/plugins/cache",
       "desc": "Lists the active caches for plugins.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/plugins/cache_list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/cache_list.md",
       "params": [],
       "response": "[\n  { \"plugin\": \"web-scraper\", \"cache_files\": [\"cache.bin\"] }\n]"
     },
@@ -41,7 +41,7 @@
       "method": "DELETE",
       "path": "/v1/plugins/cache",
       "desc": "Clears plugin caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/plugins/cache_clear.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/cache_clear.md",
       "params": [
         { "name": "plugin_id", "type": "string", "req": false, "desc": "Target specific plugin cache.", "default": "web-scraper" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

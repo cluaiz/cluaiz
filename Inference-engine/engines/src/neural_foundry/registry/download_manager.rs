@@ -22,11 +22,11 @@ impl DownloadManager {
     /// Resolves the actual download URL by reading package.json and the component's registry.json
     pub async fn resolve_hub_url(component_type: &str, component_name: &str) -> Result<String> {
         let client = reqwest::Client::builder()
-            .user_agent("Cluaize-Neural-Engine/0.1.0")
+            .user_agent("cluaiz-Neural-Engine/0.1.0")
             .build()?;
         
         // 1. Read local package.json from the production config directory
-        let env_manager = cluaize_shared::environment::EnvironmentManager::current();
+        let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
         let package_json_path = env_manager.config_dir().join("package.json");
         let pkg_content = std::fs::read_to_string(&package_json_path)
             .map_err(|e| anyhow!("Failed to read local package.json at {:?}: {}", package_json_path, e))?;
@@ -49,9 +49,9 @@ impl DownloadManager {
         Ok(download_url.to_string())
     }
 
-    /// Downloads and unpacks a component to ~/.cluaize/<storage_domain>/<component_name>/
+    /// Downloads and unpacks a component to ~/.cluaiz/<storage_domain>/<component_name>/
     pub async fn download_and_extract(url: &str, storage_domain: &str, component_name: &str) -> Result<PathBuf> {
-        let base_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir.clone();
+        let base_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir.clone();
         let target_dir = base_dir.join(storage_domain).join(component_name);
 
         if !target_dir.exists() {
@@ -59,7 +59,7 @@ impl DownloadManager {
         }
 
         let client = reqwest::Client::builder()
-            .user_agent("Cluaize-Neural-Engine/0.1.0")
+            .user_agent("cluaiz-Neural-Engine/0.1.0")
             .build()?;
 
         tracing::info!("⬇️ [DownloadManager] Fetching {} from {}", component_name, url);

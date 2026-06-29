@@ -2,13 +2,13 @@ use color_eyre::Result;
 use colored::Colorize;
 use engines::models::registry::CoreRoster;
 
-/// `cluaize run <model-id>` â€” pulls the model and initiates a native chat session.
+/// `cluaiz run <model-id>` â€” pulls the model and initiates a native chat session.
 pub async fn execute(model_id: &str) -> Result<()> {
     // ðŸŽ¨ Display the Sovereign Logo
     let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
     println!("{}", logo.cyan());
 
-    println!("\n  {} [Cluaize] Initializing Kernel for '{}'...", "âš™ï¸".yellow(), model_id.bold());
+    println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "âš™ï¸".yellow(), model_id.bold());
 
     // 1. Resolve Metadata
     let mut manifest: Option<engines::models::registry::ModelManifest> = None;
@@ -38,7 +38,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
         let roster = engines::models::registry::CoreRoster::load_roster();
         if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
             println!("\n  {} Warning: This exact variant is already downloaded locally under ID: '{}'", "âš ï¸".yellow(), existing.id.cyan());
-            println!("     If you wish to re-download, please delete the old one first using: cluaize rm {}\n", existing.id.red());
+            println!("     If you wish to re-download, please delete the old one first using: cluaiz rm {}\n", existing.id.red());
             return Ok(());
         }
 
@@ -67,15 +67,15 @@ pub async fn execute(model_id: &str) -> Result<()> {
     let cached_path = engines::models::fetch::ModelDownloader::get_cached_path(&manifest.category, &manifest.id, &manifest.huggingface_filename);
     if cached_path.is_some() {
         println!("\n  {} Warning: Model '{}' is already downloaded locally.", "âš ï¸".yellow(), manifest.id.cyan());
-        println!("     If you wish to re-download, please delete the old one first using: cluaize rm {}\n", manifest.id.red());
+        println!("     If you wish to re-download, please delete the old one first using: cluaiz rm {}\n", manifest.id.red());
         return Ok(());
     }
 
     // 2. Pre-flight Silicon Audit (Universal for both HF and Registry)
-    let cluaize_root = cluaize_shared::environment::EnvironmentManager::current()
+    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
-    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaize_root.clone());
+        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
     
     println!("  {} Fetching Deep Metadata (GGUF Binary Probe)...", "ðŸ“¡".cyan());
     
@@ -129,9 +129,9 @@ pub async fn execute(model_id: &str) -> Result<()> {
     println!("\n  {} Conducting Pre-flight Silicon Audit...", "âš–ï¸".cyan());
     
     // Load System Control to get real hardware stats
-    let config_path = cluaize_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
+    let config_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
     let system_control = if let Ok(content) = std::fs::read_to_string(config_path) {
-        serde_json::from_str::<cluaize_shared::hardware::schema::profiles::SystemControl>(&content).ok()
+        serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok()
     } else {
         None
     };
@@ -203,15 +203,15 @@ pub async fn execute(model_id: &str) -> Result<()> {
 
     // 3. Hardware Orchestration (The Neural Bridge)
     let safe_id = manifest.id.replace(':', "-");
-    let model_path = cluaize_root.join(&manifest.category).join(&safe_id);
+    let model_path = cluaiz_root.join(&manifest.category).join(&safe_id);
     let model_file = model_path.join(&manifest.huggingface_filename);
     
     if !model_file.exists() {
         return Err(color_eyre::eyre::eyre!("Model file not found at: {:?}", model_file));
     }
 
-    let dna = cluaize_shared::StructuralDNA::default();
-    let context = cluaize_shared::CluaizeContext::boot(dna, cluaize_shared::TemplateManager::default());
+    let dna = cluaiz_shared::StructuralDNA::default();
+    let context = cluaiz_shared::cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
 
     let engine = engines::runtime::execution::hub::HardwareOrchestrator::instantiate(
         model_file.to_str().unwrap(),
@@ -229,7 +229,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
     // Pre-load the engine into the state
     {
         let mut lock = state.Core_engine.router.lock().await;
-        lock.active_backend = engines::api::router::Backend::Cluaize(engine);
+        lock.active_backend = engines::api::router::Backend::cluaiz(engine);
     }
     state._active_model_id = Some(manifest.id.clone());
 

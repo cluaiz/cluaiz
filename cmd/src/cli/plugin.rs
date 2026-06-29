@@ -6,7 +6,7 @@ use engines::neural_foundry::registry::registry_index::MasterRegistry;
 pub async fn execute(command: PluginCommand) -> Result<()> {
     match command {
         PluginCommand::Install { plugin_name } => {
-            println!("  {} [Cluaize Plugins] Installing plugin: {}", "🔌".cyan(), plugin_name.bold());
+            println!("  {} [cluaiz Plugins] Installing plugin: {}", "🔌".cyan(), plugin_name.bold());
             match engines::neural_foundry::registry::plugin_manager::PluginManager::install_plugin(&plugin_name).await {
                 Ok(_) => println!("  {} Plugin '{}' installed successfully.", "✅".green(), plugin_name.bold()),
                 Err(e) => println!("  {} Failed to install plugin: {}", "❌".red(), e),
@@ -14,7 +14,7 @@ pub async fn execute(command: PluginCommand) -> Result<()> {
         }
 
         PluginCommand::List => {
-            println!("\n  {} [Cluaize Plugins] Registered Plugins:", "🔌".cyan());
+            println!("\n  {} [cluaiz Plugins] Registered Plugins:", "🔌".cyan());
             match MasterRegistry::load() {
                 Ok(registry) => {
                     if registry.plugins.is_empty() {
@@ -32,7 +32,7 @@ pub async fn execute(command: PluginCommand) -> Result<()> {
         }
 
         PluginCommand::Remove { plugin_name } => {
-            println!("  {} [Cluaize Plugins] Removing plugin: {}", "🔌".cyan(), plugin_name.bold());
+            println!("  {} [cluaiz Plugins] Removing plugin: {}", "🔌".cyan(), plugin_name.bold());
             match engines::neural_foundry::registry::plugin_manager::PluginManager::remove_plugin(&plugin_name).await {
                 Ok(_) => println!("  {} Plugin '{}' removed.", "✅".green(), plugin_name.bold()),
                 Err(e) => println!("  {} Failed to remove plugin: {}", "⚠️".yellow(), e),
@@ -42,11 +42,11 @@ pub async fn execute(command: PluginCommand) -> Result<()> {
         PluginCommand::Cache { command } => {
             match command {
                 crate::PluginCacheCommand::Ls => {
-                    println!("\n  {} [Cluaize Plugins] Plugin Cache Status:", "🔌".cyan());
+                    println!("\n  {} [cluaiz Plugins] Plugin Cache Status:", "🔌".cyan());
                     match MasterRegistry::load() {
                         Ok(registry) => {
                             for (name, entry) in &registry.plugins {
-                                let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
+                                let global_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir;
                                 let cache_path = global_dir.join(&entry.domain).join(".cache");
                                 let cache_exists = if cache_path.exists() { "📦 cached".yellow() } else { "○ empty".dimmed() };
                                 println!("    {} {} — {}", "🔌".cyan(), name.bold(), cache_exists);
@@ -56,7 +56,7 @@ pub async fn execute(command: PluginCommand) -> Result<()> {
                     }
                 }
                 crate::PluginCacheCommand::Clear { plugin_name, all } => {
-                    println!("  {} [Cluaize Plugins] Clearing plugin cache...", "🔌".cyan());
+                    println!("  {} [cluaiz Plugins] Clearing plugin cache...", "🔌".cyan());
                     let target = if all { None } else { plugin_name.as_deref() };
                     match engines::neural_foundry::registry::plugin_manager::PluginManager::clear_plugin_cache(target).await {
                         Ok(wiped) => println!("  {} Successfully wiped {} plugin cache(s).", "✅".green(), wiped),
@@ -67,7 +67,7 @@ pub async fn execute(command: PluginCommand) -> Result<()> {
         }
 
         PluginCommand::Link { plugin_name, skill_name } => {
-            println!("  {} [Cluaize Plugins] Linking plugin '{}' to skill '{}'", "🔌".cyan(), plugin_name.bold(), skill_name.bold());
+            println!("  {} [cluaiz Plugins] Linking plugin '{}' to skill '{}'", "🔌".cyan(), plugin_name.bold(), skill_name.bold());
             // TODO: Update skill's manifest to declare this plugin dependency
         }
     }

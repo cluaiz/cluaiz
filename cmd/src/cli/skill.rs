@@ -19,7 +19,7 @@ pub async fn execute(command: SkillCommand) -> Result<()> {
             handle_cache_command(command).await?;
         }
         SkillCommand::Remove { skill_name } => {
-            println!("  {} [Cluaize Skills] Removing skill: {}", "🧠".cyan(), skill_name.bold());
+            println!("  {} [cluaiz Skills] Removing skill: {}", "🧠".cyan(), skill_name.bold());
             // TODO: Delegate to SkillRegistry
         }
     }
@@ -29,14 +29,14 @@ pub async fn execute(command: SkillCommand) -> Result<()> {
 async fn handle_cache_command(command: crate::SkillCacheCommand) -> Result<()> {
     match command {
         crate::SkillCacheCommand::Ls => {
-            println!("\n  {} [Cluaize Dual-Cache] Scanning Global Skill Memory...", "ðŸ§ ".cyan());
+            println!("\n  {} [cluaiz Dual-Cache] Scanning Global Skill Memory...", "ðŸ§ ".cyan());
             match engines::neural_foundry::registry::SkillRegistry::list_skills_cache() {
                 Ok(report) => println!("{}", report),
                 Err(e) => println!("Error listing cache: {}", e),
             }
         }
         crate::SkillCacheCommand::Clear { model_id, all, force } => {
-            println!("\n  {} [Cluaize Dual-Cache] Initiating Global Wipe...", "ðŸ§¹".yellow());
+            println!("\n  {} [cluaiz Dual-Cache] Initiating Global Wipe...", "ðŸ§¹".yellow());
             match engines::neural_foundry::registry::SkillRegistry::clear_skills_cache(model_id, all, force) {
                 Ok(wiped) => println!("\n    Successfully wiped {} caches.\n", wiped),
                 Err(e) => println!("Error clearing cache: {}", e),
@@ -54,11 +54,11 @@ async fn install_skill(skill_name: &str) -> Result<()> {
 }
 
 async fn list_skills() -> Result<()> {
-    println!("\n  {} [Cluaize] Installed Sovereign Skills:", "ðŸ“¦".cyan());
+    println!("\n  {} [cluaiz] Installed Sovereign Skills:", "ðŸ“¦".cyan());
     match engines::neural_foundry::registry::SkillRegistry::list_installed_skills() {
         Ok(skills) => {
             if skills.is_empty() {
-                println!("    No skills installed yet. Use `cluaize skill install <name>`.");
+                println!("    No skills installed yet. Use `cluaiz skill install <name>`.");
             } else {
                 for name in skills {
                     println!("    {} {}", "ðŸ”¹".blue(), name.bold());

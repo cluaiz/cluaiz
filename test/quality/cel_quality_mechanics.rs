@@ -1,12 +1,12 @@
-// Copyright (c) Cluaize Technologies.
+// Copyright (c) cluaiz Technologies.
 //
-//! Cluaize Expression Language (CEL) — End-to-End Quality & Benchmark Tests
+//! cluaiz Expression Language (CEL) — End-to-End Quality & Benchmark Tests
 //!
 //! Tests the complete CEL pipeline:
 //!   CEL string → parse() → build_plan() → execution/matching
 //!
 //! Measures parsing latency, execution times, and prints detailed telemetry
-//! to align with CLUAIZE ENGINEERING REALITY DOCTRINE (CERD) Law 10.
+//! to align with cluaiz ENGINEERING REALITY DOCTRINE (CERD) Law 10.
 //!
 //! Run with:
 //!   cargo test --package inference-cel --test cel_quality_mechanics -- --nocapture

@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use cluaize_shared::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
+use cluaiz_shared::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
 use system_booster::BoosterControl;
 use std::path::PathBuf;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
@@ -7,7 +7,7 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tokio::sync::mpsc;
 
 fn resolve_active_model_path() -> Option<PathBuf> {
-    let hub_path = cluaize_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
+    let hub_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
     let perm_path = hub_path.join("engine").join("config").join("Permission.json");
     let perm_str = std::fs::read_to_string(perm_path).ok()?;
     let perm_json: serde_json::Value = serde_json::from_str(&perm_str).ok()?;
@@ -75,7 +75,7 @@ impl NeuralDispatcher {
     /// Used by both the FFI Named Pipes (Native Desktop) and HTTP SSE (External).
     pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool) -> EngineResponse {
         // 🚀 Real-time Silicon Probe
-        let hardware = cluaize_shared::hardware::HardwareOrchestrator::probe().silicon_truth;
+        let hardware = cluaiz_shared::hardware::HardwareOrchestrator::probe().silicon_truth;
         let backend = GlobalFeatureRegistry::select_runtime(&self.current_signature, &hardware);
         
         tracing::info!("🚦 [Master Router] Routing prompt to backend: {:?}", backend);
@@ -122,7 +122,7 @@ impl NeuralDispatcher {
                         // Free previous engine if it existed
                         if let Some((_, safe_ptr, ref lib)) = engine_lock.take() {
                             unsafe {
-                                if let Ok(free_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaize_kernel_free") {
+                                if let Ok(free_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
                                     tracing::info!("🗑️ [Dispatcher] Freeing previous model instance");
                                     free_fn(safe_ptr.0);
                                 }
@@ -137,14 +137,14 @@ impl NeuralDispatcher {
                             _ => "so",
                         };
                         let prefix = if target_os == "windows" { "" } else { "lib" };
-                        let binary_name = format!("{}cluaize-llama.{}", prefix, ext);
+                        let binary_name = format!("{}cluaiz-llama.{}", prefix, ext);
                         
-                        let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+                        let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
                             .join(&binary_name);
                             
                         // 🛡️ Strict FFI Validation Boundary
-                        let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-                            .join("cluaize-llama.ready");
+                        let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+                            .join("cluaiz-llama.ready");
                             
                         if !binary_path.exists() || !marker_path.exists() {
                             tracing::error!("❌ [Dispatcher] FFI Validation Failed: Kernel binary or manifest marker missing at {:?}", binary_path);
@@ -169,7 +169,7 @@ impl NeuralDispatcher {
                             if let Some(library) = lib {
                                 let library_arc = std::sync::Arc::new(library);
                                 
-                                if let Ok(instantiate_fn) = library_arc.get::<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void>(b"cluaize_kernel_instantiate") {
+                                if let Ok(instantiate_fn) = library_arc.get::<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void>(b"cluaiz_kernel_instantiate") {
                                     let c_path = std::ffi::CString::new(model_path.to_string_lossy().to_string()).unwrap();
                                     tracing::info!("🔗 [Dispatcher] Instantiating kernel with model path: {:?}", model_path);
                                     let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
@@ -190,7 +190,7 @@ impl NeuralDispatcher {
                     let mut generated = false;
                     if let Some((_, ref safe_ptr, ref lib)) = *engine_lock {
                         unsafe {
-                            if let Ok(gen_stream_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void)>(b"cluaize_kernel_generate_stream") {
+                            if let Ok(gen_stream_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void)>(b"cluaiz_kernel_generate_stream") {
                                 let c_prompt = std::ffi::CString::new(prompt_clone).unwrap();
 
                                 // 🛑 CANCELLATION-AWARE CALLBACK
@@ -321,15 +321,15 @@ unsafe impl Sync for EmbeddingDispatcher {}
             _ => "so",
         };
         let prefix = if target_os == "windows" { "" } else { "lib" };
-        let binary_name = format!("{}cluaize-onnx.{}", prefix, ext);
+        let binary_name = format!("{}cluaiz-onnx.{}", prefix, ext);
         
         // Use persistence or fallback to target/debug
-        let binary_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
+        let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
             .join(&binary_name);
             
         // 🛡️ Strict FFI Validation Boundary
-        let marker_path = cluaize_shared::HardwareGovernor::resolve_interface_path()
-            .join("cluaize-onnx.ready");
+        let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+            .join("cluaiz-onnx.ready");
             
         if !binary_path.exists() || !marker_path.exists() {
             return Err(anyhow::anyhow!("FFI Validation Failed: ONNX kernel binary or manifest missing at {:?}", binary_path));
@@ -341,7 +341,7 @@ unsafe impl Sync for EmbeddingDispatcher {}
                 // LOAD_WITH_ALTERED_SEARCH_PATH (0x00000008) forces Windows to search for dependent DLLs
                 // (like onnxruntime_providers_cuda.dll) in the same directory as the kernel DLL being loaded.
                 // GAP A FIX: Inject engine/drivers/ into PATH so it can find onnxruntime.dll
-                let drivers_dir = cluaize_shared::HardwareGovernor::resolve_interface_path().join("drivers");
+                let drivers_dir = cluaiz_shared::HardwareGovernor::resolve_interface_path().join("drivers");
                 if let Ok(path) = std::env::var("PATH") {
                     std::env::set_var("PATH", format!("{};{}", drivers_dir.display(), path));
                 }
@@ -357,13 +357,13 @@ unsafe impl Sync for EmbeddingDispatcher {}
                 .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
 
             
-            let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaize_kernel_init")
-                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaize_kernel_init' missing"))?;
+            let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaiz_kernel_init")
+                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaiz_kernel_init' missing"))?;
             init();
 
             let instantiate_fn: libloading::Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void> = 
-                lib.get(b"cluaize_kernel_instantiate")
-                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaize_kernel_instantiate' missing"))?;
+                lib.get(b"cluaiz_kernel_instantiate")
+                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaiz_kernel_instantiate' missing"))?;
             
             let c_path = std::ffi::CString::new("default")?;
             let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
@@ -396,7 +396,7 @@ impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDisp
     fn gen_embedding(&self, text: &str) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
         unsafe {
             let gen_emb_fn: libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, *mut f32, usize, *mut usize) -> i32> = 
-                match self.active_lib.get(b"cluaize_kernel_generate_embedding") {
+                match self.active_lib.get(b"cluaiz_kernel_generate_embedding") {
                     Ok(f) => f,
                     Err(_) => return Err(neural_core::interfaces::router_contract::EngineError::EmbeddingFailed("Symbol missing".to_string()))
                 };
@@ -432,7 +432,7 @@ impl Drop for EmbeddingDispatcher {
     fn drop(&mut self) {
         if !self.engine_ptr.is_null() {
             unsafe {
-                if let Ok(free_fn) = self.active_lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaize_kernel_free") {
+                if let Ok(free_fn) = self.active_lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
                     free_fn(self.engine_ptr);
                 }
             }

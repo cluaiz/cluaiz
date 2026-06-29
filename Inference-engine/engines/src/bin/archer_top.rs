@@ -1,20 +1,20 @@
-//! cluaize-top: The Cluaize Neural Pulse Monitor (CLI).
-//! High-speed, terminal-native monitoring for the Cluaize Engine.
+//! cluaiz-top: The cluaiz Neural Pulse Monitor (CLI).
+//! High-speed, terminal-native monitoring for the cluaiz Engine.
 
-use cluaize_shared::hardware::telemetry;
+use cluaiz_shared::hardware::telemetry;
 use std::io::{stdout, Write};
 use std::thread;
 use std::time::Duration;
 
 fn main() -> anyhow::Result<()> {
-    // 🏛️ Initialize the Cluaize Governor (Triggers Calibration if JSON is missing)
-    let _governor = cluaize_shared::HardwareGovernor::start();
+    // 🏛️ Initialize the cluaiz Governor (Triggers Calibration if JSON is missing)
+    let _governor = cluaiz_shared::HardwareGovernor::start();
     
     let sensor = telemetry::get_pulse();
     let mut stdout = stdout();
 
     println!("\x1B[2J\x1B[H"); // Clear screen
-    println!("🧿 CLUAIZE Neural PULSE MONITOR V1.0 - [STEALTH MODE ACTIVE]");
+    println!("🧿 cluaiz Neural PULSE MONITOR V1.0 - [STEALTH MODE ACTIVE]");
     println!("══════════════════════════════════════════════════════════");
 
     loop {
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
 
         // 2. Render UI (ANSI Express)
         print!("\x1B[H"); // Move to top
-        println!("🧿 CLUAIZE Neural PULSE MONITOR V1.0 - Hardware Pulse Target: LOCAL");
+        println!("🧿 cluaiz Neural PULSE MONITOR V1.0 - Hardware Pulse Target: LOCAL");
         println!("══════════════════════════════════════════════════════════");
 
         // CPU Grid (Per-Core Audit)

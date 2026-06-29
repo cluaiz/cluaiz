@@ -1,6 +1,6 @@
 # Release Workflows
 
-The Cluaize release pipeline enforces zero-crash standards, compiling and testing binary compatibility for every target platform on every update.
+The cluaiz release pipeline enforces zero-crash standards, compiling and testing binary compatibility for every target platform on every update.
 
 ---
 
@@ -18,7 +18,7 @@ The build process is managed in GitHub Actions, split into four isolated workflo
 *   **Registry Sync:** On a successful build, the runner automatically updates version identifiers inside `registry.json` placeholders to enable automated OTA (over-the-air) driver updates.
 *   **Releases:** Dynamically uploads accelerator dynamic libraries to official `driver-v*` release tags.
 
-### 3. Application Builds (`cluaize-cli.yml` & `cluaize-engine.yml`)
+### 3. Application Builds (`cluaiz-cli.yml` & `cluaiz-engine.yml`)
 *   **Action:** Compiles the final user CLI TUI and Rust engine.
 *   **Testing Suite:** Runs complete unit test suites and validates Axum endpoint integrity before release approval.
 

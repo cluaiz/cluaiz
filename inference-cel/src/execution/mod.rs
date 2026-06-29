@@ -12,18 +12,18 @@ use crate::parser::metadata_parser::EngineRules;
 
 /// The unified executor enum for all plugin sandbox types.
 ///
-/// Previously named `UniversalExecutor` — renamed to comply with the Cluaize banned word policy
+/// Previously named `UniversalExecutor` — renamed to comply with the cluaiz banned word policy
 /// (`Universal` is banned; see `.agent/❌bannword.md`).
 ///
-/// The variant is chosen by `CluaizeExtensionRegistry` based on the plugin manifest's
+/// The variant is chosen by `CluaizxtensionRegistry` based on the plugin manifest's
 /// `engine_rules.sandbox_type` field — NOT by the plugin's file extension.
-pub enum CluaizeExecutor {
+pub enum Cluaizxecutor {
     Wasm(wasm_sandbox::WasmExecutor),
     Native(native_sandbox::NativeExecutor),
     Rhai(legacy_rhai::LegacyRhaiExecutor),
 }
 
-impl CluaizeExecutor {
+impl Cluaizxecutor {
     /// Executes an `ExecutionPlan` using constraints from the plugin's `EngineRules`.
     ///
     /// `rules` is always sourced from `integration.metadata.engine_rules` — never hardcoded

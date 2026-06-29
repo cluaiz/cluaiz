@@ -1,6 +1,6 @@
 {
   "registry_version": "{VERSION}",
-  "registry_name": "Cluaize Sovereign Silicon Registry",
+  "registry_name": "cluaiz Sovereign Silicon Registry",
   "version": "v1.0.0",
   "generated_at": "{GEN_TIME}",
   "distribution_channel": "stable",
@@ -10,7 +10,7 @@
     "verify_signature": true,
     "max_parallel_downloads": 3,
     "fallback_order": ["native", "vulkan", "avx512", "avx2", "neon", "opencl", "blas", "cpu"],
-    "artifact_base_url": "https://github.com/cluaiz/cluaize/releases/download"
+    "artifact_base_url": "https://github.com/cluaiz/cluaiz/releases/download"
   },
   "capabilities_matrix": {
     "flash_attention": "bool",
@@ -50,7 +50,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "cuda_version": ">=13.0", "minimum_vram_gb": 8 },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true, "mamba": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-cuda-v13.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-cuda-v13.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-cuda-v13.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-cuda-v13.dll" }]
     },
     {
       "id": "nvidia-cuda-v12-windows",
@@ -59,7 +59,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "cuda_version": ">=12.0, <13.0", "minimum_vram_gb": 4 },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true, "mamba": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-cuda-v12.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-cuda-v12.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-cuda-v12.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-cuda-v12.dll" }]
     },
     {
       "id": "nvidia-cuda-v11-windows",
@@ -68,7 +68,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "cuda_version": ">=11.0, <12.0", "minimum_vram_gb": 4 },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-cuda-v11.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-cuda-v11.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-cuda-v11.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-cuda-v11.dll" }]
     },
     {
       "id": "nvidia-cuda-v13-linux",
@@ -77,7 +77,7 @@
       "platform": { "os": "linux", "arch": ["x86_64", "aarch64"] },
       "requirements": { "cuda_version": ">=13.0" },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true, "mamba": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-cuda-v13.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-cuda-v13.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-cuda-v13.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-cuda-v13.so" }]
     },
     {
       "id": "nvidia-cuda-v12-linux",
@@ -86,7 +86,7 @@
       "platform": { "os": "linux", "arch": ["x86_64", "aarch64"] },
       "requirements": { "cuda_version": ">=12.0, <13.0" },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true, "mamba": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-cuda-v12.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-cuda-v12.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-cuda-v12.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-cuda-v12.so" }]
     },
     {
       "id": "nvidia-cuda-v11-linux",
@@ -95,7 +95,7 @@
       "platform": { "os": "linux", "arch": ["x86_64", "aarch64"] },
       "requirements": { "cuda_version": ">=11.0, <12.0" },
       "engine": { "name": "llama.cpp", "variant": "cuda", "capabilities": { "flash_attention": true, "kv_offload": true, "bitnet": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-cuda-v11.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-cuda-v11.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-cuda-v11.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-cuda-v11.so" }]
     },
     {
       "id": "apple-metal-macos",
@@ -104,7 +104,7 @@
       "platform": { "os": "macos", "arch": ["arm64"] },
       "requirements": { "minimum_ram_gb": 8 },
       "engine": { "name": "llama.cpp", "variant": "metal", "capabilities": { "flash_attention": true, "unified_memory": true, "bitnet": true, "mamba": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-mac-arm64-metal.dylib", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-mac-arm64-metal.dylib" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-mac-arm64-metal.dylib", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-mac-arm64-metal.dylib" }]
     },
     {
       "id": "apple-metal-macos-x64",
@@ -113,7 +113,7 @@
       "platform": { "os": "macos", "arch": ["x86_64"] },
       "requirements": { "minimum_ram_gb": 8 },
       "engine": { "name": "llama.cpp", "variant": "metal", "capabilities": { "flash_attention": true, "bitnet": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-mac-x64-metal.dylib", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-mac-x64-metal.dylib" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-mac-x64-metal.dylib", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-mac-x64-metal.dylib" }]
     },
     {
       "id": "apple-metal-ios",
@@ -122,7 +122,7 @@
       "platform": { "os": "ios", "arch": ["arm64"] },
       "requirements": { "minimum_ram_gb": 4 },
       "engine": { "name": "llama.cpp", "variant": "metal", "capabilities": { "flash_attention": true, "unified_memory": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-ios-arm64-metal.a", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-ios-arm64-metal.a" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-ios-arm64-metal.a", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-ios-arm64-metal.a" }]
     },
     {
       "id": "amd-rocm-linux",
@@ -131,7 +131,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "rocm_version": ">=5.7", "minimum_vram_gb": 8 },
       "engine": { "name": "llama.cpp", "variant": "rocm", "capabilities": { "flash_attention": true, "bitnet": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-rocm.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-rocm.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-rocm.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-rocm.so" }]
     },
     {
       "id": "amd-hip-linux",
@@ -140,7 +140,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "hip_supported": true },
       "engine": { "name": "llama.cpp", "variant": "hip", "capabilities": { "flash_attention": true, "bitnet": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-hip.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-hip.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-hip.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-hip.so" }]
     },
     {
       "id": "amd-zendnn-windows",
@@ -149,7 +149,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "minimum_ram_gb": 8 },
       "engine": { "name": "llama.cpp", "variant": "zendnn", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-zendnn.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-zendnn.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-zendnn.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-zendnn.dll" }]
     },
     {
       "id": "intel-sycl-windows",
@@ -158,7 +158,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "oneapi_version": ">=2023.0" },
       "engine": { "name": "llama.cpp", "variant": "sycl", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-sycl.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-sycl.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-sycl.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-sycl.dll" }]
     },
     {
       "id": "intel-sycl-linux",
@@ -167,7 +167,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "oneapi_version": ">=2023.0" },
       "engine": { "name": "llama.cpp", "variant": "sycl", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-sycl.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-sycl.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-sycl.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-sycl.so" }]
     },
     {
       "id": "intel-openvino-windows",
@@ -176,7 +176,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "openvino_version": ">=2023.0" },
       "engine": { "name": "llama.cpp", "variant": "openvino", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-win-x64-openvino.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-openvino.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-win-x64-openvino.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-openvino.dll" }]
     },
     {
       "id": "intel-openvino-linux",
@@ -185,7 +185,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "openvino_version": ">=2023.0" },
       "engine": { "name": "llama.cpp", "variant": "openvino", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-openvino.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-openvino.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-openvino.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-openvino.so" }]
     },
     {
       "id": "qualcomm-qnn-android",
@@ -194,7 +194,7 @@
       "platform": { "os": "android", "arch": ["arm64-v8a"] },
       "requirements": { "qnn_sdk_version": ">=2.10" },
       "engine": { "name": "llama.cpp", "variant": "qnn", "capabilities": { "bitnet": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-android-arm64-qnn.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-android-arm64-qnn.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-android-arm64-qnn.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-android-arm64-qnn.so" }]
     },
     {
       "id": "qualcomm-hexagon-android",
@@ -203,7 +203,7 @@
       "platform": { "os": "android", "arch": ["arm64-v8a"] },
       "requirements": { "hexagon_dsp_version": ">=v68" },
       "engine": { "name": "llama.cpp", "variant": "hexagon", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "libcluaize-driver-android-arm64-hexagon.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-android-arm64-hexagon.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-android-arm64-hexagon.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-android-arm64-hexagon.so" }]
     },
     {
       "id": "adreno-opencl-android",
@@ -212,7 +212,7 @@
       "platform": { "os": "android", "arch": ["arm64-v8a"] },
       "requirements": { "opencl_version": ">=2.0" },
       "engine": { "name": "llama.cpp", "variant": "opencl", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-android-arm64-opencl.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-android-arm64-opencl.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-android-arm64-opencl.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-android-arm64-opencl.so" }]
     },
     {
       "id": "mali-vulkan-android",
@@ -221,7 +221,7 @@
       "platform": { "os": "android", "arch": ["arm64-v8a"] },
       "requirements": { "vulkan_version": ">=1.1" },
       "engine": { "name": "llama.cpp", "variant": "vulkan", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-android-arm64-mali-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-android-arm64-mali-vulkan.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-android-arm64-mali-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-android-arm64-mali-vulkan.so" }]
     },
     {
       "id": "huawei-cann-linux",
@@ -230,7 +230,7 @@
       "platform": { "os": "linux", "arch": ["aarch64", "x86_64"] },
       "requirements": { "cann_version": ">=6.0" },
       "engine": { "name": "llama.cpp", "variant": "cann", "capabilities": { "flash_attention": true, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-cann.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-cann.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-cann.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-cann.so" }]
     },
     {
       "id": "moorethreads-musa-linux",
@@ -239,7 +239,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "musa_version": ">=2.0" },
       "engine": { "name": "llama.cpp", "variant": "musa", "capabilities": { "flash_attention": true, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-x64-musa.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-musa.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-x64-musa.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-musa.so" }]
     },
     {
       "id": "ibm-zdnn-linux",
@@ -248,7 +248,7 @@
       "platform": { "os": "linux", "arch": ["s390x"] },
       "requirements": { "zdnn_library": "available" },
       "engine": { "name": "llama.cpp", "variant": "zdnn", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "libcluaize-driver-linux-s390x-zdnn.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-s390x-zdnn.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-linux-s390x-zdnn.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-s390x-zdnn.so" }]
     },
     {
       "id": "chromeos-vulkan",
@@ -257,7 +257,7 @@
       "platform": { "os": "chromeos", "arch": ["x86_64", "arm64"] },
       "requirements": { "vulkan_version": ">=1.3" },
       "engine": { "name": "llama.cpp", "variant": "vulkan", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-chromeos-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-chromeos-vulkan.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-chromeos-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-chromeos-vulkan.so" }]
     },
     {
       "id": "universal-webgpu",
@@ -266,7 +266,7 @@
       "platform": { "os": "web", "arch": ["wasm32"] },
       "requirements": { "webgpu_supported": true },
       "engine": { "name": "llama.cpp", "variant": "webgpu", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-webgpu.wasm", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-web-wasm32-webgpu.wasm" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-webgpu.wasm", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-web-wasm32-webgpu.wasm" }]
     },
     {
       "id": "universal-virtgpu",
@@ -275,7 +275,7 @@
       "platform": { "os": "linux", "arch": ["x86_64", "aarch64"] },
       "requirements": { "virtio_gpu": "available" },
       "engine": { "name": "llama.cpp", "variant": "virtgpu", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-virtgpu.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-virtgpu.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-virtgpu.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-virtgpu.so" }]
     },
     {
       "id": "universal-vulkan-windows",
@@ -284,7 +284,7 @@
       "platform": { "os": "windows", "arch": ["x86_64"] },
       "requirements": { "vulkan_version": ">=1.2" },
       "engine": { "name": "llama.cpp", "variant": "vulkan", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-vulkan.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-win-x64-vulkan.dll" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-vulkan.dll", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-win-x64-vulkan.dll" }]
     },
     {
       "id": "universal-vulkan-linux",
@@ -293,7 +293,7 @@
       "platform": { "os": "linux", "arch": ["x86_64"] },
       "requirements": { "vulkan_version": ">=1.2" },
       "engine": { "name": "llama.cpp", "variant": "vulkan", "capabilities": { "flash_attention": false, "kv_offload": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-x64-vulkan.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-vulkan.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-x64-vulkan.so" }]
     },
     {
       "id": "generic-rpc",
@@ -302,7 +302,7 @@
       "platform": { "os": "universal", "arch": ["x86_64", "arm64"] },
       "requirements": { "network_latency_ms": "<50" },
       "engine": { "name": "llama.cpp", "variant": "rpc", "capabilities": { "flash_attention": false, "kv_offload": true, "distributed_inference": true } },
-      "artifacts": [{ "name_template": "cluaize-driver-rpc-{os}-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-rpc-{os}-{arch}.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-rpc-{os}-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-rpc-{os}-{arch}.{ext}" }]
     },
     {
       "id": "generic-blas",
@@ -311,7 +311,7 @@
       "platform": { "os": "universal", "arch": ["x86_64", "arm64"] },
       "requirements": { "blas_available": true },
       "engine": { "name": "llama.cpp", "variant": "blas", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-blas-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-blas-{arch}.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-blas-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-blas-{arch}.{ext}" }]
     },
     {
       "id": "generic-blis",
@@ -320,7 +320,7 @@
       "platform": { "os": "universal", "arch": ["x86_64", "arm64"] },
       "requirements": { "blis_available": true },
       "engine": { "name": "llama.cpp", "variant": "blis", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-blis-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-blis-{arch}.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-blis-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-blis-{arch}.{ext}" }]
     },
     {
       "id": "generic-wasm",
@@ -329,7 +329,7 @@
       "platform": { "os": "web", "arch": ["wasm32"] },
       "requirements": { "minimum_ram_gb": 2 },
       "engine": { "name": "llama.cpp", "variant": "wasm", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-wasm.wasm", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-web-wasm32-emscripten.wasm" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-wasm.wasm", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-web-wasm32-emscripten.wasm" }]
     },
     {
       "id": "cpu-avx512",
@@ -338,7 +338,7 @@
       "platform": { "os": "universal", "arch": ["x86_64"] },
       "requirements": { "simd": "avx512" },
       "engine": { "name": "llama.cpp", "variant": "cpu", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-cpu-avx512-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-{os}-avx512.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-cpu-avx512-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-{os}-avx512.{ext}" }]
     },
     {
       "id": "cpu-avx2",
@@ -347,7 +347,7 @@
       "platform": { "os": "universal", "arch": ["x86_64"] },
       "requirements": { "simd": "avx2" },
       "engine": { "name": "llama.cpp", "variant": "cpu", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-cpu-avx2-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-{os}-avx2.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-cpu-avx2-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-{os}-avx2.{ext}" }]
     },
     {
       "id": "cpu-neon",
@@ -356,7 +356,7 @@
       "platform": { "os": "universal", "arch": ["arm64", "aarch64"] },
       "requirements": { "simd": "neon" },
       "engine": { "name": "llama.cpp", "variant": "cpu", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-cpu-neon-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-{os}-neon.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-cpu-neon-{os}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-{os}-neon.{ext}" }]
     },
     {
       "id": "cpu-neon-armv7",
@@ -365,7 +365,7 @@
       "platform": { "os": "linux", "arch": ["armv7l"] },
       "requirements": { "simd": "neon" },
       "engine": { "name": "llama.cpp", "variant": "cpu", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "libcluaize-driver-cpu-neon-armv7.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-armv7-neon.so" }]
+      "artifacts": [{ "name_template": "libcluaiz-driver-cpu-neon-armv7.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-armv7-neon.so" }]
     },
     {
       "id": "universal-tpu-placeholder",
@@ -373,8 +373,8 @@
       "hardware": { "vendor": "google", "type": "tpu" },
       "platform": { "os": "linux", "arch": ["x86_64", "aarch64"] },
       "requirements": { "tpu_driver": "available" },
-      "engine": { "name": "cluaize-tpu", "variant": "native", "capabilities": { "tensor_acceleration": true } },
-      "artifacts": [{ "name_template": "libcluaize-driver-tpu.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaize-driver-{VERSION}-linux-tpu.so" }]
+      "engine": { "name": "cluaiz-tpu", "variant": "native", "capabilities": { "tensor_acceleration": true } },
+      "artifacts": [{ "name_template": "libcluaiz-driver-tpu.so", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/libcluaiz-driver-{VERSION}-linux-tpu.so" }]
     },
     {
       "id": "generic-cpu",
@@ -383,7 +383,7 @@
       "platform": { "os": "universal", "arch": ["x86_64", "arm64"] },
       "requirements": { "minimum_ram_gb": 4 },
       "engine": { "name": "llama.cpp", "variant": "cpu", "capabilities": { "flash_attention": false, "kv_offload": false } },
-      "artifacts": [{ "name_template": "cluaize-driver-cpu-generic-{os}-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaize-driver-{VERSION}-cpu-generic-{os}-{arch}.{ext}" }]
+      "artifacts": [{ "name_template": "cluaiz-driver-cpu-generic-{os}-{arch}.{ext}", "download_url_template": "{BASE_URL}/{DRIVER_TAG}/cluaiz-driver-{VERSION}-cpu-generic-{os}-{arch}.{ext}" }]
     }
   ],
   "compatibility": {

@@ -1,7 +1,7 @@
 {
-  "name": "cluaize-package-manager",
+  "name": "cluaiz-package-manager",
   "version": "0.1.3",
-  "id": "https://github.com/cluaiz/cluaize/raw/main/package.json",
+  "id": "https://github.com/cluaiz/cluaiz/raw/main/package.json",
   "last_updated": "2026-05-20T10:00:00Z",
   "author": "cluaiz",
   "cdn": "https://cdn.jsdelivr.net",
@@ -9,44 +9,44 @@
     "cli": {
       "version": "dev-release",
       "min_supported": null,
-      "manifest_url": "https://github.com/cluaiz/cluaize/releases/download/cli-dev-release/cluaize-cli.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/releases/download/cli-dev-release/cluaiz-cli.json"
     },
     "engine": {
       "version": "dev-release",
       "min_supported": null,
-      "manifest_url": "https://github.com/cluaiz/cluaize/releases/download/engine-dev-release/cluaize-engine.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/releases/download/engine-dev-release/cluaiz-engine.json"
     },
     "kernel": {
       "version": "dev-release",
       "min_supported": null,
-      "manifest_url": "https://github.com/cluaiz/cluaize/releases/download/kernel-dev-release/cluaize-kernel.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/releases/download/kernel-dev-release/cluaiz-kernel.json"
     },
     "drivers": {
       "version": "dev-release",
       "min_supported": null,
-      "manifest_url": "https://github.com/cluaiz/cluaize/releases/download/driver-dev-release/cluaize-driver.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/releases/download/driver-dev-release/cluaiz-driver.json"
     }
   },
   "web": {
     "ps1": {
       "version": "main",
-      "manifest_url": "https://github.com/cluaiz/cluaize/blob/main/install.ps1"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/blob/main/install.ps1"
     },
     "sh": {
       "version": "main",
-      "manifest_url": "https://github.com/cluaiz/cluaize/blob/main/install.sh"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/blob/main/install.sh"
     },
     "models": {
       "version": "main",
-      "manifest_url": "https://github.com/cluaiz/cluaize/blob/main/models/library/registry.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/blob/main/models/library/registry.json"
     },
     "docs": {
       "version": "main",
-      "manifest_url": "https://github.com/cluaiz/cluaize/blob/main/docs/registry.json"
+      "manifest_url": "https://github.com/cluaiz/cluaiz/blob/main/docs/registry.json"
     },
     "hub": {
       "version": "main",
-      "manifest_url": "https://raw.githubusercontent.com/cluaiz/cluaize-hub/main/registry.json"
+      "manifest_url": "https://raw.githubusercontent.com/cluaiz/cluaiz-hub/main/registry.json"
     }
   }
 }

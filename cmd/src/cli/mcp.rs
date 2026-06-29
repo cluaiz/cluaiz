@@ -6,7 +6,7 @@ use engines::neural_foundry::registry::registry_index::MasterRegistry;
 pub async fn execute(command: McpCommand) -> Result<()> {
     match command {
         McpCommand::Install { mcp_name } => {
-            println!("  {} [Cluaize MCP] Installing MCP server: {}", "🔗".cyan(), mcp_name.bold());
+            println!("  {} [cluaiz MCP] Installing MCP server: {}", "🔗".cyan(), mcp_name.bold());
             match engines::neural_foundry::registry::mcp_manager::McpManager::install_mcp(&mcp_name).await {
                 Ok(_) => println!("  {} MCP server '{}' installed successfully.", "✅".green(), mcp_name.bold()),
                 Err(e) => println!("  {} Failed to install MCP server: {}", "❌".red(), e),
@@ -14,7 +14,7 @@ pub async fn execute(command: McpCommand) -> Result<()> {
         }
 
         McpCommand::List => {
-            println!("\n  {} [Cluaize MCP] Registered MCP Servers:", "🔗".cyan());
+            println!("\n  {} [cluaiz MCP] Registered MCP Servers:", "🔗".cyan());
             match MasterRegistry::load() {
                 Ok(registry) => {
                     if registry.mcp.is_empty() {
@@ -32,7 +32,7 @@ pub async fn execute(command: McpCommand) -> Result<()> {
         }
 
         McpCommand::Remove { mcp_name } => {
-            println!("  {} [Cluaize MCP] Removing MCP server: {}", "🔗".cyan(), mcp_name.bold());
+            println!("  {} [cluaiz MCP] Removing MCP server: {}", "🔗".cyan(), mcp_name.bold());
             match engines::neural_foundry::registry::mcp_manager::McpManager::remove_mcp(&mcp_name).await {
                 Ok(_) => println!("  {} MCP server '{}' removed.", "✅".green(), mcp_name.bold()),
                 Err(e) => println!("  {} Failed to remove MCP server: {}", "⚠️".yellow(), e),
@@ -42,11 +42,11 @@ pub async fn execute(command: McpCommand) -> Result<()> {
         McpCommand::Cache { command } => {
             match command {
                 crate::McpCacheCommand::Ls => {
-                    println!("\n  {} [Cluaize MCP] MCP Cache Status:", "🔗".cyan());
+                    println!("\n  {} [cluaiz MCP] MCP Cache Status:", "🔗".cyan());
                     match MasterRegistry::load() {
                         Ok(registry) => {
                             for (name, entry) in &registry.mcp {
-                                let global_dir = cluaize_shared::environment::EnvironmentManager::current().global_dir;
+                                let global_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir;
                                 let cache_path = global_dir.join(&entry.domain).join(".cache");
                                 let cache_exists = if cache_path.exists() { "📦 cached".yellow() } else { "○ empty".dimmed() };
                                 println!("    {} {} — {}", "🔗".cyan(), name.bold(), cache_exists);
@@ -56,7 +56,7 @@ pub async fn execute(command: McpCommand) -> Result<()> {
                     }
                 }
                 crate::McpCacheCommand::Clear { mcp_name, all } => {
-                    println!("  {} [Cluaize MCP] Clearing MCP cache...", "🔗".cyan());
+                    println!("  {} [cluaiz MCP] Clearing MCP cache...", "🔗".cyan());
                     let target = if all { None } else { mcp_name.as_deref() };
                     match engines::neural_foundry::registry::mcp_manager::McpManager::clear_mcp_cache(target).await {
                         Ok(wiped) => println!("  {} Successfully wiped {} MCP cache(s).", "✅".green(), wiped),
@@ -67,7 +67,7 @@ pub async fn execute(command: McpCommand) -> Result<()> {
         }
 
         McpCommand::Start { mcp_name } => {
-            println!("  {} [Cluaize MCP] Starting MCP server for '{}'", "🚀".cyan(), mcp_name.bold());
+            println!("  {} [cluaiz MCP] Starting MCP server for '{}'", "🚀".cyan(), mcp_name.bold());
             // TODO: Call McpManager::start_server when process spawning is implemented
         }
     }

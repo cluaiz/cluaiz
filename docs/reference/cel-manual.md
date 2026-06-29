@@ -1,6 +1,6 @@
-# CEL (Cluaize Expression Language) Specification & Reference Manual
+# CEL (cluaiz Expression Language) Specification & Reference Manual
 
-Cluaize Expression Language (CEL) is the Turing-complete orchestration DSL utilized by the Cluaize Inference Engine. It acts as the single bridge language connecting AI actions, dynamic skills, state variables, and low-level engine parameters across sandboxed execution boundaries.
+cluaiz Expression Language (CEL) is the Turing-complete orchestration DSL utilized by the cluaiz Inference Engine. It acts as the single bridge language connecting AI actions, dynamic skills, state variables, and low-level engine parameters across sandboxed execution boundaries.
 
 ---
 
@@ -10,7 +10,7 @@ All CEL statements fall into one of four primary grammar blocks: expressions, as
 
 ### A. Core Pipelines & Operators
 
-A CEL statement is executed as a pipeline chain using the `->` operator. Each segment of the pipeline corresponds to a specific AST operation in [CelOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L38-L114).
+A CEL statement is executed as a pipeline chain using the `->` operator. Each segment of the pipeline corresponds to a specific AST operation in [CelOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L38-L114).
 
 ```text
 use plugin::database -> find User(id: 42) -> select(username, email)
@@ -21,7 +21,7 @@ use plugin::database -> find User(id: 42) -> select(username, email)
 Saves state intermediate results inside the engine memory to prevent expensive round-trips to the LLM agent.
 
 ```text
-let $result = use plugin::scrapper -> extract(url: "https://cluaize.com");
+let $result = use plugin::scrapper -> extract(url: "https://cluaiz.com");
 ```
 
 ### C. Control Flow (`if / else`)
@@ -50,7 +50,7 @@ foreach ($id in $user_ids) {
 
 ## 2. AST Value Types (`CelValue`)
 
-The [CelValue](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L5-L14) enum strictly dictates the data layout types:
+The [CelValue](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L5-L14) enum strictly dictates the data layout types:
 
 | Type | Syntax Example | Serialized Output |
 |:---|:---|:---|
@@ -65,41 +65,41 @@ The [CelValue](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cl
 
 ## 3. Reference: Core Operators (`CelOp`)
 
-Below is the exhaustive specification for each instruction option defined in [CelOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L38-L114).
+Below is the exhaustive specification for each instruction option defined in [CelOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L38-L114).
 
 * ### `use plugin::<name>`
   * **Syntax:** `use plugin::<name>`
-  * **Action:** [ImportPlugin](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L40)
-  * **Behind the Scenes:** Checks the package registry, resolves paths using path canonicalization guards, parses the plugin manifest `SKILL.md`, and dynamically loads the WASM module into the Store cache.
+  * **Action:** [ImportPlugin](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L40)
+  * **Behind the Scenes:** Checks the package registry and resolves paths. For Native Dynlibs (`.dll`, `.so`), it enforces `std::fs::canonicalize` to prevent path traversal and dynamically links using `libloading`. For WASM, it dynamically loads the module into the global `WASM_CACHE` RAM store.
 
 * ### `invoke(<method>, args...)`
   * **Syntax:** `use plugin::auth -> invoke(verify, token: "xyz")`
-  * **Action:** [InvokeAction](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L44)
-  * **Behind the Scenes:** Resolves FFI parameters from the payload vector and triggers the WASM execution hook. Enforces fuel limits and memory caps defined in the metadata.
+  * **Action:** [InvokeAction](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L44)
+  * **Behind the Scenes:** Resolves FFI parameters from the payload vector and triggers the execution hook. For WASM plugins, it strictly enforces CPU instruction limits (`wasmtime::Store::set_fuel`) and RAM caps (`wasmtime::ResourceLimiter`) dynamically derived from the `EngineRules` manifest.
 
 * ### `filter`
   * **Syntax:** `-> filter age > 18`
-  * **Action:** [Filter](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L51)
-  * **Behind the Scenes:** Performs native binary filters in Rust on the stream dataset using [CompareOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L18-L26) branches before allocating memory for downstream tasks.
+  * **Action:** [Filter](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L51)
+  * **Behind the Scenes:** Performs native binary filters in Rust on the stream dataset using [CompareOp](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L18-L26) branches before allocating memory for downstream tasks.
 
 * ### `process(<text>)`
   * **Syntax:** `process("Raw Input text")`
-  * **Action:** [FastProcess](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L58)
+  * **Action:** [FastProcess](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L58)
   * **Behind the Scenes:** Triggers fast-path CPU loops bypassing heavy VM compiler initialization overhead when processing non-structured string conversions.
 
 * ### `select`
   * **Syntax:** `-> select(username, email)`
-  * **Action:** [Select](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L87)
+  * **Action:** [Select](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L87)
   * **Behind the Scenes:** Projects and strips unused fields from serialized payload envelopes to prevent memory footprint leaks during massive dataset iteration loops.
 
 * ### `similar`
   * **Syntax:** `-> similar_to(vector: [...], metric: "cosine")`
-  * **Action:** [SimilarTo](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L74)
+  * **Action:** [SimilarTo](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L74)
   * **Behind the Scenes:** Dispatches similarity scans directly to the CPU SIMD registers or GPU vector cores.
 
 * ### `time_window`
   * **Syntax:** `-> time_window(size: "1h")`
-  * **Action:** [TimeWindow](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaize/inference-cel/src/parser/ast.rs#L69)
+  * **Action:** [TimeWindow](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-cel/src/parser/ast.rs#L69)
   * **Behind the Scenes:** Configures historical memory context limits to keep generation loops within bounds.
 
 ---

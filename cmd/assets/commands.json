@@ -2,235 +2,228 @@
   "version": "0.1.0",
   "commands": [
     {
-      "name": "cluaize",
-      "usage": "cluaize",
+      "name": "cluaiz",
+      "usage": "cluaiz",
       "description": "Launch the interactive dashboard (TUI)",
       "category": "core",
-      "example": "cluaize"
+      "example": "cluaiz"
     },
     {
       "name": "run",
-      "usage": "cluaize run <model-id>",
+      "usage": "cluaiz run <model-id>",
       "description": "Pull & run a model. Downloads if not cached locally.",
       "category": "models",
-      "example": "cluaize run bonsai:8b"
+      "example": "cluaiz run bonsai:8b"
     },
     {
       "name": "pull",
-      "usage": "cluaize pull <model-id>",
+      "usage": "cluaiz pull <model-id>",
       "description": "Download and register a model into the local vault without running it.",
       "category": "models",
-      "example": "cluaize pull unsloth/Qwen3.5-4B-GGUF"
+      "example": "cluaiz pull unsloth/Qwen3.5-4B-GGUF"
     },
     {
       "name": "rm",
-      "usage": "cluaize rm <model-id>",
+      "usage": "cluaiz rm <model-id>",
       "description": "Remove a model from the local vault (physically deletes the .gguf file).",
       "category": "models",
-      "example": "cluaize rm bonsai:8b"
+      "example": "cluaiz rm bonsai:8b"
     },
     {
       "name": "list",
-      "usage": "cluaize list",
+      "usage": "cluaiz list",
       "description": "List all downloaded models in the local vault.",
       "category": "models",
-      "example": "cluaize list"
+      "example": "cluaiz list"
     },
     {
       "name": "ps",
-      "usage": "cluaize ps",
+      "usage": "cluaiz ps",
       "description": "Show active neural engines in memory and auto-heal stale PIDs.",
       "category": "core",
-      "example": "cluaize ps"
+      "example": "cluaiz ps"
     },
     {
       "name": "help",
-      "usage": "cluaize help",
+      "usage": "cluaiz help",
       "description": "Show this help screen",
       "category": "core",
-      "example": "cluaize help"
+      "example": "cluaiz help"
     },
     {
       "name": "status",
-      "usage": "cluaize status",
+      "usage": "cluaiz status",
       "description": "Show hardware status and silicon health metrics.",
       "category": "system",
-      "example": "cluaize status"
+      "example": "cluaiz status"
     },
     {
       "name": "calibrate",
-      "usage": "cluaize calibrate",
+      "usage": "cluaiz calibrate",
       "description": "Re-scan hardware and synchronize SiliconTruth profile",
       "category": "system",
-      "example": "cluaize calibrate"
+      "example": "cluaiz calibrate"
     },
     {
       "name": "benchmark",
-      "usage": "cluaize benchmark",
+      "usage": "cluaiz benchmark",
       "description": "Run a full hardware performance benchmark",
       "category": "system",
-      "example": "cluaize benchmark"
+      "example": "cluaiz benchmark"
     },
     {
       "name": "booster",
-      "usage": "cluaize booster",
+      "usage": "cluaiz booster",
       "description": "View or configure the system performance booster settings interactively.",
       "category": "system",
-      "example": "cluaize booster"
+      "example": "cluaiz booster"
     },
     {
       "name": "test-jit",
-      "usage": "cluaize test-jit",
+      "usage": "cluaiz test-jit",
       "description": "Test JIT KV Cache compilation and memory footprint.",
       "category": "system",
-      "example": "cluaize test-jit"
+      "example": "cluaiz test-jit"
     },
     {
       "name": "ingest",
-      "usage": "cluaize ingest <file_path>",
+      "usage": "cluaiz ingest <file_path>",
       "description": "Ingest a document natively for semantic chunking and RAG.",
       "category": "core",
-      "example": "cluaize ingest ./document.pdf"
-    },
-    {
-      "name": "brain",
-      "usage": "cluaize brain <on|off|only>",
-      "description": "Manage the Cluaizd Brain Connection (FFI Daemon).",
-      "category": "core",
-      "example": "cluaize brain only"
+      "example": "cluaiz ingest ./document.pdf"
     },
     {
       "name": "setup",
-      "usage": "cluaize setup profile",
-      "description": "Setup Cluaize Node Profile and Identity (Vectorization and DB Injection).",
+      "usage": "cluaiz setup profile",
+      "description": "Setup cluaiz Node Profile and Identity (Vectorization and DB Injection).",
       "category": "core",
-      "example": "cluaize setup profile"
+      "example": "cluaiz setup profile"
     },
     {
       "name": "serve",
-      "usage": "cluaize serve (aliases: api, server)",
+      "usage": "cluaiz serve (aliases: api, server)",
       "description": "Start the background API Daemon (Server mode).",
       "category": "core",
-      "example": "cluaize serve"
+      "example": "cluaiz serve"
     },
     {
       "name": "skill install",
-      "usage": "cluaize skill install <skill_name>",
-      "description": "Install a skill from the cluaize-skills registry.",
+      "usage": "cluaiz skill install <skill_name>",
+      "description": "Install a skill from the cluaiz-skills registry.",
       "category": "skills",
-      "example": "cluaize skill install web-search-github"
+      "example": "cluaiz skill install web-search-github"
     },
     {
       "name": "skill list",
-      "usage": "cluaize skill list",
+      "usage": "cluaiz skill list",
       "description": "List all locally installed WASM skills.",
       "category": "skills",
-      "example": "cluaize skill list"
+      "example": "cluaiz skill list"
     },
     {
       "name": "skill cache ls",
-      "usage": "cluaize skill cache ls",
+      "usage": "cluaiz skill cache ls",
       "description": "List all active and orphaned dual-caches.",
       "category": "skills",
-      "example": "cluaize skill cache ls"
+      "example": "cluaiz skill cache ls"
     },
     {
       "name": "skill cache clear",
-      "usage": "cluaize skill cache clear <model_id>",
+      "usage": "cluaiz skill cache clear <model_id>",
       "description": "Clear specific or all orphaned KV caches globally.",
       "category": "skills",
-      "example": "cluaize skill cache clear --all"
+      "example": "cluaiz skill cache clear --all"
     },
     {
       "name": "permission",
-      "usage": "cluaize permission <key> <value>",
+      "usage": "cluaiz permission <key> <value>",
       "description": "Change engine permissions and firewalls natively from CLI.",
       "category": "system",
-      "example": "cluaize permission firewall strict"
+      "example": "cluaiz permission firewall strict"
     },
     {
       "name": "model",
-      "usage": "cluaize model <set-chat|set-vector> <model_id>",
+      "usage": "cluaiz model <set-chat|set-vector> <model_id>",
       "description": "Switch the active chat or vector/embedding model dynamically.",
       "category": "models",
-      "example": "cluaize model set-vector all-MiniLM-L6-v2"
+      "example": "cluaiz model set-vector all-MiniLM-L6-v2"
     },
     {
       "name": "plugin",
-      "usage": "cluaize plugin <install|list|remove|link> <plugin_name>",
-      "description": "Manage Cluaize Plugins (Native muscles).",
+      "usage": "cluaiz plugin <install|list|remove|link> <plugin_name>",
+      "description": "Manage cluaiz Plugins (Native muscles).",
       "category": "extensions",
-      "example": "cluaize plugin install web-scraper"
+      "example": "cluaiz plugin install web-scraper"
     },
     {
       "name": "plugin cache ls",
-      "usage": "cluaize plugin cache ls",
+      "usage": "cluaiz plugin cache ls",
       "description": "List all active plugin caches.",
       "category": "extensions",
-      "example": "cluaize plugin cache ls"
+      "example": "cluaiz plugin cache ls"
     },
     {
       "name": "plugin cache clear",
-      "usage": "cluaize plugin cache clear [plugin_name]",
+      "usage": "cluaiz plugin cache clear [plugin_name]",
       "description": "Clear specific or all plugin caches globally.",
       "category": "extensions",
-      "example": "cluaize plugin cache clear --all"
+      "example": "cluaiz plugin cache clear --all"
     },
     {
       "name": "extension",
-      "usage": "cluaize extension <install|list|remove|start> <extension_name>",
-      "description": "Manage Cluaize Extensions (Brain + Muscle bundles).",
+      "usage": "cluaiz extension <install|list|remove|start> <extension_name>",
+      "description": "Manage cluaiz Extensions (Brain + Muscle bundles).",
       "category": "extensions",
-      "example": "cluaize extension install cluaize-db"
+      "example": "cluaiz extension install cluaiz-db"
     },
     {
       "name": "extension cache ls",
-      "usage": "cluaize extension cache ls",
+      "usage": "cluaiz extension cache ls",
       "description": "List all active extension caches.",
       "category": "extensions",
-      "example": "cluaize extension cache ls"
+      "example": "cluaiz extension cache ls"
     },
     {
       "name": "extension cache clear",
-      "usage": "cluaize extension cache clear [extension_name]",
+      "usage": "cluaiz extension cache clear [extension_name]",
       "description": "Clear specific or all extension caches globally.",
       "category": "extensions",
-      "example": "cluaize extension cache clear --all"
+      "example": "cluaiz extension cache clear --all"
     },
     {
       "name": "mcp",
-      "usage": "cluaize mcp <install|list|remove|start> <mcp_name>",
+      "usage": "cluaiz mcp <install|list|remove|start> <mcp_name>",
       "description": "Manage Model Context Protocol (MCP) integrations.",
       "category": "extensions",
-      "example": "cluaize mcp install github-mcp"
+      "example": "cluaiz mcp install github-mcp"
     },
     {
       "name": "mcp cache ls",
-      "usage": "cluaize mcp cache ls",
+      "usage": "cluaiz mcp cache ls",
       "description": "List all active MCP caches.",
       "category": "extensions",
-      "example": "cluaize mcp cache ls"
+      "example": "cluaiz mcp cache ls"
     },
     {
       "name": "mcp cache clear",
-      "usage": "cluaize mcp cache clear [mcp_name]",
+      "usage": "cluaiz mcp cache clear [mcp_name]",
       "description": "Clear specific or all MCP caches globally.",
       "category": "extensions",
-      "example": "cluaize mcp cache clear --all"
+      "example": "cluaiz mcp cache clear --all"
     },
     {
       "name": "cel execute",
-      "usage": "cluaize cel execute <script.cel>",
-      "description": "Natively executes a Cluaize Execution Language (CEL) script.",
+      "usage": "cluaiz cel execute <script.cel>",
+      "description": "Natively executes a cluaiz Execution Language (CEL) script.",
       "category": "core",
-      "example": "cluaize cel execute agent_logic.cel"
+      "example": "cluaiz cel execute agent_logic.cel"
     },
     {
       "name": "cel test",
-      "usage": "cluaize cel test <script.cel>",
+      "usage": "cluaiz cel test <script.cel>",
       "description": "Compiles and validates a CEL script without executing state-mutating actions.",
       "category": "core",
-      "example": "cluaize cel test agent_logic.cel"
+      "example": "cluaiz cel test agent_logic.cel"
     }
   ]
 }

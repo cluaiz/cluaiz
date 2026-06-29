@@ -19,9 +19,9 @@ categories:
       - 'docs'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 template: |
-  This is the official public release for Cluaize $RESOLVED_VERSION.
+  This is the official public release for cluaiz $RESOLVED_VERSION.
   
-  > **Important:** To install Cluaize, simply download and run the installer script for your operating system (`install.sh` or `install.ps1`). The installer will automatically configure your environment and securely fetch the required neural engines and drivers in the background using our zero-trust registry.
+  > **Important:** To install cluaiz, simply download and run the installer script for your operating system (`install.sh` or `install.ps1`). The installer will automatically configure your environment and securely fetch the required neural engines and drivers in the background using our zero-trust registry.
   
   $CHANGES
   
@@ -31,4 +31,4 @@ template: |
   * 📄 `install.sh` (Mac/Linux Installer)
   * 📄 `install.ps1` (Windows Installer)
   * 📦 Standalone CLI Bundles (Attached Below)
-  * ⚙️ `cluaize-registry.json` (System-verified background registry)
+  * ⚙️ `cluaiz-registry.json` (System-verified background registry)

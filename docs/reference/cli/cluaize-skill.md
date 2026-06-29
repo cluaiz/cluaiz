@@ -1,4 +1,4 @@
-# `cluaize skill` Command Reference
+# `cluaiz skill` Command Reference
 
 The `skill` command manages sandboxed WASM extensions/plugins.
 
@@ -7,10 +7,10 @@ The `skill` command manages sandboxed WASM extensions/plugins.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize skill install <name>
-cluaize skill list
-cluaize skill cache ls
-cluaize skill cache clear [options]
+cluaiz skill install <name>
+cluaiz skill list
+cluaiz skill cache ls
+cluaiz skill cache clear [options]
 ```
 
 ### Options:
@@ -19,7 +19,7 @@ cluaize skill cache clear [options]
 
 ### Examples:
 ```bash
-cluaize skill install web-search-github
-cluaize skill list
-cluaize skill cache ls
+cluaiz skill install web-search-github
+cluaiz skill list
+cluaiz skill cache ls
 ```

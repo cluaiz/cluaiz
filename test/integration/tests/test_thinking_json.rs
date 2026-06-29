@@ -1,5 +1,5 @@
 use anyhow::Result;
-use cluaize_shared::{CluaizeContext, StructuralDNA, TemplateManager};
+use cluaiz_shared::{cluaizContext, StructuralDNA, TemplateManager};
 use engines::api::router::{Backend, CoreRouter};
 use engines::runtime::execution::hub::HardwareOrchestrator;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ async fn test_all_reasoning_models_dynamically() -> Result<()> {
 
 async fn run_single_model_isolated(model_name: &str) {
     let folder_name = model_name.replace(':', "-");
-    let models_dir = cluaize_shared::environment::EnvironmentManager::current()
+    let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
         .get_models_dir()
         .join("chat");
     let model_folder = models_dir.join(&folder_name);
@@ -110,7 +110,7 @@ async fn run_single_model_isolated(model_name: &str) {
     println!("🧠 Using tags - Start: '{}', End: '{}'", start_tag, end_tag);
     println!("⏳ Instantiating Model in VRAM... (Please wait)");
 
-    let context = CluaizeContext::boot(dna.clone(), TemplateManager::default());
+    let context = cluaizContext::boot(dna.clone(), TemplateManager::default());
     let engine_result = HardwareOrchestrator::instantiate(
         &gguf_file_path,
         "llama",
@@ -119,7 +119,7 @@ async fn run_single_model_isolated(model_name: &str) {
 
     if let Ok(engine) = engine_result {
         let mut router = CoreRouter::new();
-        router.active_backend = Backend::Cluaize(engine);
+        router.active_backend = Backend::cluaiz(engine);
 
         let prompt = "Think step by step and explain why the sky is blue. Keep it very short.";
         println!("📥 Prompt: '{}'", prompt);

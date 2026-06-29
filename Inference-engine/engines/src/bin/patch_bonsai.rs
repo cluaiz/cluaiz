@@ -5,7 +5,7 @@ use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╔══════════════════════════════════════════════════════════════╗");
-    println!("║   Cluaize Core OS: Cluaize BONSAI BINARY PATCHER v1.0       ║");
+    println!("║   cluaiz Core OS: cluaiz BONSAI BINARY PATCHER v1.0       ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
     let args: Vec<String> = env::args().collect();
@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("   Written {} bytes in {:.2?}", data.len(), write_start.elapsed());
         
         println!("\n🎉 SUCCESS! Patched {} occurrences seamlessly.", patch_count);
-        println!("   The 1-bit native model is now ready for Cluaize Ignition.");
+        println!("   The 1-bit native model is now ready for cluaiz Ignition.");
     } else {
         println!("\n⚠️ No occurrences of 'qwen3' found. File might already be patched or irrelevant.");
     }

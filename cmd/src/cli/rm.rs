@@ -4,16 +4,16 @@ use engines::models::registry::CoreRoster;
 use std::fs;
 
 pub async fn execute(model_id: &str) -> Result<()> {
-    println!("\n  {} [Cluaize] Preparing for Neural Deletion: '{}'...", "ðŸ—‘ï¸ ".red(), model_id.bold());
+    println!("\n  {} [cluaiz] Preparing for Neural Deletion: '{}'...", "ðŸ—‘ï¸ ".red(), model_id.bold());
 
     let roster = CoreRoster::load_roster();
     let model = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
 
     if let Some(m) = model {
         // Resolve path to the model file
-        let vault_path = cluaize_shared::environment::EnvironmentManager::current()
+        let vault_path = cluaiz_shared::environment::EnvironmentManager::current()
             .ensure_models_dir()
-            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir());
+            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
         
         // This is a simplification; a real manager should handle the specific file naming
         let model_file = vault_path.join(format!("{}.gguf", m.id)); // Assuming GGUF for now

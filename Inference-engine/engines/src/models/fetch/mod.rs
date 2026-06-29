@@ -21,9 +21,9 @@ pub struct ModelDownloader;
 
 impl ModelDownloader {
     fn get_models_dir() -> PathBuf {
-        cluaize_shared::environment::EnvironmentManager::current()
+        cluaiz_shared::environment::EnvironmentManager::current()
             .ensure_models_dir()
-            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir())
+            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir())
     }
 
     pub fn is_model_cached(category: &str, repo_id: &str, filename: &str) -> bool {
@@ -78,7 +78,7 @@ impl ModelDownloader {
 
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(3600))
-            .user_agent("Cluaize/1.0")
+            .user_agent("cluaiz/1.0")
             .default_headers({
                 let mut headers = reqwest::header::HeaderMap::new();
                 headers.insert(reqwest::header::REFERER, "https://huggingface.co/".parse().unwrap_or(reqwest::header::HeaderValue::from_static("https://huggingface.co/")));
@@ -100,17 +100,17 @@ impl ModelDownloader {
             }
             
             // 🧬 DNA HANDSHAKE: Generate structural_dna.json with Binary Trace
-            let _ = Self::generate_Cluaize_dna(&m, &dest_dir, &weight_path);
+            let _ = Self::generate_cluaiz_dna(&m, &dest_dir, &weight_path);
         }
 
         Ok(weight_path)
     }
 
     /// 🧬 DNA GENERATOR: Creates the structural backbone for the engine's loader by probing the binary.
-    pub fn generate_Cluaize_dna(manifest: &ModelManifest, dest_dir: &std::path::Path, weight_path: &std::path::Path) -> Result<(), String> {
-        info!("🧬 [DNA] Generating Cluaize architectural backbone for '{}'", manifest.id);
+    pub fn generate_cluaiz_dna(manifest: &ModelManifest, dest_dir: &std::path::Path, weight_path: &std::path::Path) -> Result<(), String> {
+        info!("🧬 [DNA] Generating Cluaiz architectural backbone for '{}'", manifest.id);
         
-        let mut signature = cluaize_shared::KernelSignature::default();
+        let mut signature = cluaiz_shared::KernelSignature::default();
         signature.is_multimodal = manifest.has_vision;
         if manifest.expert_count.is_some() {
             signature.has_experts = true;
@@ -135,7 +135,7 @@ impl ModelDownloader {
         // 🔍 BINARY PROBE: Extracting truth directly from GGUF Hardware (Framework-Free)
         if weight_path.exists() {
             info!("🧬 [DNA] Probing weight binary: {:?}", weight_path);
-            if let Ok((metadata, _tensor_infos, _tensor_count)) = cluaize_shared::utils::gguf_prober::GGUFProber::probe(weight_path) {
+            if let Ok((metadata, _tensor_infos, _tensor_count)) = cluaiz_shared::utils::gguf_prober::GGUFProber::probe(weight_path) {
                 // If the engine has sync_with_metadata, call it. If not, we map values manually.
                 if let Some(ctx) = metadata.get("llama.context_length").or(metadata.get("qwen2.context_length")) {
                     dna.max_context_length = ctx.parse().ok();

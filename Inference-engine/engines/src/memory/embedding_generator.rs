@@ -1,7 +1,7 @@
 //! 🔮 Embedding Generator: Lazily loaded ONNX text embedding generator with safe fallbacks.
 
 use crate::neural_foundry::security::permission_schema::PermissionSchema;
-use cluaize_onnx::engine::OnnxEngine;
+use cluaiz_onnx::engine::OnnxEngine;
 use neural_core::interfaces::router_contract::EmbeddingDriver;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
@@ -17,9 +17,9 @@ impl EmbeddingGenerator {
         let model_id = schema.get_active_embedding_model()?;
         
         let formatted_model_id = model_id.replace(":", "-");
-        let model_dir = cluaize_shared::environment::EnvironmentManager::current()
+        let model_dir = cluaiz_shared::environment::EnvironmentManager::current()
             .ensure_embedding_models_dir()
-            .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().embedding_models_dir())
+            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().embedding_models_dir())
             .join(&formatted_model_id);
         
         let model_path = model_dir.join("model.onnx");
@@ -32,7 +32,7 @@ impl EmbeddingGenerator {
 
         tracing::info!("Loading ONNX Embedding Model: {}...", model_id);
         let mut engine = OnnxEngine::new().ok()?;
-        engine.load_text_model(&model_path.to_string_lossy(), &tokenizer_path.to_string_lossy()).ok()?;
+        engine.load_text_model(&model_path.to_string_lossy(), &tokenizer_path.to_string_lossy(), None).ok()?;
 
         Some(engine)
     }

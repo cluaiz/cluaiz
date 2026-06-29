@@ -1,4 +1,4 @@
-# `cluaize benchmark` Command Reference
+# `cluaiz benchmark` Command Reference
 
 The `benchmark` command runs standardized execution loops on model layers.
 
@@ -7,7 +7,7 @@ The `benchmark` command runs standardized execution loops on model layers.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize benchmark [model-identifier] [options]
+cluaiz benchmark [model-identifier] [options]
 ```
 
 ### Options:
@@ -15,6 +15,6 @@ cluaize benchmark [model-identifier] [options]
 
 ### Examples:
 ```bash
-cluaize benchmark
-cluaize benchmark gemma4:e2b --runs 3
+cluaiz benchmark
+cluaiz benchmark gemma4:e2b --runs 3
 ```

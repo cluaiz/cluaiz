@@ -7,7 +7,7 @@ use dispatcher::EngineResponse;
 use tokio::net::windows::named_pipe::{ServerOptions, NamedPipeServer};
 
 #[cfg(windows)]
-const PIPE_NAME: &str = r"\\.\pipe\cluaize_engine_pipe";
+const PIPE_NAME: &str = r"\\.\pipe\cluaiz_engine_pipe";
 
 #[cfg(windows)]
 pub async fn start_named_pipe_server(state: Arc<AppState>) {
@@ -68,19 +68,38 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                         match action {
                             "EXTENSION_PAYLOAD" => {
                                 let ext_name = json_cmd.get("extension_name").and_then(|e| e.as_str()).unwrap_or("");
-                                let payload = json_cmd.get("payload").and_then(|p| p.as_str()).unwrap_or("{}");
+                                let mut payload = json_cmd.get("payload").and_then(|p| p.as_str()).unwrap_or("{}").to_string();
+                                
+                                // INJECT SYSTEM BINDINGS (READ-ONLY)
+                                let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                                
+                                if let Ok(mut payload_json) = serde_json::from_str::<serde_json::Value>(&payload) {
+                                    if let Some(obj) = payload_json.as_object_mut() {
+                                        obj.insert("system_booster".to_string(), serde_json::json!(booster));
+                                        obj.insert("permission".to_string(), serde_json::json!(perms));
+                                        
+                                        // Also inject system_control / silicon_truth
+                                        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
+                                            obj.insert("system_control".to_string(), serde_json::json!(control));
+                                        }
+
+                                        payload = serde_json::to_string(&payload_json).unwrap_or(payload);
+                                    }
+                                }
+
                                 let mut manager = engines::neural_foundry::registry::extension_manager::ExtensionManager::new();
                                 // Assuming we scan the default domain or active extensions are already in memory, for FFI we might need a singleton or just scan.
-                                let base_path = cluaize_shared::environment::EnvironmentManager::current().global_dir.join("core");
+                                let base_path = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join("extension");
                                 let _ = manager.scan_domain(&base_path);
-                                match manager.execute(ext_name, payload) {
+                                match manager.execute(ext_name, &payload) {
                                     Ok(res) => { let _ = pipe.write_all(res.as_bytes()).await; }
                                     Err(e) => { let _ = pipe.write_all(format!("{{\"status\": \"error\", \"message\": \"{}\"}}", e).as_bytes()).await; }
                                 }
                                 continue;
                             }
                             "SYSTEM_PS" => {
-                                let registry = cluaize_shared::hardware::governor::HardwareGovernor::load_process_registry();
+                                let registry = cluaiz_shared::hardware::governor::HardwareGovernor::load_process_registry();
                                 let mut processes = Vec::new();
                                 for (pid_str, info) in registry {
                                     processes.push(serde_json::json!({
@@ -96,12 +115,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "HARDWARE_CALIBRATE" => {
-                                let _ = cluaize_shared::hardware::governor::HardwareGovernor::auto_calibrate();
+                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
                                 let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Hardware recalibrated\"}").await;
                                 continue;
                             }
                             "BENCHMARK_RUN" => {
-                                engines::telemetry::health_check::CluaizeHealthChecker::run_full_benchmark();
+                                engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
                                 let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Benchmark started\"}").await;
                                 continue;
                             }
@@ -112,9 +131,9 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "MODEL_RM" => {
                                 if let Some(model_id) = json_cmd.get("payload").and_then(|p| p.get("model_id")).and_then(|m| m.as_str()) {
-                                    let model_file = cluaize_shared::environment::EnvironmentManager::current()
+                                    let model_file = cluaiz_shared::environment::EnvironmentManager::current()
                                         .ensure_models_dir()
-                                        .unwrap_or_else(|_| cluaize_shared::environment::EnvironmentManager::current().models_dir())
+                                        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir())
                                         .join(format!("{}.gguf", model_id));
                                     if model_file.exists() {
                                         let _ = std::fs::remove_file(&model_file);
@@ -128,7 +147,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_LIST" => {
-                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
                                 let mut skill_names: Vec<String> = Vec::new();
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -144,7 +163,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_CACHE_CLEAR" => {
-                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
                                 let mut cleared = 0usize;
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -161,7 +180,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_CACHE_LS" => {
-                                let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
                                 let mut cache_entries: Vec<serde_json::Value> = Vec::new();
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -191,26 +210,16 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SYSTEM_BRAIN" => {
-                                if let Some(payload) = json_cmd.get("payload").and_then(|p| p.get("state")).and_then(|s| s.as_bool()) {
-                                    if let Ok(mut control) = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control() {
-                                        control.brain.cluaizd_connect_ffi = if payload { "on".to_string() } else { "off".to_string() };
-                                        let _ = cluaize_shared::hardware::system_control::HardwareOrchestrator::persist_sovereign_state(&control);
-                                        let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
-                                    } else {
-                                        let _ = pipe.write_all(b"{\"status\": \"error\"}").await;
-                                    }
-                                } else {
-                                    let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"missing state payload\"}").await;
-                                }
+                                let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"DB is now a plugin, hardcoded brain toggle ignored\"}").await;
                                 continue;
                             }
                             "GET_SETTINGS" => {
                                 let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-                                let control = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
-                                let brain_mode = if control.brain.cluaizd_connect_ffi == "on" { "on" } else { "off" };
+                                let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let brain_mode = "plugin";
                                 
                                 // Load real booster from disk — NOT hardcoded
-                                let booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                                 
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut available_chat_models: Vec<String> = Vec::new();
@@ -221,9 +230,9 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     all_models.push(model.id.clone());
 
                                     // PRIMARY: Classify by the actual folder path on disk
-                                    // ~/.cluaize/models/chat/     → chat models
-                                    // ~/.cluaize/models/embedding/ → vector models (text embeddings)
-                                    // ~/.cluaize/models/vision/    → vector models (image embeddings / CLIP)
+                                    // ~/.cluaiz/models/chat/     → chat models
+                                    // ~/.cluaiz/models/embedding/ → vector models (text embeddings)
+                                    // ~/.cluaiz/models/vision/    → vector models (image embeddings / CLIP)
                                     let folder_category = model.local_path.as_deref()
                                         .and_then(|p| {
                                             let p_lower = p.replace('\\', "/").to_lowercase();
@@ -308,17 +317,111 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let _ = pipe.write_all(response.to_string().as_bytes()).await;
                                 continue;
                             }
+                            "UPDATE_COMPONENT_PERMISSIONS" => {
+                                if let (Some(c_type), Some(c_name), Some(payload)) = (json_cmd.get("component_type").and_then(|e| e.as_str()), json_cmd.get("component_name").and_then(|e| e.as_str()), json_cmd.get("payload")) {
+                                    if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
+                                        let (base_dir, manifest_file, bin_file) = match c_type {
+                                            "extension" => ("extension", "manifest-extension.yaml", "manifest-extension.bin"),
+                                            "plugin" => ("plugin", "manifest-plugin.yaml", "manifest-plugin.bin"),
+                                            "mcp" => ("mcp", "manifest-mcp.yaml", "manifest-mcp.bin"),
+                                            _ => ("", "", ""),
+                                        };
+                                        if !base_dir.is_empty() {
+                                            let mut found_path = None;
+                                            let search_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join(base_dir);
+                                            if let Ok(entries) = std::fs::read_dir(&search_dir) {
+                                                for entry in entries.flatten() {
+                                                    let path = entry.path();
+                                                    if path.is_dir() {
+                                                        // For extensions, check nested dirs if needed. For plugins/mcp, it's usually flat.
+                                                        if path.file_name().unwrap_or_default() == c_name {
+                                                            found_path = Some(path.clone());
+                                                            break;
+                                                        } else if c_type == "extension" {
+                                                            if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                                                                for sub_entry in sub_entries.flatten() {
+                                                                    if sub_entry.path().is_dir() && sub_entry.path().file_name().unwrap_or_default() == c_name {
+                                                                        found_path = Some(sub_entry.path());
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if let Some(ext_dir) = found_path {
+                                                let yaml_path = ext_dir.join(manifest_file);
+                                                if yaml_path.exists() {
+                                                    let mut success = false;
+                                                    if let Ok(content) = std::fs::read_to_string(&yaml_path) {
+                                                        if let Ok(mut yaml_val) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                                                            if let Some(map) = yaml_val.as_mapping_mut() {
+                                                                let perms_key = serde_yaml::Value::String("permissions".to_string());
+                                                                if !map.contains_key(&perms_key) {
+                                                                    map.insert(perms_key.clone(), serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
+                                                                }
+                                                                if let Some(perms_val) = map.get_mut(&perms_key) {
+                                                                    if let Some(perms_map) = perms_val.as_mapping_mut() {
+                                                                        let k = serde_yaml::Value::String(key.to_string());
+                                                                        let v = match value {
+                                                                            serde_json::Value::Null => serde_yaml::Value::Null,
+                                                                            serde_json::Value::Bool(b) => serde_yaml::Value::Bool(*b),
+                                                                            serde_json::Value::Number(n) => {
+                                                                                if let Some(u) = n.as_u64() { serde_yaml::Value::Number(u.into()) }
+                                                                                else if let Some(i) = n.as_i64() { serde_yaml::Value::Number(i.into()) }
+                                                                                else if let Some(f) = n.as_f64() { serde_yaml::Value::Number(f.into()) }
+                                                                                else { serde_yaml::Value::Null }
+                                                                            },
+                                                                            serde_json::Value::String(s) => serde_yaml::Value::String(s.clone()),
+                                                                            _ => serde_yaml::Value::String(value.to_string())
+                                                                        };
+                                                                        perms_map.insert(k, v);
+                                                                    }
+                                                                }
+                                                            }
+                                                            if let Ok(new_content) = serde_yaml::to_string(&yaml_val) {
+                                                                if std::fs::write(&yaml_path, new_content).is_ok() {
+                                                                    let _ = std::fs::remove_file(ext_dir.join(bin_file));
+                                                                    success = true;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    if success {
+                                                        let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
+                                                    } else {
+                                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"failed to modify manifest\"}").await;
+                                                    }
+                                                } else {
+                                                    let _ = pipe.write_all(format!("{{\"status\": \"error\", \"message\": \"manifest {} not found\"}}", manifest_file).as_bytes()).await;
+                                                }
+                                            } else {
+                                                let _ = pipe.write_all(format!("{{\"status\": \"error\", \"message\": \"component {} not found\"}}", c_name).as_bytes()).await;
+                                            }
+                                        } else {
+                                            let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid component_type\"}").await;
+                                        }
+                                    } else {
+                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"payload must contain key and value\"}").await;
+                                    }
+                                } else {
+                                    let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"missing component_type, component_name, or payload\"}").await;
+                                }
+                                continue;
+                            }
                             // UPDATE_BOOSTER — sent by Tauri store (matches store action name)
                             "UPDATE_BOOSTER" | "BOOSTER_UPDATE" => {
                                 if let Some(payload) = json_cmd.get("payload") {
                                     // Handle single key-value update: {key: "flash_attention", value: "On"}
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
-                                        let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                        let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                                         if let Ok(mut booster_json) = serde_json::to_value(&booster) {
                                             booster_json[key] = value.clone();
                                             if let Ok(updated) = serde_json::from_value(booster_json) {
                                                 booster = updated;
-                                                let _ = cluaize_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
+                                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
                                                 let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                             } else {
                                                 let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid booster format\"}").await;
@@ -326,7 +429,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         }
                                     // Handle full booster object update (legacy BOOSTER_UPDATE format)
                                     } else if let Ok(booster_ctrl) = serde_json::from_value(payload.clone()) {
-                                        let _ = cluaize_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster_ctrl);
+                                        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster_ctrl);
                                         let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                     } else {
                                         let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid payload\"}").await;
@@ -353,12 +456,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "RESET_BOOSTER" => {
                                 tracing::info!("🔄 [IPC] Resetting Booster to hardware-optimal defaults...");
-                                let control = cluaize_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
                                 let has_gpu = !control.silicon_truth.accelerators.gpus.is_empty();
 
-                                use cluaize_shared::hardware::schema::booster::*;
+                                use cluaiz_shared::hardware::schema::booster::*;
 
                                 // Determine optimal n_gpu_layers based on VRAM
                                 let optimal_gpu_layers: i32 = if !has_gpu { 0 } else { -1 }; // -1 = auto
@@ -394,7 +497,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
                                 };
 
-                                let _ = cluaize_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_booster);
+                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_booster);
                                 let response = serde_json::json!({"status": "success", "booster": optimal_booster});
                                 let _ = pipe.write_all(response.to_string().as_bytes()).await;
                                 continue;
@@ -440,7 +543,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             if let Some(id) = perms.chat_models.text {
                                 if let Some(model) = roster.iter().find(|m| m.id == id) {
                                     if let Some(path) = &model.local_path {
-                                        if let Ok(dna) = cluaize_shared::metadata::dna::StructuralDNA::load(std::path::Path::new(path)) {
+                                        if let Ok(dna) = cluaiz_shared::metadata::dna::StructuralDNA::load(std::path::Path::new(path)) {
                                             if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" {
                                                 start_tag = dna.think_tag_schema.clone();
                                                 end_tag = dna.think_end_schema.clone();

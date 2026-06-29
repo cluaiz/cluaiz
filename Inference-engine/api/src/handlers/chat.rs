@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use std::convert::Infallible;
 use std::sync::Arc;
 use engines::neural_foundry::registry::registry_index::MasterRegistry;
-use cluaize_shared::environment::EnvironmentManager;
+use cluaiz_shared::environment::EnvironmentManager;
 use crate::state::AppState;
 use chrono::Utc;
 use dispatcher::EngineResponse;
@@ -101,14 +101,67 @@ pub async fn chat_completions(
                                         
                                         if let Some(entry) = entry_opt {
                                             let domain_path = EnvironmentManager::current().global_dir.join(&entry.domain);
-                                            let file_to_read = if comp_type == "extension" { "SKILL.md" } else { "manifest.yaml" };
-                                            let manual_path = domain_path.join(file_to_read);
-                                            
-                                            if let Ok(content) = std::fs::read_to_string(&manual_path) {
-                                                injection = content;
-                                                tracing::info!("✅ [API] Schema injected for {}", comp_name);
+                                            let fallback = if comp_type == "extension" {
+                                                "manifest-extension.yaml"
+                                            } else if comp_type == "plugin" {
+                                                "manifest-plugin.yaml"
                                             } else {
-                                                tracing::warn!("⚠️ [API] Missing {} for {}", file_to_read, comp_name);
+                                                "manifest-mcp.yaml"
+                                            };
+                                            
+                                            let manifest_path = domain_path.join(fallback);
+                                            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                                                injection.push_str(&content);
+                                                tracing::info!("✅ [API] Manifest schema injected for {}", comp_name);
+                                            } else {
+                                                tracing::warn!("⚠️ [API] Missing manifest {} for {}", fallback, comp_name);
+                                            }
+                                            
+                                            let skill_path = domain_path.join("SKILL.md");
+                                            if skill_path.exists() {
+                                                if let Ok(skill_content) = std::fs::read_to_string(&skill_path) {
+                                                    injection.push_str("\n\n--- AI SKILL MANUAL ---\n\n");
+                                                    injection.push_str(&skill_content);
+                                                    tracing::info!("✅ [API] SKILL.md appended for {}", comp_name);
+                                                }
+                                            }
+
+                                            let permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                                            if let Some(gen_model) = permissions.get_active_chat_model() {
+                                                let gen_model_safe = gen_model.replace(":", "-");
+                                                let cache_dir = domain_path.join(".cache");
+                                                if !cache_dir.exists() {
+                                                    let _ = std::fs::create_dir_all(&cache_dir);
+                                                }
+                                                let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
+                                                if !kv_cache_path.exists() {
+                                                    let roster = engines::models::registry::CoreRoster::load_roster();
+                                                    if let Some(model_manifest) = roster.iter().find(|m| m.id == gen_model) {
+                                                        if let Some(local_path) = &model_manifest.local_path {
+                                                            let local_path_buf = std::path::PathBuf::from(local_path);
+                                                            let mut backend_name = "llama".to_string();
+                                                            if let Some(parent) = local_path_buf.parent() {
+                                                                let dna_path = parent.join("structural_dna.json");
+                                                                if let Ok(content) = std::fs::read_to_string(&dna_path) {
+                                                                    if content.contains("\"RuntimeA\"") || content.contains("\"candlenative\"") {
+                                                                        backend_name = "onnx".to_string();
+                                                                    }
+                                                                }
+                                                            }
+                                                            let rt = tokio::runtime::Handle::current();
+                                                            let expanded_ctx = (injection.len() / 3 + 256) as usize;
+                                                            tracing::info!("⏳ [API] Triggering Agentic Pause Dual-Cache Compilation for {}", comp_name);
+                                                            engines::api::router::agentic_pause_compile_cache(
+                                                                &rt,
+                                                                kv_cache_path,
+                                                                local_path_buf,
+                                                                injection.clone(),
+                                                                expanded_ctx,
+                                                                backend_name
+                                                            );
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -168,7 +221,7 @@ pub async fn chat_completions(
 
                     if send_telemetry {
                         let mut pulse_json = json!({});
-                        if let Ok(lock) = cluaize_shared::hardware::telemetry::get_pulse().pulse.read() {
+                        if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
                             pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
                         }
 
@@ -255,7 +308,7 @@ pub async fn chat_completions(
         if send_telemetry {
             let total_time_ms = start_time.elapsed().as_millis();
             let mut pulse_json = json!({});
-            if let Ok(lock) = cluaize_shared::hardware::telemetry::get_pulse().pulse.read() {
+            if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
                 pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
             }
             response["usage"] = json!({

@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `models/` directory acts as the central Vault for all physical AI models. Because the Cluaize Engine operates entirely offline on the edge, it cannot rely on cloud endpoints for model data. This module is responsible for discovering, downloading, validating, and cataloging local `.gguf`, `.safetensors`, and `.onnx` files located on the user's hard drive.
+The `models/` directory acts as the central Vault for all physical AI models. Because the Cluaiz Engine operates entirely offline on the edge, it cannot rely on cloud endpoints for model data. This module is responsible for discovering, downloading, validating, and cataloging local `.gguf`, `.safetensors`, and `.onnx` files located on the user's hard drive.
 
 ## 🏛️ Architectural Flow
 
@@ -14,7 +14,7 @@ The `models/` directory acts as the central Vault for all physical AI models. Be
 graph LR
     API["HTTP Request (Pull Model)"] --> Fetch["fetch/ (ModelDownloader)"]
     Fetch -->|"HTTP Streaming"| HuggingFace[("HuggingFace / CDN")]
-    HuggingFace -->|"Writes Chunk"| Disk[("~/.cluaize/models/")]
+    HuggingFace -->|"Writes Chunk"| Disk[("~/.cluaiz/models/")]
     
     Boot["Engine Startup"] --> Registry["registry/ (NeuralRoster)"]
     Registry -->|"Scans Disk"| Disk
@@ -24,7 +24,7 @@ graph LR
 ## 🧬 Significant Directories & Files
 
 ### 1. `registry/`
-- **The Core Logic:** Implements the `NeuralRoster` which scans the local `~/.cluaize/models/` folder and the workspace `models/library/` folder.
+- **The Core Logic:** Implements the `NeuralRoster` which scans the local `~/.cluaiz/models/` folder and the workspace `models/library/` folder.
 - **The "Why":** The engine needs to know exactly which models are installed before starting inference. This directory loads the structural JSON manifests (defining context size, quantization, and parameters) and links them to the physical binary files on disk.
 
 ### 2. `fetch/`

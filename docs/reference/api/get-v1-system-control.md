@@ -16,7 +16,7 @@ GET /v1/system/control
 
 ```json
 {
-  "node_id": "cluaize-node-x1",
+  "node_id": "cluaiz-node-x1",
   "active_model": "bonsai:8b",
   "user_identity": {
     "name": "Operator",

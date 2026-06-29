@@ -1,5 +1,5 @@
 {
-  "registry_name": "Cluaize models Registry",
+  "registry_name": "Cluaiz models Registry",
   "version": "1.2",
   "routing": {
     "bonsai": "bonsai/family.json",

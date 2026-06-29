@@ -13,4 +13,4 @@ rkyv       = { version = "0.7", features = ["validation", "bytecheck"] }
 dirs       = "5.0"
 
 # ── Shared Workspace Member Links ──
-cluaize-shared = { path = "../cluaize-shared" }
+cluaiz-shared = { path = "../cluaiz-shared" }

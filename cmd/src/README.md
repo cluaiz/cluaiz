@@ -1,6 +1,6 @@
-# 🧠 Cluaize Source Architecture (`cmd/src`)
+# 🧠 cluaiz Source Architecture (`cmd/src`)
 
-Welcome to the central nervous system of the Cluaize ecosystem. This directory contains the sovereign source code for the Command Line Interface (CLI) and the immersive Ratatui-based Terminal User Interface (TUI). 
+Welcome to the central nervous system of the cluaiz ecosystem. This directory contains the sovereign source code for the Command Line Interface (CLI) and the immersive Ratatui-based Terminal User Interface (TUI). 
 
 The `cmd` package is **NOT** just a wrapper. It acts as the OS-level orchestrator, managing boot lifecycles, hardware verification, background engine daemons, and user interactions.
 
@@ -10,17 +10,17 @@ The `cmd` package is **NOT** just a wrapper. It acts as the OS-level orchestrato
 
 ### `main.rs`
 The absolute entry point of the entire system.
-- **Sovereign Ghost Execution Guard:** Ensures the binary is running from the master `~/.cluaize/bin` path.
-- **CLI Argument Parser:** Uses `clap` to handle one-off commands (e.g. `cluaize dev-sync`, `cluaize brain on`).
+- **Sovereign Ghost Execution Guard:** Ensures the binary is running from the master `~/.cluaiz/bin` path.
+- **CLI Argument Parser:** Uses `clap` to handle one-off commands (e.g. `cluaiz dev-sync`, `cluaiz brain on`).
 - **TUI Initialization:** If no CLI args are provided, it mounts the terminal canvas and launches the `App` flow.
 
 ### `core/` (The Brainstem)
 This module dictates state management and system lifecycle.
-* **`bootstrapper.rs`**: The heartbeat of Cluaize. 
+* **`bootstrapper.rs`**: The heartbeat of cluaiz. 
   * Checks for missing components.
   * Handles artifact synchronization (e.g., `dev-sync`).
   * Fetches `package.json` to verify engine versions.
-  * *Law of the Engine:* Cluaize cannot launch until the bootstrapper successfully seals the registry.
+  * *Law of the Engine:* cluaiz cannot launch until the bootstrapper successfully seals the registry.
 * **`app.rs`**: The main Ratatui loop. Handles terminal event ticks (keyboard inputs) and orchestrates view rendering.
 * **`state.rs`**: Contains the global `OsState` machine (Onboarding -> MainMenu -> Dashboard, etc) and User states.
 * **`dashboard.rs` / `onboarding.rs`**: High-level page orchestrators for the UI logic.
@@ -37,14 +37,14 @@ Code for executing specific command-line arguments without starting the TUI.
 
 ---
 
-## ⚙️ How Booting Works (The Cluaize Lifecycle)
+## ⚙️ How Booting Works (The cluaiz Lifecycle)
 
-When you type `cluaize` in your terminal:
+When you type `cluaiz` in your terminal:
 
 1. **Ignition (`main.rs`)**: 
    The CLI checks if it's running from the correct global path. It then parses args.
 2. **Bootstrapper Validation**:
-   `Bootstrapper::ignite()` verifies that the Neural Foundry (permissions) and Skills exist. It ensures `~/.cluaize/engine` is populated.
+   `Bootstrapper::ignite()` verifies that the Neural Foundry (permissions) and Skills exist. It ensures `~/.cluaiz/engine` is populated.
 3. **Flow Engine Engaged**:
    The terminal enters Raw Mode. Alternate screens are prepared.
 4. **App Mount**:
@@ -58,4 +58,4 @@ When you type `cluaize` in your terminal:
 
 1. **Never block the event loop:** Any heavy task (like loading a model or talking to the API) MUST be done asynchronously using `tokio::spawn` or background channels.
 2. **Graceful Crashes:** If something panics, the `FlowEngine::restore()` must be called via the panic hook in `main.rs` to prevent the user's terminal from breaking.
-3. **No Direct Hardware Calls here:** The CLI should always use `cluaize-shared` or the `engines` API crate to talk to the GPU/Drivers. The UI must remain decoupled from the hardware execution logic.
+3. **No Direct Hardware Calls here:** The CLI should always use `cluaiz-shared` or the `engines` API crate to talk to the GPU/Drivers. The UI must remain decoupled from the hardware execution logic.

@@ -4,8 +4,8 @@
     {
       "method": "GET",
       "path": "/v1/booster/status",
-      "desc": "Retrieves the current state of the Cluaize Booster Engine (Flash Attention, Turbo Quantization, etc).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/tuning/booster_status.md",
+      "desc": "Retrieves the current state of the cluaiz Booster Engine (Flash Attention, Turbo Quantization, etc).",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/booster_status.md",
       "params": [],
       "response": "{\n  \"mode_run\": \"Balance\",\n  \"flash_attention\": \"On\",\n  \"n_gpu_layers\": 33\n}"
     },
@@ -13,7 +13,7 @@
       "method": "POST",
       "path": "/v1/booster/update",
       "desc": "Updates a specific tuning parameter in the Booster Engine instantly.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/tuning/booster_update.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/booster_update.md",
       "params": [
         { "name": "key", "type": "string", "req": true, "desc": "The tuning flag to change (e.g. 'flash_attention').", "default": "flash_attention" },
         { "name": "value", "type": "string", "req": true, "desc": "The new value for the flag.", "default": "On" }
@@ -24,7 +24,7 @@
       "method": "POST",
       "path": "/v1/benchmark/run",
       "desc": "Runs a full diagnostic hardware benchmark across GPU, RAM, CPU, and Disk.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/tuning/benchmark.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/benchmark.md",
       "params": [],
       "response": "{\n  \"status\": \"success\",\n  \"scores\": {\n    \"cpu_flops\": 2450.2,\n    \"gpu_flops\": 12050.5,\n    \"ram_bandwidth\": 45.2\n  }\n}"
     }

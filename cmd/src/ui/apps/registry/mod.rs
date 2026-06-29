@@ -19,7 +19,7 @@ impl RegistryApp {
 
         let total_ram = state.ram_gb;
         
-        // ── Cluaize SORTING ──
+        // ── cluaiz SORTING ──
         state.sorted_models.sort_by(|a, b| {
             let (_, score_a, _) = RegistryTable::calculate_health(a, &state.hardware);
             let (_, score_b, _) = RegistryTable::calculate_health(b, &state.hardware);

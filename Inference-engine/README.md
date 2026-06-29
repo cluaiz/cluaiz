@@ -3,7 +3,7 @@
     <source srcset="https://fonts.gstatic.com/s/e/notoemoji/latest/1fabc/512.webp" type="image/webp">
     
   </picture> 
-  Cluaize Inference Engine
+  cluaiz Inference Engine
 </h1>
 <h3 align="center">The Cognitive Core</h3>
 <p align="center"><strong>A Zero-Latency, Hardware-Native Local Inference Runtime</strong></p>
@@ -11,12 +11,12 @@
 <p align="center"> 
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Built%20with-Rust-orange.svg" alt="Rust"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSL%201.1-blue.svg" alt="License"></a>
-  <a href="https://cluaize.com"><img src="https://img.shields.io/badge/By-Cluaize-purple.svg" alt="Cluaize"></a>
+  <a href="https://cluaiz.com"><img src="https://img.shields.io/badge/By-cluaiz-purple.svg" alt="cluaiz"></a>
 </p>
 
 ---
 
-The **Cluaize Inference Engine** is the bare-metal execution environment for running highly quantized Local Large Language Models (LLMs), Vision Models, and Embedded WASM Skills entirely on edge devices. It is built natively in **Rust** to bypass high-level bottlenecks and extract maximum FLOPS from consumer-grade CPUs and GPUs.
+The **cluaiz Inference Engine** is the bare-metal execution environment for running highly quantized Local Large Language Models (LLMs), Vision Models, and Embedded WASM Skills entirely on edge devices. It is built natively in **Rust** to bypass high-level bottlenecks and extract maximum FLOPS from consumer-grade CPUs and GPUs.
 
 ## 🏛️ Deep Architectural Mechanics
 
@@ -35,7 +35,7 @@ graph TD
 ```
 
 ### 2. Autonomous Hardware Calibration
-Unlike traditional inference wrappers, Cluaize does not require manual flag tuning (e.g., `-t 8 -ngl 33`). The engine utilizes the `HardwareDetector` to autonomously probe:
+Unlike traditional inference wrappers, cluaiz does not require manual flag tuning (e.g., `-t 8 -ngl 33`). The engine utilizes the `HardwareDetector` to autonomously probe:
 - SIMD instructions (AVX2, AVX-512).
 - VRAM availability across discrete GPUs.
 - OS-level memory locks (Huge Pages).
@@ -47,7 +47,7 @@ It then automatically compiles the optimal execution graph before the first toke
 |-----------|--------------|
 | `api/`    | The external HTTP and FFI gateway. Manages connection state, CORS, and request parsing. |
 | `engines/`| The heavy computational engine. Manages LMDB memory, tensor math, and active token streaming. |
-| `shared/` | The `cluaize-shared` crate containing standard structural DNA shared across the workspace. |
+| `shared/` | The `cluaiz-shared` crate containing standard structural DNA shared across the workspace. |
 
 ---
 

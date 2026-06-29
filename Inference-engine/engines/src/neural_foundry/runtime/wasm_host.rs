@@ -6,7 +6,7 @@ use wasmtime::*;
 use wasmtime_wasi::p1::{WasiP1Ctx, add_to_linker_async};
 use wasmtime_wasi::WasiCtxBuilder;
 // TODO: Restore once CoreGraph is implemented in archer_shared
-// use cluaize_shared::Core::graph::CoreGraph;
+// use cluaiz_shared::Core::graph::CoreGraph;
 
 use std::sync::Mutex;
 
@@ -22,7 +22,7 @@ pub struct WasmHost {
 }
 
 #[cfg(feature = "wasm-runtime")]
-struct CluaizeWasmState {
+struct cluaizWasmState {
     wasi: WasiP1Ctx,
 }
 
@@ -67,26 +67,26 @@ impl WasmHost {
         let skill_id = wasm_path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown_skill");
         tracing::info!("🧠 [CoreFoundry] Skill Execution Initiated: {} | Binary: {:?} | Func: {}", skill_id, wasm_path, func_name);
         
-        // 🏗️ Cluaize Sandbox: Restricted WASI Context
+        // 🏗️ cluaiz Sandbox: Restricted WASI Context
         let mut wasi_builder = WasiCtxBuilder::new();
         
         // 1. Inherit Stdio for kernel telemetry
         wasi_builder.inherit_stdout().inherit_stderr();
 
-        // 2. Map Skill-Specific Virtual Directory (Cluaize Immunity)
+        // 2. Map Skill-Specific Virtual Directory (cluaiz Immunity)
         if let Some(skill_root) = wasm_path.parent() {
             tracing::info!("🔒 [Sandbox] Mapping virtual jail: {:?}", skill_root);
             // We pre-open the skill's root directory as "." for the guest
             let _ = wasi_builder.preopened_dir(skill_root, ".", wasmtime_wasi::DirPerms::all(), wasmtime_wasi::FilePerms::all());
         }
 
-        // 3. Inject Cluaize-OS Environment (Cluaize Context)
-        wasi_builder.env("CLUAIZE_VERSION", "0.0.1");
-        wasi_builder.env("Cluaize_MODE", "ACTIVE");
+        // 3. Inject cluaiz-OS Environment (cluaiz Context)
+        wasi_builder.env("cluaiz_VERSION", "0.0.1");
+        wasi_builder.env("cluaiz_MODE", "ACTIVE");
 
         let wasi = wasi_builder.build_p1();
         
-        let mut store = Store::new(&self.engine, CluaizeWasmState { wasi });
+        let mut store = Store::new(&self.engine, cluaizWasmState { wasi });
         // ⛽ Inject exactly 10 Million CPU instructions as Fuel
         // If the skill hits an infinite loop or tries mining crypto, it traps and dies.
         if let Err(e) = store.set_fuel(10_000_000) {
@@ -94,7 +94,7 @@ impl WasmHost {
         }
 
         let mut linker = Linker::new(&self.engine);
-        add_to_linker_async(&mut linker, |s: &mut CluaizeWasmState| &mut s.wasi)?;
+        add_to_linker_async(&mut linker, |s: &mut cluaizWasmState| &mut s.wasi)?;
 
         // 🔗 Instantiate module
         let instance = linker.instantiate_async(&mut store, &module).await?;
@@ -122,7 +122,7 @@ impl WasmHost {
             .get_func(&mut store, func_name)
             .ok_or_else(|| anyhow::anyhow!("WASM Function '{}' not found", func_name))?;
 
-        // Call with pointer and length (Cluaize ABI)
+        // Call with pointer and length (cluaiz ABI)
         let mut results = [Val::I32(0)];
         if let Err(e) = func.call_async(
             &mut store, 
@@ -167,17 +167,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_Core_pulse_generation() {
-        cluaize_shared::dev_info!("🚀 Testing Cluaize Core Pulse...");
+        cluaiz_shared::dev_info!("🚀 Testing cluaiz Core Pulse...");
         // let activity = "Foundry Simulation Pulse";
         // let skill_id = "test_skill_v1";
         
-        // let result = cluaize_shared::neural_core::graph::CoreGraph::chronicle_pulse(
+        // let result = cluaiz_shared::neural_core::graph::CoreGraph::chronicle_pulse(
         //     activity,
         //     skill_id,
         //     "Metadata: [Simulation Mode Active]"
         // );
 
         // assert!(result.is_ok(), "Core Graph should be writable");
-        // cluaize_shared::dev_info!("✅ Pulse Chronicled in thing.ai.nurale.md");
+        // cluaiz_shared::dev_info!("✅ Pulse Chronicled in thing.ai.nurale.md");
     }
 }

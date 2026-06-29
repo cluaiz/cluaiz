@@ -1,0 +1,120 @@
+# =====================================================================
+# cluaiz PLUGIN MANIFEST (manifest-plugin.yaml)
+#
+# PURPOSE: Configures a "Plugin" which is pure muscle (compiled WASM/C++).
+# A plugin has NO `SKILL.md` (no AI prompt). It executes blindly when called.
+# =====================================================================
+
+# [FIXED SCHEMA] The exact unique name of this plugin in the ecosystem. 
+# Dynamic Value Example: "image-resizer", "fast-math"
+name: "cluaiz-math-accelerator"
+
+# [FIXED SCHEMA] Semantic versioning for updates.
+# Dynamic Value Example: "1.0.0", "2.1.3"
+version: "1.2.0"
+
+# [FIXED SCHEMA] Short human-readable description.
+# Dynamic Value Example: "Resizes images instantly"
+description: "A hardware-accelerated math parsing plugin compiled to WASM."
+
+# [FIXED SCHEMA] Name of the creator or organization.
+# Dynamic Value Example: "Cluaiz"
+author: "Aryan"
+
+# [FIXED SCHEMA] Must be exactly "plugin" to tell Engine how to load this.
+type: "plugin"
+
+# ---------------------------------------------------------------------
+# NEW SCHEMA (Used by CEL AI Router - inference-cel)
+# This is the new engine system that tells the AI when to use the tool.
+# ---------------------------------------------------------------------
+discovery:
+  # [FIXED SCHEMA] Keywords that will be injected into the AI's prompt. 
+  # Dynamic Value: When the user says "math", the AI will recall this tool.
+  semantic_triggers: ["math", "calculation", "formula"]
+  
+  # PLUGINS DO NOT HAVE A BRAIN, therefore the `brain_manual` field is absent here.
+
+activation:
+  # [FIXED SCHEMA] True = Engine will only load this into RAM when needed.
+  lazy_load: true
+  
+  # [FIXED SCHEMA] List of event strings that trigger the Engine to load this plugin.
+  # Dynamic Value: "on_command:use plugin::cluaiz-math-accelerator"
+  trigger_on: 
+    - "on_command:use plugin::cluaiz-math-accelerator"
+
+permissions:
+  # [OPTIONAL] Hard RAM limit (in MB). The Engine will OOM kill the WASM if exceeded.
+  # Dynamic Value: 64, 128, 512, or skip it.
+  max_memory_mb: 64
+  
+  # [OPTIONAL] Max CPU execution time (ms). To prevent infinite loops.
+  max_cpu_time_ms: 500
+  
+  # [FIXED SCHEMA] True/False. Whether HTTP calls are allowed in the WASM sandbox.
+  network_access: false
+  
+  # [FIXED SCHEMA] True/False. Can this plugin inject data directly into the AI's memory (KV cache)?
+  vram_kv_inject: false
+  
+  # [FIXED SCHEMA] JIT Injection control (Plugins usually don't need this complex power).
+  mid_layer_jit_injection: false
+  
+  # [FIXED SCHEMA] Disk access: "none", "read_only", "read_write"
+  file_system: "none"
+
+# ---------------------------------------------------------------------
+# SYSTEM BINDINGS (Dynamic Hardware & Booster State)
+# ---------------------------------------------------------------------
+# [FIXED SCHEMA] Plugins typically execute raw logic and don't need system states,
+# but can optionally subscribe to the following dot-notation targets if needed.
+# 
+# AVAILABLE SYSTEM_BOOSTER VARIABLES:
+# - "system_booster.mode_run" (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
+# - "system_booster.turbo_quant" (Auto, On, Off)
+# - "system_booster.flash_attention" (Auto, On, Off)
+# - "system_booster.speculative_decoding" (Auto, On, Off)
+# - "system_booster.auto_round" (Auto, On, Off)
+# - "system_booster.dflash" (Auto, On, Custom)
+# - "system_booster.kv_cache_quantization" (auto, kv16, kv8, kv4)
+# - "system_booster.context_shifting" (auto, off, minimal, standard, aggressive, extreme)
+# - "system_booster.force_vram_reclaim" (Auto, On, Off)
+# - "system_booster.n_gpu_layers" (-1, 0, or Integer)
+# - "system_booster.think_mode" (Auto, On, Off)
+# - "system_booster.response_length" ("auto", "short", "long", or Integer)
+# - "system_booster.enforce_json" (true, false)
+# - "system_booster.force_memory_lock" (Auto, On, Off)
+#
+# AVAILABLE PERMISSION VARIABLES:
+# - "permission.vector_models.text" (Model string or null)
+# - "permission.vector_models.vision" (Model string or null)
+# - "permission.vector_models.audio" (Model string or null)
+# - "permission.chat_models.text" (Model string or null)
+# - "permission.chat_models.vision" (Model string or null)
+# - "permission.chat_models.audio" (Model string or null)
+# - "permission.wasm_firewall" (auto/strict)
+# - "permission.vectorize_user_input" (true/false)
+# - "permission.vectorize_ai_response" (true/false)
+# - "permission.stream_telemetry" (true/false)
+# - "permission.lazy_load_model" (true/false)
+# - "permission.temporary_chat_ttl_hours" (integer)
+#
+# AVAILABLE SYSTEM_CONTROL VARIABLES (Hardware Truth):
+# - "system_control.identity.os_target" (Windows/Linux/Mac)
+# - "system_control.silicon_truth.cpu.logical_threads" (Integer)
+# - "system_control.silicon_truth.memory.available_capacity_gb" (Float)
+# - "system_control.silicon_truth.storage[0].free_gb" (Float)
+# - "system_control.silicon_truth.accelerators.gpus[0].vram_available_gb" (Float)
+# ---------------------------------------------------------------------
+system_bindings: []
+
+execution:
+  # [FIXED SCHEMA] Sandbox type. "WASM" (Strict limits) or "NATIVE" (C-FFI).
+  envelope: "WASM"
+  
+  # [FIXED SCHEMA] The exported C-language function name. The Engine will call this.
+  entry_point: "cluaiz_entry"
+  
+  # [FIXED SCHEMA] How to serialize the data. "MsgPack" or "JSON".
+  payload_format: "MsgPack"

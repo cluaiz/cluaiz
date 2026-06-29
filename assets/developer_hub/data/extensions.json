@@ -5,15 +5,15 @@
       "method": "GET",
       "path": "/v1/extensions/list",
       "desc": "Returns a list of all installed extensions.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/extensions/list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/list.md",
       "params": [],
-      "response": "[\n  { \"id\": \"ext_db_99\", \"name\": \"Cluaize DB Manager\", \"status\": \"active\" }\n]"
+      "response": "[\n  { \"id\": \"ext_db_99\", \"name\": \"cluaiz DB Manager\", \"status\": \"active\" }\n]"
     },
     {
       "method": "POST",
       "path": "/v1/extensions/install",
       "desc": "Installs an extension.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/extensions/install.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/install.md",
       "params": [
         { "name": "extension_uri", "type": "string", "req": true, "desc": "URI of the extension.", "default": "https://registry.cluaiz.com/extensions/cluaiz-db" }
       ],
@@ -23,7 +23,7 @@
       "method": "DELETE",
       "path": "/v1/extensions/remove",
       "desc": "Removes an extension.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/extensions/remove.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/remove.md",
       "params": [
         { "name": "extension_id", "type": "string", "req": true, "desc": "ID of the extension.", "default": "ext_db_99" }
       ],
@@ -33,7 +33,7 @@
       "method": "GET",
       "path": "/v1/extensions/cache",
       "desc": "Lists the active caches for extensions.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/extensions/cache_list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/cache_list.md",
       "params": [],
       "response": "[\n  { \"extension\": \"cluaiz-db\", \"cache_files\": [\"cache.bin\"] }\n]"
     },
@@ -41,7 +41,7 @@
       "method": "DELETE",
       "path": "/v1/extensions/cache",
       "desc": "Clears extension caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/extensions/cache_clear.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/cache_clear.md",
       "params": [
         { "name": "extension_id", "type": "string", "req": false, "desc": "Target specific extension cache.", "default": "cluaiz-db" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

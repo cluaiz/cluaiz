@@ -1,12 +1,12 @@
 [
   {
     "id": "vision",
-    "title": "🌟 Why Cluaize?",
+    "title": "🌟 Why cluaiz?",
     "groups": [
       {
         "group": "Vision & Value",
         "pages": [
-          { "slug": "why-cluaize", "title": "💡 Enterprise Value", "file_path": "docs/vision/why-cluaize.md" }
+          { "slug": "why-cluaiz", "title": "💡 Enterprise Value", "file_path": "docs/vision/why-cluaiz.md" }
         ]
       }
     ]
@@ -85,21 +85,21 @@
         "group": "CLI Reference",
         "pages": [
           { "slug": "cli-index", "title": "💻 CLI Reference Index", "file_path": "docs/reference/cli/index.md" },
-          { "slug": "cluaize-serve", "title": "⚙️ cluaize serve", "file_path": "docs/reference/cli/cluaize-serve.md" },
-          { "slug": "cluaize-run", "title": "⚙️ cluaize run", "file_path": "docs/reference/cli/cluaize-run.md" },
-          { "slug": "cluaize-pull", "title": "⚙️ cluaize pull", "file_path": "docs/reference/cli/cluaize-pull.md" },
-          { "slug": "cluaize-list", "title": "⚙️ cluaize list", "file_path": "docs/reference/cli/cluaize-list.md" },
-          { "slug": "cluaize-rm", "title": "⚙️ cluaize rm", "file_path": "docs/reference/cli/cluaize-rm.md" },
-          { "slug": "cluaize-model", "title": "⚙️ cluaize model", "file_path": "docs/reference/cli/cluaize-model.md" },
-          { "slug": "cluaize-brain", "title": "⚙️ cluaize brain", "file_path": "docs/reference/cli/cluaize-brain.md" },
-          { "slug": "cluaize-booster", "title": "⚙️ cluaize booster", "file_path": "docs/reference/cli/cluaize-booster.md" },
-          { "slug": "cluaize-permission", "title": "⚙️ cluaize permission", "file_path": "docs/reference/cli/cluaize-permission.md" },
-          { "slug": "cluaize-skill", "title": "⚙️ cluaize skill", "file_path": "docs/reference/cli/cluaize-skill.md" },
-          { "slug": "cluaize-calibrate", "title": "⚙️ cluaize calibrate", "file_path": "docs/reference/cli/cluaize-calibrate.md" },
-          { "slug": "cluaize-benchmark", "title": "⚙️ cluaize benchmark", "file_path": "docs/reference/cli/cluaize-benchmark.md" },
-          { "slug": "cluaize-status", "title": "⚙️ cluaize status", "file_path": "docs/reference/cli/cluaize-status.md" },
-          { "slug": "cluaize-ps", "title": "⚙️ cluaize ps", "file_path": "docs/reference/cli/cluaize-ps.md" },
-          { "slug": "cluaize-ingest", "title": "⚙️ cluaize ingest", "file_path": "docs/reference/cli/cluaize-ingest.md" }
+          { "slug": "cluaiz-serve", "title": "⚙️ cluaiz serve", "file_path": "docs/reference/cli/cluaiz-serve.md" },
+          { "slug": "cluaiz-run", "title": "⚙️ cluaiz run", "file_path": "docs/reference/cli/cluaiz-run.md" },
+          { "slug": "cluaiz-pull", "title": "⚙️ cluaiz pull", "file_path": "docs/reference/cli/cluaiz-pull.md" },
+          { "slug": "cluaiz-list", "title": "⚙️ cluaiz list", "file_path": "docs/reference/cli/cluaiz-list.md" },
+          { "slug": "cluaiz-rm", "title": "⚙️ cluaiz rm", "file_path": "docs/reference/cli/cluaiz-rm.md" },
+          { "slug": "cluaiz-model", "title": "⚙️ cluaiz model", "file_path": "docs/reference/cli/cluaiz-model.md" },
+          { "slug": "cluaiz-brain", "title": "⚙️ cluaiz brain", "file_path": "docs/reference/cli/cluaiz-brain.md" },
+          { "slug": "cluaiz-booster", "title": "⚙️ cluaiz booster", "file_path": "docs/reference/cli/cluaiz-booster.md" },
+          { "slug": "cluaiz-permission", "title": "⚙️ cluaiz permission", "file_path": "docs/reference/cli/cluaiz-permission.md" },
+          { "slug": "cluaiz-skill", "title": "⚙️ cluaiz skill", "file_path": "docs/reference/cli/cluaiz-skill.md" },
+          { "slug": "cluaiz-calibrate", "title": "⚙️ cluaiz calibrate", "file_path": "docs/reference/cli/cluaiz-calibrate.md" },
+          { "slug": "cluaiz-benchmark", "title": "⚙️ cluaiz benchmark", "file_path": "docs/reference/cli/cluaiz-benchmark.md" },
+          { "slug": "cluaiz-status", "title": "⚙️ cluaiz status", "file_path": "docs/reference/cli/cluaiz-status.md" },
+          { "slug": "cluaiz-ps", "title": "⚙️ cluaiz ps", "file_path": "docs/reference/cli/cluaiz-ps.md" },
+          { "slug": "cluaiz-ingest", "title": "⚙️ cluaiz ingest", "file_path": "docs/reference/cli/cluaiz-ingest.md" }
         ]
       },
       {

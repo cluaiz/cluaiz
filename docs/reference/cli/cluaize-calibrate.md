@@ -1,4 +1,4 @@
-# `cluaize calibrate` Command Reference
+# `cluaiz calibrate` Command Reference
 
 The `calibrate` command audits local workstation execution thresholds.
 
@@ -7,7 +7,7 @@ The `calibrate` command audits local workstation execution thresholds.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize calibrate
+cluaiz calibrate
 ```
 
 ---

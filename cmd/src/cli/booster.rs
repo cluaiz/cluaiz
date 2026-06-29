@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
-use cluaize_shared::hardware::governor::HardwareGovernor;
-use cluaize_shared::hardware::schema::booster::{
+use cluaiz_shared::hardware::governor::HardwareGovernor;
+use cluaiz_shared::hardware::schema::booster::{
     BoosterMode, KvCacheQuantization, ContextShiftingMode, FeatureState
 };
 
@@ -78,7 +78,7 @@ pub async fn execute(
         }
     } else {
         // Loop-based Interactive configuration
-        println!("\n  {} {}", "🚀".cyan(), "Cluaize Booster - Interactive Performance Setup".bold());
+        println!("\n  {} {}", "🚀".cyan(), "cluaiz Booster - Interactive Performance Setup".bold());
         
         loop {
             println!("\n  {} {}", "📊".cyan(), "Current Booster Settings:".bold());
@@ -163,7 +163,7 @@ pub async fn execute(
                 "DFlash" => {
                     let dflash_opts = vec!["Auto", "On", "Off"];
                     if let Ok(d) = inquire::Select::new("DFlash (FlashKDA):", dflash_opts).with_help_message("").prompt() {
-                        control.dflash = cluaize_shared::hardware::schema::booster::SmartState::Static(d.to_string());
+                        control.dflash = cluaiz_shared::hardware::schema::booster::SmartState::Static(d.to_string());
                         let _ = HardwareGovernor::save_booster_settings(&control);
                     }
                 }

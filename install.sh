@@ -1,11 +1,11 @@
 #!/bin/bash
-# CLUAIZE Core Infrastructure Installer - VERSION 0.1.0
+# cluaiz Core Infrastructure Installer - VERSION 0.1.0
 # Industrial Standard Deployment Script
 
 set -euo pipefail
 
-HUB_PATH="${HOME}/.cluaize"
-REPO="cluaize/cluaize"
+HUB_PATH="${HOME}/.cluaiz"
+REPO="cluaiz/cluaiz"
 
 # --- UI Matrix (Industrial) ---
 BOLD='\033[1m'; CYAN='\033[0;36m'; GRAY='\033[0;90m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
@@ -17,7 +17,7 @@ write_error() { echo -e "\n  ${RED}[ERR] $1${NC}"; }
 
 # --- Header ---
 clear
-echo -e "\n  ${BOLD}CLUAIZE CORE INFRASTRUCTURE (V0.1.0)${NC}"
+echo -e "\n  ${BOLD}cluaiz CORE INFRASTRUCTURE (V0.1.0)${NC}"
 echo -e "  ${GRAY}Industrial Deployment Sequence${NC}\n"
 
 # 1. Environment Provisioning
@@ -29,16 +29,16 @@ complete_step "Provisioning environment"
 if [[ ":$PATH:" != *":$HUB_PATH/bin:"* ]]; then
     SHELL_RC="$HOME/.bashrc"
     [[ "$SHELL" == *"zsh"* ]] && SHELL_RC="$HOME/.zshrc"
-    if ! grep -q "CLUAIZE_ROOT" "$SHELL_RC" 2>/dev/null; then
-        echo -e "\n# CLUAIZE Environment\nexport CLUAIZE_ROOT=\"$HUB_PATH\"\nexport PATH=\"\$PATH:$HUB_PATH/bin\"" >> "$SHELL_RC"
+    if ! grep -q "cluaiz_ROOT" "$SHELL_RC" 2>/dev/null; then
+        echo -e "\n# cluaiz Environment\nexport cluaiz_ROOT=\"$HUB_PATH\"\nexport PATH=\"\$PATH:$HUB_PATH/bin\"" >> "$SHELL_RC"
     fi
-    export CLUAIZE_ROOT="$HUB_PATH"
+    export cluaiz_ROOT="$HUB_PATH"
     export PATH="$PATH:$HUB_PATH/bin"
 fi
 
 # 3. Sovereign Registry Sync
 write_step "Synchronizing Neural Registry"
-MASTER_REGISTRY_URL="https://raw.githubusercontent.com/cluaiz/cluaize/main/package.json"
+MASTER_REGISTRY_URL="https://raw.githubusercontent.com/cluaiz/cluaiz/main/package.json"
 MASTER_JSON=$(curl -sL "$MASTER_REGISTRY_URL")
 
 OS_TYPE=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -63,9 +63,9 @@ CLI_URL=$(echo "$CLI_MANIFEST" | grep -oE '"'"$PLATFORM"'" : "[^"]+"' | cut -d'"
 
 if [ -n "$CLI_URL" ]; then
     write_step "Retrieving CLI ($PLATFORM)"
-    curl -sL "$CLI_URL" -o "$HUB_PATH/apps/cli/cluaize"
-    chmod +x "$HUB_PATH/apps/cli/cluaize"
-    ln -sf "$HUB_PATH/apps/cli/cluaize" "$HUB_PATH/bin/cluaize"
+    curl -sL "$CLI_URL" -o "$HUB_PATH/apps/cli/cluaiz"
+    chmod +x "$HUB_PATH/apps/cli/cluaiz"
+    ln -sf "$HUB_PATH/apps/cli/cluaiz" "$HUB_PATH/bin/cluaiz"
     complete_step "Retrieving CLI ($PLATFORM)"
 fi
 
@@ -75,7 +75,7 @@ ENGINE_MANIFEST=$(curl -sL "$ENGINE_MANIFEST_URL")
 ENGINE_URL=$(echo "$ENGINE_MANIFEST" | grep -oE '"'"$PLATFORM"'" : "[^"]+"' | cut -d'"' -f4)
 
 write_step "Retrieving Core Engine"
-curl -sL "$ENGINE_URL" -o "$HUB_PATH/engine/cluaize-engine.$EXT"
+curl -sL "$ENGINE_URL" -o "$HUB_PATH/engine/cluaiz-engine.$EXT"
 complete_step "Retrieving Core Engine"
 
 # --- Kernel Deployment (Driven by package.json) ---
@@ -97,29 +97,29 @@ KERNEL_URL=$(echo "$KERNEL_MANIFEST" | grep -oE '"'"$TARGET_PLATFORM"'" : "[^"]+
 
 if [ -n "$KERNEL_URL" ]; then
     write_step "Retrieving Core Kernel ($TARGET_PLATFORM)"
-    curl -sL "$KERNEL_URL" -o "$HUB_PATH/interface-engines/kernels/cluaize-llama.$EXT"
+    curl -sL "$KERNEL_URL" -o "$HUB_PATH/interface-engines/kernels/cluaiz-llama.$EXT"
     complete_step "Retrieving Core Kernel ($TARGET_PLATFORM)"
 fi
 
 write_success "Deployment successful."
 
-# 🧠 Cluaizd FFI Brain Setup
+# 🧠 cluaizdb FFI Brain Setup
 echo ""
-echo -e "  ${YELLOW}>_ Optional: Enable the Cluaizd Memory Brain? (y/n)${NC}"
+echo -e "  ${YELLOW}>_ Optional: Enable the cluaizdb Memory Brain? (y/n)${NC}"
 read -p "    Choice: " brainChoice
 if [[ "$brainChoice" =~ ^[Yy]$ ]]; then
-    export CLUAIZD_FFI=1
-    echo -e "    ${GREEN}[ENABLED]${NC} Cluaizd FFI Memory Brain activated."
+    export cluaizdb_FFI=1
+    echo -e "    ${GREEN}[ENABLED]${NC} cluaizdb FFI Memory Brain activated."
 else
-    export CLUAIZD_FFI=0
+    export cluaizdb_FFI=0
     echo -e "    ${GRAY}[DISABLED]${NC} Using legacy file-based memory."
 fi
 
 # 🧬 Pre-Flight Calibration
 echo -e "\n  ${CYAN}>_ Synchronizing Hardware DNA...${NC}"
-"$HUB_PATH/bin/cluaize" --calibrate
+"$HUB_PATH/bin/cluaiz" --calibrate
 
 echo -e "\n  ${GRAY}>_ Launching CLI...${NC}"
 
 # Launch CLI
-"$HUB_PATH/bin/cluaize"
+"$HUB_PATH/bin/cluaiz"

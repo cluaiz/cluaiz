@@ -33,4 +33,4 @@ graph TD
 
 ### 2. `wasm_host.rs`
 - **The Core Logic:** A sandboxed WebAssembly execution environment (typically powered by Wasmtime or Wasmer).
-- **The "Why":** Cluaize natively supports "Skills" (plugins) that the LLM can trigger. Instead of running unsafe Python scripts directly on the host machine, the Engine loads compiled `.wasm` skills. The `wasm_host.rs` file restricts memory access, guaranteeing that a malicious skill cannot read system files or crash the inference engine.
+- **The "Why":** cluaiz natively supports "Skills" (plugins) that the LLM can trigger. Instead of running unsafe Python scripts directly on the host machine, the Engine loads compiled `.wasm` skills. The `wasm_host.rs` file restricts memory access, guaranteeing that a malicious skill cannot read system files or crash the inference engine.

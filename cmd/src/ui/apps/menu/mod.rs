@@ -17,7 +17,7 @@ pub fn render_widget(app: &mut AppState, theme: &Theme, area: Rect, buf: &mut Bu
     let menu_items = vec!(
         ("Model List", "Download and select backend Archer models."),
         ("Settings", "System config, API keys, Storage paths."),
-        ("Help/Docs", "Read the documentation on how to use Cluaize OS."),
+        ("Help/Docs", "Read the documentation on how to use cluaiz OS."),
     );
 
     let selected = app.menu_state.selected().unwrap_or(0);

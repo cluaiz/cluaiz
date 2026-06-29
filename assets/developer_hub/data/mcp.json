@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/mcp/list",
       "desc": "Returns a list of Model Context Protocol (MCP) servers active.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/mcp/list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/list.md",
       "params": [],
       "response": "[\n  { \"id\": \"mcp_gh\", \"name\": \"GitHub MCP\", \"status\": \"active\" }\n]"
     },
@@ -13,7 +13,7 @@
       "method": "POST",
       "path": "/v1/mcp/install",
       "desc": "Registers a new MCP server endpoint.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/mcp/install.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/install.md",
       "params": [
         { "name": "mcp_config", "type": "string", "req": true, "desc": "MCP configuration.", "default": "{\"server\": \"github\", \"port\": 8080}" }
       ],
@@ -23,7 +23,7 @@
       "method": "DELETE",
       "path": "/v1/mcp/remove",
       "desc": "Unregisters an MCP server.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/mcp/remove.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/remove.md",
       "params": [
         { "name": "mcp_id", "type": "string", "req": true, "desc": "ID of the MCP server.", "default": "mcp_gh" }
       ],
@@ -33,7 +33,7 @@
       "method": "GET",
       "path": "/v1/mcp/cache",
       "desc": "Lists the active caches for MCP servers.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/mcp/cache_list.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/cache_list.md",
       "params": [],
       "response": "[\n  { \"mcp\": \"github\", \"cache_files\": [\"cache.bin\"] }\n]"
     },
@@ -41,7 +41,7 @@
       "method": "DELETE",
       "path": "/v1/mcp/cache",
       "desc": "Clears MCP caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaize@main/docs/mcp/cache_clear.md",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/cache_clear.md",
       "params": [
         { "name": "mcp_id", "type": "string", "req": false, "desc": "Target specific MCP cache.", "default": "github" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

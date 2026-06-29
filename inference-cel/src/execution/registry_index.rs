@@ -4,19 +4,19 @@
 //! Returns a `RegistryIndex` that classifies all installed components into
 //! EAGER (load at startup), LAZY (load on activation event), or MANUAL (never auto-load).
 //!
-//! **Path injection policy:** This module NEVER resolves `~/.cluaize` internally.
+//! **Path injection policy:** This module NEVER resolves `~/.cluaiz` internally.
 //! The path to `registry.yaml` is always injected by the caller (e.g., `HardwareGovernor`).
 //! This enforces CERD LAW 6: No Hardcoded Knowledge.
 //!
 //! ## registry.yaml format
 //! ```yaml
 //! version: "1.0.0"
-//! schema: "cluaize-registry-v1"
+//! schema: "cluaiz-registry-v1"
 //!
 //! extensions:
-//!   cluaize-db:
+//!   cluaiz-db:
 //!     id: "ext_core_db_001"
-//!     domain: "core/cluaize-db"
+//!     domain: "core/cluaiz-db"
 //!     load_strategy: "EAGER"
 //!     activation_events: ["on_startup"]
 //!     enabled: true
@@ -44,7 +44,7 @@ pub enum LoadStrategy {
     Eager,
     /// Register activation events. Zero RAM allocated until triggered.
     Lazy,
-    /// Never auto-load. Only loads via explicit `cluaize load <name>` command.
+    /// Never auto-load. Only loads via explicit `cluaiz load <name>` command.
     Manual,
 }
 
@@ -53,7 +53,7 @@ pub enum LoadStrategy {
 pub struct RegistryEntry {
     /// Unique identifier for this component.
     pub id: String,
-    /// Relative path under the Cluaize home directory (e.g., `core/cluaize-db`).
+    /// Relative path under the cluaiz home directory (e.g., `core/cluaiz-db`).
     /// Resolved to an absolute path by the caller using their own path resolution.
     pub domain: String,
     /// When and how to load this component.
@@ -111,7 +111,7 @@ impl MasterRegistry {
     /// Parses `registry.yaml` from the given path and returns a classified `RegistryIndex`.
     ///
     /// **Path is always injected by the caller.** This function never resolves
-    /// `~/.cluaize` or any other home-directory path internally.
+    /// `~/.cluaiz` or any other home-directory path internally.
     ///
     /// Only `enabled: true` entries are classified into eager/lazy/manual.
     /// Disabled entries are collected separately for diagnostic purposes.
@@ -119,7 +119,7 @@ impl MasterRegistry {
         let content = std::fs::read_to_string(registry_yaml_path).map_err(|e| {
             format!(
                 "registry.yaml not found at {:?}: {}. \
-                 Run `cluaize init` to create it.",
+                 Run `cluaiz init` to create it.",
                 registry_yaml_path, e
             )
         })?;

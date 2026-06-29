@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use crate::interfaces::memory_contract::{SovereignBuffer, MappedBuffer};
-use cluaize_shared::hardware::schema::profiles::SiliconTruth;
-use cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal;
+use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
+use cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal;
 
 /// 🏛️ SovereignMapper
 /// Handles the mapping of .kv-cache or .gguf files based on hardware capabilities.
@@ -28,9 +28,9 @@ impl SovereignMapper {
         let is_ssd = self.silicon.storage.iter().any(|s| s.drive_type.to_lowercase().contains("ssd"));
         
         if !is_ssd {
-            cluaize_shared::dev_info!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
+            cluaiz_shared::dev_info!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
         } else {
-            cluaize_shared::dev_info!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
+            cluaiz_shared::dev_info!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
         }
 
         Ok(buffer)
@@ -50,18 +50,18 @@ impl SovereignMapper {
 }
 
 /// 🚥 KVStitcher
-/// High-level engine for preparing CluaizeSignals for the Foundry.
+/// High-level engine for preparing cluaizSignals for the Foundry.
 pub struct KVStitcher;
 
 impl KVStitcher {
-    pub fn prepare_signal(state_path: &Path, token_count: usize, head_dim: usize) -> Result<CluaizeSignal> {
+    pub fn prepare_signal(state_path: &Path, token_count: usize, head_dim: usize) -> Result<cluaizSignal> {
         if !state_path.exists() {
             return Err(anyhow!("❌ State file not found: {:?}", state_path));
         }
 
         let buffer = MappedBuffer::from_file(state_path)?;
         
-        Ok(CluaizeSignal {
+        Ok(cluaizSignal {
             raw_data: Arc::new(buffer),
             token_count,
             head_dim,
@@ -80,6 +80,6 @@ impl KVSteering {
         let ptr = buffer.as_ptr();
         let len = buffer.len();
         
-        cluaize_shared::dev_info!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
+        cluaiz_shared::dev_info!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
     }
 }

@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 
-/// Reads `cluaize_root` securely via the Cluaize Hardware Governor.
+/// Reads `cluaiz_root` securely via the cluaiz Hardware Governor.
 /// This uses the binary truth (`system_control.bin`) as the ultimate source,
-/// exactly as the Cluaize Architecture intends. Zero custom hardcoding.
-fn read_cluaize_root() -> Option<PathBuf> {
-    match cluaize_shared::HardwareGovernor::load_system_control() {
-        Ok(control) => Some(PathBuf::from(control.context.cluaize_root)),
+/// exactly as the cluaiz Architecture intends. Zero custom hardcoding.
+fn read_cluaiz_root() -> Option<PathBuf> {
+    match cluaiz_shared::HardwareGovernor::load_system_control() {
+        Ok(control) => Some(PathBuf::from(control.context.cluaiz_root)),
         Err(e) => {
             tracing::error!("❌ [KernelLoader] Failed to read System Truth: {}", e);
             None
@@ -50,7 +50,7 @@ impl KernelLoader {
     }
 
     /// Resolves the absolute path for a kernel binary for a SPECIFIC OS.
-    /// Priority: [cluaize_root]/interface-engines/ → fallback to base_dir/target/release/
+    /// Priority: [cluaiz_root]/interface-engines/ → fallback to base_dir/target/release/
     pub fn resolve_path_for_os(&self, kernel_name: &str, os: &str) -> PathBuf {
         let ext = match os {
             "Windows" => "dll",
@@ -62,11 +62,11 @@ impl KernelLoader {
         // We try multiple potential naming conventions and subdirectories
         let mut candidates = Vec::new();
         
-        // 1. Unified Cluaize Naming Format (e.g. cluaize-llama.dll, libcluaize_llama.so)
-        candidates.push(format!("cluaize-{}.{}", kernel_name, ext));
-        candidates.push(format!("cluaize_{}.{}", kernel_name, ext));
-        candidates.push(format!("libcluaize_{}.{}", kernel_name, ext));
-        candidates.push(format!("libcluaize-{}.{}", kernel_name, ext));
+        // 1. Unified cluaiz Naming Format (e.g. cluaiz-llama.dll, libcluaiz_llama.so)
+        candidates.push(format!("cluaiz-{}.{}", kernel_name, ext));
+        candidates.push(format!("cluaiz_{}.{}", kernel_name, ext));
+        candidates.push(format!("libcluaiz_{}.{}", kernel_name, ext));
+        candidates.push(format!("libcluaiz-{}.{}", kernel_name, ext));
         
         // 2. Legacy Archer Naming Format (e.g. archer_llama.dll, libarcher_llama.so)
         candidates.push(format!("archer_{}.{}", kernel_name, ext));
@@ -75,8 +75,8 @@ impl KernelLoader {
         
         // 3. DEVELOPMENT FALLBACK: Check local target/debug/ if we are running from source.
         // We prioritize this over the global installation so developers don't accidentally load stale DLLs.
-        let mut dev_path = if let Some(root) = read_cluaize_root() {
-            // We shouldn't use cluaize_root for dev_path because that's the global .cluaize folder.
+        let mut dev_path = if let Some(root) = read_cluaiz_root() {
+            // We shouldn't use cluaiz_root for dev_path because that's the global .cluaiz folder.
             // We should use the current working directory where Cargo is building.
             std::env::current_dir().unwrap_or(self.base_dir.clone())
         } else {
@@ -92,29 +92,29 @@ impl KernelLoader {
             for file_name in &candidates {
                 let path = profile_path.join(file_name);
                 if path.exists() {
-                    tracing::info!("🎯 [KernelLoader] Cluaize dev path resolved ({}): {:?}", profile, path);
+                    tracing::info!("🎯 [KernelLoader] cluaiz dev path resolved ({}): {:?}", profile, path);
                     return path;
                 }
             }
         }
 
-        // 4. System Truth: Read cluaize_root (Global Installation)
-        if let Some(_) = read_cluaize_root() {
-            let env = cluaize_shared::environment::EnvironmentManager::current();
+        // 4. System Truth: Read cluaiz_root (Global Installation)
+        if let Some(_) = read_cluaiz_root() {
+            let env = cluaiz_shared::environment::EnvironmentManager::current();
             let base_link = env.engine_dir();
             
             for file_name in &candidates {
                 // Check flat engine directory
                 let path = base_link.join(file_name);
                 if path.exists() {
-                    tracing::info!("🎯 [KernelLoader] Cluaize path resolved: {:?}", path);
+                    tracing::info!("🎯 [KernelLoader] cluaiz path resolved: {:?}", path);
                     return path;
                 }
             }
         }
         
-        tracing::warn!("⚠️ [KernelLoader] Cluaize path not found for {}. Checked dev paths.", kernel_name);
-        dev_path.join("release").join(format!("cluaize_{}.{}", kernel_name, ext))
+        tracing::warn!("⚠️ [KernelLoader] cluaiz path not found for {}. Checked dev paths.", kernel_name);
+        dev_path.join("release").join(format!("cluaiz_{}.{}", kernel_name, ext))
     }
 }
 

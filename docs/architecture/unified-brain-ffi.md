@@ -1,16 +1,16 @@
 # Zero-Latency Unified FFI Bridging & Driver Decoupling
 
-This document explains the low-level FFI (Foreign Function Interface) bridging and driver decoupling mechanics inside the Cluaize Inference Engine.
+This document explains the low-level FFI (Foreign Function Interface) bridging and driver decoupling mechanics inside the cluaiz Inference Engine.
 
 ---
 
 ## 1. Zero-Latency C-ABI Bridging
 
-To bypass the overhead of REST/gRPC or IPC channels during raw tensor copy operations, Cluaize communicates with native drivers via a strict C-ABI bridge. 
+To bypass the overhead of REST/gRPC or IPC channels during raw tensor copy operations, cluaiz communicates with native drivers via a strict C-ABI bridge. 
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                   CLUAIZE ENGINE (RUST)                │
+│                   cluaiz ENGINE (RUST)                │
 │  Manages routing, safety bounds, state, and planning   │
 └───────────────────────────┬────────────────────────────┘
                             │ Safe C-ABI FFI (Zero-Copy)
@@ -43,10 +43,10 @@ pub struct ExtensionPayload {
 
 ## 2. Dynamic Silicon Dispatch (Driver Decoupling)
 
-Cluaize decouples compile-time compute dependencies. The engine binary compiles independently of CUDA or Metal libraries. At startup, the engine scans the host system's compute capabilities and dynamically loads the matching driver library:
+cluaiz decouples compile-time compute dependencies. The engine binary compiles independently of CUDA or Metal libraries. At startup, the engine scans the host system's compute capabilities and dynamically loads the matching driver library:
 
 1. **Audit Phase:** Scans PCI buses, Metal device lists, or Vulkan registries.
 2. **Bind Phase:** Uses dynamic loading system calls (`LoadLibraryW` on Windows, `dlopen` on POSIX) to load the driver `.dll` / `.so`.
-3. **Execution Phase:** Resolves function pointers (such as `cluaize_execute_payload`) and maps the memory layout.
+3. **Execution Phase:** Resolves function pointers (such as `cluaiz_execute_payload`) and maps the memory layout.
 
 If no dedicated GPU accelerator is present, the engine binds the baseline CPU SIMD library (utilizing AVX2, AVX-512, or ARM Neon instructions).

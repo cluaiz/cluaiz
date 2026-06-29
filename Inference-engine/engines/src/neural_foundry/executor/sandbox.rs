@@ -3,9 +3,9 @@ use anyhow::{Result, anyhow};
 use inference_cel::execution::{native_sandbox::NativeExecutor, wasm_sandbox::WasmExecutor};
 use inference_cel::ffi::cxp_ffi::{ExtensionPayload, Transpiler};
 use crate::neural_foundry::registry::registry_index::MasterRegistry;
-use crate::neural_foundry::registry::plugin_manager::PluginManifest;
+use inference_cel::parser::metadata_parser::IntegrationMetadata;
 use inference_cel::parser::metadata_parser::EngineRules as CelEngineRules;
-use cluaize_shared::environment::EnvironmentManager;
+use cluaiz_shared::environment::EnvironmentManager;
 
 /// A unified executor that routes payloads to either Native (C-FFI) or WASM sandboxes
 /// based on the plugin's manifest envelope, strictly following Master Registry state.
@@ -53,28 +53,24 @@ impl UnifiedExecutor {
         let manifest = Self::load_manifest(&domain_path)
             .ok_or_else(|| anyhow!("Failed to load manifest for plugin '{}'", plugin_name))?;
 
-        let envelope = if let Some(exec) = &manifest.execution {
-            exec.get("envelope").and_then(|v| v.as_str()).unwrap_or("WASM").to_string()
-        } else {
-            "NATIVE".to_string() // Fallback for legacy plugins
-        };
+        let envelope = manifest.execution.as_ref().and_then(|e| e.envelope.clone()).unwrap_or_else(|| "WASM".to_string());
 
-        let binary_name = if let Some(exec) = &manifest.execution {
-            if let Some(bp) = exec.get("binary_path").and_then(|v| v.as_str()) {
-                bp.to_string()
-            } else if !manifest.ffi_bindings.binary_path.is_empty() {
-                manifest.ffi_bindings.binary_path.clone()
-            } else {
-                manifest.native_binary.clone()
+        let mut binary_name = manifest.execution.as_ref().and_then(|e| e.binary_path.clone()).unwrap_or_default();
+        if binary_name.is_empty() {
+            // Auto-discovery fallback for plugins/extensions
+            if let Ok(entries) = std::fs::read_dir(&domain_path) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().map_or(false, |ext| ext == "wasm" || ext == "dll" || ext == "so" || ext == "dylib") {
+                        binary_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                        break;
+                    }
+                }
             }
-        } else if !manifest.ffi_bindings.binary_path.is_empty() {
-            manifest.ffi_bindings.binary_path.clone()
-        } else {
-            manifest.native_binary.clone()
-        };
+        }
 
         if binary_name.is_empty() {
-            return Err(anyhow!("Plugin '{}' manifest missing binary_path", plugin_name));
+            return Err(anyhow!("Plugin '{}' manifest missing binary_path and no binary found in domain", plugin_name));
         }
 
         let binary_path = domain_path.join(&binary_name);
@@ -86,13 +82,13 @@ impl UnifiedExecutor {
 
         let cel_rules = CelEngineRules {
             sandbox_type: envelope.clone(),
-            max_memory_mb: manifest.engine_rules.max_memory_mb.map(|v| v as u64),
-            allow_network: Some(manifest.engine_rules.allow_network),
-            allow_file_system: Some(manifest.engine_rules.allow_file_system),
-            allow_subprocess: Some(manifest.engine_rules.allow_subprocess),
-            allow_env_vars: Some(manifest.engine_rules.allow_env_vars),
-            fuel_limit: manifest.engine_rules.fuel_limit,
-            timeout_ms: manifest.engine_rules.timeout_ms,
+            max_memory_mb: manifest.permissions.as_ref().and_then(|p| p.max_memory_mb),
+            allow_network: manifest.permissions.as_ref().and_then(|p| p.network_access),
+            allow_file_system: manifest.permissions.as_ref().and_then(|p| p.file_system.clone()).map(|fs| fs != "none"),
+            allow_subprocess: Some(false), // By default disabled in new schema
+            allow_env_vars: Some(false),   // By default disabled in new schema
+            fuel_limit: Some(500_000),     // Fallback default
+            timeout_ms: manifest.permissions.as_ref().and_then(|p| p.max_cpu_time_ms),
         };
 
         match envelope.as_str() {
@@ -127,19 +123,40 @@ impl UnifiedExecutor {
         }
     }
 
-    fn load_manifest(dir: &PathBuf) -> Option<PluginManifest> {
-        let yaml_path = dir.join("manifest.yaml");
-        if yaml_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&yaml_path) {
-                if let Ok(m) = serde_yaml::from_str::<PluginManifest>(&content) {
-                    return Some(m);
+    fn load_manifest(dir: &PathBuf) -> Option<IntegrationMetadata> {
+        // Check for .bin files first
+        let bin_candidates = ["manifest-plugin.bin", "manifest-extension.bin", "manifest-mcp.bin"];
+        for candidate in bin_candidates {
+            let bin_path = dir.join(candidate);
+            if bin_path.exists() {
+                if let Ok(bytes) = std::fs::read(&bin_path) {
+                    if let Ok(m) = bincode::deserialize::<IntegrationMetadata>(&bytes) {
+                        return Some(m);
+                    }
+                }
+            }
+        }
+
+        // Fallback to yaml files and auto-compile
+        let candidates = ["manifest-plugin.yaml", "manifest-extension.yaml", "manifest-mcp.yaml"];
+        for candidate in candidates {
+            let yaml_path = dir.join(candidate);
+            if yaml_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&yaml_path) {
+                    if let Ok(m) = serde_yaml::from_str::<IntegrationMetadata>(&content) {
+                        let bin_name = candidate.replace(".yaml", ".bin");
+                        if let Ok(bin_data) = bincode::serialize(&m) {
+                            let _ = std::fs::write(dir.join(bin_name), bin_data);
+                        }
+                        return Some(m);
+                    }
                 }
             }
         }
         let json_path = dir.join("manifest.json");
         if json_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&json_path) {
-                if let Ok(m) = serde_json::from_str::<PluginManifest>(&content) {
+                if let Ok(m) = serde_json::from_str::<IntegrationMetadata>(&content) {
                     return Some(m);
                 }
             }

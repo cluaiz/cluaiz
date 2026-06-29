@@ -1,4 +1,4 @@
-# `cluaize list` Command Reference
+# `cluaiz list` Command Reference
 
 The `list` command displays all installed models registered in the local workspace node.
 
@@ -7,7 +7,7 @@ The `list` command displays all installed models registered in the local workspa
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize list
+cluaiz list
 ```
 
 ---

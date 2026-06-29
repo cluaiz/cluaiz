@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `platform/` module isolates all OS-specific unsafe FFI code. The Cluaize engine interacts heavily with low-level OS APIs (e.g., memory locking, process priority scheduling) to squeeze out maximum performance. 
+The `platform/` module isolates all OS-specific unsafe FFI code. The cluaiz engine interacts heavily with low-level OS APIs (e.g., memory locking, process priority scheduling) to squeeze out maximum performance. 
 
 Because Windows (`winapi`), macOS (`mach`), and Linux (`libc`) handle physical memory and threads completely differently, this directory abstracts those differences away behind safe Rust traits so the rest of the engine can compile universally.
 

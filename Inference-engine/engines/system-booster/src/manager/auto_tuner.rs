@@ -1,8 +1,8 @@
 //! 🧪 Auto Tuner: Hardware-Aware Feature Scaling
 //! Calibrates "Auto" states based on real-time Silicon Truth.
 
-use cluaize_shared::hardware::schema::booster::{BoosterControl, FeatureState};
-use cluaize_shared::hardware::schema::profiles::SiliconTruth;
+use cluaiz_shared::hardware::schema::booster::{BoosterControl, FeatureState};
+use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
 
 pub struct AutoTuner;
 

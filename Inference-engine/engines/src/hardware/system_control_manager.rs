@@ -1,6 +1,6 @@
 use super::SiliconTruth;
 use anyhow::Result;
-use cluaize_shared::hardware::{governor::HardwareGovernor, system_control::HardwareOrchestrator};
+use cluaiz_shared::hardware::{governor::HardwareGovernor, system_control::HardwareOrchestrator};
 
 /// 🏛️ Performs a deep surgical scan of the host Hardware.
 pub fn detect_hardware() -> SiliconTruth {
@@ -25,7 +25,7 @@ pub fn save_config(_profile: &SiliconTruth) -> Result<()> {
     Ok(())
 }
 
-/// ⚙️ Updates a specific field in the Cluaize configuration.
+/// ⚙️ Updates a specific field in the cluaiz configuration.
 pub fn update_field(field: &str, value: &str) -> Result<()> {
     // Convert string value to JSON for the Governor's update protocol.
     let val_json = serde_json::Value::String(value.to_string());

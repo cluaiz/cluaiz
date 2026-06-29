@@ -1,5 +1,5 @@
 use crate::ffi::llama_cpp;
-use cluaize_shared::StructuralDNA;
+use cluaiz_shared::StructuralDNA;
 use tracing::info;
 
 /// 🎲 Builds a dynamic sampler chain based on model DNA (handles BitNet 1-bit logic natively).

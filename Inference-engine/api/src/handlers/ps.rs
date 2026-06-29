@@ -2,7 +2,7 @@ use axum::{Json, extract::State};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
-use cluaize_shared::hardware::governor::HardwareGovernor;
+use cluaiz_shared::hardware::governor::HardwareGovernor;
 
 // ─── GET /v1/system/ps ────────────────────────────────────────────────
 pub async fn get_processes(State(_state): State<Arc<AppState>>) -> Json<Value> {

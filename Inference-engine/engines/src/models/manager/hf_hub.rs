@@ -228,12 +228,12 @@ impl HuggingFaceHub {
             let bytes = res.bytes().await.map_err(|e| e.to_string())?;
             
             let temp_dir = std::env::temp_dir();
-            let temp_file_path = temp_dir.join(format!("cluaize_probe_{}.gguf", std::process::id()));
+            let temp_file_path = temp_dir.join(format!("cluaiz_probe_{}.gguf", std::process::id()));
             
             let mut file = std::fs::File::create(&temp_file_path).map_err(|e| e.to_string())?;
             file.write_all(&bytes).map_err(|e| e.to_string())?;
             
-            let result = cluaize_shared::utils::gguf_prober::GGUFProber::probe(&temp_file_path);
+            let result = cluaiz_shared::utils::gguf_prober::GGUFProber::probe(&temp_file_path);
             let _ = std::fs::remove_file(&temp_file_path);
             
             return result.map_err(|e| e.to_string());

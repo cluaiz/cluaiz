@@ -1,5 +1,5 @@
 ========================================================================
-CLUAIZE - THIRD-PARTY OPEN SOURCE NOTICES
+cluaiz - THIRD-PARTY OPEN SOURCE NOTICES
 ========================================================================
 This software includes components from the following open-source projects.
 We are grateful to the open-source community for their contributions.

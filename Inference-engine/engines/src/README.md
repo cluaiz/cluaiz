@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `engines/src/` directory is the root of the Rust module tree for the Cluaize inference engine. By strictly segregating the engine into distinct functional modules (Memory, Hardware, Neural Foundry, Telemetry), we guarantee that hardware detection logic can be audited independently of token streaming, and memory allocation bugs do not crash the REST gateway.
+The `engines/src/` directory is the root of the Rust module tree for the cluaiz inference engine. By strictly segregating the engine into distinct functional modules (Memory, Hardware, Neural Foundry, Telemetry), we guarantee that hardware detection logic can be audited independently of token streaming, and memory allocation bugs do not crash the REST gateway.
 
 This directory structures the exact execution sequence of an inference task from the moment it leaves the HTTP layer to the moment it hits physical GPU VRAM.
 
@@ -33,7 +33,7 @@ graph TD
 
 ### 3. `hardware/` & `platform/`
 - **The Core Logic:** Probes physical silicon (AVX/AVX2/AVX-512, CUDA cores, NUMA nodes) and executes OS-specific configurations (Windows vs Linux).
-- **The "Why":** Standard LLM wrappers rely on manual user flags. Cluaize uses `hardware/` to autonomously configure the execution graph perfectly for the host machine.
+- **The "Why":** Standard LLM wrappers rely on manual user flags. cluaiz uses `hardware/` to autonomously configure the execution graph perfectly for the host machine.
 
 ### 4. `memory/`
 - **The Core Logic:** Manages the LMDB memory-mapped KV cache and conversational session rings.

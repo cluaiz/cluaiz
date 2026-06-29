@@ -8,7 +8,7 @@
 
 The `neural_core/` crate acts as the intermediate mathematical translation layer. When a `.gguf` file or an `.onnx` file is loaded from the disk, the physical layout of the tensors is drastically different. The Neural Core provides a unified Rust representation (the "Structural DNA") of neural networks. 
 
-It defines exactly what a "Tensor" or a "KV Cache" is in the context of the Cluaize Engine, allowing the rest of the application to manipulate neural memory without understanding the specific C++ backend constraints.
+It defines exactly what a "Tensor" or a "KV Cache" is in the context of the cluaiz Engine, allowing the rest of the application to manipulate neural memory without understanding the specific C++ backend constraints.
 
 ## 🏛️ Architectural Mechanics
 

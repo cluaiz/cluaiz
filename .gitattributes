@@ -1,4 +1,4 @@
-# 🏛️ CLUAIZE LINGUISTIC OVERRIDES
+# 🏛️ cluaiz LINGUISTIC OVERRIDES
 
 # --- Force index Shell and Assembly for stats ---
 *.sh linguist-detectable=true

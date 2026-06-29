@@ -1,8 +1,8 @@
-# Cluaize Inference CEL (Cluaize Expression Language) 🧠⚡
+# cluaiz Inference CEL (cluaiz Expression Language) 🧠⚡
 
-**The Cluaize Brain Router, Zero-Overhead FFI Transducer, & Turing-Complete Orchestration Engine for Autonomous AI**
+**The cluaiz Brain Router, Zero-Overhead FFI Transducer, & Turing-Complete Orchestration Engine for Autonomous AI**
 
-`inference-cel` is the cornerstone architectural component of the Cluaize ecosystem. It solves the **"Monolith Trap"**—the flaw in other platforms that bloat their core binaries by hardcoding database drivers, web scrapers, and external APIs.
+`inference-cel` is the cornerstone architectural component of the cluaiz ecosystem. It solves the **"Monolith Trap"**—the flaw in other platforms that bloat their core binaries by hardcoding database drivers, web scrapers, and external APIs.
 
 Instead of hardcoding logic, `inference-cel` acts as a **"Dumb, Ultra-Fast Router"**. It has zero knowledge of what a Database, Web Search, or API is. It only knows how to parse a universal orchestration language (CEL) into a Turing-Complete Abstract Syntax Tree (AST), and execute it across strict memory-safe boundaries at bare-metal speeds (0.05ms latency).
 
@@ -15,7 +15,7 @@ Think of it like the English language:
 - **CDQL (Cluaiz Database Query Language)** is just the "Database Vocabulary" spoken using CEL grammar.
 - **Web-Search** is another vocabulary spoken using CEL grammar.
 
-Because the grammar is 100% identical, the Cluaize Engine only needs **ONE Universal Parser**. The LLM agent generates a CEL script, the engine parses it, plans it via `planner.rs`, and routes it natively via C-FFI or WebAssembly (WASM).
+Because the grammar is 100% identical, the cluaiz Engine only needs **ONE Universal Parser**. The LLM agent generates a CEL script, the engine parses it, plans it via `planner.rs`, and routes it natively via C-FFI or WebAssembly (WASM).
 
 ---
 
@@ -77,10 +77,10 @@ The `registry.rs` acts as the Universal Router. It dynamically hot-loads plugins
 
 1. **WASM Envelope (`wasmtime`):** 
    - **For:** Untrusted Community Plugins (Web Agents, Experimental Tools).
-   - **Security:** Absolute memory sandboxing (`wasm_sandbox.rs`). It dynamically allocates fuel and memory limits based on system resources, completely eliminating the legacy 50MB hardcoded caps. Prevents rogue plugins from crashing the Cluaize Engine.
+   - **Security:** Absolute memory sandboxing (`wasm_sandbox.rs`). It dynamically allocates fuel and memory limits based on system resources, completely eliminating the legacy 50MB hardcoded caps. Prevents rogue plugins from crashing the cluaiz Engine.
 2. **Native C-FFI (`libloading`):** 
    - **For:** Trusted Core Plugins (e.g., `engine-lmdb` Database).
-   - **Speed:** Zero-cost abstraction, direct memory mapping via the Cluaize Extension Protocol (CXP).
+   - **Speed:** Zero-cost abstraction, direct memory mapping via the cluaiz Extension Protocol (CXP).
 3. **Auto-WASM (`cargo` backend):** 
    - **For:** Developers writing raw `logic.rs` scripts. The Engine auto-compiles them into WASM in the background and hot-reloads them into RAM.
 4. **Legacy Rhai (`rhai` interpreter):** 
@@ -88,7 +88,7 @@ The `registry.rs` acts as the Universal Router. It dynamically hot-loads plugins
 
 ---
 
-## 🛡️ 4. The CXP (Cluaize Extension Protocol) Boundary (`cxp_ffi.rs`)
+## 🛡️ 4. The CXP (cluaiz Extension Protocol) Boundary (`cxp_ffi.rs`)
 
 Passing raw JSON strings across an FFI boundary causes massive CPU serialization bottlenecks and memory leaks. `inference-cel` completely drops the "JSON-only" mandate and introduces the **CXP Envelope**. 
 
@@ -102,7 +102,7 @@ pub enum PayloadType {
     Bincode, // Native Zero-Copy Binary Structs
 }
 ```
-Plugins define their "DNA / Genomes" as strict Rust structs. The Engine transpiles AST payloads into `Bincode` (Raw Bytes), allowing `0.05ms` cross-boundary execution speed without a single string allocation. The engine explicitly manages pointers across the FFI boundary using `cluaize_free_payload` to guarantee zero memory leaks.
+Plugins define their "DNA / Genomes" as strict Rust structs. The Engine transpiles AST payloads into `Bincode` (Raw Bytes), allowing `0.05ms` cross-boundary execution speed without a single string allocation. The engine explicitly manages pointers across the FFI boundary using `cluaiz_free_payload` to guarantee zero memory leaks.
 
 ---
 
@@ -125,4 +125,4 @@ When the LLM outputs a CEL script, the following exact lifecycle occurs:
 6. **Execution (`cxp_ffi.rs` / `wasm_sandbox.rs`):** The payload is transpiled to a C-ABI struct and dispatched. Sandboxed modules run via Wasmtime, trusted modules run via native C-Pointers.
 7. **GPU Injection & Native Execution (`gpu_injector.rs` / `cel_handler.rs`):** Returned payloads from plugins are verified and injected back into the LLM's attention mechanism. For `<cel>` hooks, the Native Engine Directives bypass plugins entirely and directly execute internal hooks (like KV cache flushing) inside the active inference loop.
 
-> **"The Engine does not know what a Database is. It only knows how to speak CEL."** - Cluaize Engineering Doctrine
+> **"The Engine does not know what a Database is. It only knows how to speak CEL."** - cluaiz Engineering Doctrine

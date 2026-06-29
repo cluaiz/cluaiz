@@ -1,0 +1,129 @@
+# =====================================================================
+# cluaiz MCP MANIFEST (manifest-mcp.yaml)
+#
+# PURPOSE: An "MCP" (Model Context Protocol) runs outside the Engine.
+# It is a separate process (like Node.js or Python). Engine talks to it via stdio.
+# =====================================================================
+
+# [FIXED SCHEMA] Unique name. Example: "github-mcp-connector"
+name: "github-mcp-connector"
+
+# [FIXED SCHEMA] Version string. Example: "1.0.0"
+version: "1.0.0"
+
+# [FIXED SCHEMA] Short human-readable description.
+description: "Connects the engine to GitHub via official MCP server."
+
+# [FIXED SCHEMA] Name of the creator.
+author: "Cluaiz Community"
+
+# [FIXED SCHEMA] Must be exactly "mcp". Engine won't try to FFI this.
+type: "mcp"
+
+# ---------------------------------------------------------------------
+# NEW SCHEMA (inference-cel)
+# ---------------------------------------------------------------------
+discovery:
+  # [FIXED SCHEMA] Keywords so the AI knows this MCP exists.
+  semantic_triggers: ["github", "pull request", "issues", "repo"]
+  
+  # [FIXED SCHEMA] The CEL format to call the MCP tool.
+  cel_grammar: "use mcp::github-mcp-connector -> call_tool(...)"
+  
+
+
+activation:
+  # [FIXED SCHEMA] Don't run the Node.js process until the AI actually asks for it.
+  lazy_load: true
+  
+  # [FIXED SCHEMA] Event strings that spawn the MCP process.
+  trigger_on: 
+    - "on_command:use mcp::github-mcp-connector"
+
+permissions:
+  # [OPTIONAL] MCP processes manage their own memory, so Engine doesn't cap it.
+  max_memory_mb: null
+  
+  # [OPTIONAL] Long timeout because network APIs take time.
+  max_cpu_time_ms: 30000
+  
+  # [FIXED SCHEMA] Must be true for Github API.
+  network_access: true
+  
+  # [FIXED SCHEMA] Allowed domains (Whitelist).
+  allowed_hosts: ["api.github.com"]
+  
+  # [FIXED SCHEMA] MCP processes typically do not inject directly into the engine's mid-layer (C-pointer boundary).
+  mid_layer_jit_injection: false
+  
+  # [FIXED SCHEMA] File system access.
+  file_system: "none"
+
+# ---------------------------------------------------------------------
+# SYSTEM BINDINGS (Dynamic Hardware & Booster State)
+# ---------------------------------------------------------------------
+# [FIXED SCHEMA] Engine will resolve these dot-notation targets at runtime 
+# and inject their current values into the MCP process environment / payload.
+# 
+# AVAILABLE SYSTEM_BOOSTER VARIABLES:
+# - "system_booster.mode_run" (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
+# - "system_booster.turbo_quant" (Auto, On, Off)
+# - "system_booster.flash_attention" (Auto, On, Off)
+# - "system_booster.speculative_decoding" (Auto, On, Off)
+# - "system_booster.auto_round" (Auto, On, Off)
+# - "system_booster.dflash" (Auto, On, Custom)
+# - "system_booster.kv_cache_quantization" (auto, kv16, kv8, kv4)
+# - "system_booster.context_shifting" (auto, off, minimal, standard, aggressive, extreme)
+# - "system_booster.force_vram_reclaim" (Auto, On, Off)
+# - "system_booster.n_gpu_layers" (-1, 0, or Integer)
+# - "system_booster.think_mode" (Auto, On, Off)
+# - "system_booster.response_length" ("auto", "short", "long", or Integer)
+# - "system_booster.enforce_json" (true, false)
+# - "system_booster.force_memory_lock" (Auto, On, Off)
+#
+# AVAILABLE PERMISSION VARIABLES:
+# - "permission.vector_models.text" (Model string or null)
+# - "permission.vector_models.vision" (Model string or null)
+# - "permission.vector_models.audio" (Model string or null)
+# - "permission.chat_models.text" (Model string or null)
+# - "permission.chat_models.vision" (Model string or null)
+# - "permission.chat_models.audio" (Model string or null)
+# - "permission.wasm_firewall" (auto/strict)
+# - "permission.vectorize_user_input" (true/false)
+# - "permission.vectorize_ai_response" (true/false)
+# - "permission.stream_telemetry" (true/false)
+# - "permission.lazy_load_model" (true/false)
+# - "permission.temporary_chat_ttl_hours" (integer)
+#
+# AVAILABLE SYSTEM_CONTROL VARIABLES (Hardware Truth):
+# - "system_control.identity.os_target" (Windows/Linux/Mac)
+# - "system_control.silicon_truth.cpu.logical_threads" (Integer)
+# - "system_control.silicon_truth.memory.available_capacity_gb" (Float)
+# - "system_control.silicon_truth.storage[0].free_gb" (Float)
+# - "system_control.silicon_truth.accelerators.gpus[0].vram_available_gb" (Float)
+# ---------------------------------------------------------------------
+system_bindings:
+  # Allow MCP to read think_mode to adjust its fetching depth
+  - "system_booster.think_mode"
+
+# ---------------------------------------------------------------------
+# MCP EXECUTION (Out of Process)
+# ---------------------------------------------------------------------
+# [FIXED SCHEMA] MCP does NOT have `binary_path` or `entry_point`. It uses OS commands.
+execution:
+  # [FIXED SCHEMA] The terminal command to run.
+  # Dynamic Value: "npx", "python", "node"
+  command: "npx"
+  
+  # [FIXED SCHEMA] Arguments passed to the command.
+  # Dynamic Value: ["-y", "@modelcontextprotocol/server-github"]
+  args: ["-y", "@modelcontextprotocol/server-github"]
+  
+  # [FIXED SCHEMA] Environment variables injected into the OS process.
+  # Dynamic Value: Users can define keys here (e.g. tokens, ports) required by the MCP.
+  env:
+    GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_TOKEN}"
+
+
+
+

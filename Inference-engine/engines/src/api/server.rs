@@ -1,10 +1,10 @@
-//! archer-server: The Cluaize Telemetry Bridge.
+//! archer-server: The cluaiz Telemetry Bridge.
 //! Bare-metal HTTP implementation over Tokio for 0.0ms engine impact.
 
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use cluaize_shared::hardware::telemetry::ObservableHardwareState;
+use cluaiz_shared::hardware::telemetry::ObservableHardwareState;
 use std::sync::atomic::Ordering;
 
 pub struct TelemetryServer {
@@ -56,7 +56,7 @@ async fn handle_connection(mut stream: TcpStream, state: Arc<ObservableHardwareS
         stream.write_all(response.as_bytes()).await?;
     } 
     else if request.starts_with("GET /dashboard") {
-        let dashboard_path = cluaize_shared::environment::EnvironmentManager::current().local_dir.join("assets/Cluaize_Dashboard.html");
+        let dashboard_path = cluaiz_shared::environment::EnvironmentManager::current().local_dir.join("assets/cluaiz_Dashboard.html");
         let dashboard_html = std::fs::read_to_string(dashboard_path).unwrap_or_else(|_| "<h1>Dashboard not found</h1>".to_string());
         let response_header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n";
         let response = format!(

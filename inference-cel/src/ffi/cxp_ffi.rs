@@ -1,4 +1,4 @@
-//! The CXP Trait (Cluaize Extension Protocol)
+//! The CXP Trait (cluaiz Extension Protocol)
 //! This defines the C-ABI compatible interface for plugins across all formats.
 
 #[repr(C)]
@@ -54,5 +54,5 @@ impl Transpiler {
 // The engine MUST call this function after reading memory allocated by a C-FFI Plugin.
 // Without this, any pointer returned by the plugin across the boundary will become a RAM leak.
 extern "C" {
-    pub fn cluaize_free_payload(ptr: *mut u8, len: usize);
+    pub fn cluaiz_free_payload(ptr: *mut u8, len: usize);
 }

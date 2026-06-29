@@ -1,4 +1,4 @@
-//! Cluaize Extension Registry
+//! cluaiz Extension Registry
 //!
 //! The dynamic router that bridges parsed manifest metadata and executable plugin binaries.
 //! It does NOT hardcode any knowledge of what a plugin does or what sandbox it needs —
@@ -7,7 +7,7 @@
 use dashmap::DashMap;
 
 use crate::parser::metadata_parser::{MetadataParser, Integration, EngineRules};
-use crate::execution::{CluaizeExecutor, wasm_sandbox::WasmExecutor, native_sandbox::NativeExecutor, legacy_rhai::LegacyRhaiExecutor};
+use crate::execution::{Cluaizxecutor, wasm_sandbox::WasmExecutor, native_sandbox::NativeExecutor, legacy_rhai::LegacyRhaiExecutor};
 use crate::vram::gpu_injector::inject_from_cpu;
 
 /// The default sandbox to fall back to when a manifest does not declare `engine_rules`.
@@ -16,27 +16,27 @@ const DEFAULT_SANDBOX_TYPE: &str = "WASM";
 
 /// The registry of all loaded integrations and their executors.
 ///
-/// Previously named `IntegrationRegistry` — renamed to `CluaizeExtensionRegistry` to
+/// Previously named `IntegrationRegistry` — renamed to `CluaizxtensionRegistry` to
 /// avoid the banned word `Universal` in the executor type and align with project naming.
 ///
 /// Routing logic:
 /// - Executor type is determined by `engine_rules.sandbox_type` in the manifest — NOT by file extension
 /// - File extension is used only to locate the binary path
 /// - The manifest is the single source of truth for how a plugin runs
-pub struct CluaizeExtensionRegistry {
+pub struct CluaizxtensionRegistry {
     /// Maps an integration name to its executor instance.
-    executors: DashMap<String, CluaizeExecutor>,
+    executors: DashMap<String, Cluaizxecutor>,
     /// Maps an integration name to its fully parsed manifest (metadata + resolved links).
     integrations: DashMap<String, Integration>,
 }
 
-impl Default for CluaizeExtensionRegistry {
+impl Default for CluaizxtensionRegistry {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CluaizeExtensionRegistry {
+impl CluaizxtensionRegistry {
     pub fn new() -> Self {
         Self {
             executors: DashMap::new(),
@@ -155,9 +155,9 @@ impl CluaizeExtensionRegistry {
 
         // 5. Construct executor based on manifest sandbox_type
         let executor = match sandbox_type {
-            "WASM" | "AUTO_WASM" => CluaizeExecutor::Wasm(WasmExecutor::new()),
-            "NATIVE" => CluaizeExecutor::Native(NativeExecutor::new()),
-            "RHAI" => CluaizeExecutor::Rhai(LegacyRhaiExecutor::new()),
+            "WASM" | "AUTO_WASM" => Cluaizxecutor::Wasm(WasmExecutor::new()),
+            "NATIVE" => Cluaizxecutor::Native(NativeExecutor::new()),
+            "RHAI" => Cluaizxecutor::Rhai(LegacyRhaiExecutor::new()),
             other => {
                 return Err(format!(
                     "Integration '{}' declared unknown sandbox_type '{}'. \
@@ -208,7 +208,7 @@ impl CluaizeExtensionRegistry {
     pub fn get_executor(
         &self,
         name: &str,
-    ) -> Option<dashmap::mapref::one::Ref<'_, String, CluaizeExecutor>> {
+    ) -> Option<dashmap::mapref::one::Ref<'_, String, Cluaizxecutor>> {
         self.executors.get(name)
     }
 

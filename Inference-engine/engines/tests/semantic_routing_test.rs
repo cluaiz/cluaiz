@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod semantic_routing_tests {
     use engines::neural_foundry::security::permission_schema::PermissionSchema;
-    use cluaize_shared::skills::router::{GLOBAL_SKILL_ROUTER, SkillManifest, SkillTriggers};
+    use cluaiz_shared::skills::router::{GLOBAL_SKILL_ROUTER, SkillManifest, SkillTriggers};
     use std::fs;
     use std::path::{Path, PathBuf};
 
     fn get_test_skills_dir() -> PathBuf {
-        cluaize_shared::environment::EnvironmentManager::current().skills_dir()
+        cluaiz_shared::environment::EnvironmentManager::current().skills_dir()
     }
 
     #[tokio::test]
@@ -78,7 +78,7 @@ This is a secure system skill that handles diagnostic memory allocation.
                     let tokenizer_file = model_dir.join("tokenizer.json");
                     if model_file.exists() && tokenizer_file.exists() {
                         println!("⏳ [Test] Instantiating ONNX engine to verify embedding compilation...");
-                        let mut engine = cluaize_onnx::engine::OnnxEngine::new().unwrap();
+                        let mut engine = cluaiz_onnx::engine::OnnxEngine::new().unwrap();
                         engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy()).unwrap();
                         
                         let skill_content = format!(

@@ -1,9 +1,9 @@
-# 🛰️ Cluaize-OS: Independent Inference Drivers (SID)
+# 🛰️ cluaiz-OS: Independent Inference Drivers (SID)
 
 ## 🏛️ **Architecture Overview: The Hardware Abstraction Layer (HAL)**
-The `inference-drivers` module is the **"Silicon Heart"** of Cluaize-OS. It serves as a unified Hardware Abstraction Layer (HAL) that bridges our high-level Neural Kernels (`Candle`, `LLaMA`, `BitNet`) with the raw physical silicon (NPU, GPU, TPU, CPU).
+The `inference-drivers` module is the **"Silicon Heart"** of cluaiz-OS. It serves as a unified Hardware Abstraction Layer (HAL) that bridges our high-level Neural Kernels (`Candle`, `LLaMA`, `BitNet`) with the raw physical silicon (NPU, GPU, TPU, CPU).
 
-Our philosophy is **"Universal Sovereignty"**: The same Cluaize instance must be able to run on any OS and any hardware with zero performance penalty.
+Our philosophy is **"Universal Sovereignty"**: The same cluaiz instance must be able to run on any OS and any hardware with zero performance penalty.
 
 ---
 
@@ -36,7 +36,7 @@ The `driver-manager` utilizes `archer-shared` to create a **Zero-Copy Memory Map
 ---
 
 ## 🚦 **Industrial versioning (Why v11.8 vs v12.1?)**
-Unlike other systems that assume the user has the latest setup, Cluaize-OS is designed for the real world.
+Unlike other systems that assume the user has the latest setup, cluaiz-OS is designed for the real world.
 - **Legacy Support:** Older NVIDIA GPUs (Pascal/Turing) often require `v11.8` for stability.
 - **Modern Mastery:** Newer 40-series and 50-series GPUs utilize `v12.1+` for maximum compute throughput.
 The `SovereignLinker` automatically detects the hardware generation and provisions the correct versioned binary from the cloud foundry.
@@ -46,7 +46,7 @@ The `SovereignLinker` automatically detects the hardware generation and provisio
 ## 🛠️ **Installation & Linking**
 Drivers are not "installed" in the traditional sense; they are **"Provisioned"**.
 1. `driver-manager` scans the hardware.
-2. It fetches the signed binary from the [Independent Foundry Matrix](https://github.com/cluaiz/cluaize/releases/tag/latest-kernels).
+2. It fetches the signed binary from the [Independent Foundry Matrix](https://github.com/cluaiz/cluaiz/releases/tag/latest-kernels).
 3. It validates the SHA-256 hash via the `kernel-manifest.json`.
 4. It performs a **Dynamic Handshake** using the `archer_kernel_init` symbol to attach the driver to the engine's memory.
 

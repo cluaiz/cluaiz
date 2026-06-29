@@ -1,5 +1,5 @@
 {
-  "registry_name": "cluaize-global-registry",
+  "registry_name": "cluaiz-global-registry",
   "version": "v1.2.0",
   "release_date": "2026-06-22T10:15:00Z",
   "build_status": "partial_success",
@@ -8,12 +8,12 @@
       "status": "success",
       "version": "v1.2.0",
       "binaries": {
-        "win-x64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-win-x64.exe",
-        "win-arm64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-win-arm64.exe",
-        "linux-x64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-linux-x64",
-        "linux-arm64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-linux-arm64",
-        "mac-arm64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-mac-arm64",
-        "mac-x64": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-v1.2.0-mac-x64"
+        "win-x64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-win-x64.exe",
+        "win-arm64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-win-arm64.exe",
+        "linux-x64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-linux-x64",
+        "linux-arm64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-linux-arm64",
+        "mac-arm64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-mac-arm64",
+        "mac-x64": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-v1.2.0-mac-x64"
       },
       "failed": []
     }
@@ -23,13 +23,13 @@
       "status": "success",
       "version": "v1.2.0",
       "binaries": {
-        "win-x64-avx512": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-kernel-v1.2.0-win-x64-avx512.dll",
-        "win-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-kernel-v1.2.0-win-x64-avx2.dll",
-        "linux-x64-avx512": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-linux-x64-avx512.so",
-        "linux-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-linux-x64-avx2.so",
-        "linux-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-linux-arm64.so",
-        "mac-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-mac-arm64.dylib",
-        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-kernel-v1.2.0-mac-x64.dylib"
+        "win-x64-avx512": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-kernel-v1.2.0-win-x64-avx512.dll",
+        "win-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-kernel-v1.2.0-win-x64-avx2.dll",
+        "linux-x64-avx512": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-kernel-v1.2.0-linux-x64-avx512.so",
+        "linux-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-kernel-v1.2.0-linux-x64-avx2.so",
+        "linux-arm64-neon": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-kernel-v1.2.0-linux-arm64.so",
+        "mac-arm64-neon": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-kernel-v1.2.0-mac-arm64.dylib",
+        "mac-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-kernel-v1.2.0-mac-x64.dylib"
       },
       "failed": []
     },
@@ -37,13 +37,13 @@
       "status": "success",
       "version": "v1.2.0",
       "binaries": {
-        "win-x64-avx512": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-kernel-v1.2.0-win-x64-avx512.dll",
-        "win-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-kernel-v1.2.0-win-x64-avx2.dll",
-        "linux-x64-avx512": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-linux-x64-avx512.so",
-        "linux-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-linux-x64-avx2.so",
-        "linux-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-linux-arm64.so",
-        "mac-arm64-neon": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-mac-arm64.dylib",
-        "mac-x64-avx2": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-kernel-v1.2.0-mac-x64.dylib"
+        "win-x64-avx512": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-kernel-v1.2.0-win-x64-avx512.dll",
+        "win-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-kernel-v1.2.0-win-x64-avx2.dll",
+        "linux-x64-avx512": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-kernel-v1.2.0-linux-x64-avx512.so",
+        "linux-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-kernel-v1.2.0-linux-x64-avx2.so",
+        "linux-arm64-neon": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-kernel-v1.2.0-linux-arm64.so",
+        "mac-arm64-neon": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-kernel-v1.2.0-mac-arm64.dylib",
+        "mac-x64-avx2": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-kernel-v1.2.0-mac-x64.dylib"
       },
       "failed": []
     }
@@ -53,21 +53,21 @@
       "status": "partial_success",
       "version": "v1.2.0",
       "binaries": {
-        "win-x64-cuda-13": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-driver-v1.2.0-win-x64-cuda-v13.dll",
-        "win-x64-cuda-12": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-driver-v1.2.0-win-x64-cuda-v12.dll",
-        "win-x64-cuda-11": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-driver-v1.2.0-win-x64-cuda-v11.dll",
-        "win-x64-openvino": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-driver-v1.2.0-win-x64-openvino.dll",
-        "win-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-driver-v1.2.0-win-x64-vulkan.dll",
-        "linux-x64-cuda-13": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-cuda-v13.so",
-        "linux-x64-cuda-12": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-cuda-v12.so",
-        "linux-x64-cuda-11": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-cuda-v11.so",
-        "linux-x64-openvino": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-openvino.so",
-        "linux-x64-sycl": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-sycl.so",
-        "linux-x64-rocm": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-rocm.so",
-        "linux-x64-hip": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-hip.so",
-        "linux-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-linux-x64-vulkan.so",
-        "mac-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-mac-arm64-metal.dylib",
-        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-driver-v1.2.0-mac-x64-metal.dylib"
+        "win-x64-cuda-13": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-driver-v1.2.0-win-x64-cuda-v13.dll",
+        "win-x64-cuda-12": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-driver-v1.2.0-win-x64-cuda-v12.dll",
+        "win-x64-cuda-11": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-driver-v1.2.0-win-x64-cuda-v11.dll",
+        "win-x64-openvino": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-driver-v1.2.0-win-x64-openvino.dll",
+        "win-x64-vulkan": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-driver-v1.2.0-win-x64-vulkan.dll",
+        "linux-x64-cuda-13": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-cuda-v13.so",
+        "linux-x64-cuda-12": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-cuda-v12.so",
+        "linux-x64-cuda-11": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-cuda-v11.so",
+        "linux-x64-openvino": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-openvino.so",
+        "linux-x64-sycl": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-sycl.so",
+        "linux-x64-rocm": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-rocm.so",
+        "linux-x64-hip": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-hip.so",
+        "linux-x64-vulkan": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-linux-x64-vulkan.so",
+        "mac-arm64-metal": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-mac-arm64-metal.dylib",
+        "mac-x64-metal": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-driver-v1.2.0-mac-x64-metal.dylib"
       },
       "failed": [
         {
@@ -80,22 +80,22 @@
       "status": "success",
       "version": "v1.2.0",
       "binaries": {
-        "win-x64-cuda-13": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-driver-v1.2.0-win-x64-cuda-v13.zip",
-        "win-x64-cuda-12": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-driver-v1.2.0-win-x64-cuda-v12.zip",
-        "win-x64-cuda-11": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-driver-v1.2.0-win-x64-cuda-v11.zip",
-        "win-x64-openvino": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-driver-v1.2.0-win-x64-openvino.zip",
-        "win-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/cluaize-onnx-driver-v1.2.0-win-x64-vulkan.zip",
-        "linux-x64-cuda-13": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-cuda-v13.zip",
-        "linux-x64-cuda-12": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-cuda-v12.zip",
-        "linux-x64-cuda-11": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-cuda-v11.zip",
-        "linux-x64-openvino": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-openvino.zip",
-        "linux-x64-sycl": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-sycl.zip",
-        "linux-x64-rocm": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-rocm.zip",
-        "linux-x64-hip": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-hip.zip",
-        "linux-x64-cann": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-cann.zip",
-        "linux-x64-vulkan": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-linux-x64-vulkan.zip",
-        "mac-arm64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-mac-arm64-metal.zip",
-        "mac-x64-metal": "https://github.com/cluaiz/cluaize/releases/download/v1.2.0/libcluaize-onnx-driver-v1.2.0-mac-x64-metal.zip"
+        "win-x64-cuda-13": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-driver-v1.2.0-win-x64-cuda-v13.zip",
+        "win-x64-cuda-12": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-driver-v1.2.0-win-x64-cuda-v12.zip",
+        "win-x64-cuda-11": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-driver-v1.2.0-win-x64-cuda-v11.zip",
+        "win-x64-openvino": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-driver-v1.2.0-win-x64-openvino.zip",
+        "win-x64-vulkan": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/cluaiz-onnx-driver-v1.2.0-win-x64-vulkan.zip",
+        "linux-x64-cuda-13": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-cuda-v13.zip",
+        "linux-x64-cuda-12": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-cuda-v12.zip",
+        "linux-x64-cuda-11": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-cuda-v11.zip",
+        "linux-x64-openvino": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-openvino.zip",
+        "linux-x64-sycl": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-sycl.zip",
+        "linux-x64-rocm": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-rocm.zip",
+        "linux-x64-hip": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-hip.zip",
+        "linux-x64-cann": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-cann.zip",
+        "linux-x64-vulkan": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-linux-x64-vulkan.zip",
+        "mac-arm64-metal": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-mac-arm64-metal.zip",
+        "mac-x64-metal": "https://github.com/cluaiz/cluaiz/releases/download/v1.2.0/libcluaiz-onnx-driver-v1.2.0-mac-x64-metal.zip"
       },
       "failed": []
     }

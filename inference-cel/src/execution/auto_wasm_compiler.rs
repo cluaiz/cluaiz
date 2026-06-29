@@ -23,7 +23,7 @@ impl AutoWasmCompiler {
     /// Takes raw Rust source code as a string, invokes the WASM compiler (`cargo build --target wasm32-unknown-unknown`),
     /// and returns the compiled binary `.wasm` byte vector for hot-reloading.
     pub fn compile_rust_to_wasm(&self, script_code: &str) -> Result<Vec<u8>, String> {
-        let temp_dir = std::env::temp_dir().join(format!("cluaize_auto_wasm_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("cluaiz_auto_wasm_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
 
         let cargo_toml = format!(r#"

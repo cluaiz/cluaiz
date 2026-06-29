@@ -1,6 +1,6 @@
-# 🏛️ Cluaize Model Library:  Rules & Architecture
+# 🏛️ Cluaiz Model Library:  Rules & Architecture
 
-This repository holds the JSON schemas for the Cluaize Universal Model Library. Cluaize is built to run natively anywhere—from Mobile and Laptops (Edge) to Enterprise Servers (Cloud). 
+This repository holds the JSON schemas for the Cluaiz Universal Model Library. Cluaiz is built to run natively anywhere—from Mobile and Laptops (Edge) to Enterprise Servers (Cloud). 
 
 To ensure a "makkhan" (smooth) download and execution experience without authentication crashes or RAM allocation failures, **every model added to this library MUST follow these ironclad rules.**
 
@@ -15,7 +15,7 @@ To ensure a "makkhan" (smooth) download and execution experience without authent
 ---
 
 ## 🔗 2. The URL Structure Rule (GGUF vs AWQ)
-This is the most critical rule for the Cluaize Downloader Backend. 
+This is the most critical rule for the Cluaiz Downloader Backend. 
 
 ### A. GGUF Models (Edge / CPU / Mac)
 - **Format:** MUST use a **Direct Single File URL**.
@@ -26,12 +26,12 @@ This is the most critical rule for the Cluaize Downloader Backend.
 - **Format:** MUST keep the official structure ending in `/resolve/main/model.safetensors` (or directly use a `repo_id` key depending on the backend parser). 
 - **Example:** `"download_url": "https://huggingface.co/mbley/google-gemma-2-27b-it-AWQ/resolve/main/model.safetensors"`
 - **CRITICAL:** **NEVER put `.index.json` at the end of the URL.**
-- **Why:** Large models (like 27B or 35B) exceed HuggingFace's 50GB file limit and are split into 4-5 "shards" (e.g., `model-00001-of-00004.safetensors`). If you give `.index.json`, the app downloads a 40KB text file instead of weights and crashes. The Cluaize backend should parse the repository name from the URL and use HuggingFace Hub logic to download the entire folder (all shards + tiny config files) together.
+- **Why:** Large models (like 27B or 35B) exceed HuggingFace's 50GB file limit and are split into 4-5 "shards" (e.g., `model-00001-of-00004.safetensors`). If you give `.index.json`, the app downloads a 40KB text file instead of weights and crashes. The Cluaiz backend should parse the repository name from the URL and use HuggingFace Hub logic to download the entire folder (all shards + tiny config files) together.
 
 ---
 
 ## 🧠 3. Supported Architecture & Engine Routing (What & Why)
-Cluaize supports specific formats tailored to backend execution engines:
+Cluaiz supports specific formats tailored to backend execution engines:
 
 1. **GGUF (Q4, Q8):**
    - *Backend Engine:* Ollama, LocalAI (powered by `llama.cpp`).
@@ -53,7 +53,7 @@ Cluaize supports specific formats tailored to backend execution engines:
 ## 🗑️ 4. The Lean Library Protocol (No F16/Base Models in JSON)
 **RULE:** Do NOT include F16 (FP16/BF16) uncompressed Base models in the JSON library UI.
 - *Why:* 99% of normal users will accidentally click a 60GB F16 model, wasting bandwidth and crashing their edge devices due to lack of VRAM. We must keep the curated library clean ("kachra nahi failayenge").
-- *How Whales use F16:* The Cluaize engine fully supports F16/Base models (for fine-tuning or high-end multi-A100 server usage). However, advanced users must manually input the HuggingFace Repo ID via an "Advanced/Custom Download" input field. We provide the engine support, but do not advertise heavy base models in the default curated UI.
+- *How Whales use F16:* The Cluaiz engine fully supports F16/Base models (for fine-tuning or high-end multi-A100 server usage). However, advanced users must manually input the HuggingFace Repo ID via an "Advanced/Custom Download" input field. We provide the engine support, but do not advertise heavy base models in the default curated UI.
 
 ---
 
@@ -74,9 +74,9 @@ Cluaize supports specific formats tailored to backend execution engines:
 ## 🗑️ 4. The Lean Library Protocol (No F16/Base Models in JSON)
 **RULE:** Do NOT include F16 or uncompressed Base models in the JSON library.
 - **Why:** 99% of normal users will accidentally click a 60GB F16 model, wasting bandwidth and crashing their devices because they lack VRAM. We will not clutter the curated library ("kachra nahi failayenge").
-- **How Whales use F16:** The engine fully supports F16/Base models. However, advanced users/whales must manually paste the HuggingFace Repo ID into an "Advanced Download" field in the Cluaize App. We provide the engine support, but we do not advertise heavy models in the curated UI.
+- **How Whales use F16:** The engine fully supports F16/Base models. However, advanced users/whales must manually paste the HuggingFace Repo ID into an "Advanced Download" field in the Cluaiz App. We provide the engine support, but we do not advertise heavy models in the curated UI.
 
 ---
 
 
-*Any deviation from these rules will break the Cluaize Downloader Pipeline.*
+*Any deviation from these rules will break the Cluaiz Downloader Pipeline.*

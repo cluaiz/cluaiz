@@ -1,13 +1,13 @@
 use anyhow::Result;
 use engines::runtime::execution::hub::HardwareOrchestrator;
-use cluaize_shared::{StructuralDNA, CluaizeContext, TemplateManager};
+use cluaiz_shared::{StructuralDNA, cluaizContext, TemplateManager};
 use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("🧪 [Test] Starting Dynamic Pipeline Diagnostic...");
 
-    let env = cluaize_shared::environment::EnvironmentManager::current();
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
     let model_path = env.ensure_chat_models_dir()
         .unwrap_or_else(|_| env.chat_models_dir())
         .join("bonsai1-8b").join("Bonsai-8B.gguf");
@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model("bonsai1:8b".to_string());
 
     let dna = StructuralDNA::default();
-    let context = CluaizeContext::boot(dna, TemplateManager::default());
+    let context = cluaizContext::boot(dna, TemplateManager::default());
 
     println!("⚙️ [Test] Instantiating Chat Engine...");
     let mut engine = HardwareOrchestrator::instantiate(
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
     // Load active router
     let mut router = engines::api::router::CoreRouter::new();
-    router.active_backend = engines::api::router::Backend::Cluaize(engine);
+    router.active_backend = engines::api::router::Backend::cluaiz(engine);
 
     let prompt = "Make a sad piano instrumental track with slow tempo and emotional vibe";
     println!("🚀 [Test] Triggering stream with prompt: '{}'", prompt);

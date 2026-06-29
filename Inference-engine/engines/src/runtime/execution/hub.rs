@@ -1,26 +1,26 @@
 use anyhow::{anyhow, Result};
 use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError};
-use cluaize_shared::{ModelWeightsWrapper, CluaizeContext, UnifiedBackend, CluaizeInference};
+use cluaiz_shared::{ModelWeightsWrapper, cluaizContext, UnifiedBackend, cluaizInference};
 use crate::interface_engines::EngineManager;
 use std::sync::{Arc, Mutex};
 
 pub struct HardwareOrchestrator;
 
 impl HardwareOrchestrator {
-    /// Dispatches and instantiates the correct model kernel via the Dynamic Cluaize Linker.
+    /// Dispatches and instantiates the correct model kernel via the Dynamic cluaiz Linker.
     pub async fn instantiate(
         model_load_path: &str,
         engine_type: &str,
-        cluaize_context: CluaizeContext,
+        cluaiz_context: cluaizContext,
     ) -> Result<ModelWeightsWrapper> {
-        Self::instantiate_with_booster(model_load_path, engine_type, cluaize_context, None).await
+        Self::instantiate_with_booster(model_load_path, engine_type, cluaiz_context, None).await
     }
 
     pub async fn instantiate_with_booster(
         model_load_path: &str,
         engine_type: &str,
-        cluaize_context: CluaizeContext,
-        booster_override: Option<cluaize_shared::hardware::schema::booster::BoosterControl>,
+        cluaiz_context: cluaizContext,
+        booster_override: Option<cluaiz_shared::hardware::schema::booster::BoosterControl>,
     ) -> Result<ModelWeightsWrapper> {
         tracing::info!("🔩 [Orchestrator] Initiating Dynamic Hardware Handshake for Engine: {}", engine_type);
 
@@ -28,7 +28,7 @@ impl HardwareOrchestrator {
 
         if engine_type == "onnx" {
             tracing::info!("🔮 [Orchestrator] Bypassing FFI Linker. Instantiating Native Rust ONNX Gatekeeper.");
-            let mut onnx_engine = cluaize_onnx::engine::OnnxEngine::new()
+            let mut onnx_engine = cluaiz_onnx::engine::OnnxEngine::new()
                 .map_err(|e| anyhow!("Failed to init ONNX: {}", e))?;
             
             let model_path = std::path::Path::new(model_load_path);
@@ -40,10 +40,10 @@ impl HardwareOrchestrator {
 
             if tokenizer_path.exists() {
                 tracing::info!("🔍 [Orchestrator] Tokenizer found for Vision Model. Loading as Multimodal Engine.");
-                onnx_engine.load_text_model(model_load_path, tokenizer_path.to_str().unwrap())
+                onnx_engine.load_text_model(model_load_path, tokenizer_path.to_str().unwrap(), None)
                     .map_err(|e| anyhow!("Failed to load ONNX Multimodal weights: {}", e))?;
             } else {
-                onnx_engine.load_vision_model(model_load_path)
+                onnx_engine.load_vision_model(model_load_path, None)
                     .map_err(|e| anyhow!("Failed to load ONNX Vision weights: {}", e))?;
             }
                 
@@ -51,8 +51,8 @@ impl HardwareOrchestrator {
             return Ok(Box::new(NativeOnnxWrapper { engine: onnx_engine }));
         }
 
-        // 1. Initialize the Engine Manager (The Cluaize Linker)
-        let base_path = cluaize_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
+        // 1. Initialize the Engine Manager (The cluaiz Linker)
+        let base_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
         let mut manager = EngineManager::new(base_path);
 
         // 2. Engine Type provided by Unified Router (e.g., "llama" or "onnx")
@@ -77,9 +77,9 @@ impl HardwareOrchestrator {
         let booster_control = if let Some(booster) = booster_override {
             booster
         } else {
-            cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default()
+            cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default()
         };
-        let max_ctx = cluaize_context.dna.max_context_length.map(|c| c as u32);
+        let max_ctx = cluaiz_context.dna.max_context_length.map(|c| c as u32);
         let engine_ptr = manager.instantiate(model_load_path, &booster_control, max_ctx)?;
 
         tracing::info!("🧬 [Orchestrator] Hardware Handshake SUCCESS. Neural Bridge Established.");
@@ -111,7 +111,7 @@ impl Drop for SovereignEngine {
         if let Ok(manager) = self.manager.lock() {
             let _ = manager.free_instance(self.engine_ptr);
         }
-        let _ = cluaize_shared::hardware::governor::HardwareGovernor::release_vram(&self.engine_id);
+        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::release_vram(&self.engine_id);
     }
 }
 
@@ -131,7 +131,7 @@ impl UnifiedBackend for SovereignEngine {
     }
 }
 
-impl CluaizeInference for SovereignEngine {
+impl cluaizInference for SovereignEngine {
     fn generate_stream(
         &mut self,
         prompt: &str,
@@ -156,7 +156,7 @@ impl CluaizeInference for SovereignEngine {
         manager.load_kv_cache_ffi(self.engine_ptr, path)
     }
 
-    fn inject_signals(&mut self, signals: Vec<cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal>) -> Result<()> {
+    fn inject_signals(&mut self, signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> {
         if signals.is_empty() {
             return Ok(());
         }
@@ -175,7 +175,7 @@ impl CluaizeInference for SovereignEngine {
         Ok(())
     }
 
-    fn apply_booster(&mut self, _control: &cluaize_shared::hardware::schema::booster::BoosterControl) -> Result<()> {
+    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> Result<()> {
         Ok(())
     }
 
@@ -185,7 +185,7 @@ impl CluaizeInference for SovereignEngine {
 }
 
 pub struct NativeOnnxWrapper {
-    pub engine: cluaize_onnx::engine::OnnxEngine,
+    pub engine: cluaiz_onnx::engine::OnnxEngine,
 }
 
 impl UnifiedBackend for NativeOnnxWrapper {
@@ -202,7 +202,7 @@ impl UnifiedBackend for NativeOnnxWrapper {
     }
 }
 
-impl CluaizeInference for NativeOnnxWrapper {
+impl cluaizInference for NativeOnnxWrapper {
     fn generate_stream(
         &mut self,
         prompt: &str,
@@ -275,7 +275,7 @@ impl CluaizeInference for NativeOnnxWrapper {
         Err(anyhow!("ONNX Native does not support forward_raw for text tokens yet."))
     }
 
-    fn inject_signals(&mut self, _signals: Vec<cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal>) -> Result<()> { Ok(()) }
-    fn apply_booster(&mut self, _control: &cluaize_shared::hardware::schema::booster::BoosterControl) -> Result<()> { Ok(()) }
+    fn inject_signals(&mut self, _signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> { Ok(()) }
+    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> Result<()> { Ok(()) }
     fn set_liquid_mode(&mut self, _enabled: bool) -> Result<()> { Ok(()) }
 }

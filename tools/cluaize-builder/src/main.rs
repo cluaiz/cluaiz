@@ -2,12 +2,12 @@ use std::process::Command;
 use std::env;
 
 fn print_help() {
-    println!("🚀 Cluaize Modular Builder");
-    println!("Usage: cargo run -p cluaize-builder -- <COMMAND> [OPTIONS]");
+    println!("🚀 cluaiz Modular Builder");
+    println!("Usage: cargo run -p cluaiz-builder -- <COMMAND> [OPTIONS]");
     println!("");
     println!("Commands:");
     println!("  all               Build the entire workspace (Core + All Drivers + CLI)");
-    println!("  core              Build only the Core Engine and CLI (cluaize, engines)");
+    println!("  core              Build only the Core Engine and CLI (cluaiz, engines)");
     println!("  drivers           Build all hardware drivers (llama, onnx)");
     println!("  driver <name>     Build a specific driver (e.g., 'llama' or 'onnx')");
     println!("");
@@ -78,7 +78,7 @@ fn main() {
 
     match command_type.as_str() {
         "all" => {
-            println!("⚙️  Building entire Cluaize workspace...");
+            println!("⚙️  Building entire cluaiz workspace...");
             let mut ws_cmd = vec!["build", "--workspace"];
             if profile == "release" { ws_cmd.push("--release"); }
             commands_to_run.push(("Workspace", ws_cmd));
@@ -136,12 +136,12 @@ fn main() {
         }
     }
 
-    // Since Bootstrapper inside cluaize.exe handles all the 1:1 artifact syncing
-    // (copying to ~/.cluaize/engine/ and renaming to dashed-names),
+    // Since Bootstrapper inside cluaiz.exe handles all the 1:1 artifact syncing
+    // (copying to ~/.cluaiz/engine/ and renaming to dashed-names),
     // we do NOT manually copy files here.
     // JSON configs (Permission.json, system_control.json) are auto-generated
     // by the engine natively upon first startup.
     
     println!("✅ Build Successful!");
-    println!("💡 Note: The Cluaize Bootstrapper will automatically sync these artifacts to your ~/.cluaize directory the next time you run 'cluaize'.");
+    println!("💡 Note: The cluaiz Bootstrapper will automatically sync these artifacts to your ~/.cluaiz directory the next time you run 'cluaiz'.");
 }

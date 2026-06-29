@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 use crate::utils::healer::AutoHealer;
-use cluaize_shared::{UnifiedBackend, BackendType, CluaizeContext, StructuralDNA, TemplateManager, ModelWeightsWrapper, CluaizeInference};
+use cluaiz_shared::{UnifiedBackend, BackendType, cluaizContext, StructuralDNA, TemplateManager, ModelWeightsWrapper, cluaizInference};
 use crate::runtime::execution::hub::HardwareOrchestrator;
 use neural_core::interfaces::router_contract::EmbeddingDriver;
 
@@ -23,42 +23,42 @@ pub enum RouteDecision {
 
 pub enum Backend {
     Empty(DummyBackend),
-    Cluaize(ModelWeightsWrapper),
+    cluaiz(ModelWeightsWrapper),
 }
 
 impl UnifiedBackend for Backend {
     fn generate(&mut self, prompt: &str, max_tokens: usize) -> Result<String, String> {
         match self {
             Self::Empty(b) => b.generate(prompt, max_tokens),
-            Self::Cluaize(b) => b.generate(prompt, max_tokens),
+            Self::cluaiz(b) => b.generate(prompt, max_tokens),
         }
     }
     fn prefill(&mut self, prompt: &str) -> anyhow::Result<()> {
         match self {
             Self::Empty(b) => b.prefill(prompt),
-            Self::Cluaize(b) => b.prefill(prompt),
+            Self::cluaiz(b) => b.prefill(prompt),
         }
     }
 
     fn evaluate_tps(&self) -> f64 {
         match self {
             Self::Empty(b) => b.evaluate_tps(),
-            Self::Cluaize(b) => b.evaluate_tps(),
+            Self::cluaiz(b) => b.evaluate_tps(),
         }
     }
     
     fn embed(&mut self, input: &str) -> anyhow::Result<Vec<f32>> {
         match self {
             Self::Empty(b) => b.embed(input),
-            Self::Cluaize(b) => b.embed(input),
+            Self::cluaiz(b) => b.embed(input),
         }
     }
 }
 
-impl cluaize_shared::CluaizeInference for Backend {
+impl cluaiz_shared::cluaizInference for Backend {
     fn forward_raw(&mut self, inputs: &[u32], pos: usize) -> anyhow::Result<Vec<f32>> {
         match self {
-            Self::Cluaize(b) => b.forward_raw(inputs, pos),
+            Self::cluaiz(b) => b.forward_raw(inputs, pos),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
@@ -70,35 +70,35 @@ impl cluaize_shared::CluaizeInference for Backend {
         callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> anyhow::Result<()> {
         match self {
-            Self::Cluaize(b) => b.generate_stream(prompt, max_tokens, callback),
+            Self::cluaiz(b) => b.generate_stream(prompt, max_tokens, callback),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
     fn dump_kv_cache(&mut self, path: &str) -> anyhow::Result<()> {
         match self {
-            Self::Cluaize(b) => b.dump_kv_cache(path),
+            Self::cluaiz(b) => b.dump_kv_cache(path),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
     fn load_kv_cache(&mut self, path: &str) -> anyhow::Result<()> {
         match self {
-            Self::Cluaize(b) => b.load_kv_cache(path),
+            Self::cluaiz(b) => b.load_kv_cache(path),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
-    fn inject_signals(&mut self, signals: Vec<cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal>) -> anyhow::Result<()> {
+    fn inject_signals(&mut self, signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> anyhow::Result<()> {
         match self {
-            Self::Cluaize(b) => b.inject_signals(signals),
+            Self::cluaiz(b) => b.inject_signals(signals),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
-    fn apply_booster(&mut self, control: &cluaize_shared::hardware::schema::booster::BoosterControl) -> anyhow::Result<()> {
+    fn apply_booster(&mut self, control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> anyhow::Result<()> {
         match self {
-            Self::Cluaize(b) => b.apply_booster(control),
+            Self::cluaiz(b) => b.apply_booster(control),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
@@ -106,7 +106,8 @@ impl cluaize_shared::CluaizeInference for Backend {
 
 pub struct CoreRouter {
     pub active_backend: Backend,
-    pub active_dna: Option<cluaize_shared::StructuralDNA>,
+    pub active_backend_name: String,
+    pub active_dna: Option<cluaiz_shared::StructuralDNA>,
     pub active_model_path: Option<PathBuf>,
     pub foundry: crate::neural_foundry::CoreFoundry,
 
@@ -134,7 +135,7 @@ impl Drop for CompilationGuard {
     fn drop(&mut self) {
         if let Ok(mut locks) = COMPILATION_LOCKS.write() {
             locks.remove(&self.path);
-            cluaize_shared::dev_info!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
+            cluaiz_shared::dev_info!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
         }
     }
 }
@@ -143,6 +144,7 @@ impl CoreRouter {
     pub fn new() -> Self {
         Self { 
             active_backend: Backend::Empty(DummyBackend),
+            active_backend_name: "llama".to_string(),
             foundry: crate::neural_foundry::CoreFoundry::new(),
             active_dna: None,
             active_model_path: None,
@@ -175,7 +177,7 @@ impl CoreRouter {
             let _ = AutoHealer::heal_missing_tokenizer(&repo_id, parent).await;
         }
 
-        // [Cluaize ALIGNMENT]: Bootstrapping context with local DNA and Templates
+        // [cluaiz ALIGNMENT]: Bootstrapping context with local DNA and Templates
         let mut dna = StructuralDNA::default();
         if let Some(parent) = path.parent() {
             let dna_path = parent.join("structural_dna.json");
@@ -183,7 +185,7 @@ impl CoreRouter {
                 if let Ok(content) = std::fs::read_to_string(&dna_path) {
                     if let Ok(loaded_dna) = serde_json::from_str::<StructuralDNA>(&content) {
                         dna = loaded_dna;
-                        cluaize_shared::dev_info!("🧬 [Router] Neural DNA synchronized from local manifest.");
+                        cluaiz_shared::dev_info!("🧬 [Router] Neural DNA synchronized from local manifest.");
                     }
                 }
             }
@@ -191,24 +193,32 @@ impl CoreRouter {
             dna.discover_from_path(parent)
                 .map_err(|e| format!("Neural Discovery Failure: {}", e))?;
         }
-        dna.preferred_runtime = Some(runtime);
+        dna.preferred_runtime = Some(runtime.clone());
         
-        let context = CluaizeContext::boot(
+        let context = cluaizContext::boot(
             dna.clone(),
             TemplateManager::default(),
         );
 
-        // 🚀 THE Cluaize HANDSHAKE: Dispatching to the Dynamic Linker
-        cluaize_shared::dev_info!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage...");
-        let engine = HardwareOrchestrator::instantiate(&path.to_string_lossy(), "llama", context)
+        let engine_str = match runtime {
+            BackendType::RuntimeA => "onnx",
+            BackendType::RuntimeB => "llama",
+            BackendType::RuntimeC => "bitnet",
+            BackendType::RuntimeD => "triton",
+            BackendType::SwitchNode => "moe",
+        };
+
+        // 🚀 THE cluaiz HANDSHAKE: Dispatching to the Dynamic Linker
+        cluaiz_shared::dev_info!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage ({})...", engine_str);
+        let engine = HardwareOrchestrator::instantiate(&path.to_string_lossy(), engine_str, context)
             .await
-            .map_err(|e| format!("Cluaize Handshake Failure: {}", e))?;
+            .map_err(|e| format!("cluaiz Handshake Failure: {}", e))?;
 
 
 
         let mut foundry = crate::neural_foundry::CoreFoundry::new();
         // Load skills using EnvironmentManager
-        let skills_dir = cluaize_shared::environment::EnvironmentManager::current().skills_dir();
+        let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
         foundry.initialize(&skills_dir.to_string_lossy());
 
 
@@ -216,7 +226,8 @@ impl CoreRouter {
         let hardware_n_ctx = dna.max_context_length.unwrap_or(2048) as usize;
 
         Ok(Self { 
-            active_backend: Backend::Cluaize(engine), 
+            active_backend: Backend::cluaiz(engine),
+            active_backend_name: engine_str.to_string(),
             foundry,
             active_dna: Some(dna),
             active_model_path: Some(path),
@@ -232,20 +243,20 @@ impl CoreRouter {
             return;
         }
 
-        if let Ok(mut skill_router) = cluaize_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
+        if let Ok(mut skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
             let _ = skill_router.boot_index();
             let mut new_vectors = Vec::new();
             let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-");
 
             for (id, skill_manifest) in &skill_router.loaded_manifests {
-                let skill_path = cluaize_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
+                let skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
                 let cache_dir = skill_path.join(".cache");
                 let emb_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
-                let norm_skill_path = cluaize_shared::skills::router::normalize_path(&skill_path);
+                let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
                 let has_vector = skill_router.skill_vectors.contains_key(&norm_skill_path);
 
                 if !has_vector || !emb_path.exists() {
-                    cluaize_shared::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
+                    cluaiz_shared::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
                     let mut combined_vec = Vec::new();
                     
                     if skill_manifest.triggers.semantic.is_empty() {
@@ -276,7 +287,7 @@ impl CoreRouter {
         }
     }
 
-    pub fn get_active_dna(&self) -> Option<&cluaize_shared::StructuralDNA> {
+    pub fn get_active_dna(&self) -> Option<&cluaiz_shared::StructuralDNA> {
         self.active_dna.as_ref()
     }
 
@@ -302,7 +313,7 @@ impl CoreRouter {
         let prompt_lower = prompt.to_lowercase().trim().to_string();
         
         // 1. Text Match Fast-Path (Exact keyword match + Substring containment)
-        if let Ok(router) = cluaize_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+        if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
             // Try exact full-prompt match first
             if let Some(path) = router.check_trigger(&prompt_lower) {
                 if let Some(name) = path.file_name() {
@@ -327,7 +338,7 @@ impl CoreRouter {
         if matched_skill_ids.is_empty() {
              // Since we use the global EmbeddingGenerator, we don't need a local onnx_engine
              if let Some(full_vec) = crate::memory::embedding_generator::EmbeddingGenerator::generate_full_vector(prompt) {
-                 if let Ok(router) = cluaize_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+                 if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
                      // Try full prompt vector first
                      if let Some(path) = router.check_semantic_trigger(&full_vec, 0.70) {
                          if let Some(name) = path.file_name() {
@@ -356,7 +367,7 @@ impl CoreRouter {
              }
         }
 
-        // 🧪 Cluaize HANDSHAKE: Process Foundry Intent
+        // 🧪 cluaiz HANDSHAKE: Process Foundry Intent
         let mut intent_result = std::thread::scope(|s| {
             s.spawn(|| {
                 rt.block_on(self.foundry.process_intent(prompt, Some(matched_skill_ids.clone())))
@@ -398,12 +409,12 @@ impl CoreRouter {
             };
 
             if is_compiling {
-                cluaize_shared::dev_info!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
+                cluaiz_shared::dev_info!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
                 continue;
             }
 
             if skill_tokens_est > available_ctx {
-                cluaize_shared::dev_info!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
+                cluaiz_shared::dev_info!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
                 
                 // Extract skill id for telemetry before the closure moves cache_path
                 let skill_id_for_decision = cache_path
@@ -425,35 +436,16 @@ impl CoreRouter {
                         locks.insert(cache_path.clone());
                     }
                     
-                    let background_success = std::thread::scope(|s| {
-                        s.spawn(|| {
-                            rt.block_on(async move {
-                                let _guard = CompilationGuard { path: cache_path_clone.clone() };
-                                use cluaize_shared::{CluaizeContext, StructuralDNA, UnifiedBackend, CluaizeInference};
-                                let mut temp_dna = StructuralDNA::default();
-                                temp_dna.max_context_length = Some(expanded_ctx);
-                                let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
-                                
-                                cluaize_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
-                                let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                                booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
-                                
-                                if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
-                                    &path_clone.to_string_lossy(),
-                                    "llama", 
-                                    ctx,
-                                    Some(booster)
-                                ).await {
-                                    cluaize_shared::dev_info!("⚙️ [Arbiter] Background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
-                                    if bg_engine.prefill(&skill_content_clone).is_ok() {
-                                        let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
-                                        return true;
-                                    }
-                                }
-                                false
-                            })
-                        }).join().unwrap()
-                    });
+                    let backend_name_clone = self.active_backend_name.clone();
+                    
+                    let background_success = agentic_pause_compile_cache(
+                        &rt,
+                        cache_path_clone,
+                        path_clone,
+                        skill_content_clone,
+                        expanded_ctx,
+                        backend_name_clone
+                    );
                     
                     // Record the Agentic Pause decision with success/failure outcome
                     self.last_route_decision = Some(RouteDecision::AgenticPause {
@@ -462,22 +454,22 @@ impl CoreRouter {
                     });
                     
                     if background_success {
-                        cluaize_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.bin` safely generated to SSD.");
+                        cluaiz_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.bin` safely generated to SSD.");
                         // Only attempt KV load if the cache was saved at a size the main engine can handle.
                         // The background engine used expanded_ctx tokens, but main engine has hardware_n_ctx.
                         if expanded_ctx <= self.hardware_n_ctx {
-                            cluaize_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
+                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
                             if let Err(e) = self.active_backend.load_kv_cache(&cache_path.to_string_lossy()) {
-                                cluaize_shared::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
+                                cluaiz_shared::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
                                 // 🛡️ Force full memory reset to prevent hybrid SSM/KV state corruption
                                 let _ = self.active_backend.prefill("");
                             }
                         } else {
-                            cluaize_shared::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
+                            cluaiz_shared::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
                                 expanded_ctx, self.hardware_n_ctx);
                         }
                     } else {
-                        cluaize_shared::dev_info!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
+                        cluaiz_shared::dev_info!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
                     }
                 }
             } else {
@@ -496,7 +488,7 @@ impl CoreRouter {
                 // Reserve 512 tokens for prompt + generation headroom.
                 let injection_char_cap = self.hardware_n_ctx.saturating_sub(512) * 3;
                 let safe_skill_content = if skill_content.len() > injection_char_cap && injection_char_cap > 0 {
-                    cluaize_shared::dev_info!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
+                    cluaiz_shared::dev_info!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
                         skill_content.len(), injection_char_cap);
                     skill_content[..injection_char_cap].to_string()
                 } else {
@@ -517,13 +509,13 @@ impl CoreRouter {
                     
                     rt.spawn(async move {
                         let _guard = CompilationGuard { path: cache_path_clone.clone() };
-                        use cluaize_shared::{CluaizeContext, StructuralDNA, UnifiedBackend, CluaizeInference};
+                        use cluaiz_shared::{cluaizContext, StructuralDNA, UnifiedBackend, cluaizInference};
                         let mut temp_dna = StructuralDNA::default();
                         temp_dna.max_context_length = Some(expanded_ctx);
-                        let ctx = CluaizeContext::boot(temp_dna, cluaize_shared::TemplateManager::default());
+                        let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
                         
-                        cluaize_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
-                        let mut booster = cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                        cluaiz_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
+                        let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                         booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
                         
                         if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
@@ -532,10 +524,10 @@ impl CoreRouter {
                             ctx,
                             Some(booster)
                         ).await {
-                            cluaize_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
+                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
                             if bg_engine.prefill(&skill_content_clone).is_ok() {
                                 let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
-                                cluaize_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and dumped successfully.");
+                                cluaiz_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and dumped successfully.");
                             }
                         }
                     });
@@ -557,17 +549,17 @@ impl CoreRouter {
                             .map(|m| m.token_count)
                             .unwrap_or(0);
                         if skill_tokens_est > 0 && skill_tokens_est + 256 > self.hardware_n_ctx {
-                            cluaize_shared::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
+                            cluaiz_shared::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
                                 skill_id, skill_tokens_est + 256, self.hardware_n_ctx);
                             continue;
                         }
-                        cluaize_shared::dev_info!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
+                        cluaiz_shared::dev_info!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
                         // Only override if Agentic Pause didn't already set the decision
                         if self.last_route_decision.is_none() {
                             self.last_route_decision = Some(RouteDecision::WarmCacheHit { skill_id: skill_id.clone() });
                         }
                         if let Err(e) = self.active_backend.load_kv_cache(&kv_cache_path.to_string_lossy()) {
-                            cluaize_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
+                            cluaiz_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
                             let _ = self.active_backend.prefill("");
                         }
                     }
@@ -576,11 +568,11 @@ impl CoreRouter {
         }
 
         match &mut self.active_backend {
-            Backend::Cluaize(b) => {
+            Backend::cluaiz(b) => {
 
                 // If Core signals (skill souls) were identified, inject them into the kernel
                 if !intent_result.signals.is_empty() {
-                    cluaize_shared::dev_info!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
+                    cluaiz_shared::dev_info!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
                     b.inject_signals(intent_result.signals).map_err(|e| format!("Signal Injection Failure: {}", e))?;
                 }
 
@@ -593,7 +585,7 @@ impl CoreRouter {
                         tool_context, 
                         formatted_prompt
                     );
-                    cluaize_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
+                    cluaiz_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
                 }
 
                 b.generate_stream(&formatted_prompt, max_tokens, callback)
@@ -609,7 +601,7 @@ impl CoreRouter {
 }
 
 pub struct DummyBackend;
-impl cluaize_shared::UnifiedBackend for DummyBackend {
+impl cluaiz_shared::UnifiedBackend for DummyBackend {
     fn generate(&mut self, _prompt: &str, _max_tokens: usize) -> Result<String, String> {
         Err("Core weights not loaded.".to_string())
     }
@@ -617,7 +609,7 @@ impl cluaize_shared::UnifiedBackend for DummyBackend {
     fn evaluate_tps(&self) -> f64 { 0.0 }
 }
 
-impl cluaize_shared::CluaizeInference for DummyBackend {
+impl cluaiz_shared::cluaizInference for DummyBackend {
     fn forward_raw(&mut self, _inputs: &[u32], _pos: usize) -> anyhow::Result<Vec<f32>> {
         Err(anyhow::anyhow!("Dummy backend"))
     }
@@ -661,4 +653,47 @@ fn extract_frontmatter(skill_dir: &std::path::Path) -> Option<String> {
         }
     }
     None
+}
+
+pub fn agentic_pause_compile_cache(
+    rt: &tokio::runtime::Handle,
+    cache_path_clone: std::path::PathBuf,
+    path_clone: std::path::PathBuf,
+    skill_content_clone: String,
+    expanded_ctx: usize,
+    backend_name: String,
+) -> bool {
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            rt.block_on(async move {
+                let _guard = CompilationGuard { path: cache_path_clone.clone() };
+                use cluaiz_shared::{cluaizContext, StructuralDNA, UnifiedBackend, cluaizInference};
+                let mut temp_dna = StructuralDNA::default();
+                temp_dna.max_context_length = Some(expanded_ctx);
+                let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
+                
+                cluaiz_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
+                let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
+                
+                if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
+                    &path_clone.to_string_lossy(),
+                    &backend_name, 
+                    ctx,
+                    Some(booster)
+                ).await {
+                    cluaiz_shared::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, skill_content_clone.len() / 3);
+                    if bg_engine.prefill(&skill_content_clone).is_ok() {
+                        if bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy()).is_ok() {
+                            return true;
+                        } else {
+                            cluaiz_shared::dev_info!("⚠️ [Arbiter] Background engine '{}' does not support KV Cache dumping. Skipping.", backend_name);
+                            return false;
+                        }
+                    }
+                }
+                false
+            })
+        }).join().unwrap()
+    })
 }

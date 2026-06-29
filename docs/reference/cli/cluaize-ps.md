@@ -1,4 +1,4 @@
-# `cluaize ps` Command Reference
+# `cluaiz ps` Command Reference
 
 The `ps` command lists running model pipelines and active memory maps.
 
@@ -7,5 +7,5 @@ The `ps` command lists running model pipelines and active memory maps.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize ps
+cluaiz ps
 ```

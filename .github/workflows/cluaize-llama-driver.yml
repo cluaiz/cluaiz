@@ -1,4 +1,4 @@
-name: "Cluaize Interface Drivers"
+name: "cluaiz Interface Drivers"
 
 on:
   push:
@@ -382,16 +382,16 @@ jobs:
 
           mkdir -p artifacts
           if [ "${{ runner.os }}" == "Windows" ]; then
-            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_llama.${{ matrix.ext }}"
+            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaiz_llama.${{ matrix.ext }}"
           else
-            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaize_llama.${{ matrix.ext }}"
+            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaiz_llama.${{ matrix.ext }}"
           fi
           PREFIX="${{ matrix.prefix }}"
 
           if [ -n "${{ matrix.cuda_v }}" ]; then
-            DEST="artifacts/${PREFIX}cluaize-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaiz-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
           else
-            DEST="artifacts/${PREFIX}cluaize-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
+            DEST="artifacts/${PREFIX}cluaiz-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
           fi
 
           cp "$SRC" "$DEST"
@@ -400,6 +400,6 @@ jobs:
       - name: 🚀 Upload Binary Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cluaize-llama-driver-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v || 'cpu' }}
+          name: cluaiz-llama-driver-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v || 'cpu' }}
           path: artifacts/*
           retention-days: 1

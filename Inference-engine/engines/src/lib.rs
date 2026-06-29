@@ -3,7 +3,7 @@
 //!   Engine: Master Archer Unified Core Gateway
 //! ═══════════════════════════════════════════════════════════════════════
 
-// 🧬 Archer Cluaize Core Core
+// 🧬 Archer cluaiz Core Core
 
 pub mod api;
 // pub mod kernel; // Removed in V7 DNA Refactor
@@ -30,7 +30,7 @@ pub use hardware::{HardwareDetector, SiliconTruth, SiliconTruth as HardwareInfo,
 pub use hardware::system_control_manager::{detect_hardware, has_config, read_config, save_config, update_field};
 
 // 3. Execution & Inference
-pub use runtime::execution::runner::{CluaizeRunner, CluaizeMetrics};
+pub use runtime::execution::runner::{cluaizRunner, cluaizMetrics};
 pub use runtime::execution::sampler::CoreSampler;
 pub use runtime::execution::loader::GGUFLoader;
 
@@ -41,4 +41,4 @@ pub use models::fetch::{DownloadEvent, ModelDownloader};
 
 // 5. Routing
 pub use api::router::CoreRouter;
-pub use cluaize_shared::BackendType;
+pub use cluaiz_shared::BackendType;

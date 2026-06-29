@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-While the `ffi/` directory contains raw, unsafe pointers to C++ memory, it is illegal for the rest of the Cluaize Engine to use those pointers directly. The `native/` module encapsulates those raw C-pointers inside safe, automatically managed Rust structures (implementing `Drop`, `Send`, and `Sync`).
+While the `ffi/` directory contains raw, unsafe pointers to C++ memory, it is illegal for the rest of the cluaiz Engine to use those pointers directly. The `native/` module encapsulates those raw C-pointers inside safe, automatically managed Rust structures (implementing `Drop`, `Send`, and `Sync`).
 
 This guarantees that if the Rust engine crashes or aborts a request early, the underlying C++ memory (like a 4GB KV Cache) is correctly freed via RAII (Resource Acquisition Is Initialization), preventing catastrophic VRAM leaks.
 

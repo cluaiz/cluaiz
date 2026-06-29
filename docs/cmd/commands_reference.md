@@ -1,22 +1,22 @@
-# 🧬 Cluaize CLI — Complete Command Reference (A to Z)
+# 🧬 cluaiz CLI — Complete Command Reference (A to Z)
 
-> Binary: `cluaize` — Sovereign Neural Kernel  
-> Built from: `cluaize/cmd/`
+> Binary: `cluaiz` — Sovereign Neural Kernel  
+> Built from: `cluaiz/cmd/`
 
 ---
 
 ## 🔨 BUILD & DEV COMMANDS
 
-> These are NOT `cluaize` commands. These run inside the workspace during development.
+> These are NOT `cluaiz` commands. These run inside the workspace during development.
 
 | Command | Description |
 |---------|-------------|
 | `cargo build --release --workspace` | Full workspace release build (all crates) |
-| `cargo build --release --package cluaize_api` | Only the engine API/IPC daemon binary |
+| `cargo build --release --package cluaiz_api` | Only the engine API/IPC daemon binary |
 | `cargo build --release --package cmd` | Only the CLI binary |
 | `cargo run -- serve` | Dev-run the engine daemon (no install needed) |
 | `cargo run -- run <model-id>` | Dev-run the CLI |
-| `Copy-Item "target\release\cluaize.exe" "$env:USERPROFILE\.cluaize\bin\cluaize.exe" -Force` | Install built binary to system path |
+| `Copy-Item "target\release\cluaiz.exe" "$env:USERPROFILE\.cluaiz\bin\cluaiz.exe" -Force` | Install built binary to system path |
 
 ---
 
@@ -24,10 +24,10 @@
 
 | Command | Description |
 |---------|-------------|
-| `cluaize` | Launches the interactive Main Menu TUI |
-| `cluaize menu` | Explicitly open the Main Menu TUI |
-| `cluaize help` | Show the rich formatted help screen (loads commands.json) |
-| `cluaize serve` | Start the background Engine API Daemon on `http://localhost:8000` + Named Pipe IPC |
+| `cluaiz` | Launches the interactive Main Menu TUI |
+| `cluaiz menu` | Explicitly open the Main Menu TUI |
+| `cluaiz help` | Show the rich formatted help screen (loads commands.json) |
+| `cluaiz serve` | Start the background Engine API Daemon on `http://localhost:8000` + Named Pipe IPC |
 
 ---
 
@@ -35,24 +35,24 @@
 
 | Command | Flags / Args | Description |
 |---------|-------------|-------------|
-| `cluaize run` | _(no args)_ | Opens the Dashboard TUI |
-| `cluaize run <model-id>` | `--interactive true/false` | Pull + execute a model. Downloads if not cached. |
-| `cluaize run <model-id> --interactive false` | | Run in non-interactive single-pass mode |
-| `cluaize pull <model-id>` | | Download and register a model into local vault |
-| `cluaize list` | | List all downloaded models in the vault |
-| `cluaize rm <model-id>` | | Remove a model from the local vault |
-| `cluaize model set-chat <model-id>` | | Set the active chat/LLM model in Permission.json |
-| `cluaize model set-vector <model-id>` | | Set the active vector/embedding model in Permission.json |
+| `cluaiz run` | _(no args)_ | Opens the Dashboard TUI |
+| `cluaiz run <model-id>` | `--interactive true/false` | Pull + execute a model. Downloads if not cached. |
+| `cluaiz run <model-id> --interactive false` | | Run in non-interactive single-pass mode |
+| `cluaiz pull <model-id>` | | Download and register a model into local vault |
+| `cluaiz list` | | List all downloaded models in the vault |
+| `cluaiz rm <model-id>` | | Remove a model from the local vault |
+| `cluaiz model set-chat <model-id>` | | Set the active chat/LLM model in Permission.json |
+| `cluaiz model set-vector <model-id>` | | Set the active vector/embedding model in Permission.json |
 
 **Examples:**
 ```bash
-cluaize run gemma4:e2b
-cluaize run bonsai:8b --interactive false
-cluaize pull qwen3:8b
-cluaize pull unsloth/Qwen3.5-4B-GGUF
-cluaize rm gemma4:e2b
-cluaize model set-chat gemma4:e2b
-cluaize model set-vector bge_m3:unknown:onnx:fp32
+cluaiz run gemma4:e2b
+cluaiz run bonsai:8b --interactive false
+cluaiz pull qwen3:8b
+cluaiz pull unsloth/Qwen3.5-4B-GGUF
+cluaiz rm gemma4:e2b
+cluaiz model set-chat gemma4:e2b
+cluaiz model set-vector bge_m3:unknown:onnx:fp32
 ```
 
 ---
@@ -61,45 +61,45 @@ cluaize model set-vector bge_m3:unknown:onnx:fp32
 
 | Command | Flags / Args | Description |
 |---------|-------------|-------------|
-| `cluaize status` | | Show hardware health, silicon profile, active drivers |
-| `cluaize calibrate` | | Re-scan hardware and synchronize SiliconTruth profile |
-| `cluaize --calibrate` | _(legacy flag)_ | Same as `calibrate` (older style) |
-| `cluaize benchmark` | | Run full hardware performance benchmark |
-| `cluaize benchmark <model-id>` | `--runs <N>` | Benchmark a specific model N times |
-| `cluaize --benchmark` | _(legacy flag)_ | Same as `benchmark` (older style) |
-| `cluaize ps` | | Show active neural engines loaded in memory |
-| `cluaize test-jit` | | Test JIT KV Cache compilation and memory footprint |
+| `cluaiz status` | | Show hardware health, silicon profile, active drivers |
+| `cluaiz calibrate` | | Re-scan hardware and synchronize SiliconTruth profile |
+| `cluaiz --calibrate` | _(legacy flag)_ | Same as `calibrate` (older style) |
+| `cluaiz benchmark` | | Run full hardware performance benchmark |
+| `cluaiz benchmark <model-id>` | `--runs <N>` | Benchmark a specific model N times |
+| `cluaiz --benchmark` | _(legacy flag)_ | Same as `benchmark` (older style) |
+| `cluaiz ps` | | Show active neural engines loaded in memory |
+| `cluaiz test-jit` | | Test JIT KV Cache compilation and memory footprint |
 
 **Examples:**
 ```bash
-cluaize status
-cluaize calibrate
-cluaize benchmark
-cluaize benchmark gemma4:e2b --runs 3
-cluaize ps
+cluaiz status
+cluaiz calibrate
+cluaiz benchmark
+cluaiz benchmark gemma4:e2b --runs 3
+cluaiz ps
 ```
 
 ---
 
 ## 🧠 BRAIN / FFI DATABASE COMMANDS
 
-> Controls the FFI connection to the `cluaizd` background database daemon.
+> Controls the FFI connection to the `cluaizdb` background database daemon.
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `cluaize brain on` | _(no args = local)_ | Enable FFI Database connection (local cluaizd) |
-| `cluaize brain on <ip:port>` | e.g. `10.0.0.5:8080` | Connect to a remote cluaizd instance |
-| `cluaize brain off` | | Disable FFI Database connection |
-| `cluaize brain only` | | Pure Brain Mode: enable local DB but suspend LLM to save VRAM |
-| `cluaize brain status` | | View connection status and background daemon health |
+| `cluaiz brain on` | _(no args = local)_ | Enable FFI Database connection (local cluaizdb) |
+| `cluaiz brain on <ip:port>` | e.g. `10.0.0.5:8080` | Connect to a remote cluaizdb instance |
+| `cluaiz brain off` | | Disable FFI Database connection |
+| `cluaiz brain only` | | Pure Brain Mode: enable local DB but suspend LLM to save VRAM |
+| `cluaiz brain status` | | View connection status and background daemon health |
 
 **Examples:**
 ```bash
-cluaize brain on
-cluaize brain on 10.0.0.5:8080
-cluaize brain off
-cluaize brain only
-cluaize brain status
+cluaiz brain on
+cluaiz brain on 10.0.0.5:8080
+cluaiz brain off
+cluaiz brain only
+cluaiz brain status
 ```
 
 ---
@@ -110,9 +110,9 @@ cluaize brain status
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `cluaize permission` | _(no args)_ | Open interactive permission TUI menu |
-| `cluaize permission firewall <status>` | `auto / strict / off` | Set WASM Firewall mode |
-| `cluaize permission telemetry <status>` | `on / off` | Enable or disable anonymous telemetry |
+| `cluaiz permission` | _(no args)_ | Open interactive permission TUI menu |
+| `cluaiz permission firewall <status>` | `auto / strict / off` | Set WASM Firewall mode |
+| `cluaiz permission telemetry <status>` | `on / off` | Enable or disable anonymous telemetry |
 
 **Interactive Menu Options (when run without args):**
 - WASM Firewall → `auto / strict / off`
@@ -125,10 +125,10 @@ cluaize brain status
 
 **Examples:**
 ```bash
-cluaize permission
-cluaize permission firewall strict
-cluaize permission firewall auto
-cluaize permission telemetry off
+cluaiz permission
+cluaiz permission firewall strict
+cluaiz permission firewall auto
+cluaiz permission telemetry off
 ```
 
 ---
@@ -139,21 +139,21 @@ cluaize permission telemetry off
 
 | Command | Flag | Values | Description |
 |---------|------|--------|-------------|
-| `cluaize booster` | _(no args)_ | | Open interactive booster TUI menu |
-| `cluaize booster --mode <mode>` | `--mode` | `edge / multitasking / balance / max_boost / ultra_max_boost / hyper_cluster` | Set performance profile |
-| `cluaize booster --kv-quant <level>` | `--kv-quant` | `auto / kv16 / kv8 / kv4` | Set KV-Cache quantization level |
-| `cluaize booster --context-shift <mode>` | `--context-shift` | `auto / off / minimal / standard / aggressive / extreme` | Set context shifting mode |
-| `cluaize booster --spec-decode <mode>` | `--spec-decode` | `on / off / auto` | Enable/disable speculative decoding |
+| `cluaiz booster` | _(no args)_ | | Open interactive booster TUI menu |
+| `cluaiz booster --mode <mode>` | `--mode` | `edge / multitasking / balance / max_boost / ultra_max_boost / hyper_cluster` | Set performance profile |
+| `cluaiz booster --kv-quant <level>` | `--kv-quant` | `auto / kv16 / kv8 / kv4` | Set KV-Cache quantization level |
+| `cluaiz booster --context-shift <mode>` | `--context-shift` | `auto / off / minimal / standard / aggressive / extreme` | Set context shifting mode |
+| `cluaiz booster --spec-decode <mode>` | `--spec-decode` | `on / off / auto` | Enable/disable speculative decoding |
 
 **Examples:**
 ```bash
-cluaize booster
-cluaize booster --mode edge
-cluaize booster --mode max_boost
-cluaize booster --kv-quant kv8
-cluaize booster --context-shift aggressive
-cluaize booster --spec-decode on
-cluaize booster --mode edge --kv-quant kv8 --context-shift aggressive
+cluaiz booster
+cluaiz booster --mode edge
+cluaiz booster --mode max_boost
+cluaiz booster --kv-quant kv8
+cluaiz booster --context-shift aggressive
+cluaiz booster --spec-decode on
+cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
 ```
 
 ---
@@ -164,19 +164,19 @@ cluaize booster --mode edge --kv-quant kv8 --context-shift aggressive
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `cluaize skill install <name>` | skill name | Install a skill from the cluaiz-skills registry |
-| `cluaize skill list` | | List all locally installed skills |
-| `cluaize skill cache ls` | | List all active and orphaned dual-caches |
-| `cluaize skill cache clear` | `--all` `--force` | Clear orphaned caches globally |
-| `cluaize skill cache clear <model-id>` | `-f / --force` | Clear cache for a specific model |
+| `cluaiz skill install <name>` | skill name | Install a skill from the cluaiz-skills registry |
+| `cluaiz skill list` | | List all locally installed skills |
+| `cluaiz skill cache ls` | | List all active and orphaned dual-caches |
+| `cluaiz skill cache clear` | `--all` `--force` | Clear orphaned caches globally |
+| `cluaiz skill cache clear <model-id>` | `-f / --force` | Clear cache for a specific model |
 
 **Examples:**
 ```bash
-cluaize skill install web-search-github
-cluaize skill list
-cluaize skill cache ls
-cluaize skill cache clear --all
-cluaize skill cache clear gemma4:e2b --force
+cluaiz skill install web-search-github
+cluaiz skill list
+cluaiz skill cache ls
+cluaiz skill cache clear --all
+cluaiz skill cache clear gemma4:e2b --force
 ```
 
 ---
@@ -187,12 +187,12 @@ cluaize skill cache clear gemma4:e2b --force
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `cluaize ingest <file-path>` | File path | Ingest a document (PDF, TXT, MD, etc.) for semantic chunking |
+| `cluaiz ingest <file-path>` | File path | Ingest a document (PDF, TXT, MD, etc.) for semantic chunking |
 
 **Examples:**
 ```bash
-cluaize ingest ./document.pdf
-cluaize ingest "C:\Users\Aryan\Documents\notes.md"
+cluaiz ingest ./document.pdf
+cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 ```
 
 ---
@@ -201,15 +201,15 @@ cluaize ingest "C:\Users\Aryan\Documents\notes.md"
 
 | Command | Description |
 |---------|-------------|
-| `cluaize setup profile` | Generate and register Purpose Vectorization for the Node Profile |
+| `cluaiz setup profile` | Generate and register Purpose Vectorization for the Node Profile |
 
 ---
 
-## 🌐 HTTP API (Port 8000 — when `cluaize serve` is running)
+## 🌐 HTTP API (Port 8000 — when `cluaiz serve` is running)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/chat` | Chat with Cluaize (streaming) |
+| `POST` | `/chat` | Chat with cluaiz (streaming) |
 | `GET` | `/hardware` | System hardware status |
 | `GET` | `/models/installed` | List installed models |
 | `GET` | `/models/tags` | Full model roster |
@@ -229,7 +229,7 @@ cluaize ingest "C:\Users\Aryan\Documents\notes.md"
 
 ## 🔌 IPC Named Pipe Commands (App ↔ Engine)
 
-> Pipe: `\\.\pipe\cluaize_engine_pipe` — used by Tauri Desktop App. JSON format.
+> Pipe: `\\.\pipe\cluaiz_engine_pipe` — used by Tauri Desktop App. JSON format.
 
 | Action | Payload | Description |
 |--------|---------|-------------|
@@ -252,7 +252,7 @@ cluaize ingest "C:\Users\Aryan\Documents\notes.md"
 
 ---
 
-## 📂 Config Files (`~/.cluaize/engine/`)
+## 📂 Config Files (`~/.cluaiz/engine/`)
 
 | File | Purpose |
 |------|---------|
@@ -262,7 +262,7 @@ cluaize ingest "C:\Users\Aryan\Documents\notes.md"
 
 ---
 
-## 📦 Model Vault Structure (`~/.cluaize/models/`)
+## 📦 Model Vault Structure (`~/.cluaiz/models/`)
 
 | Folder | Model Type | Appears In |
 |--------|-----------|------------|

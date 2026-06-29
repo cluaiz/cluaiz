@@ -2,7 +2,7 @@ use super::*;
 // ─── Sovereign FFI Gateway ──────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_init() -> *const std::os::raw::c_char {
+pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
     unsafe {
         // 🤫 Sovereign Silence: Hard-redirect native stdout/stderr to NUL
         // This stops all non-callback logs (CUDA Graph, etc.) from polluting the TUI.
@@ -37,16 +37,16 @@ pub extern "C" fn cluaize_kernel_init() -> *const std::os::raw::c_char {
         ffi::llama_cpp::llama_backend_init();
     }
     tracing::info!("🧬 [Llama.cpp-Kernel] Sovereign Handshake & Backend Initialized.");
-    "cluaize-llama.cpp-active\0".as_ptr() as *const std::os::raw::c_char
+    "cluaiz-llama.cpp-active\0".as_ptr() as *const std::os::raw::c_char
 }
 
 #[used]
-static _FORCE_KEEP_INIT: extern "C" fn() -> *const std::os::raw::c_char = cluaize_kernel_init;
+static _FORCE_KEEP_INIT: extern "C" fn() -> *const std::os::raw::c_char = cluaiz_kernel_init;
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_instantiate(
+pub extern "C" fn cluaiz_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
-    booster_ptr: *const cluaize_shared::hardware::schema::booster::CluaizeBoosterContext,
+    booster_ptr: *const cluaiz_shared::hardware::schema::booster::cluaizBoosterContext,
 ) -> *mut RuntimeB {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let path_str = unsafe { std::ffi::CStr::from_ptr(path_ptr) }
@@ -56,44 +56,44 @@ pub extern "C" fn cluaize_kernel_instantiate(
         let model_path = std::path::Path::new(&path_str);
         let model_dir = model_path.parent().unwrap_or(model_path);
 
-        cluaize_shared::dev_info!(
+        cluaiz_shared::dev_info!(
             "🧬 [Llama-Lib] Initiating Sovereign DNA Handshake for: {:?}",
             model_dir
         );
-        let mut dna = cluaize_shared::metadata::dna::StructuralDNA::load(
+        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::load(
             &model_dir.join("structural_dna.json"),
         )
         .unwrap_or_else(|_| {
-            cluaize_shared::dev_info!("⚠️ [Llama-Lib] DNA Manifest missing. Creating transient skeleton...");
-            cluaize_shared::metadata::dna::StructuralDNA::default()
+            cluaiz_shared::dev_info!("⚠️ [Llama-Lib] DNA Manifest missing. Creating transient skeleton...");
+            cluaiz_shared::metadata::dna::StructuralDNA::default()
         });
 
         // ALWAYS perform real-time discovery to sync with LIVE hardware state
-        cluaize_shared::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");
+        cluaiz_shared::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");
         if let Err(e) = dna.discover_from_path(model_dir) {
-            cluaize_shared::dev_info!(
+            cluaiz_shared::dev_info!(
                 "⚠️ [Llama-Lib] DNA Discovery Failed: {}. Using best-effort constraints.",
                 e
             );
         }
-        cluaize_shared::dev_info!(
+        cluaiz_shared::dev_info!(
             "✅ [Llama-Lib] DNA Discovery Complete. Negotiated Context: {:?}",
             dna.max_context_length
         );
-        cluaize_shared::dev_info!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
+        cluaiz_shared::dev_info!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
 
-        let context = CluaizeContext::boot(dna, cluaize_shared::TemplateManager::default());
+        let context = cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
         let mut engine = Box::new(RuntimeB::new(&path_str, context));
 
         // Inject Booster Configuration from Caller
         if !booster_ptr.is_null() {
             let booster_ctx = unsafe { *booster_ptr };
-            cluaize_shared::dev_info!(
-                "🚀 [Llama.cpp-Kernel] Received CluaizeBoosterContext via FFI: {:?}",
+            cluaiz_shared::dev_info!(
+                "🚀 [Llama.cpp-Kernel] Received cluaizBoosterContext via FFI: {:?}",
                 booster_ctx
             );
             tracing::info!(
-                "🚀 [Llama.cpp-Kernel] Received CluaizeBoosterContext via FFI: {:?}",
+                "🚀 [Llama.cpp-Kernel] Received cluaizBoosterContext via FFI: {:?}",
                 booster_ctx
             );
             engine.booster.flash_attn = booster_ctx.flash_attention;
@@ -131,7 +131,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
         } else {
             // Self-load from Binary Booster Truth if FFI was blank
             if let Ok(booster) =
-                cluaize_shared::hardware::governor::HardwareGovernor::load_booster_settings()
+                cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings()
             {
                 let _ = engine.apply_booster(&booster);
             }
@@ -139,7 +139,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
 
         // 🧬 Trigger Native Load immediately on instantiation
         if let Err(e) = engine.load_native() {
-            cluaize_shared::dev_info!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
+            cluaiz_shared::dev_info!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             tracing::error!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             return std::ptr::null_mut();
         }
@@ -151,7 +151,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
         Ok(ptr) => ptr,
         Err(_) => {
             tracing::error!(
-                "🚨 [FFI-Panic] Caught panic in cluaize_kernel_instantiate! Preventing OS crash."
+                "🚨 [FFI-Panic] Caught panic in cluaiz_kernel_instantiate! Preventing OS crash."
             );
             std::ptr::null_mut()
         }
@@ -159,7 +159,7 @@ pub extern "C" fn cluaize_kernel_instantiate(
 }
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_generate_stream(
+pub extern "C" fn cluaiz_kernel_generate_stream(
     engine_ptr: *mut RuntimeB,
     prompt_ptr: *const std::os::raw::c_char,
     max_tokens: usize,
@@ -203,14 +203,14 @@ pub extern "C" fn cluaize_kernel_generate_stream(
     match result {
         Ok(res) => res,
         Err(_) => {
-            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaize_kernel_generate_stream!");
+            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_kernel_generate_stream!");
             -3
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_free(engine_ptr: *mut RuntimeB) {
+pub extern "C" fn cluaiz_kernel_free(engine_ptr: *mut RuntimeB) {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         if !engine_ptr.is_null() {
             unsafe {
@@ -223,19 +223,19 @@ pub extern "C" fn cluaize_kernel_free(engine_ptr: *mut RuntimeB) {
         }
     }));
     if result.is_err() {
-        tracing::error!("🚨 [FFI-Panic] Caught panic in cluaize_kernel_free!");
+        tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_kernel_free!");
     }
 }
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_set_skip_ptr(ptr: *const std::sync::atomic::AtomicBool) {
+pub extern "C" fn cluaiz_kernel_set_skip_ptr(ptr: *const std::sync::atomic::AtomicBool) {
     unsafe {
         crate::native::stream::SKIP_PTR = ptr;
     }
 }
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_dump_kv_cache(
+pub extern "C" fn cluaiz_kernel_dump_kv_cache(
     engine_ptr: *mut RuntimeB,
     path_ptr: *const std::os::raw::c_char,
 ) -> i32 {
@@ -292,7 +292,7 @@ pub extern "C" fn cluaize_kernel_dump_kv_cache(
 }
 
 #[no_mangle]
-pub extern "C" fn cluaize_kernel_load_kv_cache(
+pub extern "C" fn cluaiz_kernel_load_kv_cache(
     engine_ptr: *mut RuntimeB,
     path_ptr: *const std::os::raw::c_char,
 ) -> i32 {

@@ -19,7 +19,7 @@ pub async fn run_native(
         print!("\x1B[2J\x1B[1;1H"); // Clear and home
         crate::assets::logos::logo::print_native_logo(state.logo_index);
         println!();
-        println!("  {} {}", "CLUAIZE".cyan().bold(), "v0.1.0".bright_black());
+        println!("  {} {}", "cluaiz".cyan().bold(), "v0.1.0".bright_black());
         if state.is_client_mode {
             println!("  {} {}", "Mode:        ".dimmed(), "Pure Client (Connected to Background API)".green().bold());
         } else {
@@ -47,7 +47,7 @@ pub async fn run_native(
             "❌ Quit",
         ];
 
-        let ans = match Select::new("Cluaize Main Menu:", options)
+        let ans = match Select::new("cluaiz Main Menu:", options)
             .with_render_config(config.clone())
             .prompt() {
             Ok(ans) => ans,
@@ -77,8 +77,8 @@ pub async fn run_native(
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match s_ans {
                         "🚀 Start API Daemon" => {
-                            println!("  {} Starting Cluaize API Daemon on http://localhost:8000 ...", "🚀".green());
-                            cluaize_api::run_daemon().await;
+                            println!("  {} Starting cluaiz API Daemon on http://localhost:8000 ...", "🚀".green());
+                            cluaiz_api::run_daemon().await;
                         }
                         "👀 View Active Engines" => {
                             let _ = crate::cli::ps::execute().await;
@@ -259,7 +259,7 @@ pub async fn run_native(
                             }
                         }
                         "📊 Hardware Status & Health" => {
-                            engines::telemetry::health_check::CluaizeHealthChecker::run_full_benchmark();
+                            engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
                         }
                         "🔄 Re-calibrate Hardware" => {
                             println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛠️".cyan());
@@ -274,7 +274,7 @@ pub async fn run_native(
                 }
             }
             "🛠️ Advanced Utilities" => {
-                let u_opts = vec!["🧩 Manage Skills", "🧠 Brain Settings", "📄 Ingest Document", "⚙️ Setup Profile", "🔙 Back"];
+                let u_opts = vec!["🧩 Manage Skills", "📄 Ingest Document", "⚙️ Setup Profile", "🔙 Back"];
                 if let Ok(u_ans) = Select::new("Advanced Utilities:", u_opts).with_render_config(config.clone()).prompt() {
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match u_ans {
@@ -309,20 +309,7 @@ pub async fn run_native(
                                 }
                             }
                         }
-                        "🧠 Brain Settings" => {
-                            let br_opts = vec!["Enable Brain Connection", "Disable Brain Connection", "Pure Brain Mode (No LLM)", "🔙 Back"];
-                            if let Ok(br_ans) = Select::new("Brain Settings:", br_opts).with_render_config(config.clone()).prompt() {
-                                print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
-                                match br_ans {
-                                    "Enable Brain Connection" => {
-                                        let _ = crate::cli::brain::execute(crate::BrainCommand::On { address: None }).await;
-                                    }
-                                    "Disable Brain Connection" => { let _ = crate::cli::brain::execute(crate::BrainCommand::Off).await; }
-                                    "Pure Brain Mode (No LLM)" => { let _ = crate::cli::brain::execute(crate::BrainCommand::Only).await; }
-                                    _ => {}
-                                }
-                            }
-                        }
+
                         "📄 Ingest Document" => {
                             if let Ok(path) = inquire::Text::new("Enter File Path:").prompt() {
                                 let _ = crate::cli::ingest::execute(&path).await;

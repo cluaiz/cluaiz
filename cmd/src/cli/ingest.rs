@@ -3,10 +3,10 @@ use colored::Colorize;
 use engines::neural_foundry::ingestion::DocumentIngestor;
 use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError};
 
-use cluaize_onnx::engine::OnnxEngine;
+use cluaiz_onnx::engine::OnnxEngine;
 
 pub async fn execute(file_path: &str) -> Result<()> {
-    println!("\n  {} [Cluaize] Sovereign Ingestion Pipeline Initiated", "ðŸš€".green());
+    println!("\n  {} [cluaiz] Sovereign Ingestion Pipeline Initiated", "ðŸš€".green());
     println!("  {} Target File: {}\n", "ðŸ“„".cyan(), file_path.bold());
 
     let ingestor = DocumentIngestor::new();
@@ -24,10 +24,10 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let model_path = current_dir.join("models/library/CLIP/model.onnx");
     let model_path_str = model_path.to_string_lossy();
     
-    println!("  {} Loading Real ONNX Gatekeeper...", "ðŸ”®".magenta());
-    if let Err(e) = onnx_driver.load_vision_model(&model_path_str) {
-        eprintln!("  {} [WARNING] ONNX Vision weights not found at '{}'. Please ensure the download completed. Error: {}", "âš ï¸".yellow(), model_path_str, e);
-        eprintln!("  {} Aborting ingestion due to missing brain.", "ðŸ›‘".red());
+    println!("  {} Loading Real ONNX Gatekeeper...", "🔮".magenta());
+    if let Err(e) = onnx_driver.load_vision_model(&model_path_str, None) {
+        eprintln!("  {} [WARNING] ONNX Vision weights not found at '{}'. Please ensure the download completed. Error: {}", "⚠️".yellow(), model_path_str, e);
+        eprintln!("  {} Aborting ingestion due to missing brain.", "🛑".red());
         return Ok(());
     }
 

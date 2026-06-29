@@ -1,6 +1,6 @@
 //! Sovereign Implementation B: Acceleration Pipeline (With Binary Fallback).
 
-use cluaize_shared::backend::context::CluaizeContext;
+use cluaiz_shared::backend::context::cluaizContext;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ pub struct RuntimeBPipeline;
 impl RuntimeBPipeline {
     pub async fn execute_stream(
         model_path: &str,
-        context: &CluaizeContext,
+        context: &cluaizContext,
         prompt: &str,
         _max_tokens: usize,
         mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
@@ -123,7 +123,7 @@ impl RuntimeBPipeline {
 
     pub fn execute_stream_internal(
         _model_path: &str,
-        _context: &CluaizeContext,
+        _context: &cluaizContext,
         _prompt: &str,
         _max_tokens: usize,
         _callback: Box<dyn FnMut(String) -> bool + Send + 'static>,

@@ -37,7 +37,7 @@ fn main() {
     const int bit_0 = (x[ib].qs[byte_index_0] >> bit_offset_0) & 1;
     const int bit_1 = (x[ib].qs[byte_index_1] >> bit_offset_1) & 1;"#.replace("\r\n", "\n");
         
-        let inject_q1 = r#"    // Cluaize Sovereign: 1-Cycle PTX bfe.u32 Injection
+        let inject_q1 = r#"    // cluaiz Sovereign: 1-Cycle PTX bfe.u32 Injection
     unsigned int qs_0 = x[ib].qs[byte_index_0];
     unsigned int qs_1 = x[ib].qs[byte_index_1];
     unsigned int bit_0, bit_1;
@@ -47,7 +47,7 @@ fn main() {
         let target_q4 = r#"    v.x = vui & 0xF;
     v.y = vui >> 4;"#.replace("\r\n", "\n");
 
-        let inject_q4 = r#"    // Cluaize Sovereign: 1-Cycle PTX bfe.u32 Injection
+        let inject_q4 = r#"    // cluaiz Sovereign: 1-Cycle PTX bfe.u32 Injection
     unsigned int vx_int, vy_int;
     asm volatile("bfe.u32 %0, %1, 0, 4;" : "=r"(vx_int) : "r"((unsigned int)vui));
     asm volatile("bfe.u32 %0, %1, 4, 4;" : "=r"(vy_int) : "r"((unsigned int)vui));
@@ -73,13 +73,13 @@ fn main() {
         content = content.replace("\r\n", "\n");
         
         let target_add_assert = r#"    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1");"#;
-        let patch_add_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1"); // Cluaize Sovereign: Bypassed for M-RoPE"#;
+        let patch_add_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1"); // cluaiz Sovereign: Bypassed for M-RoPE"#;
 
         let target_div_assert = r#"    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1");"#;
-        let patch_div_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1"); // Cluaize Sovereign: Bypassed for M-RoPE"#;
+        let patch_div_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1"); // cluaiz Sovereign: Bypassed for M-RoPE"#;
 
         let target_can_shift = "bool llama_kv_cache::get_can_shift() const {\n    // Step35 uses per-layer RoPE dims; K-shift assumes a single global n_rot.\n    if (model.arch == LLM_ARCH_STEP35) {\n        return false;\n    }\n    if (hparams.n_pos_per_embd() > 1) {\n        return false;\n    }\n    return true;\n}";
-        let patch_can_shift = "bool llama_kv_cache::get_can_shift() const {\n    // Step35 uses per-layer RoPE dims; K-shift assumes a single global n_rot.\n    if (model.arch == LLM_ARCH_STEP35) {\n        return false;\n    }\n    if (hparams.n_pos_per_embd() > 1) {\n        // Cluaize Sovereign: allow shifting for M-RoPE models (e.g. Qwen2-VL, Qwen3.5-VL)\n        if (hparams.rope_type == LLAMA_ROPE_TYPE_MROPE || hparams.rope_type == LLAMA_ROPE_TYPE_IMROPE) {\n            return true;\n        }\n        return false;\n    }\n    return true;\n}";
+        let patch_can_shift = "bool llama_kv_cache::get_can_shift() const {\n    // Step35 uses per-layer RoPE dims; K-shift assumes a single global n_rot.\n    if (model.arch == LLM_ARCH_STEP35) {\n        return false;\n    }\n    if (hparams.n_pos_per_embd() > 1) {\n        // cluaiz Sovereign: allow shifting for M-RoPE models (e.g. Qwen2-VL, Qwen3.5-VL)\n        if (hparams.rope_type == LLAMA_ROPE_TYPE_MROPE || hparams.rope_type == LLAMA_ROPE_TYPE_IMROPE) {\n            return true;\n        }\n        return false;\n    }\n    return true;\n}";
 
         let mut modified = false;
         if content.contains(target_add_assert) {
@@ -179,7 +179,7 @@ fn main() {
     if feature_cuda {
         config.define("GGML_CUDA_FA_ALL_QUANTS", "ON");
         config.cxxflag("-DGGML_USE_CUDA");
-        println!("cargo:warning=🔥 Cluaize Sovereign: Forcing FlashAttention across ALL Quantizations and defining GGML_USE_CUDA explicitly!");
+        println!("cargo:warning=🔥 cluaiz Sovereign: Forcing FlashAttention across ALL Quantizations and defining GGML_USE_CUDA explicitly!");
     }
     config.define("GGML_METAL",    if feature_metal    { "ON" } else { "OFF" });
     config.define("GGML_VULKAN",   if feature_vulkan   { "ON" } else { "OFF" });

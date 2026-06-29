@@ -1,4 +1,4 @@
-# `cluaize serve` Command Reference
+# `cluaiz serve` Command Reference
 
 The `serve` command starts the background Engine Daemon process. It sets up both the HTTP API server and the Named Pipe IPC channel.
 
@@ -7,7 +7,7 @@ The `serve` command starts the background Engine Daemon process. It sets up both
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize serve [options]
+cluaiz serve [options]
 ```
 
 ### Options:
@@ -20,6 +20,6 @@ cluaize serve [options]
 ## ⚙️ Behind the Scenes (Execution Flow)
 
 1. **Locks Instance:** Attempts to lock a system-wide lock file (`.serve_lock`) to prevent starting multiple conflicting daemons.
-2. **Loads Configs:** Parses `Permission.json`, `system_booster.json`, and `system_control.json` from `~/.cluaize/engine/`.
-3. **IPC Named Pipe Initialization:** Spawns a background thread listening on `\\.\pipe\cluaize_engine_pipe` for desktop applications (Tauri UI).
+2. **Loads Configs:** Parses `Permission.json`, `system_booster.json`, and `system_control.json` from `~/.cluaiz/engine/`.
+3. **IPC Named Pipe Initialization:** Spawns a background thread listening on `\\.\pipe\cluaiz_engine_pipe` for desktop applications (Tauri UI).
 4. **Starts Axum Web Server:** Binds to the designated port and hosts endpoints for REST API access.

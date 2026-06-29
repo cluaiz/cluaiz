@@ -30,7 +30,7 @@ impl CommandRegistry {
         use colored::Colorize;
 
         println!(
-            "\n  {} Cluaize Engine CLI v{}",
+            "\n  {} cluaiz Engine CLI v{}",
             "🚀".magenta(),
             self.version.bold()
         );
@@ -55,7 +55,7 @@ impl CommandRegistry {
 
         println!(
             "  Use {} to launch the neural cockpit.\n",
-            "cluaize".bold().magenta()
+            "cluaiz".bold().magenta()
         );
     }
 }

@@ -20,7 +20,7 @@ GET /models/installed
     "model_id": "bonsai:8b",
     "type": "chat",
     "size_bytes": 4820000000,
-    "path": "C:\\Users\\Aryan\\.cluaize\\models\\chat\\bonsai-8b.gguf"
+    "path": "C:\\Users\\Aryan\\.cluaiz\\models\\chat\\bonsai-8b.gguf"
   }
 ]
 ```

@@ -1,4 +1,4 @@
-# `cluaize permission` Command Reference
+# `cluaiz permission` Command Reference
 
 The `permission` command modifies security, vectorization, and firewall modes.
 
@@ -7,7 +7,7 @@ The `permission` command modifies security, vectorization, and firewall modes.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize permission [options]
+cluaiz permission [options]
 ```
 
 ### Options:
@@ -16,7 +16,7 @@ cluaize permission [options]
 
 ### Examples:
 ```bash
-cluaize permission
-cluaize permission firewall strict
-cluaize permission telemetry off
+cluaiz permission
+cluaiz permission firewall strict
+cluaiz permission telemetry off
 ```

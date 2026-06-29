@@ -7,7 +7,7 @@
 ## ⚔️ Independent Execution
 To pull and run this model natively on your silicon:
 ```bash
-cluaize run bonsai:1.1
+cluaiz run bonsai:1.1
 ```
 
 ---
@@ -58,5 +58,5 @@ Bonsai is engineered to maintain a minimum of **5 tokens per second (TPS)** on e
 ---
 
 **Join the Independent Revolution.**
-Published by **PrismML** & **Cluaize-OS**. Supported by Khosla Ventures and Google DeepMind.
+Published by **PrismML** & **Cluaiz-OS**. Supported by Khosla Ventures and Google DeepMind.
 Full Technical Whitepaper: [Bonsai-Whitepaper.pdf](./assets/bonsai-whitepaper.pdf)

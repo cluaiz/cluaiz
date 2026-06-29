@@ -3,7 +3,7 @@
 //! This kernel is loaded dynamically by the SiliconOrchestrator.
 
 use anyhow::Result;
-use cluaize_shared::{CluaizeContext, CluaizeInference, UnifiedBackend};
+use cluaiz_shared::{cluaizContext, cluaizInference, UnifiedBackend};
 use neural_core::interfaces::memory_contract::SovereignBuffer;
 use std::sync::Arc;
 use tokenizers::Tokenizer;
@@ -115,7 +115,7 @@ mod tests {
 
 pub struct RuntimeB {
     pub model_path: String,
-    pub context: CluaizeContext,
+    pub context: cluaizContext,
     pub booster: BoosterConfig,
     pub native: Option<NativeLlama>,
     pub lucebox: Option<Arc<ffi::lucebox::LuceboxBridge>>,
@@ -123,7 +123,7 @@ pub struct RuntimeB {
 }
 
 impl RuntimeB {
-    pub fn new(path: &str, context: CluaizeContext) -> Self {
+    pub fn new(path: &str, context: cluaizContext) -> Self {
         Self {
             model_path: path.to_string(),
             context,
@@ -149,11 +149,11 @@ impl RuntimeB {
         // We probe GGUF metadata + tensor names to detect hybrid/recurrent models (e.g. Qwen3.5 GDN).
         // GGUFProber now checks: architecture name, *.layer_types metadata, AND tensor patterns.
         let (has_native_mtp, is_ssm_model) = if let Ok((metadata, tensor_infos, _)) =
-            cluaize_shared::utils::GGUFProber::probe(std::path::Path::new(&self.model_path))
+            cluaiz_shared::utils::GGUFProber::probe(std::path::Path::new(&self.model_path))
         {
             (
-                cluaize_shared::utils::GGUFProber::check_native_mtp(&tensor_infos),
-                cluaize_shared::utils::GGUFProber::check_recurrent_ssm(&metadata, &tensor_infos),
+                cluaiz_shared::utils::GGUFProber::check_native_mtp(&tensor_infos),
+                cluaiz_shared::utils::GGUFProber::check_recurrent_ssm(&metadata, &tensor_infos),
             )
         } else {
             (false, false)
@@ -162,8 +162,8 @@ impl RuntimeB {
         if is_ssm_model {
             // 🚨 For hybrid/recurrent models (Qwen3.5 GDN, Mamba, RWKV):
             // Speculative decoding is incompatible with non-transformer architectures.
-            cluaize_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
-            cluaize_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
+            cluaiz_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
+            cluaiz_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
             self.booster.speculative_decoding = "off".to_string();
             // Note: We DO NOT force context_shifting off here anymore, as it breaks continuous generation.
             // We let system_booster.json decide the context_shifting mode.
@@ -178,7 +178,7 @@ impl RuntimeB {
         } else {
             "off"
         };
-        cluaize_shared::dev_info!(
+        cluaiz_shared::dev_info!(
             "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (booster: {})",
             speculative_mode, self.booster.speculative_decoding
         );
@@ -270,13 +270,13 @@ impl UnifiedBackend for RuntimeB {
     fn evaluate_tps(&self) -> f64 {
         // 📡 Sovereign Telemetry: Return the real-time TPS from the pulse counter.
         // This counter is incremented for every token generated in native.rs.
-        cluaize_shared::hardware::telemetry::get_pulse()
+        cluaiz_shared::hardware::telemetry::get_pulse()
             .tps_counter
             .load(std::sync::atomic::Ordering::Relaxed) as f64
     }
 }
 
-impl CluaizeInference for RuntimeB {
+impl cluaizInference for RuntimeB {
     fn forward_raw(&mut self, _input_ids: &[u32], _pos: usize) -> Result<Vec<f32>> {
         Err(anyhow::anyhow!("FFI forward optimized via ASM kernels"))
     }
@@ -290,7 +290,7 @@ impl CluaizeInference for RuntimeB {
         let mut callback = callback;
 
         // 🛡️ Neural Circuit Breaker: check if paths are safe
-        let mut cb = cluaize_shared::hardware::circuit_breaker::NeuralCircuitBreaker::default();
+        let mut cb = cluaiz_shared::hardware::circuit_breaker::NeuralCircuitBreaker::default();
         if !cb.can_proceed() {
             return Err(anyhow::anyhow!(
                 "🚨 [Circuit Breaker] Inference blocked due to previous system instability."
@@ -347,7 +347,7 @@ impl CluaizeInference for RuntimeB {
     /// 💉 Neural Injection Hook: Injects multiple pre-encoded signal states into the Llama cache.
     fn inject_signals(
         &mut self,
-        signals: Vec<cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal>,
+        signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>,
     ) -> Result<()> {
         let max_ctx = self.context.dna.max_context_length.unwrap_or(4096);
         let mut current_offset = 0;
@@ -371,7 +371,7 @@ impl CluaizeInference for RuntimeB {
                 if current_offset + token_count > max_ctx {
                     tracing::error!("❌ [Llama-Engine] Positional Collision: Signal {} exceeds remaining context space.", i);
                     return Err(anyhow::anyhow!(
-                        "CluaizeSignal: Context Overflow at Signal {}",
+                        "cluaizSignal: Context Overflow at Signal {}",
                         i
                     ));
                 }
@@ -410,7 +410,7 @@ impl CluaizeInference for RuntimeB {
     /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
     fn apply_booster(
         &mut self,
-        control: &cluaize_shared::hardware::schema::booster::BoosterControl,
+        control: &cluaiz_shared::hardware::schema::booster::BoosterControl,
     ) -> Result<()> {
         tracing::info!("🚀 [Llama-Engine] Applying Booster: Autonomous Performance Sync");
 
@@ -422,22 +422,22 @@ impl CluaizeInference for RuntimeB {
             let mut ctx_params = self.booster.to_context_params();
 
             // Recalculate context window through Governor using the injected control truth
-            let new_ctx = cluaize_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_booster(&self.context.dna, control);
+            let new_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_booster(&self.context.dna, control);
             ctx_params.n_ctx = new_ctx as u32;
 
             // Sync settings dynamically
             native.kv_cache_quantization_mode = match control.kv_cache_quantization {
-                cluaize_shared::hardware::schema::booster::KvCacheQuantization::Kv8 => 1,
-                cluaize_shared::hardware::schema::booster::KvCacheQuantization::Kv4 => 2,
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8 => 1,
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4 => 2,
                 _ => 0,
             };
             native.context_shifting_mode = match control.context_shifting {
-                cluaize_shared::hardware::schema::booster::ContextShiftingMode::Off => 0,
-                cluaize_shared::hardware::schema::booster::ContextShiftingMode::Minimal => 1,
-                cluaize_shared::hardware::schema::booster::ContextShiftingMode::Standard
-                | cluaize_shared::hardware::schema::booster::ContextShiftingMode::Auto => 2,
-                cluaize_shared::hardware::schema::booster::ContextShiftingMode::Aggressive => 3,
-                cluaize_shared::hardware::schema::booster::ContextShiftingMode::Extreme => 4,
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off => 0,
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal => 1,
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard
+                | cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto => 2,
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive => 3,
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme => 4,
             };
 
             native.resize_context(ctx_params)?;

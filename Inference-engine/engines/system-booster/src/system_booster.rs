@@ -18,11 +18,11 @@ impl SystemBooster {
              AutoTuner::tune(&mut control, &silicon);
 
              // ⚖️ 2. Resolve initial conflicts
-             ConflictResolver::resolve(&mut control, &silicon, &cluaize_shared::backend::signature::KernelSignature::default());
+             ConflictResolver::resolve(&mut control, &silicon, &cluaiz_shared::backend::signature::KernelSignature::default());
         }
 
         // 🚀 OS Tuning: Elevate priority based on mode_run
-        let priority_level = if control.mode_run == cluaize_shared::hardware::schema::booster::BoosterMode::MaxBoost { "realtime" } else { "high" };
+        let priority_level = if control.mode_run == cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost { "realtime" } else { "high" };
         let _ = crate::os_tuning::elevate_process_priority(priority_level);
 
         HardwareGovernor::save_booster_settings(&control)?;
@@ -30,7 +30,7 @@ impl SystemBooster {
     }
 
     /// ⚖️ Dynamic Resolve: Called after model loading to align with specific architecture.
-    pub fn align_with_model(control: &mut BoosterControl, signature: &cluaize_shared::backend::signature::KernelSignature) -> anyhow::Result<()> {
+    pub fn align_with_model(control: &mut BoosterControl, signature: &cluaiz_shared::backend::signature::KernelSignature) -> anyhow::Result<()> {
         let silicon = HardwareGovernor::load_system_control()?.silicon_truth;
         
         // ⚖️ Re-resolve based on specific model architecture

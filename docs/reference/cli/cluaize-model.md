@@ -1,4 +1,4 @@
-# `cluaize model` Command Reference
+# `cluaiz model` Command Reference
 
 The `model` command configures default settings inside `Permission.json`.
 
@@ -7,14 +7,14 @@ The `model` command configures default settings inside `Permission.json`.
 ## 📋 Syntax & Usage
 
 ```bash
-cluaize model set-chat <model-identifier>
-cluaize model set-vector <model-identifier>
+cluaiz model set-chat <model-identifier>
+cluaiz model set-vector <model-identifier>
 ```
 
 ### Examples:
 ```bash
-cluaize model set-chat gemma4:e2b
-cluaize model set-vector bge_m3:unknown:onnx:fp32
+cluaiz model set-chat gemma4:e2b
+cluaiz model set-vector bge_m3:unknown:onnx:fp32
 ```
 
 ---

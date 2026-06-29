@@ -15,8 +15,8 @@ impl WasmSandbox {
         let mut linker = Linker::new(&engine);
         let store = Store::new(&engine, ());
         
-        // Register the `cluaize_host_call` ABI hook so the WASM guest can talk to the host
-        linker.func_wrap("env", "cluaize_host_call", cluaize_host_call)?;
+        // Register the `cluaiz_host_call` ABI hook so the WASM guest can talk to the host
+        linker.func_wrap("env", "cluaiz_host_call", cluaiz_host_call)?;
 
         Ok(Self { engine, linker, store })
     }
@@ -29,10 +29,10 @@ impl WasmSandbox {
     }
 }
 
-/// The Holy Bridge: `cluaize_host_call`
+/// The Holy Bridge: `cluaiz_host_call`
 /// This is the ONLY way a sandboxed skill can request OS access.
-pub fn cluaize_host_call(mut caller: Caller<'_, ()>, action_ptr: i32, action_len: i32) -> i32 {
-    warn!("🚨 [Host] WASM Skill is requesting system access via cluaize_host_call");
+pub fn cluaiz_host_call(mut caller: Caller<'_, ()>, action_ptr: i32, action_len: i32) -> i32 {
+    warn!("🚨 [Host] WASM Skill is requesting system access via cluaiz_host_call");
 
     // Extract WASM Memory to read the JSON action string
     let memory = match caller.get_export("memory").and_then(|e| e.into_memory()) {
@@ -63,7 +63,7 @@ pub fn cluaize_host_call(mut caller: Caller<'_, ()>, action_ptr: i32, action_len
     // E.g. { "action": "bash", "command": "cargo check" }
     
     // Security Interceptor Check
-    if !ask_user_permission("cluaize_host_call_intercept", "Skill wants to run a host command.") {
+    if !ask_user_permission("cluaiz_host_call_intercept", "Skill wants to run a host command.") {
         warn!("🚫 [Security] Host Action Blocked by User!");
         return -1;
     }

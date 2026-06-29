@@ -1,14 +1,14 @@
-# Cluaize System Dictionary
+# cluaiz System Dictionary
 
-A technical glossary defining terms, strategies, and technologies used across the Cluaize Inference Engine codebase.
+A technical glossary defining terms, strategies, and technologies used across the cluaiz Inference Engine codebase.
 
 ---
 
 ## 📖 Glossary
 
-* ### **CDQL (Cluaize Database Query Language)**
-  The specialized query vocabulary mapped over CEL syntax to perform structured database operations inside `cluaizd`.
-* ### **CEL (Cluaize Expression Language / Common Expression Language)**
+* ### **CDQL (cluaiz Database Query Language)**
+  The specialized query vocabulary mapped over CEL syntax to perform structured database operations inside `cluaizdb`.
+* ### **CEL (cluaiz Expression Language / Common Expression Language)**
   The core orchestration DSL (Domain-Specific Language) parsed into AST instructions to route tasks across local sandboxes.
 * ### **Dynamic Silicon Dispatch**
   The decoupled driver loading strategy where dynamic compute libraries (such as `.dll` files for CUDA, Vulkan, or Metal) are bound at runtime based on hardware scans.

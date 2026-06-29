@@ -1,6 +1,6 @@
 # CLI Manual
 
-The Cluaize CLI provides a set of direct terminal utilities to calibrate hardware, manage models, and run interactive generation.
+The cluaiz CLI provides a set of direct terminal utilities to calibrate hardware, manage models, and run interactive generation.
 
 ---
 
@@ -10,11 +10,11 @@ The binary supports the following options:
 
 | Command | Category | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `cluaize` | Core | Launches the interactive TUI Dashboard. | `cluaize` |
-| `cluaize help` | Core | Displays command-line help screen. | `cluaize help` |
-| `cluaize run <model-id>` | Models | Pulls and executes the specified model. | `cluaize run bonsai:8b` |
-| `cluaize --calibrate` | System | Re-scans hardware limits and updates config profiles. | `cluaize --calibrate` |
-| `cluaize --benchmark` | System | Executes a full hardware speed benchmark. | `cluaize --benchmark` |
+| `cluaiz` | Core | Launches the interactive TUI Dashboard. | `cluaiz` |
+| `cluaiz help` | Core | Displays command-line help screen. | `cluaiz help` |
+| `cluaiz run <model-id>` | Models | Pulls and executes the specified model. | `cluaiz run bonsai:8b` |
+| `cluaiz --calibrate` | System | Re-scans hardware limits and updates config profiles. | `cluaiz --calibrate` |
+| `cluaiz --benchmark` | System | Executes a full hardware speed benchmark. | `cluaiz --benchmark` |
 
 ---
 

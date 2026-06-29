@@ -1,23 +1,23 @@
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
-use cluaize_shared::hardware::memory::kv_cache::stitching::CluaizeSignal;
+use cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal;
 use uuid::Uuid;
 
-/// 🧠 CoreSessionCache: The Persistent Memory of the Cluaize OS.
+/// 🧠 CoreSessionCache: The Persistent Memory of the cluaiz OS.
 /// Stores KV cache signals indexed by session ID to prevent instruction forgetting.
-pub static SESSION_CACHE: Lazy<DashMap<Uuid, CluaizeSignal>> = Lazy::new(DashMap::new);
+pub static SESSION_CACHE: Lazy<DashMap<Uuid, cluaizSignal>> = Lazy::new(DashMap::new);
 
 pub struct SessionManager;
 
 impl SessionManager {
     /// 🔗 Stitch Signal: Saves the current Core state for the given session.
-    pub fn stitch(session_id: Uuid, signal: CluaizeSignal) {
+    pub fn stitch(session_id: Uuid, signal: cluaizSignal) {
         SESSION_CACHE.insert(session_id, signal);
         tracing::debug!("🧬 [Session] Core signal stitched for session: {}", session_id);
     }
 
     /// 🧬 Recall Signal: Retrieves the Core state for the given session.
-    pub fn recall(session_id: &Uuid) -> Option<CluaizeSignal> {
+    pub fn recall(session_id: &Uuid) -> Option<cluaizSignal> {
         SESSION_CACHE.get(session_id).map(|s| s.clone())
     }
 

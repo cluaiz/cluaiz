@@ -1,6 +1,6 @@
 # Hardware Troubleshooting & VRAM Management
 
-This document outlines common hardware bottlenecks, performance limits, and safe mitigation configurations when running the Cluaize Inference Engine.
+This document outlines common hardware bottlenecks, performance limits, and safe mitigation configurations when running the cluaiz Inference Engine.
 
 ---
 
@@ -11,7 +11,7 @@ When the model size exceeds the physical VRAM limit of your GPU, the Operating S
 * **Symptom:** Token throughput plummets from 30+ TPS to under 2 TPS. The GPU usage shows 100%, but power draw remains extremely low.
 * **Mitigation:**
   * Adjust `n_gpu_layers` inside `system_booster.json` to a custom hybrid value (e.g. `16` layers instead of full offload `-1`).
-  * Check the model's footprint against available VRAM using `cluaize status`.
+  * Check the model's footprint against available VRAM using `cluaiz status`.
 
 ---
 
@@ -29,7 +29,7 @@ On battery power or thermal limits, laptop CPU and GPU power states are capped, 
 
 ## 3. Out of Memory (OOM) Crashes
 
-If a model execution requests more memory than physical memory (RAM + swap / VRAM), the Operating System will kill the engine daemon (`cluaized` or `cluaize serve`).
+If a model execution requests more memory than physical memory (RAM + swap / VRAM), the Operating System will kill the engine daemon (`cluaizdb` or `cluaiz serve`).
 
 * **Mitigation:**
   * Configure `vram_limit_gb` in your hardware profile to reserve at least 1.5GB for host OS display operations.

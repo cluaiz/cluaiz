@@ -12,12 +12,12 @@ fn main() {
     println!("  - vectorize_ai_response: {:?}", schema.vectorize_ai_response);
 
     // 2. Generate vector embedding
-    let text = "Hello Cluaize Database!";
+    let text = "Hello cluaiz Database!";
     println!("⚙️ [Test Bridge] Generating vector embedding for: '{}'...", text);
     let vector = EmbeddingGenerator::generate_vector(text);
     println!("✅ [Test Bridge] Generated 16-D Vector: {:?}", vector);
 
-    // 3. Perform direct reqwest POST to cluaizd
+    // 3. Perform direct reqwest POST to cluaizdb
     let url = "http://127.0.0.1:9090/neuron";
     println!("⚙️ [Test Bridge] Performing direct POST to {}...", url);
     let client = reqwest::blocking::Client::new();

@@ -42,10 +42,10 @@ impl RegistryClient {
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
             .build()
-            .map_err(|e| format!("Cluaize Client Error: {}", e))?;
+            .map_err(|e| format!("Cluaiz Client Error: {}", e))?;
 
         let response = client.get(url)
-            .header("User-Agent", "Cluaize-Cluaize-Engine")
+            .header("User-Agent", "Cluaiz-Cluaiz-Engine")
             .send()
             .await
             .map_err(|e| format!("Network Handshake Failed: {}", e))?;

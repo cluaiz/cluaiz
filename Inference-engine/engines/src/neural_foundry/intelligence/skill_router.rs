@@ -16,8 +16,8 @@ impl SkillRouter {
     /// Selects ALL relevant skills for a given prompt (Core Fusion Mode).
     /// Uses the dynamic registry and KERNEL TELEMETRY to find compute-aware matches.
     pub fn match_intent(&self, prompt: &str, registry: &SkillRegistry) -> Vec<String> {
-        // 🛰️ Cluaize Linkage: Get real-time Hardware pressure
-        let pulse = cluaize_shared::hardware::telemetry::get_pulse();
+        // 🛰️ cluaiz Linkage: Get real-time Hardware pressure
+        let pulse = cluaiz_shared::hardware::telemetry::get_pulse();
         let _pulse_lock = pulse.pulse.read().unwrap();
         
         let mut matches = Vec::new();

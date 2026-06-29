@@ -1,6 +1,6 @@
 # `POST /v1/db/execute` API Specification
 
-Forwards database query statements to the local/remote `cluaizd` daemon.
+Forwards database query statements to the local/remote `cluaizdb` daemon.
 
 ---
 

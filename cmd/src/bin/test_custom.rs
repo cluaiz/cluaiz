@@ -32,7 +32,7 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
     println!("🧪 Running Diagnostic Suite for Model: {}", model_id);
     println!("==================================================");
 
-    let env = cluaize_shared::environment::EnvironmentManager::current();
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
     let model_path = env.ensure_chat_models_dir()
         .unwrap_or_else(|_| env.chat_models_dir())
         .join(model_folder).join(model_filename);
@@ -61,7 +61,7 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
     println!("\n=== TEST 1: Auto-Healing vector generation ===");
     let mut router = engines::api::router::CoreRouter::load_model(
         model_path.clone(),
-        cluaize_shared::BackendType::RuntimeB,
+        cluaiz_shared::BackendType::RuntimeB,
     ).await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let small_skill_emb = skills_dir.join("test-small-skill").join(".cache")
@@ -443,7 +443,7 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🧪 [Test] Starting Cluaize Architectural Diagnostic Suite v2...");
+    println!("🧪 [Test] Starting cluaiz Architectural Diagnostic Suite v2...");
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {

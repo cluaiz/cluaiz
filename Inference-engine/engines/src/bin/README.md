@@ -24,7 +24,7 @@ graph TD
 ## 🧬 Significant Files
 
 ### 1. `archer_top.rs`
-- **The Core Logic:** A terminal-based (TUI) system monitor specifically built for the Cluaize inference engine.
+- **The Core Logic:** A terminal-based (TUI) system monitor specifically built for the cluaiz inference engine.
 - **The "Why":** Standard `htop` or Task Manager cannot see internal KV Cache memory pressure or engine-specific latency spikes. `archer_top` reads the raw atomic values from the `ObservableHardwareState` to provide a real-time, 0.0ms overhead dashboard for developers tracking VRAM leaks.
 
 ### 2. `gen_roster.rs`

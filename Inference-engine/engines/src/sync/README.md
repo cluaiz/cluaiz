@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `sync/` directory contains custom synchronization primitives and thread-safe data structures explicitly designed for the Cluaize Engine's unique threading model. 
+The `sync/` directory contains custom synchronization primitives and thread-safe data structures explicitly designed for the cluaiz Engine's unique threading model. 
 
 Standard Rust `Mutex` or `RwLock` primitives are sometimes too slow or cause thread starvation when thousands of tokens are being generated per second across multiple CPU cores. This module provides atomic, lock-free, or specialized blocking mechanisms required for the high-performance Neural Foundry.
 

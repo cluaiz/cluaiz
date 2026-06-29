@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Cluaiz Technologies"]
 
 [lib]
-name = "cluaize_onnx"
+name = "cluaiz_onnx"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 ort = { version = "2.0.0-rc.12", features = ["copy-dylibs", "download-binaries", "cuda"] } # ONNX Runtime bindings
 anyhow = "1.0"
 tracing = "0.1"
-cluaize-shared = { path = "../../inference-engine/engines/cluaize-shared" }
+cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 neural-core = { path = "../neural_core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

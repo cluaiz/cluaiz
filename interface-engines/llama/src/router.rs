@@ -2,7 +2,7 @@
 //! Decouples execution from hardcoded strings using capability signatures.
 
 use std::path::PathBuf;
-use cluaize_shared::hardware::get_silicon_state;
+use cluaiz_shared::hardware::get_silicon_state;
 
 pub struct BinaryRouter;
 
@@ -24,8 +24,8 @@ impl BinaryRouter {
             "x86_64"
         };
 
-        let bin_name = if cfg!(target_os = "windows") { "cluaize_llama.exe" } 
-                      else { "cluaize_llama" };
+        let bin_name = if cfg!(target_os = "windows") { "cluaiz_llama.exe" } 
+                      else { "cluaiz_llama" };
 
         let profile = get_silicon_state();
         

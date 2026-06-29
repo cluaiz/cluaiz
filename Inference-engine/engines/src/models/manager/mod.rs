@@ -9,7 +9,7 @@ pub mod installer;
 pub mod auditor;
 pub mod hf_hub;
 
-/// The Cluaize Model Manager
+/// The Cluaiz Model Manager
 /// Responsible for model discovery, health auditing, and atomic installation/repair.
 pub struct ModelManager {
     client: RegistryClient,
@@ -44,7 +44,7 @@ impl ModelManager {
         // 2. Hardware Audit
         let status = self.audit_model_health(manifest.ram_required_gb as f32, manifest.requires_gpu);
         if status == HealthStatus::Disabled {
-            return Err("Cluaize Audit Failed: Insufficient hardware resources for this model.".to_string());
+            return Err("Cluaiz Audit Failed: Insufficient hardware resources for this model.".to_string());
         }
 
         self.pull_model_with_manifest(&manifest).await
@@ -145,7 +145,7 @@ impl ModelManager {
             .map_err(|e| format!("Failed to save local manifest: {}", e))?;
 
         // 9. 🧬 Neural DNA Handshake (Always ensure DNA is fresh)
-        let _ = crate::models::fetch::ModelDownloader::generate_Cluaize_dna(&manifest, &model_path, &weight_file);
+        let _ = crate::models::fetch::ModelDownloader::generate_cluaiz_dna(&manifest, &model_path, &weight_file);
 
         println!("  {} Model '{}' synchronized and ready.\n", "✅".green(), manifest.id);
         Ok(())

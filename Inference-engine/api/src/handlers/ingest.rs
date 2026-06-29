@@ -51,7 +51,7 @@ pub async fn file_ingest(
                 // ── MIGRATION TO CEL ──
                 // Old Code Hardcoded LMDB: 
                 // engines::memory::tensor_transducer::TensorTransducer::save_context(...)
-                // New Code: Generate CEL Payload for cluaize-db Extension
+                // New Code: Generate CEL Payload for cluaiz-db Extension
                 
                 for (chunk, vec) in &chunks {
                     let memory_id = format!("api-file-{}-{}", file_path, Utc::now().timestamp_nanos_opt().unwrap_or(0));
@@ -59,7 +59,7 @@ pub async fn file_ingest(
                     let cel_payload = json!({
                         "manifest": {
                             "version": "1.0",
-                            "target": "cluaize-db",
+                            "target": "cluaiz-db",
                             "action": "insert_vector",
                             "payload": {
                                 "memory_id": memory_id,

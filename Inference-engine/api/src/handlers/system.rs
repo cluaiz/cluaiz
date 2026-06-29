@@ -63,17 +63,17 @@ pub async fn api_docs_json() -> Json<Value> {
 pub async fn health_check() -> Json<Value> {
     Json(json!({
         "status": "alive",
-        "engine": "Cluaize Inference Engine",
+        "engine": "cluaiz Inference Engine",
         "version": env!("CARGO_PKG_VERSION"),
-        "message": "🚀 Cluaize is alive! All systems operational."
+        "message": "🚀 cluaiz is alive! All systems operational."
     }))
 }
 
 // ─── System Info ─────────────────────────────────────────────────────
 pub async fn system_info() -> Json<Value> {
     Json(json!({
-        "engine": "Cluaize",
-        "full_name": "Cluaize Inference Engine",
+        "engine": "cluaiz",
+        "full_name": "cluaiz Inference Engine",
         "version": env!("CARGO_PKG_VERSION"),
         "pillars": {
             "api": "Gateway — HTTP server on port 8000 (this!)",
@@ -81,14 +81,14 @@ pub async fn system_info() -> Json<Value> {
             "storage": "Sidecars — 5 Official DB engines (Mongo, Neo4j, ClickHouse, Qdrant, MinIO)",
             "engines": "Muscles — C++ model inference via llama.cpp FFI"
         },
-        "philosophy": "Nothing Need. Just Cluaize.",
+        "philosophy": "Nothing Need. Just cluaiz.",
         "banned": ["Python", "Docker", "npm", "pip"]
     }))
 }
 
 // ─── Skip Thinking ───────────────────────────────────────────────────
 pub async fn skip_think() -> Json<Value> {
-    cluaize_shared::GLOBAL_SKIP_THINKING_SIGNAL.store(true, std::sync::atomic::Ordering::SeqCst);
+    cluaiz_shared::GLOBAL_SKIP_THINKING_SIGNAL.store(true, std::sync::atomic::Ordering::SeqCst);
     Json(json!({
         "status": "success",
         "message": "Brain skip signal injected. Neural graph will pivot."
@@ -97,7 +97,7 @@ pub async fn skip_think() -> Json<Value> {
 
 // ─── GET /v1/system/control ───────────────────────────────────────────
 pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    use cluaize_shared::hardware::governor::HardwareGovernor;
+    use cluaiz_shared::hardware::governor::HardwareGovernor;
     if let Ok(control) = HardwareGovernor::load_system_control() {
         Json(json!({
             "status": "success",

@@ -1,5 +1,5 @@
 [package]
-name = "cluaize_api"
+name = "cluaiz_api"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -8,7 +8,7 @@ authors.workspace = true
 engines = { path = "../engines" }
 dispatcher = { path = "../../interface-engines/dispatcher", package = "dispatcher-crate" }
 system-booster = { path = "../engines/system-booster" }
-cluaize-shared = { path = "../engines/cluaize-shared" }
+cluaiz-shared = { path = "../engines/cluaiz-shared" }
 inference-cel = { path = "../../inference-cel" }
 
 # ── Web Server (The Gateway) ──
@@ -29,3 +29,4 @@ sysinfo            = "0.33"
 dirs = "5.0"
 futures = "0.3"
 async-stream = "0.3"
+serde_yaml = "0.9.34"

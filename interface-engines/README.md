@@ -6,7 +6,7 @@
 
 ## 🎯 Deep Purpose
 
-The `interface-engines` workspace is the dedicated native execution tier of the Cluaize Inference ecosystem. While the outer `inference-engine` crate handles HTTP REST requests, telemetry, models downloading, and the LMDB memory caches, this subsystem strictly handles the raw mathematical matrix multiplications required to generate text.
+The `interface-engines` workspace is the dedicated native execution tier of the cluaiz Inference ecosystem. While the outer `inference-engine` crate handles HTTP REST requests, telemetry, models downloading, and the LMDB memory caches, this subsystem strictly handles the raw mathematical matrix multiplications required to generate text.
 
 By separating the native backends (`llama.cpp`, `onnxruntime`) into this isolated subsystem, we ensure that a `SIGSEGV` crash in a C++ math kernel does not bring down the entire Tokio web server.
 

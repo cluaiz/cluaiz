@@ -1,4 +1,4 @@
-# CLUAIZE INDUSTRIAL GITIGNORE
+# cluaiz INDUSTRIAL GITIGNORE
 
 # --- Rust Build Artifacts ---
 target/
@@ -59,6 +59,6 @@ Thumbs.db
 desktop.ini
 
 # --- Local Overrides ---
-.cluaize/
+.cluaiz/
 models/
 deps_tool/

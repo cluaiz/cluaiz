@@ -8,7 +8,7 @@
 
 The `ffi/` (Foreign Function Interface) crate is the physical bridge between the memory-safe Rust world and the memory-unsafe C/C++ world. The core tensor math required for Large Language Models is written in highly optimized C++ (e.g., `llama.cpp` and `onnxruntime`). 
 
-Calling these libraries directly from Rust is extremely dangerous. A buffer overflow or a dangling pointer in the C++ layer will cause a `SIGSEGV` (Segmentation Fault) that instantly crashes the entire Cluaize Engine. This module wraps those unsafe calls in strict Rust memory boundaries to prevent systemic crashes.
+Calling these libraries directly from Rust is extremely dangerous. A buffer overflow or a dangling pointer in the C++ layer will cause a `SIGSEGV` (Segmentation Fault) that instantly crashes the entire cluaiz Engine. This module wraps those unsafe calls in strict Rust memory boundaries to prevent systemic crashes.
 
 ## 🏛️ Architectural Mechanics
 

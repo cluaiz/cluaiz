@@ -6,7 +6,7 @@
 -    // Extract bits: 1 = +d, 0 = -d (branchless)
 -    const int bit_0 = (x[ib].qs[byte_index_0] >> bit_offset_0) & 1;
 -    const int bit_1 = (x[ib].qs[byte_index_1] >> bit_offset_1) & 1;
-+    // Cluaize: 1-Cycle PTX bfe.u32 Injection
++    // cluaiz: 1-Cycle PTX bfe.u32 Injection
 +    unsigned int qs_0 = x[ib].qs[byte_index_0];
 +    unsigned int qs_1 = x[ib].qs[byte_index_1];
 +    unsigned int bit_0, bit_1;
@@ -22,7 +22,7 @@
  
 -    v.x = vui & 0xF;
 -    v.y = vui >> 4;
-+    // Cluaize: 1-Cycle PTX bfe.u32 Injection
++    // cluaiz: 1-Cycle PTX bfe.u32 Injection
 +    unsigned int vx_int, vy_int;
 +    asm volatile("bfe.u32 %0, %1, 0, 4;" : "=r"(vx_int) : "r"((unsigned int)vui));
 +    asm volatile("bfe.u32 %0, %1, 4, 4;" : "=r"(vy_int) : "r"((unsigned int)vui));
