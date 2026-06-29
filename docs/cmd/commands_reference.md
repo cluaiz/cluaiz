@@ -164,7 +164,7 @@ cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
 
 | Command | Args | Description |
 |---------|------|-------------|
-| `cluaiz skill install <name>` | skill name | Install a skill from the cluaiz-skills registry |
+| `cluaiz skill install <name>` | skill name | Install a skill from the cluaiz-hub registry |
 | `cluaiz skill list` | | List all locally installed skills |
 | `cluaiz skill cache ls` | | List all active and orphaned dual-caches |
 | `cluaiz skill cache clear` | `--all` `--force` | Clear orphaned caches globally |

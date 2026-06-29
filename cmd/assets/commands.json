@@ -109,7 +109,7 @@
     {
       "name": "skill install",
       "usage": "cluaiz skill install <skill_name>",
-      "description": "Install a skill from the cluaiz-skills registry.",
+      "description": "Install a skill from the cluaiz-hub registry.",
       "category": "skills",
       "example": "cluaiz skill install web-search-github"
     },

@@ -203,7 +203,7 @@ pub enum SetupCommand {
 
 #[derive(Subcommand)]
 enum SkillCommand {
-    /// Install a skill from the cluaiz-skills registry
+    /// Install a skill from the cluaiz-hub registry
     Install {
         /// Name of the skill to install (e.g., 'web-search-github')
         skill_name: String,
