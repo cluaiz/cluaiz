@@ -19,24 +19,42 @@
       }
     ]
   },
-   {
-    "id": "reference-manual",
-    "title": "📚 Reference Manual",
-    "groups": [
-      {
-        "group": "Reference Index",
-        "pages": [
-          { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
-          { "slug": "cluaiz-expression-language", "title": "🧩 CEL Manual", "file_path": "docs/reference/cluaiz-expression-language.md" },
-          { "slug": "c-pointer-fii", "title": "🔌 C-Pointer Specifications", "file_path": "docs/reference/c-pointer-fii.md" },
-          { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
-        ]
-
-
-      },
-  {
-    "id": "cli-tui",
-    "title": "💻 CLI & TUI",
+    {
+      "id": "reference-manual",
+      "title": "📚 Reference Manual",
+      "groups": [
+        {
+          "group": "Reference Index",
+          "pages": [
+            { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
+            { "slug": "cluaiz-expression-language", "title": "🧩 CEL Manual", "file_path": "docs/reference/cluaiz-expression-language.md" },
+            { "slug": "c-pointer-fii", "title": "🔌 C-Pointer Specifications", "file_path": "docs/reference/c-pointer-fii.md" },
+            { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
+          ]
+        },
+        {
+          "group": "CLI Reference",
+          "pages": [
+            { "slug": "terminal-commands", "title": "💻 Core CLI Manual", "file_path": "docs/reference/terminal-commands.md" }
+          ]
+        },
+        {
+          "group": "HTTP API Reference",
+          "pages": [
+            { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" }
+          ]
+        },
+        {
+          "group": "Configuration Profiles",
+          "pages": [
+            { "slug": "engine-configuration", "title": "⚙️ Engine Configurations", "file_path": "docs/reference/engine-configuration.md" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cli-tui",
+      "title": "💻 CLI & TUI",
     "groups": [
       {
         "group": "TUI Dashboard",
@@ -142,27 +160,7 @@
       }
     ]
   },
-      {
-        "group": "CLI Reference",
-        "pages": [
-          { "slug": "terminal-commands", "title": "💻 Core CLI Manual", "file_path": "docs/reference/terminal-commands.md" }
-        ]
-      },
-      {
-        "group": "HTTP API Reference",
-        "pages": [
-          { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" }
-        ]
-      },
-      {
-        "group": "Configuration Profiles",
-        "pages": [
-          { "slug": "engine-configuration", "title": "⚙️ Engine Configurations", "file_path": "docs/reference/engine-configuration.md" }
-        ]
-      }
-    ]
 
-  },
   {
     "id": "architecture-topics",
     "title": "⚙️ Architecture",
