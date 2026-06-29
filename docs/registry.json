@@ -164,14 +164,20 @@
   {
     "id": "architecture-topics",
     "title": "⚙️ Architecture",
-    "pages": [
-      { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
-      { "slug": "cel-ffi-api-execution", "title": "🔌 CEL FFI API Execution", "file_path": "docs/architecture/cel-ffi-api-execution.md" },
-      { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
-      { "slug": "cli-deep-audit", "title": "🔍 CLI Deep Audit", "file_path": "docs/architecture/cli-deep-audit.md" },
-      { "slug": "cli-process-design", "title": "⚙️ CLI Process Design", "file_path": "docs/architecture/cli-process-design.md" }
+    "groups": [
+      {
+        "group": "Core Architecture",
+        "pages": [
+          { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
+          { "slug": "cel-ffi-api-execution", "title": "🔌 CEL FFI API Execution", "file_path": "docs/architecture/cel-ffi-api-execution.md" },
+          { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
+          { "slug": "cli-deep-audit", "title": "🔍 CLI Deep Audit", "file_path": "docs/architecture/cli-deep-audit.md" },
+          { "slug": "cli-process-design", "title": "⚙️ CLI Process Design", "file_path": "docs/architecture/cli-process-design.md" }
+        ]
+      }
     ]
   },
+
   {
     "id": "deployments",
     "title": "🚀 Deployment",
