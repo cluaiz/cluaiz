@@ -127,6 +127,30 @@ $ cluaiz plugin install web-scraper
 
 ---
 
+## 🌍 **The Cluaiz Ecosystem**
+
+<details>
+<summary><b>Click to explore the Cluaiz ecosystem</b></summary>
+
+### 1. `cluaiz-app` (Official GUI)
+* **[Repository: cluaiz-app](https://github.com/cluaiz/cluaiz-app)**
+* **Technical Purpose:** This is the official graphical user interface. It connects as a **Pure Client** to the background `cluaiz serve` daemon. 
+* **Execution Flow:** By communicating with the engine over REST endpoints (`/health`, `/v1/chat/stream`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
+
+### 2. `cluaiz-hub` (Global Registry & Extensions)
+* **[Repository: cluaiz-hub](https://github.com/cluaiz/cluaiz-hub)**
+* **Technical Purpose:** The central, automated manifest registry (`registry.json`) for the Cluaiz ecosystem. It hosts the source code and manifests for WASM Skills, Native Plugins, and Extensions. The CLI commands (e.g., `cluaiz extension install`) directly fetch manifests from this hub to securely link extensions into the engine.
+* **Example Extension hosted in the Hub:**
+  * **[cluaize-search](https://github.com/cluaiz/cluaiz-hub/tree/main/Extensions/cluaize-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
+  * **Execution Flow:** 
+    1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<TRIGGER:extension:cluaiz-search>`.
+    2. The extension concurrently hits SearXNG and DuckDuckGo using `reqwest`, parses the DOM using `scraper` (stripping JS/CSS), and dynamically compresses the text (using BM25) to fit the available VRAM envelope.
+    3. The parsed knowledge is injected directly into the active C-pointer KV-Cache and generation resumes seamlessly.
+
+</details>
+
+---
+
 ## 🧠 **Features & Capabilities**
 
 <details>
