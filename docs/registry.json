@@ -97,10 +97,10 @@
   },
   {
     "id": "cel-environment",
-    "title": "🧩 Common Expression Language (CEL)",
+    "title": "🧩 CEL",
     "groups": [
       {
-        "group": "Core Language",
+        "group": "Core Language", 
         "pages": [
           { "slug": "cel-language-bindings", "title": "🔗 Language Bindings", "file_path": "docs/cel/cel-language-bindings.md" },
           { "slug": "cel-syntax-reference", "title": "📖 Syntax Reference", "file_path": "docs/cel/cel-syntax-reference.md" },

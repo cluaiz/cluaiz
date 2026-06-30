@@ -6,23 +6,21 @@ cluaiz is designed as a decoupled, multi-tier runtime stack to guarantee UI flui
 
 ## 🏛️ Layered Topology
 
+```mermaid
+flowchart TD
+    CLI["🖥️ EDGE INTERFACE\ncluaiz-cli\nRatatui TUI / Terminal Shell"]
+
+    ENGINE["⚙️ ORCHESTRATION ENGINE\ncluaiz-engine\nAxum HTTP REST & State Manager"]
+
+    KERNEL["🧠 INFERENCE KERNEL\ncluaiz-kernel\nSIMD · AVX512 / AVX2 / NEON"]
+
+    DRIVER["🔌 SILICON ACCELERATOR\ncluaiz-driver\nCUDA / Metal / Vulkan"]
+
+    CLI -->|"Local REST / IPC Loop"| ENGINE
+    ENGINE -->|"Dynamic FFI"| KERNEL
+    ENGINE -->|"Dynamic FFI"| DRIVER
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    EDGE INTERFACE                       │
-│      cluaiz-cli (Ratatui TUI / Terminal Shell)         │
-└────────────────────────────┬────────────────────────────┘
-                             │ Local REST / IPC Loop
-┌────────────────────────────▼────────────────────────────┐
-│                  ORCHESTRATION ENGINE                   │
-│      cluaiz-engine (Axum HTTP REST & State Manager)    │
-└──────────────┬───────────────────────────┬──────────────┘
-               │ Dynamic FFI               │ Dynamic FFI
-┌──────────────▼─────────────┐┌────────────▼─────────────┐
-│      INFERENCE KERNEL      ││     SILICON ACCELERATOR    │
-│    cluaiz-kernel (SIMD)   ││   cluaiz-driver (GPUs)   │
-│   [AVX512 / AVX2 / NEON]   ││   [CUDA / Metal / Vulkan]│
-└────────────────────────────┘└──────────────────────────┘
-```
+
 
 ### 💻 Client Layer (`Apps/cli`)
 The interactive terminal dashboard drawing widgets via Ratatui.
