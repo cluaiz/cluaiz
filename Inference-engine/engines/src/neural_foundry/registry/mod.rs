@@ -4,10 +4,7 @@
 pub mod scanner;
 pub mod compiler_daemon;
 pub mod parser;
-pub mod manager;
-pub mod extension_manager;
-pub mod plugin_manager;
-pub mod mcp_manager;
+pub mod hub_installer;
 pub mod download_manager;
 
 // ── Phase A: Two-Tier Registry Architecture ──

@@ -24,7 +24,7 @@ pub async fn remove_extension(
     Json(payload): Json<InstallExtensionPayload>
 ) -> Json<Value> {
     let extension_name = payload.extension_name.clone();
-    match engines::neural_foundry::registry::extension_manager::ExtensionManager::remove_extension(&extension_name).await {
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::remove_component("extension", &extension_name).await {
         Ok(_) => Json(json!({"status": "success", "message": format!("Extension '{}' removed natively.", extension_name)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove extension: {}", e)}))
     }
@@ -32,7 +32,10 @@ pub async fn remove_extension(
 
 // ─── GET /v1/extensions/cache ─────────────────────────────────────────────
 pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    Json(json!({"status": "success", "message": "Extension cache list not yet implemented."}))
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::list_component_cache("extension") {
+        Ok(report) => Json(json!({"status": "success", "message": report})),
+        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list extension cache: {}", e)}))
+    }
 }
 
 // ─── DELETE /v1/extensions/cache ──────────────────────────────────────────
@@ -41,8 +44,8 @@ pub async fn clear_cache(
     Json(payload): Json<InstallExtensionPayload>
 ) -> Json<Value> {
     let extension_name = payload.extension_name.clone();
-    let target = if extension_name == "all" || extension_name.is_empty() { None } else { Some(extension_name.as_str()) };
-    match engines::neural_foundry::registry::extension_manager::ExtensionManager::clear_extension_cache(target).await {
+    let target = if extension_name == "all" || extension_name.is_empty() { None } else { Some(extension_name) };
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::clear_component_cache("extension", target, true, true) {
         Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} extension caches.", wiped)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear extension cache: {}", e)}))
     }

@@ -24,7 +24,7 @@ pub async fn remove_plugin(
     Json(payload): Json<InstallPluginPayload>
 ) -> Json<Value> {
     let plugin_name = payload.plugin_name.clone();
-    match engines::neural_foundry::registry::plugin_manager::PluginManager::remove_plugin(&plugin_name).await {
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::remove_component("plugin", &plugin_name).await {
         Ok(_) => Json(json!({"status": "success", "message": format!("Plugin '{}' removed natively.", plugin_name)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove plugin: {}", e)}))
     }
@@ -32,7 +32,10 @@ pub async fn remove_plugin(
 
 // ─── GET /v1/plugins/cache ─────────────────────────────────────────────
 pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    Json(json!({"status": "success", "message": "Plugin cache list not yet implemented."}))
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::list_component_cache("plugin") {
+        Ok(report) => Json(json!({"status": "success", "message": report})),
+        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list plugin cache: {}", e)}))
+    }
 }
 
 // ─── DELETE /v1/plugins/cache ──────────────────────────────────────────
@@ -41,8 +44,8 @@ pub async fn clear_cache(
     Json(payload): Json<InstallPluginPayload> // Reusing payload struct for simplicity since it contains the name
 ) -> Json<Value> {
     let plugin_name = payload.plugin_name.clone();
-    let target = if plugin_name == "all" || plugin_name.is_empty() { None } else { Some(plugin_name.as_str()) };
-    match engines::neural_foundry::registry::plugin_manager::PluginManager::clear_plugin_cache(target).await {
+    let target = if plugin_name == "all" || plugin_name.is_empty() { None } else { Some(plugin_name) };
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::clear_component_cache("plugin", target, true, true) {
         Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} plugin caches.", wiped)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear plugin cache: {}", e)}))
     }

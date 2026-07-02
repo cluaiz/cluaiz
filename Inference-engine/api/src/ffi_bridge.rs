@@ -88,14 +88,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     }
                                 }
 
-                                let mut manager = engines::neural_foundry::registry::extension_manager::ExtensionManager::new();
-                                // Assuming we scan the default domain or active extensions are already in memory, for FFI we might need a singleton or just scan.
-                                let base_path = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join("extension");
-                                let _ = manager.scan_domain(&base_path);
-                                match manager.execute(ext_name, &payload) {
-                                    Ok(res) => { let _ = pipe.write_all(res.as_bytes()).await; }
-                                    Err(e) => { let _ = pipe.write_all(format!("{{\"status\": \"error\", \"message\": \"{}\"}}", e).as_bytes()).await; }
-                                }
+                                let res = "{\"status\": \"error\", \"message\": \"Extension execution is being refactored.\"}";
+                                let _ = pipe.write_all(res.as_bytes()).await;
                                 continue;
                             }
                             "SYSTEM_PS" => {

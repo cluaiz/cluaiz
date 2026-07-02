@@ -283,10 +283,10 @@ pub async fn run_native(
                             if let Ok(s_ans) = Select::new("Skill Manager:", s_opts).with_render_config(config.clone()).prompt() {
                                 print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                                 match s_ans {
-                                    "List Installed Skills" => { let _ = crate::cli::skill::execute(crate::SkillCommand::List).await; }
+                                    "List Installed Skills" => { let _ = crate::cli::component::execute("skill", crate::ComponentCommand::List).await; }
                                     "Install Skill" => {
                                         if let Ok(name) = inquire::Text::new("Enter Skill Name (e.g. web-search-github):").with_render_config(config.clone()).prompt() {
-                                            let _ = crate::cli::skill::execute(crate::SkillCommand::Install { skill_name: name }).await;
+                                            let _ = crate::cli::component::execute("skill", crate::ComponentCommand::Install { component_name: name }).await;
                                         }
                                     }
                                     "Manage Skill Caches" => {
@@ -294,11 +294,11 @@ pub async fn run_native(
                                         if let Ok(c_ans) = Select::new("Cache Manager:", c_opts).with_render_config(config.clone()).prompt() {
                                             print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                                             match c_ans {
-                                                "List Caches" => { let _ = crate::cli::skill::execute(crate::SkillCommand::Cache { command: crate::SkillCacheCommand::Ls }).await; }
-                                                "Clear All Orphaned" => { let _ = crate::cli::skill::execute(crate::SkillCommand::Cache { command: crate::SkillCacheCommand::Clear { model_id: None, all: true, force: false } }).await; }
+                                                "List Caches" => { let _ = crate::cli::component::execute("skill", crate::ComponentCommand::Cache { command: crate::ComponentCacheCommand::Ls }).await; }
+                                                "Clear All Orphaned" => { let _ = crate::cli::component::execute("skill", crate::ComponentCommand::Cache { command: crate::ComponentCacheCommand::Clear { component_id: None, all: true, force: false } }).await; }
                                                 "Clear Specific Cache" => {
-                                                    if let Ok(id) = inquire::Text::new("Enter Model ID to clear cache:").with_render_config(config.clone()).prompt() {
-                                                        let _ = crate::cli::skill::execute(crate::SkillCommand::Cache { command: crate::SkillCacheCommand::Clear { model_id: Some(id), all: false, force: true } }).await;
+                                                    if let Ok(id) = inquire::Text::new("Enter Component ID to clear cache:").with_render_config(config.clone()).prompt() {
+                                                        let _ = crate::cli::component::execute("skill", crate::ComponentCommand::Cache { command: crate::ComponentCacheCommand::Clear { component_id: Some(id), all: false, force: true } }).await;
                                                     }
                                                 }
                                                 _ => {}

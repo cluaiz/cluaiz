@@ -24,7 +24,7 @@ pub async fn remove_mcp(
     Json(payload): Json<InstallMcpPayload>
 ) -> Json<Value> {
     let mcp_name = payload.mcp_name.clone();
-    match engines::neural_foundry::registry::mcp_manager::McpManager::remove_mcp(&mcp_name).await {
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::remove_component("mcp", &mcp_name).await {
         Ok(_) => Json(json!({"status": "success", "message": format!("MCP server '{}' removed natively.", mcp_name)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove MCP server: {}", e)}))
     }
@@ -32,7 +32,10 @@ pub async fn remove_mcp(
 
 // ─── GET /v1/mcp/cache ─────────────────────────────────────────────
 pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    Json(json!({"status": "success", "message": "MCP cache list not yet implemented."}))
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::list_component_cache("mcp") {
+        Ok(report) => Json(json!({"status": "success", "message": report})),
+        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list mcp cache: {}", e)}))
+    }
 }
 
 // ─── DELETE /v1/mcp/cache ──────────────────────────────────────────
@@ -41,8 +44,8 @@ pub async fn clear_cache(
     Json(payload): Json<InstallMcpPayload>
 ) -> Json<Value> {
     let mcp_name = payload.mcp_name.clone();
-    let target = if mcp_name == "all" || mcp_name.is_empty() { None } else { Some(mcp_name.as_str()) };
-    match engines::neural_foundry::registry::mcp_manager::McpManager::clear_mcp_cache(target).await {
+    let target = if mcp_name == "all" || mcp_name.is_empty() { None } else { Some(mcp_name) };
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::clear_component_cache("mcp", target, true, true) {
         Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} MCP caches.", wiped)})),
         Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear MCP cache: {}", e)}))
     }
