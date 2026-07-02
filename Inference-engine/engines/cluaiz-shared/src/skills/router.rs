@@ -15,6 +15,7 @@ pub static GLOBAL_SKILL_ROUTER: LazyLock<RwLock<SkillRouter>> = LazyLock::new(||
 pub struct SkillManifest {
     #[serde(default)]
     pub id: String,
+    #[serde(alias = "title", default)]
     pub name: String,
     pub version: String,
     pub description: String,

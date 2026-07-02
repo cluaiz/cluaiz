@@ -50,13 +50,13 @@ async fn main() -> Result<()> {
     if res.is_ok() {
         println!("\n✅ [Test] Generation successful!");
         
-        // Let's verify that the kvcache.bin was created for the matched skill
-        let cache_file = env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir()).join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
+        // Let's verify that the kvcache.safetensors was created for the matched skill
+        let cache_file = env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir()).join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.safetensors");
         if cache_file.exists() {
-            println!("✅ [Test] VERIFIED: kvcache.bin was compiled successfully for minimax-music-gen!");
+            println!("✅ [Test] VERIFIED: kvcache.safetensors was compiled successfully for minimax-music-gen!");
             println!("📁 Cache file location: {:?}", cache_file);
         } else {
-            println!("❌ [Test] FAILED: kvcache.bin was not found!");
+            println!("❌ [Test] FAILED: kvcache.safetensors was not found!");
         }
     } else {
         println!("❌ [Test] Stream generation failed: {:?}", res.err());
