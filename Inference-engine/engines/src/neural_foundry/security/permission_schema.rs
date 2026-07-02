@@ -28,6 +28,8 @@ pub struct PermissionSchema {
     pub lazy_load_model: bool,
     #[serde(default = "default_temporary_chat_ttl_hours")]
     pub temporary_chat_ttl_hours: u64,
+    #[serde(default = "default_enable_kvcache")]
+    pub enable_kvcache: bool,
 }
 
 impl Default for ModelSelection {
@@ -51,6 +53,7 @@ impl Default for PermissionSchema {
             stream_telemetry: default_stream_telemetry(),
             lazy_load_model: default_lazy_load_model(),
             temporary_chat_ttl_hours: default_temporary_chat_ttl_hours(),
+            enable_kvcache: default_enable_kvcache(),
         }
     }
 }
@@ -77,6 +80,10 @@ fn default_lazy_load_model() -> bool {
 
 fn default_temporary_chat_ttl_hours() -> u64 {
     24
+}
+
+fn default_enable_kvcache() -> bool {
+    true
 }
 
 impl PermissionSchema {

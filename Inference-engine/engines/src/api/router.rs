@@ -430,6 +430,7 @@ impl CoreRouter {
                     let skill_content_clone = skill_content.clone();
                     let expanded_ctx = (skill_tokens_est + 256) as usize; // Exact tailored slot
                     
+                    // The path returned by Intent is .safetensors, we will pass it as is.
                     // Acquire compilation lock
                     {
                         let mut locks = COMPILATION_LOCKS.write().unwrap();
@@ -454,16 +455,31 @@ impl CoreRouter {
                     });
                     
                     if background_success {
-                        cluaiz_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.bin` safely generated to SSD.");
+                        cluaiz_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.safetensors` safely generated to SSD.");
                         // Only attempt KV load if the cache was saved at a size the main engine can handle.
                         // The background engine used expanded_ctx tokens, but main engine has hardware_n_ctx.
                         if expanded_ctx <= self.hardware_n_ctx {
                             cluaiz_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
-                            if let Err(e) = self.active_backend.load_kv_cache(&cache_path.to_string_lossy()) {
+                            
+                            // Unpack safetensors to temporary .bin for llama.cpp loading
+                            let temp_bin = cache_path.with_extension("bin");
+                            if let Ok(file) = std::fs::File::open(&cache_path) {
+                                if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                                    if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
+                                        if let Ok(tensor) = st.tensor("llama_state") {
+                                            let _ = std::fs::write(&temp_bin, tensor.data());
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if let Err(e) = self.active_backend.load_kv_cache(&temp_bin.to_string_lossy()) {
                                 cluaiz_shared::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
                                 // 🛡️ Force full memory reset to prevent hybrid SSM/KV state corruption
                                 let _ = self.active_backend.prefill("");
                             }
+                            
+                            let _ = std::fs::remove_file(temp_bin);
                         } else {
                             cluaiz_shared::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
                                 expanded_ctx, self.hardware_n_ctx);
@@ -558,10 +574,24 @@ impl CoreRouter {
                         if self.last_route_decision.is_none() {
                             self.last_route_decision = Some(RouteDecision::WarmCacheHit { skill_id: skill_id.clone() });
                         }
-                        if let Err(e) = self.active_backend.load_kv_cache(&kv_cache_path.to_string_lossy()) {
+                        
+                        let temp_bin = kv_cache_path.with_extension("bin");
+                        if let Ok(file) = std::fs::File::open(&kv_cache_path) {
+                            if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                                if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
+                                    if let Ok(tensor) = st.tensor("llama_state") {
+                                        let _ = std::fs::write(&temp_bin, tensor.data());
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if let Err(e) = self.active_backend.load_kv_cache(&temp_bin.to_string_lossy()) {
                             cluaiz_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
                             let _ = self.active_backend.prefill("");
                         }
+                        
+                        let _ = std::fs::remove_file(temp_bin);
                     }
                 }
             }
@@ -684,8 +714,29 @@ pub fn agentic_pause_compile_cache(
                 ).await {
                     cluaiz_shared::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, skill_content_clone.len() / 3);
                     if bg_engine.prefill(&skill_content_clone).is_ok() {
-                        if bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy()).is_ok() {
-                            return true;
+                        let bin_path = cache_path_clone.with_extension("bin");
+                        if bg_engine.dump_kv_cache(&bin_path.to_string_lossy()).is_ok() {
+                            // Wrap bin_path into safetensors and save to cache_path_clone
+                            if let Ok(bytes) = std::fs::read(&bin_path) {
+                                if let Ok(view) = safetensors::tensor::TensorView::new(
+                                    safetensors::tensor::Dtype::U8, 
+                                    vec![bytes.len()], 
+                                    &bytes
+                                ) {
+                                    let mut metadata = std::collections::HashMap::new();
+                                    metadata.insert("model".to_string(), backend_name);
+                                    metadata.insert("tokens".to_string(), (skill_content_clone.len() / 3).to_string());
+                                    
+                                    if safetensors::serialize_to_file(
+                                        vec![("llama_state", view)], 
+                                        Some(metadata), 
+                                        &cache_path_clone
+                                    ).is_ok() {
+                                        let _ = std::fs::remove_file(bin_path);
+                                        return true;
+                                    }
+                                }
+                            }
                         } else {
                             cluaiz_shared::dev_info!("⚠️ [Arbiter] Background engine '{}' does not support KV Cache dumping. Skipping.", backend_name);
                             return false;

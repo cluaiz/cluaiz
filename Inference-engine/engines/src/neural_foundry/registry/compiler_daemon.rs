@@ -61,7 +61,7 @@ async fn process_skill(skill_path: PathBuf, manifest: SkillManifest) {
     // 1. Build Router Embedding Cache
     if let Some(orig_model_id) = embedding_model_id {
         let safe_filename = orig_model_id.replace(":", "-");
-        let embedding_cache_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
+        let embedding_cache_path = cache_dir.join(format!("{}.emb.safetensors", safe_filename));
         if !embedding_cache_path.exists() {
             info!("⏳ [Compiler Daemon] Generating Real Router Embedding Cache for {}...", skill_name);
             let roster = crate::models::registry::CoreRoster::load_roster();
@@ -89,15 +89,18 @@ async fn process_skill(skill_path: PathBuf, manifest: SkillManifest) {
 
                                 if !combined_vec.is_empty() {
                                     let data_bytes = unsafe { std::slice::from_raw_parts(combined_vec.as_ptr() as *const f32 as *const u8, combined_vec.len() * 4) };
-                                    if let Err(e) = std::fs::write(&embedding_cache_path, data_bytes) {
-                                        warn!("❌ Failed to write binary embedding: {}", e);
-                                    } else {
-                                        info!("✅ Real Router Embedding generated: {:?}", embedding_cache_path);
-                                        success = true;
+                                    
+                                    if let Ok(view) = safetensors::tensor::TensorView::new(safetensors::tensor::Dtype::F32, vec![combined_vec.len()], data_bytes) {
+                                        if let Err(e) = safetensors::serialize_to_file(vec![("embedding", view)], None::<std::collections::HashMap<String, String>>, &embedding_cache_path) {
+                                            warn!("❌ Failed to write safetensors embedding: {}", e);
+                                        } else { 
+                                            info!("✅ Real Router Embedding generated: {:?}", embedding_cache_path);
+                                            success = true;
                                         // Update GLOBAL_SKILL_ROUTER in memory
                                         if let Ok(mut skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
                                             let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
                                             skill_router.skill_vectors.insert(norm_skill_path, combined_vec);
+                                        }
                                         }
                                     }
                                 }

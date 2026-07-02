@@ -252,11 +252,145 @@ impl HubInstaller {
     }
 
     pub fn list_component_cache(component_type: &str) -> anyhow::Result<String> {
-        Ok(format!("Cache listed for {}", component_type))
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let target_dir = match component_type {
+            "skill" => env.skills_dir(),
+            "extension" => env.extensions_dir(),
+            "mcp" => env.mcp_dir(),
+            "plugin" => env.plugins_dir(),
+            _ => return Err(anyhow::anyhow!("Unknown component type")),
+        };
+
+        let config = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let active_emb = config.vector_models.text.clone().unwrap_or_default().replace(":", "-");
+        let active_chat = config.chat_models.text.clone().unwrap_or_default().replace(":", "-");
+        
+        let active_emb_file = format!("{}.emb.safetensors", active_emb);
+        let active_chat_file = format!("{}.kvcache.safetensors", active_chat);
+
+        let mut report = String::new();
+        report.push_str(&format!("  [Cache Status for {}s]\n", component_type.to_uppercase()));
+        
+        let mut total_size = 0;
+        let mut total_orphaned = 0;
+
+        if target_dir.exists() {
+            for entry in std::fs::read_dir(target_dir)? {
+                if let Ok(entry) = entry {
+                    if entry.path().is_dir() {
+                        if let Some(name) = entry.file_name().to_str() {
+                            if name.starts_with('.') { continue; }
+                            
+                            let cache_dir = entry.path().join(".cache");
+                            if cache_dir.exists() {
+                                let mut comp_str = format!("    📦 {} (ID: {})\n", name, name);
+                                let mut has_caches = false;
+                                
+                                if let Ok(cache_entries) = std::fs::read_dir(&cache_dir) {
+                                    for c_entry in cache_entries.flatten() {
+                                        if let Some(fname) = c_entry.file_name().to_str() {
+                                            if fname.ends_with(".safetensors") || fname.ends_with(".bin") {
+                                                has_caches = true;
+                                                let size = c_entry.metadata().map(|m| m.len()).unwrap_or(0);
+                                                total_size += size;
+                                                
+                                                let is_active = fname == active_emb_file || fname == active_chat_file;
+                                                let status = if is_active { "🟢 ACTIVE" } else { 
+                                                    total_orphaned += size;
+                                                    "🔴 ORPHANED" 
+                                                };
+                                                
+                                                comp_str.push_str(&format!("      - {} ({:.2} MB) [{}]\n", 
+                                                    fname, 
+                                                    size as f64 / 1_048_576.0,
+                                                    status
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                if has_caches {
+                                    report.push_str(&comp_str);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        report.push_str(&format!("\n  📊 Total Cache Size: {:.2} MB (Orphaned: {:.2} MB)\n", 
+            total_size as f64 / 1_048_576.0,
+            total_orphaned as f64 / 1_048_576.0
+        ));
+
+        Ok(report)
     }
 
-    pub fn clear_component_cache(component_type: &str, _id: Option<String>, _all: bool, _force: bool) -> anyhow::Result<usize> {
-        Ok(0)
+    pub fn clear_component_cache(component_type: &str, id: Option<String>, all: bool, force: bool) -> anyhow::Result<usize> {
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let target_dir = match component_type {
+            "skill" => env.skills_dir(),
+            "extension" => env.extensions_dir(),
+            "mcp" => env.mcp_dir(),
+            "plugin" => env.plugins_dir(),
+            _ => return Err(anyhow::anyhow!("Unknown component type")),
+        };
+
+        let config = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let active_emb = config.vector_models.text.clone().unwrap_or_default().replace(":", "-");
+        let active_chat = config.chat_models.text.clone().unwrap_or_default().replace(":", "-");
+        
+        let active_emb_file = format!("{}.emb.safetensors", active_emb);
+        let active_chat_file = format!("{}.kvcache.safetensors", active_chat);
+
+        let mut wiped_count = 0;
+
+        // Tier 1: Selective
+        if let Some(target_id) = id {
+            let cache_dir = target_dir.join(&target_id).join(".cache");
+            if cache_dir.exists() {
+                let _ = std::fs::remove_dir_all(&cache_dir);
+                wiped_count += 1;
+            }
+            return Ok(wiped_count);
+        }
+
+        // Tier 2 & 3: Orphaned or Force Wipe All
+        if target_dir.exists() {
+            for entry in std::fs::read_dir(target_dir)? {
+                if let Ok(entry) = entry {
+                    if entry.path().is_dir() {
+                        let cache_dir = entry.path().join(".cache");
+                        if cache_dir.exists() {
+                            if force {
+                                // Tier 3: Force wipe everything
+                                let _ = std::fs::remove_dir_all(&cache_dir);
+                                wiped_count += 1;
+                            } else if all {
+                                // Tier 2: Wipe orphaned only
+                                if let Ok(cache_entries) = std::fs::read_dir(&cache_dir) {
+                                    for c_entry in cache_entries.flatten() {
+                                        if let Some(fname) = c_entry.file_name().to_str() {
+                                            if fname.ends_with(".safetensors") || fname.ends_with(".bin") {
+                                                let is_active = fname == active_emb_file || fname == active_chat_file;
+                                                if !is_active {
+                                                    let _ = std::fs::remove_file(c_entry.path());
+                                                    wiped_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(wiped_count)
     }
 
     fn get_registry_url() -> Option<String> {

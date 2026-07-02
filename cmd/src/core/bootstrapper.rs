@@ -20,10 +20,12 @@ impl Bootstrapper {
         let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         permissions.auto_assign_defaults();
         
-        let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
-        if skills_dir.exists() {
-            let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
-            registry.load_from_directory(&skills_dir.to_string_lossy());
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
+        for dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+            if dir.exists() {
+                registry.load_from_directory(&dir.to_string_lossy());
+            }
         }
 
         // 📜 Write Third-Party Licenses (Automatic Legal Compliance)

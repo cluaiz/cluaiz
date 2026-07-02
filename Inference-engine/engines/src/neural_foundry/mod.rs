@@ -120,14 +120,17 @@ impl CoreFoundry {
             let skill_path_clone = skill.path.clone();
             let skill_manifest_clone = skill.manifest.clone();
 
-            enum SkillLoadResult {
+            pub enum SkillLoadResult {
                 Signal {
-                    raw_data: MappedBuffer,
+                    raw_data: cluaiz_shared::hardware::memory::buffer::SafeTensorsMappedBuffer,
                     token_count: usize,
                     head_dim: usize,
                 },
                 MissingCache {
                     kv_cache_path: PathBuf,
+                    content: String,
+                },
+                TextPayload {
                     content: String,
                 },
                 NoModel,
@@ -140,7 +143,13 @@ impl CoreFoundry {
                 if let Some(gen_model) = permissions.get_active_chat_model() {
                     let gen_model_safe = gen_model.replace(":", "-");
                     let cache_dir = skill_path_clone.join(".cache");
-                    let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
+                    let kv_cache_path = cache_dir.join(format!("{}.kvcache.safetensors", gen_model_safe));
+                    
+                    if !permissions.enable_kvcache {
+                        let content = extract_skill_body(&skill_path_clone)
+                            .unwrap_or_else(|| skill_manifest_clone.description.clone());
+                        return SkillLoadResult::TextPayload { content };
+                    }
                     
                     let mut cache_exists = kv_cache_path.exists();
                     let mut layers = None;
@@ -162,16 +171,18 @@ impl CoreFoundry {
 
                         let mut is_valid = true;
                         if let Ok(metadata) = std::fs::metadata(&kv_cache_path) {
-                            let actual_size = metadata.len() as usize;
-                            if actual_size == 0 {
+                            if metadata.len() == 0 {
                                 is_valid = false;
-                            } else if let (Some(l), Some(h)) = (layers, kv_heads) {
-                                let head_dim = skill_manifest_clone.Core_metadata.as_ref().map_or(128, |m| m.head_dim);
-                                let token_count = skill_manifest_clone.Core_metadata.as_ref().map_or(0, |m| m.token_count);
-                                let expected = token_count * l * h * head_dim * 2 * 2;
-                                if actual_size != expected {
-                                    tracing::warn!("⚠️ [CoreFoundry] Cache size mismatch for {}: expected {} bytes, got {}. Evicting.", skill_id_clone, expected, actual_size);
-                                    is_valid = false;
+                            }
+                            
+                            // Timestamp Invalidation Check
+                            let skill_md_path = skill_path_clone.join("SKILL.md");
+                            if let Ok(skill_md_meta) = std::fs::metadata(&skill_md_path) {
+                                if let (Ok(cache_time), Ok(skill_time)) = (metadata.modified(), skill_md_meta.modified()) {
+                                    if skill_time > cache_time {
+                                        tracing::warn!("⚠️ [CoreFoundry] SKILL.md for {} was modified. Invalidating stale cache.", skill_id_clone);
+                                        is_valid = false;
+                                    }
                                 }
                             }
                         } else {
@@ -185,7 +196,9 @@ impl CoreFoundry {
                     }
                     
                     if cache_exists {
-                        if let Ok(mapped_buffer) = MappedBuffer::from_file(&kv_cache_path) {
+                        use cluaiz_shared::hardware::memory::buffer::SafeTensorsMappedBuffer;
+                        
+                        if let Ok(mapped_buffer) = SafeTensorsMappedBuffer::from_file(&kv_cache_path) {
                             return SkillLoadResult::Signal {
                                 raw_data: mapped_buffer,
                                 token_count: skill_manifest_clone.Core_metadata.as_ref().map_or(0, |m| m.token_count),
@@ -216,6 +229,9 @@ impl CoreFoundry {
                 }
                 SkillLoadResult::MissingCache { kv_cache_path, content } => {
                     result.missing_caches.push((kv_cache_path, content));
+                }
+                SkillLoadResult::TextPayload { content } => {
+                    result.responses.push(content);
                 }
                 SkillLoadResult::NoModel => {
                     warn!("⚠️ [CoreFoundry] No text model assigned in Permission.json. Skipping Zero-Copy injection for skill {}.", skill_id);

@@ -77,22 +77,17 @@ impl SkillRouter {
 
     /// Scans the ~/.cluaiz/skills/ directory and builds the FST/Trie index
     pub fn boot_index(&mut self) -> Result<()> {
-        let skills_dir = crate::environment::EnvironmentManager::current()
-            .ensure_skills_dir()
-            .unwrap_or_else(|_| crate::environment::EnvironmentManager::current().skills_dir());
-        
-        if !skills_dir.exists() {
-            return Ok(());
-        }
-
+        let env = crate::environment::EnvironmentManager::current();
         let active_model = get_active_embedding_model();
-        let target_filename = active_model.map(|m| format!("{}.emb.bin", m.replace(":", "-")));
+        let target_filename = active_model.map(|m| format!("{}.emb.safetensors", m.replace(":", "-")));
 
-        for entry in fs::read_dir(skills_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
+        for base_dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+            if !base_dir.exists() { continue; }
+            if let Ok(entries) = fs::read_dir(base_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    
+                    if path.is_dir() {
                 let manifest_path = path.join("manifest.json");
                 let skill_md_path = path.join("SKILL.md");
                 
@@ -132,19 +127,48 @@ impl SkillRouter {
                         if let Some(ref filename) = target_filename {
                             let emb_path = cache_dir.join(filename);
                             if emb_path.exists() {
-                                if let Ok(bytes) = fs::read(&emb_path) {
-                                    let floats: Vec<f32> = bytes
-                                        .chunks_exact(4)
-                                        .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
-                                        .collect();
-                                    self.skill_vectors.insert(norm_path.clone(), floats);
+                                let mut is_valid = true;
+                                if let Ok(cache_meta) = std::fs::metadata(&emb_path) {
+                                    let mut source_time = None;
+                                    if let Ok(m) = std::fs::metadata(&skill_md_path) {
+                                        if let Ok(t) = m.modified() { source_time = Some(t); }
+                                    } else if let Ok(m) = std::fs::metadata(&manifest_path) {
+                                        if let Ok(t) = m.modified() { source_time = Some(t); }
+                                    }
+                                    
+                                    if let (Ok(cache_time), Some(src_time)) = (cache_meta.modified(), source_time) {
+                                        if src_time > cache_time {
+                                            tracing::warn!("⚠️ [Router] Skill file modified for {}. Invalidating stale embedding cache.", norm_path.display());
+                                            is_valid = false;
+                                        }
+                                    }
+                                }
+                                
+                                if is_valid {
+                                    if let Ok(bytes) = fs::read(&emb_path) {
+                                        if let Ok(st) = safetensors::SafeTensors::deserialize(&bytes) {
+                                            if let Ok(tensor) = st.tensor("embedding") {
+                                                let floats: Vec<f32> = tensor.data()
+                                                    .chunks_exact(4)
+                                                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+                                                    .collect();
+                                                self.skill_vectors.insert(norm_path.clone(), floats);
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    let _ = fs::remove_file(&emb_path);
                                 }
                             }
                         }
                     }
                 }
+                }
             }
         }
+        }
+        
+        tracing::debug!("[Router] Loaded {} skills/extensions into index", self.loaded_manifests.len());
         Ok(())
     }
 

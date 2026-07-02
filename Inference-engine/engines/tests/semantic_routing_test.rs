@@ -79,7 +79,7 @@ This is a secure system skill that handles diagnostic memory allocation.
                     if model_file.exists() && tokenizer_file.exists() {
                         println!("⏳ [Test] Instantiating ONNX engine to verify embedding compilation...");
                         let mut engine = cluaiz_onnx::engine::OnnxEngine::new().unwrap();
-                        engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy()).unwrap();
+                        engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy(), None).unwrap();
                         
                         let skill_content = format!(
                             "Skill Name: {}\nDescription: {}\nTriggers: run test diagnostic, check memory constraints",
@@ -93,9 +93,11 @@ This is a secure system skill that handles diagnostic memory allocation.
                         // Write to cache dir
                         let cache_dir = test_skill_path.join(".cache");
                         fs::create_dir_all(&cache_dir).unwrap();
-                        let emb_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
+                        let emb_path = cache_dir.join(format!("{}.emb.safetensors", safe_filename));
                         let data_bytes = unsafe { std::slice::from_raw_parts(vec.as_ptr() as *const f32 as *const u8, vec.len() * 4) };
-                        fs::write(&emb_path, data_bytes).unwrap();
+                        if let Ok(view) = safetensors::tensor::TensorView::new(safetensors::tensor::Dtype::F32, vec![vec.len()], data_bytes) {
+                            safetensors::serialize_to_file(vec![("embedding", view)], None::<std::collections::HashMap<String, String>>, &emb_path).unwrap();
+                        }
                         
                         println!("✅ [Test] Skill Vector Cached successfully at {:?}", emb_path);
                         assert!(emb_path.exists(), "Cache file must exist");

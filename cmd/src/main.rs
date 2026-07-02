@@ -43,6 +43,7 @@ enum CliCommand {
         command: Option<crate::ComponentCommand>,
     },
     /// Manage Sovereign Extensions (e.g., Core Brain, Network Router)
+    #[command(alias = "ext")]
     Extension {
         #[command(subcommand)]
         command: Option<crate::ComponentCommand>,
@@ -67,15 +68,18 @@ enum CliCommand {
     Menu,
 
     /// List all downloaded models in the vault.
+    #[command(alias = "ls")]
     List,
 
     /// Download and register a model into the local vault.
+    #[command(alias = "install", alias = "i")]
     Pull {
         /// Model ID (e.g. gemma2:2b, unsloth/Qwen3.5-4B-GGUF)
         model_id: String,
     },
 
     /// Remove a model from the local vault.
+    #[command(alias = "remove", alias = "delete")]
     Rm {
         /// Model ID to remove
         model_id: String,
@@ -179,6 +183,10 @@ pub enum PermissionCommand {
     Telemetry {
         status: String,
     },
+    /// Toggle KV Cache generation (on, off)
+    Kvcache {
+        status: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -204,11 +212,13 @@ pub enum SetupCommand {
 #[derive(Subcommand)]
 pub enum ComponentCommand {
     /// Install a component from the cluaiz-hub registry
+    #[command(alias = "i")]
     Install {
         /// Name of the component to install (e.g., 'cluaiz-search' or 'cluaiz-search@0.1.0')
         component_name: String,
     },
     /// List all locally installed components
+    #[command(alias = "ls")]
     List,
     /// Manage Global Dual-Cache Artifacts
     Cache {
@@ -216,6 +226,7 @@ pub enum ComponentCommand {
         command: ComponentCacheCommand,
     },
     /// Remove an installed component
+    #[command(alias = "rm")]
     Remove {
         component_name: String,
     },
@@ -509,6 +520,10 @@ async fn main() -> Result<()> {
                         schema.stream_telemetry = status.to_lowercase() == "on";
                         println!("  {} Telemetry updated to: {}", "✅".green(), schema.stream_telemetry);
                     }
+                    PermissionCommand::Kvcache { status } => {
+                        schema.enable_kvcache = status.to_lowercase() == "on";
+                        println!("  {} KV Cache generation updated to: {}", "✅".green(), schema.enable_kvcache);
+                    }
                 }
                 schema.save();
             } else {
@@ -521,6 +536,7 @@ async fn main() -> Result<()> {
                         format!("Vectorize User Input (Current: {})", schema.vectorize_user_input),
                         format!("Vectorize AI Response (Current: {})", schema.vectorize_ai_response),
                         format!("Temporary Chat TTL (Current: {})", if schema.temporary_chat_ttl_hours == u64::MAX { "max".to_string() } else { format!("{} hours", schema.temporary_chat_ttl_hours) }),
+                        format!("Enable KV Cache (Current: {})", schema.enable_kvcache),
                         format!("Active Chat Model (Current: {})", schema.get_active_chat_model().unwrap_or_else(|| "None".to_string())),
                         format!("Active Vector Model (Current: {})", schema.get_active_embedding_model().unwrap_or_else(|| "None".to_string())),
                         "Quit".to_string()
@@ -539,6 +555,12 @@ async fn main() -> Result<()> {
                             "Telemetry" => {
                                 if let Ok(v) = Select::new("Set Telemetry:", vec!["true", "false"]).prompt() {
                                     schema.stream_telemetry = v == "true";
+                                    changed = true;
+                                }
+                            }
+                            "Enable KV Cache" => {
+                                if let Ok(v) = Select::new("Set Enable KV Cache:", vec!["true", "false"]).prompt() {
+                                    schema.enable_kvcache = v == "true";
                                     changed = true;
                                 }
                             }
