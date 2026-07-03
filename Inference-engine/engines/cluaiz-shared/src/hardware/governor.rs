@@ -303,30 +303,33 @@ impl HardwareGovernor {
         let mut current_ctx = arch_cap;
 
         // Expansion logic for high-power modes (Only if architecture allows)
-        if matches!(
-            booster.mode_run,
-            crate::hardware::schema::booster::BoosterMode::MaxBoost
-                | crate::hardware::schema::booster::BoosterMode::UltraMaxBoost
-                | crate::hardware::schema::booster::BoosterMode::HyperCluster
-        ) {
-            let possible_max = (final_available_gb / gb_per_k) * 1024.0;
-            // Expand to physical VRAM limit, but never exceed architecture DNA
-            current_ctx = current_ctx.max(possible_max as usize).min(arch_cap);
-        }
+        // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
+        let is_hybrid_requested = booster.force_vram_reclaim == crate::hardware::schema::booster::FeatureState::On;
+        let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
 
-        // Final Safety Clamp: Strictly follow the model's Silicon-Genome
-        current_ctx = current_ctx.min(arch_cap);
-
-        // Note: We removed the static 8192 cap for <6GB cards because
-        // the iterative loop below handles fitting tokens into physical available_gb dynamically.
-
-        // Iterative step down if OOM risk detected
-        while current_ctx > 1024 {
-            let required_gb = (current_ctx as f64 / 1024.0) * gb_per_k;
-            if required_gb <= final_available_gb {
-                break;
+        if is_hybrid_requested || model_exceeds_vram {
+            // 🔄 HYBRID MODE (Explicitly requested OR auto-triggered because VRAM is too small)
+            // Use VRAM + Shared System RAM to calculate absolute maximum possible context.
+            let mut system_ram_gb = 0.0;
+            let mut sys = sysinfo::System::new();
+            sys.refresh_memory();
+            let avail_ram_bytes = sys.available_memory(); // ACTUAL FREE RAM
+            if avail_ram_bytes > 0 {
+                system_ram_gb = (avail_ram_bytes as f64) / (1024.0 * 1024.0 * 1024.0);
             }
-            current_ctx -= 512;
+            
+            let total_combined_gb = arbiter.total_vram_gb + system_ram_gb;
+            let safe_combined_gb = (total_combined_gb * (1.0 - margin)).max(0.0);
+            let available_for_kv = (safe_combined_gb - (dna.weights_size_gb as f64)).max(0.0);
+            
+            let max_possible_k = available_for_kv / gb_per_k;
+            current_ctx = ((max_possible_k * 1024.0) as usize).min(arch_cap);
+        } else {
+            // ⚡ GPU ONLY MODE (Default)
+            // Model easily fits in VRAM. Give it ONLY the context that fits perfectly in Dedicated VRAM.
+            // This guarantees MAX TPS and zero shared memory spill.
+            let possible_max = (final_available_gb / gb_per_k) * 1024.0;
+            current_ctx = (possible_max as usize).min(arch_cap);
         }
 
         // Envelope Negotiation Log Hidden for clean UI
