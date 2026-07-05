@@ -110,6 +110,31 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                                 Err(e) => final_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
                             }
                         }
+                        PlanStep::ExecuteCommand { action: _action, target, args } => {
+                            let executor = UnifiedExecutor::new();
+                            // Serialize args into a JSON Value
+                            // Note: We'll construct a simple JSON from args
+                            let mut map = serde_json::Map::new();
+                            for (k, v) in args {
+                                match v {
+                                    inference_cel::parser::ast::CelValue::Text(s) => { map.insert(k, serde_json::Value::String(s)); }
+                                    _ => {}
+                                }
+                            }
+                            let json_payload = serde_json::Value::Object(map);
+                            let json_bytes = serde_json::to_vec(&json_payload).unwrap_or_default();
+                            
+                            // For commands, target is the component name
+                            if let Some(component) = target {
+                                let ext_payload = ExtensionPayload::new(PayloadType::Json, &json_bytes);
+                                match executor.execute(&component, &ext_payload) {
+                                    Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
+                                    Err(e) => final_result.push_str(&format!("[Error] Component Execution: {}\n", e)),
+                                }
+                            } else {
+                                final_result.push_str("[Error] ExecuteCommand missing target.\n");
+                            }
+                        }
                         _ => {
                             final_result.push_str("[Engine] Handled step internally.\n");
                         }
@@ -135,12 +160,36 @@ pub async fn execute_dynamic(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<DynamicPayload>
 ) -> impl IntoResponse {
-    // 1. Check MasterRegistry for component_name to find its storage_domain and path
-    // 2. Load the binary via NativeExecutor
-    // 3. Execute the function
-    (StatusCode::OK, Json(serde_json::json!({
-        "status": "success", 
-        "message": format!("Executed {}::{} dynamically via Hub.", component_name, function_name),
-        "params_received": payload.params
-    })))
+    let executor = UnifiedExecutor::new();
+    let json_bytes = match serde_json::to_vec(&payload.params) {
+        Ok(b) => b,
+        Err(e) => {
+            return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Failed to serialize params: {}", e)
+            })));
+        }
+    };
+    
+    let ext_payload = ExtensionPayload::new(PayloadType::Json, &json_bytes);
+    
+    match executor.execute(&component_name, &ext_payload) {
+        Ok(result_bytes) => {
+            // Try to parse result as string or JSON
+            let result_str = String::from_utf8_lossy(&result_bytes).to_string();
+            let parsed_result: serde_json::Value = serde_json::from_str(&result_str).unwrap_or(serde_json::json!(result_str));
+            
+            (StatusCode::OK, Json(serde_json::json!({
+                "status": "success",
+                "message": format!("Executed {}::{} dynamically.", component_name, function_name),
+                "result": parsed_result
+            })))
+        }
+        Err(e) => {
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Execution failed for {}: {}", component_name, e)
+            })))
+        }
+    }
 }

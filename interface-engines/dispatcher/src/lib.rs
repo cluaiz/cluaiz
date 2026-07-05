@@ -7,9 +7,12 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tokio::sync::mpsc;
 
 fn resolve_active_model_path() -> Option<PathBuf> {
-    let hub_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
-    let perm_path = hub_path.join("engine").join("config").join("Permission.json");
-    let perm_str = std::fs::read_to_string(perm_path).ok()?;
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let local_hub = env.local_dir.clone();
+    let global_hub = env.global_dir.clone();
+    
+    let perm_path = local_hub.join("engine").join("config").join("Permission.json");
+    let perm_str = std::fs::read_to_string(&perm_path).ok()?;
     let perm_json: serde_json::Value = serde_json::from_str(&perm_str).ok()?;
     let active_id = perm_json
         .get("chat_models")?
@@ -17,17 +20,21 @@ fn resolve_active_model_path() -> Option<PathBuf> {
         .as_str()?
         .replace(':', "-");
     
-    // Scan models root for this model_id directory
-    let models_root = hub_path.join("models");
     let categories = ["chat", "embedding", "vision", "audio", "code"];
-    for category in &categories {
-        let model_dir = models_root.join(category).join(&active_id);
-        if model_dir.is_dir() {
-            if let Ok(entries) = std::fs::read_dir(&model_dir) {
-                for entry in entries.flatten() {
-                    let p = entry.path();
-                    if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                        return Some(p);
+    
+    // Check local models root first, then global models root
+    let roots = [local_hub.join("models"), global_hub.join("models")];
+    
+    for models_root in &roots {
+        for category in &categories {
+            let model_dir = models_root.join(category).join(&active_id);
+            if model_dir.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&model_dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
+                            return Some(p);
+                        }
                     }
                 }
             }
@@ -102,10 +109,22 @@ impl NeuralDispatcher {
                     tracing::info!("🔢 [Dispatcher] Inference slot acquired. Running generation...");
 
                     let active_path = resolve_active_model_path();
-                    let model_path = if let Some(ref path) = active_path {
-                        path.clone()
-                    } else {
-                        PathBuf::from("default")
+                    let model_path = match active_path {
+                        Some(ref path) => path.clone(),
+                        None => {
+                            tracing::error!(
+                                "❌ [Dispatcher] No active model configured. \
+                                 Check ~/.cluaiz/engine/config/Permission.json \
+                                 and verify the model directory exists under ~/.cluaiz/models/chat/."
+                            );
+                            let _ = tx.send(
+                                "Error: No active model is configured. \
+                                 Please set a model in Permission.json or via the /models/load API."
+                                    .to_string(),
+                            ).await;
+                            let _ = tx.send("\n[DONE]\n".to_string()).await;
+                            return;
+                        }
                     };
 
                     let mut engine_lock = cached_engine_lock.lock().await;
@@ -247,15 +266,23 @@ impl NeuralDispatcher {
                                     buffer: std::sync::Mutex::new(String::new()),
                                 };
                                 let tx_ptr = &callback_data as *const CallbackData as *mut std::ffi::c_void;
-                                let engine_raw = safe_ptr.0;
-                                let prompt_raw = c_prompt.as_ptr();
+                                let engine_raw = safe_ptr.0 as usize;
+                                let prompt_raw = c_prompt.as_ptr() as usize;
+                                let tx_raw = tx_ptr as usize;
+                                let cb_raw = callback as usize;
+                                let gen_raw = *gen_stream_fn as usize;
 
-                                // 🛡️ FFI PANIC BOUNDARY
-                                // Panics must NOT unwind across the C FFI boundary (undefined behaviour).
-                                // We catch any Rust panic here and convert it into a clean error token.
-                                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                                    gen_stream_fn(engine_raw, prompt_raw, 4096, callback, tx_ptr);
-                                }));
+                                // 🛡️ FFI PANIC BOUNDARY & BLOCKING THREAD POOL
+                                // Offload heavy FFI execution and prevent blocking the async executor.
+                                let result = tokio::task::spawn_blocking(move || {
+                                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                        let callback_fn: extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool = unsafe { std::mem::transmute(cb_raw) };
+                                        let gen_fn: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void) = unsafe { std::mem::transmute(gen_raw) };
+                                        unsafe {
+                                            gen_fn(engine_raw as *mut _, prompt_raw as *const _, 4096, callback_fn, tx_raw as *mut _);
+                                        }
+                                    }))
+                                }).await.unwrap_or_else(|_| Err(Box::new("Thread join error")));
 
                                 if let Err(panic_payload) = result {
                                     let msg = panic_payload
@@ -263,7 +290,42 @@ impl NeuralDispatcher {
                                         .copied()
                                         .unwrap_or("unknown FFI panic");
                                     tracing::error!("💥 [Dispatcher] FFI Panic caught at generate_stream boundary: {}", msg);
-                                    let _ = tx.blocking_send(format!("Error: FFI kernel panicked — {}", msg));
+                                    let _ = tx.send(format!("Error: FFI kernel panicked — {}", msg)).await;
+                                }
+
+                                // 🚀 Two-Step Discovery: Final Buffer Check
+                                // If the LLM stopped generation naturally right after emitting the trigger name
+                                // (without a trailing non-alphanumeric character), it won't be caught by the callback loop.
+                                // We check the final buffer state here before sending `[DONE]`.
+                                if !cancel_flag.load(Ordering::Relaxed) {
+                                    let mut intercepted_trigger = None;
+                                    if let Ok(buffer) = callback_data.buffer.lock() {
+                                        let triggers = ["use extension::", "use plugin::"];
+                                        for trigger in triggers {
+                                            if let Some(idx) = buffer.find(trigger) {
+                                                let remainder = &buffer[idx + trigger.len()..];
+                                                let mut target_name = remainder;
+                                                // If there's any non-alphanumeric char, we take the prefix, 
+                                                // otherwise we take the whole remainder as the target name.
+                                                if let Some(end_idx) = remainder.find(|c: char| !c.is_alphanumeric() && c != '_' && c != '-') {
+                                                    target_name = &remainder[..end_idx];
+                                                }
+                                                
+                                                if !target_name.is_empty() {
+                                                    intercepted_trigger = Some(format!("<TRIGGER:{}:{}>", 
+                                                        if trigger.contains("extension") { "extension" } else { "plugin" },
+                                                        target_name
+                                                    ));
+                                                    tracing::info!("🔍 [Dispatcher] Two-Step Discovery Triggered (Post-Loop) for: {}", target_name);
+                                                    break; // Only trigger once
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    if let Some(trigger_msg) = intercepted_trigger {
+                                        let _ = tx.send(trigger_msg).await;
+                                    }
                                 }
 
                                 generated = true;
@@ -272,10 +334,10 @@ impl NeuralDispatcher {
                     }
 
                     if !generated {
-                        let _ = tx.blocking_send("Error: FFI Kernel not active.".to_string());
+                        let _ = tx.send("Error: FFI Kernel not active.".to_string()).await;
                     }
 
-                    let _ = tx.blocking_send("\n[DONE]\n".to_string());
+                    let _ = tx.send("\n[DONE]\n".to_string()).await;
                 });
                 EngineResponse::TokenStream(rx)
             }

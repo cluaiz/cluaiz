@@ -67,6 +67,7 @@ cluaiz model set-vector bge_m3:unknown:onnx:fp32
 | `cluaiz benchmark` | | Run full hardware performance benchmark |
 | `cluaiz benchmark <model-id>` | `--runs <N>` | Benchmark a specific model N times |
 | `cluaiz --benchmark` | _(legacy flag)_ | Same as `benchmark` (older style) |
+| `cluaiz logs stream --tail` | | Stream active logs to terminal |
 | `cluaiz ps` | | Show active neural engines loaded in memory |
 | `cluaiz test-jit` | | Test JIT KV Cache compilation and memory footprint |
 
@@ -158,25 +159,30 @@ cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
 
 ---
 
-## 🧩 SKILL COMMANDS
+## 🧩 COMPONENT MANAGEMENT COMMANDS (Extensions, Plugins, Skills, MCP)
 
-> Manages WASM-based sovereign AI skills.
+> Manages the installation and lifecycle of all Sovereign AI Ecosystem components. 
+> You can use the component type (`extension`, `plugin`, `skill`, `mcp`) or aliases (`ext`, `p`).
 
-| Command | Args | Description |
-|---------|------|-------------|
-| `cluaiz skill install <name>` | skill name | Install a skill from the cluaiz-hub registry |
-| `cluaiz skill list` | | List all locally installed skills |
-| `cluaiz skill cache ls` | | List all active and orphaned dual-caches |
-| `cluaiz skill cache clear` | `--all` `--force` | Clear orphaned caches globally |
-| `cluaiz skill cache clear <model-id>` | `-f / --force` | Clear cache for a specific model |
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `cluaiz <type> install <id>` | `i` | Install a component from the cluaiz-hub registry (e.g., `cluaiz-search`) |
+| `cluaiz <type> list` | `ls` | List all locally installed components of that type |
+| `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
+| `cluaiz <type> start <id>` | | Start a component's background daemon (Extensions/MCP only) |
+| `cluaiz skill cache clear` | `--all`, `--force`| Clear orphaned dual-caches for skills |
 
 **Examples:**
 ```bash
-cluaiz skill install web-search-github
-cluaiz skill list
-cluaiz skill cache ls
-cluaiz skill cache clear --all
-cluaiz skill cache clear gemma4:e2b --force
+# Install an extension
+cluaiz extension install cluaiz-search
+cluaiz ext i cluaiz-search
+
+# List installed plugins
+cluaiz plugin ls
+
+# Remove an MCP
+cluaiz mcp rm postgres-connector
 ```
 
 ---
@@ -273,3 +279,19 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 > **Classification Logic (ffi_bridge.rs `GET_SETTINGS`):**  
 > Primary = folder path (`/models/chat/` → chat, `/models/embedding/` or `/models/vision/` → vector)  
 > Fallback = `category` field in `model_manifest.json` (`"chat"` → chat, `"embedding"/"vision"/"multimodal"` → vector)
+
+---
+
+## ⚙️ UNIVERSAL COMPONENT CONFIGURATION
+
+The CLI provides an interactive, strict-schema mechanism to configure any component. It reads the component's `manifest-*.yaml` to understand the available `settings:` (their types, default values, and enum options), and then securely saves user overrides into `~/.cluaiz/engine/config/user_settings.yaml` without mutating the core files.
+
+| Command | Action |
+|---------|--------|
+| `cluaiz config set` | Launches the **Interactive TUI Dropdown Menu** to select component type, component ID, and the setting to modify. |
+| `cluaiz config set <type> <id> <setting_key> <value>` | One-shot command to set a value non-interactively. (e.g., `cluaiz config set extension cluaiz-search search_api_key "xxx"`) |
+
+**Features of `config set`:**
+- **Cute Dropdowns:** If a setting is defined as type `enum` in the manifest, the CLI renders an interactive `<inquire>` dropdown menu of allowed `options` instead of a blank text prompt.
+- **Clean Keys:** You no longer type internal prefixes like `configuration_schema.` or `settings.`. Just select the direct setting name (e.g. `api_key`).
+- **Strict Types:** String types are automatically safely serialized into YAML without causing formatting errors in the background config file.

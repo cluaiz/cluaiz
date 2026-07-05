@@ -11,6 +11,8 @@ static GLOBAL_EMBEDDING_ENGINE: Lazy<Mutex<Option<OnnxEngine>>> = Lazy::new(|| M
 
 pub struct EmbeddingGenerator;
 
+static INIT_ATTEMPTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 impl EmbeddingGenerator {
     fn init_engine() -> Option<OnnxEngine> {
         let schema = PermissionSchema::load();
@@ -45,7 +47,8 @@ impl EmbeddingGenerator {
             Err(_) => return vec![0.0f32; 16],
         };
 
-        if lock.is_none() {
+        if lock.is_none() && !INIT_ATTEMPTED.load(std::sync::atomic::Ordering::Relaxed) {
+            INIT_ATTEMPTED.store(true, std::sync::atomic::Ordering::Relaxed);
             if let Some(engine) = Self::init_engine() {
                 *lock = Some(engine);
             }
@@ -60,7 +63,6 @@ impl EmbeddingGenerator {
                 }
             }
         } else {
-            tracing::debug!("Embedding engine not initialized. Using fallback zero-vector.");
             vec![0.0f32; 16]
         }
     }
@@ -72,7 +74,8 @@ impl EmbeddingGenerator {
             Err(_) => return None,
         };
 
-        if lock.is_none() {
+        if lock.is_none() && !INIT_ATTEMPTED.load(std::sync::atomic::Ordering::Relaxed) {
+            INIT_ATTEMPTED.store(true, std::sync::atomic::Ordering::Relaxed);
             if let Some(engine) = Self::init_engine() {
                 *lock = Some(engine);
             }

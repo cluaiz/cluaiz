@@ -104,6 +104,87 @@ fn main() {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // PHASE 1.7: SOVEREIGN BITNET INTERCEPTION (Stable TQ2_0 Multi-Block)
+    // ═══════════════════════════════════════════════════════════════
+    let quants_c_path = llama_path.join("ggml/src/ggml-cpu/arch/x86/quants.c");
+    if quants_c_path.exists() {
+        println!("cargo:warning=💉 Patching x86 quants.c for BitNet TQ2_0 Interception...");
+        let mut content = std::fs::read_to_string(&quants_c_path).unwrap();
+        content = content.replace("\r\n", "\n");
+
+        let target_sig = r#"void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
+    assert(nrc == 1);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_tq2_0 * GGML_RESTRICT x = vx;
+    const block_q8_K  * GGML_RESTRICT y = vy;
+
+    const int nb = n / QK_K;
+
+#if defined(__AVX2__)"#;
+
+        let inject_sig = r#"#ifdef __cplusplus
+extern "C" {
+#endif
+    int cluaiz_fast_ternary_dot(
+        const uint8_t * packed_weights,
+        const int8_t * activations,
+        int32_t * output,
+        size_t count
+    );
+#ifdef __cplusplus
+}
+#endif
+
+void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
+    assert(nrc == 1);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_tq2_0 * GGML_RESTRICT x = vx;
+    const block_q8_K  * GGML_RESTRICT y = vy;
+
+    const int nb = n / QK_K;
+
+    // 🚀 Sovereign Interception: Stable Multi-Block Rust AVX2 Execution
+    float cluaiz_total_sum = 0.0f;
+    bool cluaiz_success = true;
+    for (int i = 0; i < nb; ++i) {
+        int32_t cluaiz_out = 0;
+        if (cluaiz_fast_ternary_dot((const uint8_t*)x[i].qs, (const int8_t*)y[i].qs, &cluaiz_out, QK_K) == 0) {
+            float d_x = GGML_FP16_TO_FP32(x[i].d);
+            float d_y = GGML_FP16_TO_FP32(y[i].d);
+            cluaiz_total_sum += ((float)cluaiz_out * d_x * d_y);
+        } else {
+            cluaiz_success = false;
+            break;
+        }
+    }
+
+    if (cluaiz_success) {
+        *s = cluaiz_total_sum;
+        return;
+    }
+
+#if defined(__AVX2__)"#;
+
+        if content.contains("cluaiz_fast_ternary_dot") {
+            println!("cargo:warning=⚠️ BitNet Interception already injected.");
+        } else if content.contains(target_sig) {
+            content = content.replace(target_sig, inject_sig);
+            std::fs::write(&quants_c_path, content).unwrap();
+            println!("cargo:warning=✅ BitNet TQ2_0 Patches Applied!");
+        } else {
+            println!("cargo:warning=⚠️ BitNet target signature not found in quants.c!");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // PHASE 2: INDUSTRIAL CMAKE BUILD
     // ═══════════════════════════════════════════════════════════════
     let target_os   = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
@@ -164,6 +245,30 @@ fn main() {
         config.define("CMAKE_OSX_DEPLOYMENT_TARGET", "11.0");
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // PHASE 1.8: SOVEREIGN BITNET GGUF COMPATIBILITY (Type 42 -> 35)
+    // ═══════════════════════════════════════════════════════════════
+    let gguf_cpp_path = llama_path.join("ggml/src/gguf.cpp");
+    if gguf_cpp_path.exists() {
+        let mut content = std::fs::read_to_string(&gguf_cpp_path).unwrap();
+        let target_check = "if (info.t.type < 0 || info.t.type >= GGML_TYPE_COUNT) {";
+        let patch = r#"// 🛡️ CLUAIZ SOVEREIGN COMPATIBILITY PATCH
+            // Older BitNet models encoded TQ2_0 as 42, but llama.cpp reordered the enums.
+            if (info.t.type == 42) {
+                info.t.type = GGML_TYPE_TQ2_0;
+            }
+            if (info.t.type < 0 || info.t.type >= GGML_TYPE_COUNT) {"#;
+
+        if !content.contains("CLUAIZ SOVEREIGN COMPATIBILITY PATCH") {
+            println!("cargo:warning=💉 Patching gguf.cpp for BitNet GGUF Legacy Compatibility (Type 42)...");
+            content = content.replace(target_check, patch);
+            std::fs::write(&gguf_cpp_path, content).unwrap();
+            println!("cargo:warning=✅ GGUF Compatibility Patch Applied!");
+        } else {
+            println!("cargo:warning=⚠️ GGUF Compatibility Patch already applied.");
+        }
+    }
+
     // ── GPU Driver Logic (Sovereign Dispatch) ─────────────────────────
     let feature_cuda     = env::var("CARGO_FEATURE_CUDA").is_ok();
     let feature_metal    = env::var("CARGO_FEATURE_METAL").is_ok();
@@ -176,11 +281,6 @@ fn main() {
 
     // Explicitly disable backends to prevent auto-detection "Bakchodi"
     config.define("GGML_CUDA",     if feature_cuda     { "ON" } else { "OFF" });
-    if feature_cuda {
-        config.define("GGML_CUDA_FA_ALL_QUANTS", "ON");
-        config.cxxflag("-DGGML_USE_CUDA");
-        println!("cargo:warning=🔥 cluaiz Sovereign: Forcing FlashAttention across ALL Quantizations and defining GGML_USE_CUDA explicitly!");
-    }
     config.define("GGML_METAL",    if feature_metal    { "ON" } else { "OFF" });
     config.define("GGML_VULKAN",   if feature_vulkan   { "ON" } else { "OFF" });
     config.define("GGML_HIPBLAS",  if feature_rocm     { "ON" } else { "OFF" });

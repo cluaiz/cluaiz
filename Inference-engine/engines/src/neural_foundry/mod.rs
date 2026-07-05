@@ -55,10 +55,12 @@ impl CoreFoundry {
         }
     }
 
-    /// Initializes the foundry by scanning the skills directory.
-    pub fn initialize(&mut self, skills_dir: &str) {
-        cluaiz_shared::dev_info!("[cluaiz] Initializing Core Foundry from: {}", skills_dir);
-        self.registry.load_from_directory(skills_dir);
+    pub fn initialize(&mut self, _skills_dir: &str) {
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        cluaiz_shared::dev_info!("[cluaiz] Initializing Core Foundry from: {}", env.skills_dir().display());
+        for dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+            self.registry.load_from_directory(&dir.to_string_lossy());
+        }
     }
 
     /// The cluaiz Flow: Prompt -> Multi-Route -> Execute

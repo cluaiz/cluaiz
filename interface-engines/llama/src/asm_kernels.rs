@@ -15,7 +15,7 @@ pub trait BareMetalMath {
     ) -> Result<(), &'static str>;
 }
 
-/// Industrial-standard ternary kernel using `_mm256_maddubs_epi16`.
+/// Industrial-standard ternary kernel using ` `.
 pub struct Avx2MaddubsKernel;
 
 #[cfg(target_arch = "x86_64")]
@@ -183,5 +183,36 @@ mod tests {
             );
             assert!(res16.is_ok());
         }
+    }
+}
+
+/// 🚀 Sovereign Injection Point: Expose the AVX2 BitNet Kernel to C++ (GGML).
+/// This allows `llama.cpp` to route `GGML_TYPE_TQ1_0` math operations to our ultra-fast Rust implementation.
+#[no_mangle]
+pub unsafe extern "C" fn cluaiz_fast_ternary_dot(
+    packed_weights: *const u8,
+    activations: *const i8,
+    output: *mut i32,
+    count: usize,
+) -> i32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        // 1. We assume 32-bit containerized alignment for modern BitNet models
+        let result = KernelDispatcher::dispatch_ternary_dot_product(
+            true, // is_32bit_container
+            packed_weights,
+            activations,
+            output,
+            count
+        );
+        match result {
+            Ok(_) => 0, // 0 = Success
+            Err(_) => -1, // -1 = Fallback to GGML default emulation
+        }
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        // Fallback for non-x86_64 architectures (will trigger ggml's emulation)
+        -1
     }
 }

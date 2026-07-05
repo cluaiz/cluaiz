@@ -81,9 +81,15 @@ impl DashboardEngine {
                     let mut spinner = cluaiz_shared::utils::spinner::cluaizSpinner::new();
                     spinner.start(&format!("Auto-Booting Neural Kernel: {}...", name));
                     let path = std::path::PathBuf::from(path_str);
+                    let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
+                    let runtime = if is_gguf {
+                        cluaiz_shared::BackendType::RuntimeB
+                    } else {
+                        cluaiz_shared::BackendType::RuntimeA
+                    };
                     tokio::task::block_in_place(|| {
                         let handle = tokio::runtime::Handle::current();
-                        let result = handle.block_on(engines::CoreRouter::load_model(path, cluaiz_shared::BackendType::RuntimeA));
+                        let result = handle.block_on(engines::CoreRouter::load_model(path, runtime));
                         match result {
                             Ok(router) => {
                                 let mut lock = state.Core_engine.router.blocking_lock();
@@ -1087,6 +1093,8 @@ impl DashboardEngine {
                     // High bit-depth -> Native Rust
                     // 1-bit BitNet -> MANDATORY Llama (Binary)
                     let runtime = if model.manifest.bit_depth < 2.0 {
+                        cluaiz_shared::BackendType::RuntimeB
+                    } else if path_str.to_lowercase().ends_with(".gguf") {
                         cluaiz_shared::BackendType::RuntimeB
                     } else {
                         cluaiz_shared::BackendType::RuntimeA

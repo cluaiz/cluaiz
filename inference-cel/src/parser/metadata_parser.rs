@@ -141,6 +141,8 @@ pub struct IntegrationMetadata {
     pub activation: Option<Activation>,
     pub execution: Option<Execution>,
     pub permissions: Option<Permissions>,
+    pub settings: Option<serde_json::Value>,
+    pub system_bindings: Option<Vec<String>>,
 
     // Kept for backwards compatibility during migration
     pub links: Option<HashMap<String, String>>,

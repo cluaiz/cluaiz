@@ -102,6 +102,17 @@ permissions:
 # - "system_control.silicon_truth.storage[0].free_gb" (Float)
 # - "system_control.silicon_truth.accelerators.gpus[0].vram_available_gb" (Float)
 # ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# CONFIGURATION SETTINGS
+# ---------------------------------------------------------------------
+# [NEW SCHEMA] Dynamic settings definition. This tells the UI and Engine 
+# what configurable variables exist, their types, and default values.
+settings:
+  api_key: { type: "string", default: "", desc: "API Key for service" }
+  mode: { type: "enum", options: ["fast", "accurate"], default: "fast", desc: "Execution mode" }
+  max_retries: { type: "number", default: 3, desc: "Max retries on failure" }
+  enable_logging: { type: "boolean", default: true, desc: "Enable verbose logs" }
+
 system_bindings:
   # Allow MCP to read think_mode to adjust its fetching depth
   - "system_booster.think_mode"

@@ -18,6 +18,7 @@ pub use activation_bus::ActivationEventBus;
 
 
 use std::path::PathBuf;
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -79,6 +80,60 @@ pub struct Permissions {
     pub filesystem: bool,
     #[serde(default)]
     pub mcp_servers: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtensionManifest {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub author: String,
+    #[serde(rename = "type")]
+    pub component_type: String,
+    pub discovery: ExtensionDiscovery,
+    pub activation: ExtensionActivation,
+    pub permissions: ExtensionPermissions,
+    pub execution: ExtensionExecution,
+    pub settings: Option<HashMap<String, SchemaField>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SchemaField {
+    #[serde(rename = "type")]
+    pub field_type: String,
+    pub default: Option<serde_json::Value>,
+    pub desc: Option<String>,
+    pub options: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtensionDiscovery {
+    pub semantic_triggers: Vec<String>,
+    pub cel_grammar: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtensionActivation {
+    pub lazy_load: bool,
+    pub trigger_on: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtensionPermissions {
+    pub max_memory_mb: Option<u32>,
+    pub max_cpu_time_ms: Option<u64>,
+    pub network_access: Option<bool>,
+    pub vram_kv_inject: Option<bool>,
+    pub file_system: Option<String>,
+    pub mid_layer_jit_injection: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExtensionExecution {
+    pub envelope: String,
+    pub entry_point: String,
+    pub payload_format: String,
+    pub binary_path: String,
 }
 
 pub struct Skill {

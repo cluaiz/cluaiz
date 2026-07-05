@@ -2,6 +2,7 @@
 //! This defines the C-ABI compatible interface for plugins across all formats.
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub enum PayloadType {
     Json,
     Cdql,

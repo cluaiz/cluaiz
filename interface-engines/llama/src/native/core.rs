@@ -26,6 +26,23 @@ extern "C" fn silent_llama_log(
 ) {
 }
 
+extern "C" fn llama_log_callback(
+    _level: std::ffi::c_int,
+    text: *const std::ffi::c_char,
+    _user_data: *mut std::ffi::c_void,
+) {
+    unsafe {
+        if text.is_null() { return; }
+        let c_str = std::ffi::CStr::from_ptr(text);
+        let s = c_str.to_string_lossy();
+        let msg = s.trim();
+        if !msg.is_empty() {
+            // Force print via tracing to ensure it shows up!
+            tracing::error!("📢 [llama.cpp] {}", msg);
+        }
+    }
+}
+
 impl NativeLlama {
     /// 🧬 Load a model and initialize context with industrial booster params.
     pub fn load(
@@ -37,15 +54,18 @@ impl NativeLlama {
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
     ) -> anyhow::Result<Self> {
+        // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
+        unsafe {
+            llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
+        }
+
         // ══ SOVEREIGN OPTIMIZATION (Hardware Overrides) ══
-        // Avoid setting env vars dynamically to prevent thread-safety warnings/panics.
-        // Instead of setting GGML_LOG_LEVEL, we use a silent logging callback.
-        unsafe { llama_cpp::llama_log_set(Some(silent_llama_log), std::ptr::null_mut()) };
+        // We now use llama_log_callback to pipe all logs instead of swallowing them.
 
-        // 🚀 Step 1: Initialize all native backends (loads CPU, etc.)
-        // Removed llama_backend_init() to prevent double wipe. Already handled globally.
-
-        // 🚀 Step 2: Removed manual CUDA registration to prevent VRAM double allocation. Modern llama.cpp auto-registers during global init.
+        // 🚀 Backend Init: Already handled globally by cluaiz_kernel_init() in ffi_exports.rs.
+        // DO NOT call llama_backend_init() here — it WIPES existing CUDA registration.
+        // DO NOT register CUDA here — it causes VRAM allocation even in CPU mode (n_gpu_layers=0)
+        // because #[cfg(feature = "cuda")] is compile-time, not runtime.
 
         let c_path = CString::new(model_path)?;
 
@@ -64,6 +84,31 @@ impl NativeLlama {
             fallback_params.use_mlock = false;
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), fallback_params) };
+        }
+
+        // 🛡️ CERD DOCTRINE GPU-FALLBACK (No Hardcoded Strings)
+        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend 
+        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
+        // We must gracefully fallback to CPU-only.
+        if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed on GPU. Tensor format (e.g. BitNet) may not be supported by CUDA. Falling back to CPU-only...");
+            let mut cpu_params = model_params;
+            cpu_params.n_gpu_layers = 0; // Force CPU
+            cpu_params.no_host = false;  // CRITICAL: Must allow host memory allocation for CPU inference!
+            model_ptr =
+                unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), cpu_params) };
+        }
+
+        // 🚨 Ultimate Mmap Fallback
+        // If it STILL fails on CPU, it might be an mmap mapping limitation (e.g. Windows file locking or unsupported tensor alignment).
+        if model_ptr.is_null() && model_params.use_mmap {
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
+            let mut ram_params = model_params;
+            ram_params.n_gpu_layers = 0;
+            ram_params.no_host = false;
+            ram_params.use_mmap = false;
+            model_ptr =
+                unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), ram_params) };
         }
 
         if model_ptr.is_null() {
@@ -97,7 +142,7 @@ impl NativeLlama {
                 "🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Setting n_ctx = {} (DNA Truth)",
                 ctx
             );
-            ctx_params.n_ctx = ctx as u32;
+            ctx_params.n_ctx = std::cmp::min(ctx as u32, requested_n_ctx);
         }
 
         let mut speculative_decoding_mode = speculative_decoding_mode;
@@ -118,7 +163,22 @@ impl NativeLlama {
             }
         }
 
-        let ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
+        let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
+
+        // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
+        // If Context Init fails, it is 99% due to Flash Attention or KV Quantization incompatibility 
+        // with the specific model architecture (e.g. DeepSeek V2, Qwen, Phi-3).
+        if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Architecture might be incompatible (e.g. DeepSeek/Qwen). Initiating Graceful Fallback...");
+            let mut fallback_ctx_params = ctx_params;
+            fallback_ctx_params.flash_attn_type = 0;
+            // Also downgrade KV Cache as it requires FA
+            if fallback_ctx_params.type_k == 8 || fallback_ctx_params.type_k == 2 {
+                fallback_ctx_params.type_k = 1; // F16
+                fallback_ctx_params.type_v = 1;
+            }
+            ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, fallback_ctx_params) };
+        }
 
         if ctx_ptr.is_null() {
             unsafe { llama_cpp::llama_model_free(model_ptr) };

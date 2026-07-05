@@ -9,7 +9,8 @@ pub struct GGUFProber;
 
 impl GGUFProber {
     pub fn probe(path: &std::path::Path) -> Result<(HashMap<String, String>, HashMap<String, Vec<usize>>, usize)> {
-        let mut file = File::open(path)?;
+        let f = File::open(path)?;
+        let mut file = std::io::BufReader::with_capacity(1024 * 1024, f);
         
         // 1. Magic Check (GGUF)
         let mut magic = [0u8; 4];
@@ -76,26 +77,26 @@ impl GGUFProber {
         Ok((metadata, tensor_infos, tensor_count as usize))
     }
 
-    fn read_string(file: &mut File) -> Result<String> {
+    fn read_string(file: &mut std::io::BufReader<File>) -> Result<String> {
         let len = Self::read_u64(file)?;
         let mut buf = vec![0u8; len as usize];
         file.read_exact(&mut buf)?;
         Ok(String::from_utf8_lossy(&buf).to_string())
     }
 
-    fn read_u32(file: &mut File) -> Result<u32> {
+    fn read_u32(file: &mut std::io::BufReader<File>) -> Result<u32> {
         let mut buf = [0u8; 4];
         file.read_exact(&mut buf)?;
         Ok(u32::from_le_bytes(buf))
     }
 
-    fn read_u64(file: &mut File) -> Result<u64> {
+    fn read_u64(file: &mut std::io::BufReader<File>) -> Result<u64> {
         let mut buf = [0u8; 8];
         file.read_exact(&mut buf)?;
         Ok(u64::from_le_bytes(buf))
     }
 
-    fn read_value(file: &mut File, value_type: u32) -> Result<String> {
+    fn read_value(file: &mut std::io::BufReader<File>, value_type: u32) -> Result<String> {
         match value_type {
             0 | 1 | 7 => { // UINT8, INT8, BOOL
                 let mut buf = [0u8; 1];
@@ -179,7 +180,7 @@ impl GGUFProber {
         }
     }
 
-    fn read_u8(file: &mut File) -> Result<u8> {
+    fn read_u8(file: &mut std::io::BufReader<File>) -> Result<u8> {
         let mut buf = [0u8; 1];
         file.read_exact(&mut buf)?;
         Ok(buf[0])

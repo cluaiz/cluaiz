@@ -249,7 +249,10 @@ impl CoreRouter {
             let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-");
 
             for (id, skill_manifest) in &skill_router.loaded_manifests {
-                let skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
+                let mut skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
+                if let Some(skill) = self.foundry.registry.skills.iter().find(|s| s.manifest.id == *id) {
+                    skill_path = skill.path.clone();
+                }
                 let cache_dir = skill_path.join(".cache");
                 let emb_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
                 let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
@@ -271,12 +274,14 @@ impl CoreRouter {
                         }
                     }
 
+                    let _ = std::fs::create_dir_all(&cache_dir);
                     if !combined_vec.is_empty() {
-                        let _ = std::fs::create_dir_all(&cache_dir);
                         let data_bytes = unsafe { std::slice::from_raw_parts(combined_vec.as_ptr() as *const f32 as *const u8, combined_vec.len() * 4) };
                         if let Ok(_) = std::fs::write(&emb_path, data_bytes) {
                             new_vectors.push((norm_skill_path, combined_vec));
                         }
+                    } else {
+                        let _ = std::fs::write(&emb_path, b""); // Write dummy to stop endless retry loop
                     }
                 }
             }
@@ -345,19 +350,17 @@ impl CoreRouter {
                              matched_skill_ids.push(name.to_string_lossy().to_string());
                          }
                      } else {
-                         // Multi-size sliding window search: try window sizes 2, 3, 4
-                         let words: Vec<&str> = prompt.split_whitespace().collect();
-                         'window_search: for window_size in [2, 3, 4] {
-                             if words.len() >= window_size {
-                                 for i in 0..=words.len() - window_size {
-                                     let chunk = words[i..i + window_size].join(" ");
-                                     if let Some(chunk_vec) = crate::memory::embedding_generator::EmbeddingGenerator::generate_full_vector(&chunk) {
-                                         if let Some(path) = router.check_semantic_trigger(&chunk_vec, 0.70) {
-                                             if let Some(name) = path.file_name() {
-                                                 matched_skill_ids.push(name.to_string_lossy().to_string());
-                                             }
-                                             break 'window_search;
-                                         }
+                         // Fallback: Check if the prompt explicitly mentions any known tool keywords
+                         // (e.g. "search", "web", etc.) instead of blocking 50s on CPU embeddings
+                         // Fallback: Check if the prompt explicitly mentions any known semantic triggers
+                         let prompt_lower = prompt.to_lowercase();
+                         let words: std::collections::HashSet<&str> = prompt_lower.split_whitespace().collect();
+                         for (keyword, path) in &router.keyword_index {
+                             if words.contains(keyword.as_str()) || prompt_lower.contains(keyword) {
+                                 if let Some(name) = path.file_name() {
+                                     let id = name.to_string_lossy().to_string();
+                                     if !matched_skill_ids.contains(&id) {
+                                         matched_skill_ids.push(id);
                                      }
                                  }
                              }
@@ -618,8 +621,134 @@ impl CoreRouter {
                     cluaiz_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
                 }
 
-                b.generate_stream(&formatted_prompt, max_tokens, callback)
-                    .map_err(|e| e.to_string())
+                let cb = std::sync::Arc::new(std::sync::Mutex::new(callback));
+                
+                let mut current_prompt = formatted_prompt.clone();
+                let mut max_iters = 3; // Max agentic pauses per request
+                
+                while max_iters > 0 {
+                    max_iters -= 1;
+                    
+                    let tool_state = std::sync::Arc::new(std::sync::Mutex::new((false, String::new(), String::new())));
+                    let tool_state_clone = tool_state.clone();
+                    
+                    let cb_clone = cb.clone();
+                    let mut buffer_cache = String::new();
+                    let mut json_buffer = String::new();
+                    let mut capture = false;
+                    
+                    let interceptor = Box::new(move |token: String| {
+                        let mut cb_guard = cb_clone.lock().unwrap();
+                        
+                        buffer_cache.push_str(&token);
+                        
+                        if capture {
+                            json_buffer.push_str(&token);
+                        } else if let Some(idx) = buffer_cache.find("<TRIGGER:") {
+                            capture = true;
+                            json_buffer.push_str(&buffer_cache[idx..]);
+                            let prefix = buffer_cache[..idx].to_string();
+                            buffer_cache.clear();
+                            if !prefix.is_empty() {
+                                let _ = (*cb_guard)(prefix);
+                            }
+                        } else {
+                            let trigger_target = "<TRIGGER:";
+                            let mut partial_match_idx = None;
+                            
+                            for (i, _) in buffer_cache.char_indices() {
+                                let suffix = &buffer_cache[i..];
+                                if trigger_target.starts_with(suffix) {
+                                    partial_match_idx = Some(i);
+                                    break;
+                                }
+                            }
+                            
+                            if let Some(idx) = partial_match_idx {
+                                if idx > 0 {
+                                    let text_to_flush = buffer_cache[..idx].to_string();
+                                    let new_buffer = buffer_cache[idx..].to_string();
+                                    buffer_cache = new_buffer;
+                                    let _ = (*cb_guard)(text_to_flush);
+                                }
+                                return true; // Wait for more tokens
+                            } else {
+                                let text = buffer_cache.clone();
+                                buffer_cache.clear();
+                                return (*cb_guard)(text);
+                            }
+                        }
+                        
+                        if capture && json_buffer.contains(">") {
+                            // Find the closing bracket
+                            if let Some(end_idx) = json_buffer.find('>') {
+                                let trigger_str = &json_buffer[..=end_idx];
+                                // Parse <TRIGGER:{type}:{tool_name}>
+                                if trigger_str.starts_with("<TRIGGER:") {
+                                    let content = trigger_str.trim_start_matches("<TRIGGER:").trim_end_matches(">");
+                                    let parts: Vec<&str> = content.split(':').collect();
+                                    let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                                    
+                                    let mut state = tool_state_clone.lock().unwrap();
+                                    state.0 = true;
+                                    state.1 = t_name.to_string();
+                                    
+                                    // For now, payload is just empty JSON since we use semantic routing for params
+                                    state.2 = "{}".to_string(); 
+                                    
+                                    let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Engine intercepted tool trigger for '{}'...\n", t_name));
+                                    return false; // STOP generation
+                                }
+                            }
+                            // if not valid, flush and reset
+                            let flushed = json_buffer.clone();
+                            capture = false;
+                            json_buffer.clear();
+                            return (*cb_guard)(flushed);
+                        }
+                        
+                        true // continue streaming
+                    });
+                    
+                    if let Err(e) = b.generate_stream(&current_prompt, max_tokens, interceptor) {
+                        return Err(e.to_string());
+                    }
+                    
+                    let (was_called, t_name, t_payload) = {
+                        let state = tool_state.lock().unwrap();
+                        (state.0, state.1.clone(), state.2.clone())
+                    };
+                    
+                    if was_called {
+                        // Execute tool via UnifiedExecutor!
+                        use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                        let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                        let ext_payload = ExtensionPayload::new(PayloadType::Json, t_payload.as_bytes());
+                        
+                        let mut result_str = String::new();
+                        match executor.execute(&t_name, &ext_payload) {
+                            Ok(bytes) => {
+                                result_str = String::from_utf8_lossy(&bytes).to_string();
+                                let mut cb_guard = cb.lock().unwrap();
+                                let _ = (cb_guard)(format!("✅ [Agentic Pause] Result injected into context window.\n\n"));
+                            },
+                            Err(e) => {
+                                result_str = format!("Error executing {}: {}", t_name, e);
+                                let mut cb_guard = cb.lock().unwrap();
+                                let _ = (cb_guard)(format!("❌ [Agentic Pause] Failed: {}\n\n", e));
+                            }
+                        }
+                        
+                        // Append to current_prompt and generate again
+                        current_prompt = format!("{}\n\n<tool_call>\n{}\n</tool_call>\n\n<tool_result>\n{}\n</tool_result>\n\nContinue your response to the user:", 
+                            current_prompt, t_payload, result_str);
+                        
+                    } else {
+                        break; // Normal generation finished without tools
+                    }
+                }
+                
+                Ok(())
             },
             Backend::Empty(_) => Err("Core weights not loaded. Please select a model with @ or wait for the Auto-Pilot handshake to complete.".to_string()),
         }

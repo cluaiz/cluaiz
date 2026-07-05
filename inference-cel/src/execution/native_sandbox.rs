@@ -80,6 +80,7 @@ impl NativeExecutor {
             })?;
 
             // 1. Load the native plugin library using the canonicalized absolute path
+            tracing::info!("LOADING NATIVE DLL FROM EXACT PATH: {}", abs_plugin_path.display());
             let lib = Library::new(&abs_plugin_path).map_err(|e| {
                 format!("Failed to load native plugin '{}': {}", abs_plugin_path.display(), e)
             })?;

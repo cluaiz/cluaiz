@@ -51,6 +51,7 @@ CEL isn't just a query language; it handles state and branching directly inside 
 | `let $var = <Pipeline>` | `Assignment` | Allocates a `CelValue` inside the current execution frame's hashmap (`Variable` type) to avoid recomputing expensive API/Plugin calls. |
 | `if (<cond>) { ... } else { ... }` | `IfElse` | Evaluates native Rust booleans. Bypasses the AST branch that fails, preventing memory allocation for that branch. |
 | `foreach ($item in $list) { ... }` | `Foreach` | Native `while let` loop over `CelValue::Vector` or arrays. Re-uses the exact same WASM linear memory block for each iteration. |
+| `config(<key>="<value>", ...)` | `Config` | Internally triggers the Settings Controller to dynamically update the YAML manifest of the loaded extension. (e.g., `use extension::cluaiz-search -> config(search_api_type="tavily")`) |
 
 ---
 
@@ -73,3 +74,18 @@ When transpiled to Bincode, JSON types are strictly mapped to Rust memory layout
 | `use plugin::catalog -> invoke(get_all) -> similar_to() -> filter status == "active"` | `use plugin::catalog -> invoke(get_active) -> similar_to()` | **OOM Error:** Running a vector scan on a million rows before filtering by status destroys VRAM. Always pre-filter natively or inside the plugin. |
 | Executing native shell `engine -> os -> process("ls")` | `use plugin::file_system -> invoke(list)` | **Security Denied:** `SystemCall` requires explicit `allow_subprocess` in manifest. Use designated WASM plugins instead. |
 | `let x = use ...` (inside a `foreach`) | `let x = use ...` (outside), then `foreach` | **CPU Thrashing:** Repeatedly invoking a plugin inside a loop re-triggers WASM pointer parsing. Assign to a variable first. |
+
+---
+
+### ⚙️ Component Configuration Macros (Settings Injection)
+
+CEL scripts and agents can dynamically reprogram components in real-time during execution using the `config(...)` macro. This macro transpiles down to an AST node that calls the Engine's Universal Settings Controller.
+
+| Domain/Component Type | CEL Syntax Example | What happens internally |
+|---|---|---|
+| **Extension** | `use extension::cluaiz-search -> config(search_api_type="tavily", search_api_key="xxx")` | Stores overrides safely in `user_settings.yaml`, leaving the schema manifest intact. |
+| **MCP (Server)** | `use mcp::github-connector -> config(permissions.network_access=true)` | Updates `user_settings.yaml` to grant network access on the fly without mutating the manifest. |
+| **Plugin (WASM)** | `use plugin::pdf-parser -> config(settings.max_threads=4)` | Modifies `user_settings.yaml` to allocate more threads before execution. |
+| **Skill (Markdown)** | `use skill::code-reviewer -> config(settings.strict_mode=true)` | Safely stores the setting override in `user_settings.yaml`. |
+
+> **Note:** The `config()` macro executes *before* the component is initialized, ensuring that any subsequent `invoke()` calls use the freshly updated settings/permissions!

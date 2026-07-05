@@ -78,8 +78,8 @@ cargo run -- dev-sync driver onnx --profile <debug|release>
 
 ## 🚨 Troubleshooting
 
-If you run `cargo run -p cmd` on a fresh system and get a **`Bootstrap Failed`** or **`os error 3`**, it means your `.cluaiz` folder is completely empty and missing the core engine files.
+If you run `cargo run` on a fresh system and get a **`Bootstrap Failed`** or **`os error 3`**, it means your `.cluaiz` folder is completely empty and missing the core engine files.
 **Fix:** Run a full sync to populate it:
 ```bash
-cargo run -p cmd -- dev-sync all
+cargo run -- dev-sync all
 ```

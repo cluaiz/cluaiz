@@ -9,8 +9,9 @@ pub unsafe fn shift_context(
     tokens_len: usize,
     context_shifting_mode: u8,
     lookahead_logs: &mut Vec<String>,
+    force: bool,
 ) {
-    if context_shifting_mode != 0 && *n_cur >= (n_ctx as i32) - 6 {
+    if context_shifting_mode != 0 && (force || *n_cur >= (n_ctx as i32) - 32) {
         let shift_fraction = match context_shifting_mode {
             1 => 0.05, // Minimal (5%)
             2 => 0.10, // Standard (10%)

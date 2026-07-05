@@ -1,0 +1,51 @@
+{
+  "message": "Executed cluaiz-search::search dynamically.",
+  "result": {
+    "metadata": {
+      "execution_time_sec": 0.8915236,
+      "provider": "tavily",
+      "response_length": "auto",
+      "results_count": 5,
+      "think_mode": "Off"
+    },
+    "results": [
+      {
+        "favicon": "https://www.google.com/s2/favicons?sz=64&domain=en.wikipedia.org",
+        "raw_content": null,
+        "snippet": "# Rust (programming language). * Edit&action=edit \"Edit this page [e]\"). [edit&action=edit&section=1 \"Edit section: History\")]. [edit&action=edit&section=2 \"Edit section: 2006–2009: Early years\")]. During the time period between 2006 and 2009, Rust was not publicized to others at Mozilla and was written in Hoare's free time;: 7:50 Hoare began speaking about the language around 2009 after a small group at Mozilla became interested in the project. During the early years, the Rust compiler was written in about 38,000 lines of OCaml.: 15:34 Early Rust contained several features no longer present today, including explicit object-oriented programming via an `obj` keyword: 10:08 and a typestates system for variable state changes, such as going from uninitialized to initialized.: 13:12. [edit&action=edit&section=3 \"Edit section: 2009–2012: Mozilla sponsorship\")]. [edit&action=edit&section=4 \"Edit section: 2012–2015: Evolution\")]. [edit&action=edit&section=5 \"Edit section: 2015–2020: Servo and early adoption\")]. [edit&action=edit&section=6 \"Edit section: 2020–present: Mozilla layoffs and Rust Foundation\")].",
+        "title": "Rust (programming language) - Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"
+      },
+      {
+        "favicon": "https://www.google.com/s2/favicons?sz=64&domain=www.reddit.com",
+        "raw_content": null,
+        "snippet": "r/rust: A place for all things related to the Rust programming language—an open-source systems language that emphasizes performance, reliability, and…",
+        "title": "The Rust Programming Language - Reddit",
+        "url": "https://www.reddit.com/r/rust"
+      },
+      {
+        "favicon": "https://www.google.com/s2/favicons?sz=64&domain=medium.com",
+        "raw_content": null,
+        "snippet": "## Introduction to Rust Programming — the most loved programming language. In this article, I am going to share the basics of Rust so that you can start programming today. Rust is a programming language that is built to be fast, secure, reliable and supposedly easier to program. Rust is a statically typed language, and based on the way it is constructed, it leaves almost (I say, almost!) no room for your program to crash. 4.   **Builds optimized code for Generics** — If you have generic code, the Rust’s compiler can smartly identify the code for, say, Lists and Sets, and optimize it differently for both. In some cases, the compiler will give you code that you can copy/paste in order for it to work. ## The Rust Programming Language ### The first step is to install Rust. Rust is statically typed, so if a variable is declared to be mutable, we must be careful to assign it of the same type.",
+        "title": "Rust 101 — Everything you need to know about Rust - Medium",
+        "url": "https://medium.com/codex/rust-101-everything-you-need-to-know-about-rust-f3dd0ae99f4c"
+      },
+      {
+        "favicon": "https://www.google.com/s2/favicons?sz=64&domain=www.youtube.com",
+        "raw_content": null,
+        "snippet": "Learn the Rust programming language - Course for beginners\nFrancesco Ciulla\n343000 subscribers\n964 likes\n31426 views\n6 May 2025\nDo you want to learn Rust in a single video? That's challenging, but I'll try my best. \n\nIn this 3.5-hour video on learning Rust, you'll develop a solid understanding of all the Rust concepts through examples. We will introduce many things you might not completely understand at first, but by the end of the video, you should learn a lot!\n\nHere is another playlist if you want to dive deeper concept after concept: https://www.youtube.com/watch?v=R33h77nrMqc&list=PLPoSdR46FgI412aItyJhj2bF66cudB6Qs\n\n\nMy Products\nRust book: https://mybook.to/YJI6DI\nRust Workbook: https://francescociulla.gumroad.com/l/rustworkbook\nRust Cheatsheet: https://francescociulla.gumroad.com/l/rustcheatsheet\n\n\n\nRust by example website: https://doc.rust-lang.org/rust-by-example/\nThe Rust Programming Language book: https://doc.rust-lang.org/book/title-page.html\n\nTimestamps\n0:00 Intro\n0:43 Hello World \n3:38 Comments\n4:16 Formatted Prints - Debug, Display, TestCase: List, Formatting\n15:03 Primitives - Literals and Operators, Tuples, Arrays, and Slices\n25:41 Custom Types - Structures, Enums, use, C-like, Testcase: linked-list, Constants\n37:15 Variable  Bindings - Mutability, Scope and Shadowing, Declare First, Freezing\n43:15 Types - Casting, Literals, Inference\n47:47 Conversion - From and Into, TryFrom and TryIntro\n52:45  Expressions\n53:32 Flow of Control - if-else, loop: Nesting and Labels, Returning from Loops, while, for and range, \n59:30 The Match statement: Destructuring tuples, Arrays, slices, structs, Fuards, binding\n1:06:18 Flow of Control - if-let, let-else, while -let\n1:09:08 Functions, Associated functions and methods\n1:11:54 Closures - Capturing, As Input Parameters, Type Anonymity, Input functions, As outer parameters, iterators any, Searching through iterators\n1:22:06 Higher Order and Diverging Functions\n1:24:19 Modules - visibility, Struct Visibility, use declaration, super and self, file hierarchy\n1:28:32 Crates - Creating a Library, Using a Library\n1:29:38 Cargo - Dependencies, Conventions, Testing, Build Scripts\n1:34:55 Attributes - deda_code, Crates, cfg, Custom\n1:38:17 Generics - Functions, Traits, Bounds, testcase: empty bounds, Multiple Bounds,  Where clauses, New type idiom, Associated Item, The Problem, Associated Types\n1:47:14  Phantom type Parameters - testcase: unit clarification\n1:49:31 Scoping rules - RAII, Ownership and moves, Mutability, Partial Moves\n1:56:35 Borrowing - Mutability, Partial Moves, \n2:04:16 Lifetimes - Explicit Annotation, Functions, Methods, Structs, Traits, Bounds, Coercion, Static, Elision\n2:17:25 Traits - Derive, Returning traits with dyn, Operator Ovrloading, Drop, Iterators, impl Trait, Clone, Supertraits, Disambiguating overlapping traits\n2:31:52 macro rules - Syntax: Designators, Overload, Repeat, DRY (Don't repeat yourself), DSL (Domain Specific Languages)\n2:38:05 Error Handling - panic, abort and unwind, Option and unwrap, unpacking option with ?, Combinators map - and_then, defaults, Result: map, aliases, Early Returns, ? operator\n2:53:38 Error Handling - Multiple error types, Pulling Result out of Options, Defining an error type, Boxing errors, other use cases of ?, wrapping errors, iterating over Results\n2:59:21 Std library types - Box, stack and heap, Vectors, Strings, Option, Result, ? Operator, panic, Hashmap, alternate custom key types, HashSet, Rc, Arc, Smart Pointers\n3:11:59 Std mics - Threads, Channels, Path, File IO, open, create, read_lines, Child Processes: Pipes, Wait, filesystem Operations, Program arguments, arguments, parsing, Foreign Function Interface\n3:22:05 Testing - Unit Testing, documentation, Integration Testing, Dev-dependencies\n3:25:21 Unsafe Operations, inline assembly, 7Compatibility, Raw Identifiers, Meta\n3:28:49 Congratulations, you did it! What's Next?\n\n\n\nALL THE LINKS HERE: https://francescociulla.com\n98 comments\n",
+        "title": "Learn the Rust programming language - Course for beginners",
+        "url": "https://www.youtube.com/watch?v=gAX3Zj-JGE0"
+      },
+      {
+        "favicon": "https://www.google.com/s2/favicons?sz=64&domain=www.rust-lang.org",
+        "raw_content": null,
+        "snippet": "## A language empowering everyone to build reliable and efficient software. Rust is blazingly fast and memory-efficient: with no runtime or garbage collector, it can power performance-critical services, run on embedded devices, and easily integrate with other languages. Rust has great documentation, a friendly compiler with useful error messages, and top-notch tooling — an integrated package manager and build tool, smart multi-editor support with auto-completion and type inspections, an auto-formatter, and more. ## Build it in Rust. In 2018, the Rust community decided to improve the programming experience for a few distinct domains (see the 2018 roadmap). For these, you can find many high-quality crates and some awesome guides on how to get started. **From startups to large corporations, from embedded devices to scalable web services, Rust is a great fit.**. Rust would not exist without the generous contributions of time, work, and resources from individuals and companies. Rust is a community project and is very thankful for the many community contributions it receives.",
+        "title": "Rust Programming Language",
+        "url": "https://www.rust-lang.org/en-US"
+      }
+    ],
+    "status": "success"
+  },
+  "status": "success"
+}

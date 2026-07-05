@@ -115,7 +115,8 @@ impl MasterRegistry {
         // 1. Try fast binary cache first
         if bin_path.exists() {
             if let Ok(bytes) = std::fs::read(&bin_path) {
-                if let Ok(registry) = bincode::deserialize::<MasterRegistry>(&bytes) {
+                if let Ok(mut registry) = bincode::deserialize::<MasterRegistry>(&bytes) {
+                    let _ = registry.sync_with_filesystem();
                     tracing::info!("📋 [Registry] Loaded {} extensions, {} plugins, {} mcp from binary cache",
                         registry.extensions.len(),
                         registry.plugins.len(),
@@ -129,7 +130,8 @@ impl MasterRegistry {
         // 2. Fall back to YAML source
         if yaml_path.exists() {
             let content = std::fs::read_to_string(&yaml_path)?;
-            let registry: MasterRegistry = serde_yaml::from_str(&content)?;
+            let mut registry: MasterRegistry = serde_yaml::from_str(&content)?;
+            let _ = registry.sync_with_filesystem();
 
             tracing::info!("📋 [Registry] Loaded {} extensions, {} plugins, {} mcp from registry.yaml",
                 registry.extensions.len(),
@@ -144,7 +146,9 @@ impl MasterRegistry {
 
         // 3. First run — return empty registry
         tracing::info!("📋 [Registry] No registry.yaml found. Starting with empty registry.");
-        Ok(MasterRegistry::default())
+        let registry = MasterRegistry::default();
+        let _ = registry.save();
+        Ok(registry)
     }
 
     /// Save the current in-memory registry back to registry.yaml (human-readable)
@@ -178,6 +182,49 @@ impl MasterRegistry {
         let bytes = bincode::serialize(self)
             .map_err(|e| anyhow::anyhow!("Failed to serialize registry to binary: {}", e))?;
         std::fs::write(&bin_path, bytes)?;
+        Ok(())
+    }
+
+    pub fn sync_with_filesystem(&mut self) -> Result<()> {
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let ext_dir = env.extensions_dir();
+        let plugins_dir = env.plugins_dir();
+        let mcp_dir = env.mcp_dir();
+        let skills_dir = env.skills_dir();
+        
+        let mut changed = false;
+        
+        // extensions
+        let ext_keys: Vec<String> = self.extensions.keys().cloned().collect();
+        for key in ext_keys {
+            if !ext_dir.join(&key).exists() && !skills_dir.join(&key).exists() {
+                self.extensions.remove(&key);
+                changed = true;
+            }
+        }
+        
+        // plugins
+        let plugin_keys: Vec<String> = self.plugins.keys().cloned().collect();
+        for key in plugin_keys {
+            if !plugins_dir.join(&key).exists() {
+                self.plugins.remove(&key);
+                changed = true;
+            }
+        }
+        
+        // mcp
+        let mcp_keys: Vec<String> = self.mcp.keys().cloned().collect();
+        for key in mcp_keys {
+            if !mcp_dir.join(&key).exists() {
+                self.mcp.remove(&key);
+                changed = true;
+            }
+        }
+        
+        if changed {
+            let _ = self.save();
+        }
+        
         Ok(())
     }
 

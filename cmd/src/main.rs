@@ -53,6 +53,11 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<crate::ComponentCommand>,
     },
+    /// Universal Configuration Manager
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommand,
+    },
     /// Pull & run a model. Downloads if not cached.
     Run {
         /// Model ID (e.g. gemma2:2b, bonsai:8b)
@@ -242,6 +247,21 @@ pub enum ComponentCommand {
 }
 
 #[derive(Subcommand)]
+pub enum ConfigCommand {
+    /// Modify component configuration
+    Set {
+        /// Type of component (extension, plugin, skill, mcp)
+        component_type: Option<String>,
+        /// ID of the component
+        component_id: Option<String>,
+        /// Path to the key (e.g., settings.search_api_type)
+        key_path: Option<String>,
+        /// Value to set
+        value: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum ComponentCacheCommand {
     /// List all active and orphaned dual-caches
     Ls,
@@ -395,6 +415,13 @@ async fn main() -> Result<()> {
         Some(CliCommand::Ps) => {
             if let Err(e) = crate::cli::ps::execute().await {
                 eprintln!("\n  {} [Cluaiz] Process Status Error: {}\n", "❌".red(), e);
+                std::process::exit(1);
+            }
+        }
+        Some(CliCommand::Config { command: ConfigCommand::Set { component_type, component_id, key_path, value } }) => {
+            if let Err(e) = crate::cli::config_cmd::execute(component_type.clone(), component_id.clone(), key_path.clone(), value.clone()).await {
+                use colored::Colorize;
+                eprintln!("\n  {} [Cluaiz] Config Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }

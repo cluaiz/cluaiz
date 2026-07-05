@@ -84,6 +84,10 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/mcp/cache", get(crate::handlers::mcp::list_cache))
         .route("/v1/mcp/cache", axum::routing::delete(crate::handlers::mcp::clear_cache))
 
+        // ── Components API (Used by Dashboard) ──
+        .route("/api/components/list", get(crate::handlers::components::list_components))
+        .route("/api/components/settings", get(crate::handlers::components::get_settings).post(crate::handlers::components::update_settings))
+
         // ── Dynamic Ecosystem Execution Route ──
         .route("/v1/execute/{component_name}/{function_name}", post(crate::handlers::cel_handler::execute_dynamic))
 

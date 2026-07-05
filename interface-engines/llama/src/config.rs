@@ -197,8 +197,19 @@ impl BoosterConfig {
         }
 
         // 🛡️ Sovereign Safety Fallback:
-        // Quantized KV cache requires flash attention enabled to load in VRAM and prevent init crashes
-        let is_quantized_kv = params.type_k == 8 || params.type_k == 2;
+        // Quantized KV cache requires flash attention enabled to load in VRAM and prevent init crashes.
+        // HOWEVER, if the Sovereign Arbiter explicitly disabled Flash Attention (self.flash_attn == false)
+        // due to architectural incompatibilities (like BitNet, Qwen), we MUST NOT force it back on.
+        // Doing so causes a fatal 'Model Load Failure' in the CUDA backend.
+        // We must instead gracefully fallback the KV Cache to F16.
+        let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
+        if is_quantized_kv && !self.flash_attn {
+            cluaiz_shared::dev_info!("⚠️ [Booster] KV Cache Quantization requires Flash Attention, but FA was disabled by Arbiter. Falling back to F16 KV cache to prevent CUDA crash.");
+            params.type_k = 1; // GGML_TYPE_F16
+            params.type_v = 1;
+            is_quantized_kv = false;
+        }
+        
         params.flash_attn_type = if self.flash_attn || is_quantized_kv { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
         params.offload_kqv = 1; // Force KV cache offload to VRAM
 

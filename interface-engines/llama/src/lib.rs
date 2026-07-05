@@ -136,13 +136,36 @@ impl RuntimeB {
 
     /// 🧬 Load the model natively into memory using current booster settings.
     pub fn load_native(&mut self) -> anyhow::Result<()> {
-        let model_params = self.booster.to_model_params();
+        let mut model_params = self.booster.to_model_params();
+
+        // 🛡️ CERD DOCTRINE: Dynamic VRAM Layer Offload (Prevent OOM Crashes)
+        if model_params.n_gpu_layers == -1 {
+            let weights_gb = self.context.dna.weights_size_gb;
+            let vram_gb = self.context.dna.vram_headroom_gb;
+            let layers = self.context.dna.layer_count.unwrap_or(0);
+            
+            // Only protect if we actually know there's limited VRAM (vram_gb > 0)
+            if weights_gb > 0.0 && vram_gb > 0.0 && weights_gb > vram_gb * 0.9 {
+                // Reserve 15% VRAM for OS/Display and Context Cache
+                let usable_vram = vram_gb * 0.85; 
+                if layers > 0 {
+                    let ratio = usable_vram / weights_gb;
+                    let safe_layers = (layers as f32 * ratio) as i32;
+                    cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds VRAM ({:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, vram_gb, safe_layers, layers);
+                    model_params.n_gpu_layers = safe_layers;
+                } else {
+                    let safe_layers = 10;
+                    cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds VRAM ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
+                    model_params.n_gpu_layers = safe_layers;
+                }
+            }
+        }
 
         // 🧬 DNA TRUTH SYNC: Ensure DNA context is applied to context params
         let mut ctx_params = self.booster.to_context_params();
 
         if let Some(ctx) = self.context.dna.max_context_length {
-            ctx_params.n_ctx = ctx as u32;
+            if self.booster.n_ctx == 0 { ctx_params.n_ctx = std::cmp::min(ctx as u32, 8192); } else { ctx_params.n_ctx = ctx as u32; }
         }
 
         // 🧠 RESOLVE SPECULATIVE MODE & SYNC DNA

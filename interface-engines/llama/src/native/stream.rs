@@ -159,16 +159,33 @@ pub fn stream_tokens(
         }
         tokens.truncate(n_tokens as usize);
 
-        // 🛡️ Context Overflow Guard: Trim prompt tokens to fit within the real KV cache.
-        // This fires when ZeroDelayTTFT injects a large skill into the prompt but the engine's
-        // hardware_n_ctx (negotiated at load time) is smaller than active_dna.max_context_length
-        // (which tests may override). We keep the TAIL (the user query) and drop earlier tokens.
+        let mut is_pivot = is_pivot;
+        let mut has_loaded_cache = has_loaded_cache;
         let gen_reserve = (max_tokens as i32).min(256);
         let max_prompt_tokens = (llama.n_ctx as i32 - gen_reserve).max(1) as usize;
+
+        // 🛑 ROOT FIX: If the full conversation exceeds the KV cache capacity, we CANNOT just append!
+        // We MUST clear the cache, trim the oldest messages, and re-ingest from scratch at pos=0.
+        if tokens.len() > max_prompt_tokens {
+            is_pivot = false;
+            has_loaded_cache = false;
+            let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+            llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+        }
+
+        // Slice the tokens array to only contain the NEW tokens if we have a loaded cache
+        if !is_pivot && has_loaded_cache {
+            let loaded_len = last_prefilled_tokens.len();
+            if tokens.len() > loaded_len {
+                tokens = tokens[loaded_len..].to_vec();
+            } else {
+                tokens.clear();
+            }
+        }
+
+        // 🛡️ Context Overflow Guard: Trim prompt tokens to fit within the real KV cache.
         if tokens.len() > max_prompt_tokens {
             let dropped = tokens.len() - max_prompt_tokens;
-            println!("⚠️ [stream] Prompt ({} tokens) exceeds KV capacity ({} slots). Trimming {} head tokens to prevent OOM.",
-                tokens.len(), max_prompt_tokens, dropped);
             tokens.drain(0..dropped);
         }
 
@@ -209,6 +226,7 @@ pub fn stream_tokens(
         let mut utf8_buffer = Vec::new();
 
         let mut n_cur = start_pos + tokens.len() as i32;
+        let original_prompt_len = start_pos as usize + tokens.len();
         let mut n_gen = 0;
 
         let mut next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
@@ -266,9 +284,10 @@ pub fn stream_tokens(
                 llama.ctx_ptr,
                 &mut n_cur,
                 llama.n_ctx,
-                tokens.len(),
+                original_prompt_len,
                 llama.context_shifting_mode,
-                &mut lookahead_logs
+                &mut lookahead_logs,
+                false
             );
 
             history.push(next_token_id);
@@ -373,66 +392,88 @@ pub fn stream_tokens(
                 *safe_batch.batch.logits.add(idx) = 1; 
             }
 
-            let decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
+            let mut decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
             if decode_ret != 0 {
-                break;
+                if llama.context_shifting_mode != 0 {
+                    eprintln!("⚠️ [Llama-Lib] Decode failed (ret={}), attempting emergency context shift...", decode_ret);
+                    crate::native::context::shift_context(
+                        llama.ctx_ptr,
+                        &mut n_cur,
+                        llama.n_ctx,
+                        original_prompt_len,
+                        llama.context_shifting_mode,
+                        &mut lookahead_logs,
+                        true
+                    );
+                    
+                    *safe_batch.batch.pos.add(0) = n_cur;
+                    for (i, _) in drafts.iter().enumerate() {
+                        let idx = i + 1;
+                        *safe_batch.batch.pos.add(idx) = n_cur + idx as i32;
+                    }
+                    
+                    decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
+                    if decode_ret != 0 {
+                        eprintln!("❌ [Llama-Lib] Emergency shift failed to resolve decode error (ret={}). Breaking.", decode_ret);
+                        break;
+                    } else {
+                        eprintln!("✅ [Llama-Lib] Emergency shift successful. Generation recovered.");
+                    }
+                } else {
+                    break;
+                }
             }
 
-            // 🌟 Shannon Entropy Gate (cluaiz Interception) 🌟
+            // 🌟 Shannon Entropy Gate + Logit Modifications 🌟
             let logits_ptr = llama_cpp::llama_get_logits_ith(llama.ctx_ptr, 0);
             if !logits_ptr.is_null() {
                 let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
-                let mut logits = std::slice::from_raw_parts(logits_ptr, n_vocab as usize).to_vec();
-                
-                // Sort descending to get top-K
-                logits.sort_unstable_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
-                let top_k = 50.min(logits.len());
-                let top_logits = &logits[0..top_k];
-                
-                let max_logit = top_logits[0];
-                let mut sum_exp = 0.0;
-                let mut exps = Vec::with_capacity(top_k);
-                for &l in top_logits {
-                    let e = (l - max_logit).exp();
-                    exps.push(e);
-                    sum_exp += e;
-                }
-                
-                let mut entropy = 0.0;
-                for e in exps {
-                    let p = e / sum_exp;
-                    if p > 1e-10 {
-                        entropy -= p * p.log2();
+
+                // 🌟 Shannon Entropy: Only sample every 16th token (monitoring only, doesn't affect output)
+                // Avoids 768K float iterations (3 passes × 256K vocab) per token in debug mode
+                if n_gen % 16 == 0 {
+                    let logits_slice = std::slice::from_raw_parts(logits_ptr, n_vocab as usize);
+                    let mut max_logit = f32::NEG_INFINITY;
+                    for &l in logits_slice.iter() {
+                        if l > max_logit { max_logit = l; }
+                    }
+                    let mut sum_exp: f64 = 0.0;
+                    for &l in logits_slice.iter() {
+                        sum_exp += ((l - max_logit) as f64).exp();
+                    }
+                    if sum_exp > 0.0 {
+                        let mut entropy: f64 = 0.0;
+                        for &l in logits_slice.iter() {
+                            let p = ((l - max_logit) as f64).exp() / sum_exp;
+                            if p > 1e-10 {
+                                entropy -= p * p.log2();
+                            }
+                        }
+                        let max_entropy = (n_vocab as f64).log2();
+                        let ne = if max_entropy > 0.0 { entropy / max_entropy } else { 0.0 };
+                        if ne > 0.85 {
+                            info!("💥 [Shannon Gate] Entropy Spike! H(X) = {:.2}", ne);
+                        }
                     }
                 }
-                
-                let max_entropy = (top_k as f32).log2();
-                let normalized_entropy = if max_entropy > 0.0 { entropy / max_entropy } else { 0.0 };
-                
-                if normalized_entropy > 0.85 {
-                    info!("💥 [Shannon Gate] Entropy Spike Detected! H(X) = {:.2} - Model is guessing!", normalized_entropy);
-                }
 
-                // 🎯 Invisible Guidance Logit Bias (Δz Injection)
+                // 🎯 Logit Bias (runs every token — affects output quality)
                 if let Some(biases) = &dna.guidance_bias {
-                    let mut logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
+                    let logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
                     for (token_id, bias) in biases.iter() {
                         if (*token_id as usize) < logits_mut.len() {
                             logits_mut[*token_id as usize] += bias;
                         }
                     }
-                    info!("🎯 [Logit Bias] Applied invisible guidance vectors (Δz) to {} tokens.", biases.len());
                 }
 
-                // 🧠 Deep Truth: Gentle EOS Biasing for Native "Short" Answers
-                if booster.response_length == "short" {
-                    if n_gen > 30 {
-                        let eos_id = llama_cpp::llama_vocab_eos(vocab);
-                        if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
-                            let mut logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
-                            let bias_strength = ((n_gen - 30) as f32 * 0.15).min(5.0); 
-                            logits_mut[eos_id as usize] += bias_strength;
-                        }
+                // 🧠 EOS Bias for "short" mode (runs every token — affects output length)
+                if booster.response_length == "short" && n_gen > 30 {
+                    let eos_id = llama_cpp::llama_vocab_eos(vocab);
+                    if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
+                        let logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
+                        let bias_strength = ((n_gen - 30) as f32 * 0.15).min(5.0);
+                        logits_mut[eos_id as usize] += bias_strength;
                     }
                 }
             }

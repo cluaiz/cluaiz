@@ -74,15 +74,9 @@ impl EngineManager {
         let mut target_binary_id = binary_id.clone();
 
         // 🚀 cluaiz VRAM Handshake: Pre-Flight Check (Hardware-Aware Routing)
-        // Only enforce strict GPU VRAM limits if the target hardware is a GPU backend.
+        // Bypassing strict GPU VRAM arbitration for llama.cpp as it natively manages tensor splitting.
         if suffix == "cuda" || suffix == "metal" || suffix == "rocm" || suffix == "vulkan" {
-            // Defaulting to 2.0GB for V1 Baseline. Future: Pull from model metadata.
-            let required_vram = 2.0; 
-            if let Err(e) = HardwareGovernor::request_vram(&binary_id, required_vram) {
-                tracing::warn!("⚠️ [Arbiter] VRAM Arbitration Failed ({}). Falling back to CPU.", e);
-                target_suffix = "cpu";
-                target_binary_id = engine_type.to_string();
-            }
+            tracing::info!("🧠 [Arbiter] Hardware Linkage targeting GPU. Bypassing strict VRAM arbitration to allow native Engine management.");
         } else {
             tracing::info!("🧠 [Arbiter] Hardware Linkage targeting CPU/System RAM. Bypassing GPU VRAM limits.");
         }

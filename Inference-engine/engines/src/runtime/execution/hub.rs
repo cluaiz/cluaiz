@@ -74,11 +74,39 @@ impl HardwareOrchestrator {
         }
 
         // 🏛️ [Core Instantiation]: Create the active engine instance with User Truth
-        let booster_control = if let Some(booster) = booster_override {
+        let mut booster_control = if let Some(booster) = booster_override {
             booster
         } else {
             cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default()
         };
+
+        // 🛡️ DNA-AWARE FLASH ATTENTION GUARD (Mathematical Resolution)
+        // Flash Attention fundamentally requires the attention head dimension to be a specific size (usually 64, 128, or 256)
+        // and does not apply to State Space Models (SSMs) or certain 1-bit architectures.
+        if booster_control.flash_attention == cluaiz_shared::hardware::schema::booster::FeatureState::On {
+            let head_dim = cluaiz_context.dna.attention_head_dim.unwrap_or_else(|| {
+                if let (Some(h), Some(c)) = (cluaiz_context.dna.hidden_size, cluaiz_context.dna.attention_head_count) {
+                    h / c
+                } else {
+                    128 // Default theoretical fallback
+                }
+            });
+
+            let math_supports_flash = !cluaiz_context.dna.signature.is_ssm 
+                && (head_dim == 64 || head_dim == 128 || head_dim == 256);
+
+            // [CERD Doctrine applied]: Llama.cpp CUDA backend critically lacks Flash Attention support 
+            // for Ternary/BitNet tensor layouts (TQ1_0, TQ2_0) on CUDA.
+            // Passing flash_attention=true to these architectures causes a fatal Model Load Failure.
+            // We mathematically filter SSMs above, and filter BitNet via strict boolean property.
+            let is_architecturally_broken = cluaiz_context.dna.signature.is_bitnet;
+
+            if !math_supports_flash || is_architecturally_broken {
+                booster_control.flash_attention = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                tracing::warn!("⚠️ [Arbiter] Flash Attention disabled: Math anomaly ({}) or Architecture lacks GGML CUDA FA support.", head_dim);
+            }
+        }
+
         let max_ctx = cluaiz_context.dna.max_context_length.map(|c| c as u32);
         let engine_ptr = manager.instantiate(model_load_path, &booster_control, max_ctx)?;
 

@@ -35,10 +35,12 @@ impl UnifiedExecutor {
             .map_err(|e| anyhow!("Failed to load MasterRegistry: {}", e))?;
         
         let entry = registry.plugins.get(plugin_name)
-            .ok_or_else(|| anyhow!("Plugin '{}' not found in registry", plugin_name))?;
+            .or_else(|| registry.extensions.get(plugin_name))
+            .or_else(|| registry.mcp.get(plugin_name))
+            .ok_or_else(|| anyhow!("Component '{}' not found in registry", plugin_name))?;
 
         if !entry.enabled {
-            return Err(anyhow!("Plugin '{}' is disabled in registry", plugin_name));
+            return Err(anyhow!("Component '{}' is disabled in registry", plugin_name));
         }
 
         // Resolve absolute domain path
@@ -91,12 +93,54 @@ impl UnifiedExecutor {
             timeout_ms: manifest.permissions.as_ref().and_then(|p| p.max_cpu_time_ms),
         };
 
+        let mut final_payload_bytes: Vec<u8> = vec![];
+        
+        let payload_bytes = unsafe { payload.as_bytes() };
+        if matches!(payload.payload_type, inference_cel::ffi::cxp_ffi::PayloadType::Json) {
+            let mut payload_json: serde_json::Value = serde_json::from_slice(payload_bytes).unwrap_or(serde_json::json!({}));
+            
+            if let Some(obj) = payload_json.as_object_mut() {
+                // INJECT SETTINGS
+                if let Some(settings) = &manifest.settings {
+                    if let Some(settings_map) = settings.as_object() {
+                        for (k, v) in settings_map {
+                            let val = v.get("default").unwrap_or(v).clone();
+                            obj.insert(k.clone(), val);
+                        }
+                    }
+                }
+                
+                // INJECT SYSTEM BINDINGS
+                if let Some(bindings) = &manifest.system_bindings {
+                    for binding in bindings {
+                        if binding.starts_with("system_booster") {
+                            if let Ok(booster) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
+                                if let Ok(booster_val) = serde_json::to_value(&booster) {
+                                    obj.insert("system_booster".to_string(), booster_val);
+                                }
+                            }
+                        } else if binding.starts_with("permission") {
+                            let perms = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
+                            if let Ok(perms_val) = serde_json::to_value(&perms) {
+                                obj.insert("permission".to_string(), perms_val);
+                            }
+                        }
+                    }
+                }
+            }
+            final_payload_bytes = serde_json::to_vec(&payload_json).unwrap_or(payload_bytes.to_vec());
+        } else {
+            final_payload_bytes = payload_bytes.to_vec();
+        }
+        
+        let injected_payload = ExtensionPayload::new(payload.payload_type, &final_payload_bytes);
+
         match envelope.as_str() {
             "NATIVE" => {
                 tracing::info!("🔌 [UnifiedExecutor] Routing {} to Native C-FFI Sandbox", plugin_name);
                 self.native_exec.execute_with_rules(
                     &binary_path_str,
-                    payload,
+                    &injected_payload,
                     &cel_rules
                 ).map_err(|e| anyhow!("Native Execution Error: {}", e))
             }
@@ -111,7 +155,7 @@ impl UnifiedExecutor {
                 let _ = self.wasm_exec.preload_cache(plugin_name, &wasm_bytes);
 
                 // Get raw bytes from payload since WASM executor expects byte slices
-                let payload_bytes = unsafe { payload.as_bytes() };
+                let payload_bytes = unsafe { injected_payload.as_bytes() };
 
                 self.wasm_exec.execute_with_rules(
                     plugin_name,
@@ -124,29 +168,36 @@ impl UnifiedExecutor {
     }
 
     fn load_manifest(dir: &PathBuf) -> Option<IntegrationMetadata> {
-        // Check for .bin files first
-        let bin_candidates = ["manifest-plugin.bin", "manifest-extension.bin", "manifest-mcp.bin"];
-        for candidate in bin_candidates {
-            let bin_path = dir.join(candidate);
-            if bin_path.exists() {
-                if let Ok(bytes) = std::fs::read(&bin_path) {
-                    if let Ok(m) = bincode::deserialize::<IntegrationMetadata>(&bytes) {
-                        return Some(m);
-                    }
-                }
-            }
-        }
-
-        // Fallback to yaml files and auto-compile
         let candidates = ["manifest-plugin.yaml", "manifest-extension.yaml", "manifest-mcp.yaml"];
         for candidate in candidates {
             let yaml_path = dir.join(candidate);
             if yaml_path.exists() {
+                let bin_name = candidate.replace(".yaml", ".bin");
+                let bin_path = dir.join(&bin_name);
+
+                let mut use_bin = false;
+                if bin_path.exists() {
+                    if let (Ok(yaml_meta), Ok(bin_meta)) = (std::fs::metadata(&yaml_path), std::fs::metadata(&bin_path)) {
+                        if let (Ok(yaml_mod), Ok(bin_mod)) = (yaml_meta.modified(), bin_meta.modified()) {
+                            if bin_mod >= yaml_mod {
+                                use_bin = true;
+                            }
+                        }
+                    }
+                }
+
+                if use_bin {
+                    if let Ok(bytes) = std::fs::read(&bin_path) {
+                        if let Ok(m) = bincode::deserialize::<IntegrationMetadata>(&bytes) {
+                            return Some(m);
+                        }
+                    }
+                }
+
                 if let Ok(content) = std::fs::read_to_string(&yaml_path) {
                     if let Ok(m) = serde_yaml::from_str::<IntegrationMetadata>(&content) {
-                        let bin_name = candidate.replace(".yaml", ".bin");
                         if let Ok(bin_data) = bincode::serialize(&m) {
-                            let _ = std::fs::write(dir.join(bin_name), bin_data);
+                            let _ = std::fs::write(&bin_path, bin_data);
                         }
                         return Some(m);
                     }

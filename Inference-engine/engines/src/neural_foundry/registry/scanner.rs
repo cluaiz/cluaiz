@@ -37,7 +37,11 @@ impl SkillScanner {
                     if !path.file_name().and_then(|n| n.to_str()).map(|s| s.starts_with('.')).unwrap_or(false) {
                         self.walk_dir(&path, manifests);
                     }
-                } else if path.file_name().map(|n| n == "manifest.json" || n == "SKILL.md").unwrap_or(false) {
+                } else if path.file_name().map(|n| {
+                    let n = n.to_string_lossy();
+                    n == "manifest.json" || n == "SKILL.md" || 
+                    (n.starts_with("manifest-") && (n.ends_with(".yaml") || n.ends_with(".yml") || n.ends_with(".json")))
+                }).unwrap_or(false) {
                     manifests.push(path);
                 }
             }

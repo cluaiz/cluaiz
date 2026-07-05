@@ -187,16 +187,65 @@ impl HubInstaller {
             Ok(())
         }).await??;
 
+        let mut downloaded_binary_hash = None;
         if !binary_download_url.is_empty() {
             cluaiz_shared::dev_info!("  {} [Cluaiz] Downloading Native OS Binary...", "⚙️".cyan());
             let bin_resp = client.get(&binary_download_url).send().await?;
             if bin_resp.status().is_success() {
                 let bin_bytes = bin_resp.bytes().await?;
+                
+                use sha2::{Sha256, Digest};
+                let mut hasher = Sha256::new();
+                hasher.update(&bin_bytes);
+                let hash_result = hasher.finalize();
+                downloaded_binary_hash = Some(format!("sha256:{:x}", hash_result));
+                
                 let file_name = binary_download_url.split('/').last().unwrap_or("binary");
                 let bin_path = component_dir.join(file_name);
                 let mut bin_file = std::fs::File::create(bin_path)?;
                 bin_file.write_all(&bin_bytes)?;
             }
+        }
+
+        // Update Registry
+        if let Ok(mut registry) = crate::neural_foundry::registry::registry_index::MasterRegistry::load() {
+            let mut semantic_index = None;
+            let mut manifest_path = component_dir.join(format!("manifest-{}.yaml", component_type));
+            if !manifest_path.exists() { manifest_path = component_dir.join(format!("manifest-{}.yml", component_type)); }
+            if !manifest_path.exists() { manifest_path = component_dir.join("SKILL.md"); }
+            
+            if manifest_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                    if let Some(parsed) = crate::neural_foundry::registry::parser::SkillParser::parse(&manifest_path, &content) {
+                        semantic_index = Some(parsed.triggers.semantic.clone());
+                        
+                        let bin_manifest_path = component_dir.join(format!("manifest-{}.bin", component_type));
+                        if let Ok(bin_data) = bincode::serialize(&parsed) {
+                            let _ = std::fs::write(&bin_manifest_path, bin_data);
+                            cluaiz_shared::dev_info!("  {} [Registry] Cached fast binary manifest: {}", "⚡".yellow(), bin_manifest_path.display());
+                        }
+                    } else if let Ok(ext_parsed) = serde_yaml::from_str::<crate::neural_foundry::registry::ExtensionManifest>(&content) {
+                        semantic_index = Some(ext_parsed.discovery.semantic_triggers.clone());
+                        
+                        let bin_manifest_path = component_dir.join(format!("manifest-{}.bin", component_type));
+                        if let Ok(bin_data) = bincode::serialize(&ext_parsed) {
+                            let _ = std::fs::write(&bin_manifest_path, bin_data);
+                            cluaiz_shared::dev_info!("  {} [Registry] Cached fast binary manifest: {}", "⚡".yellow(), bin_manifest_path.display());
+                        }
+                    }
+                }
+            }
+            
+            let entry = crate::neural_foundry::registry::registry_index::RegistryEntry {
+                id: component_id.clone(),
+                domain: format!("{}/{}", component_type, component_id),
+                load_strategy: crate::neural_foundry::registry::registry_index::LoadStrategy::Lazy,
+                activation_events: vec![format!("on_{}_trigger", component_type)],
+                enabled: true,
+                binary_hash: downloaded_binary_hash,
+                semantic_index,
+            };
+            let _ = registry.register_component(component_type, &component_id, entry);
         }
 
         cluaiz_shared::dev_info!("\n  {} [Cluaiz] {} '{}' successfully installed and registered at: {}\n", "✅".green(), component_type, component_id.bold(), component_dir.display());
@@ -218,6 +267,11 @@ impl HubInstaller {
             tokio::task::spawn_blocking(move || {
                 let _ = std::fs::remove_dir_all(&component_dir);
             }).await?;
+            
+            if let Ok(mut registry) = crate::neural_foundry::registry::registry_index::MasterRegistry::load() {
+                let _ = registry.deregister_component(component_type, component_name);
+            }
+            
             Ok(())
         } else {
             Err(anyhow::anyhow!("{} '{}' not found locally", component_type, component_name))

@@ -35,6 +35,15 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
         crate::ffi::llama_cpp::llama_log_set(Some(verbose_log), std::ptr::null_mut());
 
         ffi::llama_cpp::llama_backend_init();
+
+        #[cfg(feature = "cuda")]
+        {
+            let reg = ffi::llama_cpp::ggml_backend_cuda_reg();
+            if !reg.is_null() {
+                ffi::llama_cpp::ggml_backend_register(reg);
+                tracing::info!("🟢 [Llama-Engine] CUDA Backend explicitly re-registered after init.");
+            }
+        }
     }
     tracing::info!("🧬 [Llama.cpp-Kernel] Sovereign Handshake & Backend Initialized.");
     "cluaiz-llama.cpp-active\0".as_ptr() as *const std::os::raw::c_char
@@ -194,6 +203,7 @@ pub extern "C" fn cluaiz_kernel_generate_stream(
         match engine.generate_stream(&prompt, max_tokens, rust_callback) {
             Ok(_) => 0,
             Err(e) => {
+                cluaiz_shared::dev_info!("❌ [Llama-Engine] Generation failed: {}", e);
                 tracing::error!("❌ [Llama-Engine] Generation failed: {}", e);
                 -2
             }

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cluaiz Settings Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-dark: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+        }
+
+        .dashboard-container {
+            width: 90%;
+            max-width: 800px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 1rem;
+            appearance: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        select:hover, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .settings-editor {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+            min-height: 200px;
+            transition: all 0.3s ease;
+        }
+
+        .settings-placeholder {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .dynamic-form-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .dynamic-form-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .dynamic-label {
+            font-weight: 500;
+            color: #e2e8f0;
+            word-break: break-all;
+        }
+
+        .dynamic-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .dynamic-input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-save:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-save:active {
+            transform: translateY(0);
+        }
+
+        .btn-save:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .notification.success {
+            background: #10b981;
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .notification.error {
+            background: #ef4444;
+            box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.4);
+        }
+
+        .loader {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Component Settings</h1>
+            <p>Dynamically configure your extensions, plugins, and skills</p>
+        </div>
+
+        <div class="controls-grid">
+            <div class="form-group">
+                <label>Component Type</label>
+                <select id="typeSelect">
+                    <option value="" disabled selected>Select a type...</option>
+                    <option value="extension">Extension</option>
+                    <option value="plugin">Plugin (WASM)</option>
+                    <option value="mcp">MCP Server</option>
+                    <option value="skill">Skill</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Component Name</label>
+                <select id="idSelect" disabled>
+                    <option value="" disabled selected>Waiting for type...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Settings Editor</label>
+        </div>
+        <div class="settings-editor" id="settingsEditor">
+            <div class="settings-placeholder">
+                Select a component to load its settings
+            </div>
+        </div>
+
+        <button class="btn-save" id="saveBtn" disabled>
+            <span>Save Configuration</span>
+            <div class="loader" id="saveLoader"></div>
+        </button>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+        
+        const typeSelect = document.getElementById('typeSelect');
+        const idSelect = document.getElementById('idSelect');
+        const settingsEditor = document.getElementById('settingsEditor');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveLoader = document.getElementById('saveLoader');
+        const notification = document.getElementById('notification');
+
+        let availableComponents = {};
+        let currentSettings = {};
+        let flatSettingsMap = {};
+
+        // Fetch list of components on load
+        async function fetchComponents() {
+            try {
+                const res = await fetch(`${API_BASE}/api/components/list`);
+                if (!res.ok) throw new Error('Failed to fetch components');
+                availableComponents = await res.json();
+            } catch (err) {
+                showNotification('Error connecting to Cluaiz Engine', 'error');
+                console.error(err);
+            }
+        }
+
+        fetchComponents();
+
+        // Type selection change
+        typeSelect.addEventListener('change', () => {
+            const type = typeSelect.value;
+            idSelect.innerHTML = '<option value="" disabled selected>Select a component...</option>';
+            
+            if (availableComponents[type] && availableComponents[type].length > 0) {
+                availableComponents[type].forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = id;
+                    idSelect.appendChild(opt);
+                });
+                idSelect.disabled = false;
+            } else {
+                idSelect.innerHTML = '<option value="" disabled selected>No components found</option>';
+                idSelect.disabled = true;
+            }
+            
+            settingsEditor.innerHTML = '<div class="settings-placeholder">Select a component to load its settings</div>';
+            saveBtn.disabled = true;
+            currentSettings = {};
+        });
+
+        // Component selection change
+        idSelect.addEventListener('change', async () => {
+            const type = typeSelect.value;
+            const id = idSelect.value;
+            
+            settingsEditor.innerHTML = '<div class="settings-placeholder"><div class="loader" style="display:block; border-color:var(--primary); border-top-color:transparent;"></div></div>';
+            saveBtn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/components/settings?component_type=${type}&component_id=${id}`);
+                if (!res.ok) throw new Error('Failed to load settings');
+                currentSettings = await res.json();
+                renderSettingsForm(currentSettings.schema || {}, currentSettings.values || {});
+                saveBtn.disabled = false;
+            } catch (err) {
+                settingsEditor.innerHTML = `<div class="settings-placeholder" style="color:#ef4444">Error loading settings. Ensure manifest exists.</div>`;
+                showNotification('Failed to load manifest', 'error');
+            }
+        });
+
+        // Renders dynamic form based on schema
+        function renderSettingsForm(schema, values) {
+            settingsEditor.innerHTML = '';
+            
+            const keys = Object.keys(schema);
+            if (keys.length === 0) {
+                settingsEditor.innerHTML = '<div class="settings-placeholder">No configuration schema found in manifest.</div>';
+                return;
+            }
+
+            keys.forEach(key => {
+                const field = schema[key];
+                const val = values[key] !== undefined ? values[key] : field.default;
+                
+                const row = document.createElement('div');
+                row.className = 'dynamic-form-row';
+                
+                const labelContainer = document.createElement('div');
+                labelContainer.className = 'dynamic-label';
+                labelContainer.textContent = key;
+                if (field.desc) {
+                    const desc = document.createElement('div');
+                    desc.style.fontSize = '0.75rem';
+                    desc.style.color = 'var(--text-muted)';
+                    desc.style.marginTop = '4px';
+                    desc.textContent = field.desc;
+                    labelContainer.appendChild(desc);
+                }
+                
+                const inputWrapper = document.createElement('div');
+                
+                if (field.type === 'enum' && field.options) {
+                    const select = document.createElement('select');
+                    select.dataset.path = key;
+                    select.className = 'dynamic-input settings-input';
+                    select.style.width = '100%';
+                    select.style.padding = '8px';
+                    select.style.borderRadius = '4px';
+                    select.style.border = '1px solid var(--border)';
+                    select.style.backgroundColor = 'var(--bg-secondary)';
+                    select.style.color = 'var(--text-primary)';
+                    
+                    field.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.textContent = opt;
+                        if (val === opt) option.selected = true;
+                        select.appendChild(option);
+                    });
+                    inputWrapper.appendChild(select);
+                } else if (field.type === 'boolean') {
+                    inputWrapper.className = 'checkbox-wrapper';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = !!val;
+                    cb.dataset.path = key;
+                    cb.className = 'settings-input';
+                    
+                    const cbLabel = document.createElement('span');
+                    cbLabel.textContent = val ? 'True' : 'False';
+                    cbLabel.style.color = 'var(--text-muted)';
+                    
+                    cb.addEventListener('change', (e) => {
+                        cbLabel.textContent = e.target.checked ? 'True' : 'False';
+                    });
+                    
+                    inputWrapper.appendChild(cb);
+                    inputWrapper.appendChild(cbLabel);
+                } else {
+                    const input = document.createElement('input');
+                    input.type = field.type === 'number' ? 'number' : 'text';
+                    input.value = val !== undefined ? val : '';
+                    input.dataset.path = key;
+                    input.className = 'dynamic-input settings-input';
+                    inputWrapper.appendChild(input);
+                }
+                
+                row.appendChild(labelContainer);
+                row.appendChild(inputWrapper);
+                settingsEditor.appendChild(row);
+            });
+        }
+
+
+        // Save button click
+        saveBtn.addEventListener('click', async () => {
+            const type = typeSelect.value;
+            const id = idSelect.value;
+            if (!type || !id) return;
+
+            const updates = {};
+            
+            document.querySelectorAll('.settings-input').forEach(el => {
+                const path = el.dataset.path;
+                let val = el.type === 'checkbox' ? el.checked : el.value;
+                if (el.type === 'number') val = Number(val);
+                
+                const parts = path.split('.');
+                let current = updates;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (!current[parts[i]]) current[parts[i]] = {};
+                    current = current[parts[i]];
+                }
+                current[parts[parts.length - 1]] = val;
+            });
+
+            const payload = {
+                component_type: type,
+                component_id: id,
+                settings: updates
+            };
+
+            saveBtn.disabled = true;
+            saveBtn.querySelector('span').textContent = 'Saving...';
+            saveLoader.style.display = 'block';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/components/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    showNotification('Settings saved successfully!', 'success');
+                } else {
+                    const err = await res.json();
+                    throw new Error(err.message || 'Failed to save');
+                }
+            } catch (err) {
+                showNotification(err.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.querySelector('span').textContent = 'Save Configuration';
+                saveLoader.style.display = 'none';
+            }
+        });
+
+        let notifTimeout;
+        function showNotification(msg, type) {
+            notification.textContent = msg;
+            notification.className = `notification show ${type}`;
+            clearTimeout(notifTimeout);
+            notifTimeout = setTimeout(() => {
+                notification.className = 'notification';
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>

@@ -136,46 +136,53 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 
 ---
 
-## 🛠️ Extensibility (Skills, Plugins, MCP)
+## 🛠️ Extensibility (Skills, Plugins, MCP, Extensions)
 
-Cluaiz provides deep native extensibility via WASM Skills, Native Plugins, and MCP integrations.
+Cluaiz provides deep native extensibility via WASM Skills, Native Plugins, and MCP integrations. All extensibility components share a unified command structure supporting aliases like `i` (install), `ls` (list), and `rm` (remove).
 
 ### 🧠 WASM Skills
 Skills are isolated WebAssembly binaries that execute securely within the Cluaiz sandbox.
-* **`cluaiz skill install <skill_name>`**
+* **`cluaiz skill install <skill_name>`** (alias: `i`)
   * **Flow:** Downloads and compiles the WASM binary. 
   * **API Mapping:** `POST /v1/skills/install` (`skills::install_skill`).
-* **`cluaiz skill list`**
+* **`cluaiz skill list`** (alias: `ls`)
   * **Flow:** Lists active WASM sandboxes. 
   * **API Mapping:** `GET /v1/skills/list` (`skills::list_skills`).
+* **`cluaiz skill remove <skill_name>`** (alias: `rm`)
+  * **Flow:** Deletes the skill and its local footprint.
 * **`cluaiz skill cache ls`**
   * **Flow:** Lists dual-caches (pre-computed KV cache states for fast skill routing). 
   * **API Mapping:** `GET /v1/skills/cache`.
-* **`cluaiz skill cache clear <model_id>`**
+* **`cluaiz skill cache clear [cache_id]`**
   * **Flow:** Wipes orphaned KV states to free SSD space. 
   * **API Mapping:** `DELETE /v1/skills/cache`.
 
 ### ⚙️ Native Plugins
 Plugins are OS-native C/Rust FFI binaries (Muscles) that provide deep OS access.
-* **`cluaiz plugin <install|list|remove|link> <plugin_name>`**
-  * **Flow:** Manages native plugin binaries and links them to specific WASM skills. 
-  * **API Mapping:** `POST /v1/plugins/install`, `GET /v1/plugins/list`, `DELETE /v1/plugins/remove`.
-* **`cluaiz plugin cache ls`** & **`cluaiz plugin cache clear [plugin_name]`**
+* **`cluaiz plugin install <plugin_name>`** (alias: `i`)
+* **`cluaiz plugin list`** (alias: `ls`)
+* **`cluaiz plugin remove <plugin_name>`** (alias: `rm`)
+* **`cluaiz plugin link <plugin_name> <skill_name>`**
+  * **Flow:** Links a native plugin binary to a specific WASM skill sandbox.
+* **`cluaiz plugin cache ls`** & **`cluaiz plugin cache clear [cache_id]`**
   * **Flow:** Manages cached plugin runtime states. 
-  * **API Mapping:** `GET /v1/plugins/cache` and `DELETE /v1/plugins/cache`.
 
 ### 📦 Extensions
 Extensions are complex bundles combining Brain (WASM Skills) and Muscles (Native Plugins).
-* **`cluaiz extension <install|list|remove|start> <extension_name>`**
-  * **Flow:** Installs, removes, or starts background daemons for Extension bundles.
-  * **API Mapping:** `POST /v1/extensions/install`, `GET /v1/extensions/list`, `DELETE /v1/extensions/remove`.
-* **`cluaiz extension cache ls`** & **`cluaiz extension cache clear [extension_name]`**
-  * **API Mapping:** `GET /v1/extensions/cache` and `DELETE /v1/extensions/cache`.
+* **Command Alias:** `cluaiz ext` can be used instead of `cluaiz extension`.
+* **`cluaiz extension install <extension_name>`** (alias: `i`)
+* **`cluaiz extension list`** (alias: `ls`)
+* **`cluaiz extension remove <extension_name>`** (alias: `rm`)
+* **`cluaiz extension start <extension_name>`**
+  * **Flow:** Starts background daemons for Extension bundles.
+* **`cluaiz extension cache ls`** & **`cluaiz extension cache clear [cache_id]`**
 
 ### 🌐 Model Context Protocol (MCP)
 MCP integrations allow Cluaiz to interface with external standard tools.
-* **`cluaiz mcp <install|list|remove|start> <mcp_name>`**
+* **`cluaiz mcp install <mcp_name>`** (alias: `i`)
+* **`cluaiz mcp list`** (alias: `ls`)
+* **`cluaiz mcp remove <mcp_name>`** (alias: `rm`)
+* **`cluaiz mcp start <mcp_name>`**
   * **Flow:** Registers a new MCP server configuration and manages its lifecycle.
-  * **API Mapping:** `POST /v1/mcp/install`, `GET /v1/mcp/list`, `DELETE /v1/mcp/remove`.
-* **`cluaiz mcp cache ls`** & **`cluaiz mcp cache clear [mcp_name]`**
+* **`cluaiz mcp cache ls`** & **`cluaiz mcp cache clear [cache_id]`**
   * **API Mapping:** `GET /v1/mcp/cache` and `DELETE /v1/mcp/cache`.

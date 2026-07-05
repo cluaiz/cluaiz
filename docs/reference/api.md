@@ -486,3 +486,67 @@ The engine resolves dynamic function symbols via POSIX `dlopen` / Windows `LoadL
 ```
 
 
+
+---
+
+## ⚙️ Universal Component Settings Controller
+
+### `POST /api/components/settings`
+
+Dynamically hot-reloads and updates any component's manifest (`manifest-extension.yaml`, `manifest-mcp.yaml`, `manifest-plugin.yaml`, `SKILL.md`) at runtime, without an engine restart. This is universally applicable to all plugins, extensions, MCPs, and skills.
+
+The engine uses a schema-less `serde_yaml::Value` deep-merge strategy. This means you can inject or modify any arbitrary nested keys inside any section (`settings`, `permissions`, `discovery`, `activation`) and it will perfectly preserve the rest of the file.
+
+#### Example 1: Updating an Extension's API Keys
+Used to switch API providers or keys dynamically (e.g. `cluaiz-search` from SerpAPI to Tavily).
+**Request Payload:**
+```json
+{
+  "component_type": "extension",
+  "component_id": "cluaiz-search",
+  "updates": {
+    "settings": {
+      "search_api_type": "tavily",
+      "search_api_key": "tvly-xxxxxxxxxxxx"
+    }
+  }
+}
+```
+
+#### Example 2: Updating an MCP's Permissions
+Used to grant or revoke network access or file system constraints dynamically for an MCP.
+**Request Payload:**
+```json
+{
+  "component_type": "mcp",
+  "component_id": "postgres-connector",
+  "updates": {
+    "permissions": {
+      "network_access": true,
+      "allowed_domains": ["db.internal.com"],
+      "allow_subprocess": false
+    }
+  }
+}
+```
+
+#### Example 3: Updating a Skill's Parameters
+Updates the YAML frontmatter inside a `SKILL.md` file without touching the Markdown instructions body.
+**Request Payload:**
+```json
+{
+  "component_type": "skill",
+  "component_id": "coding-assistant",
+  "updates": {
+    "settings": {
+      "temperature": 0.2,
+      "max_tokens": 8192
+    }
+  }
+}
+```
+
+**Response (200 OK)**
+```json
+{"status":"success"}
+```

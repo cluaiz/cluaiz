@@ -8,12 +8,12 @@ impl SkillParser {
     /// If the file is `SKILL.md`, it extracts the YAML frontmatter.
     /// Otherwise, it assumes JSON format.
     pub fn parse<P: AsRef<Path>>(manifest_path: P, content: &str) -> Option<SkillManifest> {
-        let is_markdown = manifest_path.as_ref().file_name()
-            .map(|n| n == "SKILL.md" || n == "skill.md")
-            .unwrap_or(false);
-
-        if is_markdown {
+        let file_name = manifest_path.as_ref().file_name().and_then(|n| n.to_str()).unwrap_or("");
+        
+        if file_name == "SKILL.md" || file_name == "skill.md" {
             Self::parse_frontmatter(content)
+        } else if file_name.ends_with(".yaml") || file_name.ends_with(".yml") {
+            serde_yaml::from_str::<SkillManifest>(content).ok()
         } else {
             serde_json::from_str::<SkillManifest>(content).ok()
         }
