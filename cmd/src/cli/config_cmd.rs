@@ -142,7 +142,23 @@ pub async fn execute(
     
         if final_val.is_none() {
             if is_enum && !enum_options.is_empty() {
-                final_val = inquire::Select::new(&format!("Select value for {}:", key), enum_options).prompt().ok();
+                let mut current_idx = 0;
+                let display_options: Vec<String> = enum_options.iter().enumerate().map(|(i, o)| {
+                    if o == &default_val {
+                        current_idx = i;
+                        format!("{} (current)", o)
+                    } else {
+                        o.clone()
+                    }
+                }).collect();
+                
+                let prompt_msg = format!("Select value for {}:", key);
+                let p = inquire::Select::new(&prompt_msg, display_options.clone());
+                if let Ok(selected) = p.with_starting_cursor(current_idx).prompt() {
+                    if let Some(idx) = display_options.iter().position(|r| r == &selected) {
+                        final_val = Some(enum_options[idx].clone());
+                    }
+                }
             } else {
                 let prompt_str = format!("Enter value for {}:", key);
                 let p = inquire::Text::new(&prompt_str);
