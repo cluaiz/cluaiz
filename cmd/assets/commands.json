@@ -37,6 +37,20 @@
       "example": "cluaiz list"
     },
     {
+      "name": "model set-chat",
+      "usage": "cluaiz model set-chat <model-id>",
+      "description": "Switch the active chat/inference model dynamically without restart.",
+      "category": "models",
+      "example": "cluaiz model set-chat bonsai:8b"
+    },
+    {
+      "name": "model set-vector",
+      "usage": "cluaiz model set-vector <model-id>",
+      "description": "Switch the active vector/embedding model dynamically.",
+      "category": "models",
+      "example": "cluaiz model set-vector all-MiniLM-L6-v2"
+    },
+    {
       "name": "ps",
       "usage": "cluaiz ps",
       "description": "Show active neural engines in memory and auto-heal stale PIDs.",
@@ -66,17 +80,38 @@
     },
     {
       "name": "benchmark",
-      "usage": "cluaiz benchmark",
-      "description": "Run a full hardware performance benchmark",
+      "usage": "cluaiz benchmark [model-id] [--runs N]",
+      "description": "Run a full hardware performance benchmark. Optionally target a specific model.",
       "category": "system",
-      "example": "cluaiz benchmark"
+      "example": "cluaiz benchmark bonsai:8b --runs 3"
     },
     {
       "name": "booster",
-      "usage": "cluaiz booster",
-      "description": "View or configure the system performance booster settings interactively.",
+      "usage": "cluaiz booster [--kv-quant <level>] [--context-shift <mode>] [--mode <perf>] [--spec-decode <on|off|auto>]",
+      "description": "View or configure system performance booster settings. Run without flags for interactive TUI mode.",
       "category": "system",
-      "example": "cluaiz booster"
+      "example": "cluaiz booster --mode max_boost --kv-quant kv8"
+    },
+    {
+      "name": "permission firewall",
+      "usage": "cluaiz permission firewall <auto|strict|off>",
+      "description": "Change the WASM sandbox firewall status.",
+      "category": "system",
+      "example": "cluaiz permission firewall strict"
+    },
+    {
+      "name": "permission telemetry",
+      "usage": "cluaiz permission telemetry <on|off>",
+      "description": "Toggle engine telemetry stream on or off.",
+      "category": "system",
+      "example": "cluaiz permission telemetry off"
+    },
+    {
+      "name": "permission kvcache",
+      "usage": "cluaiz permission kvcache <on|off>",
+      "description": "Toggle KV Cache generation globally for inference sessions.",
+      "category": "system",
+      "example": "cluaiz permission kvcache on"
     },
     {
       "name": "test-jit",
@@ -107,6 +142,27 @@
       "example": "cluaiz serve"
     },
     {
+      "name": "config set",
+      "usage": "cluaiz config set",
+      "description": "Interactively configure any installed component's settings via guided dropdown menus. After each save, loops back to key selection automatically.",
+      "category": "config",
+      "example": "cluaiz config set"
+    },
+    {
+      "name": "config set (direct)",
+      "usage": "cluaiz config set <type> <id> <settings.key> <value>",
+      "description": "Directly update a single component setting without interactive prompts. Preserves manifest YAML format and invalidates .bin cache automatically.",
+      "category": "config",
+      "example": "cluaiz config set extension cluaiz-search settings.search_api_key \"mykey\""
+    },
+    {
+      "name": "dev-sync",
+      "usage": "cluaiz dev-sync [all|core|driver] [driver_name] [--profile debug|release]",
+      "description": "Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually. Useful for local dev iteration without reinstalling.",
+      "category": "core",
+      "example": "cluaiz dev-sync all --profile release"
+    },
+    {
       "name": "skill install",
       "usage": "cluaiz skill install <skill_name>",
       "description": "Install a skill from the cluaiz-hub registry.",
@@ -121,6 +177,13 @@
       "example": "cluaiz skill list"
     },
     {
+      "name": "skill remove",
+      "usage": "cluaiz skill remove <skill_name>",
+      "description": "Remove an installed skill and its cached artifacts.",
+      "category": "skills",
+      "example": "cluaiz skill remove web-search-github"
+    },
+    {
       "name": "skill cache ls",
       "usage": "cluaiz skill cache ls",
       "description": "List all active and orphaned dual-caches.",
@@ -129,28 +192,14 @@
     },
     {
       "name": "skill cache clear",
-      "usage": "cluaiz skill cache clear <model_id>",
-      "description": "Clear specific or all orphaned KV caches globally.",
+      "usage": "cluaiz skill cache clear [--all] [-f]",
+      "description": "Clear specific or all orphaned KV caches globally. Use -f to force-delete active caches.",
       "category": "skills",
       "example": "cluaiz skill cache clear --all"
     },
     {
-      "name": "permission",
-      "usage": "cluaiz permission <key> <value>",
-      "description": "Change engine permissions and firewalls natively from CLI.",
-      "category": "system",
-      "example": "cluaiz permission firewall strict"
-    },
-    {
-      "name": "model",
-      "usage": "cluaiz model <set-chat|set-vector> <model_id>",
-      "description": "Switch the active chat or vector/embedding model dynamically.",
-      "category": "models",
-      "example": "cluaiz model set-vector all-MiniLM-L6-v2"
-    },
-    {
       "name": "plugin",
-      "usage": "cluaiz plugin <install|list|remove|link> <plugin_name>",
+      "usage": "cluaiz plugin <install|list|remove|link> [plugin_name]",
       "description": "Manage cluaiz Plugins (Native muscles).",
       "category": "extensions",
       "example": "cluaiz plugin install web-scraper"
@@ -164,14 +213,14 @@
     },
     {
       "name": "plugin cache clear",
-      "usage": "cluaiz plugin cache clear [plugin_name]",
+      "usage": "cluaiz plugin cache clear [plugin_name] [--all] [-f]",
       "description": "Clear specific or all plugin caches globally.",
       "category": "extensions",
       "example": "cluaiz plugin cache clear --all"
     },
     {
       "name": "extension",
-      "usage": "cluaiz extension <install|list|remove|start> <extension_name>",
+      "usage": "cluaiz extension <install|list|remove|start> [extension_name]",
       "description": "Manage cluaiz Extensions (Brain + Muscle bundles).",
       "category": "extensions",
       "example": "cluaiz extension install cluaiz-db"
@@ -185,14 +234,14 @@
     },
     {
       "name": "extension cache clear",
-      "usage": "cluaiz extension cache clear [extension_name]",
+      "usage": "cluaiz extension cache clear [extension_name] [--all] [-f]",
       "description": "Clear specific or all extension caches globally.",
       "category": "extensions",
       "example": "cluaiz extension cache clear --all"
     },
     {
       "name": "mcp",
-      "usage": "cluaiz mcp <install|list|remove|start> <mcp_name>",
+      "usage": "cluaiz mcp <install|list|remove|start> [mcp_name]",
       "description": "Manage Model Context Protocol (MCP) integrations.",
       "category": "extensions",
       "example": "cluaiz mcp install github-mcp"
@@ -206,7 +255,7 @@
     },
     {
       "name": "mcp cache clear",
-      "usage": "cluaiz mcp cache clear [mcp_name]",
+      "usage": "cluaiz mcp cache clear [mcp_name] [--all] [-f]",
       "description": "Clear specific or all MCP caches globally.",
       "category": "extensions",
       "example": "cluaiz mcp cache clear --all"

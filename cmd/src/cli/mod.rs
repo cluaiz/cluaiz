@@ -10,3 +10,4 @@ pub mod component;
 pub mod ingest;
 pub mod test_jit;
 pub mod setup;
+pub mod config_cmd;

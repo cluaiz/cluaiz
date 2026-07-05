@@ -1,0 +1,29 @@
+{
+  "group": "Configuration",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/v1/config/<type>/<id>",
+      "desc": "Reads all settings for a component from its manifest-extension.yaml. Returns the full settings schema with current default values.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/config/get.md",
+      "params": [
+        { "name": "type", "type": "string", "req": true, "desc": "Component type: extension, plugin, skill, mcp", "default": "extension" },
+        { "name": "id", "type": "string", "req": true, "desc": "Component ID as registered in registry", "default": "cluaiz-search" }
+      ],
+      "response": "{\n  \"search_api_key\": { \"type\": \"string\", \"default\": \"\", \"desc\": \"API Key\" },\n  \"search_api_type\": { \"type\": \"enum\", \"options\": [\"tavily\",\"serpapi\",\"duckduckgo\"], \"default\": \"duckduckgo\" }\n}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/config/<type>/<id>/set",
+      "desc": "Updates a single setting's default value in the component's manifest file. Preserves original YAML schema structure and invalidates the .bin cache automatically.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/config/set.md",
+      "params": [
+        { "name": "type", "type": "string", "req": true, "desc": "Component type: extension, plugin, skill, mcp", "default": "extension" },
+        { "name": "id", "type": "string", "req": true, "desc": "Component ID", "default": "cluaiz-search" },
+        { "name": "key", "type": "string", "req": true, "desc": "Settings key path (e.g. search_api_key)", "default": "search_api_key" },
+        { "name": "value", "type": "string", "req": true, "desc": "New default value to save", "default": "my-api-key" }
+      ],
+      "response": "{\n  \"status\": \"success\",\n  \"component\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"my-api-key\"\n}"
+    }
+  ]
+}
