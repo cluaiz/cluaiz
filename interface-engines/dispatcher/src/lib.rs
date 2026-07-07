@@ -231,33 +231,36 @@ impl NeuralDispatcher {
                                     let token = unsafe { std::ffi::CStr::from_ptr(token_ptr) }.to_string_lossy().into_owned();
                                     
                                     // 🚀 Two-Step Discovery: Token Interception Buffer
+                                    let mut should_send = true;
                                     if let Ok(mut buffer) = data.buffer.lock() {
                                         buffer.push_str(&token);
-                                        if buffer.len() > 100 {
-                                            *buffer = buffer[buffer.len() - 100..].to_string();
-                                        }
-
-                                        let triggers = ["use extension::", "use plugin::"];
-                                        for trigger in triggers {
-                                            if let Some(idx) = buffer.find(trigger) {
-                                                let remainder = &buffer[idx + trigger.len()..];
-                                                if let Some(end_idx) = remainder.find(|c: char| !c.is_alphanumeric() && c != '_' && c != '-') {
-                                                    if end_idx > 0 {
-                                                        let target_name = &remainder[..end_idx];
-                                                        tracing::info!("🔍 [Dispatcher] Two-Step Discovery Triggered for: {}", target_name);
-                                                        let _ = data.tx.blocking_send(format!("<TRIGGER:{}:{}>", 
-                                                            if trigger.contains("extension") { "extension" } else { "plugin" },
-                                                            target_name
-                                                        ));
-                                                        data.cancel_flag.store(true, Ordering::Relaxed);
-                                                        return false; // Abort C-FFI Stream gracefully
-                                                    }
-                                                }
+                                        
+                                        // Are we currently inside a trigger generation?
+                                        if let Some(start_idx) = buffer.find("<TRIGGER:") {
+                                            should_send = false; // Hide from UI
+                                            
+                                            // Have we reached the end of the payload?
+                                            if let Some(end_idx) = buffer.find("</TRIGGER>") {
+                                                // Include the length of </TRIGGER> (10 chars)
+                                                let full_trigger = &buffer[start_idx..end_idx + 10];
+                                                tracing::info!("🔍 [Dispatcher] Sovereign Interceptor Complete Payload: {}", full_trigger);
+                                                let _ = data.tx.blocking_send(full_trigger.to_string());
+                                                data.cancel_flag.store(true, Ordering::Relaxed);
+                                                return false; // Abort C-FFI Stream gracefully
+                                            }
+                                        } else {
+                                            // Sliding window for performance if we are not inside a trigger
+                                            if buffer.len() > 100 {
+                                                *buffer = buffer[buffer.len() - 100..].to_string();
                                             }
                                         }
                                     }
 
-                                    data.tx.blocking_send(token).is_ok()
+                                    if should_send {
+                                        data.tx.blocking_send(token).is_ok()
+                                    } else {
+                                        true
+                                    }
                                 }
 
                                 let callback_data = CallbackData { 
@@ -300,25 +303,15 @@ impl NeuralDispatcher {
                                 if !cancel_flag.load(Ordering::Relaxed) {
                                     let mut intercepted_trigger = None;
                                     if let Ok(buffer) = callback_data.buffer.lock() {
-                                        let triggers = ["use extension::", "use plugin::"];
-                                        for trigger in triggers {
-                                            if let Some(idx) = buffer.find(trigger) {
-                                                let remainder = &buffer[idx + trigger.len()..];
-                                                let mut target_name = remainder;
-                                                // If there's any non-alphanumeric char, we take the prefix, 
-                                                // otherwise we take the whole remainder as the target name.
-                                                if let Some(end_idx) = remainder.find(|c: char| !c.is_alphanumeric() && c != '_' && c != '-') {
-                                                    target_name = &remainder[..end_idx];
-                                                }
-                                                
-                                                if !target_name.is_empty() {
-                                                    intercepted_trigger = Some(format!("<TRIGGER:{}:{}>", 
-                                                        if trigger.contains("extension") { "extension" } else { "plugin" },
-                                                        target_name
-                                                    ));
-                                                    tracing::info!("🔍 [Dispatcher] Two-Step Discovery Triggered (Post-Loop) for: {}", target_name);
-                                                    break; // Only trigger once
-                                                }
+                                        if let Some(start_idx) = buffer.find("<TRIGGER:") {
+                                            if let Some(end_idx) = buffer.find("</TRIGGER>") {
+                                                let full_trigger = &buffer[start_idx..end_idx + 10];
+                                                intercepted_trigger = Some(full_trigger.to_string());
+                                                tracing::info!("🔍 [Dispatcher] Two-Step Discovery Complete Payload for: {}", full_trigger);
+                                            } else {
+                                                // Fallback if the model abruptly ended without closing
+                                                let full_trigger = &buffer[start_idx..];
+                                                intercepted_trigger = Some(full_trigger.to_string());
                                             }
                                         }
                                     }

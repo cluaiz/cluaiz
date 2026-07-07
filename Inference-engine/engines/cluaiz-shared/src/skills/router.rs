@@ -19,15 +19,18 @@ pub struct SkillManifest {
     pub name: String,
     pub version: String,
     pub description: String,
+    #[serde(alias = "discovery", default)]
     pub triggers: SkillTriggers,
     #[serde(default)]
     pub soul_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SkillTriggers {
+    #[serde(alias = "semantic_triggers", default)]
     pub semantic: Vec<String>,
     pub entropy_threshold: Option<f32>,
+    pub cel_grammar: Option<String>,
 }
 
 /// The Tier 1: Skill Router
@@ -80,7 +83,7 @@ impl SkillRouter {
     pub fn boot_index(&mut self) -> Result<()> {
         let env = crate::environment::EnvironmentManager::current();
         let active_model = get_active_embedding_model();
-        let target_filename = active_model.map(|m| format!("{}.emb.safetensors", m.replace(":", "-")));
+        let target_filename = active_model.map(|m| format!("{}.emb.safetensors", m.replace(":", "-").replace("/", "-").replace("\\", "-")));
 
         for base_dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
             if !base_dir.exists() { continue; }
@@ -89,12 +92,22 @@ impl SkillRouter {
                     let path = entry.path();
                     
                     if path.is_dir() {
-                let manifest_path = path.join("manifest.json");
                 let skill_md_path = path.join("SKILL.md");
+                let ext_yaml_path = path.join("manifest-extension.yaml");
+                let plugin_yaml_path = path.join("manifest-plugin.yaml");
+                let mcp_yaml_path = path.join("manifest-mcp.yaml");
                 
-                let parsed_manifest = if manifest_path.exists() {
-                    if let Ok(content) = fs::read_to_string(&manifest_path) {
-                        serde_json::from_str::<SkillManifest>(&content).ok()
+                let parsed_manifest = if ext_yaml_path.exists() {
+                    if let Ok(content) = fs::read_to_string(&ext_yaml_path) {
+                        serde_yaml::from_str::<SkillManifest>(&content).ok()
+                    } else { None }
+                } else if plugin_yaml_path.exists() {
+                    if let Ok(content) = fs::read_to_string(&plugin_yaml_path) {
+                        serde_yaml::from_str::<SkillManifest>(&content).ok()
+                    } else { None }
+                } else if mcp_yaml_path.exists() {
+                    if let Ok(content) = fs::read_to_string(&mcp_yaml_path) {
+                        serde_yaml::from_str::<SkillManifest>(&content).ok()
                     } else { None }
                 } else if skill_md_path.exists() {
                     if let Ok(content) = fs::read_to_string(&skill_md_path) {
@@ -133,7 +146,11 @@ impl SkillRouter {
                                     let mut source_time = None;
                                     if let Ok(m) = std::fs::metadata(&skill_md_path) {
                                         if let Ok(t) = m.modified() { source_time = Some(t); }
-                                    } else if let Ok(m) = std::fs::metadata(&manifest_path) {
+                                    } else if let Ok(m) = std::fs::metadata(&ext_yaml_path) {
+                                        if let Ok(t) = m.modified() { source_time = Some(t); }
+                                    } else if let Ok(m) = std::fs::metadata(&plugin_yaml_path) {
+                                        if let Ok(t) = m.modified() { source_time = Some(t); }
+                                    } else if let Ok(m) = std::fs::metadata(&mcp_yaml_path) {
                                         if let Ok(t) = m.modified() { source_time = Some(t); }
                                     }
                                     
@@ -146,20 +163,28 @@ impl SkillRouter {
                                 }
                                 
                                 if is_valid {
-                                    if let Ok(bytes) = fs::read(&emb_path) {
-                                        if let Ok(st) = safetensors::SafeTensors::deserialize(&bytes) {
-                                            if let Ok(tensor) = st.tensor("embedding") {
-                                                let floats: Vec<f32> = tensor.data()
-                                                    .chunks_exact(4)
-                                                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
-                                                    .collect();
-                                                self.skill_vectors.insert(norm_path.clone(), floats);
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    let _ = fs::remove_file(&emb_path);
-                                }
+                                     if let Ok(file) = std::fs::File::open(&emb_path) {
+                                         if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                                             if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
+                                                 if let Ok(tensor) = st.tensor("embedding") {
+                                                     let data = tensor.data();
+                                                     if !data.is_empty() && data.len() % 4 == 0 {
+                                                         let floats: Vec<f32> = data
+                                                             .chunks_exact(4)
+                                                             .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+                                                             .collect();
+                                                         self.skill_vectors.insert(norm_path.clone(), floats);
+                                                     }
+                                                 }
+                                             }
+                                         }
+                                     }
+                                     if !self.skill_vectors.contains_key(&norm_path) {
+                                         let _ = fs::remove_file(&emb_path);
+                                     }
+                                 } else {
+                                     let _ = fs::remove_file(&emb_path);
+                                 }
                             }
                         }
                     }

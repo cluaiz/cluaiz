@@ -1,0 +1,27 @@
+{
+  "execution_trace": {
+    "1_initial_trigger_stream": "\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER<TRIGGER:extension:cluaiz-search>{\"query\": \"Cluaiz.com web search\"}\n</TRIGGER\n\n[DONE]\n",
+    "2_engine_interception": {
+      "extracted_payload": null,
+      "log": "",
+      "matched_skill": ""
+    },
+    "3_tool_execution_result": null,
+    "4_engine_resume": {
+      "log": ""
+    },
+    "5_final_answer_stream": ""
+  },
+  "final_output": "",
+  "hardware_usage": {
+    "note": "Metrics logged locally by engine."
+  },
+  "search_extension_payload": null,
+  "test_metadata": {
+    "description": "Engine natively intercepted <TRIGGER>, executed tool, injected payload, and AI synthesized final answer.",
+    "model": "default",
+    "total_elapsed_sec": 198.3642120361328,
+    "user_prompt": "what is cluaiz tell me about web search cluaiz.com"
+  },
+  "test_type": "SINGLE_PASS_ARCHITECTURE_E2E"
+}

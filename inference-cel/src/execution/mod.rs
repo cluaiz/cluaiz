@@ -1,4 +1,5 @@
 pub mod wasm_sandbox;
+pub mod process_sandbox;
 pub mod memory_hooks; // kept for now — see note below
 pub mod native_sandbox;
 pub mod auto_wasm_compiler;

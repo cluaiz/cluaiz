@@ -246,19 +246,30 @@ impl CoreRouter {
         if let Ok(mut skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
             let _ = skill_router.boot_index();
             let mut new_vectors = Vec::new();
-            let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-");
+            let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-").replace("/", "-").replace("\\", "-");
 
             for (id, skill_manifest) in &skill_router.loaded_manifests {
                 let mut skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
+                let env = cluaiz_shared::environment::EnvironmentManager::current();
+                
                 if let Some(skill) = self.foundry.registry.skills.iter().find(|s| s.manifest.id == *id) {
                     skill_path = skill.path.clone();
+                } else {
+                    for base_dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+                        let possible_path = base_dir.join(&skill_manifest.name);
+                        if possible_path.exists() {
+                            skill_path = possible_path;
+                            break;
+                        }
+                    }
                 }
                 let cache_dir = skill_path.join(".cache");
-                let emb_path = cache_dir.join(format!("{}.emb.bin", safe_filename));
+                let emb_path = cache_dir.join(format!("{}.emb.safetensors", safe_filename));
                 let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
-                let has_vector = skill_router.skill_vectors.contains_key(&norm_skill_path);
+                let has_vector = skill_router.skill_vectors.get(&norm_skill_path).map_or(false, |v| !v.is_empty());
+                let cache_file_valid = emb_path.exists() && std::fs::metadata(&emb_path).map(|m| m.len()).unwrap_or(0) > 0;
 
-                if !has_vector || !emb_path.exists() {
+                if !has_vector || !cache_file_valid {
                     cluaiz_shared::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
                     let mut combined_vec = Vec::new();
                     
@@ -277,11 +288,25 @@ impl CoreRouter {
                     let _ = std::fs::create_dir_all(&cache_dir);
                     if !combined_vec.is_empty() {
                         let data_bytes = unsafe { std::slice::from_raw_parts(combined_vec.as_ptr() as *const f32 as *const u8, combined_vec.len() * 4) };
-                        if let Ok(_) = std::fs::write(&emb_path, data_bytes) {
-                            new_vectors.push((norm_skill_path, combined_vec));
+                        if let Ok(view) = safetensors::tensor::TensorView::new(
+                            safetensors::tensor::Dtype::F32, 
+                            vec![combined_vec.len()], 
+                            data_bytes
+                        ) {
+                            let mut metadata = std::collections::HashMap::new();
+                            metadata.insert("model".to_string(), safe_filename.clone());
+                            
+                            match safetensors::serialize_to_file(
+                                vec![("embedding", view)], 
+                                Some(metadata), 
+                                &emb_path
+                            ) {
+                                Ok(_) => { new_vectors.push((norm_skill_path, combined_vec)); },
+                                Err(e) => { cluaiz_shared::dev_info!("❌ Failed to write vector cache to {}: {}", emb_path.display(), e); },
+                            }
                         }
                     } else {
-                        let _ = std::fs::write(&emb_path, b""); // Write dummy to stop endless retry loop
+                        cluaiz_shared::dev_info!("⚠️ Failed to generate vector (embedding engine returned empty). Skipping cache write.");
                     }
                 }
             }
@@ -464,13 +489,15 @@ impl CoreRouter {
                         if expanded_ctx <= self.hardware_n_ctx {
                             cluaiz_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
                             
-                            // Unpack safetensors to temporary .bin for llama.cpp loading
-                            let temp_bin = cache_path.with_extension("bin");
+                            // Unpack safetensors to temporary .temp_state for llama.cpp loading
+                            let temp_bin = cache_path.with_extension("temp_state");
                             if let Ok(file) = std::fs::File::open(&cache_path) {
                                 if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
                                     if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
-                                        if let Ok(tensor) = st.tensor("llama_state") {
-                                            let _ = std::fs::write(&temp_bin, tensor.data());
+                                        if let Some(first_name) = st.names().first() {
+                                            if let Ok(tensor) = st.tensor(first_name) {
+                                                let _ = std::fs::write(&temp_bin, tensor.data());
+                                            }
                                         }
                                     }
                                 }
@@ -526,6 +553,8 @@ impl CoreRouter {
                         locks.insert(cache_path.clone());
                     }
                     
+                    let backend_name_clone = self.active_backend_name.clone();
+                    
                     rt.spawn(async move {
                         let _guard = CompilationGuard { path: cache_path_clone.clone() };
                         use cluaiz_shared::{cluaizContext, StructuralDNA, UnifiedBackend, cluaizInference};
@@ -539,14 +568,44 @@ impl CoreRouter {
                         
                         if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
                             &path_clone.to_string_lossy(),
-                            "llama", 
+                            &backend_name_clone, 
                             ctx,
                             Some(booster)
                         ).await {
-                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", skill_content_clone.len() / 3);
-                            if bg_engine.prefill(&skill_content_clone).is_ok() {
-                                let _ = bg_engine.dump_kv_cache(&cache_path_clone.to_string_lossy());
-                                cluaiz_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and dumped successfully.");
+                            let prefill_prompt = if skill_content_clone.starts_with("<|begin_of_text|>") {
+                                skill_content_clone.clone()
+                            } else {
+                                format!(
+                                    "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>\n",
+                                    skill_content_clone
+                                )
+                            };
+                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", prefill_prompt.len() / 3);
+                            if bg_engine.prefill(&prefill_prompt).is_ok() {
+                                let bin_path = cache_path_clone.with_extension("temp_state");
+                                if bg_engine.dump_kv_cache(&bin_path.to_string_lossy()).is_ok() {
+                                    if let Ok(bytes) = std::fs::read(&bin_path) {
+                                        if let Ok(view) = safetensors::tensor::TensorView::new(
+                                            safetensors::tensor::Dtype::U8, 
+                                            vec![bytes.len()], 
+                                            &bytes
+                                        ) {
+                                            let mut metadata = std::collections::HashMap::new();
+                                            metadata.insert("model".to_string(), backend_name_clone.clone());
+                                            metadata.insert("tokens".to_string(), (prefill_prompt.len() / 3).to_string());
+                                            
+                                            let state_key = format!("{}_state", backend_name_clone);
+                                            if safetensors::serialize_to_file(
+                                                vec![(&state_key, view)], 
+                                                Some(metadata), 
+                                                &cache_path_clone
+                                            ).is_ok() {
+                                                let _ = std::fs::remove_file(bin_path);
+                                                cluaiz_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and saved as safetensors successfully.");
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -561,7 +620,7 @@ impl CoreRouter {
             for skill_id in &matched_skill_ids {
                 if let Some(skill) = self.foundry.registry.skills.iter().find(|s| &s.manifest.id == skill_id) {
                     let cache_dir = skill.path.join(".cache");
-                    let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
+                    let kv_cache_path = cache_dir.join(format!("{}.kvcache.safetensors", gen_model_safe));
                     if kv_cache_path.exists() {
                         // Check if the skill's token count exceeds what the main engine can actually load
                         let skill_tokens_est = skill.manifest.Core_metadata.as_ref()
@@ -578,12 +637,14 @@ impl CoreRouter {
                             self.last_route_decision = Some(RouteDecision::WarmCacheHit { skill_id: skill_id.clone() });
                         }
                         
-                        let temp_bin = kv_cache_path.with_extension("bin");
+                        let temp_bin = kv_cache_path.with_extension("temp_state");
                         if let Ok(file) = std::fs::File::open(&kv_cache_path) {
                             if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
                                 if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
-                                    if let Ok(tensor) = st.tensor("llama_state") {
-                                        let _ = std::fs::write(&temp_bin, tensor.data());
+                                    if let Some(first_name) = st.names().first() {
+                                        if let Ok(tensor) = st.tensor(first_name) {
+                                            let _ = std::fs::write(&temp_bin, tensor.data());
+                                        }
                                     }
                                 }
                             }
@@ -592,6 +653,13 @@ impl CoreRouter {
                         if let Err(e) = self.active_backend.load_kv_cache(&temp_bin.to_string_lossy()) {
                             cluaiz_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
                             let _ = self.active_backend.prefill("");
+                        } else {
+                            // Inject the skill description into responses so the prompt prefix matches the KV prefill!
+                            if let Some(content) = crate::neural_foundry::extract_skill_body(&skill.path) {
+                                intent_result.responses.push(content);
+                            } else {
+                                intent_result.responses.push(skill.manifest.description.clone());
+                            }
                         }
                         
                         let _ = std::fs::remove_file(temp_bin);
@@ -613,11 +681,19 @@ impl CoreRouter {
                 
                 if !intent_result.responses.is_empty() {
                     let tool_context = intent_result.responses.join("\n\n");
-                    formatted_prompt = format!(
-                        "<system>\nYou have access to the following skills/tools. Read their documentation carefully and use them if needed to fulfill the user's request. Output valid JSON to use a tool if instructed by the skill documentation:\n\n{}\n</system>\n\n{}", 
-                        tool_context, 
-                        formatted_prompt
-                    );
+                    if prompt.starts_with("<|begin_of_text|>") {
+                        formatted_prompt = prompt.replacen(
+                            "<|begin_of_text|>",
+                            &format!("<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>", tool_context),
+                            1
+                        );
+                    } else {
+                        formatted_prompt = format!(
+                            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n{}<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n", 
+                            tool_context, 
+                            prompt
+                        );
+                    }
                     cluaiz_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
                 }
 
@@ -636,112 +712,243 @@ impl CoreRouter {
                     let mut buffer_cache = String::new();
                     let mut json_buffer = String::new();
                     let mut capture = false;
-                    
+                    let mut dynamic_triggers: Vec<String> = Vec::new();
+                    if let Ok(skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+                        for skill_id in &matched_skill_ids {
+                            if let Some(manifest) = skill_router.loaded_manifests.get(skill_id) {
+                                if let Some(grammar) = &manifest.triggers.cel_grammar {
+                                    dynamic_triggers.push(grammar.clone());
+                                }
+                            }
+                        }
+                    }
+
                     let interceptor = Box::new(move |token: String| {
                         let mut cb_guard = cb_clone.lock().unwrap();
                         
                         buffer_cache.push_str(&token);
-                        
+
+                        // If we are currently capturing a macro (because a dynamic trigger matched partially)
                         if capture {
                             json_buffer.push_str(&token);
-                        } else if let Some(idx) = buffer_cache.find("<TRIGGER:") {
-                            capture = true;
-                            json_buffer.push_str(&buffer_cache[idx..]);
-                            let prefix = buffer_cache[..idx].to_string();
-                            buffer_cache.clear();
-                            if !prefix.is_empty() {
-                                let _ = (*cb_guard)(prefix);
-                            }
                         } else {
-                            let trigger_target = "<TRIGGER:";
-                            let mut partial_match_idx = None;
-                            
-                            for (i, _) in buffer_cache.char_indices() {
-                                let suffix = &buffer_cache[i..];
-                                if trigger_target.starts_with(suffix) {
-                                    partial_match_idx = Some(i);
+                            // Check if buffer contains any full dynamic trigger
+                            let mut found_trigger = None;
+                            for dt in &dynamic_triggers {
+                                // Extract the prefix before the '->' or '{' (e.g., "use extension::cluaiz-search")
+                                let base_trigger = dt.split("->").next().unwrap_or(dt).split('{').next().unwrap_or(dt).trim();
+                                if let Some(idx) = buffer_cache.find(base_trigger) {
+                                    found_trigger = Some((idx, base_trigger.to_string()));
                                     break;
                                 }
                             }
-                            
-                            if let Some(idx) = partial_match_idx {
-                                if idx > 0 {
-                                    let text_to_flush = buffer_cache[..idx].to_string();
-                                    let new_buffer = buffer_cache[idx..].to_string();
-                                    buffer_cache = new_buffer;
-                                    let _ = (*cb_guard)(text_to_flush);
-                                }
-                                return true; // Wait for more tokens
-                            } else {
-                                let text = buffer_cache.clone();
+
+                            if let Some((idx, dt)) = found_trigger {
+                                capture = true;
+                                json_buffer.push_str(&buffer_cache[idx..]);
+                                let prefix = buffer_cache[..idx].to_string();
                                 buffer_cache.clear();
-                                return (*cb_guard)(text);
+                                if !prefix.is_empty() {
+                                    let _ = (*cb_guard)(prefix);
+                                }
+                            } else {
+                                // Check for partial matches
+                                let mut partial_match_idx = None;
+                                for dt in &dynamic_triggers {
+                                    let base_trigger = dt.split("->").next().unwrap_or(dt).split('{').next().unwrap_or(dt).trim();
+                                    for (i, _) in buffer_cache.char_indices() {
+                                        let suffix = &buffer_cache[i..];
+                                        if base_trigger.starts_with(suffix) {
+                                            partial_match_idx = Some(i);
+                                            break;
+                                        }
+                                    }
+                                    if partial_match_idx.is_some() {
+                                        break;
+                                    }
+                                }
+                                
+                                // Legacy check for <TRIGGER: just in case it is forced
+                                if partial_match_idx.is_none() {
+                                    let trigger_target = "<TRIGGER:";
+                                    if let Some(idx) = buffer_cache.find(trigger_target) {
+                                        capture = true;
+                                        json_buffer.push_str(&buffer_cache[idx..]);
+                                        let prefix = buffer_cache[..idx].to_string();
+                                        buffer_cache.clear();
+                                        if !prefix.is_empty() {
+                                            let _ = (*cb_guard)(prefix);
+                                        }
+                                    } else {
+                                        for (i, _) in buffer_cache.char_indices() {
+                                            let suffix = &buffer_cache[i..];
+                                            if trigger_target.starts_with(suffix) {
+                                                partial_match_idx = Some(i);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                if let Some(idx) = partial_match_idx {
+                                    if idx > 0 {
+                                        let text_to_flush = buffer_cache[..idx].to_string();
+                                        let new_buffer = buffer_cache[idx..].to_string();
+                                        buffer_cache = new_buffer;
+                                        let _ = (*cb_guard)(text_to_flush);
+                                    }
+                                    return true; // Wait for more tokens
+                                } else {
+                                    let text = buffer_cache.clone();
+                                    buffer_cache.clear();
+                                    return (*cb_guard)(text);
+                                }
                             }
                         }
                         
-                        if capture && json_buffer.contains(">") {
-                            // Find the closing bracket
-                            if let Some(end_idx) = json_buffer.find('>') {
-                                let trigger_str = &json_buffer[..=end_idx];
-                                // Parse <TRIGGER:{type}:{tool_name}>
-                                if trigger_str.starts_with("<TRIGGER:") {
-                                    let content = trigger_str.trim_start_matches("<TRIGGER:").trim_end_matches(">");
-                                    let parts: Vec<&str> = content.split(':').collect();
+                        let is_complete = if json_buffer.starts_with("<TRIGGER:") {
+                            json_buffer.contains("</TRIGGER")
+                        } else if json_buffer.contains('{') {
+                            json_buffer.contains('}')
+                        } else {
+                            json_buffer.contains('\n') || json_buffer.contains('>')
+                        };
+                        
+                        if capture && is_complete {
+                            // If it's a Sovereign trigger
+                            if json_buffer.starts_with("<TRIGGER:") && json_buffer.contains("</TRIGGER") {
+                                if let Some(header_end) = json_buffer.find('>') {
+                                    let header = &json_buffer[..header_end];
+                                    let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
+                                    let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
                                     let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                                    
+                                    let json_start = header_end + 1;
+                                    let json_end = json_buffer.find("</TRIGGER").unwrap_or(json_buffer.len());
+                                    let payload = json_buffer[json_start..json_end].trim().to_string();
                                     
                                     let mut state = tool_state_clone.lock().unwrap();
                                     state.0 = true;
-                                    state.1 = t_name.to_string();
+                                    state.1 = format!("{}:{}", t_type, t_name);
+                                    state.2 = payload; 
                                     
-                                    // For now, payload is just empty JSON since we use semantic routing for params
-                                    state.2 = "{}".to_string(); 
-                                    
-                                    let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Engine intercepted tool trigger for '{}'...\n", t_name));
+                                    let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Engine intercepted tool execution for '{}'...\n", t_name));
                                     return false; // STOP generation
                                 }
+                            } else {
+                                // Dynamic CEL script execution interceptor!
+                                let clean_cel = json_buffer.trim().to_string();
+                                
+                                let mut state = tool_state_clone.lock().unwrap();
+                                state.0 = true;
+                                state.1 = "DYNAMIC_CEL".to_string();
+                                state.2 = clean_cel.clone(); 
+                                
+                                let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Orchestrating CEL macro: {}\n", clean_cel));
+                                return false; // STOP generation
                             }
+                            
                             // if not valid, flush and reset
                             let flushed = json_buffer.clone();
                             capture = false;
                             json_buffer.clear();
-                            return (*cb_guard)(flushed);
+                            let _ = (*cb_guard)(flushed);
                         }
                         
-                        true // continue streaming
+                        true
                     });
                     
                     if let Err(e) = b.generate_stream(&current_prompt, max_tokens, interceptor) {
                         return Err(e.to_string());
                     }
                     
-                    let (was_called, t_name, t_payload) = {
+                    let (was_called, mut t_name, t_payload) = {
                         let state = tool_state.lock().unwrap();
                         (state.0, state.1.clone(), state.2.clone())
                     };
                     
                     if was_called {
-                        // Execute tool via UnifiedExecutor!
-                        use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
-                        let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                        let ext_payload = ExtensionPayload::new(PayloadType::Json, t_payload.as_bytes());
-                        
                         let mut result_str = String::new();
-                        match executor.execute(&t_name, &ext_payload) {
-                            Ok(bytes) => {
-                                result_str = String::from_utf8_lossy(&bytes).to_string();
-                                let mut cb_guard = cb.lock().unwrap();
-                                let _ = (cb_guard)(format!("✅ [Agentic Pause] Result injected into context window.\n\n"));
-                            },
-                            Err(e) => {
-                                result_str = format!("Error executing {}: {}", t_name, e);
-                                let mut cb_guard = cb.lock().unwrap();
-                                let _ = (cb_guard)(format!("❌ [Agentic Pause] Failed: {}\n\n", e));
+                        
+                        if t_name == "DYNAMIC_CEL" {
+                            let clean_cel = t_payload.clone();
+                            if let Ok(ast) = inference_cel::parser::lexer::parse(&clean_cel) {
+                                let planner = inference_cel::parser::planner::CelPlanner::new();
+                                if let Ok(plan) = planner.build_plan(&ast) {
+                                    // Internal execute function directly in Router!
+                                    let mut exec_result = String::new();
+                                    for block in plan.blocks {
+                                        match block {
+                                            inference_cel::parser::planner::PlanBlock::Pipeline(pipeline_plan) => {
+                                                for step in pipeline_plan.steps {
+                                                    match step {
+                                                        inference_cel::parser::planner::PlanStep::ExecuteAction { method, args } => {
+                                                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                                                            use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType, Transpiler};
+                                                            let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
+                                                            let ext_payload = ExtensionPayload::new(PayloadType::Bincode, &binary_args);
+                                                            match executor.execute(&method, &ext_payload) {
+                                                                Ok(bytes) => exec_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
+                                                                Err(e) => exec_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
+                                                            }
+                                                        },
+                                                        _ => {
+                                                            exec_result.push_str("[Engine] Unhandled CEL plan step.\n");
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            _ => {
+                                                exec_result.push_str("[Engine] Unhandled complex CEL block.\n");
+                                            }
+                                        }
+                                    }
+                                    
+                                    result_str = exec_result;
+                                    let mut cb_guard = cb.lock().unwrap();
+                                    let _ = (cb_guard)(format!("✅ [Agentic Pause] Tool output injected into kernel!\n\n"));
+                                } else {
+                                    result_str = format!("[Error] Failed to build CEL execution plan.");
+                                }
+                            } else {
+                                result_str = format!("[Error] Failed to parse CEL macro AST.");
                             }
+                        } else {
+                            // Legacy execution path (Sovereign format)
+                            let mut t_type = "extension";
+                            let mut actual_name = t_name.as_str();
+                            if let Some((parsed_type, parsed_name)) = t_name.split_once(':') {
+                                t_type = parsed_type;
+                                actual_name = parsed_name;
+                            }
+                            
+                            use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                            let ext_payload = ExtensionPayload::new(PayloadType::Json, t_payload.as_bytes());
+                            
+                            match executor.execute(actual_name, &ext_payload) {
+                                Ok(bytes) => {
+                                    result_str = String::from_utf8_lossy(&bytes).to_string();
+                                    let mut cb_guard = cb.lock().unwrap();
+                                    let _ = (cb_guard)(format!("✅ [Agentic Pause] Result injected into context window.\n\n<TOOL_OUTPUT_LOG>{}</TOOL_OUTPUT_LOG>\n", result_str));
+                                },
+                                Err(e) => {
+                                    result_str = format!("Error executing {}: {}", actual_name, e);
+                                    let mut cb_guard = cb.lock().unwrap();
+                                    let _ = (cb_guard)(format!("❌ [Agentic Pause] Failed: {}\n\n<TOOL_OUTPUT_LOG>{}</TOOL_OUTPUT_LOG>\n", e, result_str));
+                                }
+                            }
+                            
+                            // Replace t_name with the properly formatted string for the resume tag
+                            t_name = format!("{}:{}", t_type, actual_name);
                         }
                         
-                        // Append to current_prompt and generate again
-                        current_prompt = format!("{}\n\n<tool_call>\n{}\n</tool_call>\n\n<tool_result>\n{}\n</tool_result>\n\nContinue your response to the user:", 
-                            current_prompt, t_payload, result_str);
+                        // 🚀 SOVEREIGN KV-CACHE RESUME
+                        // We do NOT re-insert the full prompt. We use [PIVOT_CONTINUE] to seamlessly append the tool result to the existing KV-Cache.
+                        current_prompt = format!(
+                            "[PIVOT_CONTINUE]\n<result:{}>\n{}\n</result>\n",
+                            t_name, result_str
+                        );
                         
                     } else {
                         break; // Normal generation finished without tools
@@ -841,9 +1048,17 @@ pub fn agentic_pause_compile_cache(
                     ctx,
                     Some(booster)
                 ).await {
-                    cluaiz_shared::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, skill_content_clone.len() / 3);
-                    if bg_engine.prefill(&skill_content_clone).is_ok() {
-                        let bin_path = cache_path_clone.with_extension("bin");
+                    let prefill_prompt = if skill_content_clone.starts_with("<|begin_of_text|>") {
+                        skill_content_clone.clone()
+                    } else {
+                        format!(
+                            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>\n",
+                            skill_content_clone
+                        )
+                    };
+                    cluaiz_shared::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, prefill_prompt.len() / 3);
+                    if bg_engine.prefill(&prefill_prompt).is_ok() {
+                        let bin_path = cache_path_clone.with_extension("temp_state");
                         if bg_engine.dump_kv_cache(&bin_path.to_string_lossy()).is_ok() {
                             // Wrap bin_path into safetensors and save to cache_path_clone
                             if let Ok(bytes) = std::fs::read(&bin_path) {
@@ -853,11 +1068,12 @@ pub fn agentic_pause_compile_cache(
                                     &bytes
                                 ) {
                                     let mut metadata = std::collections::HashMap::new();
-                                    metadata.insert("model".to_string(), backend_name);
-                                    metadata.insert("tokens".to_string(), (skill_content_clone.len() / 3).to_string());
+                                    metadata.insert("model".to_string(), backend_name.clone());
+                                    metadata.insert("tokens".to_string(), (prefill_prompt.len() / 3).to_string());
                                     
+                                    let state_key = format!("{}_state", backend_name);
                                     if safetensors::serialize_to_file(
-                                        vec![("llama_state", view)], 
+                                        vec![(&state_key, view)], 
                                         Some(metadata), 
                                         &cache_path_clone
                                     ).is_ok() {

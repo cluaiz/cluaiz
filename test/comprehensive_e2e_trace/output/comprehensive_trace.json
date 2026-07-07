@@ -1,0 +1,35 @@
+{
+  "10_final_output": "\n\n<TRIGGER\n\nBased on the search results, **Cluaiz** (pronounced \"cluiz\") is a high-performance **local AI inference engine and orchestrator**. It is designed to run advanced open-source models directly on your local hardware without relying on external cloud services or API bottlenecks.\n\nHere are the key details about Cluaiz:\n\n*   **Core Purpose**: It bridges the gap between raw hardware capability (GPUs, CPUs) and AI execution by bypassing legacy hypervisors, container layers, and API overheads.\n*   **Hardware Integration**: The engine connects directly to your hardware using compute APIs like CUDA, Metal, and Vulkan. For distributed environments, it supports peer-to-peer memory clustering over a local network.\n*   **Performance Optimization**: Cluaiz dynamically fuses and compiles the computational graph straight into native GPU shaders at runtime. This eliminates interpreter taxes and allows for immediate native execution.\n*   **Underlying Technologies**: It sits natively on top of:\n    *   `llama.cpp` for running Large Language Models (LLMs).\n    *   `ONNX Runtime` for Vision and Embedding models.\n*   **Key Features**:\n    *   **Privacy & Sovereignty**: Runs locally with complete privacy; no data leaves your machine.\n    *   **Simplified Deployment**: Can be deployed via a single command (e.g., PowerShell script).\n    *   **Unified Pipeline**: Handles GGUF downloads and hardware compilation natively.\n    *   **Context Persistence**: Unlike many services that kill the process on stop, Cluaiz allows you to pause the engine while retaining VRAM context.\n*   **License**: It is released under the **Apache License 2.0**.\n\nIn short, if you want to run powerful AI models locally with maximum speed and privacy without the overhead of standard containerized environments, Cluaiz is the specialized runtime engine for that task.\n[DONE]\n",
+  "1_user_sms": "what is cluaiz tell me about web search cluaiz.com",
+  "2_semantic_discovery": {
+    "matched_tool": "cluaiz-search",
+    "registry_matched": true,
+    "score": 0.88
+  },
+  "3_layer_rule_injection": {
+    "injected": true,
+    "rules": "JIT Engine-to-AI Instruction"
+  },
+  "4_ai_reads_sms": true,
+  "5_ai_formulates_plan": {
+    "action_triggered": true,
+    "target_tool": "cluaiz-search"
+  },
+  "6_ai_close_tag_emitted": "",
+  "7_engine_paused": true,
+  "8_tool_execution": {
+    "execution_success": true,
+    "plugin_called": "cluaiz-search",
+    "search_extension_payload": {
+      "query": "cluaiz.com",
+      "status": "success"
+    }
+  },
+  "9_kv_cache_injection_resume": {
+    "injected": true,
+    "resume_triggered": true
+  },
+  "test_metadata": {
+    "elapsed_sec": 104.37055206298828
+  }
+}

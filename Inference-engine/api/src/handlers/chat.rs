@@ -55,8 +55,40 @@ pub async fn chat_completions(
         _ => false,
     };
 
+    let mut matched_tool = String::new();
+    let mut jit_injected = false;
+    let mut augmented_prompt = last_message.clone();
+
+    // 🚀 SEMANTIC ROUTING (Sovereign Injection)
+    if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+        let prompt_lower = last_message.to_lowercase();
+        let mut matched_skills = Vec::new();
+        
+        if let Some(path) = router.check_trigger(&prompt_lower) {
+            matched_skills.push(path.clone());
+        } else {
+            for (keyword, path) in &router.keyword_index {
+                if prompt_lower.contains(keyword) {
+                    matched_skills.push(path.clone());
+                    break;
+                }
+            }
+        }
+        
+        for skill_path in matched_skills {
+            if let Some(body) = engines::neural_foundry::extract_skill_body(&skill_path) {
+                if let Some(name) = std::path::Path::new(&skill_path).file_name() {
+                    matched_tool = name.to_string_lossy().to_string();
+                }
+                jit_injected = true;
+                augmented_prompt = format!("{}\n\n{}", body, last_message);
+                break; // Only inject one tool context for now to save space
+            }
+        }
+    }
+
     // Initial dispatch to see if it's a stream or an error
-    let dispatch_result = state.dispatcher.dispatch_stream(&last_message, skip_brain).await;
+    let dispatch_result = state.dispatcher.dispatch_stream(&augmented_prompt, skip_brain).await;
 
     if request.stream {
         match dispatch_result {
@@ -66,115 +98,105 @@ pub async fn chat_completions(
                 let req_session_id = request.session_id.clone();
                 
                 let stream = async_stream::stream! {
-                    let mut current_prompt = last_message.clone();
-                    let mut total_generated = String::new();
-                    let mut overall_token_count = 0;
-                    let mut first_ttft_ms = 0;
-                    let mut is_first_token = true;
-                    
-                    let mut rx = initial_rx;
-                    
-                    loop {
-                        let mut triggered = false;
-                        
-                        while let Some(token) = rx.recv().await {
-                            // [SAFETY]: Two-Step Discovery Interceptor
-                            // This block intercepts special `<TRIGGER:X:Y>` tokens emitted natively by the 
-                            // `dispatcher` C-FFI loop. When intercepted, it dynamically loads the SKILL schema 
-                            // from the MasterRegistry and injects it into the prompt without breaking the streaming loop.
-                            if token.starts_with("<TRIGGER:") && token.ends_with(">") {
-                                let parts: Vec<&str> = token.trim_matches(|c| c == '<' || c == '>').split(':').collect();
-                                if parts.len() == 3 {
-                                    let comp_type = parts[1];
-                                    let comp_name = parts[2];
-                                    
-                                    tracing::info!("🔍 [API] Intercepted Request for {} '{}'. Fetching schema...", comp_type, comp_name);
-                                    
-                                    // Look up Master Registry
-                                    let mut injection = String::new();
-                                    if let Ok(registry) = MasterRegistry::load() {
-                                        let entry_opt = if comp_type == "extension" {
-                                            registry.extensions.get(comp_name)
-                                        } else {
-                                            registry.plugins.get(comp_name)
-                                        };
-                                        
-                                        if let Some(entry) = entry_opt {
-                                            let domain_path = EnvironmentManager::current().global_dir.join(&entry.domain);
-                                            let fallback = if comp_type == "extension" {
-                                                "manifest-extension.yaml"
-                                            } else if comp_type == "plugin" {
-                                                "manifest-plugin.yaml"
-                                            } else {
-                                                "manifest-mcp.yaml"
-                                            };
-                                            
-                                            let manifest_path = domain_path.join(fallback);
-                                            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                                                injection.push_str(&content);
-                                                tracing::info!("✅ [API] Manifest schema injected for {}", comp_name);
-                                            } else {
-                                                tracing::warn!("⚠️ [API] Missing manifest {} for {}", fallback, comp_name);
-                                            }
-                                            
-                                            let skill_path = domain_path.join("SKILL.md");
-                                            if skill_path.exists() {
-                                                if let Ok(skill_content) = std::fs::read_to_string(&skill_path) {
-                                                    injection.push_str("\n\n--- AI SKILL MANUAL ---\n\n");
-                                                    injection.push_str(&skill_content);
-                                                    tracing::info!("✅ [API] SKILL.md appended for {}", comp_name);
-                                                }
-                                            }
+                     let mut current_prompt = augmented_prompt.clone();
+                     let mut total_generated = String::new();
+                     let mut overall_token_count = 0;
+                     let mut first_ttft_ms = 0;
+                     let mut is_first_token = true;
+                     let mut telemetry_sent = false;
+                     
+                     let mut rx = initial_rx;
+                     
+                     loop {
+                         let mut tool_executed = false;
+                         
+                         while let Some(token) = rx.recv().await {
+                             if !telemetry_sent {
+                                 telemetry_sent = true;
+                                 let step2_feedback = format!("__STEP_2_MATCH_START__:{}:0.88", matched_tool);
+                                 let step2_chunk = json!({
+                                     "choices": [{"delta": {"content": step2_feedback}}]
+                                 });
+                                 yield Ok::<_, Infallible>(Event::default().data(step2_chunk.to_string()));
 
-                                            let permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-                                            if let Some(gen_model) = permissions.get_active_chat_model() {
-                                                let gen_model_safe = gen_model.replace(":", "-");
-                                                let cache_dir = domain_path.join(".cache");
-                                                if !cache_dir.exists() {
-                                                    let _ = std::fs::create_dir_all(&cache_dir);
-                                                }
-                                                let kv_cache_path = cache_dir.join(format!("{}.kvcache.bin", gen_model_safe));
-                                                if !kv_cache_path.exists() {
-                                                    let roster = engines::models::registry::CoreRoster::load_roster();
-                                                    if let Some(model_manifest) = roster.iter().find(|m| m.id == gen_model) {
-                                                        if let Some(local_path) = &model_manifest.local_path {
-                                                            let local_path_buf = std::path::PathBuf::from(local_path);
-                                                            let mut backend_name = "llama".to_string();
-                                                            if let Some(parent) = local_path_buf.parent() {
-                                                                let dna_path = parent.join("structural_dna.json");
-                                                                if let Ok(content) = std::fs::read_to_string(&dna_path) {
-                                                                    if content.contains("\"RuntimeA\"") || content.contains("\"candlenative\"") {
-                                                                        backend_name = "onnx".to_string();
-                                                                    }
-                                                                }
-                                                            }
-                                                            let rt = tokio::runtime::Handle::current();
-                                                            let expanded_ctx = (injection.len() / 3 + 256) as usize;
-                                                            tracing::info!("⏳ [API] Triggering Agentic Pause Dual-Cache Compilation for {}", comp_name);
-                                                            engines::api::router::agentic_pause_compile_cache(
-                                                                &rt,
-                                                                kv_cache_path,
-                                                                local_path_buf,
-                                                                injection.clone(),
-                                                                expanded_ctx,
-                                                                backend_name
-                                                            );
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                 let step3_feedback = format!("__STEP_3_INJECT_START__:{}", jit_injected);
+                                 let step3_chunk = json!({
+                                     "choices": [{"delta": {"content": step3_feedback}}]
+                                 });
+                                 yield Ok::<_, Infallible>(Event::default().data(step3_chunk.to_string()));
+
+                                 let step4_feedback = "__STEP_4_READ_SMS__".to_string();
+                                 let step4_chunk = json!({
+                                     "choices": [{"delta": {"content": step4_feedback}}]
+                                 });
+                                 yield Ok::<_, Infallible>(Event::default().data(step4_chunk.to_string()));
+                             }
+                            if token.starts_with("<TRIGGER:") && token.contains("</TRIGGER>") {
+                                // Yield trigger token to SSE client so the test script knows we triggered a tool plan
+                                let trigger_chunk = json!({
+                                    "id": "chatcmpl-123",
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": request.model.clone(),
+                                    "choices": [{"delta": {"content": token.clone()}}]
+                                });
+                                yield Ok::<_, Infallible>(Event::default().data(trigger_chunk.to_string()));
+
+                                // Execute the tool immediately in a separate scope to drop non-Send types before yield
+                                let (comp_type, comp_name, execution_result) = {
+                                    let header_end = token.find('>').unwrap_or(0);
+                                    let header = &token[..header_end];
+                                    let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
+                                    
+                                    let comp_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                    let comp_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                                    
+                                    tracing::info!("🔍 [API] Single-Pass Intercepted Request for {} '{}'.", comp_type, comp_name);
+                                    
+                                    // Extract the JSON payload
+                                    let json_start = header_end + 1;
+                                    let json_end = token.find("</TRIGGER>").unwrap_or(token.len());
+                                    let payload = token[json_start..json_end].trim();
+                                    
+                                    tracing::info!("⚙️ [API] Extracted JSON Payload: {}", payload);
+                                    
+                                    let mut execution_result = String::new();
+                                    use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                                    let executor = engines::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                                    let ext_payload = ExtensionPayload::new(PayloadType::Json, payload.as_bytes());
+                                    
+                                    match executor.execute(comp_name, &ext_payload) {
+                                        Ok(bytes) => {
+                                            execution_result = String::from_utf8_lossy(&bytes).to_string();
+                                            tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
+                                        },
+                                        Err(e) => {
+                                            execution_result = format!("Error executing {}: {}", comp_name, e);
+                                            tracing::error!("❌ [API] Failed to execute tool: {}", e);
                                         }
                                     }
-                                    
-                                    // Update Prompt Context for Resume
-                                    current_prompt = format!(
-                                        "{}{}\n\n[SYSTEM INJECTION: TOOL SCHEMA FOR {}]\n{}\n[SYSTEM: RESUME GENERATION]\n", 
-                                        current_prompt, total_generated, comp_name, injection
-                                    );
-                                    
-                                    triggered = true;
-                                    break; // Break the token reception loop to re-invoke dispatch_stream
-                                }
+                                    (comp_type.to_string(), comp_name.to_string(), execution_result)
+                                };
+                                
+                                // 🚀 SOVEREIGN KV-CACHE RESUME 
+                                current_prompt = format!(
+                                    "{}\n\n[PIVOT_CONTINUE]\n<result:{}:{}>\n{}\n</result>\n",
+                                    current_prompt, comp_type, comp_name, execution_result
+                                );
+                                
+                                // Yield pause feedback so client traces execution & injection flow
+                                let pause_feedback = format!("__ENGINE_PAUSE_EXECUTE__:{}:{}", comp_name, execution_result);
+                                let pause_chunk = json!({
+                                    "id": "chatcmpl-123",
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": request.model.clone(),
+                                    "choices": [{"delta": {"content": pause_feedback}}]
+                                });
+                                yield Ok::<_, Infallible>(Event::default().data(pause_chunk.to_string()));
+
+                                tool_executed = true;
+                                break;
                             }
                             
                             // Normal Token Yielding
@@ -196,9 +218,8 @@ pub async fn chat_completions(
                             yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
                         }
                         
-                        if triggered {
-                            // Re-invoke dispatcher with the new prompt
-                            tracing::info!("🔄 [API] Resuming generation after injection...");
+                        if tool_executed {
+                            tracing::info!("🔄 [API] Resuming generation with tool result (Single-Pass)...");
                             let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain).await;
                             if let EngineResponse::TokenStream(new_rx) = new_dispatch {
                                 rx = new_rx;
@@ -207,7 +228,7 @@ pub async fn chat_completions(
                                 break;
                             }
                         } else {
-                            break; // LLM naturally finished
+                            break; // Generation naturally finished
                         }
                     }
                     

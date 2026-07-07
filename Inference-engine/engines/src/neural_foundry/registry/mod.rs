@@ -6,6 +6,7 @@ pub mod compiler_daemon;
 pub mod parser;
 pub mod hub_installer;
 pub mod download_manager;
+pub mod injectors;
 
 // ── Phase A: Two-Tier Registry Architecture ──
 // Master registry index (registry.yaml ↔ registry.bin) and lazy-load event bus
@@ -21,7 +22,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ComputationalBudget {
     #[serde(default)]
     pub token_length: usize,
@@ -31,20 +32,25 @@ pub struct ComputationalBudget {
     pub injection_layers: Vec<usize>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SkillManifest {
     #[serde(default)]
     pub id: String,
+    #[serde(alias = "title", default)]
     pub name: String,
     #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub version: String,
     #[serde(default)]
     pub author: String,
+    #[serde(default)]
     pub description: String,
     #[serde(default)]
     pub keywords: Vec<String>,
+    #[serde(alias = "discovery", default)]
     pub triggers: Triggers,
+    #[serde(alias = "permissions", default)]
     pub permissions: Permissions,
     #[serde(default)]
     pub computational_budget: Option<ComputationalBudget>,
@@ -56,15 +62,16 @@ pub struct SkillManifest {
     pub Core_metadata: Option<CoreMetadata>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CoreMetadata {
     pub token_count: usize,
     pub head_dim: usize,
     pub layer_count: Option<usize>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Triggers {
+    #[serde(alias = "semantic_triggers", default)]
     pub semantic: Vec<String>,
     pub entropy_threshold: Option<f32>,
     #[serde(default)]
@@ -73,10 +80,13 @@ pub struct Triggers {
     pub cooldown_on_failure_tokens: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Permissions {
+    #[serde(default)]
     pub level: String,
+    #[serde(alias = "network_access", default)]
     pub network: bool,
+    #[serde(default)]
     pub filesystem: bool,
     #[serde(default)]
     pub mcp_servers: Vec<String>,
@@ -109,12 +119,12 @@ pub struct SchemaField {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExtensionDiscovery {
     pub semantic_triggers: Vec<String>,
-    pub cel_grammar: String,
+    pub cel_grammar: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExtensionActivation {
-    pub lazy_load: bool,
+    pub lazy_load: Option<bool>,
     pub trigger_on: Vec<String>,
 }
 
@@ -130,10 +140,10 @@ pub struct ExtensionPermissions {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExtensionExecution {
-    pub envelope: String,
-    pub entry_point: String,
-    pub payload_format: String,
-    pub binary_path: String,
+    pub envelope: Option<String>,
+    pub entry_point: Option<String>,
+    pub payload_format: Option<String>,
+    pub binary_path: Option<String>,
 }
 
 pub struct Skill {

@@ -204,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "Cluaiz Technologies cluaiz.com products", 
                 10, 
                 None, 
-                "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", 
+                "tvly-dev-26Tb0L-", 
                 "tavily", 
                 false, 
                 "short"
@@ -349,3 +349,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+

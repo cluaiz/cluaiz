@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use anyhow::{Result, anyhow};
-use inference_cel::execution::{native_sandbox::NativeExecutor, wasm_sandbox::WasmExecutor};
+use inference_cel::execution::{native_sandbox::NativeExecutor, wasm_sandbox::WasmExecutor, process_sandbox::ProcessExecutor};
 use inference_cel::ffi::cxp_ffi::{ExtensionPayload, Transpiler};
 use crate::neural_foundry::registry::registry_index::MasterRegistry;
 use inference_cel::parser::metadata_parser::IntegrationMetadata;
@@ -12,6 +12,7 @@ use cluaiz_shared::environment::EnvironmentManager;
 pub struct UnifiedExecutor {
     native_exec: NativeExecutor,
     wasm_exec: WasmExecutor,
+    process_exec: ProcessExecutor,
 }
 
 impl Default for UnifiedExecutor {
@@ -25,6 +26,7 @@ impl UnifiedExecutor {
         Self {
             native_exec: NativeExecutor::new(),
             wasm_exec: WasmExecutor::new(),
+            process_exec: ProcessExecutor::new(),
         }
     }
 
@@ -162,6 +164,14 @@ impl UnifiedExecutor {
                     payload_bytes,
                     &cel_rules
                 ).map_err(|e| anyhow!("WASM Execution Error: {}", e))
+            }
+            "PROCESS" => {
+                tracing::info!("⚙️ [UnifiedExecutor] Routing {} to OS PROCESS Sandbox", plugin_name);
+                self.process_exec.execute_with_rules(
+                    &binary_path_str,
+                    &injected_payload,
+                    &cel_rules
+                ).map_err(|e| anyhow!("Process Execution Error: {}", e))
             }
             other => Err(anyhow!("Unsupported execution envelope: {}", other))
         }

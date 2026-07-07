@@ -138,27 +138,8 @@ impl PermissionSchema {
 
     /// Automatically scans installed models and assigns defaults if null
     pub fn auto_assign_defaults(&mut self) {
-        let mut changed = false;
-        
-        if self.vector_models.text.is_none() || self.chat_models.text.is_none() {
-            let roster = crate::models::registry::CoreRoster::load_roster();
-            for model in roster {
-                // If it's ONNX or an embedding model, assign to vector_models
-                if self.vector_models.text.is_none() && (model.architecture_type == "onnx" || model.category == "embedding") {
-                    self.vector_models.text = Some(model.id.clone());
-                    changed = true;
-                }
-                // If it's a chat/generative model, assign to chat_models
-                else if self.chat_models.text.is_none() && (model.architecture_type != "onnx" && model.category != "embedding") {
-                    self.chat_models.text = Some(model.id.clone());
-                    changed = true;
-                }
-            }
-        }
-
-        if changed {
-            self.save();
-        }
+        // [User Request]: Disabled automatic model assignment. 
+        // Models will remain null by default until explicitly set by the user via CLI or UI.
     }
     
     pub fn get_active_chat_model(&self) -> Option<String> {

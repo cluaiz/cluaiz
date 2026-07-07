@@ -37,16 +37,23 @@ impl SkillRouter {
             let threshold = skill.manifest.triggers.entropy_threshold.unwrap_or(0.70);
 
             // Try loading cached skill embedding
-            let cache_path = skill.path.join(".cache").join(format!("{}.emb.bin", safe_filename));
+            let cache_path = skill.path.join(".cache").join(format!("{}.emb.safetensors", safe_filename));
             let mut cached_floats = None;
             if cache_path.exists() {
-                if let Ok(bytes) = std::fs::read(&cache_path) {
-                    if bytes.len() % 4 == 0 {
-                        let floats: Vec<f32> = bytes
-                            .chunks_exact(4)
-                            .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
-                            .collect();
-                        cached_floats = Some(floats);
+                if let Ok(file) = std::fs::File::open(&cache_path) {
+                    if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                        if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
+                            if let Ok(tensor) = st.tensor("embedding") {
+                                let data = tensor.data();
+                                if data.len() % 4 == 0 {
+                                    let floats: Vec<f32> = data
+                                        .chunks_exact(4)
+                                        .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+                                        .collect();
+                                    cached_floats = Some(floats);
+                                }
+                            }
+                        }
                     }
                 }
             }

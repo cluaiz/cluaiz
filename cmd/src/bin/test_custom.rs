@@ -11,7 +11,7 @@ fn skill_kv_path(skills_dir: &PathBuf, skill_name: &str, model_safe: &str) -> Pa
     skills_dir
         .join(skill_name)
         .join(".cache")
-        .join(format!("{}.kvcache.bin", model_safe))
+        .join(format!("{}.kvcache.safetensors", model_safe))
 }
 
 /// Poll until `path` exists or 30 seconds elapse. Returns true if found.
@@ -56,7 +56,7 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
 
     // ─────────────────────────────────────────────────────────────────────────
     // TEST 1: Auto-Healing — missing embedding vectors are generated on boot
-    // Evidence: bge_m3-unknown-onnx-fp32.emb.bin must appear after load_model
+    // Evidence: bge_m3-unknown-onnx-fp32.emb.safetensors must appear after load_model
     // ─────────────────────────────────────────────────────────────────────────
     println!("\n=== TEST 1: Auto-Healing vector generation ===");
     let mut router = engines::api::router::CoreRouter::load_model(
@@ -65,14 +65,14 @@ async fn run_model_test_suite(model_id: &str, model_folder: &str, model_filename
     ).await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let small_skill_emb = skills_dir.join("test-small-skill").join(".cache")
-        .join("bge_m3-unknown-onnx-fp32.emb.bin");
+        .join("bge_m3-unknown-onnx-fp32.emb.safetensors");
 
     if small_skill_emb.exists() {
-        println!("✅ [Test 1] PASS: bge_m3-unknown-onnx-fp32.emb.bin auto-generated.");
+        println!("✅ [Test 1] PASS: bge_m3-unknown-onnx-fp32.emb.safetensors auto-generated.");
     } else {
-        println!("❌ [Test 1] FAIL: emb.bin was not generated!");
+        println!("❌ [Test 1] FAIL: emb.safetensors was not generated!");
     }
-    assert!(small_skill_emb.exists(), "[Test 1] emb.bin missing after load_model");
+    assert!(small_skill_emb.exists(), "[Test 1] emb.safetensors missing after load_model");
 
     // ─────────────────────────────────────────────────────────────────────────
     // TEST 2: Negative — unrelated prompt must NOT trigger any skill or KV write

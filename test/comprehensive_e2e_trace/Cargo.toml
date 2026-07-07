@@ -1,0 +1,18 @@
+# BSL 1.1 — Cluaiz Technologies
+#
+# Cargo.toml for comprehensive_e2e_trace test crate
+
+[package]
+name = "comprehensive_e2e_trace"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+reqwest = { version = "0.13.4", features = ["json", "stream"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+tokio = { version = "1.52.3", features = ["full"] }
+futures-util = "0.3.30"
+cluaiz-search = { path = "../../../cluaiz-hub/extensions/cluaiz-search" }
+serde_yaml = "0.9.34+deprecated"

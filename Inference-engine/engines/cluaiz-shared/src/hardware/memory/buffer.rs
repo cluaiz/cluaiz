@@ -60,25 +60,19 @@ impl SafeTensorsMappedBuffer {
         let file = std::fs::File::open(path)?;
         let mmap = unsafe { memmap2::Mmap::map(&file)? };
         
-        // Parse SafeTensors to find the data offset for "llama_state"
-        let data_offset = {
+        // Parse SafeTensors to find the first tensor dynamically (no hardcoded keys)
+        let (data_offset, data_len) = {
             let st = safetensors::SafeTensors::deserialize(&mmap)
                 .map_err(|e| anyhow::anyhow!("Failed to parse safetensors: {:?}", e))?;
-            let tensor = st.tensor("llama_state")
-                .map_err(|e| anyhow::anyhow!("Failed to find llama_state tensor: {:?}", e))?;
+            let first_name = st.names().first()
+                .ok_or_else(|| anyhow::anyhow!("No tensors found in safetensors"))?
+                .to_string();
+            let tensor = st.tensor(&first_name)
+                .map_err(|e| anyhow::anyhow!("Failed to find tensor '{}': {:?}", first_name, e))?;
             
-            // We need to calculate the exact offset into the mmap slice.
-            // Safetensors data() slice is borrowed from the mmap. We can find its offset using ptr arithmetic.
             let mmap_start = mmap.as_ptr() as usize;
             let tensor_start = tensor.data().as_ptr() as usize;
-            tensor_start - mmap_start
-        };
-        
-        let data_len = {
-            let st = safetensors::SafeTensors::deserialize(&mmap)
-                .map_err(|e| anyhow::anyhow!("Failed to parse safetensors: {:?}", e))?;
-            let tensor = st.tensor("llama_state").unwrap();
-            tensor.data().len()
+            (tensor_start - mmap_start, tensor.data().len())
         };
 
         Ok(Self { mmap, data_offset, data_len })

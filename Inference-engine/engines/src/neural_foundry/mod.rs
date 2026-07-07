@@ -249,9 +249,8 @@ impl CoreFoundry {
     }
 }
 
-fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
+pub fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
     // 🧠 1. ZERO-LATENCY FFI BRAIN INJECTION
-    // If the brain is enabled, it completely bypasses disk reads.
     if let Some(skill_name) = skill_dir.file_name().map(|s| s.to_string_lossy().to_string()) {
         let bridge = crate::memory::storage_bridge::load_storage_bridge();
         if let Some(raw_bytes) = bridge.inject_context(&skill_name) {
@@ -261,26 +260,28 @@ fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
         }
     }
 
-    // 🏢 2. LEGACY DISK READ FALLBACK
+    // 🏢 2. DYNAMIC TOOL DISCOVERY & ADAPTATION
+    // We read SKILL.md for the user's instructions, and then we read the manifest
+    // to dynamically append the `cel_grammar` trigger instruction, so the Engine automatically adapts.
+    let mut final_context = String::new();
+
     let skill_md_path = skill_dir.join("SKILL.md");
     if skill_md_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&skill_md_path) {
             let normalized = content.replace("\r\n", "\n");
             let lines: Vec<&str> = normalized.lines().collect();
             
-            // Check if the file starts with frontmatter (first non-empty line is "---")
             let mut first_line_idx = None;
             for (i, line) in lines.iter().enumerate() {
                 if !line.trim().is_empty() {
                     if line.trim() == "---" {
                         first_line_idx = Some(i);
+                        break;
                     }
-                    break;
                 }
             }
 
             if let Some(start_idx) = first_line_idx {
-                // Find the closing "---" of the frontmatter
                 let mut closing_idx = None;
                 for i in (start_idx + 1)..lines.len() {
                     if lines[i].trim() == "---" {
@@ -290,21 +291,65 @@ fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
                 }
 
                 if let Some(end_idx) = closing_idx {
-                    // Body starts after the closing "---"
                     let body_lines = &lines[end_idx + 1..];
                     let body = body_lines.join("\n").trim().to_string();
                     if !body.is_empty() {
-                        return Some(body);
+                        final_context.push_str(&body);
                     }
                 }
-            }
-
-            let trimmed = content.trim().to_string();
-            if !trimmed.is_empty() {
-                return Some(trimmed);
+            } else {
+                final_context.push_str(content.trim());
             }
         }
     }
+
+    let ext_yaml_path = skill_dir.join("manifest-extension.yaml");
+    let plugin_yaml_path = skill_dir.join("manifest-plugin.yaml");
+    let mcp_yaml_path = skill_dir.join("manifest-mcp.yaml");
+
+    let skill_name = skill_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+
+    for (yaml_path, tool_type) in &[(&ext_yaml_path, "extension"), (&plugin_yaml_path, "plugin"), (&mcp_yaml_path, "mcp")] {
+        if yaml_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(yaml_path) {
+                let mut desc = String::new();
+                for line in content.lines() {
+                    if line.trim().starts_with("description:") && final_context.is_empty() {
+                        desc = line.splitn(2, ':').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'').to_string();
+                        break;
+                    }
+                }
+                
+                if final_context.is_empty() && !desc.is_empty() {
+                    final_context.push_str(&format!("Tool: {}\nDescription: {}\n", skill_name, desc));
+                }
+                
+                let mut cel_grammar = String::new();
+                for line in content.lines() {
+                    if line.trim().starts_with("cel_grammar:") {
+                        cel_grammar = line.splitn(2, ':').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'').to_string();
+                        break;
+                    }
+                }
+                
+                let rule_str = match *tool_type {
+                    "extension" => crate::neural_foundry::registry::injectors::ExtensionRuleInjector::compile_rules(&skill_name, &cel_grammar),
+                    "plugin" => crate::neural_foundry::registry::injectors::PluginRuleInjector::compile_rules(&skill_name, &cel_grammar),
+                    "mcp" => crate::neural_foundry::registry::injectors::McpRuleInjector::compile_rules(&skill_name),
+                    _ => String::new(),
+                };
+                
+                // Natively force-inject the Kernel tag instructions
+                final_context.push_str(&format!("\n{}", rule_str));
+                break;
+            }
+        }
+    }
+
+    if !final_context.is_empty() {
+        return Some(final_context);
+    }
+
     None
 }
 
