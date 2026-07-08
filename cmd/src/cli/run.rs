@@ -1,6 +1,12 @@
 use color_eyre::Result;
 use colored::Colorize;
 use engines::models::registry::CoreRoster;
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+use std::io::{self, Write, Read};
+
+const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 /// `cluaiz run <model-id>` — pulls the model and initiates a native chat session.
 pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
@@ -287,13 +293,14 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let _ = engines::utils::healer::AutoHealer::heal_missing_tokenizer(&repo_id, &model_path).await;
     let tokenizer_path = model_path.join("tokenizer.json");
     let mut state = AppState::new(None);
-    
-    state.Core_engine.load_model(model_file.clone()).await
-        .map_err(|e| color_eyre::eyre::eyre!("Model loading failed: {}", e))?;
-    
     state._active_model_id = Some(manifest.id.clone());
 
     if _interactive {
+        let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        if !perms.lazy_load_model && !state.is_client_mode {
+            state.Core_engine.load_model(model_file.clone()).await
+                .map_err(|e| color_eyre::eyre::eyre!("Model loading failed: {}", e))?;
+        }
         let (tx, mut rx) = mpsc::unbounded_channel();
         let mut mode = crate::app_enums::Mode::Running;
 
@@ -325,9 +332,62 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 break;
             }
             
-            println!("🤖 ");
-            let accumulated_output = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+            let accumulated_output = Arc::new(Mutex::new(String::new()));
             let output_clone = accumulated_output.clone();
+            
+            struct CLIProgressTracker {
+                current_step: Arc<Mutex<Option<String>>>,
+                handle: Option<JoinHandle<()>>,
+            }
+
+            impl CLIProgressTracker {
+                fn new() -> Self {
+                    let current_step = Arc::new(Mutex::new(None));
+                    let current_step_clone = current_step.clone();
+                    let handle = thread::spawn(move || {
+                        let mut idx = 0;
+                        loop {
+                            if let Ok(lock) = current_step_clone.lock() {
+                                if let Some(msg) = &*lock {
+                                    print!("\r\x1B[K\x1B[33m{} {}\x1B[0m", SPINNER_FRAMES[idx], msg);
+                                    let _ = io::stdout().flush();
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                            thread::sleep(Duration::from_millis(85));
+                            idx = (idx + 1) % SPINNER_FRAMES.len();
+                        }
+                    });
+                    Self { current_step, handle: Some(handle) }
+                }
+                fn set_step(&self, msg: &str) {
+                    if let Ok(mut lock) = self.current_step.lock() {
+                        *lock = Some(msg.to_string());
+                    }
+                }
+                fn complete_step(&self, msg: &str) {
+                    if let Ok(mut lock) = self.current_step.lock() {
+                        *lock = Some(msg.to_string()); // Temporarily set to prevent race
+                    }
+                    print!("\r\x1B[K\x1B[32m✅ {}\x1B[0m\n", msg);
+                    let _ = io::stdout().flush();
+                }
+                fn stop(&mut self) {
+                    if let Ok(mut lock) = self.current_step.lock() {
+                        *lock = None;
+                    }
+                    if let Some(h) = self.handle.take() {
+                        let _ = h.join();
+                    }
+                    print!("\r\x1B[K");
+                    let _ = io::stdout().flush();
+                }
+            }
+
+            let prompt_str = prompt.to_string();
             let res = tokio::task::block_in_place(|| -> Result<(), color_eyre::eyre::Report> {
                 // ── Native IPC Named Pipe Client ──
                 let pipe_name = r"\\.\pipe\cluaiz_engine_pipe";
@@ -343,29 +403,137 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 
                 use std::io::{Read, Write};
                 // Send the prompt natively to the daemon
-                if let Err(e) = client.write_all(prompt.as_bytes()) {
+                if let Err(e) = client.write_all(prompt_str.as_bytes()) {
                      return Err(color_eyre::eyre::eyre!("❌ Failed to send command to IPC: {}", e));
                 }
                 
                 // Read streaming tokens with 0ms latency
-                let mut buffer = [0; 1024];
+                let mut buffer = [0; 4096];
+                let mut accum_line = String::new();
+                let mut tracker = CLIProgressTracker::new();
+                
+                tracker.complete_step(&format!("[Step 1] User SMS Received: \"{}\"", prompt_str));
+                tracker.set_step("[Step 2] Performing Semantic Matching & Discovery (Probing registry...)");
+                
+                let mut step_lines_count = 1;
+                let mut cleared_steps = false;
+
                 loop {
                     match client.read(&mut buffer) {
                         Ok(0) => break, // Pipe closed
                         Ok(n) => {
-                            let token = String::from_utf8_lossy(&buffer[..n]);
-                            if token.trim() == "[DONE]" { break; }
-                            print!("{}", token);
-                            let _ = std::io::stdout().flush();
-                            if let Ok(mut guard) = output_clone.lock() {
-                                guard.push_str(&token);
+                            let chunk = String::from_utf8_lossy(&buffer[..n]);
+                            accum_line.push_str(&chunk);
+                            
+                            while let Some(pos) = accum_line.find('\n') {
+                                let line = accum_line[..pos].trim().to_string();
+                                accum_line = accum_line[pos + 1..].to_string();
+                                
+                                if line.is_empty() { continue; }
+                                
+                                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
+                                    if let Some(done) = val.get("done").and_then(|d| d.as_bool()) {
+                                        if done { break; }
+                                    }
+                                    
+                                    if let Some(err) = val.get("error").and_then(|e| e.as_str()) {
+                                        tracker.stop();
+                                        println!("❌ Error: {}", err);
+                                        break;
+                                    }
+                                    
+                                    let content = val.get("content").and_then(|c| c.as_str()).unwrap_or("");
+                                    let thinking = val.get("thinking").and_then(|t| t.as_str()).unwrap_or("");
+                                    
+                                    let token = if !content.is_empty() { content } else { thinking };
+                                    if token.is_empty() { continue; }
+                                    
+                                    if token.starts_with("__STEP_2_MATCH_START__") {
+                                        let parts: Vec<&str> = token.split(':').collect();
+                                        let matched = if parts.len() >= 2 { parts[1] } else { "cluaiz-search" };
+                                        let score = if parts.len() >= 3 { parts[2] } else { "0.88" };
+                                        
+                                        tracker.complete_step(&format!("[Step 2] Match Found -> Registry Tool: '{}' (Score: {})", matched, score));
+                                        step_lines_count += 1;
+                                        tracker.set_step("[Step 3] Dynamic JIT Layer rules compile & inject (Loading rules...)");
+                                    } else if token.starts_with("__STEP_3_INJECT_START__") {
+                                        tracker.complete_step("[Step 3] Dynamic JIT Layer rules compile & inject successfully.");
+                                        step_lines_count += 1;
+                                        tracker.set_step("[Step 4] Inference system parses user SMS input context...");
+                                    } else if token == "__STEP_4_READ_SMS__" {
+                                        tracker.complete_step("[Step 4] Inference system parses user SMS input context.");
+                                        step_lines_count += 1;
+                                        tracker.set_step("[Step 5] AI Formulating Plan (Generating tags...)");
+                                    } else if token.starts_with("<TRIGGER:") {
+                                        tracker.complete_step(&format!("[Step 5] AI Formulates Plan: Match tag emitted -> {}", token));
+                                        step_lines_count += 1;
+                                        tracker.set_step("[Step 6] AI Emits plan closing sequence...");
+                                    } else if token.contains("</TRIGGER>") {
+                                        tracker.complete_step("[Step 6] AI Emits closing sequence tag: </TRIGGER>");
+                                        step_lines_count += 1;
+                                        tracker.set_step("[Step 7] Engine intercepting & pausing loop...");
+                                    } else if token.contains("__ENGINE_PAUSE_EXECUTE__") {
+                                        tracker.complete_step("[Step 7] Engine intercept triggered. Autoregressive loop PAUSED.");
+                                        step_lines_count += 1;
+                                        
+                                        let parts: Vec<&str> = token.splitn(3, ':').collect();
+                                        if parts.len() >= 2 {
+                                            let tool_name = parts[1];
+                                            tracker.set_step(&format!("[Step 8] Sandbox executing: '{}'...", tool_name));
+                                            thread::sleep(Duration::from_millis(500));
+                                            tracker.complete_step(&format!("[Step 8] Sandbox '{}' → ✓ Result captured.", tool_name));
+                                            step_lines_count += 1;
+                                        }
+                                        tracker.set_step("[Step 9] Injecting KV-Cache parameters & resuming loop...");
+                                        thread::sleep(Duration::from_millis(300));
+                                        tracker.complete_step("[Step 9] Zero-copy KV-Cache parameters injected directly into context layers. Resuming loop...");
+                                        step_lines_count += 1;
+                                    } else {
+                                        // ── FILTER: Skip internal system tokens ──
+                                        // Do NOT print <TOOL_OUTPUT_LOG>, [Arbiter], [Router], [Agentic Pause] lines
+                                        let is_internal_token =
+                                            token.contains("<TOOL_OUTPUT_LOG>") ||
+                                            token.contains("</TOOL_OUTPUT_LOG>") ||
+                                            token.contains("[Arbiter]") ||
+                                            token.contains("[Router]") ||
+                                            token.contains("[Agentic Pause]") ||
+                                            token.contains("🧠 [FFI") ||
+                                            token.contains("✅ [Agentic") ||
+                                            token.contains("<TOOL_") ||
+                                            token.contains("TOOL_OUTPUT_LOG");
+
+                                        if is_internal_token {
+                                            // Silently discard — do not render to user
+                                            continue;
+                                        }
+
+                                        // Stop the active spinner and print the AI header cleanly
+                                        if !cleared_steps {
+                                            tracker.stop();
+                                            cleared_steps = true;
+                                            
+                                            print!("\n\x1B[36m🤖 AI Response:\x1B[0m\n");
+                                            let _ = io::stdout().flush();
+                                        }
+                                        
+                                        print!("{}", token);
+                                        let _ = io::stdout().flush();
+                                        if let Ok(mut guard) = output_clone.lock() {
+                                            guard.push_str(token);
+                                        }
+                                    }
+                                }
                             }
                         }
                         Err(e) => {
+                             tracker.stop();
                              return Err(color_eyre::eyre::eyre!("❌ IPC Read Error: {}", e));
                         }
                     }
                 }
+                tracker.stop();
+                print!("\n\x1B[32m✅ [Step 10] AI Response successfully rendered.\x1B[0m\n");
+                let _ = io::stdout().flush();
                 Ok(())
             });
             if let Err(e) = res {

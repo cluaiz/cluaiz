@@ -1,37 +1,38 @@
-# 🏛️ cluaiz LINGUISTIC OVERRIDES
+# # 🏛️ cluaiz LINGUISTIC OVERRIDES
 
-# --- Force index Shell and Assembly for stats ---
-*.sh linguist-detectable=true
-*.s linguist-detectable=true
-*.asm linguist-detectable=true
+# # --- Force index Shell and Assembly for stats ---
+# *.sh linguist-detectable=true
+# *.s linguist-detectable=true
+# *.asm linguist-detectable=true
 
-# --- Ensure C/C++ Kernels are counted ---
-*.cpp linguist-detectable=true
-*.cu linguist-detectable=true
-*.h linguist-detectable=true
-*.rs linguist-detectable=true
+# # --- Ensure C/C++ Kernels are counted ---
+# *.cpp linguist-detectable=true
+# *.cu linguist-detectable=true
+# *.h linguist-detectable=true
+# *.rs linguist-detectable=true
 
-# --- Treat certain docs as Code for visibility ---
-ARCHITECTURE.md linguist-documentation=false
-CONTRIBUTING.md linguist-documentation=false
+# # --- Treat certain docs as Code for visibility ---
+# ARCHITECTURE.md linguist-documentation=false
+# CONTRIBUTING.md linguist-documentation=false
 
-# --- End of Line normalization ---
-* text=auto eol=lf
-*.rs text eol=lf
-*.cpp text eol=lf
-*.h text eol=lf
-*.sh text eol=lf
-*.s text eol=lf
+# # --- End of Line normalization ---
+#  * text=auto eol=lf
+#  *.rs text eol=lf
+#  *.cpp text eol=lf
+#  *.h text eol=lf
+#  *.sh text eol=lf
+#  *.s text eol=lf
 
-# --- Exclude desktop frontend UI from language stats ---
-Apps/desktop/frontend/** linguist-vendored=true
-apps/gui/** linguist-vendored=true
-*.css linguist-vendored=true
-*.html linguist-vendored=true
-*.js linguist-vendored=true
-*.ts linguist-vendored=true
-*.tsx linguist-vendored=true
+# # --- Exclude desktop frontend UI from language stats ---
+#  Apps/desktop/frontend/** linguist-vendored=true
+#  apps/gui/** linguist-vendored=true
+#  *.css linguist-vendored=true
+#  *.html linguist-vendored=true
+#  *.js linguist-vendored=true
+#  *.ts linguist-vendored=true
+#  *.tsx linguist-vendored=true
 
-# --- Hide Documentation & JSON from stats ---
-docs/** linguist-documentation=true
-*.json linguist-vendored=true
+# # --- Hide Documentation & JSON from stats ---
+#  docs/** linguist-documentation=true
+#  *.json linguist-vendored=true
+

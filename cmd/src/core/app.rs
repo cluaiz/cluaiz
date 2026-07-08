@@ -83,19 +83,22 @@ impl App {
                                 }
                             }
     
-                            if let Some(active_id) = &self.state._active_model_id {
-                                if let Some(model) = self.state.sorted_models.iter().find(|m| &m.manifest.id == active_id) {
-                                    if let Some(local_path) = engines::models::fetch::ModelDownloader::get_cached_path(
-                                        &model.manifest.category,
-                                        &model.manifest.id,
-                                        &model.manifest.huggingface_filename
-                                    ) {
-                                        self.state.auto_mount_triggered = true;
-                                        let engine = self.state.Core_engine.clone();
-                                        println!("  {} Mounting auto-selected model: {}", "⚙️".yellow(), model.manifest.name);
-                                        tokio::spawn(async move {
-                                            let _ = engine.load_model(local_path).await;
-                                        });
+                            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                            if !perms.lazy_load_model {
+                                if let Some(active_id) = &self.state._active_model_id {
+                                    if let Some(model) = self.state.sorted_models.iter().find(|m| &m.manifest.id == active_id) {
+                                        if let Some(local_path) = engines::models::fetch::ModelDownloader::get_cached_path(
+                                            &model.manifest.category,
+                                            &model.manifest.id,
+                                            &model.manifest.huggingface_filename
+                                        ) {
+                                            self.state.auto_mount_triggered = true;
+                                            let engine = self.state.Core_engine.clone();
+                                            println!("  {} Mounting auto-selected model: {}", "⚙️".yellow(), model.manifest.name);
+                                            tokio::spawn(async move {
+                                                let _ = engine.load_model(local_path).await;
+                                            });
+                                        }
                                     }
                                 }
                             }

@@ -279,12 +279,18 @@ impl AppState {
         let os_state = starting_state.unwrap_or(OsState::Dashboard);
 
         let live_pulse = ::cluaiz_shared::hardware::telemetry::get_pulse();
-        let port: u16 = std::env::var("cluaiz_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(8000);
-        let addr = format!("127.0.0.1:{}", port).parse().unwrap();
-        let _is_client_mode = std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_millis(50)).is_ok();
+        // ── Detect if Native IPC daemon is already running via Named Pipe probe ──
+        // The daemon uses Windows Named Pipe, NOT a TCP socket.
+        let _is_client_mode: bool = {
+            match std::fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(r"\\.\pipe\cluaiz_engine_pipe")
+            {
+                Ok(_) => true,
+                Err(_) => false,
+            }
+        };
 
         let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         let mut _active_model_id = schema.chat_models.text.clone();
@@ -343,7 +349,7 @@ impl AppState {
             logo_index: crate::assets::logos::logo_gallery::LOGO_VARIANTS.len() - 1,
             activity_stream: Vec::new(),
             auto_mount_triggered: false,
-            is_client_mode: false,
+            is_client_mode: _is_client_mode,
         }
     }
 

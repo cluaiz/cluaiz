@@ -23,89 +23,112 @@ impl SkillRouter {
         let mut matches = Vec::new();
         let prompt_lower = prompt.to_lowercase();
 
-        let prompt_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(prompt);
-        let prompt_len = prompt_vector.len();
-        let prompt_is_valid = prompt_len > 0 && prompt_vector.iter().any(|&x| x != 0.0);
-
-        let active_model_id = crate::neural_foundry::security::permission_schema::PermissionSchema::load()
-            .get_active_embedding_model()
-            .unwrap_or_else(|| "default".to_string());
-        let safe_filename = active_model_id.replace(":", "-");
-
+        // 1. Fast Keyword/Trigger Containment Filter (O(N)) using padded word boundaries
+        let mut has_trigger_keyword = false;
+        let padded_prompt = format!(" {} ", prompt_lower);
         for skill in &registry.skills {
-            let mut is_matched = false;
-            let threshold = skill.manifest.triggers.entropy_threshold.unwrap_or(0.70);
+            for trigger in &skill.manifest.triggers.semantic {
+                let norm_trigger = format!(" {} ", trigger.to_lowercase().trim());
+                if padded_prompt.contains(&norm_trigger) {
+                    has_trigger_keyword = true;
+                    break;
+                }
+            }
+            if has_trigger_keyword { break; }
+        }
 
-            // Try loading cached skill embedding
-            let cache_path = skill.path.join(".cache").join(format!("{}.emb.safetensors", safe_filename));
-            let mut cached_floats = None;
-            if cache_path.exists() {
-                if let Ok(file) = std::fs::File::open(&cache_path) {
-                    if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
-                        if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
-                            if let Ok(tensor) = st.tensor("embedding") {
-                                let data = tensor.data();
-                                if data.len() % 4 == 0 {
-                                    let floats: Vec<f32> = data
-                                        .chunks_exact(4)
-                                        .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
-                                        .collect();
-                                    cached_floats = Some(floats);
+        // Bypassing vector loading/generation completely for conversational prompts
+        let active_model_opt = crate::neural_foundry::security::permission_schema::PermissionSchema::load()
+            .get_active_embedding_model();
+
+        if has_trigger_keyword && active_model_opt.is_some() {
+            let active_model_id = active_model_opt.unwrap();
+            let safe_filename = active_model_id.replace(":", "-");
+            
+            let prompt_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(prompt);
+            let prompt_len = prompt_vector.len();
+            let prompt_is_valid = prompt_len > 0 && prompt_vector.iter().any(|&x| x != 0.0);
+
+            if prompt_is_valid {
+                for skill in &registry.skills {
+                    let mut is_matched = false;
+                    let threshold = skill.manifest.triggers.entropy_threshold.unwrap_or(0.70);
+
+                    // Try loading cached skill embedding
+                    let cache_path = skill.path.join(".cache").join(format!("{}.emb.safetensors", safe_filename));
+                    let mut cached_floats = None;
+                    if cache_path.exists() {
+                        if let Ok(file) = std::fs::File::open(&cache_path) {
+                            if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                                if let Ok(st) = safetensors::SafeTensors::deserialize(&mmap) {
+                                    if let Ok(tensor) = st.tensor("embedding") {
+                                        let data = tensor.data();
+                                        if data.len() % 4 == 0 {
+                                            let floats: Vec<f32> = data
+                                                .chunks_exact(4)
+                                                .map(|chunk| f32::from_ne_bytes(chunk.try_into().unwrap()))
+                                                .collect();
+                                            cached_floats = Some(floats);
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }
 
-            if prompt_is_valid {
-                // 1. Semantic Embedding Similarity Trigger Match (Threshold > entropy_threshold)
-                if let Some(floats) = &cached_floats {
-                    if floats.len() % prompt_len == 0 {
-                        for chunk in floats.chunks_exact(prompt_len) {
-                            let similarity = cosine_similarity(&prompt_vector, chunk);
+                    if let Some(floats) = &cached_floats {
+                        if floats.len() % prompt_len == 0 {
+                            for chunk in floats.chunks_exact(prompt_len) {
+                                let similarity = cosine_similarity(&prompt_vector, chunk);
+                                if similarity > threshold {
+                                    tracing::debug!("[Skill-Router] Cached Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                                    is_matched = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if !is_matched {
+                        for trigger in &skill.manifest.triggers.semantic {
+                            let trigger_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(trigger);
+                            let similarity = cosine_similarity(&prompt_vector, &trigger_vector);
                             if similarity > threshold {
-                                tracing::debug!("[Skill-Router] Cached Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                                tracing::debug!("[Skill-Router] Dynamic Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
                                 is_matched = true;
                                 break;
                             }
                         }
                     }
-                }
 
-                // If not matched yet, try matching against triggers embedded on the fly
-                if !is_matched {
-                    for trigger in &skill.manifest.triggers.semantic {
-                        let trigger_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(trigger);
-                        let similarity = cosine_similarity(&prompt_vector, &trigger_vector);
+                    if !is_matched {
+                        let desc_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(&skill.manifest.description);
+                        let similarity = cosine_similarity(&prompt_vector, &desc_vector);
                         if similarity > threshold {
-                            tracing::debug!("[Skill-Router] Dynamic Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
+                            tracing::debug!("[Skill-Router] Description Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
                             is_matched = true;
-                            break;
                         }
                     }
-                }
 
-                // 2. Full-Text Description Semantic Match (Fallback)
-                if !is_matched {
-                    let desc_vector = crate::memory::embedding_generator::EmbeddingGenerator::generate_vector(&skill.manifest.description);
-                    let similarity = cosine_similarity(&prompt_vector, &desc_vector);
-                    if similarity > threshold {
-                        tracing::debug!("[Skill-Router] Description Match probability {:.2} > {:.2} for skill {}", similarity, threshold, skill.manifest.id);
-                        is_matched = true;
+                    if is_matched {
+                        matches.push(skill.manifest.id.clone());
                     }
                 }
             }
+        }
 
-            // If semantic matching didn't trigger, or prompt was invalid/all-zeros,
-            // fall back to string containment checks so we never regress on exact/keyword matches.
-            if !is_matched {
-                for trigger in &skill.manifest.triggers.semantic {
-                    if prompt_lower.contains(&trigger.to_lowercase()) {
-                        tracing::debug!("[Skill-Router] Fallback string match for skill {} trigger {}", skill.manifest.id, trigger);
-                        is_matched = true;
-                        break;
-                    }
+        // 2. String Fallback checks: checks keywords containment in the prompt for registry/manifest triggers
+        for skill in &registry.skills {
+            if matches.contains(&skill.manifest.id) {
+                continue;
+            }
+
+            let mut is_matched = false;
+            for trigger in &skill.manifest.triggers.semantic {
+                if prompt_lower.contains(&trigger.to_lowercase()) {
+                    tracing::debug!("[Skill-Router] Fallback string match for skill {} trigger {}", skill.manifest.id, trigger);
+                    is_matched = true;
+                    break;
                 }
             }
 

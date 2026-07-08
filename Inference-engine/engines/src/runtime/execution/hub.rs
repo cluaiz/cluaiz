@@ -190,16 +190,16 @@ impl cluaizInference for SovereignEngine {
         }
         
         let manager = self.manager.lock().map_err(|e| anyhow!("Lock poisoned: {}", e))?;
-        tracing::info!("⏸️ [Agentic Pause] Halting autoregressive loop for dynamic KV cache injection...");
+        tracing::debug!("⏸️ [Agentic Pause] Halting autoregressive loop for dynamic KV cache injection...");
         
         // Dynamic sizing info logic (no 25% fixed limit)
         let total_tokens: usize = signals.iter().map(|s| s.token_count).sum();
-        tracing::info!("💉 [VRAM Injector] Stitching {} total dynamic tokens to active Context Window prefix.", total_tokens);
+        tracing::debug!("💉 [VRAM Injector] Stitching {} total dynamic tokens to active Context Window prefix.", total_tokens);
         
         // Pass to FFI
         manager.inject_signals_ffi(self.engine_ptr, signals)?;
         
-        tracing::info!("▶️ [Agentic Pause] Injection complete. Inference loop resumed.");
+        tracing::debug!("▶️ [Agentic Pause] Injection complete. Inference loop resumed.");
         Ok(())
     }
 

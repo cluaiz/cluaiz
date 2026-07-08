@@ -107,7 +107,9 @@ pub async fn chat_completions(
                      
                      let mut rx = initial_rx;
                      
-                     loop {
+                     let mut max_iters = 3;
+                    while max_iters > 0 {
+                        max_iters -= 1;
                          let mut tool_executed = false;
                          
                          while let Some(token) = rx.recv().await {
@@ -180,7 +182,7 @@ pub async fn chat_completions(
                                 
                                 // 🚀 SOVEREIGN KV-CACHE RESUME 
                                 current_prompt = format!(
-                                    "{}\n\n[PIVOT_CONTINUE]\n<result:{}:{}>\n{}\n</result>\n",
+                                    "{}\n\n[PIVOT_CONTINUE]\n<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the tool result above. Do NOT use any tools. Just answer the user directly.\n",
                                     current_prompt, comp_type, comp_name, execution_result
                                 );
                                 

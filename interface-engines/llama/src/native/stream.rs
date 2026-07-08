@@ -95,7 +95,12 @@ pub fn stream_tokens(
                 prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Output strictly in valid JSON format only. No markdown blocks.]");
             }
 
-            templater.format(dna, &prompt_with_constraint)
+            // Avoid double formatting if the prompt was already manually formatted by the router or API
+            if prompt_with_constraint.contains("<|start_header_id|>") || prompt_with_constraint.contains("<|im_start|>") {
+                prompt_with_constraint
+            } else {
+                templater.format(dna, &prompt_with_constraint)
+            }
         };
 
         let mut suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
@@ -136,7 +141,7 @@ pub fn stream_tokens(
             formatted_prompt.len() as i32, 
             tokens.as_mut_ptr(), 
             tokens.len() as i32, 
-            !is_pivot && !has_loaded_cache, // Don't add BOS if we already loaded prefilled tokens (which includes BOS)
+            !is_pivot, // Always add BOS for full prompts to enable LCP matching against last_prefilled_tokens
             true
         );
         
@@ -149,7 +154,7 @@ pub fn stream_tokens(
                 formatted_prompt.len() as i32, 
                 tokens.as_mut_ptr(), 
                 tokens.len() as i32, 
-                !is_pivot && !has_loaded_cache, 
+                !is_pivot, 
                 true
             );
         }
@@ -173,14 +178,30 @@ pub fn stream_tokens(
             llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
         }
 
-        // Slice the tokens array to only contain the NEW tokens if we have a loaded cache
+        let mut effective_cache_len = last_prefilled_tokens.len();
+        // 🛡️ DYNAMIC PREFIX MATCHING (The real fix for KV cache corruption)
         if !is_pivot && has_loaded_cache {
-            let loaded_len = last_prefilled_tokens.len();
-            if tokens.len() > loaded_len {
-                tokens = tokens[loaded_len..].to_vec();
+            let mut match_len = 0;
+            let min_len = last_prefilled_tokens.len().min(tokens.len());
+            while match_len < min_len && last_prefilled_tokens[match_len] == tokens[match_len] {
+                match_len += 1;
+            }
+            
+            // If the match is partial, we MUST roll back the KV cache to the divergence point
+            if match_len < last_prefilled_tokens.len() {
+                let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+                llama_cpp::llama_memory_seq_rm(mem, 0, match_len as i32, -1);
+            }
+            
+            if tokens.len() > match_len {
+                tokens = tokens[match_len..].to_vec();
             } else {
                 tokens.clear();
             }
+            
+            // Update the state so start_pos is correctly set below
+            has_loaded_cache = true;
+            effective_cache_len = match_len;
         }
 
         // 🛡️ Context Overflow Guard: Trim prompt tokens to fit within the real KV cache.
@@ -195,7 +216,7 @@ pub fn stream_tokens(
         let start_pos = if is_pivot {
             llama_cpp::llama_memory_seq_pos_max(llama_cpp::llama_get_memory(llama.ctx_ptr), 0) + 1
         } else if has_loaded_cache {
-            last_prefilled_tokens.len() as i32
+            effective_cache_len as i32
         } else {
             0
         };

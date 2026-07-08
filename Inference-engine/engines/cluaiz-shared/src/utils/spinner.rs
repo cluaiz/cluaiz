@@ -13,19 +13,16 @@ impl cluaizSpinner {
     /// Starts the global spinner with a specific message.
     /// In debug mode, this doesn't run so it doesn't conflict with verbose logs.
     pub fn start(&mut self, message: &str) {
-        #[cfg(not(debug_assertions))]
-        {
-            let pb = ProgressBar::new_spinner();
-            pb.enable_steady_tick(Duration::from_millis(120));
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏ ")
-                    .template("{spinner:.cyan} {msg}")
-                    .unwrap(),
-            );
-            pb.set_message(message.to_string());
-            self.pb = Some(pb);
-        }
+        let pb = ProgressBar::with_draw_target(None, indicatif::ProgressDrawTarget::stdout());
+        pb.enable_steady_tick(Duration::from_millis(120));
+        pb.set_style(
+            ProgressStyle::default_spinner()
+                .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏ ")
+                .template("{spinner:.cyan} {msg}")
+                .unwrap(),
+        );
+        pb.set_message(message.to_string());
+        self.pb = Some(pb);
     }
 
     /// Stops the global spinner and optionally prints a final success message.

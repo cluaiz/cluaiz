@@ -4,8 +4,9 @@
 #[macro_export]
 macro_rules! dev_info {
     ($($arg:tt)*) => {
-        #[cfg(debug_assertions)]
-        println!($($arg)*);
+        // Internal engine diagnostic — only visible with RUST_LOG=debug
+        // Do NOT use println! here — it pollutes the CLI user interface
+        tracing::debug!($($arg)*);
     };
 }
 

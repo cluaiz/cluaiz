@@ -364,29 +364,48 @@ impl CoreRouter {
             }
         }
         
-        // 2. Sliding Window Semantic Match (ONNX vector similarity)
+        // 2. Sliding Window Semantic Match & Fallback triggers
         if matched_skill_ids.is_empty() {
-             // Since we use the global EmbeddingGenerator, we don't need a local onnx_engine
-             if let Some(full_vec) = crate::memory::embedding_generator::EmbeddingGenerator::generate_full_vector(prompt) {
-                 if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-                     // Try full prompt vector first
-                     if let Some(path) = router.check_semantic_trigger(&full_vec, 0.70) {
-                         if let Some(name) = path.file_name() {
-                             matched_skill_ids.push(name.to_string_lossy().to_string());
+             let schema = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
+             let active_model_opt = schema.get_active_embedding_model();
+             
+             // Dynamic Lazy-Loading Check: Check if prompt contains any registered trigger keywords first
+             let mut has_trigger_keyword = false;
+             let padded_prompt = format!(" {} ", prompt_lower);
+             if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+                 for keyword in router.keyword_index.keys() {
+                     let norm_keyword = format!(" {} ", keyword.to_lowercase().trim());
+                     if padded_prompt.contains(&norm_keyword) {
+                         has_trigger_keyword = true;
+                         break;
+                     }
+                 }
+             }
+
+             if has_trigger_keyword && active_model_opt.is_some() {
+                 if let Some(full_vec) = crate::memory::embedding_generator::EmbeddingGenerator::generate_full_vector(prompt) {
+                     if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+                         if let Some(path) = router.check_semantic_trigger(&full_vec, 0.70) {
+                             if let Some(name) = path.file_name() {
+                                 matched_skill_ids.push(name.to_string_lossy().to_string());
+                             }
                          }
-                     } else {
-                         // Fallback: Check if the prompt explicitly mentions any known tool keywords
-                         // (e.g. "search", "web", etc.) instead of blocking 50s on CPU embeddings
-                         // Fallback: Check if the prompt explicitly mentions any known semantic triggers
-                         let prompt_lower = prompt.to_lowercase();
-                         let words: std::collections::HashSet<&str> = prompt_lower.split_whitespace().collect();
-                         for (keyword, path) in &router.keyword_index {
-                             if words.contains(keyword.as_str()) || prompt_lower.contains(keyword) {
-                                 if let Some(name) = path.file_name() {
-                                     let id = name.to_string_lossy().to_string();
-                                     if !matched_skill_ids.contains(&id) {
-                                         matched_skill_ids.push(id);
-                                     }
+                     }
+                 }
+             }
+
+             // Fallback triggers containment match: check substring containment in prompt dynamically
+             if matched_skill_ids.is_empty() {
+                 if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
+                     let prompt_lower = prompt.to_lowercase();
+                     let padded_prompt = format!(" {} ", prompt_lower);
+                     for (keyword, path) in &router.keyword_index {
+                         let norm_keyword = format!(" {} ", keyword.to_lowercase().trim());
+                         if padded_prompt.contains(&norm_keyword) {
+                             if let Some(name) = path.file_name() {
+                                 let id = name.to_string_lossy().to_string();
+                                 if !matched_skill_ids.contains(&id) {
+                                     matched_skill_ids.push(id);
                                  }
                              }
                          }
@@ -667,6 +686,7 @@ impl CoreRouter {
                 }
             }
         }
+        let max_ctx = self.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(8192);
 
         match &mut self.active_backend {
             Backend::cluaiz(b) => {
@@ -701,17 +721,46 @@ impl CoreRouter {
                 
                 let mut current_prompt = formatted_prompt.clone();
                 let mut max_iters = 3; // Max agentic pauses per request
+                let mut is_continuation = false; // Track if this is a tool-resume iteration
                 
                 while max_iters > 0 {
                     max_iters -= 1;
                     
+                    // 🎯 CONTINUATION MODE: Tool was executed. Stream final answer DIRECTLY.
+                    // Do NOT go through the trigger interceptor — the skill instructions in the
+                    // system prompt would cause the model to re-trigger the tool in a loop.
+                    // Instead: clear KV state, stream raw tokens straight to dashboard, then break.
+                    // If model tries to generate another TRIGGER despite the system override, stop it.
+                    if is_continuation {
+                        let _ = b.prefill("");
+                        let cb_final = cb.clone();
+                        let mut trig_acc = String::new();
+                        if let Err(e) = b.generate_stream(&current_prompt, max_tokens, Box::new(move |token: String| {
+                            trig_acc.push_str(&token);
+                            // Stop immediately if model tries to call a tool again
+                            if trig_acc.contains("<TRIGGER:") {
+                                return false;
+                            }
+                            // Keep only last 20 chars for sliding trigger detection
+                            if trig_acc.len() > 30 {
+                                let keep = trig_acc.len().saturating_sub(20);
+                                trig_acc = trig_acc[keep..].to_string();
+                            }
+                            let mut cb_guard = cb_final.lock().unwrap();
+                            (*cb_guard)(token)
+                        })) {
+                            return Err(e.to_string());
+                        }
+                        break; // Final answer done — exit loop unconditionally
+                    }
+                    
                     let tool_state = std::sync::Arc::new(std::sync::Mutex::new((false, String::new(), String::new())));
                     let tool_state_clone = tool_state.clone();
                     
+                    let buffer_state = std::sync::Arc::new(std::sync::Mutex::new((false, String::new(), String::new())));
+                    let buffer_state_clone = buffer_state.clone();
+                    
                     let cb_clone = cb.clone();
-                    let mut buffer_cache = String::new();
-                    let mut json_buffer = String::new();
-                    let mut capture = false;
                     let mut dynamic_triggers: Vec<String> = Vec::new();
                     if let Ok(skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
                         for skill_id in &matched_skill_ids {
@@ -724,12 +773,15 @@ impl CoreRouter {
                     }
 
                     let interceptor = Box::new(move |token: String| {
+                        let mut bs = buffer_state_clone.lock().unwrap();
+                        let (capture, json_buffer, buffer_cache) = &mut *bs;
+                        
                         let mut cb_guard = cb_clone.lock().unwrap();
                         
                         buffer_cache.push_str(&token);
 
                         // If we are currently capturing a macro (because a dynamic trigger matched partially)
-                        if capture {
+                        if *capture {
                             json_buffer.push_str(&token);
                         } else {
                             // Check if buffer contains any full dynamic trigger
@@ -744,7 +796,7 @@ impl CoreRouter {
                             }
 
                             if let Some((idx, dt)) = found_trigger {
-                                capture = true;
+                                *capture = true;
                                 json_buffer.push_str(&buffer_cache[idx..]);
                                 let prefix = buffer_cache[..idx].to_string();
                                 buffer_cache.clear();
@@ -772,7 +824,7 @@ impl CoreRouter {
                                 if partial_match_idx.is_none() {
                                     let trigger_target = "<TRIGGER:";
                                     if let Some(idx) = buffer_cache.find(trigger_target) {
-                                        capture = true;
+                                        *capture = true;
                                         json_buffer.push_str(&buffer_cache[idx..]);
                                         let prefix = buffer_cache[..idx].to_string();
                                         buffer_cache.clear();
@@ -794,7 +846,7 @@ impl CoreRouter {
                                     if idx > 0 {
                                         let text_to_flush = buffer_cache[..idx].to_string();
                                         let new_buffer = buffer_cache[idx..].to_string();
-                                        buffer_cache = new_buffer;
+                                        *buffer_cache = new_buffer;
                                         let _ = (*cb_guard)(text_to_flush);
                                     }
                                     return true; // Wait for more tokens
@@ -807,33 +859,40 @@ impl CoreRouter {
                         }
                         
                         let is_complete = if json_buffer.starts_with("<TRIGGER:") {
-                            json_buffer.contains("</TRIGGER")
+                            json_buffer.contains("</TRIGGER>")
                         } else if json_buffer.contains('{') {
                             json_buffer.contains('}')
                         } else {
                             json_buffer.contains('\n') || json_buffer.contains('>')
                         };
                         
-                        if capture && is_complete {
+                        if *capture && is_complete {
                             // If it's a Sovereign trigger
-                            if json_buffer.starts_with("<TRIGGER:") && json_buffer.contains("</TRIGGER") {
-                                if let Some(header_end) = json_buffer.find('>') {
-                                    let header = &json_buffer[..header_end];
-                                    let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
-                                    let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
-                                    let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                            if json_buffer.starts_with("<TRIGGER:") && json_buffer.contains("</TRIGGER>") {
+                                if let Some(trigger_start) = json_buffer.rfind("<TRIGGER:") {
+                                    let actual_buffer = &json_buffer[trigger_start..];
+                                    if let Some(header_end) = actual_buffer.find('>') {
+                                        let header = &actual_buffer[..header_end];
+                                        let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
+                                        let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                        let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                                        
+                                        let json_start = header_end + 1;
+                                        let json_end = actual_buffer.find("</TRIGGER>").unwrap_or(actual_buffer.len());
+                                        let mut payload = actual_buffer[json_start..json_end].trim().to_string();
+                                        payload = payload.trim_end_matches('}').to_string();
+                                        if !payload.ends_with('}') {
+                                            payload.push('}');
+                                        }
+                                        
+                                        let mut state = tool_state_clone.lock().unwrap();
+                                        state.0 = true;
+                                        state.1 = format!("{}:{}", t_type, t_name);
+                                        state.2 = payload; 
                                     
-                                    let json_start = header_end + 1;
-                                    let json_end = json_buffer.find("</TRIGGER").unwrap_or(json_buffer.len());
-                                    let payload = json_buffer[json_start..json_end].trim().to_string();
-                                    
-                                    let mut state = tool_state_clone.lock().unwrap();
-                                    state.0 = true;
-                                    state.1 = format!("{}:{}", t_type, t_name);
-                                    state.2 = payload; 
-                                    
-                                    let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Engine intercepted tool execution for '{}'...\n", t_name));
+                                    let _ = (*cb_guard)(format!("⚙️ [Agentic Pause] Engine intercepted tool execution for '{}'...\n", t_name));
                                     return false; // STOP generation
+                                }
                                 }
                             } else {
                                 // Dynamic CEL script execution interceptor!
@@ -844,13 +903,13 @@ impl CoreRouter {
                                 state.1 = "DYNAMIC_CEL".to_string();
                                 state.2 = clean_cel.clone(); 
                                 
-                                let _ = (*cb_guard)(format!("\n\n⚙️ [Agentic Pause] Orchestrating CEL macro: {}\n", clean_cel));
+                                let _ = (*cb_guard)(format!("⚙️ [Agentic Pause] Orchestrating CEL macro: {}\n", clean_cel));
                                 return false; // STOP generation
                             }
                             
                             // if not valid, flush and reset
                             let flushed = json_buffer.clone();
-                            capture = false;
+                            *capture = false;
                             json_buffer.clear();
                             let _ = (*cb_guard)(flushed);
                         }
@@ -860,6 +919,40 @@ impl CoreRouter {
                     
                     if let Err(e) = b.generate_stream(&current_prompt, max_tokens, interceptor) {
                         return Err(e.to_string());
+                    }
+                    
+                    // Fallback for unclosed triggers (if the LLM stopped generating without </TRIGGER>)
+                    {
+                        let mut bs = buffer_state.lock().unwrap();
+                        let capture = bs.0;
+                        let json_buffer = &bs.1;
+                        if capture && json_buffer.starts_with("<TRIGGER:") && json_buffer.contains('}') {
+                            if let Some(trigger_start) = json_buffer.rfind("<TRIGGER:") {
+                                let actual_buffer = &json_buffer[trigger_start..];
+                                if let Some(header_end) = actual_buffer.find('>') {
+                                    let header = &actual_buffer[..header_end];
+                                    let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
+                                    let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                    let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
+                                    
+                                    let json_start = header_end + 1;
+                                    let json_end = actual_buffer.find("</TRIGGER>").unwrap_or(actual_buffer.len());
+                                    let mut payload = actual_buffer[json_start..json_end].trim().to_string();
+                                    payload = payload.trim_end_matches('}').to_string();
+                                    if !payload.ends_with('}') {
+                                        payload.push('}');
+                                    }
+                                    
+                                    let mut state = tool_state.lock().unwrap();
+                                    state.0 = true;
+                                    state.1 = format!("{}:{}", t_type, t_name);
+                                    state.2 = payload;
+                                    
+                                    let mut cb_guard = cb.lock().unwrap();
+                                    let _ = (cb_guard)(format!("⚙️ [Agentic Pause] Engine forcefully intercepted unclosed tool execution for '{}'...\n", t_name));
+                                }
+                            }
+                        }
                     }
                     
                     let (was_called, mut t_name, t_payload) = {
@@ -923,32 +1016,49 @@ impl CoreRouter {
                             }
                             
                             use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
-                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new(); 
                             let ext_payload = ExtensionPayload::new(PayloadType::Json, t_payload.as_bytes());
                             
                             match executor.execute(actual_name, &ext_payload) {
                                 Ok(bytes) => {
                                     result_str = String::from_utf8_lossy(&bytes).to_string();
                                     let mut cb_guard = cb.lock().unwrap();
-                                    let _ = (cb_guard)(format!("✅ [Agentic Pause] Result injected into context window.\n\n<TOOL_OUTPUT_LOG>{}</TOOL_OUTPUT_LOG>\n", result_str));
+                                    let _ = (cb_guard)(format!("__ENGINE_PAUSE_EXECUTE__:{}:{}", actual_name, result_str));
                                 },
                                 Err(e) => {
                                     result_str = format!("Error executing {}: {}", actual_name, e);
                                     let mut cb_guard = cb.lock().unwrap();
-                                    let _ = (cb_guard)(format!("❌ [Agentic Pause] Failed: {}\n\n<TOOL_OUTPUT_LOG>{}</TOOL_OUTPUT_LOG>\n", e, result_str));
+                                    let _ = (cb_guard)(format!("__ENGINE_PAUSE_EXECUTE__:{}:{}", actual_name, result_str));
                                 }
                             }
                             
                             // Replace t_name with the properly formatted string for the resume tag
                             t_name = format!("{}:{}", t_type, actual_name);
                         }
-                        
                         // 🚀 SOVEREIGN KV-CACHE RESUME
-                        // We do NOT re-insert the full prompt. We use [PIVOT_CONTINUE] to seamlessly append the tool result to the existing KV-Cache.
-                        current_prompt = format!(
-                            "[PIVOT_CONTINUE]\n<result:{}>\n{}\n</result>\n",
-                            t_name, result_str
-                        );
+                        // We append the tool result to the full prompt history. The native backend will automatically perform prefix-matching KV cache reuse, safely rolling back any hallucinated EOS tokens and resolving subword boundaries natively.
+                        let max_chars = max_ctx * 2; // Dynamic estimation
+                        let safe_result_str = if result_str.len() > max_chars {
+                            format!("{}... [TRUNCATED BY SYSTEM LIMIT]", &result_str[..max_chars])
+                        } else {
+                            result_str.clone()
+                        };
+                        
+                        let generated_trigger_text = if t_name == "DYNAMIC_CEL" {
+                            t_payload.clone()
+                        } else { 
+                            format!("<TRIGGER:{}>{}</TRIGGER>", t_name, t_payload)
+                        };
+                        
+                        current_prompt.push_str(&generated_trigger_text);
+                        // System override message: highest priority in Llama-3 instruct RLHF.
+                        // A new system turn mid-conversation overrides the original skill instructions
+                        // that tell the model to use tools — preventing re-trigger loops.
+                        current_prompt.push_str(&format!(
+                            "<|eot_id|>\n<|start_header_id|>system<|end_header_id|>\n\nTool execution is complete. DO NOT call any tools. DO NOT generate any TRIGGER tags. Write your final conversational answer using the search result below.\n<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n<result:{}>\n{}\n</result>\n<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
+                            t_name, safe_result_str
+                        ));
+                        is_continuation = true; // Next iteration must reset KV cache
                         
                     } else {
                         break; // Normal generation finished without tools

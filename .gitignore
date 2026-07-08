@@ -58,6 +58,9 @@ error_log.txt
 Thumbs.db
 desktop.ini
 
+# --- Git Internals ---
+**/.git_disabled/
+
 # --- Local Overrides ---
 .cluaiz/
 models/

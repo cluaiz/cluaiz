@@ -102,10 +102,10 @@ pub async fn execute(
         let key = key.replace("settings.", "").replace("", "");
     
         // Value Prompt
-        let mut default_val = String::new();
-        let mut is_enum = false;
-        let mut enum_options = Vec::new();
-        let mut expected_type = String::new();
+        let mut default_val: String = String::new();
+        let mut is_enum: bool = false;
+        let mut enum_options: Vec<String> = Vec::new();
+        let mut expected_type: String = String::new();
     
         if let Some(map) = yaml.as_mapping() {
             if let Some(schema) = map.get(&serde_yaml::Value::String("settings".to_string())) {

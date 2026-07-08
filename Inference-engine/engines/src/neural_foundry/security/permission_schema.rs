@@ -75,7 +75,7 @@ fn default_stream_telemetry() -> bool {
 }
 
 fn default_lazy_load_model() -> bool {
-    false
+    true
 }
 
 fn default_temporary_chat_ttl_hours() -> u64 {

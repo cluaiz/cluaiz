@@ -428,7 +428,7 @@ async fn main() -> Result<()> {
         Some(CliCommand::DevSync { target, driver_name, profile }) => {
             let global_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir;
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
-            if let Err(e) = cluaiz_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
+            if let Err(_e) = cluaiz_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaiz_shared::HardwareGovernor::resolve_engine_path());
             }
             core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
