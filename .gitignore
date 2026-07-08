@@ -37,6 +37,7 @@ Apps/app
 
 # --- Managed Interface Engines (DRIVERS ALLOWED) ---
 # interface-engines/drivers/  <-- Allowed for user downloads
+interface-engines/llama/llama.cpp/
 
 # --- IDE & Environment ---
 .vscode/
