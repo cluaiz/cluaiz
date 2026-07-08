@@ -4,8 +4,8 @@
 
 <div align="center">
 
-<span><strong><font size="7">Cluaiz</font></strong></span><br>
-<span><strong><font size="5">Build. Run. Extend. Local AI.</font></strong></span><br>
+<h1><strong>Cluaiz</strong></h1>
+<h2><strong>Build. Run. Extend. Local AI.</strong></h2>
 <strong>One platform. One runtime. Built for modern local AI.</strong><br>
 <sub>Unified runtime for building, running, and extending AI applications.</sub>
 </div>
