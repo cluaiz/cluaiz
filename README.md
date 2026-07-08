@@ -4,17 +4,25 @@
 
 <div align="center">
 
-<h1><strong>Cluaiz</strong></h1>
-<h2><strong>Build. Run. Extend. Local AI.</strong></h2>
-<strong>One platform. One runtime. Built for modern local AI.</strong><br>
-<sub>Unified runtime for building, running, and extending AI applications.</sub>
-</div>
+<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=45&center=true&vCenter=true&width=600&height=80&lines=Cluaiz&color=00BFFF&duration=1&pause=100000000&repeat=false&cursor=false" alt="Cluaiz">
 <br>
+<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=20&center=true&vCenter=true&width=800&height=40&lines=Build.+Run.+Extend.+Local+AI.&color=ffffff&duration=1&pause=100000000&repeat=false&cursor=false" alt="Build. Run. Extend. Local AI.">
+<br>
+<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=14&center=true&vCenter=true&width=900&height=30&lines=One+platform.+One+runtime.+Built+for+modern+local+AI.&color=ffffff&duration=1&pause=100000000&repeat=false&cursor=false" alt="One platform. One runtime. Built for modern local AI.">
+<br>
+<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=11&center=true&vCenter=true&width=900&height=30&lines=Unified+runtime+for+building,+running,+and+extending+AI+applications.&color=aaaaaa&duration=1&pause=100000000&repeat=false&cursor=false" alt="Unified runtime for building, running, and extending AI applications.">
+</div>
+</br>
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Logic-Native_FFI-green?style=for-the-badge" alt="Logic">
   <img src="https://img.shields.io/badge/Architecture-Modular-blue?style=for-the-badge" alt="Architecture">
   <img src="https://img.shields.io/badge/Security-Sandboxed-red?style=for-the-badge" alt="Security">
+  <br><br>
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/Built_with-Rust-e43716.svg?style=for-the-badge&logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/Platform-Win_|_Mac_|_Linux-lightgrey?style=for-the-badge" alt="Platform">
+  <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge" alt="PRs Welcome">
 </p>
 
 ---
@@ -327,4 +335,3 @@ Since the pre-compiled `cluaiz` executables are built dynamically and are not si
 cluaiz is released under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for more details.
 
 </details>
-
