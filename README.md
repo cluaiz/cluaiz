@@ -1,31 +1,48 @@
 <p align="center">
-  <img src="assets/Banner.png" alt="cluaiz Logo">
+  <picture>
+    <source media="" srcset="assets/Banner.png">
+    <img alt="Cluaiz Banner" src="assets/Banner.png" width="100%">
+  </picture>
 </p>
+<h3 align="center">
+Power your local AI and execute native inference with bare-metal hardware and LLM control using modular extensions plugins MCP skills and CEL language modifications</h3>
 
-<div align="center">
-
-<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=45&center=true&vCenter=true&width=600&height=80&lines=Cluaiz&color=00BFFF&duration=1&pause=100000000&repeat=false&cursor=false" alt="Cluaiz">
-<br>
-<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=20&center=true&vCenter=true&width=800&height=40&lines=Build.+Run.+Extend.+Local+AI.&color=ffffff&duration=1&pause=100000000&repeat=false&cursor=false" alt="Build. Run. Extend. Local AI.">
-<br>
-<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=14&center=true&vCenter=true&width=900&height=30&lines=One+platform.+One+runtime.+Built+for+modern+local+AI.&color=ffffff&duration=1&pause=100000000&repeat=false&cursor=false" alt="One platform. One runtime. Built for modern local AI.">
-<br>
-<img src="https://readme-typing-svg.demolab.com/?font=Press+Start+2P&weight=400&size=11&center=true&vCenter=true&width=900&height=30&lines=Unified+runtime+for+building,+running,+and+extending+AI+applications.&color=aaaaaa&duration=1&pause=100000000&repeat=false&cursor=false" alt="Unified runtime for building, running, and extending AI applications.">
-</div>
 </br>
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Logic-Native_FFI-green?style=for-the-badge" alt="Logic">
   <img src="https://img.shields.io/badge/Architecture-Modular-blue?style=for-the-badge" alt="Architecture">
   <img src="https://img.shields.io/badge/Security-Sandboxed-red?style=for-the-badge" alt="Security">
-  <br><br>
+   <br>
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Built_with-Rust-e43716.svg?style=for-the-badge&logo=rust" alt="Rust">
   <img src="https://img.shields.io/badge/Platform-Win_|_Mac_|_Linux-lightgrey?style=for-the-badge" alt="Platform">
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge" alt="PRs Welcome">
 </p>
 
----
+## About Cluaiz
+
+<h4>Cluaiz is a fast, easy-to-use, unified native runtime engine and orchestrator built in Rust. Optimized for edge devices, it powers local AI and agentic workflows with native CEL, WASM, and modular plugin support.</h4>
+
+Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engine meticulously engineered to synchronize text, vision, and tool execution into a single unified memory space. This architecture is not bound to specific hardware configurations or constrained environments; it is designed as a highly elastic architecture to operate seamlessly across any tier of compute hardware—from consumer silicon to enterprise server clusters. Its primary objective is to establish a direct, transparent, and highly optimized bridge between mathematical inference kernels and autonomous agentic workflows, granting developers absolute programmatic control and optimized execution.
+
+**The Hybrid Access and Connectivity Model**
+Rather than restricting developers to a single protocol, Cluaiz introduces a comprehensive hybrid access paradigm designed to adapt to any architectural requirement. If a decoupled web application requires standard network requests, the engine's built-in HTTP REST API gateway provides a robust solution. Conversely, for architectures demanding absolute minimum latency and direct control, developers can utilize the Cluaiz Expression Language (CEL) and WebAssembly (WASM). This allows logic written in C, Python, or Rust to be compiled and executed directly within the runtime space, bypassing HTTP and JSON serialization overhead entirely. Furthermore, for those building purely native applications, Cluaiz exposes a direct C-Pointer interface, granting instantaneous access to the Foreign Function Interface (FFI) boundary within the exact same memory space.
+
+**Dual-Engine Orchestration and Multimodal Integration**
+Cluaiz is not a superficial wrapper; it natively orchestrates the execution of underlying mathematical kernels. It leverages the core logic of `llama.cpp` to ensure highly efficient parsing of GGUF models and broad cross-platform hardware portability. Simultaneously, the `ONNX Runtime` is deeply integrated to execute multimodal operations—such as vision, embeddings, and audio—in parallel. By synchronizing these engines, Cluaiz enables hybrid CPU and GPU split-loading, allowing dynamic context switching between text and vision operations without losing the underlying latent states.
+
+**Compile-Time 1-Bit BitNet Injection & Cross-Platform Execution**
+Cluaiz optimizes the execution of 1-bit and 1.58-bit (Ternary) quantization models through dynamic compile-time interception. By leveraging the cross-platform hardware portability of `llama.cpp`, the engine ensures that BitNet models can run natively on any hardware tier (CPU or GPU). During the build process, Cluaiz dynamically patches the underlying C++ inference libraries, hijacking the tensor math operations before they compile. Through injected low-level hardware instructions, the engine forces both CPUs and GPUs to process the model using actual 1-bit calculations natively. By executing pure addition and subtraction directly on hardware registers, Cluaiz achieves true 1-bit primitive throughput and entirely avoids floating-point conversions across all devices.
+
+**Hardware Control, JIT Injection, and Memory Safety**
+The engine provides complete, transparent control over system operations. It features a unique Just-In-Time (JIT) tool injection capability, allowing token generation to be paused mid-stream so that custom skills or runtime plugins can be injected via CEL under strict Rust safe memory isolation and atomic state swapping. Generation can then be instantly resumed without requiring a re-prompt or context recalculation. Parallel to this, the VRAM Arbiter continuously monitors the hardware matrix. By mathematically evaluating available physical memory before every single token generation step, the arbiter actively prevents Out-of-Memory (OOM) segment faults across any hardware scale.
+
+**System Booster & Deep Optimization Controls**
+Cluaiz features a dedicated System Booster profile granting developers surgical control over the lowest-level compilation limits and runtime behaviors. It dictates memory allocation boundaries, dynamic hardware-layer splits, and advanced KV-cache compression techniques (such as `kv_quant` and rolling `context_shift`) directly governed by the VRAM Arbiter. Additionally, the booster unlocks advanced execution features like dynamic Flash Attention (`dflash`), speculative decoding, and `turbo_quant` rotations, allowing users to precisely balance execution speed against memory limitations.
+
+**Integrated Developer Hub**
+To manage this vast ecosystem, Cluaiz includes a highly capable local Developer Hub operating on a secure local port. Here, developers are granted access to the complete API matrix, enabling them to live-test their WASM plugins, ternary kernel designs, and execution pipelines. This sandboxed environment provides the freedom to test, optimize, and push the engine's boundaries using HTTP, CEL, or C-Pointers simultaneously.
 
 ## 🛡️ **Project Trust & Current Status**
 
@@ -34,28 +51,6 @@
 >
 > **Current Phase**: **Industrial Alpha (Research Phase)**.
 > While the core orchestration architecture is stable, hardware-constrained guarantees and ternary kernels are undergoing validation.
-
-## 📖 What is Cluaiz?
-
-Cluaiz is an open-source local AI runtime designed to simplify how developers build, run, and extend local AI applications.
-
-Instead of combining multiple runtimes, model backends, scripts, and external tools, Cluaiz provides a unified runtime that brings them together through one consistent developer experience.
-
-The current alpha focuses on reliable local inference, runtime orchestration, and a modular architecture. Additional capabilities such as plugins, skills, MCP integration, and the Cluaiz Hub are being developed incrementally as the platform evolves.
-
-Cluaiz is built with Rust and currently integrates `llama.cpp` for language models and `ONNX Runtime` for vision and embedding workloads, providing a consistent foundation for local AI development.
-
----
-
-## 💡 Why Cluaiz?
-
-Building local AI applications often requires combining multiple tools, runtimes, libraries, and custom integrations. This increases setup complexity, maintenance effort, and long-term project overhead.
-
-Cluaiz aims to reduce that complexity by providing a unified runtime where local AI components can work together through a consistent architecture.
-
-Rather than replacing existing open-source projects, Cluaiz focuses on making them easier to integrate, manage, and extend as part of a single local AI platform.
-
-The long-term vision is to provide a cohesive foundation for building, running, and extending local AI applications while keeping developers in control of their models, workflows, and data.
 
 ## 🚀 **Quick Start**
 
@@ -136,27 +131,27 @@ $ cluaiz plugin install web-scraper
 
 ### 1. Terminal & CLI Core
 
-* **[Terminal Commands & CLI Reference](docs/reference/terminal-commands.md)**  
+- **[Terminal Commands & CLI Reference](docs/reference/terminal-commands.md)**  
   An exhaustive, deeply technical engineering manual for all 32 native `cluaiz` commands. It documents the exact execution flow of the kernel, internal JSON state mutations (like `Permission.json` updates), and exact API route mappings for `serve`, `pull`, `booster`, and WASM skills orchestration.
 
 ### 2. Execution & Native Logic
 
-* **[CEL (cluaiz Execution Language)](docs/cel)**  
+- **[CEL (cluaiz Execution Language)](docs/cel)**  
   Dive into Cluaiz's custom native execution language. CEL allows you to bypass heavy Python SDKs by parsing raw syntax directly into an Abstract Syntax Tree (AST) that natively hooks into C-Pointers in shared memory (`payload_ptr`), allowing you to execute logic mid-inference with zero network latency.
 
 ### 3. Core Engine Architecture
 
-* **[Dual Engine Architecture](docs/engine/dual_engine_architecture.md)**  
+- **[Dual Engine Architecture](docs/engine/dual_engine_architecture.md)**  
   Understand the heart of Cluaiz: the seamless orchestration layer. It explains how `cluaiz` acts as a unified C-level memory space bridging `llama.cpp` (for LLMs) and **ONNX Runtime** (for Vision & Embeddings), eliminating the fragmented network lag typical of multi-engine local AI setups.
-* **[JIT KV-Cache Architecture](docs/engine/jit_architecture.md)**  
+- **[JIT KV-Cache Architecture](docs/engine/jit_architecture.md)**  
   Deep dive into the Just-In-Time memory compilation pipeline. Learn how Cluaiz analyzes prompt constraints, calculates exact physical memory limits natively, and injects pre-computed KV cache states (Dual-Caches) to dramatically reduce Time To First Token (TTFT).
 
 ### 4. Hardware Governance & Security
 
-* **[System Booster & Hardware Tuning](docs/engine/booster.md)**  
+- **[System Booster & Hardware Tuning](docs/engine/booster.md)**  
   The ultimate guide to the `system_booster.json` configurations. Discover how the memory arbiter mathematically prevents Out-of-Memory (OOM) crashes before they hit physical silicon by configuring FlashAttention bounds, Turbo KV quantization (`kv8`, `kv16`), and aggressive Context Shifting sliding windows.
-* **[Native Permission Schema](docs/engine/permission.md)**  
-  A breakdown of the strict execution bounds. Explore how `Permission.json` acts as an OS-level gatekeeper, controlling WASM Sandboxing strictness, active telemetry buffers, vectorization permissions, and native firewall rules to ensure absolute sovereign data security.
+- **[Native Permission Schema](docs/engine/permission.md)**  
+  A breakdown of the strict execution bounds. Explore how `Permission.json` acts as a bare-metal gatekeeper, controlling WASM Sandboxing strictness, active telemetry buffers, vectorization permissions, and native firewall rules to ensure absolute sovereign data security.
 
 </details>
 
@@ -169,17 +164,17 @@ $ cluaiz plugin install web-scraper
 
 ### 1. `cluaiz-app` (Official GUI)
 
-* **[Repository: cluaiz-app](https://github.com/cluaiz/cluaiz-app)**
-* **Technical Purpose:** This is the official graphical user interface. It connects as a **Pure Client** to the background `cluaiz serve` daemon.
-* **Execution Flow:** By communicating with the engine over REST endpoints (`/health`, `/v1/chat/stream`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
+- **[Repository: cluaiz-app](https://github.com/cluaiz/cluaiz-app)**
+- **Technical Purpose:** This is the official graphical user interface. It connects as a **Pure Client** to the background `cluaiz serve` daemon.
+- **Execution Flow:** By communicating with the engine over REST endpoints (`/health`, `/v1/chat/stream`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
 
 ### 2. `cluaiz-hub` (Global Registry & Extensions)
 
-* **[Repository: cluaiz-hub](https://github.com/cluaiz/cluaiz-hub)**
-* **Technical Purpose:** The central, automated manifest registry (`registry.json`) for the Cluaiz ecosystem. It hosts the source code and manifests for WASM Skills, Native Plugins, and Extensions. The CLI commands (e.g., `cluaiz extension install`) directly fetch manifests from this hub to securely link extensions into the engine.
-* **Example Extension hosted in the Hub:**
-  * **[cluaize-search](https://github.com/cluaiz/cluaiz-hub/tree/main/Extensions/cluaize-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
-  * **Execution Flow:**
+- **[Repository: cluaiz-hub](https://github.com/cluaiz/cluaiz-hub)**
+- **Technical Purpose:** The central, automated manifest registry (`registry.json`) for the Cluaiz ecosystem. It hosts the source code and manifests for WASM Skills, Native Plugins, and Extensions. The CLI commands (e.g., `cluaiz extension install`) directly fetch manifests from this hub to securely link extensions into the engine.
+- **Example Extension hosted in the Hub:**
+  - **[cluaize-search](https://github.com/cluaiz/cluaiz-hub/tree/main/Extensions/cluaize-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
+  - **Execution Flow:**
     1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<TRIGGER:extension:cluaiz-search>`.
     2. The extension concurrently hits SearXNG and DuckDuckGo using `reqwest`, parses the DOM using `scraper` (stripping JS/CSS), and dynamically compresses the text (using BM25) to fit the available VRAM envelope.
     3. The parsed knowledge is injected directly into the active C-pointer KV-Cache and generation resumes seamlessly.
@@ -193,26 +188,36 @@ $ cluaiz plugin install web-scraper
 <details>
 <summary><b>Click to expand</b></summary>
 
-### The Direct CEL API (No SDK Required)
+### 1. Hardware Execution & Memory Management
 
-Most standard AI engines expose basic REST endpoints for text generation. cluaiz exposes a dynamic **CEL (cluaiz Expression Language)** compilation endpoint. You can send raw CEL scripts directly to the engine via HTTP. When your application sends a CEL script (e.g., `use plugin::filesystem -> read()`), the engine parses it into an AST and maps it to native C-Pointers in shared memory (`payload_ptr`), allowing native operations mid-inference without any language-specific SDKs.
+- **VRAM Arbiter (Mathematical OOM Prevention):** Automatically probes physical hardware and enforces a strict 7.5% memory safety margin. It ensures the system never crashes due to Out-of-Memory (OOM) errors, from 2GB CPUs to 80GB GPUs.
+- **System Booster Tuning:** Through `system_booster.json`, gain deep hardware control over Speculative Decoding (2-4x TPS boost), Flash Attention & dflash, and Context Shifting & KV Quantization (kv16/kv8/kv4).
+- **Dual-Engine Orchestration:** Unifies `llama.cpp` (Reasoning) and `ONNX Runtime` (Vision/Embeddings) into a single shared memory space, eliminating PCIe spill transfer bottlenecks.
+- **BitNet & 1.58-bit Ternary Injection:** Dynamically injects `bfe.u32` and PTX instructions at compile time, enabling 4B models to hit extreme speeds on consumer GPUs.
 
-### Secure MCP & Native Plugin Execution
+### 2. Agentic Orchestration
 
-1. **Manifest-Driven Extensions:** Download a plugin or skill, and its `manifest.yaml` acts as a strict execution contract.
-2. **Native MCP Integration:** Model Context Protocol (MCP) tools are wrapped inside our native CEL execution environment.
-3. **Native Orchestration:** The model outputs a CEL command. The Engine parses the CEL and directly invokes the native plugin's FFI boundary—no localhost network calls required.
+- **WASM Skills & Sandboxing:** Secure WebAssembly binaries executing in a strict 64KB isolated ring, giving agents native system capabilities without REST API latency. Code executes in a strict WASM sandbox, isolated from the host.
+- **Secure MCP & Native Plugin Execution (.dlso):** Manifest-driven execution. Model outputs a CEL command, and the engine directly invokes the native plugin's FFI boundary—no localhost network calls required.
+- **JIT KV-Cache Injection & Hybrid Caching:** When a tool returns massive data, Cluaiz filters it natively in memory and injects only the final result directly into the attention matrix (KV Cache). Future invocations perform native `M-RoPE` injection via `.kvcache.bin`.
+- **Agentic Pause:** If a skill exceeds your VRAM, cluaiz safely offloads calculation to the CPU to prevent OOM errors.
+- **Hot-Reload Settings Controller:** Dynamically update YAML manifests (API keys, permissions, model settings) without restarting the engine.
 
-### WASM Skills & Agentic Tool Calling
+### 3. Cluaiz Expression Language (CEL) Router
 
-1. **Semantic Routing:** When you type a prompt, cluaiz's internal vector router checks if an installed skill matches the intent and merges its instructions.
-2. **Hybrid KV Caching:** A `.kvcache.bin` file is saved to your SSD. Future invocations perform native `M-RoPE` injection, saving massive VRAM overhead.
-3. **Agentic Pause:** If a skill exceeds your VRAM, cluaiz safely offloads calculation to the CPU to prevent OOM errors.
-4. **WASM Sandboxing:** Skill code executes in a strict WASM sandbox, isolated from the host OS.
+- **The Direct CEL API (No SDK Required):** Send raw CEL scripts (`use plugin::filesystem -> read()`) directly via HTTP. The engine parses it into an AST mapped to native C-Pointers in shared memory (`payload_ptr`), allowing native operations mid-inference.
+- **Semantic Routing & Control Flow:** Internal vector routers check if an installed skill matches the intent. Chain logic (`->`) and execute loops (`foreach`) or conditionals (`if / else`) at native CPU speeds.
+- **Hardware Vector Search:** Run cosine similarity scans natively utilizing SIMD / GPU tensor cores.
+- **Logit-Level JSON Enforcement (LogitSteer):** Force the model to output strictly correct syntax or JSON by applying Logit-level masking during generation.
+- **Mid-Generation Pivot (Hot-Steering):** Interrupt long generations with **`Ctrl+C`**. Instead of killing the process, cluaiz **Pauses** the engine. Enter a midway instruction (e.g., "Make it shorter"), and the engine processes this pivot seamlessly.
 
-### Mid-Generation Pivot (Hot-Steering)
+### 4. API, Ecosystem & Security
 
-If the AI is generating a long response, you can interrupt it by pressing **`Ctrl+C`**. Instead of killing the process and losing the VRAM context, cluaiz **Pauses** the engine. You can enter a mid-way instruction (e.g., "Make it shorter"). The engine processes this pivot and continues generation seamlessly.
+- **Unified API Gateway:** A remote execution Axum + Tokio REST/SSE gateway, fully compatible with OpenAI (`/v1/chat/completions`).
+- **Native RAG Ingestion (`cluaiz ingest`):** Natively parse, semantically chunk, and save local documents (PDF, TXT, MD) into an LMDB vector storage via ONNX embeddings.
+- **Automated Silicon Benchmarking (`cluaiz benchmark`):** Real-time RDTSC clocking, SIMD profiling, and exact TPS/Wattage reports.
+- **Smart Model Management:** Securely pull, run, and manage GGUF weights directly into the local vault (`~/.cluaiz/models/`).
+- **100% Air-Gapped Security Engine:** Governed by `Permission.json` to control telemetry, firewall, and system isolation.
 
 </details>
 
@@ -225,10 +230,10 @@ If the AI is generating a long response, you can interrupt it by pressing **`Ctr
 
 ### Technical Specification
 
-* **Purpose:** A decoupled, three-tier orchestration layer to manage memory, inference state, and API requests across disparate inference backends (`llama.cpp`, `ONNX`).
+- **Purpose:** A decoupled, three-tier orchestration layer to manage memory, inference state, and API requests across disparate inference backends (`llama.cpp`, `ONNX`).
 
-* **Platform Support:** Windows (MSVC), Linux (GNU/Musl), macOS (Mach-O)
-* **Reusability Level:** Global Orchestrator Gateway
+- **Platform Support:** Windows (MSVC), Linux (GNU/Musl), macOS (Mach-O)
+- **Reusability Level:** Global Orchestrator Gateway
 
 ### Architectural Flow
 
@@ -245,21 +250,21 @@ graph TD
 
 ### Deep File Breakdown
 
-* `cmd/src/main.rs`:
-  * **Logic:** CLI Gateway and Argument Router.
-  * **Flow:** Evaluates user commands and routes to the appropriate core logic (API server, dashboard, or headless inference).
-  * **Why:** To maintain a strict separation between the CLI user interface and the background Rust kernel.
+- `cmd/src/main.rs`:
+  - **Logic:** CLI Gateway and Argument Router.
+  - **Flow:** Evaluates user commands and routes to the appropriate core logic (API server, dashboard, or headless inference).
+  - **Why:** To maintain a strict separation between the CLI user interface and the background Rust kernel.
 
-* `inference-engine/engines/cluaiz-shared/src/hardware/system_booster.rs`:
-  * **Logic:** Manages the `system_booster.json` state.
-  * **Flow:** Implements the VRAM Arbiter, dynamically allocating and reserving KV Cache limits based on actual physical silicon capacity. Allows toggling `mode_run` (UltraMaxBoost vs Balance), `force_vram_reclaim`, and `think_mode` natively.
-  * **Why:** To mathematically prevent Out-of-Memory (OOM) failures before they hit the hardware layer and provide native context-shifting control.
+- `inference-engine/engines/cluaiz-shared/src/hardware/system_booster.rs`:
+  - **Logic:** Manages the `system_booster.json` state.
+  - **Flow:** Implements the VRAM Arbiter, dynamically allocating and reserving KV Cache limits based on actual physical silicon capacity. Allows toggling `mode_run` (UltraMaxBoost vs Balance), `force_vram_reclaim`, and `think_mode` natively.
+  - **Why:** To mathematically prevent Out-of-Memory (OOM) failures before they hit the hardware layer and provide native context-shifting control.
 
 ### Failure & Recovery Logic
 
-* **Potential Failure Point:** `llama.cpp` FFI pointer segfaults due to invalid VRAM calculations.
+- **Potential Failure Point:** `llama.cpp` FFI pointer segfaults due to invalid VRAM calculations.
 
-* **Recovery Logic:** The Engine probes physical silicon and applies a mandatory `7.5% Safe VRAM Allocation Margin` prior to execution. If VRAM is exhausted, the Engine triggers an Agentic Pause and falls back to CPU computation.
+- **Recovery Logic:** The Engine probes physical silicon and applies a mandatory `7.5% Safe VRAM Allocation Margin` prior to execution. If VRAM is exhausted, the Engine triggers an Agentic Pause and falls back to CPU computation.
 
 </details>
 
@@ -276,7 +281,7 @@ graph TD
 | :----------- | :-------- | :------------------- | :------------- |
 | **CUDA**     | NVIDIA    | Tensor Cores (v11+)  | ✅ Alpha        |
 | **Metal**    | Apple     | MPS / Neural Engine  | ✅ Alpha        |
-| **Vulkan**   | Universal | Cross-Vendor Compute | ✅ Alpha        |
+| **Vulkan**   | Cross-Platform | Cross-Vendor Compute | ✅ Alpha        |
 | **ROCm/HIP** | AMD       | Matrix Cores         | ✅ Alpha        |
 | **OpenVINO** | Intel     | NPU / iGPU           | 🧪 Experimental |
 | **SYCL**     | Intel     | oneAPI / XMX         | 🧪 Experimental |
@@ -302,12 +307,12 @@ graph TD
 cluaiz pushes hardware to its absolute mathematical limits. If you experience unexpected performance drops:
 
 1. **Laptop Power-Saving Throttling:**
-   * **Observation:** If your battery drops and is unplugged, Windows forces the GPU into Battery Saver (~10W), dropping TPS to ~15.
-   * **Fix:** Plug in your laptop charger. The GPU scales to ~30W+, restoring 30+ TPS.
+   - **Observation:** If your battery drops and is unplugged, Windows forces the GPU into Battery Saver (~10W), dropping TPS to ~15.
+   - **Fix:** Plug in your laptop charger. The GPU scales to ~30W+, restoring 30+ TPS.
 
 2. **The "PCIe Spill" Phenomenon:**
-   * **Observation:** Allocating too much VRAM forces the OS to spill data to Shared GPU Memory (System RAM).
-   * **Fix:** cluaiz applies a strict 7.5% margin. Do not override this in `system_booster.json` unless you are prepared for massive PCIe latency.
+   - **Observation:** Allocating too much VRAM forces the system to spill data to Shared GPU Memory (System RAM).
+   - **Fix:** cluaiz applies a strict 7.5% margin. Do not override this in `system_booster.json` unless you are prepared for massive PCIe latency.
 
 </details>
 
@@ -320,15 +325,15 @@ cluaiz pushes hardware to its absolute mathematical limits. If you experience un
 
 ### Security Architecture
 
-* **Process Isolation**: Kernels execute in restricted sub-processes with OS-level sandboxing.
+- **Process Isolation**: Kernels execute in restricted sub-processes with strict process-level sandboxing.
 
-* **DNA Verification**: SHA-256 manifest verification for all binary plugins and kernels before dynamic linkage.
+- **DNA Verification**: SHA-256 manifest verification for all binary plugins and kernels before dynamic linkage.
 
 ### Note on Windows SmartScreen Warning
 
 Since the pre-compiled `cluaiz` executables are built dynamically and are not signed with a commercial certificate, Windows Defender may show a "Windows protected your PC" pop-up.
 
-* **Quick Bypass:** Click "More info", then click "Run anyway".
+- **Quick Bypass:** Click "More info", then click "Run anyway".
 
 ### License
 

@@ -182,7 +182,8 @@ try {
     if ($brainChoice -match "^[yY]") {
         [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '1', 'Process')
         Write-Host ("  " + $GREEN + "[ENABLED] " + $NC + "cluaizdb FFI Memory Brain activated.")
-    } else {
+    }
+    else {
         [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '0', 'Process')
         Write-Host ("  " + $GRAY + "[DISABLED] " + $NC + "Using legacy file-based memory.")
     }
