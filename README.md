@@ -5,7 +5,7 @@
   </picture>
 </p>
 <h3 align="center">
-Power your local AI and execute native inference with bare-metal hardware and LLM control using modular extensions plugins MCP skills and CEL language modifications</h3>
+Power your local AI and execute native inference with bare-metal hardware and real-time LLM steering using modular extensions plugins MCP skills and CEL language modifications</h3>
 
 </br>
 <p align="center">
@@ -24,10 +24,10 @@ Power your local AI and execute native inference with bare-metal hardware and LL
 
 <h4>Cluaiz is a fast, easy-to-use, unified native runtime engine and orchestrator built in Rust. Optimized for edge devices, it powers local AI and agentic workflows with native CEL, WASM, and modular plugin support.</h4>
 
-Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engine meticulously engineered to synchronize text, vision, and tool execution into a single unified memory space. This architecture is not bound to specific hardware configurations or constrained environments; it is designed as a highly elastic architecture to operate seamlessly across any tier of compute hardware—from consumer silicon to enterprise server clusters. Its primary objective is to establish a direct, transparent, and highly optimized bridge between mathematical inference kernels and autonomous agentic workflows, granting developers absolute programmatic control and optimized execution.
+Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engine meticulously engineered to synchronize text, vision, and tool execution into a single unified memory space. This architecture is not bound to specific hardware configurations or constrained environments; it is designed as a highly elastic architecture to operate seamlessly across any tier of compute hardware—from consumer silicon to enterprise server clusters. Its primary objective is to establish a direct, transparent, and highly optimized bridge between mathematical inference kernels and autonomous agentic workflows, granting developers absolute programmatic authority and optimized execution.
 
 **The Hybrid Access and Connectivity Model**
-Rather than restricting developers to a single protocol, Cluaiz introduces a comprehensive hybrid access paradigm designed to adapt to any architectural requirement. If a decoupled web application requires standard network requests, the engine's built-in HTTP REST API gateway provides a robust solution. Conversely, for architectures demanding absolute minimum latency and direct control, developers can utilize the Cluaiz Expression Language (CEL) and WebAssembly (WASM). This allows logic written in C, Python, or Rust to be compiled and executed directly within the runtime space, bypassing HTTP and JSON serialization overhead entirely. Furthermore, for those building purely native applications, Cluaiz exposes a direct C-Pointer interface, granting instantaneous access to the Foreign Function Interface (FFI) boundary within the exact same memory space.
+Rather than restricting developers to a single protocol, Cluaiz introduces a comprehensive hybrid access paradigm designed to adapt to any architectural requirement. If a decoupled web application requires standard network requests, the engine's built-in HTTP REST API gateway provides a robust solution. Conversely, for architectures demanding absolute minimum latency and granular runtime access, developers can utilize the Cluaiz Expression Language (CEL) and WebAssembly (WASM). This allows logic written in C, Python, or Rust to be compiled and executed directly within the runtime space, bypassing HTTP and JSON serialization overhead entirely. Furthermore, for those building purely native applications, Cluaiz exposes a direct C-Pointer interface, granting instantaneous access to the Foreign Function Interface (FFI) boundary within the exact same memory space.
 
 **Dual-Engine Orchestration and Multimodal Integration**
 Cluaiz is not a superficial wrapper; it natively orchestrates the execution of underlying mathematical kernels. It leverages the core logic of `llama.cpp` to ensure highly efficient parsing of GGUF models and broad cross-platform hardware portability. Simultaneously, the `ONNX Runtime` is deeply integrated to execute multimodal operations—such as vision, embeddings, and audio—in parallel. By synchronizing these engines, Cluaiz enables hybrid CPU and GPU split-loading, allowing dynamic context switching between text and vision operations without losing the underlying latent states.
@@ -35,11 +35,11 @@ Cluaiz is not a superficial wrapper; it natively orchestrates the execution of u
 **Compile-Time 1-Bit BitNet Injection & Cross-Platform Execution**
 Cluaiz optimizes the execution of 1-bit and 1.58-bit (Ternary) quantization models through dynamic compile-time interception. By leveraging the cross-platform hardware portability of `llama.cpp`, the engine ensures that BitNet models can run natively on any hardware tier (CPU or GPU). During the build process, Cluaiz dynamically patches the underlying C++ inference libraries, hijacking the tensor math operations before they compile. Through injected low-level hardware instructions, the engine forces both CPUs and GPUs to process the model using actual 1-bit calculations natively. By executing pure addition and subtraction directly on hardware registers, Cluaiz achieves true 1-bit primitive throughput and entirely avoids floating-point conversions across all devices.
 
-**Hardware Control, JIT Injection, and Memory Safety**
-The engine provides complete, transparent control over system operations. It features a unique Just-In-Time (JIT) tool injection capability, allowing token generation to be paused mid-stream so that custom skills or runtime plugins can be injected via CEL under strict Rust safe memory isolation and atomic state swapping. Generation can then be instantly resumed without requiring a re-prompt or context recalculation. Parallel to this, the VRAM Arbiter continuously monitors the hardware matrix. By mathematically evaluating available physical memory before every single token generation step, the arbiter actively prevents Out-of-Memory (OOM) segment faults across any hardware scale.
+**State Manipulation, JIT Injection, and Memory Safety**
+The engine provides complete, transparent oversight over system operations. It features a unique Just-In-Time (JIT) tool injection capability, allowing token generation to be paused mid-stream so that custom skills or runtime plugins can be injected via CEL under strict Rust safe memory isolation and atomic state swapping. Generation can then be instantly resumed without requiring a re-prompt or context recalculation. Parallel to this, the VRAM Arbiter continuously monitors the hardware matrix. By mathematically evaluating available physical memory before every single token generation step, the arbiter actively prevents Out-of-Memory (OOM) segment faults across any hardware scale.
 
-**System Booster & Deep Optimization Controls**
-Cluaiz features a dedicated System Booster profile granting developers surgical control over the lowest-level compilation limits and runtime behaviors. It dictates memory allocation boundaries, dynamic hardware-layer splits, and advanced KV-cache compression techniques (such as `kv_quant` and rolling `context_shift`) directly governed by the VRAM Arbiter. Additionally, the booster unlocks advanced execution features like dynamic Flash Attention (`dflash`), speculative decoding, and `turbo_quant` rotations, allowing users to precisely balance execution speed against memory limitations.
+**System Booster & Deep Optimization**
+Cluaiz features a dedicated System Booster profile granting developers surgical tunability over the lowest-level compilation limits and runtime behaviors. It dictates memory allocation boundaries, dynamic hardware-layer splits, and advanced KV-cache compression techniques (such as `kv_quant` and rolling `context_shift`) directly governed by the VRAM Arbiter. Additionally, the booster unlocks advanced execution features like dynamic Flash Attention (`dflash`), speculative decoding, and `turbo_quant` rotations, allowing users to precisely balance execution speed against memory limitations.
 
 **Integrated Developer Hub**
 To manage this vast ecosystem, Cluaiz includes a highly capable local Developer Hub operating on a secure local port. Here, developers are granted access to the complete API matrix, enabling them to live-test their WASM plugins, ternary kernel designs, and execution pipelines. This sandboxed environment provides the freedom to test, optimize, and push the engine's boundaries using HTTP, CEL, or C-Pointers simultaneously.
@@ -47,10 +47,11 @@ To manage this vast ecosystem, Cluaiz includes a highly capable local Developer 
 ## 🛡️ **Project Trust & Current Status**
 
 > [!WARNING]
-> **Active Development**: This project is under active development. You may encounter bugs or breaking changes. Pre-compiled binary releases are **coming soon**.
->
-> **Current Phase**: **Industrial Alpha (Research Phase)**.
-> While the core orchestration architecture is stable, hardware-constrained guarantees and ternary kernels are undergoing validation.
+> **Project Current State**: This project is currently undergoing rigorous testing for the upcoming Alpha release. 
+> You should expect significant restructuring, breaking changes, and architectural shifts.
+> 
+> **Current Phase: Pre-Alpha Validation**.
+> We are actively running benchmark testing, code quality evaluations, and hardware validation. The stable Alpha version will be available soon. Until then, the repository is subject to heavy modifications.
 
 ## 🚀 **Quick Start**
 

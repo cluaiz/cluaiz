@@ -1,0 +1,236 @@
+<div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+        <!-- Messages will appear here -->
+    </div>
+
+    <!-- Replying Card (Optional, hidden by default) -->
+    <div id="reply-card" class="reply-card hidden">
+        <div class="reply-content">
+            <span class="reply-label">Replying to</span>
+            <p class="reply-text truncate" id="reply-text">Message content...</p>
+        </div>
+        <button class="icon-btn text-muted hover-text-primary" id="cancel-reply-btn">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+
+    <!-- Input Area Container -->
+    <div class="flex justify-center w-full pb-4 px-2" style="margin-top: auto;">
+        <div class="w-full max-w-3xl">
+            <!-- Main Input Wrapper -->
+            <div class="chat-input-wrapper w-full relative" id="main-input-wrapper"
+                style="transition: margin 0.3s; margin-bottom: 0px;">
+
+                <!-- Glow Effect Background -->
+                <div
+                    class="absolute inset-0 -z-10 rounded-3xl opacity-20 blur-xl transition-all duration-500 bg-gradient-glow">
+                </div>
+
+                <!-- The Big Pill / Container -->
+                <div id="chat-input-container"
+                    class="relative flex flex-col bg-primary rounded-3xl transition-all duration-300 p-2 shadow-input border-border-1px">
+
+                    <!-- Top Row (Contains Left Buttons, Textarea, Right Buttons) -->
+                    <div class="flex items-end gap-2 w-full min-h-[40px]" id="input-top-row">
+
+                        <!-- Left Buttons Container -->
+                        <div id="left-actions-container"
+                            class="flex-shrink-0 flex items-center relative-container pb-2px">
+
+                            <!-- Attach Button & Menu Wrapper -->
+                            <div id="attach-wrapper" class="relative-container">
+                                <button id="attach-btn"
+                                    class="flex items-center justify-center transition-colors p-2 rounded-full text-muted hover-bg-secondary hover-text-accent"
+                                    style="background: transparent; border: none;">
+                                    <i data-lucide="plus" id="attach-icon"
+                                        class="w-5 h-5 transition-transform duration-300"></i>
+                                </button>
+
+                                <!-- Attach Menu Dropdown -->
+                                <div class="dropdown-menu bottom-up hidden w-56 flex-col p-1 gap-0-5 absolute bottom-full left-0 mb-2 bg-primary border-border-1px rounded-xl shadow-2xl z-50"
+                                    id="attach-menu">
+                                    <button id="upload-file-btn"
+                                        class="dropdown-item w-full text-muted hover-text-accent hover-bg-secondary group">
+                                        <i data-lucide="upload-cloud" class="w-4 h-4 group-hover-accent"></i>
+                                        Upload File
+                                    </button>
+
+
+                                    <div class="h-px bg-border my-1 mx-2"></div>
+
+                                    <!-- Skills Menu -->
+                                    <div class="relative-container w-full" id="skills-menu-wrapper">
+                                        <button
+                                            class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group"
+                                            id="skills-menu-btn">
+                                            <div class="flex-align gap-3">
+                                                <i data-lucide="layers"
+                                                    class="w-4 h-4 text-muted group-hover-accent"></i>
+                                                Skills
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-3-5 h-3-5 text-muted"></i>
+                                        </button>
+                                        <!-- Nested Skills Menu -->
+                                        <div class="submenu right-side hidden w-48 flex-col p-1 gap-0-5 absolute bottom-0 left-[97%] ml-1 bg-primary border-border-1px rounded-xl shadow-2xl z-50"
+                                            id="skills-menu">
+                                            <button
+                                                class="dropdown-item w-full flex-between text-primary hover-text-blue hover-bg-secondary group skill-btn"
+                                                data-skill="Web Search">
+                                                <div class="flex-align gap-2-5">
+                                                    <i data-lucide="globe"
+                                                        class="w-4 h-4 text-muted group-hover-blue"></i>
+                                                    Web Search
+                                                </div>
+                                            </button>
+                                            <button
+                                                class="dropdown-item w-full flex-between text-primary hover-text-amber hover-bg-secondary group skill-btn"
+                                                data-skill="Deep Research">
+                                                <div class="flex-align gap-2-5">
+                                                    <i data-lucide="telescope"
+                                                        class="w-4 h-4 text-muted group-hover-amber"></i>
+                                                    Deep Research
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Thinking Menu -->
+                                    <div class="relative-container w-full" id="thinking-menu-wrapper">
+                                        <button
+                                            class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group"
+                                            id="thinking-menu-btn">
+                                            <div class="flex-align gap-3" id="main-thinking-content">
+                                                <i data-lucide="zap" class="w-4 h-4 text-muted group-hover-accent"></i>
+                                                <span>Thinking</span>
+                                            </div>
+                                            <i data-lucide="chevron-right" class="w-3-5 h-3-5 text-muted"></i>
+                                        </button>
+                                        <!-- Nested Thinking Menu -->
+                                        <div class="submenu right-side hidden w-56 flex-col p-2-5 gap-1-5 absolute bottom-0 left-[97%] ml-1 bg-primary border-border-1px rounded-xl shadow-2xl z-50"
+                                            id="thinking-menu">
+                                            <div class="flex-between px-1">
+                                                <span class="text-xs font-medium text-primary flex-align gap-2 ">
+                                                    <i data-lucide="zap" class="w-3-5 h-3-5 text-accent"></i>
+                                                    Thinking Mode
+                                                </span>
+                                                <button id="think-toggle"
+                                                    style="box-sizing: border-box; position: relative; width: 28px; height: 16px; border: 1px solid var(--border-color);"
+                                                    class="inline-flex flex-shrink-0 rounded-full transition-colors bg-secondary cursor-pointer">
+                                                    <span
+                                                        class="inline-block rounded-full bg-white transition-transform"
+                                                        style="position: absolute; left: -1px; top: 50%; width: 12px; height: 12px; transform: translateY(-50%) translateX(2px);"
+                                                        id="think-toggle-thumb"></span>
+                                                </button>
+                                            </div>
+                                            <div class="h-px bg-border w-full my-1"></div>
+                                            <div class="flex-col gap-1-5" id="think-options-on" style="display: none;">
+                                                <button
+                                                    class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group skill-btn border border-transparent"
+                                                    data-skill="Think Deep">
+                                                    <div class="flex-align gap-2-5">
+                                                        <i data-lucide="brain"
+                                                            class="w-3-5 h-3-5 text-muted group-hover-text-accent transition-colors"></i>
+                                                        <span>Think Deep</span>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group skill-btn border border-transparent"
+                                                    data-skill="Think Lite">
+                                                    <div class="flex-align gap-2-5">
+                                                        <i data-lucide="zap"
+                                                            class="w-3-5 h-3-5 text-muted group-hover-text-accent transition-colors"></i>
+                                                        <span>Think Lite</span>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                            <div class="flex-col gap-1-5" id="think-options-off" style="display: flex;">
+                                                <button
+                                                    class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group skill-btn border border-transparent"
+                                                    data-skill="Long Answer">
+                                                    <div class="flex-align gap-2-5">
+                                                        <i data-lucide="align-justify"
+                                                            class="w-3-5 h-3-5 text-muted group-hover-text-accent transition-colors"></i>
+                                                        <span>Long Answer</span>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    class="dropdown-item w-full flex-between text-primary hover-text-accent hover-bg-secondary group skill-btn border border-transparent"
+                                                    data-skill="Short Answer">
+                                                    <div class="flex-align gap-2-5">
+                                                        <i data-lucide="align-left"
+                                                            class="w-3-5 h-3-5 text-muted group-hover-text-accent transition-colors"></i>
+                                                        <span>Short Answer</span>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Shared Textarea -->
+                        <textarea id="chat-textarea" placeholder="Ask AI..." rows="1"
+                            class="flex-1 bg-transparent text-primary text-sm font-medium outline-none resize-none custom-scrollbar min-h-[20px] max-h-[144px]"
+                            style="border: none; padding: 0; margin-top: 10px; margin-bottom: 10px; line-height: 20px;"></textarea>
+
+                        <!-- Right Buttons Container -->
+                        <div id="right-actions-container" class="flex-shrink-0 flex items-center gap-1 pb-2px">
+
+                            <!-- Selected Skills Chips will be inserted here -->
+                            <div id="skills-selected-container" class="flex items-center gap-1"></div>
+
+                            <!-- Model Selector -->
+                            <div class="relative-container" id="model-wrapper">
+                                <button id="model-select-btn"
+                                    class="flex items-center gap-1 sm-gap-1-5 px-2 py-1-5 rounded-lg transition-colors text-xs font-medium shrink min-w-0 max-w-[130px] sm-max-w-[160px] text-muted hover-bg-secondary hover-text-primary"
+                                    style="border: 1px solid transparent; background: transparent;">
+                                    <span class="truncate block" id="selected-model-text">Unknown Model</span>
+                                    <i data-lucide="chevron-down" class="w-3-5 h-3-5 flex-shrink-0"></i>
+                                </button>
+
+                                <!-- Model Dropdown Menu (dynamically populated from /v1/models/installed) -->
+                                <div class="dropdown-menu bottom-up hidden w-56 absolute bottom-full right-0 mb-2 bg-primary border-border-1px rounded-xl shadow-2xl z-50 overflow-hidden"
+                                    id="model-menu">
+                                    <div class="flex-col p-1-5 gap-1 max-h-64 overflow-y-auto custom-scrollbar" id="model-menu-inner">
+                                        <!-- Models will be injected here by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mic Button -->
+                            <div id="mic-wrapper" class="flex items-center">
+                                <button
+                                    class="w-[2.25rem] h-[2.25rem] flex-shrink-0 rounded-full flex items-center justify-center text-muted hover-bg-secondary hover-text-primary transition-colors border-none bg-transparent cursor-pointer">
+                                    <i data-lucide="mic" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+
+                            <!-- Send Button (Animated) -->
+                            <div id="send-wrapper"
+                                class="flex items-center transition-all duration-100 ease-out overflow-hidden w-0 opacity-0 scale-0">
+                                <button id="send-btn"
+                                    class="w-[2.25rem] h-[2.25rem] flex-shrink-0 rounded-full flex items-center justify-center bg-accent text-black hover-opacity-90 transition-transform active-scale-95 border-none cursor-pointer">
+                                    <i data-lucide="send" class="w-4 h-4 -ml-0-5"></i>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Bottom Toolbar (Visible only in multi line) -->
+                    <div id="bottom-toolbar"
+                        class="hidden items-center justify-between w-full mt-2 pt-1 border-t border-transparent">
+                        <!-- JS will inject left-actions-container here when expanded -->
+                        <div id="bottom-left-placeholder" class="flex items-center gap-2"></div>
+                        <!-- JS will inject right-actions-container here when expanded -->
+                        <div id="bottom-right-placeholder" class="flex items-center gap-1 flex-wrap max-w-full"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

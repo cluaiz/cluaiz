@@ -1,0 +1,55 @@
+<div class="settings-module" id="permission_setting">
+    <h3 class="settings-section-title">Security & SSO</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Require Login on Boot</span>
+            <span class="setting-desc">Ask for biometric or master password when opening the developer hub.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-sso-boot">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">API Key Storage</span>
+            <span class="setting-desc">Where third-party API keys are stored locally.</span>
+        </div>
+        <div class="setting-control">
+            <select id="select-keystore">
+                <option value="system">System Keychain (Secure)</option>
+                <option value="env">.env File (Legacy)</option>
+                <option value="memory">In-Memory (Erased on exit)</option>
+            </select>
+        </div>
+    </div>
+
+    <h3 class="settings-section-title">Agent Permissions</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Auto-execute Shell Commands</span>
+            <span class="setting-desc">Allow autonomous agents to run commands without prompting. (DANGEROUS)</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-auto-shell">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Workspace Read Access</span>
+            <span class="setting-desc">Allow agents to read files in the entire active workspace.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle active" id="toggle-fs-read">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+</div>

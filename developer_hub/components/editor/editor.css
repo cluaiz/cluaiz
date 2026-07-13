@@ -1,0 +1,53 @@
+/* CodeMirror Overrides */
+.CodeMirror {
+    height: 100%;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    background-color: var(--input-bg, #010409) !important;
+    color: var(--text-main, #c9d1d9) !important;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--border, #30363d);
+}
+
+.CodeMirror * {
+    box-sizing: content-box;
+}
+
+.CodeMirror-gutters {
+    background-color: var(--bg-panel, #21262d) !important;
+    border-right: 1px solid var(--border, #30363d) !important;
+    border-left: none !important;
+    padding-left: 0px !important;
+    padding-right: 10px !important;
+}
+
+.CodeMirror-linenumber {
+    color: var(--text-muted, #8b949e) !important;
+    padding-left: 0px !important;
+    padding-right: 10px !important;
+}
+
+.CodeMirror-lines {
+    padding: 0px 0;
+}
+
+.cm-s-darcula span.cm-string {
+    color: #a5c261 !important;
+}
+
+.cm-s-darcula span.cm-number {
+    color: #6897bb !important;
+}
+
+.cm-s-darcula span.cm-keyword {
+    color: #cc7832 !important;
+}
+
+.cm-s-darcula span.cm-def {
+    color: #ffc66d !important;
+}
+
+.cm-s-darcula span.cm-property {
+    color: #9876aa !important;
+}

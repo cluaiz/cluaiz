@@ -1,0 +1,157 @@
+<div class="settings-module" id="general_setting">
+    <h3 class="settings-section-title">Login & Startup</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Launch on startup</span>
+            <span class="setting-desc">Automatically open Cluaiz Hub when you log in to Windows.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-startup">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Run in background</span>
+            <span class="setting-desc">Keep Hub running in the tray when window is closed.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle active" id="toggle-background">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="settings-section-title">Localization</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">System Language</span>
+            <span class="setting-desc">Default language for dashboard and widget UI.</span>
+        </div>
+        <div class="setting-control" id="container-language"></div>
+    </div>
+    
+    <h3 class="settings-section-title">Network & Connection</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Connection Protocol</span>
+            <span class="setting-desc" id="desc-conn-protocol">Choose how the UI communicates with the Engine.</span>
+        </div>
+        <div class="setting-control" id="container-conn-protocol"></div>
+    </div>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Localhost Port</span>
+            <span class="setting-desc" id="desc-local-port">Select the port for HTTP REST API communication.</span>
+        </div>
+        <div class="setting-control" id="container-local-port"></div>
+    </div>
+
+</div>
+
+<!-- Restart Modal Overlay -->
+<div id="restart-modal-overlay" class="modal-overlay" style="display: none;">
+    <div class="modal-content glass-panel">
+        <h3 class="modal-title">Restart Required</h3>
+        <p class="modal-text">You have changed a core connection setting. The Cluaiz Engine must be restarted for these changes to take effect.</p>
+        <div class="modal-actions">
+            <button id="btn-cancel-restart" class="btn-secondary">Later</button>
+            <button id="btn-confirm-restart" class="btn-primary">Restart Engine</button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Restart Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+}
+
+.modal-content {
+    background: #1e1e24;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0) scale(1);
+}
+
+.modal-title {
+    margin: 0 0 12px 0;
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.modal-text {
+    margin: 0 0 24px 0;
+    color: #a0a0a0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-primary {
+    background: #4a6ee0;
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background: #5c7df0;
+}
+</style>

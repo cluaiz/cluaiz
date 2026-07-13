@@ -191,7 +191,17 @@ impl NeuralDispatcher {
                                 if let Ok(instantiate_fn) = library_arc.get::<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void>(b"cluaiz_kernel_instantiate") {
                                     let c_path = std::ffi::CString::new(model_path.to_string_lossy().to_string()).unwrap();
                                     tracing::info!("🔗 [Dispatcher] Instantiating kernel with model path: {:?}", model_path);
-                                    let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
+                                    
+                                    let instantiate_raw = *instantiate_fn as usize;
+                                    let c_path_raw = c_path.as_ptr() as usize;
+                                    
+                                    let engine_ptr_raw = tokio::task::spawn_blocking(move || {
+                                        let func: unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void = unsafe { std::mem::transmute(instantiate_raw) };
+                                        let ptr = unsafe { func(c_path_raw as *const _, std::ptr::null()) };
+                                        ptr as usize
+                                    }).await.unwrap_or(0);
+                                    
+                                    let engine_ptr = engine_ptr_raw as *mut std::ffi::c_void;
                                     
                                     if !engine_ptr.is_null() {
                                         *engine_lock = Some((model_path.clone(), SafeEnginePtr(engine_ptr), library_arc));
@@ -210,6 +220,7 @@ impl NeuralDispatcher {
                     if let Some((_, ref safe_ptr, ref lib)) = *engine_lock {
                         unsafe {
                             if let Ok(gen_stream_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void)>(b"cluaiz_kernel_generate_stream") {
+                                tracing::info!("⏱️ [Dispatcher] Starting generate_stream execution");
                                 let c_prompt = std::ffi::CString::new(prompt_clone).unwrap();
 
                                 // 🛑 CANCELLATION-AWARE CALLBACK
@@ -218,6 +229,7 @@ impl NeuralDispatcher {
                                     tx: tokio::sync::mpsc::Sender<String>,
                                     cancel_flag: Arc<AtomicBool>,
                                     buffer: std::sync::Mutex<String>,
+                                    first_token_time: std::sync::Mutex<Option<std::time::Instant>>,
                                 }
 
                                 extern "C" fn callback(token_ptr: *const std::os::raw::c_char, user_data: *mut std::ffi::c_void) -> bool {
@@ -226,6 +238,12 @@ impl NeuralDispatcher {
                                     if data.cancel_flag.load(Ordering::Relaxed) {
                                         tracing::info!("🛑 [Dispatcher] Inference cancelled via cancel_flag.");
                                         return false;
+                                    }
+                                    
+                                    let mut first_lock = data.first_token_time.lock().unwrap();
+                                    if first_lock.is_none() {
+                                        *first_lock = Some(std::time::Instant::now());
+                                        tracing::info!("⚡ [Dispatcher] TTFT recorded!");
                                     }
                                     
                                     let token = unsafe { std::ffi::CStr::from_ptr(token_ptr) }.to_string_lossy().into_owned();
@@ -251,7 +269,11 @@ impl NeuralDispatcher {
                                         } else {
                                             // Sliding window for performance if we are not inside a trigger
                                             if buffer.len() > 100 {
-                                                *buffer = buffer[buffer.len() - 100..].to_string();
+                                                let mut start_idx = buffer.len() - 100;
+                                                while start_idx < buffer.len() && !buffer.is_char_boundary(start_idx) {
+                                                    start_idx += 1;
+                                                }
+                                                *buffer = buffer[start_idx..].to_string();
                                             }
                                         }
                                     }
@@ -267,10 +289,10 @@ impl NeuralDispatcher {
                                     tx: tx.clone(), 
                                     cancel_flag: cancel_flag.clone(),
                                     buffer: std::sync::Mutex::new(String::new()),
+                                    first_token_time: std::sync::Mutex::new(None),
                                 };
                                 let tx_ptr = &callback_data as *const CallbackData as *mut std::ffi::c_void;
                                 let engine_raw = safe_ptr.0 as usize;
-                                let prompt_raw = c_prompt.as_ptr() as usize;
                                 let tx_raw = tx_ptr as usize;
                                 let cb_raw = callback as usize;
                                 let gen_raw = *gen_stream_fn as usize;
@@ -278,11 +300,15 @@ impl NeuralDispatcher {
                                 // 🛡️ FFI PANIC BOUNDARY & BLOCKING THREAD POOL
                                 // Offload heavy FFI execution and prevent blocking the async executor.
                                 let result = tokio::task::spawn_blocking(move || {
+                                    // Move c_prompt into the closure so it doesn't get dropped if the async task is cancelled
+                                    let _owned_prompt = c_prompt;
+                                    let prompt_raw_ptr = _owned_prompt.as_ptr();
+                                    
                                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                         let callback_fn: extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool = unsafe { std::mem::transmute(cb_raw) };
                                         let gen_fn: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void) = unsafe { std::mem::transmute(gen_raw) };
                                         unsafe {
-                                            gen_fn(engine_raw as *mut _, prompt_raw as *const _, 4096, callback_fn, tx_raw as *mut _);
+                                            gen_fn(engine_raw as *mut _, prompt_raw_ptr as *const _, 4096, callback_fn, tx_raw as *mut _);
                                         }
                                     }))
                                 }).await.unwrap_or_else(|_| Err(Box::new("Thread join error")));

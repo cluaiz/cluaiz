@@ -1,0 +1,63 @@
+<div class="settings-container full-screen" id="settings-main-container">
+    <!-- Left Sidebar Panel -->
+    <aside class="settings-sidebar">
+        <div class="sidebar-header">
+            <button class="icon-btn close-settings-btn text-muted hover-text-primary" title="Close Settings">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <h2 class="sidebar-title">Settings</h2>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <nav class="settings-nav" id="settings-nav">
+            <button class="nav-tab active" data-module="general_setting">
+                <i data-lucide="settings" class="w-4 h-4"></i>
+                <div class="tab-text">
+                    <span class="tab-label">General</span>
+                    <span class="tab-desc">Startup options, localization</span>
+                </div>
+            </button>
+
+            <button class="nav-tab" data-module="booster_setting">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+                <div class="tab-text">
+                    <span class="tab-label">Engine & Models</span>
+                    <span class="tab-desc">Performance and boosters</span>
+                </div>
+            </button>
+
+            <button class="nav-tab" data-module="permission_setting">
+                <i data-lucide="shield" class="w-4 h-4"></i>
+                <div class="tab-text">
+                    <span class="tab-label">Security & Access</span>
+                    <span class="tab-desc">SSO, credentials & permissions</span>
+                </div>
+            </button>
+
+            <button class="nav-tab" data-module="tools_setting">
+                <i data-lucide="blocks" class="w-4 h-4"></i>
+                <div class="tab-text">
+                    <span class="tab-label">Tools & Extensions</span>
+                    <span class="tab-desc">Manage installed plugins</span>
+                </div>
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="divider"></div>
+            <button class="nav-tab help-tab">
+                <i data-lucide="help-circle" class="w-4 h-4"></i>
+                <div class="tab-text">
+                    <span class="tab-label">Help & Feedback</span>
+                    <span class="tab-desc">Docs & support</span>
+                </div>
+            </button>
+            <div class="version-text">CLUAIZ v0.1.0</div>
+        </div>
+    </aside>
+
+    <!-- Right Content Area (Dynamically injected) -->
+    <main class="settings-content" id="settings-content-area">
+        <!-- Module HTML will be loaded here -->
+    </main>
+</div>

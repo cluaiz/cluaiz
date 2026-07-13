@@ -1286,8 +1286,10 @@ impl DashboardEngine {
                             state._active_model_id = Some(model.manifest.id.clone());
                             engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model.manifest.id.clone());
                             
-                            let mut lock = state.Core_engine.router.blocking_lock();
-                            let ctx = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(2048);
+                            let ctx = tokio::task::block_in_place(|| {
+                                let mut lock = state.Core_engine.router.blocking_lock();
+                                lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(2048)
+                            });
                             let model_gb = model.manifest.download_size_gb;
                             
                             if model_gb > 0.0 {

@@ -196,21 +196,6 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     }
     
     let total_required = manifest.ram_required_gb;
-    let mut projected_tps = 0.0;
-    
-    if user_vram > 0.0 {
-        if total_required <= user_vram {
-            projected_tps = 35.0; 
-        } else {
-            let vram_ratio = user_vram / total_required;
-            if vram_ratio > 0.8 { projected_tps = 22.0; }
-            else if vram_ratio > 0.5 { projected_tps = 15.0; }
-            else { projected_tps = 8.0; }
-        }
-    } else {
-        projected_tps = 5.0;
-    }
-
     let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
 
     if !is_local {
@@ -234,7 +219,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             println!("    ├─ ⚡ Offload Status: CPU Inference (No dedicated VRAM)");
             println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - total_required);
         }
-        println!("    ├─ 🚀 Projected Speed: ~{:.0} Tokens/Second (TPS)", projected_tps);
+        println!("    ├─ 🚀 Measured Speed: unavailable until a real benchmark or generation run");
         println!("    ├─ System Status: {:?}", status);
     }
     

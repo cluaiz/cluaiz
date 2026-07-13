@@ -1,0 +1,57 @@
+<div class="settings-module" id="tools_setting">
+    <h3 class="settings-section-title">Installed Tools & Plugins</h3>
+    
+    <div class="setting-item" style="align-items: flex-start;">
+        <div class="setting-info">
+            <span class="setting-label">Deep Research Engine</span>
+            <span class="setting-desc">Advanced web scraping and context building tool.</span>
+            <span class="setting-desc" style="color: var(--accent-color); font-size: 0.65rem; margin-top: 4px;">v1.2.0 • System</span>
+        </div>
+        <div class="setting-control" style="display: flex; gap: 8px;">
+            <button class="icon-btn" style="background: rgba(255,255,255,0.05); border-radius: 6px; padding: 6px;" title="Configure">
+                <i data-lucide="settings-2" class="w-4 h-4"></i>
+            </button>
+            <div class="setting-toggle active" id="toggle-tool-research" style="margin-top: 4px;">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="setting-item" style="align-items: flex-start;">
+        <div class="setting-info">
+            <span class="setting-label">Web Search</span>
+            <span class="setting-desc">Quick DuckDuckGo search integration.</span>
+            <span class="setting-desc" style="color: var(--accent-color); font-size: 0.65rem; margin-top: 4px;">v0.9.5 • External</span>
+        </div>
+        <div class="setting-control" style="display: flex; gap: 8px;">
+            <button class="icon-btn text-red-500" style="background: rgba(239, 68, 68, 0.1); border-radius: 6px; padding: 6px;" title="Uninstall">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+            <div class="setting-toggle active" id="toggle-tool-web" style="margin-top: 4px;">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="setting-item" style="align-items: flex-start;">
+        <div class="setting-info">
+            <span class="setting-label">Code Interpreter</span>
+            <span class="setting-desc">Python sandbox for executing generated code safely.</span>
+            <span class="setting-desc" style="color: var(--accent-color); font-size: 0.65rem; margin-top: 4px;">v2.0.1 • Plugin</span>
+        </div>
+        <div class="setting-control" style="display: flex; gap: 8px;">
+            <button class="icon-btn text-red-500" style="background: rgba(239, 68, 68, 0.1); border-radius: 6px; padding: 6px;" title="Uninstall">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+            <div class="setting-toggle" id="toggle-tool-python" style="margin-top: 4px;">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; text-align: center;">
+        <button style="background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border: 1px dashed var(--accent-color); padding: 12px 24px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-weight: bold; transition: all 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.2)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.1)'">
+            <i data-lucide="plus" class="w-4 h-4"></i> Install New Tool
+        </button>
+    </div>
+</div>

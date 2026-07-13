@@ -1,0 +1,106 @@
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header" id="sidebar-header">
+        <div onclick="navigateTo('/')" style="display: flex; align-items: center; cursor: pointer; flex: 1;">
+            <img src="/assets/logo.ico" onerror="this.src='/assets/favicon.ico'" class="logo" alt="cluaiz Logo"
+                style="width: 24px; height: 24px;">
+            <span>cluaiz DevHub</span>
+        </div>
+        <button id="sidebar-close-btn" class="sidebar-toggle-btn" onclick="app.toggleSidebar()">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M15 18l-6-6 6-6" />
+            </svg>
+        </button>
+    </div>
+    <div class="nav-container" id="nav-container">
+    </div>
+</div>
+
+<!-- Horizontal Resizer -->
+<div class="resizer-horizontal" id="sidebar-resizer"></div>
+
+<div id="view-api" class="workspace" style="flex: 1; position: relative;">
+    <!-- Request Header -->
+    <div class="request-header" id="main-header" style="gap: 8px;">
+        <button id="sidebar-open-btn-api" class="sidebar-toggle-btn hidden" onclick="app.toggleSidebar()"
+            style="width: 38px; height: 38px; display: flex; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+        </button>
+        
+        <!-- Component Mount Points -->
+        <div id="method-container"></div>
+        <div id="protocol-container" style="margin-left: 8px;"></div>
+        <div id="language-container" style="margin-left: 8px;"></div>
+
+        <input type="text" class="url-input" id="req-url" value="http://localhost:8000/health">
+        <button class="send-btn" id="btn-send">Send</button>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" id="tab-params">Body</div>
+        <div class="tab" id="tab-headers">Headers</div>
+        <div class="tab" id="tab-docs">Documentation</div>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels">
+        <!-- Top Panel: Editor -->
+        <div class="panel-top" id="panel-top-container">
+            <div class="panel-header" id="panel-left-title">Request Payload</div>
+            <div class="panel-body" id="panel-params" style="padding: 0;">
+                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
+                    <div style="flex: 1 1 auto; position: relative;" id="editor-container">
+                        <!-- Editor Component mounts here -->
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body hidden" id="panel-headers" style="padding: 0;">
+                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
+                    <div style="flex: 1 1 auto; position: relative;" id="headers-editor-container">
+                        <!-- Headers Editor Component mounts here -->
+                    </div>
+                </div>
+            </div>
+            <div class="panel-body hidden" id="panel-docs" style="padding: 20px;">
+                <div id="docs-content" style="color: #c9d1d9;">
+                    Click an endpoint to view documentation.
+                </div>
+            </div>
+        </div>
+
+        <div class="resizer" id="drag-resizer">
+            <div class="resizer-handle"></div>
+        </div>
+
+        <!-- Bottom Panel: Response -->
+        <div class="panel-bottom" id="panel-bottom-container">
+            <div class="panel-header" style="cursor: pointer;" id="response-header">
+                <span id="response-toggle-icon">▼ Response</span>
+                <div class="response-status" id="res-status">
+                    <span>Status: -</span>
+                    <span>Time: - ms</span>
+                    <span>Size: - B</span>
+                </div>
+            </div>
+            <div class="panel-body" id="res-body-container">
+                <pre id="res-body" style="color: #8b949e;">Hit "Send" to execute the request.</pre>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="module">
+    import { initApiTester, switchTab, toggleResponsePanel, sendRequest } from './script.js';
+    
+    // Mount global listeners since we removed inline onClick attributes
+    document.getElementById('tab-params').addEventListener('click', () => switchTab('params'));
+    document.getElementById('tab-headers').addEventListener('click', () => switchTab('headers'));
+    document.getElementById('tab-docs').addEventListener('click', () => switchTab('docs'));
+    
+    document.getElementById('response-header').addEventListener('click', () => toggleResponsePanel());
+    document.getElementById('btn-send').addEventListener('click', sendRequest);
+
+
+    initApiTester();
+</script>

@@ -1,0 +1,10 @@
+[package]
+name = "cluaiz_devhub"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+axum = "0.8"
+rust-embed = { version = "8.4", features = ["include-exclude"] }
+mime_guess = "2.0"

@@ -1,0 +1,152 @@
+/* Sidebar Layout & Header */
+.sidebar {
+    width: 300px;
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: 0 20px;
+    height: 70px;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--bg-surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sidebar-header span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    flex: 1;
+    margin-left: 8px;
+}
+
+.sidebar-header .logo {
+    width: 24px;
+    height: 24px;
+    color: var(--text-accent);
+}
+
+.sidebar-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: var(--bg-panel);
+}
+
+/* Sidebar Component Navigation styling */
+.nav-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 0;
+}
+
+.nav-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.nav-container::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.nav-group {
+    margin-bottom: 4px;
+}
+
+.nav-group-title {
+    padding: 8px 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+}
+
+.nav-group-title:hover {
+    color: var(--text-main);
+}
+
+.nav-group-title svg {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.2s;
+}
+
+.nav-group-title.open svg {
+    transform: rotate(90deg);
+}
+
+.nav-items {
+    display: none;
+    flex-direction: column;
+    padding: 4px 0;
+}
+
+.nav-items.open {
+    display: flex;
+}
+
+.nav-link {
+    padding: 6px 20px 6px 36px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+}
+
+.nav-link:hover {
+    background-color: var(--bg-panel);
+}
+
+.nav-link.active {
+    background-color: rgba(88, 166, 255, 0.1);
+    color: #fff;
+    border-right: 3px solid var(--text-accent);
+}
+
+.method-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    width: 45px;
+    text-align: right;
+}
+
+.method-get {
+    color: var(--method-get);
+}
+
+.method-post {
+    color: var(--method-post);
+}
+
+.method-delete {
+    color: var(--method-delete);
+}
+
+.method-put {
+    color: var(--method-put);
+}
