@@ -42,6 +42,7 @@
         <div class="tab active" id="tab-params">Body</div>
         <div class="tab" id="tab-headers">Headers</div>
         <div class="tab" id="tab-docs">Documentation</div>
+        <div class="tab" id="tab-snippets">Snippets</div>
     </div>
 
     <!-- Panels -->
@@ -66,6 +67,13 @@
             <div class="panel-body hidden" id="panel-docs" style="padding: 20px;">
                 <div id="docs-content" style="color: #c9d1d9;">
                     Click an endpoint to view documentation.
+                </div>
+            </div>
+            <div class="panel-body hidden" id="panel-snippets" style="padding: 20px;">
+                <div class="snippets-tabs" id="snippets-tabs" style="display: flex; gap: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                </div>
+                <div id="snippets-content" style="color: #c9d1d9;">
+                    No snippets available for this endpoint.
                 </div>
             </div>
         </div>
@@ -97,6 +105,7 @@
     document.getElementById('tab-params').addEventListener('click', () => switchTab('params'));
     document.getElementById('tab-headers').addEventListener('click', () => switchTab('headers'));
     document.getElementById('tab-docs').addEventListener('click', () => switchTab('docs'));
+    document.getElementById('tab-snippets').addEventListener('click', () => switchTab('snippets'));
     
     document.getElementById('response-header').addEventListener('click', () => toggleResponsePanel());
     document.getElementById('btn-send').addEventListener('click', sendRequest);

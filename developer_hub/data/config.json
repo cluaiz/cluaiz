@@ -10,7 +10,29 @@
         { "name": "type", "type": "string", "req": true, "desc": "Component type: extension, plugin, skill, mcp", "default": "extension" },
         { "name": "id", "type": "string", "req": true, "desc": "Component ID as registered in registry", "default": "cluaiz-search" }
       ],
-      "response": "{\n  \"search_api_key\": { \"type\": \"string\", \"default\": \"\", \"desc\": \"API Key\" },\n  \"search_api_type\": { \"type\": \"enum\", \"options\": [\"tavily\",\"serpapi\",\"duckduckgo\"], \"default\": \"duckduckgo\" }\n}"
+      "response": "{\n  \"search_api_key\": { \"type\": \"string\", \"default\": \"\", \"desc\": \"API Key for search queries\" },\n  \"search_api_type\": { \"type\": \"enum\", \"options\": [\"tavily\",\"serpapi\",\"duckduckgo\"], \"default\": \"duckduckgo\" },\n  \"max_results\": { \"type\": \"integer\", \"default\": 10, \"desc\": \"Maximum number of search results to return\" }\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/config/extension/cluaiz-search"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/config/extension/cluaiz-search')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/config/extension/cluaiz-search');\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let res = reqwest::get(\"http://localhost:8000/v1/config/extension/cluaiz-search\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -23,7 +45,30 @@
         { "name": "key", "type": "string", "req": true, "desc": "Settings key path (e.g. search_api_key)", "default": "search_api_key" },
         { "name": "value", "type": "string", "req": true, "desc": "New default value to save", "default": "my-api-key" }
       ],
-      "response": "{\n  \"status\": \"success\",\n  \"component\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"my-api-key\"\n}"
+      "request_payload": "{\n  \"type\": \"extension\",\n  \"id\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"tvly-test-123\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Configuration updated successfully.\",\n  \"component\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"tvly-test-123\",\n  \"cache_invalidated\": true\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/config/extension/cluaiz-search/set \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"type\": \"extension\", \"id\": \"cluaiz-search\", \"key\": \"search_api_key\", \"value\": \"tvly-test-123\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\n    \"type\": \"extension\",\n    \"id\": \"cluaiz-search\",\n    \"key\": \"search_api_key\",\n    \"value\": \"tvly-test-123\"\n}\nres = requests.post('http://localhost:8000/v1/config/extension/cluaiz-search/set', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/config/extension/cluaiz-search/set', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    type: 'extension',\n    id: 'cluaiz-search',\n    key: 'search_api_key',\n    value: 'tvly-test-123'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/config/extension/cluaiz-search/set\")\n    .json(&serde_json::json!({\n        \"type\": \"extension\",\n        \"id\": \"cluaiz-search\",\n        \"key\": \"search_api_key\",\n        \"value\": \"tvly-test-123\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     }
   ]
 }

@@ -136,6 +136,7 @@ function mountApiListeners() {
     document.getElementById('tab-params').addEventListener('click', () => switchTab('params'));
     document.getElementById('tab-headers').addEventListener('click', () => switchTab('headers'));
     document.getElementById('tab-docs').addEventListener('click', () => switchTab('docs'));
+    document.getElementById('tab-snippets').addEventListener('click', () => switchTab('snippets'));
 
     document.getElementById('response-header').addEventListener('click', () => toggleResponsePanel());
     document.getElementById('btn-send').addEventListener('click', sendRequest);
@@ -262,6 +263,44 @@ function openEndpoint(ep) {
 
     switchTab('params');
 
+    // Render Snippets
+    const snippetsTabs = document.getElementById('snippets-tabs');
+    const snippetsContent = document.getElementById('snippets-content');
+    if (snippetsTabs && snippetsContent) {
+        snippetsTabs.innerHTML = '';
+        
+        if (ep.examples && ep.examples.length > 0) {
+            let first = true;
+            ep.examples.forEach((ex) => {
+                const btn = document.createElement('button');
+                btn.className = 'snippet-tab-btn' + (first ? ' active' : '');
+                btn.style.cssText = 'background: transparent; border: none; color: ' + (first ? '#fff' : '#8b949e') + '; cursor: pointer; font-size: 13px; font-weight: 500; padding: 4px 8px; border-bottom: 2px solid ' + (first ? '#2f81f7' : 'transparent') + ';';
+                btn.textContent = ex.title;
+                
+                btn.onclick = () => {
+                    Array.from(snippetsTabs.children).forEach(c => {
+                        c.style.color = '#8b949e';
+                        c.style.borderBottom = '2px solid transparent';
+                    });
+                    btn.style.color = '#fff';
+                    btn.style.borderBottom = '2px solid #2f81f7';
+                    
+                    const escapedCode = ex.code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    snippetsContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; color: #c9d1d9; background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto; margin: 0;">${escapedCode}</pre>`;
+                };
+                snippetsTabs.appendChild(btn);
+                
+                if (first) {
+                    const escapedCode = ex.code.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    snippetsContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: monospace; color: #c9d1d9; background: #0d1117; padding: 12px; border-radius: 6px; border: 1px solid var(--border); overflow-x: auto; margin: 0;">${escapedCode}</pre>`;
+                    first = false;
+                }
+            });
+        } else {
+            snippetsContent.innerHTML = "<em>No snippets available for this endpoint.</em>";
+        }
+    }
+
     // Reset response
     document.getElementById('res-body').textContent = "Hit \"Send\" to execute the request.";
     document.getElementById('res-body').style.color = "#8b949e";
@@ -281,13 +320,15 @@ export async function initApiTester() {
         const tabParams = document.getElementById('tab-params');
         const tabHeaders = document.getElementById('tab-headers');
         const tabDocs = document.getElementById('tab-docs');
+        const tabSnippets = document.getElementById('tab-snippets');
         const panelParams = document.getElementById('panel-params');
         const panelHeaders = document.getElementById('panel-headers');
         const panelDocs = document.getElementById('panel-docs');
+        const panelSnippets = document.getElementById('panel-snippets');
         const panelTitle = document.getElementById('panel-left-title');
 
-        [tabParams, tabHeaders, tabDocs].forEach(t => t && t.classList.remove('active'));
-        [panelParams, panelHeaders, panelDocs].forEach(p => p && p.classList.add('hidden'));
+        [tabParams, tabHeaders, tabDocs, tabSnippets].forEach(t => t && t.classList.remove('active'));
+        [panelParams, panelHeaders, panelDocs, panelSnippets].forEach(p => p && p.classList.add('hidden'));
 
         if (tab === 'params') {
             if (tabParams) tabParams.classList.add('active');
@@ -303,6 +344,10 @@ export async function initApiTester() {
             if (tabDocs) tabDocs.classList.add('active');
             if (panelDocs) panelDocs.classList.remove('hidden');
             if (panelTitle) panelTitle.textContent = "Documentation";
+        } else if (tab === 'snippets') {
+            if (tabSnippets) tabSnippets.classList.add('active');
+            if (panelSnippets) panelSnippets.classList.remove('hidden');
+            if (panelTitle) panelTitle.textContent = "Code Snippets";
         }
     }
 

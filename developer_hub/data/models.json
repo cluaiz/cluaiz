@@ -7,7 +7,29 @@
       "desc": "Ollama-compatible endpoint to list all available models.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/tags.md",
       "params": [],
-      "response": "{\n  \"models\": [\n    {\n      \"name\": \"llama3:8b\",\n      \"model\": \"llama3:8b\",\n      \"modified_at\": \"2024-05-01T12:00:00Z\",\n      \"size\": 4200000000\n    }\n  ]\n}"
+      "response": "{\n  \"models\": [\n    {\n      \"name\": \"llama3:8b\",\n      \"model\": \"llama3:8b\",\n      \"modified_at\": \"2024-05-01T12:00:00Z\",\n      \"size\": 4700000000,\n      \"digest\": \"sha256:736f86c8f42013f412\",\n      \"details\": {\n        \"format\": \"gguf\",\n        \"family\": \"llama\",\n        \"families\": [\"llama\"],\n        \"parameter_size\": \"8.0B\",\n        \"quantization_level\": \"Q4_K_M\"\n      }\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/api/tags"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/api/tags')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/api/tags');\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let res = reqwest::get(\"http://localhost:8000/api/tags\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -17,7 +39,30 @@
       "params": [
         { "name": "name", "type": "string", "req": true, "desc": "Model tag or identifier.", "default": "qwen:0.5b" }
       ],
-      "response": "{\n  \"status\": \"downloading\",\n  \"progress\": \"25%\"\n}"
+      "request_payload": "{\n  \"name\": \"qwen:0.5b\",\n  \"stream\": false\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Model pulled successfully.\",\n  \"model\": \"qwen:0.5b\",\n  \"size\": 1200000000\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/api/pull \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"qwen:0.5b\", \"stream\": false}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/api/pull', json={\"name\": \"qwen:0.5b\", \"stream\": False})\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/api/pull', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ name: 'qwen:0.5b', stream: false })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/api/pull\")\n    .json(&serde_json::json!({ \"name\": \"qwen:0.5b\", \"stream\": false }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "GET",
@@ -25,7 +70,29 @@
       "desc": "Legacy. Lists available online models for download.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/available.md",
       "params": [],
-      "response": "[\n  {\"id\": \"llama-3-8b-instruct\", \"type\": \"chat\"}\n]"
+      "response": "[\n  {\n    \"id\": \"llama-3-8b-instruct\",\n    \"type\": \"chat\",\n    \"description\": \"Meta's Llama 3 8B Instruct model\",\n    \"size_gb\": 4.7,\n    \"tags\": [\"reasoning\", \"general\"]\n  }\n]",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/models/available"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/models/available')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/models/available');\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let res = reqwest::get(\"http://localhost:8000/models/available\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "GET",
@@ -33,7 +100,29 @@
       "desc": "Lists locally installed models inside the cluaiz Vault.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/installed.md",
       "params": [],
-      "response": "[\n  {\"id\": \"llama-3-8b-instruct\", \"status\": \"ready\", \"size_gb\": 4.5}\n]"
+      "response": "{\n  \"installed\": [\n    {\n      \"id\": \"llama-3-8b-instruct\",\n      \"status\": \"ready\",\n      \"size_gb\": 4.7,\n      \"category\": \"chat\",\n      \"location\": \"/vault/models/llama-3-8b.gguf\"\n    },\n    {\n      \"id\": \"all-minilm-l6-v2\",\n      \"status\": \"ready\",\n      \"size_gb\": 0.1,\n      \"category\": \"vector\",\n      \"location\": \"/vault/models/minilm.gguf\"\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/models/installed"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/models/installed')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/models/installed');\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let res = reqwest::get(\"http://localhost:8000/v1/models/installed\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "GET",
@@ -41,7 +130,29 @@
       "desc": "Legacy hardware status check.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/hardware.md",
       "params": [],
-      "response": "{\n  \"vram_total\": 16.0,\n  \"vram_free\": 12.0\n}"
+      "response": "{\n  \"vram_total\": 16.0,\n  \"vram_free\": 12.4,\n  \"ram_total\": 32.0,\n  \"ram_free\": 18.5,\n  \"gpu_name\": \"NVIDIA GeForce RTX 4080\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/hardware"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/hardware')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/hardware');\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let res = reqwest::get(\"http://localhost:8000/hardware\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -52,7 +163,30 @@
         { "name": "repo_id", "type": "string", "req": true, "desc": "Hugging Face repo ID.", "default": "unsloth/llama-3-8b" },
         { "name": "filename", "type": "string", "req": true, "desc": "Specific file to download.", "default": "llama-3-8b.gguf" }
       ],
-      "response": "{\n  \"status\": \"queued\"\n}"
+      "request_payload": "{\n  \"repo_id\": \"unsloth/llama-3-8b\",\n  \"filename\": \"llama-3-8b-instruct-q4_k_m.gguf\"\n}",
+      "response": "{\n  \"status\": \"queued\",\n  \"job_id\": \"dl-192a82\",\n  \"message\": \"Download task started in the background.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/models/download \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"repo_id\": \"unsloth/llama-3-8b\", \"filename\": \"llama-3-8b-instruct-q4_k_m.gguf\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\n    \"repo_id\": \"unsloth/llama-3-8b\",\n    \"filename\": \"llama-3-8b-instruct-q4_k_m.gguf\"\n}\nres = requests.post('http://localhost:8000/models/download', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/models/download', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    repo_id: 'unsloth/llama-3-8b',\n    filename: 'llama-3-8b-instruct-q4_k_m.gguf'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/models/download\")\n    .json(&serde_json::json!({\n        \"repo_id\": \"unsloth/llama-3-8b\",\n        \"filename\": \"llama-3-8b-instruct-q4_k_m.gguf\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -63,7 +197,30 @@
         { "name": "model_id", "type": "string", "req": true, "desc": "The local ID of the model.", "default": "llama-3-8b" },
         { "name": "gpu_layers", "type": "integer", "req": false, "desc": "Number of layers to offload to GPU.", "default": -1 }
       ],
-      "response": "{\n  \"status\": \"success\"\n}"
+      "request_payload": "{\n  \"model_id\": \"llama-3-8b-instruct\",\n  \"gpu_layers\": -1,\n  \"context_size\": 8192\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"loaded_model\": \"llama-3-8b-instruct\",\n  \"vram_allocated_gb\": 4.7,\n  \"layers_on_gpu\": 33\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/models/load \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"model_id\": \"llama-3-8b-instruct\", \"gpu_layers\": -1, \"context_size\": 8192}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\n    \"model_id\": \"llama-3-8b-instruct\",\n    \"gpu_layers\": -1,\n    \"context_size\": 8192\n}\nres = requests.post('http://localhost:8000/models/load', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/models/load', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model_id: 'llama-3-8b-instruct',\n    gpu_layers: -1,\n    context_size: 8192\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/models/load\")\n    .json(&serde_json::json!({\n        \"model_id\": \"llama-3-8b-instruct\",\n        \"gpu_layers\": -1,\n        \"context_size\": 8192\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -71,15 +228,63 @@
       "desc": "Recalibrates the Hardware Governor (checks RAM, VRAM, CPU topologies dynamically).",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/calibrate.md",
       "params": [],
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Hardware recalibrated.\"\n}"
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Hardware recalibrated.\",\n  \"topology\": {\n    \"cpu_cores\": 16,\n    \"gpu_count\": 1,\n    \"unified_memory\": false\n  }\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/hardware/calibrate \\\n  -H 'Content-Type: application/json' \\\n  -d '{}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/hardware/calibrate', json={})\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/hardware/calibrate', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({})\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/hardware/calibrate\")\n    .json(&serde_json::json!({}))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "DELETE",
       "path": "/v1/models/{model_id}",
       "desc": "Deletes a model permanently from the local vault.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/rm.md",
-      "params": [],
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Model deleted.\"\n}"
+      "params": [
+        { "name": "model_id", "type": "string", "req": true, "desc": "The ID of the model.", "default": "llama-3-8b" }
+      ],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Model llama-3-8b deleted successfully.\",\n  \"freed_space_gb\": 4.7\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X DELETE http://localhost:8000/v1/models/llama-3-8b"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/models/llama-3-8b')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/models/llama-3-8b', {\n  method: 'DELETE'\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/models/llama-3-8b\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     }
   ]
 }

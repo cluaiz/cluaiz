@@ -12,7 +12,25 @@
         { "name": "temperature", "type": "float", "req": false, "desc": "Creativity threshold.", "default": 0.7 },
         { "name": "model", "type": "string", "req": false, "desc": "Model ID to use.", "default": "bonsai:8b" }
       ],
-      "response": "{\n  \"id\": \"chatcmpl-123\",\n  \"object\": \"chat.completion\",\n  \"choices\": [{\n    \"message\": {\"role\": \"assistant\", \"content\": \"Hello!\"}\n  }]\n}"
+      "request_payload": "{\n  \"model\": \"llama-3-8b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Explain quantum computing in one sentence.\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"stream\": false,\n  \"max_tokens\": 1024\n}",
+      "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"llama-3-8b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"llama-3-8b-instruct\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n  }'"
+        },
+        {
+          "language": "python",
+          "title": "Python (OpenAI Client)",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.chat.completions.create(\n    model=\"llama-3-8b-instruct\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Explain gravity.\"}\n    ]\n)\nprint(response.choices[0].message.content)"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js (OpenAI Client)",
+          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: 'user', content: 'Explain gravity.' }],\n    model: 'llama-3-8b-instruct',\n  });\n  console.log(completion.choices[0].message.content);\n}\nmain();"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -21,6 +39,30 @@
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_legacy.md",
       "params": [
         { "name": "messages", "type": "array", "req": true, "desc": "Array of message objects.", "default": [{"role": "user", "content": "Hello"}] }
+      ],
+      "request_payload": "{\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Hello\"}\n  ]\n}",
+      "response": "{\n  \"response\": \"Hi there! How can I help you today?\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/chat \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}]}\nres = requests.post('http://localhost:8000/chat', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/chat', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ messages: [{ role: 'user', content: 'Hello' }] })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/chat\")\n    .json(&serde_json::json!({ \"messages\": [{\"role\": \"user\", \"content\": \"Hello\"}] }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
       ]
     },
     {
@@ -31,7 +73,30 @@
       "params": [
         { "name": "message", "type": "string", "req": true, "desc": "The input prompt.", "default": "Hello" }
       ],
-      "response": "data: Hello\\ndata:  world!\\n\\n"
+      "request_payload": "{\n  \"message\": \"Write a haiku about rust.\"\n}",
+      "response": "data: {\"token\": \"Fast\"}\n\ndata: {\"token\": \" and\"}\n\ndata: {\"token\": \" safe\"}\n\ndata: {\"token\": \" code\"}\n\ndata: [DONE]\n",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -N -X POST http://localhost:8000/v1/chat/stream \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"message\": \"Write a haiku about rust.\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python (Streaming)",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/chat/stream', json={\"message\": \"hello\"}, stream=True)\nfor line in res.iter_lines():\n    if line:\n        print(line.decode('utf-8'))"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js (SSE)",
+          "code": "const response = await fetch('http://localhost:8000/v1/chat/stream', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ message: 'hello' })\n});\nconst reader = response.body.getReader();\n// read from the stream..."
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet mut res = client.post(\"http://localhost:8000/v1/chat/stream\")\n    .json(&serde_json::json!({ \"message\": \"hello\" }))\n    .send()\n    .await?;\nwhile let Some(chunk) = res.chunk().await? {\n    print!(\"{}\", String::from_utf8_lossy(&chunk));\n}"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -41,7 +106,30 @@
       "params": [
         { "name": "script", "type": "string", "req": true, "desc": "The raw CEL script payload.", "default": "agent = Agent::new(\"researcher\");\nagent.run();" }
       ],
-      "response": "{\n  \"success\": true,\n  \"result\": \"<output>\",\n  \"error\": null\n}"
+      "request_payload": "{\n  \"script\": \"let data = fetch('https://api.example.com/data');\\nreturn process(data);\",\n  \"context\": {\n    \"timeout_ms\": 5000\n  }\n}",
+      "response": "{\n  \"success\": true,\n  \"result\": {\n    \"processed_items\": 42,\n    \"status\": \"completed\"\n  },\n  \"execution_time_ms\": 124,\n  \"error\": null\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/cel/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"script\": \"return 42;\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\"script\": \"return 42;\"}\nres = requests.post('http://localhost:8000/v1/cel/execute', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/cel/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ script: 'return 42;' })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/cel/execute\")\n    .json(&serde_json::json!({ \"script\": \"return 42;\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -51,7 +139,30 @@
       "params": [
         { "name": "args", "type": "array", "req": true, "desc": "Array of arguments to pass to the function.", "default": ["arg1", 100] }
       ],
-      "response": "{\n  \"status\": \"success\",\n  \"result\": { \"key\": \"value\" }\n}"
+      "request_payload": "{\n  \"args\": [\n    \"search_query\",\n    {\"limit\": 10}\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"result\": {\n    \"items\": [\"Result 1\", \"Result 2\"]\n  },\n  \"execution_time_ms\": 45\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/execute/plugin_name/function_name \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"args\": [\"query\", 10]}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\"args\": [\"query\", 10]}\nres = requests.post('http://localhost:8000/v1/execute/plugin_name/function_name', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/execute/plugin_name/function_name', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ args: ['query', 10] })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/execute/plugin_name/function_name\")\n    .json(&serde_json::json!({ \"args\": [\"query\", 10] }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     },
     {
       "method": "POST",
@@ -62,7 +173,30 @@
         { "name": "file_path", "type": "string", "req": true, "desc": "Absolute path to the file.", "default": "/absolute/path/to/document.pdf" },
         { "name": "namespace", "type": "string", "req": true, "desc": "Vector database namespace.", "default": "research_docs" }
       ],
-      "response": "{\n  \"status\": \"ingested\",\n  \"chunks\": 42,\n  \"namespace\": \"global\"\n}"
+      "request_payload": "{\n  \"file_path\": \"/workspace/docs/architecture.pdf\",\n  \"namespace\": \"engineering_docs\",\n  \"chunk_size\": 512,\n  \"overlap\": 50\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"File successfully embedded and stored.\",\n  \"stats\": {\n    \"chunks_created\": 124,\n    \"tokens_processed\": 45032,\n    \"vectors_inserted\": 124\n  },\n  \"namespace\": \"engineering_docs\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/ingest/file \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"file_path\": \"/docs/architecture.pdf\", \"namespace\": \"core\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\n    \"file_path\": \"/docs/architecture.pdf\",\n    \"namespace\": \"core\"\n}\nres = requests.post('http://localhost:8000/v1/ingest/file', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/ingest/file', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    file_path: '/docs/architecture.pdf',\n    namespace: 'core'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/ingest/file\")\n    .json(&serde_json::json!({\n        \"file_path\": \"/docs/architecture.pdf\",\n        \"namespace\": \"core\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
     }
   ]
 }
