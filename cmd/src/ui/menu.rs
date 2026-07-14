@@ -77,7 +77,8 @@ pub async fn run_native(
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match s_ans {
                         "🚀 Start API Daemon" => {
-                            println!("  {} Starting cluaiz API Daemon on http://localhost:8000 ...", "🚀".green());
+                            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                            println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), perms.api_port);
                             cluaiz_api::run_daemon().await;
                         }
                         "👀 View Active Engines" => {

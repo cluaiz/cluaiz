@@ -529,7 +529,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
     const menuInner = modelMenu.querySelector('#model-menu-inner') || modelMenu;
 
     try {
-        const response = await fetch('http://localhost:8000/v1/models/installed');
+        const response = await fetch(window.getApiBaseUrl() + '/v1/models/installed');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
@@ -551,7 +551,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
         // Fetch active model from Permission.json
         let activeModelId = chatModels.length > 0 ? chatModels[0].id : 'default';
         try {
-            const permRes = await fetch('http://localhost:8000/v1/system/permission');
+            const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
             if (permRes.ok) {
                 const permData = await permRes.json();
                 if (permData.permission?.chat_models?.text) {
@@ -604,7 +604,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
 
                 // Update active model in Permission.json via API
                 try {
-                    const permRes = await fetch('http://localhost:8000/v1/system/permission');
+                    const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
                     if (permRes.ok) {
                         const permData = await permRes.json();
                         if (permData.permission) {
@@ -612,7 +612,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                             if (!newPerm.chat_models) newPerm.chat_models = {};
                             newPerm.chat_models.text = model.id;
                             
-                            await fetch('http://localhost:8000/v1/system/permission', {
+                            await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(newPerm)

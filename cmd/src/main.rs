@@ -192,6 +192,10 @@ pub enum PermissionCommand {
     Kvcache {
         status: String,
     },
+    /// Change the active API Port
+    Port {
+        number: u16,
+    },
 }
 
 #[derive(Subcommand)]
@@ -451,10 +455,11 @@ async fn main() -> Result<()> {
             println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
+            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             let port: u16 = std::env::var("cluaiz_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
-                .unwrap_or(8000);
+                .unwrap_or(perms.api_port);
             println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), port);
             cluaiz_api::run_daemon().await; 
         }
@@ -551,6 +556,10 @@ async fn main() -> Result<()> {
                         schema.enable_kvcache = status.to_lowercase() == "on";
                         println!("  {} KV Cache generation updated to: {}", "✅".green(), schema.enable_kvcache);
                     }
+                    PermissionCommand::Port { number } => {
+                        schema.api_port = number;
+                        println!("  {} API Port updated to: {}", "✅".green(), schema.api_port);
+                    }
                 }
                 schema.save();
             } else {
@@ -564,6 +573,7 @@ async fn main() -> Result<()> {
                         format!("Vectorize AI Response (Current: {})", schema.vectorize_ai_response),
                         format!("Temporary Chat TTL (Current: {})", if schema.temporary_chat_ttl_hours == u64::MAX { "max".to_string() } else { format!("{} hours", schema.temporary_chat_ttl_hours) }),
                         format!("Enable KV Cache (Current: {})", schema.enable_kvcache),
+                        format!("API Port (Current: {})", schema.api_port),
                         format!("Active Chat Model (Current: {})", schema.get_active_chat_model().unwrap_or_else(|| "None".to_string())),
                         format!("Active Vector Model (Current: {})", schema.get_active_embedding_model().unwrap_or_else(|| "None".to_string())),
                         "Quit".to_string()
@@ -589,6 +599,16 @@ async fn main() -> Result<()> {
                                 if let Ok(v) = Select::new("Set Enable KV Cache:", vec!["true", "false"]).prompt() {
                                     schema.enable_kvcache = v == "true";
                                     changed = true;
+                                }
+                            }
+                            "API Port" => {
+                                if let Ok(v) = inquire::Text::new("Enter new API Port:").with_default(&schema.api_port.to_string()).prompt() {
+                                    if let Ok(port) = v.parse::<u16>() {
+                                        schema.api_port = port;
+                                        changed = true;
+                                    } else {
+                                        println!("Invalid port number.");
+                                    }
                                 }
                             }
                             "Vectorize User Input" => {

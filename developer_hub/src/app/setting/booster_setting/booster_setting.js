@@ -102,9 +102,9 @@ export async function mount(container) {
     // Fetch initial state
     try {
         const [boosterRes, permRes, modelsRes] = await Promise.all([
-            fetch('http://localhost:8000/v1/booster/status').catch(() => null),
-            fetch('http://localhost:8000/v1/system/permission').catch(() => null),
-            fetch('http://localhost:8000/v1/models/installed').catch(() => null)
+            fetch(window.getApiBaseUrl() + '/v1/booster/status').catch(() => null),
+            fetch(window.getApiBaseUrl() + '/v1/system/permission').catch(() => null),
+            fetch(window.getApiBaseUrl() + '/v1/models/installed').catch(() => null)
         ]);
 
         if (boosterRes && boosterRes.ok) {
@@ -126,7 +126,7 @@ export async function mount(container) {
     const updateBoosterSetting = async (key, value) => {
         try {
             boosterConfig[key] = value;
-            await fetch('http://localhost:8000/v1/booster/update', {
+            await fetch(window.getApiBaseUrl() + '/v1/booster/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(boosterConfig)
@@ -139,7 +139,7 @@ export async function mount(container) {
     const updatePermissionSetting = async (key, value) => {
         try {
             permData[key] = value;
-            await fetch('http://localhost:8000/v1/system/permission', {
+            await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(permData)

@@ -37,7 +37,7 @@ export async function sendChatMessage() {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 
     try {
-        const response = await fetch('http://localhost:8000/v1/chat/completions', {
+        const response = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

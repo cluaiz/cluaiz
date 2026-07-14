@@ -10,6 +10,10 @@ pub struct ModelSelection {
     pub audio: Option<String>,
 }
 
+fn default_connection_protocol() -> String {
+    "http".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PermissionSchema {
     #[serde(default)]
@@ -30,6 +34,10 @@ pub struct PermissionSchema {
     pub temporary_chat_ttl_hours: u64,
     #[serde(default = "default_enable_kvcache")]
     pub enable_kvcache: bool,
+    #[serde(default = "default_api_port")]
+    pub api_port: u16,
+    #[serde(default = "default_connection_protocol")]
+    pub connection_protocol: String,
 }
 
 impl Default for ModelSelection {
@@ -54,6 +62,8 @@ impl Default for PermissionSchema {
             lazy_load_model: default_lazy_load_model(),
             temporary_chat_ttl_hours: default_temporary_chat_ttl_hours(),
             enable_kvcache: default_enable_kvcache(),
+            api_port: default_api_port(),
+            connection_protocol: default_connection_protocol(),
         }
     }
 }
@@ -84,6 +94,10 @@ fn default_temporary_chat_ttl_hours() -> u64 {
 
 fn default_enable_kvcache() -> bool {
     true
+}
+
+fn default_api_port() -> u16 {
+    8000
 }
 
 impl PermissionSchema {

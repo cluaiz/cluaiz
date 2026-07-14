@@ -9,6 +9,21 @@ use tokio::net::windows::named_pipe::{ServerOptions, NamedPipeServer};
 #[cfg(windows)]
 const PIPE_NAME: &str = r"\\.\pipe\cluaiz_engine_pipe";
 
+fn get_local_ip() -> Option<String> {
+    use std::net::UdpSocket;
+    let socket = match UdpSocket::bind("0.0.0.0:0") {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    match socket.connect("8.8.8.8:80") {
+        Ok(()) => match socket.local_addr() {
+            Ok(addr) => Some(addr.ip().to_string()),
+            Err(_) => None,
+        },
+        Err(_) => None,
+    }
+}
+
 #[cfg(windows)]
 pub async fn start_named_pipe_server(state: Arc<AppState>) {
     let mut consecutive_failures: u32 = 0;
@@ -288,6 +303,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         "stream_telemetry": perms.stream_telemetry,
                                         "lazy_load_model": perms.lazy_load_model,
                                         "temporary_chat_ttl_hours": perms.temporary_chat_ttl_hours,
+                                        "api_port": perms.api_port,
                                         "chat_models": perms.chat_models,
                                         "vector_models": perms.vector_models,
                                         "available_models": all_models,
@@ -299,6 +315,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     "brainMode": brain_mode,
                                     "active_chat_manifest": active_chat_manifest,
                                     "active_vector_manifest": active_vector_manifest,
+                                    "lan_ip": get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string()),
+                                    "api_port": perms.api_port,
                                     "hardware": {
                                         "vram_gb": vram_gb,
                                         "ram_gb": ram_gb,

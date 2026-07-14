@@ -27,7 +27,7 @@
 | `cluaiz` | Launches the interactive Main Menu TUI |
 | `cluaiz menu` | Explicitly open the Main Menu TUI |
 | `cluaiz help` | Show the rich formatted help screen (loads commands.json) |
-| `cluaiz serve` | Start the background Engine API Daemon on `http://localhost:8000` + Named Pipe IPC |
+| `cluaiz serve` | Start the background Engine API Daemon on `http://localhost:<api_port>` + Named Pipe IPC |
 
 ---
 
@@ -112,6 +112,8 @@ cluaiz brain status
 | Command | Args | Description |
 |---------|------|-------------|
 | `cluaiz permission` | _(no args)_ | Open interactive permission TUI menu |
+| `cluaiz permission kvcache <on/off>` | Toggle KV Cache generation |
+| `cluaiz permission port <number>` | Change the active API Port |
 | `cluaiz permission firewall <status>` | `auto / strict / off` | Set WASM Firewall mode |
 | `cluaiz permission telemetry <status>` | `on / off` | Enable or disable anonymous telemetry |
 
@@ -211,7 +213,7 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 
 ---
 
-## 🌐 HTTP API (Port 8000 — when `cluaiz serve` is running)
+## 🌐 HTTP API (Port Configurable — default `8000` when `cluaiz serve` is running)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|

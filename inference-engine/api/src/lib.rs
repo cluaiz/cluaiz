@@ -74,18 +74,19 @@ pub async fn run_daemon() {
     // ── Build API Routes ──
     let app = routes::build(state.clone());
 
-    // ── Bind to Port 8000 (configurable via cluaiz_PORT env var) ──
+    // ── Bind to Dynamic Port (from Permission.json or cluaiz_PORT) ──
+    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
     let port: u16 = env::var("cluaiz_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8000);
+        .unwrap_or(perms.api_port);
     let addr = format!("0.0.0.0:{}", port);
 
     println!("\n{}", "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓".bright_blue());
     println!("{} {}", "┃".bright_blue(), "🧬 cluaiz Engine API & FFI".bright_cyan().bold());
     println!("{} {}", "┃".bright_blue(), format!("v{} — cluaiz Inference Engine", env!("CARGO_PKG_VERSION")).bright_black());
     println!("{}", "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫".bright_blue());
-    println!("{} {}", "┃".bright_blue(), format!("{}{}", "🌐 Gateway:   ".bright_black(), "http://localhost:8000".bright_green().bold()));
+    println!("{} {}", "┃".bright_blue(), format!("{}{}", "🌐 Gateway:   ".bright_black(), format!("http://localhost:{}", port).bright_green().bold()));
     println!("{} {}", "┃".bright_blue(), format!("{}{}", "💚 Status:    ".bright_black(), "ALL SYSTEMS ONLINE".bright_green().bold()));
     println!("{} {}", "┃".bright_blue(), format!("{}{}", "🧠 Kernel:    ".bright_black(), "ACTIVE".magenta().bold()));
     println!("{}", "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫".bright_blue());

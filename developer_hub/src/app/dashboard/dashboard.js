@@ -42,6 +42,11 @@ function setupDashboardLogic() {
         apiToolkitCard.addEventListener('click', () => window.navigateTo('/api'));
     }
 
+    const hubToolkitCard = document.getElementById('hub-toolkit');
+    if (hubToolkitCard) {
+        hubToolkitCard.addEventListener('click', () => window.navigateTo('/hub'));
+    }
+
     // Mount Chat Stream (messages area)
     const chatStreamMount = document.getElementById('chat-stream-mount-point');
     if (chatStreamMount) {

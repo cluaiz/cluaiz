@@ -17,7 +17,7 @@ graph TD
     Boot["cargo run -p api"] --> Main["main.rs"]
     Main -->|"Initializes Arc<Mutex>"| State["state.rs (AppState)"]
     Main -->|"Spawns Background Thread"| FFI["ffi_bridge.rs"]
-    Main -->|"Binds 0.0.0.0:8000"| Routes["routes.rs"]
+    Main -->|"Binds 0.0.0.0:<api_port>"| Routes["routes.rs"]
     Routes -->|"Registers Endpoints"| Handlers["handlers/"]
     
     FFI -->|"Direct IPC (Named Pipes)"| Engines["Engines Crate"]

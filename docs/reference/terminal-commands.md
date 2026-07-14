@@ -15,8 +15,9 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 
 ### `cluaiz serve` (aliases: `api`, `server`)
 * **Usage:** `cluaiz serve`
-* **Description:** Start the background API Daemon (Server mode).
-* **Execution Flow:** Acquires a system-wide lock (`.serve_lock`), initializes the Axum HTTP server on port 8000, and spawns the Named Pipe IPC listener (`\\.\pipe\cluaiz_engine_pipe`). This daemon exposes the Cluaiz engine to local applications.
+* **Action:** Starts the HTTP REST Gateway and Native IPC Background Service.
+* **Execution Flow:** Acquires a system-wide lock (`.serve_lock`), initializes the Axum HTTP server on the configured API port (default 8000), and spawns the Named Pipe IPC listener (`\\.\pipe\cluaiz_engine_pipe`). This daemon exposes the Cluaiz engine to local applications.
+* **Use Case:** Run this when you want external tools (like Postman, or custom Web UIs) to interact with Cluaiz via REST, or when connecting the Tauri Desktop App.
 * **API Mapping:** Binds all 36+ REST endpoints defined in `routes.rs` and initializes the HTTP listener.
 
 ### `cluaiz ingest`

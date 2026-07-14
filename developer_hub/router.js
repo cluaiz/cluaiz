@@ -1,5 +1,10 @@
 import { mountDashboard } from '/src/app/dashboard/dashboard.js?v=2';
 import { mountApiWorkspace } from '/src/app/api/script.js';
+import { mountHubWorkspace } from '/src/app/hub/script.js';
+
+window.getApiBaseUrl = function() {
+    return window.location.origin;
+};
 
 function route() {
     const path = window.location.pathname;
@@ -10,6 +15,8 @@ function route() {
         mountDashboard(root);
     } else if (path === '/api') {
         mountApiWorkspace(root);
+    } else if (path === '/hub') {
+        mountHubWorkspace(root);
     } else {
         root.innerHTML = `<h1 style="color: white; padding: 40px;">404 Not Found</h1>`;
     }

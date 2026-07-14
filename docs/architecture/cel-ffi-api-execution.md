@@ -112,7 +112,7 @@ cel_manifest = {
 }
 
 response = requests.post(
-    "http://localhost:8000/v1/cel/execute", 
+    "http://localhost:<api_port>/v1/cel/execute", 
     json=cel_manifest
 )
 print("Memory saved via zero-latency FFI bypass:", response.json())
@@ -136,7 +136,7 @@ const celManifest = {
     }
 };
 
-const response = await fetch("http://localhost:8000/v1/cel/execute", {
+const response = await fetch("http://localhost:<api_port>/v1/cel/execute", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(celManifest)

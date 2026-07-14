@@ -20,12 +20,13 @@ pub async fn health_check() -> Json<Value> {
 
 // ─── System Info ─────────────────────────────────────────────────────
 pub async fn system_info() -> Json<Value> {
+    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
     Json(json!({
         "engine": "cluaiz",
         "full_name": "cluaiz Inference Engine",
         "version": env!("CARGO_PKG_VERSION"),
         "pillars": {
-            "api": "Gateway — HTTP server on port 8000 (this!)",
+            "api": format!("Gateway — HTTP server on port {} (this!)", perms.api_port),
             "kernel": "Brain — Decision-making & orchestration",
             "storage": "Sidecars — 5 Official DB engines (Mongo, Neo4j, ClickHouse, Qdrant, MinIO)",
             "engines": "Muscles — C++ model inference via llama.cpp FFI"

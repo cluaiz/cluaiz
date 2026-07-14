@@ -8,7 +8,7 @@ This document is the unified, comprehensive reference manual for the Cluaiz Axum
 ## 🏛️ Foundational Protocols: REST vs. FFI
 
 The Cluaiz engine utilizes two distinct communication planes depending on developer requirements:
-1. **REST Gateway (HTTP/SSE):** Operates on `http://127.0.0.1:8000` (localhost restricted for safety). Designed for client interfaces, tools, and remote workspaces.
+1. **REST Gateway (HTTP/SSE):** Operates on `http://127.0.0.1:<api_port>` (default 8000, configurable via Permission settings). Designed for client interfaces, tools, and remote workspaces.
 
 2. **IPC Named Pipe & C-ABI FFI:** Operates via Windows Named Pipes (`\\.\pipe\cluaiz_engine_pipe`) and dynamic pointer bindings. Designed for local zero-latency workflows. Detailed in the [Zero-Latency Architecture Overview](../architecture/unified-brain-ffi.md).
 
@@ -46,7 +46,7 @@ For a deeper dive into how this relates to model loading and multimodal routing,
       "full_name": "Cluaiz Inference Engine",
       "version": "0.1.0",
       "pillars": {
-        "api": "Gateway — HTTP server on port 8000 (this!)",
+        "api": "Gateway — HTTP server on port <api_port> (this!)",
         "kernel": "Brain — Decision-making & orchestration",
         "storage": "Sidecars — 5 Official DB engines (Mongo, Neo4j, ClickHouse, Qdrant, MinIO)",
         "engines": "Muscles — C++ model inference via llama.cpp FFI"
