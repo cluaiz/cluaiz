@@ -52,4 +52,71 @@
             </div>
         </div>
     </div>
+    <h3 class="settings-section-title">Engine Security & Privacy</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">WASM Firewall Mode</span>
+            <span class="setting-desc" id="desc-wasm-firewall">Blocks dangerous plugins automatically based on heuristics.</span>
+        </div>
+        <div class="setting-control" id="container-wasm-firewall"></div>
+    </div>
+
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Stream Telemetry</span>
+            <span class="setting-desc" id="desc-telemetry">Disabled: No data leaves your machine.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-telemetry">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="settings-section-title">Context & Memory Permissions</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Vectorize User Input</span>
+            <span class="setting-desc" id="desc-vec-user">Automatically save your inputs to semantic memory.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-vec-user">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Vectorize AI Response</span>
+            <span class="setting-desc" id="desc-vec-ai">Automatically save AI responses to semantic memory.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-vec-ai">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Enable KV Cache</span>
+            <span class="setting-desc" id="desc-kv-cache">Allow models to cache conversation state in memory.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-kv-cache">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Temporary Chat TTL (Hours)</span>
+            <span class="setting-desc" id="desc-chat-ttl">How long temporary chats stay in memory before auto-deletion.</span>
+        </div>
+        <div class="setting-control" id="container-chat-ttl"></div>
+    </div>
 </div>

@@ -12,61 +12,56 @@
             </svg>
         </button>
     </div>
-    <div class="nav-container" id="hub-nav-container">
-        <!-- MCP Config Group -->
-        <div class="nav-group">
-            <div class="nav-group-title open" data-group="mcp-group">
-                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
-                MCP Configuration
-            </div>
-            <div class="nav-items open" id="mcp-group">
-                <div style="padding: 10px 20px;">
-                    <label class="form-label">Server URL</label>
-                    <input type="text" class="hub-input" placeholder="http://localhost:3000" />
-                </div>
-                <div style="padding: 10px 20px;">
-                    <label class="form-label">Auth Token</label>
-                    <input type="password" class="hub-input" placeholder="Bearer ..." />
-                </div>
-                <div style="padding: 10px 20px;">
-                    <button class="send-btn" style="width: 100%;">Connect Server</button>
-                </div>
-            </div>
-        </div>
+    <div class="nav-container" id="hub-nav-container" style="display: flex; flex-direction: column; flex: 1; padding: 0;">
 
-        <!-- Plugins Group -->
-        <div class="nav-group">
-            <div class="nav-group-title open" data-group="plugin-group">
-                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
-                Plugin (.wasm)
-            </div>
-            <div class="nav-items open" id="plugin-group">
-                <div style="padding: 10px 20px;">
-                    <label class="form-label">Load Binary</label>
-                    <input type="file" class="hub-input" accept=".wasm,.dll,.so" />
-                </div>
-                <div style="padding: 10px 20px; font-size: 0.85rem; color: var(--text-muted);">
-                    <div style="display: flex; gap: 8px; margin-bottom: 8px;"><span style="color: var(--method-get);">✔</span> ABI Match</div>
-                    <div style="display: flex; gap: 8px;"><span style="color: var(--method-post);">⚠</span> Network Perms</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Skills Group -->
-        <div class="nav-group">
-            <div class="nav-group-title open" data-group="skill-group">
-                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
-                Skills (SKILL.md)
-            </div>
-            <div class="nav-items open" id="skill-group">
-                <div style="padding: 10px 20px;">
-                    <label class="form-label">Skill Name</label>
-                    <input type="text" class="hub-input" placeholder="e.g. search-web" />
-                </div>
-                <div style="padding: 10px 20px;">
-                    <button class="send-btn" style="width: 100%; background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">New Skill.md</button>
-                </div>
-            </div>
+        <!-- Include marked.js for Markdown parsing -->
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        
+        <style>
+            /* Adjustments to make the Chat UI look better in the narrow sidebar */
+            #hub-chat-sidebar-container {
+                padding-bottom: 16px; /* Margin from bottom */
+            }
+            #hub-chat-sidebar-container #chat-textarea {
+                font-size: 0.85rem !important;
+            }
+            #hub-chat-sidebar-container i[data-lucide="plus"],
+            #hub-chat-sidebar-container i[data-lucide="mic"],
+            #hub-chat-sidebar-container i[data-lucide="send"] {
+                width: 18px !important;
+                height: 18px !important;
+            }
+            #hub-chat-sidebar-container #model-select-btn {
+                font-size: 0.75rem !important;
+            }
+            #hub-chat-sidebar-container #attach-btn, 
+            #hub-chat-sidebar-container #send-btn,
+            #hub-chat-sidebar-container #mic-wrapper button {
+                width: 32px !important;
+                height: 32px !important;
+                padding: 0 !important;
+            }
+            #hub-chat-sidebar-container .chat-messages {
+                padding: 4px 0 !important;
+            }
+            #hub-chat-sidebar-container .chat-stream-container {
+                padding: 8px 12px !important; /* Added left/right padding to protect text from scrollbar */
+            }
+            #hub-chat-sidebar-container .chat-message {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #hub-chat-sidebar-container .message-bubble {
+                padding: 4px 0 !important;
+                font-size: 0.85rem !important;
+            }
+            #hub-chat-sidebar-container .user-bubble {
+                padding: 8px 12px !important; /* Keep some padding for user bubble since it has a background */
+            }
+        </style>
+        <!-- Chat in Sidebar (Full Screen) -->
+        <div id="hub-chat-sidebar-container" style="flex: 1; overflow: hidden; display: flex; flex-direction: column; width: 100%;">
+            <!-- Imported Chat UI mounts here -->
         </div>
     </div>
 </div>
@@ -92,36 +87,37 @@
         </div>
         
         <div style="display: flex; gap: 8px;">
-            <button class="send-btn" id="hub-btn-test" style="background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">Run Test</button>
-            <button class="send-btn" id="hub-btn-publish" style="background-color: var(--text-accent); color: #000;">Publish</button>
+            <button class="send-btn" id="hub-btn-install" style="background-color: var(--text-accent); color: #000;">Load Unpacked (Install)</button>
         </div>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-        <div class="tab active" data-target="panel-code">Code Editor</div>
+        <div class="tab active" data-target="panel-snippet">Snippet Tester</div>
         <div class="tab" data-target="panel-manifest">Manifest JSON</div>
     </div>
 
     <!-- Panels -->
     <div class="panels">
-        <!-- Top Panel: Editor -->
+        <!-- Top Panel: Workspace -->
         <div class="panel-top" id="hub-panel-top-container">
             <div class="panel-header">
-                <span id="hub-panel-left-title">Plugin Source</span>
-                <span style="background: var(--method-get-bg); color: var(--method-get); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Live Reload Active</span>
+                <span id="hub-panel-left-title">Workspace</span>
+                <span style="background: var(--method-get-bg); color: var(--method-get); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Sandbox Active</span>
             </div>
-            <div class="panel-body" id="panel-code" style="padding: 0; display: block;">
-                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
-                    <div style="flex: 1 1 auto; position: relative;" id="hub-editor-container">
-                        <!-- CodeMirror mounts here -->
-                    </div>
-                </div>
-            </div>
+
             <div class="panel-body hidden" id="panel-manifest" style="padding: 0; display: none;">
                 <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
                     <div style="flex: 1 1 auto; position: relative;" id="hub-manifest-container">
                         <!-- JSON Editor mounts here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-body" id="panel-snippet" style="padding: 0; display: block;">
+                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
+                    <div style="flex: 1 1 auto; position: relative;" id="hub-snippet-container">
+                        <!-- Tiny CodeMirror mounts here -->
                     </div>
                 </div>
             </div>

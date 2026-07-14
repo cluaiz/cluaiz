@@ -9,15 +9,6 @@ const DESCRIPTIONS = {
         true: 'Enabled: Model loads only on first message. Saves RAM while idle.',
         false: 'Disabled: Model loads instantly on startup.'
     },
-    wasmFirewall: {
-        'auto': 'Blocks dangerous plugins automatically based on heuristics.',
-        'strict': 'Maximum security. All WASM plugins are heavily restricted.',
-        'off': 'No restrictions. Use only with trusted plugins.'
-    },
-    telemetry: {
-        true: 'Enabled: Sending anonymous performance data.',
-        false: 'Disabled: No data leaves your machine.'
-    },
 
     mlock: {
         'Auto': 'System decides based on RAM availability.',
@@ -215,25 +206,6 @@ export async function mount(container) {
     // Initialize Toggles (System state)
     setupToggle('toggle-brain-mode', 'desc-brain-mode', DESCRIPTIONS.brainMode, 'brain_mode', true);
     setupToggle('toggle-lazy-load', 'desc-lazy-load', DESCRIPTIONS.lazyLoad, 'lazy_load_model', true);
-    setupToggle('toggle-telemetry', 'desc-telemetry', DESCRIPTIONS.telemetry, 'stream_telemetry', true);
-
-    // Initialize Custom Dropdowns
-    // For Permission schema: wasm_firewall
-    const wasmContainer = container.querySelector('#container-wasm-firewall');
-    const wasmDesc = container.querySelector('#desc-wasm-firewall');
-    if (wasmContainer && wasmDesc) {
-        let initialVal = permData.wasm_firewall || 'auto';
-        wasmDesc.textContent = DESCRIPTIONS.wasmFirewall[initialVal];
-        const wasmDropdown = new Dropdown({
-            options: makeOptions(['auto', 'strict', 'off'], ['Auto', 'Strict', 'Off']),
-            defaultValue: initialVal,
-            onChange: async (val) => {
-                wasmDesc.textContent = DESCRIPTIONS.wasmFirewall[val];
-                await updatePermissionSetting('wasm_firewall', val);
-            }
-        });
-        wasmContainer.appendChild(wasmDropdown.render());
-    }
 
     // Booster Settings
     setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Auto');

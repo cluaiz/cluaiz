@@ -4,7 +4,7 @@ export async function mountSettings(rootElement) {
     try {
         const response = await fetch('/src/app/setting/setting.html?v=' + new Date().getTime());
         const html = await response.text();
-        
+
         // Ensure CSS is loaded
         if (!document.getElementById('setting-css')) {
             const link = document.createElement('link');
@@ -30,9 +30,25 @@ export async function mountSettings(rootElement) {
         if (window.lucide) window.lucide.createIcons();
 
         setupSettingsRouter();
-        
-        // Load default tab
-        loadModule('general_setting');
+
+        // Load default tab from URL or fallback to general_setting
+        const searchParams = new URLSearchParams(window.location.search);
+        let defaultTab = searchParams.get('tab');
+        if (!defaultTab) {
+            defaultTab = 'general_setting';
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('tab', defaultTab);
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        // Set the active button
+        const tabBtns = document.querySelectorAll('.nav-tab[data-module]');
+        tabBtns.forEach(t => t.classList.remove('active'));
+        const activeBtn = document.querySelector(`.nav-tab[data-module="${defaultTab}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        // Load the module
+        loadModule(defaultTab);
 
     } catch (e) {
         console.error("Failed to load settings:", e);
@@ -47,6 +63,11 @@ export function unmountSettings() {
     const appRoot = document.getElementById('app-root');
     if (appRoot) {
         appRoot.style.display = 'flex'; // restore dashboard
+    }
+
+    // Change URL back to root if we were at /setting
+    if (window.location.pathname === '/setting' || window.location.pathname === '/settings') {
+        window.history.pushState({}, '', '/');
     }
 }
 
@@ -64,8 +85,14 @@ function setupSettingsRouter() {
             // Add active to clicked
             const btn = e.currentTarget;
             btn.classList.add('active');
-            
+
             const moduleName = btn.getAttribute('data-module');
+            
+            // Update URL without reloading
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('tab', moduleName);
+            window.history.pushState({}, '', newUrl);
+
             loadModule(moduleName);
         });
     });

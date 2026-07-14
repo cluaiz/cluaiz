@@ -1,6 +1,7 @@
 /* Sidebar Layout & Header */
 .sidebar {
-    width: 300px;
+    width: 320px;
+    min-width: 340px;
     background-color: var(--bg-surface);
     border-right: 1px solid var(--border);
     display: flex;

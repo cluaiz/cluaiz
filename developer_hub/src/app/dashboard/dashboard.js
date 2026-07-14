@@ -23,11 +23,7 @@ function setupDashboardLogic() {
     const settingsBtn = document.querySelector('.settings-btn');
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
-            import('/src/app/setting/setting.js?v=' + new Date().getTime()).then(module => {
-                module.mountSettings();
-            }).catch(err => {
-                console.error("Failed to load settings module:", err);
-            });
+            if (window.navigateTo) window.navigateTo('/setting');
         });
     }
 

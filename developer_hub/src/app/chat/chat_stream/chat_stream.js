@@ -81,7 +81,7 @@ async function sendToAI(userMessage) {
                 </div>
             </div>
             <div class="divider" style="border-top: 1px solid rgba(156, 163, 175, 0.2); display: none;"></div>
-            <p class="final-text"></p>
+            <div class="final-text markdown-body" style="font-size: 0.9rem;"></div>
         </div>
     `;
     container.appendChild(aiMsgEl);
@@ -165,37 +165,37 @@ async function sendToAI(userMessage) {
 
                     if (!hasStarted) {
                         hasStarted = true;
-                        updateStatus('[Step 1] User SMS Received');
+                        updateStatus('User SMS Received');
                     }
 
                     const content = delta.content;
 
                     // Intercept Engine Status Markers
                     if (content.startsWith('__STEP_2')) {
-                        updateStatus(`[Step 2] Match Found -> ${content.split(':')[1] || 'Tool'}`);
+                        updateStatus(`Match Found -> ${content.split(':')[1] || 'Tool'}`);
                         continue;
                     }
                     if (content.startsWith('__STEP_3')) {
-                        updateStatus('[Step 3] Dynamic JIT Layer rules compile & inject successfully.');
+                        updateStatus('Dynamic JIT Layer rules compile & inject successfully.');
                         continue;
                     }
                     if (content.startsWith('__STEP_4')) {
-                        updateStatus('[Step 4] Inference system parses user SMS input context.');
+                        updateStatus('Inference system parses user SMS input context.');
                         continue;
                     }
                     if (content.includes('<TRIGGER:') && content.includes('</TRIGGER>')) {
                         const toolMatch = content.match(/<TRIGGER:([^>]+)>/);
                         const toolName = (toolMatch ? toolMatch[1] : 'tool').split(':').pop();
-                        updateStatus(`[Step 5] Match tag emitted -> <TRIGGER:${toolName}>`);
+                        updateStatus(`Match tag emitted -> <TRIGGER:${toolName}>`);
                         await new Promise(r => setTimeout(r, 300));
-                        updateStatus(`[Step 7] Engine intercept triggered. Autoregressive loop PAUSED.`);
+                        updateStatus(`Engine intercept triggered. Autoregressive loop PAUSED.`);
                         continue;
                     }
                     if (content.startsWith('__ENGINE_PAUSE_EXECUTE__')) {
                         const toolName = content.split(':')[1] || 'Tool';
-                        updateStatus(`[Step 8] Sandbox UnifiedExecutor executed: '${toolName}'.`);
+                        updateStatus(`Sandbox UnifiedExecutor executed: '${toolName}'.`);
                         await new Promise(r => setTimeout(r, 300));
-                        updateStatus(`[Step 9] KV-Cache parameters injected. Resuming loop...`);
+                        updateStatus(`KV-Cache parameters injected. Resuming loop...`);
                         await new Promise(r => setTimeout(r, 200));
                         continue;
                     }
@@ -222,8 +222,18 @@ async function sendToAI(userMessage) {
                     if (skipThinking) {
                         displayContent = fullContent.replace(/<think>[\s\S]*?(<\/think>|$)/g, '');
                     }
-                    aiTextEl.textContent = displayContent;
-                    container.scrollTop = container.scrollHeight;
+                    // Only auto-scroll if user is currently near the bottom
+                    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+                    
+                    if (typeof marked !== 'undefined') {
+                        aiTextEl.innerHTML = marked.parse(displayContent);
+                    } else {
+                        aiTextEl.textContent = displayContent;
+                    }
+                    
+                    if (isNearBottom) {
+                        container.scrollTop = container.scrollHeight;
+                    }
 
                 } catch (_parseErr) { }
             }
@@ -239,8 +249,12 @@ async function sendToAI(userMessage) {
     } catch (e) {
         if (e.name === 'AbortError') {
             // User aborted via Stop/Pause button
-            const displayContent = skipThinking ? aiTextEl.textContent : (aiTextEl.textContent + '\\n[Generation Paused]');
-            aiTextEl.textContent = displayContent;
+            const displayContent = skipThinking ? fullContent.replace(/<think>[\s\S]*?(<\/think>|$)/g, '') : (fullContent + '\\n\n*[Generation Paused]*');
+            if (typeof marked !== 'undefined') {
+                aiTextEl.innerHTML = marked.parse(displayContent);
+            } else {
+                aiTextEl.textContent = displayContent;
+            }
 
             // Save what we have so far so continuing works seamlessly
             const finalHtmlText = aiTextEl.textContent.replace('[Generation Paused]', '').trim();

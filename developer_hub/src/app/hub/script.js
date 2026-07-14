@@ -1,7 +1,11 @@
 import { CodeEditor } from '../../../components/editor/editor.js';
+import { mountChat } from '../chat/chat_input/chat.js';
+import { mountChatStream } from '../chat/chat_stream/chat_stream.js';
 
 let state = {
-    editor: null
+    editor: null,
+    manifestEditor: null,
+    isMock: true
 };
 
 function injectHubCSS() {
@@ -46,6 +50,19 @@ export async function mountHubWorkspace(rootElement) {
         rootElement.innerHTML = html;
         
         setupHubLogic();
+
+        // Mount the imported Chat UI directly into the Sidebar's Chat Tester
+        const chatContainer = document.getElementById('hub-chat-sidebar-container');
+        if (chatContainer) {
+            await mountChat(chatContainer);
+
+            // Mount the message history (chat stream)
+            const messagesContainer = document.getElementById('chat-messages');
+            if (messagesContainer) {
+                messagesContainer.style.display = 'flex';
+                await mountChatStream(messagesContainer);
+            }
+        }
     } catch (e) {
         rootElement.innerHTML = `<h2 style="color:red; padding: 20px;">Failed to load Hub Workspace: ${e.message}</h2>`;
     }
@@ -65,6 +82,7 @@ function setupHubLogic() {
             document.getElementById('hub-panel-left-title').textContent = e.target.textContent;
             
             if (state.editor) state.editor.refresh();
+            if (state.manifestEditor) state.manifestEditor.refresh();
         });
     });
 
@@ -126,6 +144,7 @@ function setupHubLogic() {
         realBtn.classList.remove('active');
         realBtn.style.backgroundColor = 'transparent';
         realBtn.style.color = 'var(--text-muted)';
+        state.isMock = true;
         addLogEntry('Switched to Fake AI (Mock) Engine');
     });
 
@@ -136,19 +155,83 @@ function setupHubLogic() {
         mockBtn.classList.remove('active');
         mockBtn.style.backgroundColor = 'transparent';
         mockBtn.style.color = 'var(--text-muted)';
+        state.isMock = false;
         addLogEntry('Switched to Real Cluaiz Engine');
     });
 
-    // Initialize CodeMirror via API Toolkit's CodeEditor class
-    const editorContainer = document.getElementById('hub-editor-container');
-    if (editorContainer) {
+    // Initialize CodeMirror via API Toolkit's CodeEditor class (Now just a Snippet Tester)
+    const snippetContainer = document.getElementById('hub-snippet-container');
+    if (snippetContainer) {
         state.editor = new CodeEditor({
-            id: 'hub-code-editor',
+            id: 'hub-snippet-editor',
             mode: 'rust',
-            value: `// Cluaiz Plugin Lab\n// Write your WASM plugin or API mock logic here.\n\nfn handle_request(req: Request) -> Response {\n    println!("Mock request received");\n    Response::success()\n}`
+            value: `// Snippet Tester\n// Test 1-2 line scripts here\n\nprintln!("Hello from test snippet");`
         });
-        editorContainer.appendChild(state.editor.render());
+        snippetContainer.appendChild(state.editor.render());
         state.editor.mount();
+    }
+
+    const manifestContainer = document.getElementById('hub-manifest-container');
+    if (manifestContainer) {
+        const defaultManifest = {
+            "id": "my-plugin",
+            "name": "My Plugin",
+            "version": "1.0.0",
+            "description": "Test plugin for Cluaiz",
+            "discovery": {
+                "semantic_triggers": ["run test"]
+            },
+            "permissions": {
+                "level": "strict",
+                "network_access": false
+            }
+        };
+        state.manifestEditor = new CodeEditor({
+            id: 'hub-manifest-editor',
+            mode: 'json',
+            value: JSON.stringify(defaultManifest, null, 4)
+        });
+        manifestContainer.appendChild(state.manifestEditor.render());
+        state.manifestEditor.mount();
+    }
+
+    // Run Test & Publish Logic -> Changed to "Load Unpacked (Install)"
+    const installBtn = document.getElementById('hub-btn-install');
+    if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+            addLogEntry('Initiating Local Installation...');
+            const consoleTab = document.getElementById('tab-console');
+            consoleTab.innerHTML = '<div style="color: var(--text-muted);">Copying binary and manifest to local registry...</div>';
+            
+            // Ensure response panel is open
+            const bodyContainer = document.getElementById('hub-res-body-container');
+            if (bodyContainer.classList.contains('hidden')) {
+                document.getElementById('hub-response-header').click();
+            }
+
+            try {
+                const manifestStr = state.manifestEditor.getValue();
+                const manifest = JSON.parse(manifestStr);
+                addLogEntry(`Validating manifest for ${manifest.id}...`);
+
+                if (state.isMock) {
+                    setTimeout(() => {
+                        addLogEntry('Mock Engine: Installed locally at ~/.cluaiz/plugins/');
+                        addLogEntry('Sandbox initialized. Ready for Chat Trigger Testing.');
+                        consoleTab.innerHTML += '<div style="color: var(--method-get); margin-top: 10px;">SUCCESS: Installed locally. Please switch to Chat Tester tab and type a message to trigger it.</div>';
+                    }, 800);
+                } else {
+                    addLogEntry('Sending to Real Cluaiz Engine Registry API...');
+                    setTimeout(() => {
+                        addLogEntry('Cluaiz Engine returned 501 Not Implemented (Endpoint missing).');
+                        consoleTab.innerHTML += '<div style="color: var(--method-post); margin-top: 10px;">ERROR: Real Engine installation failed.</div>';
+                    }, 1000);
+                }
+            } catch (e) {
+                addLogEntry('Installation Aborted: Manifest parsing failed - ' + e.message);
+                consoleTab.innerHTML += `<div style="color: var(--method-del); margin-top: 10px;">JSON Syntax Error: ${e.message}</div>`;
+            }
+        });
     }
 
     // Response Panel Toggle
@@ -180,7 +263,10 @@ function setupHubLogic() {
             topPanel.style.height = "auto";
             topPanel.style.flex = "1";
         }
-        setTimeout(() => { if (state.editor) state.editor.refresh(); }, 50);
+        setTimeout(() => { 
+            if (state.editor) state.editor.refresh(); 
+            if (state.manifestEditor) state.manifestEditor.refresh();
+        }, 50);
     });
 
     initResizers();
@@ -217,12 +303,19 @@ function initResizers() {
         document.body.style.cursor = 'default';
         vertResizer.classList.remove('dragging');
         if (state.editor) state.editor.refresh();
+        if (state.manifestEditor) state.manifestEditor.refresh();
     });
 
     // Horizontal Resizer (Sidebar)
     const horizResizer = document.getElementById('hub-sidebar-resizer');
     const sidebar = document.getElementById('hub-sidebar');
     let isDraggingHoriz = false;
+
+    // Load saved width
+    const savedWidth = localStorage.getItem('hub-sidebar-width');
+    if (savedWidth) {
+        sidebar.style.width = savedWidth;
+    }
 
     horizResizer.addEventListener('mousedown', function (e) {
         isDraggingHoriz = true;
@@ -233,8 +326,8 @@ function initResizers() {
     document.addEventListener('mousemove', function (e) {
         if (!isDraggingHoriz) return;
         let newWidth = e.clientX;
-        if (newWidth < 150) newWidth = 150;
-        if (newWidth > 600) newWidth = 600;
+        if (newWidth < 340) newWidth = 340; // match CSS min-width
+        if (newWidth > 800) newWidth = 800;
         sidebar.style.width = `${newWidth}px`;
     });
 
@@ -243,7 +336,9 @@ function initResizers() {
         isDraggingHoriz = false;
         document.body.style.cursor = 'default';
         horizResizer.classList.remove('dragging');
+        localStorage.setItem('hub-sidebar-width', sidebar.style.width);
         if (state.editor) state.editor.refresh();
+        if (state.manifestEditor) state.manifestEditor.refresh();
     });
 }
 
