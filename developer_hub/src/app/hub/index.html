@@ -1,117 +1,157 @@
-<div class="hub-workspace-container">
-    <!-- Left Sidebar: Configuration & Explorer -->
-    <div class="hub-sidebar" id="hub-sidebar">
-        <div class="sidebar-header">
-            <h2 class="sidebar-title">
-                <i data-lucide="blocks"></i> Plugin Lab
-            </h2>
-            <button class="icon-btn" id="close-sidebar-btn" title="Toggle Sidebar">
-                <i data-lucide="panel-left-close"></i>
-            </button>
+<!-- SIDEBAR -->
+<div class="sidebar" id="hub-sidebar">
+    <div class="sidebar-header" id="hub-sidebar-header">
+        <div onclick="window.navigateTo('/')" style="display: flex; align-items: center; cursor: pointer; flex: 1;">
+            <img src="/assets/logo.ico" onerror="this.src='/assets/favicon.ico'" class="logo" alt="cluaiz Logo"
+                style="width: 24px; height: 24px;">
+            <span>Plugin Lab</span>
         </div>
-        
-        <div class="sidebar-tabs">
-            <button class="tab-btn active" data-target="mcp-config">MCP</button>
-            <button class="tab-btn" data-target="plugin-config">Plugin</button>
-            <button class="tab-btn" data-target="skill-config">Skill</button>
-        </div>
-
-        <div class="sidebar-content">
-            <!-- MCP Tab -->
-            <div id="mcp-config" class="tab-pane active">
-                <div class="config-group">
-                    <label>Server URL</label>
-                    <input type="text" placeholder="http://localhost:3000" class="cluaiz-input" />
-                </div>
-                <div class="config-group">
-                    <label>Auth Token</label>
-                    <input type="password" placeholder="Bearer ..." class="cluaiz-input" />
-                </div>
-                <button class="cluaiz-btn primary-btn w-full mt-4">Connect Server</button>
+        <button id="hub-sidebar-close-btn" class="sidebar-toggle-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M15 18l-6-6 6-6" />
+            </svg>
+        </button>
+    </div>
+    <div class="nav-container" id="hub-nav-container">
+        <!-- MCP Config Group -->
+        <div class="nav-group">
+            <div class="nav-group-title open" data-group="mcp-group">
+                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+                MCP Configuration
             </div>
-
-            <!-- Plugin Tab -->
-            <div id="plugin-config" class="tab-pane">
-                <div class="config-group">
-                    <label>Load Binary</label>
-                    <input type="file" class="cluaiz-file-input" accept=".wasm,.dll,.so" />
+            <div class="nav-items open" id="mcp-group">
+                <div style="padding: 10px 20px;">
+                    <label class="form-label">Server URL</label>
+                    <input type="text" class="hub-input" placeholder="http://localhost:3000" />
                 </div>
-                <div class="manifest-status mt-4">
-                    <div class="status-item"><i data-lucide="check-circle-2" class="text-green"></i> ABI Version Match</div>
-                    <div class="status-item"><i data-lucide="shield-alert" class="text-yellow"></i> Network Permission</div>
+                <div style="padding: 10px 20px;">
+                    <label class="form-label">Auth Token</label>
+                    <input type="password" class="hub-input" placeholder="Bearer ..." />
+                </div>
+                <div style="padding: 10px 20px;">
+                    <button class="send-btn" style="width: 100%;">Connect Server</button>
                 </div>
             </div>
+        </div>
 
-            <!-- Skill Tab -->
-            <div id="skill-config" class="tab-pane">
-                <div class="config-group">
-                    <label>Skill Name</label>
-                    <input type="text" placeholder="e.g., search-web" class="cluaiz-input" />
+        <!-- Plugins Group -->
+        <div class="nav-group">
+            <div class="nav-group-title open" data-group="plugin-group">
+                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+                Plugin (.wasm)
+            </div>
+            <div class="nav-items open" id="plugin-group">
+                <div style="padding: 10px 20px;">
+                    <label class="form-label">Load Binary</label>
+                    <input type="file" class="hub-input" accept=".wasm,.dll,.so" />
                 </div>
-                <button class="cluaiz-btn primary-btn w-full mt-4">New Skill.md</button>
+                <div style="padding: 10px 20px; font-size: 0.85rem; color: var(--text-muted);">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;"><span style="color: var(--method-get);">✔</span> ABI Match</div>
+                    <div style="display: flex; gap: 8px;"><span style="color: var(--method-post);">⚠</span> Network Perms</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Group -->
+        <div class="nav-group">
+            <div class="nav-group-title open" data-group="skill-group">
+                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 18l6-6-6-6"/></svg>
+                Skills (SKILL.md)
+            </div>
+            <div class="nav-items open" id="skill-group">
+                <div style="padding: 10px 20px;">
+                    <label class="form-label">Skill Name</label>
+                    <input type="text" class="hub-input" placeholder="e.g. search-web" />
+                </div>
+                <div style="padding: 10px 20px;">
+                    <button class="send-btn" style="width: 100%; background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">New Skill.md</button>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Main Content Area -->
-    <div class="hub-main">
-        <div class="main-top-bar">
-            <button class="icon-btn" id="toggle-sidebar-btn" style="display: none;" title="Toggle Sidebar">
-                <i data-lucide="panel-left"></i>
+<!-- Horizontal Resizer -->
+<div class="resizer-horizontal" id="hub-sidebar-resizer"></div>
+
+<!-- Workspace -->
+<div id="view-hub" class="workspace" style="flex: 1; position: relative;">
+    <!-- Request Header (Top Bar) -->
+    <div class="request-header" id="hub-main-header" style="gap: 8px; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="hub-sidebar-open-btn" class="sidebar-toggle-btn hidden"
+                style="width: 38px; height: 38px; display: flex; justify-content: center; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px;">
+                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                    <path d="M3 12h18M3 6h18M3 18h18" />
+                </svg>
             </button>
-            <div class="engine-toggle">
-                <span class="toggle-label">Mode:</span>
-                <button class="cluaiz-btn mock-btn active">Fake AI (Mock)</button>
-                <button class="cluaiz-btn real-btn">Real Engine</button>
-            </div>
-            <div class="top-bar-actions">
-                <button class="cluaiz-btn secondary-btn"><i data-lucide="play"></i> Run Test</button>
-                <button class="cluaiz-btn secondary-btn"><i data-lucide="upload-cloud"></i> Publish</button>
-                <button class="icon-btn" onclick="window.navigateTo('/')" title="Back to Dashboard">
-                    <i data-lucide="x"></i>
-                </button>
+            <div class="engine-toggle" style="display: flex; align-items: center; background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px;">
+                <button class="toggle-btn mock-btn active" style="padding: 6px 12px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">Fake AI (Mock)</button>
+                <button class="toggle-btn real-btn" style="padding: 6px 12px; border: none; background: transparent; color: var(--text-muted); cursor: pointer;">Real Engine</button>
             </div>
         </div>
-
-        <div class="editor-pane">
-            <div class="editor-header">
-                <span><i data-lucide="code"></i> Editor</span>
-                <span class="status-badge live-reload">Live Reload Active</span>
-            </div>
-            <!-- CodeMirror mounts here -->
-            <div id="hub-editor-mount" class="editor-container"></div>
+        
+        <div style="display: flex; gap: 8px;">
+            <button class="send-btn" id="hub-btn-test" style="background-color: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);">Run Test</button>
+            <button class="send-btn" id="hub-btn-publish" style="background-color: var(--text-accent); color: #000;">Publish</button>
         </div>
+    </div>
 
-        <!-- Bottom Panel: Timeline & Output -->
-        <div class="bottom-panel">
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" data-target="panel-code">Code Editor</div>
+        <div class="tab" data-target="panel-manifest">Manifest JSON</div>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels">
+        <!-- Top Panel: Editor -->
+        <div class="panel-top" id="hub-panel-top-container">
             <div class="panel-header">
-                <div class="panel-tabs">
-                    <button class="tab-btn active" data-target="timeline">Event Timeline</button>
-                    <button class="tab-btn" data-target="console">Console Logs</button>
-                    <button class="tab-btn" data-target="performance">Performance</button>
+                <span id="hub-panel-left-title">Plugin Source</span>
+                <span style="background: var(--method-get-bg); color: var(--method-get); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Live Reload Active</span>
+            </div>
+            <div class="panel-body" id="panel-code" style="padding: 0; display: block;">
+                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
+                    <div style="flex: 1 1 auto; position: relative;" id="hub-editor-container">
+                        <!-- CodeMirror mounts here -->
+                    </div>
                 </div>
             </div>
-            <div class="panel-content">
-                <div id="timeline" class="tab-pane active log-viewer">
-                    <div class="log-entry info"><span class="time">[14:02:01]</span> Plugin Sandbox Initialized</div>
-                    <div class="log-entry info"><span class="time">[14:02:02]</span> Loaded fake context (Fake AI Mode)</div>
+            <div class="panel-body hidden" id="panel-manifest" style="padding: 0; display: none;">
+                <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
+                    <div style="flex: 1 1 auto; position: relative;" id="hub-manifest-container">
+                        <!-- JSON Editor mounts here -->
+                    </div>
                 </div>
-                <div id="console" class="tab-pane log-viewer">
-                    <div class="log-entry">Waiting for execution...</div>
+            </div>
+        </div>
+
+        <div class="resizer" id="hub-drag-resizer"></div>
+
+        <!-- Bottom Panel: Response -->
+        <div class="panel-bottom" id="hub-panel-bottom-container">
+            <div class="panel-header" style="cursor: pointer;" id="hub-response-header">
+                <span id="hub-response-toggle-icon">▼ Logs & Output</span>
+                <div class="response-status" id="hub-res-status">
+                    <span>Mem: 12 MB</span>
+                    <span>Time: 42 ms</span>
+                    <span>Tokens: 133</span>
                 </div>
-                <div id="performance" class="tab-pane stats-viewer">
-                    <div class="stat-card">
-                        <div class="stat-value">12 MB</div>
-                        <div class="stat-label">Memory</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">42 ms</div>
-                        <div class="stat-label">Execution Time</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">133</div>
-                        <div class="stat-label">Tokens</div>
-                    </div>
+            </div>
+            
+            <div class="tabs" style="border-top: 1px solid var(--border); border-bottom: none; background: transparent;">
+                <div class="tab active" data-bottom="tab-timeline" style="padding: 8px 16px;">Event Timeline</div>
+                <div class="tab" data-bottom="tab-console" style="padding: 8px 16px;">Console</div>
+            </div>
+            
+            <div class="panel-body" id="hub-res-body-container" style="padding: 0;">
+                <div id="tab-timeline" style="display: block; padding: 20px; font-family: 'Fira Code', monospace; font-size: 0.85rem; color: var(--text-muted);">
+                    <div style="margin-bottom: 4px;"><span style="color: var(--text-accent);">[14:02:01]</span> Plugin Sandbox Initialized</div>
+                    <div style="margin-bottom: 4px;"><span style="color: var(--text-accent);">[14:02:02]</span> Loaded fake context (Fake AI Mode)</div>
+                </div>
+                <div id="tab-console" style="display: none; padding: 20px; font-family: 'Fira Code', monospace; font-size: 0.85rem; color: var(--text-muted);">
+                    Waiting for execution...
                 </div>
             </div>
         </div>
