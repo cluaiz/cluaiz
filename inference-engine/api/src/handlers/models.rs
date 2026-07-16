@@ -194,7 +194,12 @@ pub async fn load_model(
     Json(payload): Json<LoadPayload>,
 ) -> Json<Value> {
     let roster = CoreRoster::load_roster();
-    if let Some(manifest) = roster.into_iter().find(|m| m.id.to_lowercase() == payload.model_id.to_lowercase()) {
+    if let Some(manifest) = roster.into_iter().find(|m| 
+        m.id.to_lowercase() == payload.model_id.to_lowercase() ||
+        m.huggingface_filename.to_lowercase() == payload.model_id.to_lowercase() ||
+        m.name.to_lowercase() == payload.model_id.to_lowercase() ||
+        m.id.replace(":", "-").to_lowercase() == payload.model_id.to_lowercase()
+    ) {
         if let Some(local_path) = manifest.local_path {
             let model_file = std::path::Path::new(&local_path).join(&manifest.huggingface_filename);
             if model_file.exists() {

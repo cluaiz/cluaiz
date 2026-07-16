@@ -50,5 +50,29 @@
         }
       }
     }
+  },
+  "bonsai1.0:27b": {
+    "name": "Bonsai 1.0b 27B",
+    "architecture": "BitNet-1.0b",
+    "context_window": "128k",
+    "category": "chat",
+    "default_quant": "binary",
+    "description": "The Bonsai 1.0b 27B brings massive 27 billion parameter intelligence to standard devices. Utilizing pure 1-bit binary quantization, it compresses to ~3.5GB. Designed for extreme edge deployment without cloud dependence.",
+    "prompt_template": "ChatML",
+    "licenses": [
+      {
+        "type": "Apache 2.0",
+        "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/blob/main/LICENSE.txt"
+      }
+    ],
+    "variants": {
+      "gguf": {
+        "binary": {
+          "download_url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/main/Bonsai-27B-Q1_0.gguf",
+          "ram_required_gb": 3.8,
+          "download_size_gb": 3.54
+        }
+      }
+    }
   }
 }

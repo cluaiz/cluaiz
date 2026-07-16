@@ -171,7 +171,7 @@ function openEndpoint(ep) {
         updateAvailableMethods('custom-req-method', availableMethods);
     }
 
-    document.getElementById('req-url').value = `http://localhost:8000${ep.path}`;
+    document.getElementById('req-url').value = `${window.location.protocol}//${window.location.host}${ep.path}`;
 
     // Detect if this is a raw code endpoint (CEL or FFI)
     let isRawCode = false;
@@ -367,10 +367,16 @@ export async function initApiTester() {
 
         const headersContainer = document.getElementById("headers-editor-container");
         if (headersContainer) {
+            const savedHeaders = localStorage.getItem('apiTesterHeaders');
+            const initialHeaders = savedHeaders ? savedHeaders : '{\n  "Authorization": "Bearer ..."\n}';
+            
             state.headersEditor = new CodeEditor({
                 id: 'headers-body-editor',
                 mode: 'application/json',
-                value: '{\n  "Authorization": "Bearer ..."\n}'
+                value: initialHeaders,
+                onChange: (val) => {
+                    localStorage.setItem('apiTesterHeaders', val);
+                }
             });
             headersContainer.appendChild(state.headersEditor.render());
             state.headersEditor.mount();
@@ -516,7 +522,6 @@ export async function initApiTester() {
                 id: 'custom-req-protocol',
                 options: [
                     {value: 'http', label: 'HTTP / REST'},
-                    {value: 'cel', label: 'CEL RPC (Internal)'},
                     {value: 'c-pointer', label: 'C-Pointer (FFI)'}
                 ],
                 defaultValue: 'http',
@@ -587,29 +592,43 @@ export async function initApiTester() {
 
     export function onProtocolChange(resetPayload = true) {
         const protocol = state.protocolDropdown ? state.protocolDropdown.getValue() : 'http';
-        const methodSelect = document.getElementById('custom-req-method');
-        const langSelect = document.getElementById('custom-req-language');
+        const methodSelect = document.getElementById('method-container');
+        const langSelect = document.getElementById('language-container');
         const urlInput = document.getElementById('req-url');
 
         // Reset visibility
-        methodSelect.classList.remove('hidden');
-        langSelect.classList.add('hidden');
+        if (methodSelect) methodSelect.classList.remove('hidden');
+        if (langSelect) langSelect.classList.add('hidden');
         if (state.editor) state.editor.setOption("readOnly", false);
 
         if (protocol === 'http') {
+            if (langSelect) langSelect.classList.remove('hidden');
+            if (methodSelect) methodSelect.classList.remove('hidden');
+            
+            if (state.languageDropdown) {
+                state.languageDropdown.updateOptions([
+                    {value: 'json', label: 'JSON'},
+                    {value: 'cel', label: 'CEL (cluaiz Engine Language)'},
+                    {value: 'rhai', label: 'Rhai Script'},
+                    {value: 'wasm', label: 'WASM (Rust)'},
+                    {value: 'js', label: 'JavaScript (V8)'}
+                ], false);
+            }
+
             if (state.editor) {
                 state.editor.setOption("mode", "application/json");
                 if (resetPayload) state.editor.setValue('{\n  \n}');
             }
             if (resetPayload) {
-                urlInput.value = 'http://localhost:8000/health';
-                urlInput.placeholder = "http://localhost:8000/api/...";
+                updateCustomSelect('custom-req-language', 'json');
+                urlInput.value = `${window.location.protocol}//${window.location.host}/health`;
+                urlInput.placeholder = `${window.location.protocol}//${window.location.host}/api/...`;
                 updateAvailableMethods('custom-req-method', ['GET', 'POST', 'PUT', 'DELETE']);
                 updateCustomSelect('custom-req-method', 'GET');
             }
         } else if (protocol === 'c-pointer') {
-            methodSelect.classList.add('hidden');
-            langSelect.classList.remove('hidden');
+            if (methodSelect) methodSelect.classList.add('hidden');
+            if (langSelect) langSelect.classList.remove('hidden');
             
             // Rebuild language options for C-Pointer
             if (state.languageDropdown) {
@@ -628,26 +647,7 @@ export async function initApiTester() {
             urlInput.value = 'cluaiz_engine_invoke(ptr)';
             urlInput.placeholder = "Function pointer / symbol name";
 
-        } else if (protocol === 'cel') {
-            methodSelect.classList.add('hidden');
-            langSelect.classList.remove('hidden');
-            
-            // Rebuild language options for CEL
-            if (state.languageDropdown) {
-                state.languageDropdown.updateOptions([
-                    {value: 'cel', label: 'CEL (cluaiz Engine Language)'},
-                    {value: 'rhai', label: 'Rhai Script'},
-                    {value: 'wasm', label: 'WASM (Rust)'},
-                    {value: 'js', label: 'JavaScript (V8)'}
-                ], false);
-            }
 
-            if (resetPayload) {
-                updateCustomSelect('custom-req-language', 'cel');
-                onLanguageChange(true);
-            }
-            urlInput.value = 'cluaiz.rpc.invoke("memory_compact")';
-            urlInput.placeholder = "RPC Method or Module";
         }
     }
 
@@ -658,7 +658,24 @@ export async function initApiTester() {
         // Turn off JSON lint for non-JSON modes
         if (state.editor) state.editor.setOption("lint", false);
 
-        if (protocol === 'c-pointer') {
+        if (protocol === 'http') {
+            if (lang === 'json') {
+                if (state.editor) state.editor.setOption("mode", "application/json");
+                if (resetPayload && state.editor) state.editor.setValue('{\n  \n}');
+            } else if (lang === 'cel') {
+                if (state.editor) state.editor.setOption("mode", "rust");
+                if (resetPayload && state.editor) state.editor.setValue("let $users = use plugin::database -> find User -> limit 5;\nforeach ($user in $users) {\n    use plugin::email -> send(to: $user.email);\n}");
+            } else if (lang === 'rhai') {
+                if (state.editor) state.editor.setOption("mode", "rust");
+                if (resetPayload && state.editor) state.editor.setValue("fn process(data) {\n    return data + \"_processed\";\n}\nprocess(\"test\");");
+            } else if (lang === 'wasm') {
+                if (state.editor) state.editor.setOption("mode", "rust");
+                if (resetPayload && state.editor) state.editor.setValue("(module\n  (func $main (result i32)\n    i32.const 42\n  )\n  (export \"main\" (func $main))\n)");
+            } else if (lang === 'js') {
+                if (state.editor) state.editor.setOption("mode", "javascript");
+                if (resetPayload && state.editor) state.editor.setValue("function process(data) {\n  return data + \"_processed\";\n}\nprocess(\"test\");");
+            }
+        } else if (protocol === 'c-pointer') {
             if (lang === 'rust') {
                 if (state.editor) state.editor.setOption("mode", "rust");
                 if (resetPayload && state.editor) state.editor.setValue("#[repr(C)]\npub struct Payload {\n    pub id: u32,\n    pub data_ptr: *const u8,\n}");
@@ -672,20 +689,7 @@ export async function initApiTester() {
                 if (state.editor) state.editor.setOption("mode", "javascript");
                 if (resetPayload && state.editor) state.editor.setValue("const StructType = require('ref-struct-napi');\n\nconst Payload = StructType({\n  id: 'uint32',\n  data_ptr: 'string'\n});");
             }
-        } else if (protocol === 'cel') {
-            if (lang === 'cel') {
-                if (state.editor) state.editor.setOption("mode", "rust");
-                if (resetPayload && state.editor) state.editor.setValue("let $users = use plugin::database -> find User -> limit 5;\nforeach ($user in $users) {\n    use plugin::email -> send(to: $user.email);\n}");
-            } else if (lang === 'rhai') {
-                if (state.editor) state.editor.setOption("mode", "rust");
-                if (resetPayload && state.editor) state.editor.setValue("fn process(data) {\n    return data + \"_processed\";\n}\nprocess(\"test\");");
-            } else if (lang === 'wasm') {
-                if (state.editor) state.editor.setOption("mode", "rust");
-                if (resetPayload && state.editor) state.editor.setValue("(module\n  (func $main (result i32)\n    i32.const 42\n  )\n  (export \"main\" (func $main))\n)");
-            } else if (lang === 'js') {
-                if (state.editor) state.editor.setOption("mode", "javascript");
-                if (resetPayload && state.editor) state.editor.setValue("function process(data) {\n  return data + \"_processed\";\n}\nprocess(\"test\");");
-            }
+
         }
     }
 
@@ -715,20 +719,35 @@ export async function initApiTester() {
             }
         };
 
+        try {
+            const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
+            if (pRes.ok) {
+                const pData = await pRes.json();
+                if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
+                    options.headers['Authorization'] = 'Bearer ' + pData.permission.api_auth.tokens[0];
+                }
+            }
+        } catch (e) {
+            console.warn("Could not fetch permissions for auth token");
+        }
+
         if ((ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') && bodyStr.trim() !== '') {
             if (protocol === 'http') {
-                try {
-                    JSON.parse(bodyStr); // Validate JSON
-                    options.body = bodyStr;
-                } catch (e) {
-                    resBody.textContent = "Invalid JSON in request payload:\n" + e.message;
-                    resBody.style.color = "var(--method-delete)";
-                    btn.disabled = false;
-                    return;
+                const reqLang = state.languageDropdown ? state.languageDropdown.getValue() : 'json';
+                if (reqLang === 'json') {
+                    try {
+                        JSON.parse(bodyStr); // Validate JSON
+                        options.body = bodyStr;
+                    } catch (e) {
+                        resBody.textContent = "Invalid JSON in request payload:\n" + e.message;
+                        resBody.style.color = "var(--method-delete)";
+                        btn.disabled = false;
+                        return;
+                    }
+                } else {
+                    // It's a script (CEL, Rhai, WASM, JS) sent via HTTP REST
+                    options.body = JSON.stringify({ lang: reqLang, script: bodyStr });
                 }
-            } else if (protocol === 'cel') {
-                // Wrap raw code in script field for CEL API
-                options.body = JSON.stringify({ script: bodyStr });
             } else if (protocol === 'c-pointer') {
                 // Wrap in generic params object for FFI APIs
                 options.body = JSON.stringify({ params: bodyStr });

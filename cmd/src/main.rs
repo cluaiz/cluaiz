@@ -571,7 +571,6 @@ async fn main() -> Result<()> {
                         format!("Telemetry (Current: {})", schema.stream_telemetry),
                         format!("Vectorize User Input (Current: {})", schema.vectorize_user_input),
                         format!("Vectorize AI Response (Current: {})", schema.vectorize_ai_response),
-                        format!("Temporary Chat TTL (Current: {})", if schema.temporary_chat_ttl_hours == u64::MAX { "max".to_string() } else { format!("{} hours", schema.temporary_chat_ttl_hours) }),
                         format!("Enable KV Cache (Current: {})", schema.enable_kvcache),
                         format!("API Port (Current: {})", schema.api_port),
                         format!("Active Chat Model (Current: {})", schema.get_active_chat_model().unwrap_or_else(|| "None".to_string())),
@@ -623,14 +622,7 @@ async fn main() -> Result<()> {
                                     changed = true;
                                 }
                             }
-                            "Temporary Chat TTL" => {
-                                if let Ok(v) = Select::new("Select TTL:", vec!["12 hr", "24 hr", "48 hr", "72 hr", "1 week", "max"]).prompt() {
-                                    schema.temporary_chat_ttl_hours = match v {
-                                        "12 hr" => 12, "24 hr" => 24, "48 hr" => 48, "72 hr" => 72, "1 week" => 168, "max" => u64::MAX, _ => 24,
-                                    };
-                                    changed = true;
-                                }
-                            }
+
                             "Active Chat Model" | "Active Vector Model" => {
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {

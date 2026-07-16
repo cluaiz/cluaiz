@@ -82,6 +82,9 @@ pub fn build(state: Arc<AppState>) -> Router {
         // ── Components API (Used by Dashboard) ──
         .route("/api/components/list", get(crate::handlers::components::list_components))
         .route("/api/components/settings", get(crate::handlers::components::get_settings).post(crate::handlers::components::update_settings))
+        .route("/api/components/file", get(crate::handlers::components::get_specific_file).post(crate::handlers::components::update_file))
+        .route("/api/components/files", get(crate::handlers::components::get_files))
+        .route("/api/components/cache", post(crate::handlers::components::clear_cache))
 
         // ── Dynamic Ecosystem Execution Route ──
         .route("/v1/execute/{component_name}/{function_name}", post(crate::handlers::cel_handler::execute_dynamic))
@@ -112,7 +115,7 @@ pub fn build(state: Arc<AppState>) -> Router {
 
         // ── Developer Hub (Embedded UI) ──
         .merge(cluaiz_devhub::devhub_routes())
-
+        .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::auth_middleware))
         .layer(cors)
         .with_state(state)
 }

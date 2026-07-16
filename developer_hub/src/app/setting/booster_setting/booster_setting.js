@@ -69,7 +69,6 @@ const DESCRIPTIONS = {
     },
     gpuLayers: {
         '-1': 'System automatically balances workload. Runs as much on the GPU as possible for optimal speed.',
-        '99': 'Forces the entire model onto the Graphics Card. Delivers maximum generation speed and VRAM utilization.',
         '0': 'Restricts the AI to use only the CPU and System RAM. Slower generation, but highly stable and safe.',
         '32': 'Splits the workload evenly between the GPU and CPU. Recommended for systems with limited VRAM.'
     },
@@ -82,6 +81,10 @@ const DESCRIPTIONS = {
         'Auto': 'System decides MoE expert routing.',
         'On': 'Optimizes VRAM strictly for Mixture-of-Experts models.',
         'Off': 'Standard routing.'
+    },
+    outputStyle: {
+        'separated': 'The reasoning process is parsed and cleanly separated from the final answer.',
+        'raw': 'The raw thinking stream including <think> tags is provided directly.'
     }
 };
 
@@ -116,7 +119,13 @@ export async function mount(container) {
 
     const updateBoosterSetting = async (key, value) => {
         try {
-            boosterConfig[key] = value;
+            if (key.includes('.')) {
+                const parts = key.split('.');
+                if (!boosterConfig[parts[0]]) boosterConfig[parts[0]] = {};
+                boosterConfig[parts[0]][parts[1]] = value;
+            } else {
+                boosterConfig[key] = value;
+            }
             await fetch(window.getApiBaseUrl() + '/v1/booster/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -172,13 +181,20 @@ export async function mount(container) {
     };
 
     // Helper for custom dropdowns
-    const setupCustomDropdown = (containerId, descId, mapping, optionsArr, key, defaultValue) => {
+    const setupCustomDropdown = (containerId, descId, mapping, optionsArr, key, defaultValue, onValueChange) => {
         const dropContainer = container.querySelector('#' + containerId);
         const desc = container.querySelector('#' + descId);
         if (dropContainer && desc) {
-            let initialValue = boosterConfig[key] !== undefined ? String(boosterConfig[key]) : defaultValue;
-            if (boosterConfig[key] === true) initialValue = 'On';
-            if (boosterConfig[key] === false) initialValue = 'Off';
+            let configVal;
+            if (key.includes('.')) {
+                const parts = key.split('.');
+                configVal = boosterConfig[parts[0]] ? boosterConfig[parts[0]][parts[1]] : undefined;
+            } else {
+                configVal = boosterConfig[key];
+            }
+            let initialValue = configVal !== undefined ? String(configVal) : defaultValue;
+            if (configVal === true) initialValue = 'On';
+            if (configVal === false) initialValue = 'Off';
             
             desc.textContent = mapping[initialValue] || mapping['Auto'] || '';
 
@@ -194,9 +210,11 @@ export async function mount(container) {
                     if (key === 'n_gpu_layers') finalVal = parseInt(val, 10);
                     
                     await updateBoosterSetting(key, finalVal);
+                    if (onValueChange) onValueChange(finalVal);
                 }
             });
             dropContainer.appendChild(dropdown.render());
+            if (onValueChange) onValueChange(initialValue);
         }
     };
 
@@ -226,8 +244,19 @@ export async function mount(container) {
     
     setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
     setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers, 
-        makeOptions(['-1', '99', '0', '32'], ['Auto', 'Only GPU', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
-    setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
+        makeOptions(['-1', '0', '32'], ['GPU (Auto/Full)', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
+    setupCustomDropdown('container-output-style', 'desc-output-style', DESCRIPTIONS.outputStyle, makeOptions(['separated', 'raw'], ['Separated (Clean)', 'Raw (With Tags)']), 'ai_response_format.output_style', 'separated');
+
+    const outputStyleItem = container.querySelector('#item-output-style');
+    setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'ai_response_format.think_mode', 'Auto', (val) => {
+        if (outputStyleItem) {
+            if (val === 'On') {
+                outputStyleItem.style.display = 'flex';
+            } else {
+                outputStyleItem.style.display = 'none';
+            }
+        }
+    });
     setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
 
     // Chat and Vector Models

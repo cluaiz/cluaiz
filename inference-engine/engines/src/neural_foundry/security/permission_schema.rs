@@ -15,6 +15,23 @@ fn default_connection_protocol() -> String {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ApiAuth {
+    #[serde(default = "default_require_api_auth")]
+    pub required: bool,
+    #[serde(default = "default_api_tokens")]
+    pub tokens: Vec<String>,
+}
+
+impl Default for ApiAuth {
+    fn default() -> Self {
+        Self {
+            required: default_require_api_auth(),
+            tokens: default_api_tokens(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PermissionSchema {
     #[serde(default)]
     pub vector_models: ModelSelection,
@@ -30,14 +47,14 @@ pub struct PermissionSchema {
     pub stream_telemetry: bool,
     #[serde(default = "default_lazy_load_model")]
     pub lazy_load_model: bool,
-    #[serde(default = "default_temporary_chat_ttl_hours")]
-    pub temporary_chat_ttl_hours: u64,
     #[serde(default = "default_enable_kvcache")]
     pub enable_kvcache: bool,
     #[serde(default = "default_api_port")]
     pub api_port: u16,
     #[serde(default = "default_connection_protocol")]
     pub connection_protocol: String,
+    #[serde(default)]
+    pub api_auth: ApiAuth,
 }
 
 impl Default for ModelSelection {
@@ -60,10 +77,10 @@ impl Default for PermissionSchema {
             vectorize_ai_response: default_vectorize_ai_response(),
             stream_telemetry: default_stream_telemetry(),
             lazy_load_model: default_lazy_load_model(),
-            temporary_chat_ttl_hours: default_temporary_chat_ttl_hours(),
             enable_kvcache: default_enable_kvcache(),
             api_port: default_api_port(),
             connection_protocol: default_connection_protocol(),
+            api_auth: ApiAuth::default(),
         }
     }
 }
@@ -88,12 +105,16 @@ fn default_lazy_load_model() -> bool {
     true
 }
 
-fn default_temporary_chat_ttl_hours() -> u64 {
-    24
-}
-
 fn default_enable_kvcache() -> bool {
     true
+}
+
+fn default_require_api_auth() -> bool {
+    false
+}
+
+fn default_api_tokens() -> Vec<String> {
+    Vec::new()
 }
 
 fn default_api_port() -> u16 {

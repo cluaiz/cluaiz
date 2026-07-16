@@ -77,7 +77,7 @@ pub fn stream_tokens(
             let mut prompt_with_constraint = actual_prompt.clone();
             
             // 🧠 Deep Truth: Dynamic Structural Constraints Injection
-            if booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::On {
+            if booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::On {
                 if booster.response_length == "long" {
                     prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Think deeply and explore all possibilities. Provide a comprehensive reasoning step.]");
                 } else if booster.response_length == "short" {
@@ -103,7 +103,7 @@ pub fn stream_tokens(
             }
         };
 
-        let mut suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+        let mut suppress_thinking = booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
             suppress_thinking = true;

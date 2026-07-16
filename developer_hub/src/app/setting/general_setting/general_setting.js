@@ -1,4 +1,5 @@
 import { Dropdown } from '../../../../components/dropdown/dropdown.js?v=2';
+import { showModal } from '../../../../components/modal/modal.js';
 
 export function mount(container) {
     // Setup toggle logic
@@ -30,45 +31,18 @@ export function mount(container) {
     }
 
     // Modal Logic
-    const modal = document.getElementById('restart-modal-overlay');
-    const btnCancel = document.getElementById('btn-cancel-restart');
-    const btnConfirm = document.getElementById('btn-confirm-restart');
+    async function showRestartModal() {
+        const confirmed = await showModal(
+            "Restart Required",
+            "You have changed a core connection setting. The Cluaiz Engine must be restarted for these changes to take effect.",
+            { confirmText: "Restart Engine", cancelText: "Later" }
+        );
 
-    function showRestartModal() {
-        if (modal) {
-            modal.style.display = 'flex';
-            // slight delay to allow display block to apply before opacity transition
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 10);
+        if (confirmed) {
+            // Since we can't restart the backend from the UI, just reload or show instruction
+            // For now, reloading the page simulates the restart from UI side
+            window.location.reload();
         }
-    }
-
-    function hideRestartModal() {
-        if (modal) {
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 300);
-        }
-    }
-
-    if (btnCancel) {
-        btnCancel.addEventListener('click', hideRestartModal);
-    }
-
-    if (btnConfirm) {
-        btnConfirm.addEventListener('click', () => {
-            // Since we can't restart the backend from the UI, just tell the user to do it manually
-            btnConfirm.innerText = "Please restart in terminal, then click here to Reload";
-            
-            // If they click it again after we changed the text, just reload the page
-            if (btnConfirm.dataset.readyToReload) {
-                window.location.reload();
-            } else {
-                btnConfirm.dataset.readyToReload = "true";
-            }
-        });
     }
     // Initialize Dropdowns Dynamically from Backend
     const currentApiUrl = window.location.origin;

@@ -148,6 +148,27 @@ pub enum BoosterMode {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
+pub struct AiResponseFormat {
+    pub think_mode: FeatureState,
+    #[serde(default = "default_output_style")]
+    pub output_style: String,
+}
+
+impl Default for AiResponseFormat {
+    fn default() -> Self {
+        Self {
+            think_mode: FeatureState::Auto,
+            output_style: "separated".to_string(),
+        }
+    }
+}
+
+fn default_output_style() -> String {
+    "separated".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Archive, RkyvSerialize, RkyvDeserialize)]
+#[archive(check_bytes)]
 pub struct BoosterControl {
     pub mode_run: BoosterMode,
     pub turbo_quant: FeatureState,
@@ -161,7 +182,7 @@ pub struct BoosterControl {
     #[serde(default = "default_n_gpu_layers")]
     pub n_gpu_layers: i32,
     #[serde(default)]
-    pub think_mode: FeatureState,
+    pub ai_response_format: AiResponseFormat,
     #[serde(default)]
     pub response_length: String, // "auto", "short", "long"
     #[serde(default)]
@@ -229,7 +250,7 @@ impl Default for BoosterControl {
             context_shifting: ContextShiftingMode::Auto,
             force_vram_reclaim: FeatureState::Off,
             n_gpu_layers: -1,
-            think_mode: FeatureState::Auto,
+            ai_response_format: AiResponseFormat::default(),
             response_length: "auto".to_string(),
             enforce_json: false,
             force_memory_lock: FeatureState::Off,

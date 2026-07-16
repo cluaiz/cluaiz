@@ -1,3 +1,27 @@
+<div class="chat-overlay-actions" id="chat-header" style="display: none; position: absolute; top: 16px; left: 0; right: 0; width: 100%; pointer-events: none; z-index: 50; transition: opacity 0.2s ease;">
+    <button class="icon-btn" id="chat-back-btn" title="Back to Dashboard" style="position: absolute; left: 24px; pointer-events: auto; padding: 6px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    </button>
+    <div class="dropdown-container" style="position: absolute; right: 24px; pointer-events: auto;">
+        <button class="icon-btn" id="chat-menu-btn" title="More Options" style="padding: 6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+        </button>
+        <div class="chat-dropdown-menu" id="chat-menu-dropdown">
+            <div class="chat-dropdown-item" id="export-md-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export as .md
+            </div>
+            <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0;"></div>
+            <div id="chat-session-info" style="padding: 8px 12px; font-size: 0.75rem; color: #9ca3af; cursor: default; display: flex; flex-direction: column; gap: 4px; min-width: 180px;">
+                <div style="color: #fff; font-weight: 500; margin-bottom: 2px;">Session Info</div>
+                <div id="info-model-id" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Model: Loading...</div>
+                <div id="info-context-size">Context: Loading...</div>
+                <div id="info-vram-usage">VRAM: Loading...</div>
+                <div id="info-engine">Engine: Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="chat-stream-container" id="chat-stream-container">
     <!-- Messages will be rendered here -->
 </div>

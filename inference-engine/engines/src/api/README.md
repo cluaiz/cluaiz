@@ -15,7 +15,7 @@ When tracking real-time hardware inference metrics (like VRAM pressure, KV Cache
 ```mermaid
 graph TD
     Observer["Hardware Observer (ObservableHardwareState)"] -->|"Atomic Reads (No Locks)"| TCP["TelemetryServer (server.rs)"]
-    TCP -->|"GET /dashboard"| HTML["cluaiz_Dashboard.html"]
+    TCP -->|"POST /api/control/turbo"| Logic["Turbo Mode (Bool)"]
     TCP -->|"GET /api/stats"| JSON["Raw String Allocation"]
     TCP -->|"POST /api/control/turbo"| Atomic["AtomicBool (turbo_quant_enabled)"]
 ```
@@ -25,10 +25,6 @@ graph TD
 ### 1. `server.rs`
 - **The Core Logic:** A naked `TcpListener` loop. Parses HTTP headers manually and writes raw socket byte responses. 
 - **The "Why":** Bypassing HTTP framework abstractions prevents deep heap allocations. When querying stats 60 times a second, creating Rust Structs and serializing them via Serde is too slow. This file uses pure atomic string formatting.
-
-### 2. `cluaiz_Dashboard.html`
-- **The Core Logic:** The native UI dashboard embedded directly into the compiled binary via `include_str!()`.
-- **The "Why":** Provides engineers with an instant visual readout of engine health without requiring a Node.js frontend.
 
 ### 3. `router.rs`
 - **The Core Logic:** Fast-path string matching for incoming TCP streams to route to the correct atomic hardware read function.

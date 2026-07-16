@@ -178,3 +178,167 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
 
     Json(serde_json::json!({"status": "success"}))
 }
+
+pub async fn get_file(State(_state): State<Arc<AppState>>, Query(query): Query<SettingsQuery>) -> Json<Value> {
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let comp_type = query.component_type.trim_end_matches('s');
+    let comp_id = query.component_id;
+    
+    let base_dir = env.global_dir.join(format!("{}s", comp_type));
+    let comp_dir = base_dir.join(&comp_id);
+    let file_name = if comp_type == "skill" { "SKILL.md".to_string() } else { format!("manifest-{}.yaml", comp_type) };
+    let file_path = comp_dir.join(&file_name);
+
+    if !file_path.exists() {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("File not found at {}", file_path.display())
+        }));
+    }
+
+    let content = std::fs::read_to_string(&file_path).unwrap_or_default();
+    
+    Json(serde_json::json!({
+        "status": "success",
+        "content": content
+    }))
+}
+
+pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
+    let comp_type = payload.get("component_type").and_then(|v| v.as_str()).unwrap_or("").trim_end_matches('s');
+    let comp_id = payload.get("component_id").and_then(|v| v.as_str()).unwrap_or("");
+    let content = payload.get("content").and_then(|v| v.as_str());
+
+    if comp_type.is_empty() || comp_id.is_empty() || content.is_none() {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": "Missing component_type, component_id, or content"
+        }));
+    }
+
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let base_dir = env.global_dir.join(format!("{}s", comp_type));
+    let comp_dir = base_dir.join(comp_id);
+    let file_name = if comp_type == "skill" { "SKILL.md".to_string() } else { format!("manifest-{}.yaml", comp_type) };
+    let file_path = comp_dir.join(&file_name);
+
+    if !file_path.exists() {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("File not found at {}", file_path.display())
+        }));
+    }
+
+    if let Err(e) = std::fs::write(&file_path, content.unwrap()) {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("Failed to write file: {}", e)
+        }));
+    }
+
+    Json(serde_json::json!({"status": "success"}))
+}
+
+#[derive(serde::Deserialize)]
+pub struct GetFileQuery {
+    pub component_type: String,
+    pub component_id: String,
+    pub file_path: Option<String>,
+}
+
+pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let comp_type = query.component_type.trim_end_matches('s');
+    let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+
+    if !comp_dir.exists() {
+        return Json(serde_json::json!({"status": "error", "message": "Component directory not found"}));
+    }
+
+    fn build_tree(dir: &std::path::Path, base: &std::path::Path) -> Vec<Value> {
+        let mut files = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Ok(rel) = path.strip_prefix(base) {
+                    let is_dir = path.is_dir();
+                    files.push(serde_json::json!({
+                        "name": entry.file_name().to_string_lossy().to_string(),
+                        "path": rel.to_string_lossy().replace("\\", "/"),
+                        "is_dir": is_dir
+                    }));
+                    if is_dir {
+                        files.extend(build_tree(&path, base));
+                    }
+                }
+            }
+        }
+        files
+    }
+
+    let files = build_tree(&comp_dir, &comp_dir);
+
+    let mut temp_cache_size = 0;
+    let mut all_cache_size = 0;
+    let cache_dir = comp_dir.join(".cache");
+    if let Ok(entries) = std::fs::read_dir(&cache_dir) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_file() {
+                    let size = metadata.len();
+                    all_cache_size += size;
+                    let fname = entry.file_name().to_string_lossy().to_string();
+                    if !fname.ends_with(".safetensors") && !fname.ends_with(".bin") {
+                        temp_cache_size += size;
+                    }
+                }
+            }
+        }
+    }
+
+    Json(serde_json::json!({
+        "status": "success", 
+        "files": files,
+        "temp_cache_size": temp_cache_size,
+        "all_cache_size": all_cache_size
+    }))
+}
+
+pub async fn get_specific_file(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let comp_type = query.component_type.trim_end_matches('s');
+    let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+    
+    let file_path = if let Some(p) = &query.file_path {
+        comp_dir.join(p)
+    } else {
+        if comp_type == "skill" { comp_dir.join("SKILL.md") } else { comp_dir.join(format!("manifest-{}.yaml", comp_type)) }
+    };
+
+    if !file_path.exists() {
+        return Json(serde_json::json!({"status": "error", "message": "File not found"}));
+    }
+
+    let content = std::fs::read_to_string(&file_path).unwrap_or_default();
+    Json(serde_json::json!({"status": "success", "content": content}))
+}
+
+#[derive(serde::Deserialize)]
+pub struct ClearCachePayload {
+    pub component_type: String,
+    pub component_id: String,
+    pub all: bool,
+}
+
+pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> Json<Value> {
+    let comp_type = payload.component_type.trim_end_matches('s');
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::clear_component_cache(
+        comp_type,
+        Some(payload.component_id.clone()),
+        payload.all,
+        true
+    ) {
+        Ok(wiped) => Json(serde_json::json!({"status": "success", "message": format!("Wiped {} caches", wiped)})),
+        Err(e) => Json(serde_json::json!({"status": "error", "message": format!("Failed: {}", e)}))
+    }
+}

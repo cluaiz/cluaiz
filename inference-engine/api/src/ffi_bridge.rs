@@ -287,8 +287,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
 
                                 // Fetch manifests for the currently active models so frontend can do deep combined validation
-                                let active_chat_manifest = active_text_id.and_then(|id| roster.iter().find(|m| m.id == id).cloned());
-                                let active_vector_manifest = perms.vector_models.text.clone().and_then(|id| roster.iter().find(|m| m.id == id).cloned());
+                                let active_chat_manifest = active_text_id.and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
+                                let active_vector_manifest = perms.vector_models.text.clone().and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
 
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
@@ -302,10 +302,10 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         "vectorize_ai_response": perms.vectorize_ai_response,
                                         "stream_telemetry": perms.stream_telemetry,
                                         "lazy_load_model": perms.lazy_load_model,
-                                        "temporary_chat_ttl_hours": perms.temporary_chat_ttl_hours,
+                                        "enable_kvcache": perms.enable_kvcache,
                                         "api_port": perms.api_port,
-                                        "chat_models": perms.chat_models,
                                         "vector_models": perms.vector_models,
+                                        "api_auth": perms.api_auth,
                                         "available_models": all_models,
                                         "available_chat_models": available_chat_models,
                                         "available_vector_models": available_vector_models,
@@ -503,7 +503,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     context_shifting: ContextShiftingMode::Auto,
                                     force_vram_reclaim: FeatureState::Off,
                                     n_gpu_layers: optimal_gpu_layers,
-                                    think_mode: FeatureState::Auto,
+                                    ai_response_format: cluaiz_shared::hardware::schema::booster::AiResponseFormat::default(),
                                     response_length: "auto".to_string(),
                                     enforce_json: false,
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },

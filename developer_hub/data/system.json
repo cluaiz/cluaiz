@@ -127,7 +127,7 @@
       "desc": "Gets the current active permission schema and firewall rules for the neural foundry.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/permission_get.md",
       "params": [],
-      "response": "{\n  \"permission\": {\n    \"wasm_firewall\": \"strict\",\n    \"vectorize_user_input\": true,\n    \"stream_telemetry\": false,\n    \"enable_kvcache\": true,\n    \"temporary_chat_ttl_hours\": 24\n  }\n}",
+      "response": "{\n  \"permission\": {\n    \"wasm_firewall\": \"strict\",\n    \"vectorize_user_input\": true,\n    \"stream_telemetry\": false,\n    \"enable_kvcache\": true\n  }\n}",
       "examples": [
         {
           "language": "curl",

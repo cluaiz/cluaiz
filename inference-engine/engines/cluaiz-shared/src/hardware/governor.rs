@@ -281,14 +281,39 @@ impl HardwareGovernor {
         // and let the Physical VRAM Arbiter determine the safe ceiling.
         let arch_cap = dna.max_context_length.unwrap_or(usize::MAX);
 
-        // If CPU-only Mode (n_gpu_layers = 0), bypass GPU VRAM constraints entirely
+        // If CPU-only Mode (n_gpu_layers = 0), calculate context based on System RAM instead of VRAM
         if booster.n_gpu_layers == 0 {
-            let cpu_ctx = if arch_cap == usize::MAX {
-                32000
+            let mut system_ram_gb = 0.0;
+            let mut sys = sysinfo::System::new();
+            sys.refresh_memory();
+            let avail_ram_bytes = sys.available_memory();
+            if avail_ram_bytes > 0 {
+                system_ram_gb = (avail_ram_bytes as f64) / (1024.0 * 1024.0 * 1024.0);
+            }
+
+            // OS Safety Floor for System RAM (leave at least 1.5GB for OS)
+            let os_floor_gb = 1.5;
+            let safe_ram_gb = (system_ram_gb - os_floor_gb).max(0.0);
+            
+            // Subtract model weights (since they are also stored in RAM in CPU mode)
+            let ram_for_kv = (safe_ram_gb - (dna.weights_size_gb as f64)).max(0.0);
+
+            // Calculate how many tokens we can fit in available RAM
+            let mut safe_tokens = if gb_per_k > 0.0 {
+                ((ram_for_kv / gb_per_k) * 1024.0) as usize
             } else {
-                arch_cap
+                4096 // Fallback if math fails
             };
-            println!("⚖️ [Arbiter] CPU-only Mode detected (n_gpu_layers = 0). Bypassing GPU VRAM constraints. Safe Context: {} tokens", cpu_ctx);
+
+            // 🚀 ALIGNMENT FIX: llama.cpp fails if context is not aligned to a reasonable multiple (e.g., batch size).
+            // We align down to the nearest multiple of 1024 to ensure the KV cache block aligns properly in memory.
+            safe_tokens = (safe_tokens / 1024) * 1024;
+
+            // Clamp between a strict minimum and the architecture maximum
+            let min_context = 2048;
+            let cpu_ctx = safe_tokens.clamp(min_context, arch_cap);
+
+            println!("⚖️ [Arbiter] CPU-only Mode detected (n_gpu_layers = 0). Safe Context: {} tokens (Free RAM: {:.2} GB)", cpu_ctx, system_ram_gb);
 
             let mut registry = Self::load_process_registry();
             let pid_str = std::process::id().to_string();

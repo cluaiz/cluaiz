@@ -92,7 +92,7 @@ pub async fn execute(
             println!("    ├─ VRAM Reclaim:     {:?}", control.force_vram_reclaim);
             println!("    ├─ Memory Lock:      {:?}", control.force_memory_lock);
             println!("    ├─ DFlash:           {:?}", control.dflash);
-            println!("    ├─ Think Mode:       {:?}", control.think_mode);
+            println!("    ├─ Think Mode:       {:?}", control.ai_response_format.think_mode);
             println!("    ├─ Response Length:  {}", control.response_length);
             println!("    └─ N GPU Layers:     {}", control.n_gpu_layers);
 
@@ -216,7 +216,7 @@ pub async fn execute(
                             "Auto Round" => control.auto_round = state,
                             "Force VRAM Reclaim" => control.force_vram_reclaim = state,
                             "Force Memory Lock" => control.force_memory_lock = state,
-                            "Think Mode" => control.think_mode = state,
+                            "Think Mode" => control.ai_response_format.think_mode = state,
                             _ => {}
                         }
                         let _ = HardwareGovernor::save_booster_settings(&control);

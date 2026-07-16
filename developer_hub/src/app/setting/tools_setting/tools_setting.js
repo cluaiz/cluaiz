@@ -1,3 +1,5 @@
+import { showModal } from '../../../../components/modal/modal.js';
+
 export async function mount(container) {
     const listContainer = container.querySelector('#tools-list');
     const modal = container.querySelector('#tool-editor-modal');
@@ -15,34 +17,9 @@ export async function mount(container) {
     let currentEditingTool = null;
     let currentFilter = 'all';
 
-    // Custom Dialog Helpers
-    const customDialog = container.querySelector('#custom-dialog-modal');
-    const customDialogTitle = container.querySelector('#custom-dialog-title');
-    const customDialogMessage = container.querySelector('#custom-dialog-message');
-    const customDialogOk = container.querySelector('#custom-dialog-ok');
-    const customDialogCancel = container.querySelector('#custom-dialog-cancel');
-
-    const showDialog = (titleText, messageHTML, showCancel = false) => {
-        return new Promise(resolve => {
-            customDialogTitle.textContent = titleText;
-            customDialogMessage.innerHTML = messageHTML;
-            customDialog.style.display = 'flex';
-            
-            if (showCancel) customDialogCancel.style.display = 'block';
-            else customDialogCancel.style.display = 'none';
-
-            const onOk = () => { cleanup(); resolve(true); };
-            const onCancel = () => { cleanup(); resolve(false); };
-
-            const cleanup = () => {
-                customDialog.style.display = 'none';
-                customDialogOk.removeEventListener('click', onOk);
-                customDialogCancel.removeEventListener('click', onCancel);
-            };
-
-            customDialogOk.addEventListener('click', onOk);
-            if (showCancel) customDialogCancel.addEventListener('click', onCancel);
-        });
+    // Use the imported reusable modal
+    const showDialog = async (titleText, messageHTML, showCancel = false) => {
+        return await showModal(titleText, messageHTML, { showCancel: showCancel });
     };
 
     const formatBytes = (bytes) => {

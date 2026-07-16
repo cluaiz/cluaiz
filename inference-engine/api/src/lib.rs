@@ -10,6 +10,7 @@ mod state;
 mod handlers;
 mod routes;
 mod ffi_bridge;
+mod auth;
 
 use colored::*;
 use dispatcher::NeuralDispatcher;

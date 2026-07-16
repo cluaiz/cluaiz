@@ -93,7 +93,6 @@ permissions:
 # - "permission.vectorize_ai_response" (true/false)
 # - "permission.stream_telemetry" (true/false)
 # - "permission.lazy_load_model" (true/false)
-# - "permission.temporary_chat_ttl_hours" (integer)
 #
 # AVAILABLE SYSTEM_CONTROL VARIABLES (Hardware Truth):
 # - "system_control.identity.os_target" (Windows/Linux/Mac)

@@ -27,6 +27,38 @@
         </div>
     </div>
 
+    <h3 class="settings-section-title">API Keys (Bearer Tokens)</h3>
+    
+    <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 16px;">
+        <!-- Auth Toggle -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="setting-info">
+                <span class="setting-label">Require API Authentication</span>
+                <span class="setting-desc">Enforce Bearer Token authorization for all HTTP REST requests to the engine.</span>
+            </div>
+            <div class="setting-control">
+                <div class="setting-toggle" id="toggle-api-auth">
+                    <div class="setting-toggle-thumb"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Management -->
+        <div style="border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="setting-info">
+                <span class="setting-label">Manage Engine API Keys</span>
+                <span class="setting-desc">Generate a Bearer Token to securely access the engine via HTTP REST.</span>
+            </div>
+            <button id="btn-generate-token" class="icon-btn hover-text-primary" style="border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 4px; display: flex; gap: 6px; align-items: center; background: var(--bg-secondary);">
+                <i data-lucide="key" class="w-4 h-4"></i> <span id="btn-generate-text">Generate Key</span>
+            </button>
+        </div>
+        
+        <div class="api-keys-list" id="api-keys-list" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Generated tokens will appear here -->
+        </div>
+    </div>
+
     <h3 class="settings-section-title">Agent Permissions</h3>
     
     <div class="setting-item">
@@ -112,11 +144,4 @@
         </div>
     </div>
 
-    <div class="setting-item">
-        <div class="setting-info">
-            <span class="setting-label">Temporary Chat TTL (Hours)</span>
-            <span class="setting-desc" id="desc-chat-ttl">How long temporary chats stay in memory before auto-deletion.</span>
-        </div>
-        <div class="setting-control" id="container-chat-ttl"></div>
-    </div>
 </div>

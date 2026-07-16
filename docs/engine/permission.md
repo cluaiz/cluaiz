@@ -24,7 +24,6 @@ When an extension asks for execution power via the `/v1/cel/execute` endpoint, t
 
 * **`vectorize_user_input` / `vectorize_ai_response`**: 
   When set to `true`, the engine spawns an asynchronous background thread. For every conversational turn, the text is streamed through the `vector_models.text` graph, converted into high-dimensional vectors, and written to the LMDB local vector store. This creates a perpetual, searchable memory without stalling the main UI generation loop.
-* **`temporary_chat_ttl_hours`**: The Engine's Garbage Collector (GC) scans the database and forcefully drops old chat buffers that exceed this TTL, preventing disk bloat.
 
 ## 4. Architectural Flow: Extension JIT Control
 

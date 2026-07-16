@@ -140,7 +140,6 @@ pub async fn run_native(
                                     format!("Lazy Load Model (Current: {})", perms.lazy_load_model),
                                     format!("Vectorize User Input (Current: {})", perms.vectorize_user_input),
                                     format!("Vectorize AI Response (Current: {})", perms.vectorize_ai_response),
-                                    format!("Temporary Chat TTL (Current: {})", if perms.temporary_chat_ttl_hours == u64::MAX { "max".to_string() } else { format!("{} hours", perms.temporary_chat_ttl_hours) }),
                                     format!("Active Chat Model (Current: {})", perms.get_active_chat_model().unwrap_or_else(|| "None".to_string())),
                                     format!("Active Vector Model (Current: {})", perms.get_active_embedding_model().unwrap_or_else(|| "None".to_string())),
                                     "🔙 Back".to_string()
@@ -186,29 +185,7 @@ pub async fn run_native(
                                                 changed = true;
                                             }
                                         }
-                                        "Temporary Chat TTL" => {
-                                            let vals = vec![
-                                                "12 hr".to_string(),
-                                                "24 hr".to_string(),
-                                                "48 hr".to_string(),
-                                                "72 hr".to_string(),
-                                                "1 week".to_string(),
-                                                "max".to_string(),
-                                            ];
-                                            if let Ok(v) = Select::new("Select TTL:", vals).with_render_config(config.clone()).prompt() {
-                                                let hours = match v.as_str() {
-                                                    "12 hr" => 12,
-                                                    "24 hr" => 24,
-                                                    "48 hr" => 48,
-                                                    "72 hr" => 72,
-                                                    "1 week" => 168,
-                                                    "max" => u64::MAX,
-                                                    _ => 24,
-                                                };
-                                                perms.temporary_chat_ttl_hours = hours;
-                                                changed = true;
-                                            }
-                                        }
+
                                         "Active Chat Model" | "Active Vector Model" => {
                                             let roster = engines::models::registry::CoreRoster::load_roster();
                                             let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {

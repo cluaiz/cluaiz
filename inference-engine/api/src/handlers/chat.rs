@@ -134,6 +134,10 @@ pub async fn chat_completions(
                          }
                          
                          while let Some(token) = rx.recv().await {
+                            if token.trim() == "[DONE]" {
+                                break;
+                            }
+                            
                             if token.contains("<TRIGGER:") && token.contains("</TRIGGER>") {
                                 // Yield trigger token to SSE client so the test script knows we triggered a tool plan
                                 let trigger_chunk = json!({

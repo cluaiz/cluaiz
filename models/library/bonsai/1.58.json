@@ -74,5 +74,29 @@
         }
       }
     }
+  },
+  "bonsai1.58:27b": {
+    "name": "Bonsai 1.58b 27B",
+    "architecture": "BitNet-1.58b",
+    "context_window": "128k",
+    "category": "chat",
+    "default_quant": "ternary",
+    "description": "The Bonsai 1.58b 27B brings massive 27 billion parameter intelligence to standard devices. Utilizing native ternary (1.58-bit) weight quantization with {-1, 0, +1} states, it achieves near-FP16 fidelity while compressing to ~7.2GB. Designed for extreme edge deployment without cloud dependence.",
+    "prompt_template": "ChatML",
+    "licenses": [
+      {
+        "type": "Apache 2.0",
+        "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-gguf/blob/main/LICENSE.txt"
+      }
+    ],
+    "variants": {
+      "gguf": {
+        "ternary": {
+          "download_url": "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-gguf/resolve/main/Ternary-Bonsai-27B-Q2_0.gguf",
+          "ram_required_gb": 7.5,
+          "download_size_gb": 7.2
+        }
+      }
+    }
   }
 }

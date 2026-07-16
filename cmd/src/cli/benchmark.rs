@@ -407,7 +407,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
 
             // Reconfigure booster
             let mut booster = HardwareGovernor::load_booster_settings().unwrap_or_default();
-            booster.think_mode = if think_mode {
+            booster.ai_response_format.think_mode = if think_mode {
                 FeatureState::On
             } else {
                 FeatureState::Off

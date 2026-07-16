@@ -139,12 +139,22 @@
         <div class="setting-control" id="container-gpu-layers"></div>
     </div>
 
-    <div class="setting-item">
-        <div class="setting-info">
-            <span class="setting-label">Chain-of-Thought (Think Mode)</span>
-            <span class="setting-desc" id="desc-think-mode">Engages reasoning processes exclusively for complex mathematical or coding queries.</span>
+    <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="setting-info">
+                <span class="setting-label">Chain-of-Thought (Think Mode)</span>
+                <span class="setting-desc" id="desc-think-mode">Engages reasoning processes exclusively for complex mathematical or coding queries.</span>
+            </div>
+            <div class="setting-control" id="container-think-mode"></div>
         </div>
-        <div class="setting-control" id="container-think-mode"></div>
+
+        <div id="item-output-style" style="display: none; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+            <div class="setting-info">
+                <span class="setting-label">Thinking Output Style</span>
+                <span class="setting-desc" id="desc-output-style">Determines how the reasoning blocks are presented.</span>
+            </div>
+            <div class="setting-control" id="container-output-style"></div>
+        </div>
     </div>
 
     <div class="setting-item">

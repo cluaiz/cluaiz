@@ -80,6 +80,7 @@ impl BoosterConfig {
         // 🛡️ Sovereign Dynamic Pathing: Use cluaiz-shared to resolve the engine path universally.
         let booster_path =
             cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path()
+                .join("config")
                 .join("system_booster.json");
 
         if let Ok(content) = std::fs::read_to_string(booster_path) {
@@ -118,7 +119,11 @@ impl BoosterConfig {
                 if let Some(cs) = json.get("context_shifting") {
                     config.context_shifting = cs.as_str().unwrap_or("Auto").to_string();
                 }
-                if let Some(tm) = json.get("think_mode") {
+                if let Some(format) = json.get("ai_response_format") {
+                    if let Some(tm) = format.get("think_mode") {
+                        config.think_mode = tm.as_str().unwrap_or("Auto").to_string();
+                    }
+                } else if let Some(tm) = json.get("think_mode") {
                     config.think_mode = tm.as_str().unwrap_or("Auto").to_string();
                 }
                 if let Some(fml) = json.get("force_memory_lock") {
@@ -157,10 +162,21 @@ impl BoosterConfig {
         let cores = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(4);
-        let optimal_threads = if cores > 4 {
-            (cores / 2).max(4) as i32
-        } else {
-            cores as i32
+        // 🛡️ CPU Thread Contention Fix:
+        // available_parallelism() returns LOGICAL cores. Using all logical cores (HyperThreading)
+        // causes severe cache thrashing and drops TPS to near 0 for LLMs (especially BitNet).
+        // We MUST cap the threads to physical cores (roughly cores / 2).
+        let physical_cores = if cores > 2 { cores / 2 } else { cores };
+        
+        let optimal_threads = match self.mode_run.to_lowercase().as_str() {
+            "max_boost" | "ultra_max_boost" | "hyper_cluster" => physical_cores as i32,
+            _ => {
+                if physical_cores > 4 {
+                    (physical_cores - 1).max(4) as i32 // Leave 1 core for OS in Balance mode
+                } else {
+                    physical_cores as i32
+                }
+            }
         };
 
         params.n_threads = if self.n_threads <= 0 {
@@ -196,22 +212,23 @@ impl BoosterConfig {
             }
         }
 
+        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
+        
         // 🛡️ Sovereign Safety Fallback:
         // Quantized KV cache requires flash attention enabled to load in VRAM and prevent init crashes.
         // HOWEVER, if the Sovereign Arbiter explicitly disabled Flash Attention (self.flash_attn == false)
-        // due to architectural incompatibilities (like BitNet, Qwen), we MUST NOT force it back on.
-        // Doing so causes a fatal 'Model Load Failure' in the CUDA backend.
+        // or if we are forcing CPU mode (which disables FA), we MUST NOT force it back on.
         // We must instead gracefully fallback the KV Cache to F16.
         let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
-        if is_quantized_kv && !self.flash_attn {
-            cluaiz_shared::dev_info!("⚠️ [Booster] KV Cache Quantization requires Flash Attention, but FA was disabled by Arbiter. Falling back to F16 KV cache to prevent CUDA crash.");
+        if is_quantized_kv && (!self.flash_attn || force_disable_fa_for_cpu) {
+            cluaiz_shared::dev_info!("⚠️ [Booster] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
             params.type_k = 1; // GGML_TYPE_F16
             params.type_v = 1;
             is_quantized_kv = false;
         }
         
-        params.flash_attn_type = if self.flash_attn || is_quantized_kv { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
-        params.offload_kqv = 1; // Force KV cache offload to VRAM
+        params.flash_attn_type = if (self.flash_attn || is_quantized_kv) && !force_disable_fa_for_cpu { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
+        params.offload_kqv = if self.n_gpu_layers == 0 { 0 } else { 1 }; // Force KV cache offload to VRAM only if GPU is enabled
 
         params
     }
@@ -282,12 +299,15 @@ impl BoosterConfig {
                 FeatureState::Off
             },
             n_gpu_layers: self.n_gpu_layers,
-            think_mode: if self.think_mode == "On" {
-                FeatureState::On
-            } else if self.think_mode == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
+            ai_response_format: cluaiz_shared::hardware::schema::booster::AiResponseFormat {
+                think_mode: if self.think_mode == "On" {
+                    FeatureState::On
+                } else if self.think_mode == "Off" {
+                    FeatureState::Off
+                } else {
+                    FeatureState::Auto
+                },
+                output_style: "separated".to_string(),
             },
             response_length: "auto".to_string(),
             enforce_json: false,

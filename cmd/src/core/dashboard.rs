@@ -133,13 +133,59 @@ impl DashboardEngine {
         // 🖊️ INPUT FIX: Ensure cursor is on a fresh line before inquire renders
         println!();
 
-        let mut last_booster_modified = std::fs::metadata(cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json")).and_then(|m| m.modified()).ok();
-        let mut last_booster_state = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().ok();
-
         // Track global think state across pivots
         let global_think_state = Arc::new(AtomicBool::new(false));
 
         let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+
+        // ── 🔥 BACKGROUND HOT-RELOAD WATCHER ──
+        let watcher_engine = state.Core_engine.clone();
+        tokio::spawn(async move {
+            let env = cluaiz_shared::environment::EnvironmentManager::current();
+            let booster_path = env.engine_dir().join("system_booster.json");
+            let perm_path = env.engine_dir().join("Permission.json");
+            
+            let mut last_booster_modified = std::fs::metadata(&booster_path).and_then(|m| m.modified()).ok();
+            let mut last_perm_modified = std::fs::metadata(&perm_path).and_then(|m| m.modified()).ok();
+            
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                let mut needs_reload = false;
+                
+                if let Ok(meta) = std::fs::metadata(&booster_path) {
+                    if let Ok(modified) = meta.modified() {
+                        if Some(modified) > last_booster_modified {
+                            last_booster_modified = Some(modified);
+                            needs_reload = true;
+                        }
+                    }
+                }
+                
+                if let Ok(meta) = std::fs::metadata(&perm_path) {
+                    if let Ok(modified) = meta.modified() {
+                        if Some(modified) > last_perm_modified {
+                            last_perm_modified = Some(modified);
+                            needs_reload = true;
+                        }
+                    }
+                }
+                
+                if needs_reload {
+                    let path = {
+                        let lock = watcher_engine.router.lock().await;
+                        lock.active_model_path.clone()
+                    };
+                    if let Some(p) = path {
+                        use std::io::Write;
+                        println!("\r\x1B[2K\x1B[0m{} Hot-Reloading Neural Engine based on new settings...", crossterm::style::Stylize::magenta("🚀"));
+                        let _ = std::io::stdout().flush();
+                        let _ = watcher_engine.load_model(p).await;
+                        print!("\x1B[1A\x1B[2K\r");
+                        let _ = std::io::stdout().flush();
+                    }
+                }
+            }
+        });
 
         loop {
             
@@ -260,45 +306,7 @@ impl DashboardEngine {
                         let _pwr_cb = pwr_ref.clone();
                         let ttft_cb = ttft_ref.clone();
                         
-                        // ── 🔥 HOT RELOAD ENGINE SETTINGS ──
-                        let booster_path = cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json");
-                        if let Ok(meta) = std::fs::metadata(&booster_path) {
-                            if let Ok(modified) = meta.modified() {
-                                let mut needs_reload = false;
-                                if let Some(last) = last_booster_modified {
-                                    if modified > last {
-                                        if let Ok(current_booster) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
-                                            if let Some(ref prev_booster) = last_booster_state {
-                                                if current_booster != *prev_booster {
-                                                    needs_reload = true;
-                                                }
-                                            } else {
-                                                needs_reload = true; // No previous state, force reload
-                                            }
-                                            last_booster_state = Some(current_booster);
-                                        }
-                                    }
-                                }
-                                last_booster_modified = Some(modified);
-
-                                if needs_reload {
-                                    if let Some(model_id) = state._active_model_id.clone() {
-                                        if let Some(model) = state.sorted_models.iter().find(|m| m.manifest.id == model_id) {
-                                            if let Some(local_path) = &model.manifest.local_path {
-                                                let path = std::path::PathBuf::from(local_path);
-                                                println!("\r\x1B[2K\x1B[0m{} Hot-Reloading Neural Engine based on new settings...", crossterm::style::Stylize::magenta("🚀"));
-                                                let rt = tokio::runtime::Handle::current();
-                                                tokio::task::block_in_place(|| {
-                                                    let _ = rt.block_on(state.Core_engine.load_model(path));
-                                                });
-                                                print!("\x1B[1A\x1B[2K\r"); // clear message
-                                                let _ = std::io::stdout().flush();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        // ── 🔥 HOT RELOAD MOVED TO BACKGROUND TASK ──
 
                         // Reset cancellation signal before starting
                         cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
@@ -306,8 +314,15 @@ impl DashboardEngine {
                         if !state.Core_engine.is_loaded.load(Ordering::SeqCst) && !state.is_client_mode {
                             let mut spinner = cluaiz_shared::utils::spinner::cluaizSpinner::new();
                             spinner.start("Lazy loading neural model weights...");
+                            let mut loaded_successfully = false;
+                            
                             if let Some(model_id) = state._active_model_id.clone() {
-                                if let Some(model) = state.sorted_models.iter().find(|m| m.manifest.id == model_id) {
+                                if let Some(model) = state.sorted_models.iter().find(|m| 
+                                    m.manifest.id == model_id || 
+                                    m.manifest.huggingface_filename == model_id || 
+                                    m.manifest.name == model_id ||
+                                    m.manifest.id.replace(":", "-") == model_id
+                                ) {
                                     if let Some(local_path) = &model.manifest.local_path {
                                         let path = std::path::PathBuf::from(local_path);
                                         let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
@@ -322,11 +337,25 @@ impl DashboardEngine {
                                         });
                                         if load_res.is_ok() {
                                             state.Core_engine.is_loaded.store(true, Ordering::SeqCst);
+                                            loaded_successfully = true;
+                                            spinner.stop(Some(&format!("  {} {} loaded successfully on demand.", crossterm::style::Stylize::green("✅"), model.manifest.name)));
+                                        } else {
+                                            spinner.stop(Some(&format!("  {} Failed to load model {}.", crossterm::style::Stylize::red("❌"), model.manifest.name)));
                                         }
+                                    } else {
+                                        spinner.stop(Some(&format!("  {} Model '{}' is not downloaded. Please use '@' to download it.", crossterm::style::Stylize::red("❌"), model.manifest.name)));
                                     }
+                                } else {
+                                    spinner.stop(Some(&format!("  {} Model ID '{}' not found in registry.", crossterm::style::Stylize::red("❌"), model_id)));
                                 }
+                            } else {
+                                spinner.stop(Some(&format!("  {} No active model selected. Use '@' to select one.", crossterm::style::Stylize::red("❌"))));
                             }
-                            spinner.stop(None);
+                            
+                            if !loaded_successfully {
+                                // Don't proceed to generate stream if lazy load failed
+                                continue;
+                            }
                         }
 
                         let stream_result = tokio::task::block_in_place(|| {
@@ -369,7 +398,7 @@ impl DashboardEngine {
                             }
                             
                             let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                            let suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                            let suppress_thinking = booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
                             
                             let active_model = state._active_model_id.clone().unwrap_or_default().to_lowercase();
                             let is_reasoning_model = active_model.contains("deepseek") || active_model.contains("r1") || active_model.contains("reason") || active_model.contains("bonsai") || active_model.contains("think");
@@ -838,13 +867,13 @@ impl DashboardEngine {
                     let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                     if mode_ans.contains("Flash Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Edge;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
                     } else if mode_ans.contains("Think Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::On;
+                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::On;
                     } else if mode_ans.contains("Boot Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Balance;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Auto;
+                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Auto;
                     }
                     
                     let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
@@ -874,7 +903,7 @@ impl DashboardEngine {
                             format!("Context Shifting (Current: {:?})", booster.context_shifting),
                             format!("Force VRAM Reclaim (Current: {:?})", booster.force_vram_reclaim),
                             format!("KV Cache Quantization (Current: {:?})", booster.kv_cache_quantization),
-                            format!("Think Mode (Current: {:?})", booster.think_mode),
+                            format!("Think Mode (Current: {:?})", booster.ai_response_format.think_mode),
                             format!("Response Length (Current: {})", booster.response_length),
                             format!("Force Memory Lock (Current: {:?})", booster.force_memory_lock),
                         ];
@@ -1144,7 +1173,7 @@ impl DashboardEngine {
                                 };
                             },
                             "Force VRAM Reclaim" => booster.force_vram_reclaim = feature_state,
-                            "Think Mode" => booster.think_mode = feature_state,
+                            "Think Mode" => booster.ai_response_format.think_mode = feature_state,
                             "Force Memory Lock" => booster.force_memory_lock = feature_state,
                             _ => {}
                         }
