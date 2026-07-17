@@ -1,6 +1,23 @@
 // Conversation history for context
 const conversationHistory = [];
 
+window.copyCodeBlock = function(btn, encodedCode) {
+    try {
+        const decoded = decodeURIComponent(atob(encodedCode));
+        navigator.clipboard.writeText(decoded).then(() => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Copied!';
+            btn.style.color = '#4ade80';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.color = '#9ca3af';
+            }, 2000);
+        });
+    } catch (e) {
+        console.error('Failed to copy code:', e);
+    }
+};
+
 export async function mountChatStream(rootElement) {
     try {
         const response = await fetch('/src/app/chat/chat_stream/chat_stream.html?v=' + new Date().getTime());
@@ -36,6 +53,50 @@ function getSelectedModel() {
 
 function setupChatStream() {
     // Only register the event listener once globally
+    window.addEventListener('chat:cancel', () => {
+        // Remove the last AI and User message from history
+        if (conversationHistory.length >= 2) {
+            conversationHistory.pop(); // Remove AI
+            conversationHistory.pop(); // Remove User
+        } else if (conversationHistory.length === 1) {
+            conversationHistory.pop();
+        }
+        
+        // Remove the last two messages from DOM
+        const container = document.getElementById('chat-stream-container');
+        const messages = container.querySelectorAll('.chat-message');
+        if (messages.length > 0) {
+            messages[messages.length - 1].remove(); // AI bubble
+        }
+        if (messages.length > 1) {
+            messages[messages.length - 2].remove(); // User bubble
+        }
+        window.canContinue = false;
+        
+        // If chat is empty now, we can leave the chat UI active
+        // so the user doesn't get kicked out to the dashboard.
+        if (conversationHistory.length === 0) {
+            // Do not hide the stream UI or restore dashboard here
+        }
+    });
+
+    // Check if the current URL is /chat on initial load
+    if (window.location.pathname === '/chat') {
+        const container = document.getElementById('chat-stream-container');
+        if (container && !container.classList.contains('active')) {
+            container.classList.add('active');
+            const header = document.getElementById('chat-header');
+            if (header) header.style.display = 'flex';
+            
+            const dashboardHero = document.querySelector('.dashboard-hero');
+            const dashboardMain = document.querySelector('.dashboard-main');
+            const topBar = document.querySelector('.top-bar');
+            if (dashboardHero) dashboardHero.style.display = 'none';
+            if (dashboardMain) dashboardMain.style.display = 'none';
+            if (topBar) topBar.style.display = 'none';
+        }
+    }
+
     if (!window.chatSendHandler) {
         window.chatSendHandler = (e) => {
             const container = document.getElementById('chat-stream-container');
@@ -45,6 +106,11 @@ function setupChatStream() {
             // Activate the stream container (show it)
             if (!container.classList.contains('active')) {
                 container.classList.add('active');
+                
+                // Change URL to /chat
+                if (window.location.pathname !== '/chat') {
+                    window.history.pushState({}, '', '/chat');
+                }
 
                 // Hide dashboard content and show header
                 const header = document.getElementById('chat-header');
@@ -104,6 +170,11 @@ function setupChatStream() {
                 if (header) header.style.display = 'none';
 
                 const dashboardHero = document.querySelector('.dashboard-hero');
+                
+                // Revert URL to /
+                if (window.location.pathname === '/chat') {
+                    window.history.pushState({}, '', '/');
+                }
                 const dashboardMain = document.querySelector('.dashboard-main');
                 const topBar = document.querySelector('.top-bar');
                 if (dashboardHero) dashboardHero.style.display = '';
@@ -123,9 +194,10 @@ function setupChatStream() {
                 if (dropdown.classList.contains('show')) {
                     try {
                         let headers = {};
+                        let pData = null;
                         const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
                         if (pRes.ok) {
-                            const pData = await pRes.json();
+                            pData = await pRes.json();
                             if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
                                 headers['Authorization'] = 'Bearer ' + pData.permission.api_auth.tokens[0];
                             }
@@ -137,28 +209,54 @@ function setupChatStream() {
                             if (data.active_processes && data.active_processes.length > 0) {
                                 const proc = data.active_processes[0];
                                 document.getElementById('info-model-id').textContent = `Model: ${proc.model_id || 'Unknown'}`;
-                                document.getElementById('info-context-size').textContent = `Context: ${proc.context_size || '?'} Allocated / ${proc.original_context || '?'} Original`;
-                                document.getElementById('info-vram-usage').textContent = `VRAM: ${proc.vram_gb !== undefined ? proc.vram_gb.toFixed(2) + ' GB' : '?'}`;
-                                document.getElementById('info-engine').textContent = `Engine: ${proc.engine || '?'}`;
+                                document.getElementById('info-context-size').textContent = `Context: ${proc.context_size || '?'} / ${proc.original_context || '?'}`;
+                                
+                                const unloadBtn = document.getElementById('unload-model-btn');
+                                const divider = document.getElementById('chat-session-divider');
+                                const sessionInfo = document.getElementById('chat-session-info');
+                                const viewHeaderBtn = document.getElementById('view-model-header-btn');
+                                
+                                if (unloadBtn) unloadBtn.style.display = 'flex';
+                                if (divider) divider.style.display = 'block';
+                                if (sessionInfo) sessionInfo.style.display = 'flex';
+                                
+                                // Only show Model Header option if permission is ON and model is active
+                                if (pData && pData.permission && pData.permission.model_header_info === true) {
+                                    if (viewHeaderBtn) viewHeaderBtn.style.display = 'flex';
+                                    window.currentModelProc = proc;
+                                } else {
+                                    if (viewHeaderBtn) viewHeaderBtn.style.display = 'none';
+                                }
                             } else {
-                                const selectedModel = typeof getSelectedModel === 'function' ? getSelectedModel() : 'default';
-                                document.getElementById('info-model-id').textContent = `Model: ${selectedModel && selectedModel !== 'default' ? selectedModel : 'None loaded'}`;
-                                document.getElementById('info-context-size').textContent = 'Context: -';
-                                document.getElementById('info-vram-usage').textContent = 'VRAM: -';
-                                document.getElementById('info-engine').textContent = 'Engine: Idle (Ready)';
+                                const unloadBtn = document.getElementById('unload-model-btn');
+                                const divider = document.getElementById('chat-session-divider');
+                                const sessionInfo = document.getElementById('chat-session-info');
+                                const viewHeaderBtn = document.getElementById('view-model-header-btn');
+                                if (unloadBtn) unloadBtn.style.display = 'none';
+                                if (divider) divider.style.display = 'none';
+                                if (sessionInfo) sessionInfo.style.display = 'none';
+                                if (viewHeaderBtn) viewHeaderBtn.style.display = 'none';
                             }
                         } else {
-                            document.getElementById('info-model-id').textContent = 'Error: Auth Failed';
-                            document.getElementById('info-context-size').textContent = 'Context: -';
-                            document.getElementById('info-vram-usage').textContent = 'VRAM: -';
-                            document.getElementById('info-engine').textContent = 'Engine: -';
+                            const unloadBtn = document.getElementById('unload-model-btn');
+                            const divider = document.getElementById('chat-session-divider');
+                            const sessionInfo = document.getElementById('chat-session-info');
+                            const viewHeaderBtn = document.getElementById('view-model-header-btn');
+                            if (unloadBtn) unloadBtn.style.display = 'none';
+                            if (divider) divider.style.display = 'none';
+                            if (sessionInfo) sessionInfo.style.display = 'none';
+                            if (viewHeaderBtn) viewHeaderBtn.style.display = 'none';
                         }
                     } catch (err) {
                         console.error('Failed to fetch system ps:', err);
-                        document.getElementById('info-model-id').textContent = 'Error: API Offline';
-                        document.getElementById('info-context-size').textContent = 'Context: -';
-                        document.getElementById('info-vram-usage').textContent = 'VRAM: -';
-                        document.getElementById('info-engine').textContent = 'Engine: -';
+                        const unloadBtn = document.getElementById('unload-model-btn');
+                        const divider = document.getElementById('chat-session-divider');
+                        const sessionInfo = document.getElementById('chat-session-info');
+                        const viewHeaderBtn = document.getElementById('view-model-header-btn');
+                        if (unloadBtn) unloadBtn.style.display = 'none';
+                        if (divider) divider.style.display = 'none';
+                        if (sessionInfo) sessionInfo.style.display = 'none';
+                        if (viewHeaderBtn) viewHeaderBtn.style.display = 'none';
                     }
                 }
             });
@@ -172,10 +270,10 @@ function setupChatStream() {
         if (exportBtn && !exportBtn.dataset.bound) {
             exportBtn.addEventListener('click', () => {
                 if (conversationHistory.length === 0) return;
-                let mdContent = "# Chat Export\\n\\n";
+                let mdContent = "# Chat Export\n\n";
                 for (let msg of conversationHistory) {
                     const role = msg.role === 'user' ? 'User' : 'Cluaiz Engine';
-                    mdContent += `### ${role}\\n${msg.content}\\n\\n---\\n\\n`;
+                    mdContent += `### ${role}\n${msg.content}\n\n---\n\n`;
                 }
                 const blob = new Blob([mdContent], { type: 'text/markdown' });
                 const url = URL.createObjectURL(blob);
@@ -188,6 +286,109 @@ function setupChatStream() {
                 URL.revokeObjectURL(url);
             });
             exportBtn.dataset.bound = "true";
+        }
+
+        const viewHeaderBtn = document.getElementById('view-model-header-btn');
+        if (viewHeaderBtn && !viewHeaderBtn.dataset.bound) {
+            const modal = document.getElementById('model-header-modal');
+            const closeBtn = document.getElementById('close-header-modal');
+            const content = document.getElementById('model-header-content');
+            
+            viewHeaderBtn.addEventListener('click', () => {
+                if (window.currentModelProc && Array.isArray(window.currentModelProc)) {
+                    content.innerHTML = `<span style="color: #60a5fa; font-weight: bold; font-size: 1.1rem;">[Active Engine Instances]</span>\n\n`;
+                    
+                    if (window.currentModelProc.length === 0) {
+                        content.innerHTML += `<span style="color: #9ca3af;">No active models loaded in memory.</span>`;
+                    }
+                    
+                    window.currentModelProc.forEach((proc, index) => {
+                        content.innerHTML += `<div style="margin-bottom: 15px; padding: 10px; border: 1px solid #374151; border-radius: 6px; background: rgba(17, 24, 39, 0.5);">`;
+                        content.innerHTML += `<span style="color: #34d399; font-weight: bold;">Engine ${index + 1}: ${proc.engine || 'Unknown'}</span>\n`;
+                        content.innerHTML += `<span style="color: #a78bfa;">Model ID:</span>      ${proc.model_id || 'N/A'}\n`;
+                        content.innerHTML += `<span style="color: #a78bfa;">Status:</span>        ${proc.status || 'N/A'}\n`;
+                        content.innerHTML += `<span style="color: #a78bfa;">Memory:</span>        ${proc.memory_usage_mb ? proc.memory_usage_mb + (typeof proc.memory_usage_mb === 'number' ? ' MB' : '') : 'N/A'}\n`;
+                        content.innerHTML += `<span style="color: #a78bfa;">Context Used:</span>  ${proc.context_size || '0'} tokens\n`;
+                        content.innerHTML += `<span style="color: #a78bfa;">Context Total:</span> ${proc.original_context || '0'} tokens\n`;
+                        
+                        if (proc.is_gguf) {
+                            content.innerHTML += `<span style="color: #a78bfa;">Format:</span>          GGUF (Quantized)\n`;
+                        } else if (proc.is_onnx) {
+                            content.innerHTML += `<span style="color: #a78bfa;">Format:</span>          ONNX (Accelerated)\n`;
+                        }
+                        
+                        if (proc.raw_header && Object.keys(proc.raw_header).length > 0) {
+                            content.innerHTML += `\n<span style="color: #9ca3af; font-size: 0.75rem;">Metadata:</span>\n`;
+                            content.innerHTML += `<span style="color: #6b7280; font-size: 0.75rem;">${JSON.stringify(proc.raw_header, null, 2)}</span>`;
+                        }
+                        content.innerHTML += `</div>`;
+                    });
+                    
+                    modal.style.display = 'flex';
+                    const dropdown = document.getElementById('chat-menu-dropdown');
+                    if (dropdown) dropdown.classList.remove('show');
+                }
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+            
+            viewHeaderBtn.dataset.bound = "true";
+        }
+
+        const unloadBtn = document.getElementById('unload-model-btn');
+        if (unloadBtn && !unloadBtn.dataset.bound) {
+            unloadBtn.addEventListener('click', async () => {
+                try {
+                    let headers = {};
+                    const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
+                    if (pRes.ok) {
+                        const pData = await pRes.json();
+                        if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
+                            headers['Authorization'] = 'Bearer ' + pData.permission.api_auth.tokens[0];
+                        }
+                    }
+
+                    unloadBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Unloading...';
+                    
+                    const res = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', { 
+                        method: 'POST', 
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...headers
+                        },
+                        body: JSON.stringify({
+                            model: getSelectedModel(),
+                            messages: [],
+                            keep_alive: 0
+                        })
+                    });
+                    if (res.ok) {
+                        unloadBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg> <span style="color: #22c55e">Unloaded</span>';
+                        setTimeout(() => {
+                            unloadBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM15 9l-6 6M9 9l6 6"/></svg> Unload Model';
+                        }, 2000);
+                        
+                        // Force update of PS details if menu is open
+                        if (dropdown.classList.contains('show')) {
+                            menuBtn.click();
+                            setTimeout(() => menuBtn.click(), 100);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to unload model:', err);
+                    unloadBtn.innerHTML = '<span style="color: #ef4444">Failed</span>';
+                    setTimeout(() => {
+                        unloadBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM15 9l-6 6M9 9l6 6"/></svg> Unload Model';
+                    }, 2000);
+                }
+            });
+            unloadBtn.dataset.bound = "true";
         }
     }
 }
@@ -208,6 +409,7 @@ async function sendToAI(userMessage) {
                     <span>Warming up Cluaiz Engine...</span>
                 </div>
             </div>
+            <div class="tools-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
             <div class="divider" style="border-top: 1px solid rgba(156, 163, 175, 0.2); display: none;"></div>
             <div class="final-text markdown-body" style="font-size: 0.9rem;"></div>
         </div>
@@ -242,6 +444,7 @@ async function sendToAI(userMessage) {
     };
 
     window.currentChatController = new AbortController();
+    let isAborted = false;
 
     const onAbort = () => {
         window.currentChatController.abort();
@@ -302,50 +505,80 @@ async function sendToAI(userMessage) {
                 try {
                     const parsed = JSON.parse(data);
                     if (!parsed.choices || parsed.choices.length === 0) {
-                        if (parsed.usage && parsed.usage.tokens_per_second !== undefined) {
-                            renderTelemetry(aiMsgEl, parsed.usage, fullContent);
+                        if (parsed.usage && (parsed.usage.tokens_per_second !== undefined || parsed.usage.model_header_info !== undefined)) {
+                            if (hasStarted) {
+                                renderTelemetry(aiMsgEl, parsed.usage, fullContent);
+                            }
                         }
                         continue;
                     }
                     const delta = parsed.choices[0]?.delta;
-                    if (!delta || !delta.content) continue;
+                    if (!delta) continue;
 
                     if (!hasStarted) {
                         hasStarted = true;
                         updateStatus('User SMS Received');
                     }
 
-                    const content = delta.content;
+                    // Handle Industry Standard tool_calls JSON array
+                    if (delta.tool_calls && delta.tool_calls.length > 0) {
+                        const toolsContainer = aiMsgEl.querySelector('.tools-container');
+                        for (const call of delta.tool_calls) {
+                            const callId = call.id || `call_${call.index}`;
+                            let toolBlock = toolsContainer.querySelector(`#tool-${callId}`);
+                            
+                            if (!toolBlock) {
+                                toolBlock = document.createElement('details');
+                                toolBlock.id = `tool-${callId}`;
+                                toolBlock.className = 'tool-accordion';
+                                toolBlock.open = true;
+                                toolBlock.style = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace; font-size: 0.85rem;";
+                                
+                                toolBlock.innerHTML = `
+                                    <summary style="padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;">
+                                        <svg class="tool-icon-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+                                        <span>Tool Call: <span style="color: #60a5fa;" class="tool-name-span">${escapeHtml(call.function?.name || 'Unknown')}</span></span>
+                                    </summary>
+                                    <div style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
+                                        <strong>Request Payload:</strong>
+                                        <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); margin-top: 5px;"><code class="tool-args-code">${escapeHtml(call.function?.arguments || '')}</code></pre>
+                                        <div class="tool-result-container" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; color: #9ca3af; font-style: italic;">Executing in Sandbox...</div>
+                                    </div>
+                                `;
+                                toolsContainer.appendChild(toolBlock);
+                            } else {
+                                if (call.function?.arguments) {
+                                    const codeEl = toolBlock.querySelector('.tool-args-code');
+                                    codeEl.textContent += call.function.arguments;
+                                }
+                            }
+                        }
+                        updateStatus('Tool Call emitted from LLM.');
+                        continue;
+                    }
 
-                    // Intercept Engine Status Markers
-                    if (content.startsWith('__STEP_2')) {
-                        updateStatus(`Match Found -> ${content.split(':')[1] || 'Tool'}`);
+                    // Handle Custom Result Completion Event
+                    if (delta.cluaiz_tool_result) {
+                        const callId = delta.cluaiz_tool_result.id;
+                        const resultText = delta.cluaiz_tool_result.result;
+                        const toolsContainer = aiMsgEl.querySelector('.tools-container');
+                        const toolBlock = toolsContainer.querySelector(`#tool-${callId}`);
+                        if (toolBlock) {
+                            const iconEl = toolBlock.querySelector('.tool-icon-spin');
+                            if (iconEl) {
+                                iconEl.outerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                            }
+                            const resContainer = toolBlock.querySelector('.tool-result-container');
+                            resContainer.style.color = '#a7f3d0';
+                            resContainer.style.fontStyle = 'normal';
+                            resContainer.innerHTML = `<strong>Result:</strong><br/><pre style="white-space: pre-wrap; margin: 0; background: transparent; padding: 0;">${escapeHtml(resultText)}</pre>`;
+                        }
+                        updateStatus(`Sandbox executed tool successfully.`);
                         continue;
                     }
-                    if (content.startsWith('__STEP_3')) {
-                        updateStatus('Dynamic JIT Layer rules compile & inject successfully.');
-                        continue;
-                    }
-                    if (content.startsWith('__STEP_4')) {
-                        updateStatus('Inference system parses user SMS input context.');
-                        continue;
-                    }
-                    if (content.includes('<TRIGGER:') && content.includes('</TRIGGER>')) {
-                        const toolMatch = content.match(/<TRIGGER:([^>]+)>/);
-                        const toolName = (toolMatch ? toolMatch[1] : 'tool').split(':').pop();
-                        updateStatus(`Match tag emitted -> <TRIGGER:${toolName}>`);
-                        await new Promise(r => setTimeout(r, 300));
-                        updateStatus(`Engine intercept triggered. Autoregressive loop PAUSED.`);
-                        continue;
-                    }
-                    if (content.startsWith('__ENGINE_PAUSE_EXECUTE__')) {
-                        const toolName = content.split(':')[1] || 'Tool';
-                        updateStatus(`Sandbox UnifiedExecutor executed: '${toolName}'.`);
-                        await new Promise(r => setTimeout(r, 300));
-                        updateStatus(`KV-Cache parameters injected. Resuming loop...`);
-                        await new Promise(r => setTimeout(r, 200));
-                        continue;
-                    }
+
+                    if (!delta.content) continue;
+                    const content = delta.content;
 
                     if (statusContainer.style.display !== 'none') {
                         statusContainer.style.display = 'none';
@@ -389,7 +622,25 @@ async function sendToAI(userMessage) {
                     }
 
                     if (typeof marked !== 'undefined') {
-                        aiTextEl.innerHTML = marked.parse(displayContent);
+                        if (!window.cluaizMarkedRenderer) {
+                            window.cluaizMarkedRenderer = new marked.Renderer();
+                            window.cluaizMarkedRenderer.code = function(code, language) {
+                                language = language || 'plaintext';
+                                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                // Use base64 encoding to safely pass the code in the onclick attribute
+                                const encodedData = btoa(encodeURIComponent(code));
+                                return '<div class="code-block-wrapper" style="position: relative; margin-top: 1em; margin-bottom: 1em; background: #1e1e1e; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">' +
+                                    '<div style="background: rgba(255,255,255,0.05); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-family: monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">' +
+                                        '<span>' + escapeHtml(language) + '</span>' +
+                                        '<button class="copy-code-btn" style="background: transparent; border: none; color: #9ca3af; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; transition: color 0.2s;" onclick="window.copyCodeBlock(this, \'' + encodedData + '\')">' +
+                                            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy' +
+                                        '</button>' +
+                                    '</div>' +
+                                    '<pre style="margin: 0; padding: 12px; overflow-x: auto; font-size: 0.85rem;"><code class="language-' + escapeHtml(language) + '">' + escapedCode + '</code></pre>' +
+                                '</div>';
+                            };
+                        }
+                        aiTextEl.innerHTML = marked.parse(displayContent, { renderer: window.cluaizMarkedRenderer });
                     } else {
                         aiTextEl.innerHTML = displayContent; // Use innerHTML to render details if marked is missing
                     }
@@ -422,17 +673,10 @@ async function sendToAI(userMessage) {
 
     } catch (e) {
         if (e.name === 'AbortError') {
-            // User aborted via Stop/Pause button
-            const displayContent = skipThinking ? fullContent.replace(/<think>[\s\S]*?(<\/think>|$)/g, '') : (fullContent + '\\n\n*[Generation Paused]*');
-            if (typeof marked !== 'undefined') {
-                aiTextEl.innerHTML = marked.parse(displayContent);
-            } else {
-                aiTextEl.textContent = displayContent;
-            }
-
+            updateStatus('[Generation Paused]');
+            isAborted = true;
             // Save what we have so far so continuing works seamlessly
-            const finalHtmlText = aiTextEl.textContent.replace('[Generation Paused]', '').trim();
-            if (finalHtmlText) {
+            if (fullContent.trim() && !window.canContinue) {
                 // Determine full content based on current DOM to ensure we don't save garbage
                 // Actually we should just save the raw fullContent generated up to the abort point
                 if (fullContent.trim()) {
@@ -454,7 +698,11 @@ async function sendToAI(userMessage) {
         }
         window.removeEventListener('chat:skip_thinking', onSkipThinking);
         window.removeEventListener('chat:abort', onAbort);
-        window.dispatchEvent(new CustomEvent('chat:complete'));
+        if (isAborted) {
+            window.dispatchEvent(new CustomEvent('chat:aborted'));
+        } else {
+            window.dispatchEvent(new CustomEvent('chat:complete'));
+        }
     }
 
     container.scrollTop = container.scrollHeight;
@@ -510,7 +758,7 @@ function renderTelemetry(container, usage, fullContent) {
         let vram = sc.silicon_truth && sc.silicon_truth.accelerators && sc.silicon_truth.accelerators.gpus && sc.silicon_truth.accelerators.gpus.length > 0 ? (sc.silicon_truth.accelerators.gpus[0].vram_available_gb || 0).toFixed(1) : '?';
         hardwareHtml = `<span>💻 VRAM: ${vram} GB</span>`;
     }
-    
+
     telemetryEl.innerHTML = `<span>⚡ ${tps} TPS</span><span>⏱️ ${time}s</span><span>🚀 ${ttft}s TTFT</span><span>🪙 ${tokens} Tokens</span>${hardwareHtml}`;
 
     // Add copy button here

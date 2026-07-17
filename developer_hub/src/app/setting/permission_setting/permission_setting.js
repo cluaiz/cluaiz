@@ -11,6 +11,10 @@ const DESCRIPTIONS = {
         true: 'Enabled: Sending anonymous performance data.',
         false: 'Disabled: No data leaves your machine.'
     },
+    modelHeader: {
+        true: 'Enabled: Injects model name and type tags (e.g. <cluaiz_model_name>) directly into the chat SSE stream for client apps to parse.',
+        false: 'Disabled: The chat stream will only contain raw generated text without any model metadata headers.'
+    },
     vecUser: {
         true: 'Enabled: Your inputs are vectorized and stored in semantic memory.',
         false: 'Disabled: Your inputs are not saved to semantic memory.'
@@ -215,6 +219,7 @@ export async function mount(container) {
 
     // Initialize Engine Security & Privacy Toggles
     setupToggle('toggle-telemetry', 'desc-telemetry', DESCRIPTIONS.telemetry, 'stream_telemetry');
+    setupToggle('toggle-model-header', 'desc-model-header', DESCRIPTIONS.modelHeader, 'model_header_info');
 
     // Initialize WASM Firewall Dropdown
     const wasmContainer = container.querySelector('#container-wasm-firewall');

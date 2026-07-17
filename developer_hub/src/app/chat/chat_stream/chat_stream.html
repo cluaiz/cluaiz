@@ -11,14 +11,36 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Export as .md
             </div>
-            <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0;"></div>
-            <div id="chat-session-info" style="padding: 8px 12px; font-size: 0.75rem; color: #9ca3af; cursor: default; display: flex; flex-direction: column; gap: 4px; min-width: 180px;">
+            <div class="chat-dropdown-item" id="view-model-header-btn" style="display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Model Header
+            </div>
+            <div class="chat-dropdown-item" id="unload-model-btn" style="color: #ef4444; display: none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3zM15 9l-6 6M9 9l6 6"/></svg>
+                Unload Model
+            </div>
+            <div id="chat-session-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; display: none;"></div>
+            <div id="chat-session-info" style="padding: 8px 12px; font-size: 0.75rem; color: #9ca3af; cursor: default; display: none; flex-direction: column; gap: 4px; min-width: 180px;">
                 <div style="color: #fff; font-weight: 500; margin-bottom: 2px;">Session Info</div>
                 <div id="info-model-id" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Model: Loading...</div>
                 <div id="info-context-size">Context: Loading...</div>
-                <div id="info-vram-usage">VRAM: Loading...</div>
-                <div id="info-engine">Engine: Loading...</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="model-header-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+    <div style="background: #1f2937; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 450px; max-width: 90%; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #fff; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Active Model Header
+            </h3>
+            <button id="close-header-modal" style="background: transparent; border: none; color: #9ca3af; cursor: pointer; padding: 4px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div id="model-header-content" style="font-family: 'Consolas', monospace; font-size: 0.85rem; color: #d1d5db; background: #111827; padding: 16px; border-radius: 6px; overflow-y: auto; max-height: 400px; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">
         </div>
     </div>
 </div>

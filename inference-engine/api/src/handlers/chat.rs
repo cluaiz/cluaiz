@@ -31,6 +31,8 @@ pub struct ExternalChatRequest {
     pub temporary_chat: Option<TemporaryChatMode>,
     #[serde(default)]
     pub session_id: Option<String>,
+    #[serde(default)]
+    pub keep_alive: Option<i32>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -39,12 +41,99 @@ pub struct ExternalMessage {
     pub content: String,
 }
 
+// ─── HELPER: Fetch Real Model Header Information ────────────
+fn generate_model_header_info() -> Vec<Value> {
+    let registry = cluaiz_shared::hardware::governor::HardwareGovernor::load_process_registry();
+    let mut loaded_models = Vec::new();
+    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let roots = vec![env.local_dir.join("models"), env.global_dir.join("models")];
+    let categories = ["chat", "embedding", "vision", "audio", "code"];
+
+    for (_, info) in registry {
+        let mut think_start = String::new();
+        let mut think_close = String::new();
+        let mut all_metadata = json!({});
+        let mut context_window_total = info.context_size; // default to allocated
+
+        let mut probed = false;
+        
+        // Search for the model file
+        for root in &roots {
+            if probed { break; }
+            for category in &categories {
+                if probed { break; }
+                let cat_dir = root.join(category);
+                if let Ok(dirs) = std::fs::read_dir(&cat_dir) {
+                    for d in dirs.flatten() {
+                        if let Ok(files) = std::fs::read_dir(d.path()) {
+                            for f in files.flatten() {
+                                let p = f.path();
+                                let fname = p.file_name().unwrap_or_default().to_string_lossy();
+                                if fname == info.model_id && p.extension().and_then(|e| e.to_str()) == Some("gguf") {
+                                    if let Ok((meta, _tensors, _count)) = cluaiz_shared::utils::GGUFProber::probe(&p) {
+                                        let mut meta_map = serde_json::Map::new();
+                                        for (k, v) in meta {
+                                            meta_map.insert(k.clone(), Value::String(v.clone()));
+                                            // Heuristics for context length
+                                            if k.contains("context_length") {
+                                                if let Ok(ctx) = v.parse::<usize>() {
+                                                    context_window_total = ctx;
+                                                }
+                                            }
+                                            // Try to find thinking tags in metadata directly
+                                            if k.contains("think_start") || k.contains("thought_start") {
+                                                think_start = v.clone();
+                                            }
+                                            if k.contains("think_close") || k.contains("think_end") || k.contains("thought_end") {
+                                                think_close = v.clone();
+                                            }
+                                        }
+                                        all_metadata = Value::Object(meta_map);
+                                        probed = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        loaded_models.push(json!({
+            "model_id": info.model_id,
+            "engine": info.engine,
+            "context_window_total": context_window_total,
+            "context_window_allocated": info.context_size,
+            "think_start_tag": think_start,
+            "think_close_tag": think_close,
+            "raw_header": all_metadata
+        }));
+    }
+    
+    loaded_models
+}
+
 // ─── POST /v1/chat/completions (External Compatible API) ────────────
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ExternalChatRequest>,
 ) -> axum::response::Response {
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
+    
+    // 🛑 INSTANT UNLOAD LOGIC
+    if last_message.is_empty() && request.keep_alive == Some(0) {
+        tracing::info!("♻️ [Memory] Instant model unload requested via keep_alive: 0");
+        let _ = state.dispatcher.unload_model().await;
+        let empty_res = json!({
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": chrono::Utc::now().timestamp(),
+            "model": request.model.clone(),
+            "choices": []
+        });
+        return axum::response::Json(empty_res).into_response();
+    }
     
     let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
     let send_telemetry = schema.stream_telemetry;
@@ -57,7 +146,10 @@ pub async fn chat_completions(
 
     let mut matched_tool = String::new();
     let mut jit_injected = false;
-    let mut augmented_prompt = last_message.clone();
+    let keep_alive_val = request.keep_alive;
+    
+    // We will modify the last message in the array if a skill is matched
+    let mut augmented_messages = request.messages.clone();
 
     // 🚀 SEMANTIC ROUTING (Sovereign Injection)
     if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
@@ -81,14 +173,21 @@ pub async fn chat_completions(
                     matched_tool = name.to_string_lossy().to_string();
                 }
                 jit_injected = true;
-                augmented_prompt = format!("{}\n\n{}", body, last_message);
+                if let Some(last_msg) = augmented_messages.last_mut() {
+                    last_msg.content = format!("{}\n\n{}", body, last_msg.content);
+                }
                 break; // Only inject one tool context for now to save space
             }
         }
     }
 
+
+
+    // Serialize the entire message array to JSON to preserve full chat history
+    let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| last_message.clone());
+
     // Initial dispatch to see if it's a stream or an error
-    let dispatch_result = state.dispatcher.dispatch_stream(&augmented_prompt, skip_brain).await;
+    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain).await;
 
     if request.stream {
         match dispatch_result {
@@ -98,12 +197,31 @@ pub async fn chat_completions(
                 let req_session_id = request.session_id.clone();
                 
                 let stream = async_stream::stream! {
-                     let mut current_prompt = augmented_prompt.clone();
+                     let mut current_prompt = json_prompt.clone();
                      let mut total_generated = String::new();
                      let mut overall_token_count = 0;
                      let mut first_ttft_ms = 0;
                      let mut is_first_token = true;
                      let mut telemetry_sent = false;
+
+                     // 🚀 YIELD MODEL HEADER METADATA EARLY (REAL-TIME UI UPDATE)
+                     let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                     if send_telemetry && permission.model_header_info {
+                         let loaded_models = generate_model_header_info();
+                         let early_header_chunk = json!({
+                             "id": "chatcmpl-123",
+                             "object": "chat.completion.chunk",
+                             "created": Utc::now().timestamp(),
+                             "model": request.model.clone(),
+                             "choices": [],
+                             "usage": {
+                                 "model_header_info": {
+                                     "active_models": loaded_models
+                                 }
+                             }
+                         });
+                         yield Ok::<_, Infallible>(Event::default().data(early_header_chunk.to_string()));
+                     }
                      
                      let mut rx = initial_rx;
                      
@@ -114,23 +232,7 @@ pub async fn chat_completions(
                          
                          if !telemetry_sent {
                              telemetry_sent = true;
-                             let step2_feedback = format!("__STEP_2_MATCH_START__:{}:0.88", matched_tool);
-                             let step2_chunk = json!({
-                                 "choices": [{"delta": {"content": step2_feedback}}]
-                             });
-                             yield Ok::<_, Infallible>(Event::default().data(step2_chunk.to_string()));
-
-                             let step3_feedback = format!("__STEP_3_INJECT_START__:{}", jit_injected);
-                             let step3_chunk = json!({
-                                 "choices": [{"delta": {"content": step3_feedback}}]
-                             });
-                             yield Ok::<_, Infallible>(Event::default().data(step3_chunk.to_string()));
-
-                             let step4_feedback = "__STEP_4_READ_SMS__".to_string();
-                             let step4_chunk = json!({
-                                 "choices": [{"delta": {"content": step4_feedback}}]
-                             });
-                             yield Ok::<_, Infallible>(Event::default().data(step4_chunk.to_string()));
+                             // We no longer stream __STEP_ markers as they corrupt standard OpenAI compatibility.
                          }
                          
                          while let Some(token) = rx.recv().await {
@@ -139,22 +241,15 @@ pub async fn chat_completions(
                             }
                             
                             if token.contains("<TRIGGER:") && token.contains("</TRIGGER>") {
-                                // Yield trigger token to SSE client so the test script knows we triggered a tool plan
-                                let trigger_chunk = json!({
-                                    "id": "chatcmpl-123",
-                                    "object": "chat.completion.chunk",
-                                    "created": Utc::now().timestamp(),
-                                    "model": request.model.clone(),
-                                    "choices": [{"delta": {"content": token.clone()}}]
-                                });
-                                yield Ok::<_, Infallible>(Event::default().data(trigger_chunk.to_string()));
+                                // Do not yield the raw `<TRIGGER` token to the content stream.
+                                // Instead, we will construct the `tool_calls` block after parsing.
 
                                 // Handle model stuttering by taking everything from the LAST <TRIGGER:
                                 let trigger_start_idx = token.rfind("<TRIGGER:").unwrap_or(0);
                                 let clean_token = &token[trigger_start_idx..];
 
-                                // Execute the tool immediately in a separate scope to drop non-Send types before yield
-                                let (comp_type, comp_name, execution_result) = {
+                                
+                                let (comp_type, comp_name, payload, execution_result) = {
                                     let header_end = clean_token.find('>').unwrap_or(0);
                                     let header = &clean_token[..header_end];
                                     let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
@@ -172,39 +267,76 @@ pub async fn chat_completions(
                                     tracing::info!("⚙️ [API] Extracted JSON Payload: {}", payload);
                                     
                                     let mut execution_result = String::new();
-                                    use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
-                                    let executor = engines::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                                    let ext_payload = ExtensionPayload::new(PayloadType::Json, payload.as_bytes());
                                     
-                                    match executor.execute(comp_name, &ext_payload) {
-                                        Ok(bytes) => {
-                                            execution_result = String::from_utf8_lossy(&bytes).to_string();
-                                            tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
-                                        },
-                                        Err(e) => {
-                                            execution_result = format!("Error executing {}: {}", comp_name, e);
-                                            tracing::error!("❌ [API] Failed to execute tool: {}", e);
+                                    {
+                                        use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                                        let executor = engines::neural_foundry::executor::sandbox::UnifiedExecutor::new();
+                                        let ext_payload = ExtensionPayload::new(PayloadType::Json, payload.as_bytes());
+                                        
+                                        match executor.execute(comp_name, &ext_payload) {
+                                            Ok(bytes) => {
+                                                execution_result = String::from_utf8_lossy(&bytes).to_string();
+                                                tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
+                                            },
+                                            Err(e) => {
+                                                execution_result = format!("Error executing {}: {}", comp_name, e);
+                                                tracing::error!("❌ [API] Failed to execute tool: {}", e);
+                                            }
                                         }
                                     }
-                                    (comp_type.to_string(), comp_name.to_string(), execution_result)
+
+                                    (comp_type.to_string(), comp_name.to_string(), payload.to_string(), execution_result)
                                 };
+
+                                // Yield standard OpenAI tool_calls chunk before execution blocks
+                                let tool_calls_chunk = json!({
+                                    "id": "chatcmpl-123",
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": request.model.clone(),
+                                    "choices": [{
+                                        "index": 0,
+                                        "delta": {
+                                            "tool_calls": [{
+                                                "index": 0,
+                                                "id": format!("call_{}", comp_name),
+                                                "type": "function",
+                                                "function": {
+                                                    "name": comp_name,
+                                                    "arguments": payload
+                                                }
+                                            }]
+                                        }
+                                    }]
+                                });
+                                yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
+
+                                // Yield the execution result as a tool status chunk (so UI knows it finished)
+                                // Note: In strict OpenAI this isn't streamed to the user (it's added to history and the model continues),
+                                // but for our interactive UI, we emit a special Cluaiz internal status block that the UI can catch.
+                                let result_chunk = json!({
+                                    "id": "chatcmpl-123",
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": request.model.clone(),
+                                    "choices": [{
+                                        "index": 0,
+                                        "delta": {
+                                            "cluaiz_tool_result": {
+                                                "id": format!("call_{}", comp_name),
+                                                "result": execution_result.clone()
+                                            }
+                                        }
+                                    }]
+                                });
+                                yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
                                 
                                 // 🚀 SOVEREIGN KV-CACHE RESUME 
                                 current_prompt = format!(
                                     "{}\n\n[PIVOT_CONTINUE]\n<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the tool result above. Do NOT use any tools. Just answer the user directly.\n",
                                     current_prompt, comp_type, comp_name, execution_result
                                 );
-                                
-                                // Yield pause feedback so client traces execution & injection flow
-                                let pause_feedback = format!("__ENGINE_PAUSE_EXECUTE__:{}:{}", comp_name, execution_result);
-                                let pause_chunk = json!({
-                                    "id": "chatcmpl-123",
-                                    "object": "chat.completion.chunk",
-                                    "created": Utc::now().timestamp(),
-                                    "model": request.model.clone(),
-                                    "choices": [{"delta": {"content": pause_feedback}}]
-                                });
-                                yield Ok::<_, Infallible>(Event::default().data(pause_chunk.to_string()));
+
 
                                 tool_executed = true;
                                 break;
@@ -252,9 +384,21 @@ pub async fn chat_completions(
                     };
 
                     if send_telemetry {
-                        let mut pulse_json = json!({});
-                        if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
-                            pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
+                        let mut usage_json = json!({
+                            "completion_tokens": overall_token_count,
+                            "total_tokens": overall_token_count,
+                            "time_to_first_token_ms": first_ttft_ms,
+                            "total_time_ms": total_time_ms,
+                            "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
+                        });
+
+                        // Inject model_header_info if enabled in PermissionSchema
+                        let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                        if permission.model_header_info {
+                            let loaded_models = generate_model_header_info();
+                            usage_json["model_header_info"] = json!({
+                                "active_models": loaded_models
+                            });
                         }
 
                         let telemetry_chunk = json!({
@@ -263,14 +407,7 @@ pub async fn chat_completions(
                             "created": Utc::now().timestamp(),
                             "model": request.model.clone(),
                             "choices": [],
-                            "usage": {
-                                "completion_tokens": overall_token_count,
-                                "total_tokens": overall_token_count,
-                                "time_to_first_token_ms": first_ttft_ms,
-                                "total_time_ms": total_time_ms,
-                                "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0),
-                                "hardware_snapshot": pulse_json
-                            }
+                            "usage": usage_json
                         });
                         yield Ok::<_, Infallible>(Event::default().data(telemetry_chunk.to_string()));
                     }
@@ -283,6 +420,12 @@ pub async fn chat_completions(
                     }
 
                     yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
+                    
+                    // 🛑 POST-GENERATION UNLOAD
+                    if keep_alive_val == Some(0) {
+                        tracing::info!("♻️ [Memory] Unloading model post-generation due to keep_alive: 0");
+                        let _ = state_clone.dispatcher.unload_model().await;
+                    }
                 };
                 
                 return Sse::new(stream).into_response();
@@ -339,14 +482,25 @@ pub async fn chat_completions(
 
         if send_telemetry {
             let total_time_ms = start_time.elapsed().as_millis();
-            let mut pulse_json = json!({});
-            if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
-                pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
-            }
-            response["usage"] = json!({
-                "total_time_ms": total_time_ms,
-                "hardware_snapshot": pulse_json
+            let mut usage_json = json!({
+                "total_time_ms": total_time_ms
             });
+            
+            let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            if permission.model_header_info {
+                let loaded_models = generate_model_header_info();
+                usage_json["model_header_info"] = json!({
+                    "active_models": loaded_models
+                });
+            }
+            
+            response["usage"] = usage_json;
+        }
+
+        // 🛑 POST-GENERATION UNLOAD
+        if keep_alive_val == Some(0) {
+            tracing::info!("♻️ [Memory] Unloading model post-generation (non-streaming) due to keep_alive: 0");
+            let _ = state.dispatcher.unload_model().await;
         }
 
         return Json(response).into_response();

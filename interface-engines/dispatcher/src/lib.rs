@@ -139,13 +139,20 @@ impl NeuralDispatcher {
 
                     if load_new {
                         // Free previous engine if it existed
-                        if let Some((_, safe_ptr, ref lib)) = engine_lock.take() {
+                        if let Some((_, safe_ptr, lib)) = engine_lock.take() {
                             unsafe {
                                 if let Ok(free_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
                                     tracing::info!("🗑️ [Dispatcher] Freeing previous model instance");
                                     free_fn(safe_ptr.0);
+                                    
+                                    let mut registry = cluaiz_shared::HardwareGovernor::load_process_registry();
+                                    registry.remove(&std::process::id().to_string());
+                                    cluaiz_shared::HardwareGovernor::save_process_registry(&registry);
                                 }
                             }
+                            // 🛑 CRITICAL FIX: Leak the library handle so the DLL is never unloaded from memory.
+                            // If we drop it, the OS violently unmaps `llama.cpp` while background threads exist, causing STATUS_ACCESS_VIOLATION.
+                            Box::leak(Box::new(lib));
                         }
 
                         // Resolve path and load DLL
@@ -188,6 +195,11 @@ impl NeuralDispatcher {
                             if let Some(library) = lib {
                                 let library_arc = std::sync::Arc::new(library);
                                 
+                                if let Ok(init_fn) = library_arc.get::<unsafe extern "C" fn() -> *const std::os::raw::c_char>(b"cluaiz_kernel_init") {
+                                    tracing::info!("🔗 [Dispatcher] Initializing LLM Kernel Backend...");
+                                    unsafe { init_fn(); }
+                                }
+
                                 if let Ok(instantiate_fn) = library_arc.get::<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void>(b"cluaiz_kernel_instantiate") {
                                     let c_path = std::ffi::CString::new(model_path.to_string_lossy().to_string()).unwrap();
                                     tracing::info!("🔗 [Dispatcher] Instantiating kernel with model path: {:?}", model_path);
@@ -206,6 +218,31 @@ impl NeuralDispatcher {
                                     if !engine_ptr.is_null() {
                                         *engine_lock = Some((model_path.clone(), SafeEnginePtr(engine_ptr), library_arc));
                                         successfully_loaded = true;
+                                        
+                                        let vram_gb = std::fs::metadata(&model_path)
+                                            .map(|m| m.len() as f64 / (1024.0 * 1024.0 * 1024.0))
+                                            .unwrap_or(0.0);
+
+                                        let mut dynamic_ctx = 0;
+                                        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                                        if let Some(parent) = model_path.parent() {
+                                            if dna.discover_from_path(parent).is_ok() {
+                                                dynamic_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope(&dna);
+                                            }
+                                        }
+
+                                        let mut registry = cluaiz_shared::HardwareGovernor::load_process_registry();
+                                        registry.insert(
+                                            std::process::id().to_string(),
+                                            cluaiz_shared::hardware::governor::ProcessInfo {
+                                                pid: std::process::id(),
+                                                model_id: model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                                                vram_gb,
+                                                context_size: dynamic_ctx,
+                                                engine: "Native Llama".to_string(),
+                                            },
+                                        );
+                                        cluaiz_shared::HardwareGovernor::save_process_registry(&registry);
                                     }
                                 }
                             }
@@ -380,6 +417,23 @@ impl NeuralDispatcher {
             final_text.push_str(&token);
         }
         Ok(final_text)
+    }
+
+    /// Unloads the currently active LLM from VRAM.
+    pub async fn unload_model(&self) -> Result<(), String> {
+        let mut engine_lock = self.cached_engine.lock().await;
+        if let Some((_, safe_ptr, lib)) = engine_lock.take() {
+            unsafe {
+                if let Ok(free_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
+                    tracing::info!("🗑️ [Dispatcher] Freeing model instance via explicit unload request");
+                    free_fn(safe_ptr.0);
+                }
+            }
+            Box::leak(Box::new(lib));
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 }
 

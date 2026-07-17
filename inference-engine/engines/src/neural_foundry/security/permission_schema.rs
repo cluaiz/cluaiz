@@ -49,6 +49,8 @@ pub struct PermissionSchema {
     pub lazy_load_model: bool,
     #[serde(default = "default_enable_kvcache")]
     pub enable_kvcache: bool,
+    #[serde(default = "default_model_header_info")]
+    pub model_header_info: bool,
     #[serde(default = "default_api_port")]
     pub api_port: u16,
     #[serde(default = "default_connection_protocol")]
@@ -78,6 +80,7 @@ impl Default for PermissionSchema {
             stream_telemetry: default_stream_telemetry(),
             lazy_load_model: default_lazy_load_model(),
             enable_kvcache: default_enable_kvcache(),
+            model_header_info: default_model_header_info(),
             api_port: default_api_port(),
             connection_protocol: default_connection_protocol(),
             api_auth: ApiAuth::default(),
@@ -109,6 +112,10 @@ fn default_enable_kvcache() -> bool {
     true
 }
 
+fn default_model_header_info() -> bool {
+    false
+}
+
 fn default_require_api_auth() -> bool {
     false
 }
@@ -133,43 +140,49 @@ impl PermissionSchema {
         // Ensure config dir exists
         let _ = env_manager.ensure_config_dir();
 
-        if !permission_path.exists() {
-            warn!(
-                "⚠️ Permission.json not found at {:?}. Creating default.",
-                permission_path
-            );
-            let default_schema = Self::default();
-            if let Err(e) = fs::create_dir_all(&config_dir) {
-                warn!("Failed to create config directory: {}", e);
-                return default_schema;
-            }
-            if let Ok(json) = serde_json::to_string_pretty(&default_schema) {
-                if let Err(e) = fs::write(&permission_path, json) {
-                    warn!("Failed to write default Permission.json: {}", e);
-                } else {
-                    info!("✅ Created default Permission.json");
-                    // Sync to .bin
-                    if let Ok(bin_data) = bincode::serialize(&default_schema) {
-                        let _ = fs::write(&permission_bin_path, bin_data);
-                    }
+        // 🚀 Priority 1: Binary Truth (Bincode)
+        if permission_bin_path.exists() {
+            if let Ok(bytes) = fs::read(&permission_bin_path) {
+                if let Ok(schema) = bincode::deserialize::<Self>(&bytes) {
+                    return schema;
                 }
             }
-            return default_schema;
         }
 
-        match fs::read_to_string(&permission_path) {
-            Ok(content) => match serde_json::from_str(&content) {
-                Ok(schema) => schema,
+        // 🛡️ Priority 2: JSON Fallback (User Editable Truth)
+        if permission_path.exists() {
+            match fs::read_to_string(&permission_path) {
+                Ok(content) => match serde_json::from_str::<Self>(&content) {
+                    Ok(schema) => {
+                        // Sync to .bin for next fast load
+                        if let Ok(bin_data) = bincode::serialize(&schema) {
+                            let _ = fs::write(&permission_bin_path, bin_data);
+                        }
+                        return schema;
+                    }
+                    Err(e) => {
+                        warn!("❌ Failed to parse Permission.json: {}. Using default.", e);
+                    }
+                },
                 Err(e) => {
-                    warn!("❌ Failed to parse Permission.json: {}. Using default.", e);
-                    Self::default()
+                    warn!("❌ Failed to read Permission.json: {}. Using default.", e);
                 }
-            },
-            Err(e) => {
-                warn!("❌ Failed to read Permission.json: {}. Using default.", e);
-                Self::default()
             }
         }
+
+        // 🧬 Priority 3: Create Default
+        let default_schema = Self::default();
+        if let Err(e) = fs::create_dir_all(&config_dir) {
+            warn!("Failed to create config directory: {}", e);
+            return default_schema;
+        }
+        if let Ok(json) = serde_json::to_string_pretty(&default_schema) {
+            let _ = fs::write(&permission_path, json);
+        }
+        if let Ok(bin_data) = bincode::serialize(&default_schema) {
+            let _ = fs::write(&permission_bin_path, bin_data);
+        }
+        default_schema
     }
 
     /// Automatically scans installed models and assigns defaults if null

@@ -152,10 +152,14 @@ impl GGUFProber {
                     for _ in 0..read_len {
                         elements.push(Self::read_string(file)?);
                     }
-                    // Skip the rest
+                    // Skip the rest without dropping BufReader's internal cache (no seek calls)
+                    let mut scratch = vec![0u8; 1024];
                     for _ in read_len..len {
-                        let str_len = Self::read_u64(file)?;
-                        file.seek(SeekFrom::Current(str_len as i64))?;
+                        let str_len = Self::read_u64(file)? as usize;
+                        if str_len > scratch.len() {
+                            scratch.resize(str_len, 0);
+                        }
+                        file.read_exact(&mut scratch[0..str_len])?;
                     }
                     Ok(format!("[StringArray: len={}, first_few={:?}]", len, elements))
                 } else {

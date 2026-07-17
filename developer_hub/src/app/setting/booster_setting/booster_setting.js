@@ -241,22 +241,11 @@ export async function mount(container) {
     // dflash is an object in rust, let's treat it as string Auto/On/Off if the API accepts it, or just ignore for now if it breaks.
     // Assuming UI maps to 'Auto' 'On' 'Off' properly, we will just pass it to the backend.
     // Wait, DFlashConfig is SmartState<DFlashConfig>. The UI sets it as string 'Auto', 'On', 'Off'. 
-    
+    setupCustomDropdown('container-dflash', 'desc-dflash', DESCRIPTIONS.dflash, autoOnOff, 'dflash', 'Auto');
     setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
     setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers, 
         makeOptions(['-1', '0', '32'], ['GPU (Auto/Full)', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
-    setupCustomDropdown('container-output-style', 'desc-output-style', DESCRIPTIONS.outputStyle, makeOptions(['separated', 'raw'], ['Separated (Clean)', 'Raw (With Tags)']), 'ai_response_format.output_style', 'separated');
-
-    const outputStyleItem = container.querySelector('#item-output-style');
-    setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'ai_response_format.think_mode', 'Auto', (val) => {
-        if (outputStyleItem) {
-            if (val === 'On') {
-                outputStyleItem.style.display = 'flex';
-            } else {
-                outputStyleItem.style.display = 'none';
-            }
-        }
-    });
+    setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
     setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
 
     // Chat and Vector Models
@@ -322,5 +311,34 @@ export async function mount(container) {
         }
     } catch (e) {
         console.error('Failed to setup models:', e);
+    }
+
+    const btnUnload = container.querySelector('#btn-unload-model');
+    if (btnUnload) {
+        btnUnload.addEventListener('click', async () => {
+            const originalText = btnUnload.innerText;
+            btnUnload.innerText = 'Unloading...';
+            try {
+                const res = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "llama",
+                        messages: [],
+                        keep_alive: 0
+                    })
+                });
+                
+                if (res.ok) {
+                    btnUnload.innerText = 'Success!';
+                } else {
+                    btnUnload.innerText = 'Error!';
+                }
+            } catch (e) {
+                console.error('Failed to unload model:', e);
+                btnUnload.innerText = 'Error!';
+            }
+            setTimeout(() => btnUnload.innerText = originalText, 2000);
+        });
     }
 }

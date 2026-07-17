@@ -1,4 +1,4 @@
-import { mountDashboard } from '/src/app/dashboard/dashboard.js?v=2';
+import { mountDashboard } from '/src/app/dashboard/dashboard.js?v=3';
 import { mountApiWorkspace } from '/src/app/api/script.js';
 import { mountHubWorkspace } from '/src/app/hub/script.js';
 
@@ -19,7 +19,7 @@ async function route() {
 
     root.innerHTML = ''; // Clear existing content
 
-    if (path === '/') {
+    if (path === '/' || path === '/chat') {
         await mountDashboard(root);
     } else if (path === '/api') {
         await mountApiWorkspace(root);
@@ -42,4 +42,6 @@ window.navigateTo = (path) => {
 };
 
 window.addEventListener('popstate', route);
-document.addEventListener('DOMContentLoaded', route);
+// Call route directly since this is a module script (deferred) 
+// and the DOM is already parsed when this runs.
+route();

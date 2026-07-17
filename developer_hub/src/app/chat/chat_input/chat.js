@@ -52,22 +52,63 @@ function setupChatLogic() {
     let isExpanded = false;
     let isThinkModeOn = false;
     let isGenerating = false;
+    let isStopped = false;
     let wrapThreshold = Number.MAX_SAFE_INTEGER;
     const selectedSkills = new Set();
 
     // Dynamically fetch and populate models from backend
     fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectBtn);
 
+    // Dynamically fetch and populate tools/skills/plugins/extensions/mcp
+    fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, renderSkills);
+
     // Textarea Auto-expand & Layout shift
     textarea.addEventListener('input', () => {
         // Handle Send Button visibility (Smooth transition)
-        if (textarea.value.trim().length > 0 || isGenerating) {
+        const hasText = textarea.value.trim().length > 0;
+        
+        if (hasText || isGenerating || isStopped) {
             sendWrapper.classList.remove('w-0', 'opacity-0', 'scale-0');
             sendWrapper.classList.add('w-[2.25rem]', 'opacity-100', 'scale-100');
         } else {
             sendWrapper.classList.add('w-0', 'opacity-0', 'scale-0');
             sendWrapper.classList.remove('w-[2.25rem]', 'opacity-100', 'scale-100');
         }
+
+        // Update button icon based on state
+        if (sendBtn) {
+            if (hasText) {
+                // Show Send icon (Paper plane) ALWAYS if there is text
+                sendBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                `;
+                sendBtn.classList.remove('text-primary', 'text-red-500', 'bg-transparent', 'bg-secondary');
+                sendBtn.classList.add('bg-accent', 'text-black');
+            } else if (isGenerating) {
+                // Show Stop icon (Square)
+                sendBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="6" y="6" width="12" height="12"></rect>
+                    </svg>
+                `;
+                sendBtn.classList.add('text-primary', 'bg-secondary');
+                sendBtn.classList.remove('bg-accent', 'text-black', 'bg-transparent');
+            } else if (isStopped) {
+                // Show Cancel icon (Red X)
+                sendBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                `;
+                sendBtn.classList.add('bg-secondary');
+                sendBtn.classList.remove('text-primary', 'bg-accent', 'text-black', 'bg-transparent');
+            }
+        }
+
 
         // Handle Expansion
         textarea.style.height = 'auto'; // Reset
@@ -148,19 +189,28 @@ function setupChatLogic() {
     // Listen for generation state changes
     window.addEventListener('chat:start', () => {
         isGenerating = true;
+        isStopped = false;
         if (sendBtn) {
             sendBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="6" y="6" width="12" height="12"></rect>
                 </svg>
             `;
-            sendBtn.classList.add('text-red-500');
+            sendBtn.classList.add('text-primary', 'bg-secondary');
+            sendBtn.classList.remove('bg-accent', 'text-black', 'bg-transparent');
         }
+        textarea.dispatchEvent(new Event('input'));
+    });
+    
+    window.addEventListener('chat:aborted', () => {
+        isGenerating = false;
+        isStopped = true;
         textarea.dispatchEvent(new Event('input'));
     });
 
     window.addEventListener('chat:complete', () => {
         isGenerating = false;
+        isStopped = false;
         if (sendBtn) {
             sendBtn.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -168,7 +218,8 @@ function setupChatLogic() {
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
             `;
-            sendBtn.classList.remove('text-red-500');
+            sendBtn.classList.remove('text-primary', 'text-red-500', 'bg-transparent', 'bg-secondary');
+            sendBtn.classList.add('bg-accent', 'text-black');
         }
         hideSkipThinking();
         textarea.dispatchEvent(new Event('input'));
@@ -189,10 +240,20 @@ function setupChatLogic() {
     if (sendBtn) {
         sendBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (isGenerating) {
-                window.dispatchEvent(new CustomEvent('chat:abort'));
-            } else {
+            const hasText = textarea.value.trim().length > 0;
+            if (hasText) {
+                if (isGenerating) {
+                    window.dispatchEvent(new CustomEvent('chat:abort'));
+                    isGenerating = false;
+                    isStopped = false;
+                }
                 sendMessage();
+            } else if (isGenerating) {
+                window.dispatchEvent(new CustomEvent('chat:abort'));
+            } else if (isStopped) {
+                isStopped = false;
+                window.dispatchEvent(new CustomEvent('chat:cancel'));
+                textarea.dispatchEvent(new Event('input'));
             }
         });
     }
@@ -203,6 +264,7 @@ function setupChatLogic() {
         // If content is empty but we have an assistant message at the end of history, we might be 'continuing'
         // For simplicity, we just send empty message to trigger continue in chat_stream.js
         if (content.length > 0 || window.canContinue) {
+            isStopped = false;
             window.dispatchEvent(new CustomEvent('chat:send', { detail: { message: content } }));
             textarea.value = '';
             textarea.dispatchEvent(new Event('input'));
@@ -241,18 +303,25 @@ function setupChatLogic() {
         // Debounce to prevent flickering
         clearTimeout(window.submenuTimeout);
         window.submenuTimeout = setTimeout(() => {
-            document.getElementById('skills-menu').classList.add('hidden');
-            document.getElementById('thinking-menu').classList.add('hidden');
+            const allMenus = ['skills-menu', 'plugins-menu', 'extensions-menu', 'mcp-menu', 'thinking-menu'];
+            allMenus.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
 
             if (menuId) {
-                document.getElementById(menuId).classList.remove('hidden');
+                const el = document.getElementById(menuId);
+                if (el) el.classList.remove('hidden');
             }
         }, 150);
     }
 
-    document.getElementById('skills-menu-wrapper').addEventListener('mouseenter', () => openSubmenu('skills-menu'));
-    document.getElementById('thinking-menu-wrapper').addEventListener('mouseenter', () => openSubmenu('thinking-menu'));
-    document.getElementById('upload-file-btn').addEventListener('mouseenter', () => openSubmenu(null));
+    document.getElementById('skills-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('skills-menu'));
+    document.getElementById('plugins-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('plugins-menu'));
+    document.getElementById('extensions-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('extensions-menu'));
+    document.getElementById('mcp-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('mcp-menu'));
+    document.getElementById('thinking-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('thinking-menu'));
+    document.getElementById('upload-file-btn')?.addEventListener('mouseenter', () => openSubmenu(null));
     textarea.addEventListener('focus', () => {
         chatInputContainer.style.borderColor = 'var(--text-accent)';
     });
@@ -329,22 +398,37 @@ function setupChatLogic() {
             const chip = document.createElement('div');
             chip.className = 'group flex-align gap-1 px-2 py-1 bg-transparent rounded-lg border-border-1px text-xs font-medium text-primary hover-border-muted transition-colors cursor-pointer';
 
+            const formattedName = skill.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
             let iconStr = 'layers';
-            if (skill === 'Web Search') iconStr = 'globe';
-            else if (skill === 'Deep Research') iconStr = 'telescope';
-            else if (skill === 'Think Deep') iconStr = 'brain';
-            else if (skill === 'Think Lite') iconStr = 'zap';
-            else if (skill === 'Long Answer') iconStr = 'align-justify';
-            else if (skill === 'Short Answer') iconStr = 'align-left';
+            let customSvgHtml = null;
+            if (window.componentIcons && window.componentIcons.has(skill)) {
+                const info = window.componentIcons.get(skill);
+                iconStr = info.catIcon || iconStr;
+                if (info.customSvg) {
+                    customSvgHtml = `<div class="text-muted flex-center" style="width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center;">
+                                        ${info.customSvg.replace('<svg ', '<svg style="width:100%; height:100%;" ')}
+                                     </div>`;
+                }
+            } else {
+                if (skill === 'Web Search') iconStr = 'globe';
+                else if (skill === 'Deep Research') iconStr = 'telescope';
+                else if (skill === 'Think Deep') iconStr = 'brain';
+                else if (skill === 'Think Lite') iconStr = 'zap';
+                else if (skill === 'Long Answer') iconStr = 'align-justify';
+                else if (skill === 'Short Answer') iconStr = 'align-left';
+            }
+
+            const defaultIconHtml = customSvgHtml ? customSvgHtml : `<i data-lucide="${iconStr}" class="w-3-5 h-3-5"></i>`;
 
             chip.innerHTML = `
                 <div class="icon-default flex-center">
-                    <i data-lucide="${iconStr}" class="w-3-5 h-3-5"></i>
+                    ${defaultIconHtml}
                 </div>
                 <div class="icon-hover flex-center" style="display: none;">
                     <i data-lucide="x" class="w-3-5 h-3-5 text-red-500"></i>
                 </div>
-                <span class="hidden sm:inline">${skill}</span>
+                <span class="hidden sm:inline">${formattedName}</span>
             `;
 
             chip.addEventListener('mouseenter', () => {
@@ -638,5 +722,104 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
             </div>
         `;
         selectedModelText.textContent = 'No Model';
+    }
+}
+
+// ─── Dynamic Tools/Skills Fetching ──────────────────────────────────────
+async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, renderSkills) {
+    try {
+        const response = await fetch('/api/components/list');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        
+        const categories = [
+            { key: 'skill', menuId: 'skills-menu', icon: 'layers', colorClass: 'hover-text-accent' },
+            { key: 'plugin', menuId: 'plugins-menu', icon: 'box', colorClass: 'hover-text-blue' },
+            { key: 'extension', menuId: 'extensions-menu', icon: 'puzzle', colorClass: 'hover-text-amber' },
+            { key: 'mcp', menuId: 'mcp-menu', icon: 'server', colorClass: 'hover-text-emerald' }
+        ];
+
+        for (const cat of categories) {
+            const menu = document.getElementById(cat.menuId);
+            const allItems = data[cat.key] || [];
+            
+            if (menu) {
+                menu.innerHTML = ''; // clear dummy data
+                
+                const enabledItems = [];
+                for (const itemName of allItems) {
+                    try {
+                        const setRes = await fetch(`/api/components/settings?component_type=${cat.key}&component_id=${itemName}`);
+                        const setData = await setRes.json();
+                        if (setData.status === 'success' && setData.values && setData.values.enabled) {
+                            enabledItems.push(itemName);
+                        }
+                    } catch (e) {
+                        console.warn(`Could not fetch settings for ${itemName}`, e);
+                    }
+                }
+
+                if (enabledItems.length === 0) {
+                    const displayName = cat.key === 'mcp' ? 'MCPs' : cat.key.charAt(0).toUpperCase() + cat.key.slice(1) + 's';
+                    menu.innerHTML = `<div class="p-2 text-xs text-muted text-center italic">No ${displayName} available</div>`;
+                    continue;
+                }
+
+                enabledItems.forEach(async (itemName) => {
+                    const btn = document.createElement('button');
+                    btn.className = `dropdown-item w-full flex-between text-primary ${cat.colorClass} hover-bg-secondary group skill-btn`;
+                    btn.setAttribute('data-skill', itemName);
+                    
+                    let iconHtml = `<i data-lucide="${cat.icon}" class="w-4 h-4 text-muted"></i>`;
+                    let rawSvgStr = null;
+                    try {
+                        const svgRes = await fetch(`/api/components/file?component_type=${cat.key}&component_id=${itemName}&file_path=assets/icon.svg`);
+                        const svgData = await svgRes.json();
+                        if (svgData.status === 'success' && svgData.content) {
+                            let svgStr = svgData.content.trim();
+                            if (svgStr.startsWith('<svg')) {
+                                rawSvgStr = svgStr;
+                                iconHtml = `<div class="text-muted flex-center" style="width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;">
+                                    ${svgStr.replace('<svg ', '<svg style="width:100%; height:100%;" ')}
+                                </div>`;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to fetch SVG for ${itemName}`, e);
+                    }
+
+                    window.componentIcons = window.componentIcons || new Map();
+                    window.componentIcons.set(itemName, { catIcon: cat.icon, customSvg: rawSvgStr });
+
+                    const formattedName = itemName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+                    btn.innerHTML = `
+                        <div class="flex-align gap-2-5">
+                            ${iconHtml}
+                            ${formattedName}
+                        </div>
+                    `;
+                    
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // keep menu open or let it close?
+                        // If it's a toggle:
+                        if (selectedSkills.has(itemName)) {
+                            selectedSkills.delete(itemName);
+                        } else {
+                            selectedSkills.add(itemName);
+                        }
+                        updateSkillMenuVisuals();
+                        renderSkills();
+                    });
+                    
+                    menu.appendChild(btn);
+                    if (window.lucide) window.lucide.createIcons();
+                });
+            }
+        }
+        if (window.lucide) window.lucide.createIcons();
+    } catch (e) {
+        console.error("Failed to fetch tools/skills list:", e);
     }
 }

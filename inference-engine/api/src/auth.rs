@@ -22,7 +22,6 @@ pub async fn auth_middleware(
     // Most DevHub routes don't start with these prefixes.
     let is_api_route = path.starts_with("/v1/") 
         || path.starts_with("/api/") 
-        || path.starts_with("/chat") 
         || path.starts_with("/models/") 
         || path.starts_with("/engine/") 
         || path.starts_with("/hardware");

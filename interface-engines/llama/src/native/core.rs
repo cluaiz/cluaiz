@@ -56,7 +56,7 @@ impl NativeLlama {
     ) -> anyhow::Result<Self> {
         // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
         unsafe {
-            llama_cpp::llama_log_set(Some(silent_llama_log), std::ptr::null_mut());
+            llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
         }
 
         // ══ SOVEREIGN OPTIMIZATION (Hardware Overrides) ══
@@ -363,7 +363,7 @@ impl NativeLlama {
         dna: &StructuralDNA,
         last_prefilled_tokens: &[i32],
         callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Vec<i32>> {
         crate::native::stream::stream_tokens(
             self,
             prompt,

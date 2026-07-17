@@ -138,25 +138,74 @@ impl RuntimeB {
     pub fn load_native(&mut self) -> anyhow::Result<()> {
         let mut model_params = self.booster.to_model_params();
 
+        // 🧠 PROBE GGUF METADATA & ARCHITECTURE TRUTH
+        let mut has_native_mtp = false;
+        let mut is_ssm_model = false;
+        let mut probed_layers = None;
+
+        if let Ok((metadata, tensor_infos, _)) =
+            cluaiz_shared::utils::GGUFProber::probe(std::path::Path::new(&self.model_path))
+        {
+            has_native_mtp = cluaiz_shared::utils::GGUFProber::check_native_mtp(&tensor_infos);
+            is_ssm_model =
+                cluaiz_shared::utils::GGUFProber::check_recurrent_ssm(&metadata, &tensor_infos);
+
+            // Extract actual block count/layers dynamically from keys (e.g. llama.block_count)
+            for (k, v) in &metadata {
+                if k.ends_with(".block_count") {
+                    if let Ok(count) = v.parse::<usize>() {
+                        probed_layers = Some(count);
+                        break;
+                    }
+                }
+            }
+        }
+
         // 🛡️ CERD DOCTRINE: Dynamic VRAM Layer Offload (Prevent OOM Crashes)
         if model_params.n_gpu_layers == -1 {
-            let weights_gb = self.context.dna.weights_size_gb;
-            let vram_gb = self.context.dna.vram_headroom_gb;
-            let layers = self.context.dna.layer_count.unwrap_or(0);
-            
+            let mut weights_gb = self.context.dna.weights_size_gb;
+            if weights_gb <= 0.0 {
+                weights_gb = std::fs::metadata(&self.model_path)
+                    .map(|m| m.len() as f64 / (1024.0 * 1024.0 * 1024.0))
+                    .unwrap_or(0.0) as f32;
+            }
+
+            let mut vram_gb = self.context.dna.vram_headroom_gb;
+            if vram_gb <= 0.0 {
+                if let Ok(control) =
+                    cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control()
+                {
+                    vram_gb = control
+                        .silicon_truth
+                        .accelerators
+                        .gpus
+                        .iter()
+                        .map(|g| g.vram_available_gb)
+                        .sum::<f64>() as f32;
+                }
+            }
+
+            let layers = self.context.dna.layer_count.or(probed_layers).unwrap_or(32);
+
             // Only protect if we actually know there's limited VRAM (vram_gb > 0)
-            if weights_gb > 0.0 && vram_gb > 0.0 && weights_gb > vram_gb * 0.9 {
+            if weights_gb > 0.0 && vram_gb > 0.0 {
                 // Reserve 15% VRAM for OS/Display and Context Cache
-                let usable_vram = vram_gb * 0.85; 
-                if layers > 0 {
-                    let ratio = usable_vram / weights_gb;
-                    let safe_layers = (layers as f32 * ratio) as i32;
-                    cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds VRAM ({:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, vram_gb, safe_layers, layers);
-                    model_params.n_gpu_layers = safe_layers;
+                let usable_vram = vram_gb * 0.85;
+                // Only clamp if model weights alone exceed the usable VRAM
+                if weights_gb > usable_vram {
+                    if layers > 0 {
+                        let ratio = usable_vram / weights_gb;
+                        let safe_layers = (layers as f32 * ratio) as i32;
+                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds safe VRAM limit ({:.2}GB / {:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, usable_vram, vram_gb, safe_layers, layers);
+                        model_params.n_gpu_layers = safe_layers;
+                    } else {
+                        let safe_layers = 10;
+                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds safe VRAM limit ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
+                        model_params.n_gpu_layers = safe_layers;
+                    }
                 } else {
-                    let safe_layers = 10;
-                    cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds VRAM ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
-                    model_params.n_gpu_layers = safe_layers;
+                    cluaiz_shared::dev_info!("✅ [Arbiter] Model ({:.2}GB) fits within usable VRAM ({:.2}GB / {:.2}GB). Full GPU Offload enabled ({} layers).", weights_gb, usable_vram, vram_gb, layers);
+                    model_params.n_gpu_layers = layers as i32; // Full GPU offload using exact layer count
                 }
             }
         }
@@ -165,31 +214,20 @@ impl RuntimeB {
         let mut ctx_params = self.booster.to_context_params();
 
         if let Some(ctx) = self.context.dna.max_context_length {
-            if self.booster.n_ctx == 0 { ctx_params.n_ctx = std::cmp::min(ctx as u32, 8192); } else { ctx_params.n_ctx = ctx as u32; }
+            if self.booster.n_ctx == 0 {
+                ctx_params.n_ctx = std::cmp::min(ctx as u32, 8192);
+            } else {
+                ctx_params.n_ctx = ctx as u32;
+            }
         }
 
         // 🧠 RESOLVE SPECULATIVE MODE & SYNC DNA
-        // We probe GGUF metadata + tensor names to detect hybrid/recurrent models (e.g. Qwen3.5 GDN).
-        // GGUFProber now checks: architecture name, *.layer_types metadata, AND tensor patterns.
-        let (has_native_mtp, is_ssm_model) = if let Ok((metadata, tensor_infos, _)) =
-            cluaiz_shared::utils::GGUFProber::probe(std::path::Path::new(&self.model_path))
-        {
-            (
-                cluaiz_shared::utils::GGUFProber::check_native_mtp(&tensor_infos),
-                cluaiz_shared::utils::GGUFProber::check_recurrent_ssm(&metadata, &tensor_infos),
-            )
-        } else {
-            (false, false)
-        };
-
         if is_ssm_model {
             // 🚨 For hybrid/recurrent models (Qwen3.5 GDN, Mamba, RWKV):
             // Speculative decoding is incompatible with non-transformer architectures.
             cluaiz_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
             cluaiz_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
             self.booster.speculative_decoding = "off".to_string();
-            // Note: We DO NOT force context_shifting off here anymore, as it breaks continuous generation.
-            // We let system_booster.json decide the context_shifting mode.
         }
 
         let speculative_mode = if self.booster.speculative_decoding.to_lowercase() != "off" {
@@ -203,7 +241,8 @@ impl RuntimeB {
         };
         cluaiz_shared::dev_info!(
             "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (booster: {})",
-            speculative_mode, self.booster.speculative_decoding
+            speculative_mode,
+            self.booster.speculative_decoding
         );
         self.context
             .dna
@@ -331,12 +370,14 @@ impl cluaizInference for RuntimeB {
                     callback,
                 );
 
-                if res.is_ok() {
+                if let Ok(new_tokens) = &res {
+                    self.last_prefilled_tokens = new_tokens.clone();
                     cb.record_success();
                 } else {
+                    self.last_prefilled_tokens.clear();
                     cb.record_failure("Native stream error");
                 }
-                return res;
+                return res.map(|_| ());
             }
 
             // 🛡️ Safe Binary Fallback Path
@@ -363,7 +404,6 @@ impl cluaizInference for RuntimeB {
                 Err(anyhow::anyhow!("Kernel panic during stream generation."))
             }
         };
-        self.last_prefilled_tokens.clear();
         execution_result
     }
 
@@ -449,19 +489,10 @@ impl cluaizInference for RuntimeB {
             ctx_params.n_ctx = new_ctx as u32;
 
             // Sync settings dynamically
-            native.kv_cache_quantization_mode = match control.kv_cache_quantization {
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8 => 1,
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4 => 2,
-                _ => 0,
-            };
-            native.context_shifting_mode = match control.context_shifting {
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off => 0,
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal => 1,
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard
-                | cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto => 2,
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive => 3,
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme => 4,
-            };
+            let booster_ctx =
+                cluaiz_shared::hardware::schema::booster::cluaizBoosterContext::from(control);
+            native.kv_cache_quantization_mode = booster_ctx.kv_cache_quantization_mode;
+            native.context_shifting_mode = booster_ctx.context_shifting_mode;
 
             native.resize_context(ctx_params)?;
             tracing::info!(
@@ -547,4 +578,3 @@ impl cluaizInference for RuntimeB {
         }
     }
 }
-

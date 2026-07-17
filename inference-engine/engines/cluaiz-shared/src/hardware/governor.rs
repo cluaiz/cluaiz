@@ -603,23 +603,7 @@ impl HardwareGovernor {
         let bin_path = base.join("system_booster.bin");
         let json_path = base.join("system_booster.json");
 
-        // 🛡️ Priority 1: JSON (User Editable Truth)
-        if json_path.exists() {
-            if let Ok(data) = std::fs::read_to_string(&json_path) {
-                match serde_json::from_str::<BoosterControl>(&data) {
-                    Ok(control) => {
-                        // Always sync to binary truth to keep .bin updated in real-time when loaded
-                        let _ = Self::save_booster_settings(&control);
-                        return Ok(control);
-                    }
-                    Err(e) => {
-                        eprintln!("❌ [Arbiter] Failed to parse system_booster.json: {}. Falling back to binary.", e);
-                    }
-                }
-            }
-        }
-
-        // 🚀 Priority 2: Binary Truth (Panic-Safe Rkyv Fallback)
+        // 🚀 Priority 1: Binary Truth (Panic-Safe Rkyv)
         if bin_path.exists() {
             if let Ok(bytes_raw) = std::fs::read(&bin_path) {
                 let mut bytes = rkyv::AlignedVec::with_capacity(bytes_raw.len());
@@ -639,6 +623,22 @@ impl HardwareGovernor {
                 }
                 // If panic or error, wipe it
                 let _ = std::fs::remove_file(&bin_path);
+            }
+        }
+
+        // 🛡️ Priority 2: JSON Fallback (User Editable Truth)
+        if json_path.exists() {
+            if let Ok(data) = std::fs::read_to_string(&json_path) {
+                match serde_json::from_str::<BoosterControl>(&data) {
+                    Ok(control) => {
+                        // Always sync to binary truth to keep .bin updated in real-time when loaded
+                        let _ = Self::save_booster_settings(&control);
+                        return Ok(control);
+                    }
+                    Err(e) => {
+                        eprintln!("❌ [Arbiter] Failed to parse system_booster.json: {}. Using default.", e);
+                    }
+                }
             }
         }
 

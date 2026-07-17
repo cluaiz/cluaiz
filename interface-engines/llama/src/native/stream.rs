@@ -41,7 +41,7 @@ pub fn stream_tokens(
     dna: &StructuralDNA,
     last_prefilled_tokens: &[i32],
     mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<i32>> {
     unsafe {
         // 🛑 ROOT FIX: Reset interrupt signal when entering generation to ensure pivot works!
         llama.interrupt_signal.store(false, Ordering::SeqCst);
@@ -74,36 +74,15 @@ pub fn stream_tokens(
             // We forcefully close the thought block before starting the new turn.
             format!("\n</think>\n{}", templater.format_turn(dna, &actual_prompt))
         } else {
-            let mut prompt_with_constraint = actual_prompt.clone();
-            
-            // 🧠 Deep Truth: Dynamic Structural Constraints Injection
-            if booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::On {
-                if booster.response_length == "long" {
-                    prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Think deeply and explore all possibilities. Provide a comprehensive reasoning step.]");
-                } else if booster.response_length == "short" {
-                    prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Keep reasoning/thinking steps brief and strictly to the point.]");
-                }
-            } else {
-                if booster.response_length == "long" {
-                    prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Provide a highly detailed, comprehensive, and exhaustive response.]");
-                } else if booster.response_length == "short" {
-                    prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Provide a highly concise and direct response without conversational filler.]");
-                }
-            }
-
-            if booster.enforce_json {
-                prompt_with_constraint.push_str("\n\n[SYSTEM CONSTRAINT: Output strictly in valid JSON format only. No markdown blocks.]");
-            }
-
             // Avoid double formatting if the prompt was already manually formatted by the router or API
-            if prompt_with_constraint.contains("<|start_header_id|>") || prompt_with_constraint.contains("<|im_start|>") {
-                prompt_with_constraint
+            if actual_prompt.contains("<|start_header_id|>") || actual_prompt.contains("<|im_start|>") {
+                actual_prompt
             } else {
-                templater.format(dna, &prompt_with_constraint)
+                templater.format(dna, &actual_prompt)
             }
         };
 
-        let mut suppress_thinking = booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+        let mut suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
             suppress_thinking = true;
@@ -163,6 +142,7 @@ pub fn stream_tokens(
             return Err(anyhow::anyhow!("Tokenization failed even after resizing buffer"));
         }
         tokens.truncate(n_tokens as usize);
+        let full_prompt_tokens = tokens.clone(); // 🛡️ Save FULL prompt tokens BEFORE any trimming for correct return
 
         let mut is_pivot = is_pivot;
         let mut has_loaded_cache = has_loaded_cache;
@@ -179,13 +159,15 @@ pub fn stream_tokens(
         }
 
         let mut effective_cache_len = last_prefilled_tokens.len();
+        let mut match_len = 0;
         // 🛡️ DYNAMIC PREFIX MATCHING (The real fix for KV cache corruption)
         if !is_pivot && has_loaded_cache {
-            let mut match_len = 0;
             let min_len = last_prefilled_tokens.len().min(tokens.len());
             while match_len < min_len && last_prefilled_tokens[match_len] == tokens[match_len] {
                 match_len += 1;
             }
+            
+            cluaiz_shared::dev_info!("🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}", last_prefilled_tokens.len(), tokens.len(), match_len);
             
             // If the match is partial, we MUST roll back the KV cache to the divergence point
             if match_len < last_prefilled_tokens.len() {
@@ -213,7 +195,7 @@ pub fn stream_tokens(
         let chunk_size = llama.n_batch as i32; // Dynamic batch/chunk size
         let mut safe_batch = SafeBatch { batch: llama_cpp::llama_batch_init(chunk_size, 0, 1) };
 
-        let start_pos = if is_pivot {
+        let mut start_pos = if is_pivot {
             llama_cpp::llama_memory_seq_pos_max(llama_cpp::llama_get_memory(llama.ctx_ptr), 0) + 1
         } else if has_loaded_cache {
             effective_cache_len as i32
@@ -221,28 +203,89 @@ pub fn stream_tokens(
             0
         };
 
-        for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
-            for (i, token) in chunk.iter().enumerate() {
-                *safe_batch.batch.token.add(i) = *token;
-                *safe_batch.batch.pos.add(i) = start_pos + (chunk_idx * chunk_size as usize + i) as i32;
-                *safe_batch.batch.n_seq_id.add(i) = 1;
-                *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
-                // Only request logits for the VERY LAST token of the ENTIRE prompt
-                let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
-                *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
-            }
-            safe_batch.batch.n_tokens = chunk.len() as i32;
+        cluaiz_shared::dev_info!("🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}", start_pos, tokens.len());
 
+        let mut decode_failed = false;
+
+        // 🛡️ ROOT FIX: When tokens is empty (same prompt repeated, 100% prefix match),
+        // no llama_decode() runs, leaving stale logits from the previous turn's EOS token.
+        // The sampler then immediately samples EOS → zero output → "No final response synthesized."
+        // Fix: Re-decode the last matched token with logits=1 to refresh logits for the sampler.
+        if tokens.is_empty() && effective_cache_len > 0 {
+            let last_matched_pos = effective_cache_len as i32 - 1;
+            let last_matched_token = full_prompt_tokens[effective_cache_len - 1];
+            cluaiz_shared::dev_info!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
+            
+            // Remove only the last position so we can re-decode it with logits=1
+            let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+            llama_cpp::llama_memory_seq_rm(mem, 0, last_matched_pos, last_matched_pos + 1);
+            
+            *safe_batch.batch.token.add(0) = last_matched_token;
+            *safe_batch.batch.pos.add(0) = last_matched_pos;
+            *safe_batch.batch.n_seq_id.add(0) = 1;
+            *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
+            *safe_batch.batch.logits.add(0) = 1; // MUST compute logits for sampler
+            safe_batch.batch.n_tokens = 1;
+            
             if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                return Err(anyhow::anyhow!("Initial decode failed at chunk {}", chunk_idx));
+                cluaiz_shared::dev_info!("⚠️ [KV-Fix] Logits refresh decode failed. Falling back to full prefill.");
+                decode_failed = true;
+            }
+        }
+
+        if !tokens.is_empty() {
+            for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
+                for (i, token) in chunk.iter().enumerate() {
+                    *safe_batch.batch.token.add(i) = *token;
+                    *safe_batch.batch.pos.add(i) = start_pos + (chunk_idx * chunk_size as usize + i) as i32;
+                    *safe_batch.batch.n_seq_id.add(i) = 1;
+                    *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
+                    let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
+                    *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
+                }
+                safe_batch.batch.n_tokens = chunk.len() as i32;
+
+                if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
+                    decode_failed = true;
+                    break;
+                }
+            }
+        }
+
+        if decode_failed {
+            cluaiz_shared::dev_info!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
+            
+            // 1. Clear KV cache completely
+            let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+            llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+            
+            // 2. Reset tokens to the full prompt and start position to 0
+            tokens = full_prompt_tokens.clone();
+            start_pos = 0;
+            
+            // 3. Re-decode the entire prompt
+            for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
+                for (i, token) in chunk.iter().enumerate() {
+                    *safe_batch.batch.token.add(i) = *token;
+                    *safe_batch.batch.pos.add(i) = start_pos + (chunk_idx * chunk_size as usize + i) as i32;
+                    *safe_batch.batch.n_seq_id.add(i) = 1;
+                    *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
+                    let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
+                    *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
+                }
+                safe_batch.batch.n_tokens = chunk.len() as i32;
+
+                if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
+                    return Err(anyhow::anyhow!("Fatal: Full prefill fallback failed"));
+                }
             }
         }
 
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(dna, &tokens)?;
         let safe_sampler = SafeSampler { sampler: sampler_chain_raw };
 
-        let is_lookahead = llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2;
-        let mut history: Vec<i32> = tokens.clone();
+        let mut is_lookahead = llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2;
+        let mut history: Vec<i32> = full_prompt_tokens; // 🛡️ Use FULL prompt tokens, not trimmed, so next turn's prefix match works correctly
         let mut lookahead_logs = Vec::new();
         let mut utf8_buffer = Vec::new();
 
@@ -255,7 +298,7 @@ pub fn stream_tokens(
 
         if injected_think_tag {
             if !callback(format!("{}\n", think_start_tag)) {
-                return Ok(());
+                return Ok(history);
             }
         }
 
@@ -413,35 +456,66 @@ pub fn stream_tokens(
                 *safe_batch.batch.logits.add(idx) = 1; 
             }
 
+            if n_gen == 0 {
+                cluaiz_shared::dev_info!("🔍 [KV-Debug] n_cur = {}, next_token_id = {}", n_cur, next_token_id);
+            }
+
             let mut decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
             if decode_ret != 0 {
-                if llama.context_shifting_mode != 0 {
-                    eprintln!("⚠️ [Llama-Lib] Decode failed (ret={}), attempting emergency context shift...", decode_ret);
-                    crate::native::context::shift_context(
-                        llama.ctx_ptr,
-                        &mut n_cur,
-                        llama.n_ctx,
-                        original_prompt_len,
-                        llama.context_shifting_mode,
-                        &mut lookahead_logs,
-                        true
-                    );
+                cluaiz_shared::dev_info!("⚠️ [Llama-Lib] Speculative decode failed (ret={}). Disabling lookahead and falling back to standard generation...", decode_ret);
+                
+                // Disabling lookahead for the rest of this request
+                is_lookahead = false;
+                drafts.clear();
+                
+                // Re-build batch for ONLY next_token_id (Greedy/Greedy penalty path)
+                safe_batch.batch.n_tokens = 1;
+                *safe_batch.batch.token.add(0) = next_token_id;
+                *safe_batch.batch.pos.add(0) = n_cur;
+                *safe_batch.batch.n_seq_id.add(0) = 1;
+                *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
+                *safe_batch.batch.logits.add(0) = 1;
+                
+                decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
+                
+                if decode_ret != 0 {
+                    cluaiz_shared::dev_info!("❌ [Llama-Lib] Standard decode failed. KV Cache corrupted. Re-ingesting conversation history from scratch...");
                     
-                    *safe_batch.batch.pos.add(0) = n_cur;
-                    for (i, _) in drafts.iter().enumerate() {
-                        let idx = i + 1;
-                        *safe_batch.batch.pos.add(idx) = n_cur + idx as i32;
+                    // 1. Clear KV cache completely
+                    let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+                    llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                    
+                    // 2. Re-decode the entire history tokens so far (positions 0..history.len())
+                    let chunk_size = llama.n_batch as i32;
+                    let mut temp_batch = SafeBatch { batch: llama_cpp::llama_batch_init(chunk_size, 0, 1) };
+                    
+                    let mut redecode_failed = false;
+                    for (chunk_idx, chunk) in history.chunks(chunk_size as usize).enumerate() {
+                        for (i, token) in chunk.iter().enumerate() {
+                            *temp_batch.batch.token.add(i) = *token;
+                            *temp_batch.batch.pos.add(i) = (chunk_idx * chunk_size as usize + i) as i32;
+                            *temp_batch.batch.n_seq_id.add(i) = 1;
+                            *(*temp_batch.batch.seq_id.add(i)).add(0) = 0;
+                            let is_last = (chunk_idx * chunk_size as usize + i) == (history.len() - 1);
+                            *temp_batch.batch.logits.add(i) = if is_last { 1 } else { 0 };
+                        }
+                        temp_batch.batch.n_tokens = chunk.len() as i32;
+                        if llama_cpp::llama_decode(llama.ctx_ptr, temp_batch.batch) != 0 {
+                            redecode_failed = true;
+                            break;
+                        }
                     }
                     
-                    decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
-                    if decode_ret != 0 {
-                        eprintln!("❌ [Llama-Lib] Emergency shift failed to resolve decode error (ret={}). Breaking.", decode_ret);
+                    if redecode_failed {
+                        cluaiz_shared::dev_info!("💀 [Llama-Lib] Fatal: Recovery re-decode failed. Breaking.");
                         break;
-                    } else {
-                        eprintln!("✅ [Llama-Lib] Emergency shift successful. Generation recovered.");
                     }
-                } else {
-                    break;
+                    
+                    // Update n_cur to history.len()
+                    n_cur = history.len() as i32;
+                    
+                    // Sample next_token_id again from the re-decoded state
+                    next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
                 }
             }
 
@@ -625,7 +699,7 @@ pub fn stream_tokens(
                 break;
             }
         }
+        history.truncate(n_cur as usize);
+        Ok(history)
     }
-
-    Ok(())
 }

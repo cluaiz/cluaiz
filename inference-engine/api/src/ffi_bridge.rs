@@ -503,7 +503,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     context_shifting: ContextShiftingMode::Auto,
                                     force_vram_reclaim: FeatureState::Off,
                                     n_gpu_layers: optimal_gpu_layers,
-                                    ai_response_format: cluaiz_shared::hardware::schema::booster::AiResponseFormat::default(),
+                                    think_mode: FeatureState::Auto,
                                     response_length: "auto".to_string(),
                                     enforce_json: false,
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },

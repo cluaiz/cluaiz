@@ -398,7 +398,7 @@ impl DashboardEngine {
                             }
                             
                             let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                            let suppress_thinking = booster.ai_response_format.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                            let suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
                             
                             let active_model = state._active_model_id.clone().unwrap_or_default().to_lowercase();
                             let is_reasoning_model = active_model.contains("deepseek") || active_model.contains("r1") || active_model.contains("reason") || active_model.contains("bonsai") || active_model.contains("think");
@@ -867,13 +867,13 @@ impl DashboardEngine {
                     let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                     if mode_ans.contains("Flash Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Edge;
-                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
                     } else if mode_ans.contains("Think Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost;
-                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::On;
+                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::On;
                     } else if mode_ans.contains("Boot Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Balance;
-                        booster.ai_response_format.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Auto;
+                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Auto;
                     }
                     
                     let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
@@ -903,7 +903,7 @@ impl DashboardEngine {
                             format!("Context Shifting (Current: {:?})", booster.context_shifting),
                             format!("Force VRAM Reclaim (Current: {:?})", booster.force_vram_reclaim),
                             format!("KV Cache Quantization (Current: {:?})", booster.kv_cache_quantization),
-                            format!("Think Mode (Current: {:?})", booster.ai_response_format.think_mode),
+                            format!("Think Mode (Current: {:?})", booster.think_mode),
                             format!("Response Length (Current: {})", booster.response_length),
                             format!("Force Memory Lock (Current: {:?})", booster.force_memory_lock),
                         ];
@@ -1173,7 +1173,7 @@ impl DashboardEngine {
                                 };
                             },
                             "Force VRAM Reclaim" => booster.force_vram_reclaim = feature_state,
-                            "Think Mode" => booster.ai_response_format.think_mode = feature_state,
+                            "Think Mode" => booster.think_mode = feature_state,
                             "Force Memory Lock" => booster.force_memory_lock = feature_state,
                             _ => {}
                         }

@@ -221,3 +221,4 @@ pub async fn load_model(
         "message": format!("Model '{}' not found in vault or not downloaded.", payload.model_id)
     }))
 }
+

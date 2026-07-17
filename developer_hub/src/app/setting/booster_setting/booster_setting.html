@@ -27,6 +27,16 @@
         </div>
     </div>
 
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Unload Model from VRAM</span>
+            <span class="setting-desc">Instantly free GPU memory by safely terminating the engine process.</span>
+        </div>
+        <div class="setting-control">
+            <button class="primary-btn" id="btn-unload-model" style="font-size: 0.8rem; padding: 6px 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Unload Engine</button>
+        </div>
+    </div>
+
 
     <!-- Hardware & Optimization -->
     <h3 class="settings-section-title">Hardware & Optimization</h3>
@@ -146,14 +156,6 @@
                 <span class="setting-desc" id="desc-think-mode">Engages reasoning processes exclusively for complex mathematical or coding queries.</span>
             </div>
             <div class="setting-control" id="container-think-mode"></div>
-        </div>
-
-        <div id="item-output-style" style="display: none; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-            <div class="setting-info">
-                <span class="setting-label">Thinking Output Style</span>
-                <span class="setting-desc" id="desc-output-style">Determines how the reasoning blocks are presented.</span>
-            </div>
-            <div class="setting-control" id="container-output-style"></div>
         </div>
     </div>
 

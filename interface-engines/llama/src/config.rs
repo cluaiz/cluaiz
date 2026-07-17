@@ -77,65 +77,65 @@ impl BoosterConfig {
             force_memory_lock: "Auto".to_string(),
         };
 
-        // 🛡️ Sovereign Dynamic Pathing: Use cluaiz-shared to resolve the engine path universally.
-        let booster_path =
-            cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path()
-                .join("config")
-                .join("system_booster.json");
-
-        if let Ok(content) = std::fs::read_to_string(booster_path) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                // Only override if explicitly provided in JSON
-                if let Some(fa) = json.get("flash_attention") {
-                    if let Some(s) = fa.as_str() {
-                        config.flash_attn = s == "On" || s == "Auto";
-                    } else if let Some(b) = fa.as_bool() {
-                        config.flash_attn = b;
-                    }
-                } else if let Some(fa) = json.get("flash_attn") {
-                    config.flash_attn = fa.as_bool().unwrap_or(true);
-                }
-                if let Some(gl) = json.get("n_gpu_layers") {
-                    config.n_gpu_layers = gl.as_i64().unwrap_or(-1) as i32;
-                }
-                if let Some(df) = json.get("dflash") {
-                    config.dflash = df.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(sd) = json.get("speculative_decoding") {
-                    config.speculative_decoding = sd.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(ar) = json.get("auto_round") {
-                    config.auto_round = ar.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(mr) = json.get("mode_run") {
-                    config.mode_run = mr.as_str().unwrap_or("balance").to_string();
-                }
-                if let Some(fr) = json.get("force_vram_reclaim") {
-                    config.force_vram_reclaim = fr.as_str().unwrap_or("Off").to_string();
-                }
-                if let Some(kv) = json.get("kv_cache_quantization") {
-                    config.kv_cache_quantization = kv.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(cs) = json.get("context_shifting") {
-                    config.context_shifting = cs.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(format) = json.get("ai_response_format") {
-                    if let Some(tm) = format.get("think_mode") {
-                        config.think_mode = tm.as_str().unwrap_or("Auto").to_string();
-                    }
-                } else if let Some(tm) = json.get("think_mode") {
-                    config.think_mode = tm.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(fml) = json.get("force_memory_lock") {
-                    config.force_memory_lock = fml.as_str().unwrap_or("Off").to_string();
-                }
-                if let Some(tq) = json.get("turbo_quant") {
-                    config.turbo_quant = tq.as_str().unwrap_or("Auto").to_string();
-                }
-                if let Some(mmap) = json.get("use_mmap") {
-                    config.use_mmap = mmap.as_bool().unwrap_or(false);
-                }
-            }
+        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
+            config.flash_attn = control.flash_attention.is_active();
+            config.n_gpu_layers = control.n_gpu_layers;
+            config.dflash = match control.dflash {
+                cluaiz_shared::hardware::schema::booster::SmartState::Static(s) => s,
+                _ => "Auto".to_string(),
+            };
+            config.speculative_decoding = match control.speculative_decoding {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
+            config.auto_round = match control.auto_round {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
+            config.mode_run = match control.mode_run {
+                cluaiz_shared::hardware::schema::booster::BoosterMode::Edge => "edge".to_string(),
+                cluaiz_shared::hardware::schema::booster::BoosterMode::Multitasking => "multitasking".to_string(),
+                cluaiz_shared::hardware::schema::booster::BoosterMode::Balance => "balance".to_string(),
+                cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost => "max_boost".to_string(),
+                cluaiz_shared::hardware::schema::booster::BoosterMode::UltraMaxBoost => "ultra_max_boost".to_string(),
+                cluaiz_shared::hardware::schema::booster::BoosterMode::HyperCluster => "hyper_cluster".to_string(),
+            };
+            config.force_vram_reclaim = match control.force_vram_reclaim {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
+            config.kv_cache_quantization = match control.kv_cache_quantization {
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Auto => "Auto".to_string(),
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8 => "Kv8".to_string(),
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4 => "Kv4".to_string(),
+                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv16 => "Kv16".to_string(),
+            };
+            config.context_shifting = match control.context_shifting {
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off => "Off".to_string(),
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal => "Minimal".to_string(),
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard => "Standard".to_string(),
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive => "Aggressive".to_string(),
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme => "Extreme".to_string(),
+                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto => "Auto".to_string(),
+            };
+            config.think_mode = match control.think_mode {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
+            config.force_memory_lock = match control.force_memory_lock {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
+            config.turbo_quant = match control.turbo_quant {
+                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
+                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            };
         }
         config.use_mmap = true;
         config
@@ -299,15 +299,12 @@ impl BoosterConfig {
                 FeatureState::Off
             },
             n_gpu_layers: self.n_gpu_layers,
-            ai_response_format: cluaiz_shared::hardware::schema::booster::AiResponseFormat {
-                think_mode: if self.think_mode == "On" {
-                    FeatureState::On
-                } else if self.think_mode == "Off" {
-                    FeatureState::Off
-                } else {
-                    FeatureState::Auto
-                },
-                output_style: "separated".to_string(),
+            think_mode: if self.think_mode == "On" {
+                FeatureState::On
+            } else if self.think_mode == "Off" {
+                FeatureState::Off
+            } else {
+                FeatureState::Auto
             },
             response_length: "auto".to_string(),
             enforce_json: false,

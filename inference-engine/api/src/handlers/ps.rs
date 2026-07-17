@@ -1,13 +1,16 @@
-use axum::{Json, extract::State};
+use axum::{
+    extract::State,
+    http::{HeaderMap, header},
+    response::{IntoResponse, Response, Sse, sse::Event},
+    Json,
+};
 use serde_json::{json, Value};
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc, time::Duration};
 use crate::AppState;
 use cluaiz_shared::hardware::governor::HardwareGovernor;
 
-// ─── GET /v1/system/ps ────────────────────────────────────────────────
-pub async fn get_processes(State(_state): State<Arc<AppState>>) -> Json<Value> {
+fn gather_ps_data() -> Value {
     let registry = HardwareGovernor::load_process_registry();
-    
     let roster = engines::CoreRoster::load_roster();
     let mut processes = Vec::new();
     for (pid_str, info) in registry {
@@ -26,8 +29,37 @@ pub async fn get_processes(State(_state): State<Arc<AppState>>) -> Json<Value> {
         }));
     }
 
-    Json(json!({
+    let mut pulse_json = json!({});
+    if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
+        pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
+    }
+
+    // Include full hardware snapshot alongside processes
+    json!({
         "status": "success",
-        "active_processes": processes
-    }))
+        "active_processes": processes,
+        "hardware_snapshot": pulse_json
+    })
+}
+
+// ─── GET /v1/system/ps ────────────────────────────────────────────────
+pub async fn get_processes(
+    headers: HeaderMap,
+    State(state): State<Arc<AppState>>
+) -> Response {
+    if let Some(accept) = headers.get(header::ACCEPT) {
+        if accept == "text/event-stream" {
+            let stream = async_stream::stream! {
+                loop {
+                    let data = gather_ps_data();
+                    yield Ok::<_, Infallible>(Event::default().json_data(data).unwrap());
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+            };
+            return Sse::new(stream).into_response();
+        }
+    }
+    
+    // FFI & standard fallback: Static JSON response
+    Json(gather_ps_data()).into_response()
 }

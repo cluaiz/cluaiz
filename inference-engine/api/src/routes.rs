@@ -32,7 +32,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/chat/completions", post(chat::chat_completions))
         
         // ── Internal Legacy Chat API ──
-        .route("/chat", post(chat::chat))
+        .route("/v1/legacy/chat", post(chat::chat))
         .route("/v1/chat/stream", post(chat::chat_stream))
         
         // ── External Compatible Models API ──
@@ -45,6 +45,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/hardware", get(models::hardware_status))
         .route("/models/download", post(models::download_model))
         .route("/models/load", post(models::load_model))
+
         
         // ── Booster & Hardware Tuning API ──
         .route("/v1/booster/status", get(crate::handlers::booster::status))

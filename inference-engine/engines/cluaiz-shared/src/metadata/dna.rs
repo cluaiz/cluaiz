@@ -147,142 +147,149 @@ impl StructuralDNA {
             ));
         }
 
-        // 1. Native GGUF Probe (The REAL Truth - No external JSONs needed)
-        let mut gguf_path = None;
-        if let Ok(entries) = std::fs::read_dir(model_dir) {
-            for entry in entries.flatten() {
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_file() {
-                        let p = entry.path();
-                        if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                            gguf_path = Some(p);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some(path) = gguf_path {
-            if let Ok((metadata, _tensor_infos, _count)) = crate::utils::GGUFProber::probe(&path) {
-                if let Some(arch) = metadata.get("general.architecture") {
-                    self.model_identity = arch.clone();
-
-                    let ctx_key = format!("{}.context_length", arch);
-                    if let Some(ctx_str) = metadata.get(&ctx_key) {
-                        if let Ok(ctx) = ctx_str.parse::<usize>() {
-                            arch_limit = Some(ctx);
-                        }
-                    }
-
-                    if let Some(val) = metadata
-                        .get(&format!("{}.block_count", arch))
-                        .and_then(|v| v.parse::<usize>().ok())
-                    {
-                        self.layer_count = Some(val);
-                    }
-                    if let Some(val) = metadata
-                        .get(&format!("{}.attention.head_count", arch))
-                        .and_then(|v| v.parse::<usize>().ok())
-                    {
-                        self.attention_head_count = Some(val);
-                    }
-                    if let Some(val) = metadata
-                        .get(&format!("{}.attention.head_count_kv", arch))
-                        .and_then(|v| v.parse::<usize>().ok())
-                    {
-                        self.attention_head_count_kv = Some(val);
-                    }
-                    if let Some(val) = metadata
-                        .get(&format!("{}.feed_forward_length", arch))
-                        .and_then(|v| v.parse::<usize>().ok())
-                    {
-                        self.intermediate_size = Some(val);
-                    }
-                    if let Some(val) = metadata
-                        .get(&format!("{}.embedding_length", arch))
-                        .and_then(|v| v.parse::<usize>().ok())
-                    {
-                        self.hidden_size = Some(val);
-                    }
-                }
-
-                // 2. Read tokenizer.chat_template to detect reasoning natively
-                if let Some(template) = metadata.get("tokenizer.chat_template") {
-                    self.chat_template = Some(template.clone());
-
-                    let template_lower = template.to_lowercase();
-                    let mut detected_start = None;
-                    let mut detected_end = None;
-
-                    let keywords = [
-                        "think",
-                        "thought",
-                        "reasoning",
-                        "reason",
-                        "brainstorm",
-                        "logic",
-                    ];
-                    for kw in keywords.iter() {
-                        let formats = [
-                            (format!("<{}>", kw), format!("</{}>", kw)),
-                            (format!("<|{}_start|>", kw), format!("<|{}_end|>", kw)),
-                            (format!("<|{}|>", kw), format!("</|{}|>", kw)),
-                            (format!("<|channel>{}", kw), format!("<channel|>")),
-                        ];
-
-                        for (start, end) in formats.iter() {
-                            if template_lower.contains(start) {
-                                detected_start = Some(start.clone());
-                                if template_lower.contains(end) {
-                                    detected_end = Some(end.clone());
-                                }
+        let mut did_probe = false;
+        if self.layer_count.is_none() || !self.dynamic_attributes.contains_key("has_native_mtp") {
+            // 1. Native GGUF Probe (The REAL Truth - No external JSONs needed)
+            let mut gguf_path = None;
+            if let Ok(entries) = std::fs::read_dir(model_dir) {
+                for entry in entries.flatten() {
+                    if let Ok(file_type) = entry.file_type() {
+                        if file_type.is_file() {
+                            let p = entry.path();
+                            if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
+                                gguf_path = Some(p);
                                 break;
                             }
                         }
-                        if detected_start.is_some() {
-                            break;
-                        }
-                    }
-
-                    if let Some(start_tag) = detected_start {
-                        self.supports_thinking = true;
-                        self.think_tag_schema = start_tag.clone();
-                        
-                        if let Some(end_tag) = detected_end.clone() {
-                            self.think_end_schema = end_tag;
-                            self.reliable_think_close = true;
-                        } else {
-                            if start_tag.contains("_start") {
-                                self.think_end_schema = start_tag.replace("_start", "_end");
-                            } else if start_tag.contains("<|") {
-                                self.think_end_schema = start_tag.replace("<|", "</|");
-                            } else {
-                                self.think_end_schema = start_tag.replace("<", "</");
-                            }
-                            self.reliable_think_close = false;
-                        }
-                        
-                        crate::dev_info!(
-                            "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
-                            self.think_tag_schema,
-                            self.think_end_schema
-                        );
                     }
                 }
-
-                // The engine's native backend (candle/llama.cpp) will automatically handle the EOS token ID
-                // extracted from the GGUF header (tokenizer.ggml.eos_token_id) during generation.
-                // Hardcoding architecture names here for string-based stop sequences defeats the Deep Truth native approach.
-            } else {
-                eprintln!("⚠️ [DNA] GGUF probe failed on: {:?}", path);
             }
-        } else {
-            eprintln!("⚠️ [DNA] No .gguf file found in model directory for probe.");
+
+            if let Some(path) = gguf_path {
+                if let Ok((metadata, tensor_infos, _count)) = crate::utils::GGUFProber::probe(&path) {
+                    let has_native_mtp = crate::utils::GGUFProber::check_native_mtp(&tensor_infos);
+                    self.dynamic_attributes.insert("has_native_mtp".to_string(), has_native_mtp.to_string());
+
+                    if let Some(arch) = metadata.get("general.architecture") {
+                        self.model_identity = arch.clone();
+
+                        let ctx_key = format!("{}.context_length", arch);
+                        if let Some(ctx_str) = metadata.get(&ctx_key) {
+                            if let Ok(ctx) = ctx_str.parse::<usize>() {
+                                arch_limit = Some(ctx);
+                            }
+                        }
+
+                        if let Some(val) = metadata
+                            .get(&format!("{}.block_count", arch))
+                            .and_then(|v| v.parse::<usize>().ok())
+                        {
+                            self.layer_count = Some(val);
+                        }
+                        if let Some(val) = metadata
+                            .get(&format!("{}.attention.head_count", arch))
+                            .and_then(|v| v.parse::<usize>().ok())
+                        {
+                            self.attention_head_count = Some(val);
+                        }
+                        if let Some(val) = metadata
+                            .get(&format!("{}.attention.head_count_kv", arch))
+                            .and_then(|v| v.parse::<usize>().ok())
+                        {
+                            self.attention_head_count_kv = Some(val);
+                        }
+                        if let Some(val) = metadata
+                            .get(&format!("{}.feed_forward_length", arch))
+                            .and_then(|v| v.parse::<usize>().ok())
+                        {
+                            self.intermediate_size = Some(val);
+                        }
+                        if let Some(val) = metadata
+                            .get(&format!("{}.embedding_length", arch))
+                            .and_then(|v| v.parse::<usize>().ok())
+                        {
+                            self.hidden_size = Some(val);
+                        }
+                    }
+
+                    // 2. Read tokenizer.chat_template to detect reasoning natively
+                    if let Some(template) = metadata.get("tokenizer.chat_template") {
+                        self.chat_template = Some(template.clone());
+
+                        let template_lower = template.to_lowercase();
+                        let mut detected_start = None;
+                        let mut detected_end = None;
+
+                        let keywords = [
+                            "think",
+                            "thought",
+                            "reasoning",
+                            "reason",
+                            "brainstorm",
+                            "logic",
+                        ];
+                        for kw in keywords.iter() {
+                            let formats = [
+                                (format!("<{}>", kw), format!("</{}>", kw)),
+                                (format!("<|{}_start|>", kw), format!("<|{}_end|>", kw)),
+                                (format!("<|{}|>", kw), format!("</|{}|>", kw)),
+                                (format!("<|channel>{}", kw), format!("<channel|>")),
+                            ];
+
+                            for (start, end) in formats.iter() {
+                                if template_lower.contains(start) {
+                                    detected_start = Some(start.clone());
+                                    if template_lower.contains(end) {
+                                        detected_end = Some(end.clone());
+                                    }
+                                    break;
+                                }
+                            }
+                            if detected_start.is_some() {
+                                break;
+                            }
+                        }
+
+                        if let Some(start_tag) = detected_start {
+                            self.supports_thinking = true;
+                            self.think_tag_schema = start_tag.clone();
+                            
+                            if let Some(end_tag) = detected_end.clone() {
+                                self.think_end_schema = end_tag;
+                                self.reliable_think_close = true;
+                            } else {
+                                if start_tag.contains("_start") {
+                                    self.think_end_schema = start_tag.replace("_start", "_end");
+                                } else if start_tag.contains("<|") {
+                                    self.think_end_schema = start_tag.replace("<|", "</|");
+                                } else {
+                                    self.think_end_schema = start_tag.replace("<", "</");
+                                }
+                                self.reliable_think_close = false;
+                            }
+                            
+                            crate::dev_info!(
+                                "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
+                                self.think_tag_schema,
+                                self.think_end_schema
+                            );
+                        }
+                    }
+                } else {
+                    eprintln!("⚠️ [DNA] GGUF probe failed on: {:?}", path);
+                }
+            } else {
+                eprintln!("⚠️ [DNA] No .gguf file found in model directory for probe.");
+            }
+            did_probe = true;
         }
 
         // 🛠️ DEEP TRUTH RESOLUTION
-        let mut final_truth = arch_limit.or(sliding_window);
+        let mut final_truth = if did_probe {
+            arch_limit.or(sliding_window)
+        } else {
+            self.max_context_length
+        };
 
         // Rule: If manual DNA exists, prioritize it but CAP by Architecture to prevent Hallucinations.
         let dna_json_path = model_dir.join("structural_dna.json");
