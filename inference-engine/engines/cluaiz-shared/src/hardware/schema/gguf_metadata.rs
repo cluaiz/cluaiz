@@ -1,7 +1,62 @@
-use serde::{Deserialize, Serialize};
-use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
-use std::collections::HashMap;
 use crate::define_config;
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::collections::HashMap;
+
+#[derive(Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
+pub struct DynamicConfigValue(pub String);
+
+impl Default for DynamicConfigValue {
+    fn default() -> Self {
+        Self("{}".to_string())
+    }
+}
+
+impl Serialize for DynamicConfigValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let val: serde_json::Value = serde_json::from_str(&self.0).unwrap_or(serde_json::Value::Null);
+        val.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for DynamicConfigValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let val = <serde_json::Value as serde::Deserialize>::deserialize(deserializer)?;
+        Ok(DynamicConfigValue(val.to_string()))
+    }
+}
+
+impl DynamicConfigValue {
+    pub fn to_value(&self) -> serde_json::Value {
+        serde_json::from_str(&self.0).unwrap_or(serde_json::Value::Null)
+    }
+
+    pub fn has_short_mode(&self) -> bool {
+        self.0.to_lowercase().contains("short")
+    }
+
+    pub fn len(&self) -> usize {
+        if let serde_json::Value::Object(map) = self.to_value() {
+            map.len()
+        } else {
+            0
+        }
+    }
+
+    pub fn insert(&mut self, key: String, value: String) {
+        let mut val = self.to_value();
+        if let serde_json::Value::Object(ref mut map) = val {
+            map.insert(key, serde_json::Value::String(value));
+            self.0 = val.to_string();
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
 pub struct GgufHardwareExecution {
@@ -79,19 +134,21 @@ impl Default for GgufSamplers {
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
 pub struct UserMovedFlags {
     pub think_mode: String,
-    pub response_length: HashMap<String, String>,
+    pub response_length: DynamicConfigValue,
 }
 
 impl Default for UserMovedFlags {
     fn default() -> Self {
         Self {
             think_mode: "Auto".to_string(),
-            response_length: HashMap::new(),
+            response_length: DynamicConfigValue::default(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug, Default)]
+#[derive(
+    Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug, Default,
+)]
 pub struct GgufMetadataHeaders {
     pub hardware_and_execution: GgufHardwareExecution,
     pub templating_flags: GgufTemplatingFlags,

@@ -564,7 +564,7 @@ pub fn stream_tokens(
                 }
 
                 // 🧠 EOS Bias for "short" mode (runs every token — affects output length)
-                let is_short = gguf_meta.user_moved_flags.response_length.values().any(|v| v == "short");
+                let is_short = gguf_meta.user_moved_flags.response_length.has_short_mode();
                 if is_short && n_gen > 30 {
                     let eos_id = llama_cpp::llama_vocab_eos(vocab);
                     if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {

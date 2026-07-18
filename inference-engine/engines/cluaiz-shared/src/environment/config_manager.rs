@@ -13,6 +13,7 @@ impl ConfigManager {
     }
 }
 
+
 /// A macro to automatically generate `load()` and `save()` methods for any Config Schema.
 /// It avoids the complex generic bounds of `rkyv` while centralizing the I/O logic.
 #[macro_export]

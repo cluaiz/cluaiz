@@ -134,7 +134,9 @@ function setupChatStream() {
             container.scrollTop = container.scrollHeight;
 
             // Send to AI endpoint
-            sendToAI(content);
+            const think_mode = e.detail?.think_mode;
+            const response_length = e.detail?.response_length;
+            sendToAI(content, think_mode, response_length);
         };
         window.addEventListener('chat:send', window.chatSendHandler);
         
@@ -393,7 +395,7 @@ function setupChatStream() {
     }
 }
 
-async function sendToAI(userMessage) {
+async function sendToAI(userMessage, think_mode, response_length) {
     const container = document.getElementById('chat-stream-container');
     const model = getSelectedModel();
 
@@ -468,14 +470,18 @@ async function sendToAI(userMessage) {
             headers['Authorization'] = 'Bearer ' + authToken;
         }
 
+        const payload = {
+            model: model,
+            messages: conversationHistory,
+            stream: true
+        };
+        if (think_mode) payload.think_mode = think_mode;
+        if (response_length) payload.response_length = response_length;
+
         const response = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify({
-                model: model,
-                messages: conversationHistory,
-                stream: true
-            }),
+            body: JSON.stringify(payload),
             signal: window.currentChatController.signal
         });
 

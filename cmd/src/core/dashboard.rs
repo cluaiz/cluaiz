@@ -1115,14 +1115,13 @@ impl DashboardEngine {
                             continue;
                         }
 
-                        // Special sub-menu for Response Length
-                        if key_part.as_str() == "Response Length" {
-                            let length_modes = vec![
-                                "Long".to_string(),
-                                "Short".to_string(),
+                        if key_part.as_str() == "Think Mode" {
+                            let think_options = vec![
+                                "On".to_string(),
+                                "Off".to_string(),
                                 "Auto".to_string(),
                             ];
-                            let selected_len = match Select::new("Select Response Length:", length_modes).with_help_message("")
+                            let selected_think = match Select::new("Select Think Mode:", think_options).with_help_message("")
                                 .with_render_config(config.clone())
                                 .prompt() {
                                 Ok(ans) => ans,
@@ -1135,14 +1134,72 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            // Note: Advanced users can modify this map via JSON. The dashboard only sets the "default" fallback if they use this menu.
-                            gguf_meta.user_moved_flags.response_length.insert("default".to_string(), selected_len.to_lowercase());
+                            gguf_meta.user_moved_flags.think_mode = selected_think.clone();
+                            let mut onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+                            onnx_meta.user_moved_flags.think_mode = selected_think.clone();
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
-                                let _ = gguf_meta.save();
-                                println!("  {} System Booster updated: Response Length = {}", "✅".green(), selected_len.bold());
+                            if let Ok(_) = gguf_meta.save() {
+                                let _ = onnx_meta.save();
+                                println!("  {} Settings updated: Think Mode = {}", "✅".green(), selected_think.bold());
                             } else {
-                                println!("  {} Failed to save system booster settings.", "❌".red());
+                                println!("  {} Failed to save settings.", "❌".red());
+                            }
+                            continue;
+                        }
+
+                        // Special sub-menu for Response Length
+                        if key_part.as_str() == "Response Length Constraints:" {
+                            let mode_options = vec![
+                                "Predefined (Managed via UI)".to_string(),
+                                "Custom Length Map".to_string(),
+                            ];
+                            let selected_mode = match Select::new("Select Response Length Architecture:", mode_options).with_help_message("")
+                                .with_render_config(config.clone())
+                                .prompt() {
+                                Ok(ans) => ans,
+                                Err(_) => {
+                                    print!("\x1B[1A\x1B[2K\r");
+                                    stdout().flush()?;
+                                    continue;
+                                }
+                            };
+                            print!("\x1B[1A\x1B[2K\r");
+                            stdout().flush()?;
+
+                            let new_type = if selected_mode.starts_with("Predefined") {
+                                "predefined"
+                            } else {
+                                "custom"
+                            };
+
+                            // Create JSON value to update the type
+                            let mut map_val = gguf_meta.user_moved_flags.response_length.to_value();
+                            if let Some(map_obj) = map_val.as_object_mut() {
+                                map_obj.insert("type".to_string(), serde_json::json!(new_type));
+                            } else {
+                                map_val = serde_json::json!({
+                                    "type": new_type,
+                                    "think_on": {
+                                        "Think_Deep": { "0.0": "System Constraint Prompt" },
+                                        "Think_Lite": { "0.5": "[SYSTEM CONSTRAINT: Provide a balanced and informative response.]" }
+                                    },
+                                    "think_off": {
+                                        "Long_Answer": { "0.8": "[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]" },
+                                        "Short_Answer": { "1.0": "[SYSTEM CONSTRAINT: Provide a concise and direct response.]" }
+                                    }
+                                });
+                            }
+
+                            let dyn_val = cluaiz_shared::hardware::schema::gguf_metadata::DynamicConfigValue(map_val.to_string());
+                            gguf_meta.user_moved_flags.response_length = dyn_val.clone();
+                            let mut onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+                            onnx_meta.user_moved_flags.response_length = dyn_val;
+                            let _ = onnx_meta.save();
+
+                            if let Ok(_) = gguf_meta.save() {
+                                println!("  {} Settings updated: Response Architecture = {}", "✅".green(), selected_mode.bold());
+                            } else {
+                                println!("  {} Failed to save settings.", "❌".red());
                             }
                             continue;
                         }

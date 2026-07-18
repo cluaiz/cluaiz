@@ -66,7 +66,7 @@ function setupChatLogic() {
     textarea.addEventListener('input', () => {
         // Handle Send Button visibility (Smooth transition)
         const hasText = textarea.value.trim().length > 0;
-        
+
         if (hasText || isGenerating || isStopped) {
             sendWrapper.classList.remove('w-0', 'opacity-0', 'scale-0');
             sendWrapper.classList.add('w-[2.25rem]', 'opacity-100', 'scale-100');
@@ -201,7 +201,7 @@ function setupChatLogic() {
         }
         textarea.dispatchEvent(new Event('input'));
     });
-    
+
     window.addEventListener('chat:aborted', () => {
         isGenerating = false;
         isStopped = true;
@@ -262,10 +262,44 @@ function setupChatLogic() {
         if (isGenerating) return;
         const content = textarea.value.trim();
         // If content is empty but we have an assistant message at the end of history, we might be 'continuing'
-        // For simplicity, we just send empty message to trigger continue in chat_stream.js
         if (content.length > 0 || window.canContinue) {
             isStopped = false;
-            window.dispatchEvent(new CustomEvent('chat:send', { detail: { message: content } }));
+
+            let responseLengthPayload = null;
+            let thinkModePayload = isThinkModeOn ? "On" : "Off";
+
+            let selectedPredefined = null;
+            ['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].forEach(s => {
+                if (selectedSkills.has(s)) selectedPredefined = s.replace(' ', '_');
+            });
+
+            let overrideTemp = null;
+            if (selectedPredefined === "Think_Deep") overrideTemp = 0.0;
+            if (selectedPredefined === "Think_Lite") overrideTemp = 0.5;
+            if (selectedPredefined === "Long_Answer") overrideTemp = 0.8;
+            if (selectedPredefined === "Short_Answer") overrideTemp = 1.0;
+
+            if (!selectedPredefined && typeof isResponseLengthMapEnabled !== 'undefined' && !isResponseLengthMapEnabled) {
+                const customEnabled = document.getElementById('enable-custom-constraint')?.checked;
+                if (customEnabled) {
+                    const customTemp = document.getElementById('custom-temp-input')?.value;
+                    const customPrompt = document.getElementById('custom-prompt-input')?.value;
+                    if (customTemp && customPrompt) {
+                        responseLengthPayload = {};
+                        responseLengthPayload[customTemp] = customPrompt;
+                        overrideTemp = parseFloat(customTemp);
+                    }
+                }
+            }
+
+            window.dispatchEvent(new CustomEvent('chat:send', {
+                detail: {
+                    message: content,
+                    think_mode: thinkModePayload,
+                    response_length: responseLengthPayload,
+                    temperature: overrideTemp
+                }
+            }));
             textarea.value = '';
             textarea.dispatchEvent(new Event('input'));
         }
@@ -548,12 +582,55 @@ function setupChatLogic() {
             attachBtn.classList.add('text-muted');
         });
     });
+    let isResponseLengthMapEnabled = true;
+
+    async function fetchModelConfig() {
+        try {
+            // First determine if we are using GGUF or ONNX
+            let configEndpoint = '/v1/system/gguf_config';
+            try {
+                const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permissions');
+                if (permRes.ok) {
+                    const permData = await permRes.json();
+                    if (permData.chat_models && permData.chat_models.text) {
+                        const activeModelId = permData.chat_models.text.toLowerCase();
+                        if (activeModelId.endsWith('.onnx') || activeModelId.includes('-onnx')) {
+                            configEndpoint = '/v1/system/onnx_config';
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            const res = await fetch(window.getApiBaseUrl() + configEndpoint);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user_moved_flags && data.user_moved_flags.response_length) {
+                    isResponseLengthMapEnabled = data.user_moved_flags.response_length['type'] !== 'custom';
+                    
+                    const thinkOptionsOn = document.getElementById('think-options-on');
+                    const thinkOptionsOff = document.getElementById('think-options-off');
+                    const customResponseLength = document.getElementById('custom-response-length');
+                    
+                    if (!isResponseLengthMapEnabled) {
+                        if (thinkOptionsOn) thinkOptionsOn.style.display = 'none';
+                        if (thinkOptionsOff) thinkOptionsOff.style.display = 'none';
+                        if (customResponseLength) customResponseLength.style.display = 'flex';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch model config', e);
+        }
+    }
+    fetchModelConfig();
 
     // Think Toggle
     const thinkToggle = document.getElementById('think-toggle');
     const thinkToggleThumb = document.getElementById('think-toggle-thumb');
     const thinkOptionsOn = document.getElementById('think-options-on');
     const thinkOptionsOff = document.getElementById('think-options-off');
+    const customResponseLength = document.getElementById('custom-response-length');
+
     thinkToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         isThinkModeOn = !isThinkModeOn;
@@ -561,14 +638,27 @@ function setupChatLogic() {
             thinkToggle.classList.replace('bg-secondary', 'bg-accent');
             thinkToggle.style.borderColor = 'transparent';
             thinkToggleThumb.style.transform = 'translateY(-50%) translateX(14px)';
-            thinkOptionsOn.style.display = 'flex';
-            thinkOptionsOff.style.display = 'none';
         } else {
             thinkToggle.classList.replace('bg-accent', 'bg-secondary');
             thinkToggle.style.borderColor = 'var(--border-color)';
             thinkToggleThumb.style.transform = 'translateY(-50%) translateX(2px)';
-            thinkOptionsOn.style.display = 'none';
-            thinkOptionsOff.style.display = 'flex';
+        }
+
+        if (!isResponseLengthMapEnabled) {
+            // Custom mode ignores Think Toggle State
+            if (thinkOptionsOn) thinkOptionsOn.style.display = 'none';
+            if (thinkOptionsOff) thinkOptionsOff.style.display = 'none';
+            if (customResponseLength) customResponseLength.style.display = 'flex';
+        } else {
+            // Predefined mode respects Think Toggle State
+            if (customResponseLength) customResponseLength.style.display = 'none';
+            if (isThinkModeOn) {
+                if (thinkOptionsOn) thinkOptionsOn.style.display = 'flex';
+                if (thinkOptionsOff) thinkOptionsOff.style.display = 'none';
+            } else {
+                if (thinkOptionsOn) thinkOptionsOn.style.display = 'none';
+                if (thinkOptionsOff) thinkOptionsOff.style.display = 'flex';
+            }
         }
 
         // clear thinking skills on toggle
@@ -695,7 +785,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                             const newPerm = permData.permission;
                             if (!newPerm.chat_models) newPerm.chat_models = {};
                             newPerm.chat_models.text = model.id;
-                            
+
                             await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
@@ -730,9 +820,9 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
     try {
         const response = await fetch('/api/components/list');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
+
         const data = await response.json();
-        
+
         const categories = [
             { key: 'skill', menuId: 'skills-menu', icon: 'layers', colorClass: 'hover-text-accent' },
             { key: 'plugin', menuId: 'plugins-menu', icon: 'box', colorClass: 'hover-text-blue' },
@@ -743,10 +833,10 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
         for (const cat of categories) {
             const menu = document.getElementById(cat.menuId);
             const allItems = data[cat.key] || [];
-            
+
             if (menu) {
                 menu.innerHTML = ''; // clear dummy data
-                
+
                 const enabledItems = [];
                 for (const itemName of allItems) {
                     try {
@@ -770,7 +860,7 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
                     const btn = document.createElement('button');
                     btn.className = `dropdown-item w-full flex-between text-primary ${cat.colorClass} hover-bg-secondary group skill-btn`;
                     btn.setAttribute('data-skill', itemName);
-                    
+
                     let iconHtml = `<i data-lucide="${cat.icon}" class="w-4 h-4 text-muted"></i>`;
                     let rawSvgStr = null;
                     try {
@@ -800,7 +890,7 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
                             ${formattedName}
                         </div>
                     `;
-                    
+
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation(); // keep menu open or let it close?
                         // If it's a toggle:
@@ -812,7 +902,7 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
                         updateSkillMenuVisuals();
                         renderSkills();
                     });
-                    
+
                     menu.appendChild(btn);
                     if (window.lucide) window.lucide.createIcons();
                 });

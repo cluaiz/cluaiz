@@ -31,8 +31,25 @@ pub struct ExternalChatRequest {
     pub temporary_chat: Option<TemporaryChatMode>,
     #[serde(default)]
     pub session_id: Option<String>,
-    #[serde(default)]
+    // Cluaiz Extension Parameters
+    pub think_mode: Option<String>,
+    pub response_length: Option<serde_json::Value>,
     pub keep_alive: Option<i32>,
+    pub min_p: Option<f32>,
+    pub repetition_penalty: Option<f32>,
+
+    // Standard OpenAI Parameters
+    pub temperature: Option<f32>,
+    pub max_tokens: Option<usize>,
+    pub top_p: Option<f32>,
+    pub top_k: Option<i32>,
+    pub frequency_penalty: Option<f32>,
+    pub presence_penalty: Option<f32>,
+    pub stop: Option<Vec<String>>,
+    pub seed: Option<i64>,
+    pub user: Option<String>,
+    pub response_format: Option<serde_json::Value>,
+    pub logit_bias: Option<std::collections::HashMap<String, f32>>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -181,22 +198,149 @@ pub async fn chat_completions(
         }
     }
 
-    // 🌡️ TEMPERATURE-BASED RESPONSE LENGTH CONSTRAINT
-    let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-    let current_temp_str = format!("{:.1}", gguf_meta.samplers.temp);
-    if let Some(constraint) = gguf_meta.user_moved_flags.response_length.get(&current_temp_str) {
+    // 🌡️ DYNAMIC RESPONSE LENGTH & TEMPERATURE CONSTRAINT
+    let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+    let mut applied_constraint: Option<String> = None;
+    let mut applied_temp: Option<f64> = request.temperature.map(|t| t as f64);
+    
+    let map_val = gguf_meta.user_moved_flags.response_length.to_value();
+
+    if let Some(payload_val) = &request.response_length {
+        if let Some(payload_map) = payload_val.as_object() {
+            // If UI sends a custom map, pick the first one as override
+            if let Some((temp_str, constraint_val)) = payload_map.iter().next() {
+                if let Ok(temp) = temp_str.parse::<f64>() {
+                    applied_temp = Some(temp);
+                    if let Some(c_str) = constraint_val.as_str() {
+                        applied_constraint = Some(c_str.to_string());
+                    }
+                }
+            }
+        } else if let Some(mode_str) = payload_val.as_str() {
+            // If UI sends a predefined mode as string, lookup from config dynamically
+            if let Some(map_obj) = map_val.as_object() {
+                for branch_name in &["think_on", "think_off"] {
+                    if let Some(branch) = map_obj.get(*branch_name).and_then(|v| v.as_object()) {
+                        if let Some(mode_obj) = branch.get(mode_str).and_then(|v| v.as_object()) {
+                            if let Some((temp_str, constraint_val)) = mode_obj.iter().next() {
+                                if let Ok(temp) = temp_str.parse::<f64>() {
+                                    applied_temp = Some(temp);
+                                    if let Some(c_str) = constraint_val.as_str() {
+                                        applied_constraint = Some(c_str.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if applied_constraint.is_none() {
+        let current_temp = applied_temp.unwrap_or(gguf_meta.samplers.temp as f64);
+        let current_temp_str = current_temp.to_string();
+        let current_temp_str_1 = format!("{:.1}", current_temp);
+
+        if let Some(map_obj) = map_val.as_object() {
+            let active_think_mode = request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str());
+            
+            // If Auto, we DO NOT inject any default constraints. The AI handles it automatically.
+            if active_think_mode != "Auto" {
+                if let Some(t) = map_obj.get("type").and_then(|v| v.as_str()) {
+                    if t == "predefined" {
+                        let branch_key = if active_think_mode == "On" { "think_on" } else { "think_off" };
+                        if let Some(branch) = map_obj.get(branch_key).and_then(|v| v.as_object()) {
+                            for (_, temp_obj) in branch {
+                                if let Some(temp_map) = temp_obj.as_object() {
+                                    if let Some(constraint_val) = temp_map.get(&current_temp_str).or_else(|| temp_map.get(&current_temp_str_1)) {
+                                        if let Some(constraint_str) = constraint_val.as_str() {
+                                            applied_constraint = Some(constraint_str.to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if t == "custom" {
+                        if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
+                            if let Some(constraint_str) = constraint_val.as_str() {
+                                applied_constraint = Some(constraint_str.to_string());
+                            }
+                        }
+                    }
+                } else {
+                    if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
+                        if let Some(constraint_str) = constraint_val.as_str() {
+                            applied_constraint = Some(constraint_str.to_string());
+                        }
+                    }
+                }
+            } else {
+                if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
+                    if let Some(constraint_str) = constraint_val.as_str() {
+                        applied_constraint = Some(constraint_str.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Temporarily save the override so the engine picks it up during inference
+    let mut needs_save = false;
+
+    // Apply strict payload overrides (Phase 3)
+    if let Some(t) = request.temperature {
+        gguf_meta.samplers.temp = t as f64;
+        needs_save = true;
+    } else if let Some(temp) = applied_temp {
+        gguf_meta.samplers.temp = temp;
+        needs_save = true;
+    }
+
+    if let Some(p) = request.top_p {
+        gguf_meta.samplers.top_p = p as f64;
+        needs_save = true;
+    }
+    if let Some(k) = request.top_k {
+        gguf_meta.samplers.top_k = k as usize;
+        needs_save = true;
+    }
+    if let Some(mp) = request.min_p {
+        gguf_meta.samplers.min_p = mp as f64;
+        needs_save = true;
+    }
+    if let Some(pp) = request.presence_penalty {
+        gguf_meta.samplers.presence_penalty = pp as f64;
+        needs_save = true;
+    }
+    if let Some(rp) = request.repetition_penalty {
+        gguf_meta.samplers.repeat_penalty = rp as f64;
+        needs_save = true;
+    }
+
+    if let Some(think_mode) = &request.think_mode {
+        gguf_meta.user_moved_flags.think_mode = think_mode.clone();
+        needs_save = true;
+    }
+    
+    if needs_save {
+        let _ = gguf_meta.save();
+    }
+
+    if let Some(constraint) = applied_constraint {
         if !constraint.is_empty() {
-            tracing::info!("🌡️ [Prompt] Injecting temperature ({}) constraint.", current_temp_str);
+            tracing::info!("🌡️ [Prompt] Injecting response constraint.");
             if let Some(sys_msg) = augmented_messages.iter_mut().find(|m| m.role.to_lowercase() == "system") {
                 sys_msg.content = format!("{}\n\n{}", sys_msg.content, constraint);
             } else {
                 augmented_messages.insert(0, ExternalMessage {
                     role: "system".to_string(),
-                    content: constraint.clone(),
+                    content: constraint,
                 });
             }
         }
     }
+
     // Serialize the entire message array to JSON to preserve full chat history
     let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| last_message.clone());
 
@@ -204,6 +348,7 @@ pub async fn chat_completions(
     let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain).await;
 
     if request.stream {
+
         match dispatch_result {
             EngineResponse::TokenStream(initial_rx) => {
                 let state_clone = state.clone();

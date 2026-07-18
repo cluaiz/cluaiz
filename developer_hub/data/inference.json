@@ -7,12 +7,70 @@
       "desc": "OpenAI-compatible chat completions endpoint. Fully supports streaming and JSON mode.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_completions.md",
       "params": [
-        { "name": "messages", "type": "array", "req": true, "desc": "Array of message objects (role, content).", "default": [{"role": "user", "content": "Hello, how are you?"}] },
-        { "name": "stream", "type": "boolean", "req": false, "desc": "Whether to stream tokens via SSE.", "default": true },
-        { "name": "temperature", "type": "float", "req": false, "desc": "Creativity threshold.", "default": 0.7 },
-        { "name": "model", "type": "string", "req": false, "desc": "Model ID to use.", "default": "bonsai:8b" }
+        {
+          "name": "messages",
+          "type": "array",
+          "req": true,
+          "desc": "Array of message objects (role, content).",
+          "default": [
+            {
+              "role": "user",
+              "content": "Hello, how are you?"
+            }
+          ]
+        },
+        {
+          "name": "stream",
+          "type": "boolean",
+          "req": false,
+          "desc": "Whether to stream tokens via SSE.",
+          "default": true
+        },
+        {
+          "name": "think_mode",
+          "type": "string",
+          "req": false,
+          "desc": "Enable or disable think mode (On/Off).",
+          "default": "On"
+        },
+        {
+          "name": "response_length",
+          "type": "object",
+          "req": false,
+          "desc": "Configuration object for response length.",
+          "default": {
+            "think_on": {
+              "Think_Lite": [
+                "Think_Deep",
+                "Think_Lite",
+                "Auto"
+              ]
+            },
+            "think_off": {
+              "Long_Answer": [
+                "Long_Answer",
+                "Short_Answer",
+                "Auto"
+              ]
+            }
+          }
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "Model ID to use.",
+          "default": "bonsai:8b"
+        },
+        { "name": "temperature", "type": "number", "req": false, "desc": "Sampling temperature (0.0 to 2.0). Overrides the response_length mapping.", "default": null },
+        { "name": "top_p", "type": "number", "req": false, "desc": "Nucleus sampling probability.", "default": null },
+        { "name": "top_k", "type": "integer", "req": false, "desc": "Top-K sampling limit.", "default": null },
+        { "name": "min_p", "type": "number", "req": false, "desc": "Minimum P sampling limit.", "default": null },
+        { "name": "repetition_penalty", "type": "number", "req": false, "desc": "Penalty for token repetition.", "default": null },
+        { "name": "max_tokens", "type": "integer", "req": false, "desc": "Maximum number of tokens to generate.", "default": null },
+        { "name": "keep_alive", "type": "integer", "req": false, "desc": "How long (in seconds) to keep the model loaded in VRAM after request.", "default": null }
       ],
-      "request_payload": "{\n  \"model\": \"llama-3-8b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Explain quantum computing in one sentence.\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"stream\": false,\n  \"max_tokens\": 1024\n}",
+      "request_payload": "{\n  \"model\": \"llama-3-8b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Explain quantum computing in one sentence.\"\n    }\n  ],\n  \"think_mode\": \"On\",\n  \"response_length\": \"Think_Lite\",\n  \"stream\": false\n}",
       "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"llama-3-8b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
       "examples": [
         {
@@ -38,7 +96,18 @@
       "desc": "Legacy internal endpoint for direct model chatting.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_legacy.md",
       "params": [
-        { "name": "messages", "type": "array", "req": true, "desc": "Array of message objects.", "default": [{"role": "user", "content": "Hello"}] }
+        {
+          "name": "messages",
+          "type": "array",
+          "req": true,
+          "desc": "Array of message objects.",
+          "default": [
+            {
+              "role": "user",
+              "content": "Hello"
+            }
+          ]
+        }
       ],
       "request_payload": "{\n  \"messages\": [\n    {\"role\": \"user\", \"content\": \"Hello\"}\n  ]\n}",
       "response": "{\n  \"response\": \"Hi there! How can I help you today?\"\n}",
@@ -71,7 +140,13 @@
       "desc": "Simple SSE streaming endpoint. Yields tokens in real-time as they are generated by the neural engine.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_stream.md",
       "params": [
-        { "name": "message", "type": "string", "req": true, "desc": "The input prompt.", "default": "Hello" }
+        {
+          "name": "message",
+          "type": "string",
+          "req": true,
+          "desc": "The input prompt.",
+          "default": "Hello"
+        }
       ],
       "request_payload": "{\n  \"message\": \"Write a haiku about rust.\"\n}",
       "response": "data: {\"token\": \"Fast\"}\n\ndata: {\"token\": \" and\"}\n\ndata: {\"token\": \" safe\"}\n\ndata: {\"token\": \" code\"}\n\ndata: [DONE]\n",
@@ -104,7 +179,13 @@
       "desc": "Executes raw CEL (cluaiz Execution Language) scripts natively. Used for dynamic agentic logic.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/cel_execute.md",
       "params": [
-        { "name": "script", "type": "string", "req": true, "desc": "The raw CEL script payload.", "default": "agent = Agent::new(\"researcher\");\nagent.run();" }
+        {
+          "name": "script",
+          "type": "string",
+          "req": true,
+          "desc": "The raw CEL script payload.",
+          "default": "agent = Agent::new(\"researcher\");\nagent.run();"
+        }
       ],
       "request_payload": "{\n  \"script\": \"let data = fetch('https://api.example.com/data');\\nreturn process(data);\",\n  \"context\": {\n    \"timeout_ms\": 5000\n  }\n}",
       "response": "{\n  \"success\": true,\n  \"result\": {\n    \"processed_items\": 42,\n    \"status\": \"completed\"\n  },\n  \"execution_time_ms\": 124,\n  \"error\": null\n}",
@@ -137,7 +218,16 @@
       "desc": "Dynamic ecosystem execution. Directly calls an exposed FFI function inside a component (e.g. extension, plugin).",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/execute_dynamic.md",
       "params": [
-        { "name": "args", "type": "array", "req": true, "desc": "Array of arguments to pass to the function.", "default": ["arg1", 100] }
+        {
+          "name": "args",
+          "type": "array",
+          "req": true,
+          "desc": "Array of arguments to pass to the function.",
+          "default": [
+            "arg1",
+            100
+          ]
+        }
       ],
       "request_payload": "{\n  \"args\": [\n    \"search_query\",\n    {\"limit\": 10}\n  ]\n}",
       "response": "{\n  \"status\": \"success\",\n  \"result\": {\n    \"items\": [\"Result 1\", \"Result 2\"]\n  },\n  \"execution_time_ms\": 45\n}",
@@ -170,8 +260,20 @@
       "desc": "Directly chunks, embeds, and ingests a file into the local vector namespace (LMDB).",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/ingest_file.md",
       "params": [
-        { "name": "file_path", "type": "string", "req": true, "desc": "Absolute path to the file.", "default": "/absolute/path/to/document.pdf" },
-        { "name": "namespace", "type": "string", "req": true, "desc": "Vector database namespace.", "default": "research_docs" }
+        {
+          "name": "file_path",
+          "type": "string",
+          "req": true,
+          "desc": "Absolute path to the file.",
+          "default": "/absolute/path/to/document.pdf"
+        },
+        {
+          "name": "namespace",
+          "type": "string",
+          "req": true,
+          "desc": "Vector database namespace.",
+          "default": "research_docs"
+        }
       ],
       "request_payload": "{\n  \"file_path\": \"/workspace/docs/architecture.pdf\",\n  \"namespace\": \"engineering_docs\",\n  \"chunk_size\": 512,\n  \"overlap\": 50\n}",
       "response": "{\n  \"status\": \"success\",\n  \"message\": \"File successfully embedded and stored.\",\n  \"stats\": {\n    \"chunks_created\": 124,\n    \"tokens_processed\": 45032,\n    \"vectors_inserted\": 124\n  },\n  \"namespace\": \"engineering_docs\"\n}",

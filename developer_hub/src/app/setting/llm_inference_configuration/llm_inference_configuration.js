@@ -221,29 +221,55 @@ export async function mount(container) {
         if (!targetObj[key]) targetObj[key] = {};
         let mapObj = targetObj[key];
 
+        // Silent cleanup for legacy architecture keys
+        let needsCleanupSave = false;
+        ['_mode_enabled'].forEach(k => {
+            if (mapObj[k] !== undefined) {
+                delete mapObj[k];
+                needsCleanupSave = true;
+            }
+        });
+        Object.keys(targetObj[key]).forEach(k => {
+            if (k.startsWith('_meta_')) {
+                delete targetObj[key][k];
+            }
+        });
+        if (!targetObj[key]) targetObj[key] = {};
+        mapObj = targetObj[key];
+
+        let isModeEnabled = mapObj.type !== 'custom';
+
         const renderMap = () => {
             dropContainer.innerHTML = '';
             
-            const isModeEnabled = mapObj['_mode_enabled'] === 'true';
-
             if (isModeEnabled) {
                 toggleSwitch.classList.add('active');
+                mapObj.type = 'predefined';
                 
-                // Predefined Mode UI
+                if (!mapObj.think_on) mapObj.think_on = { 
+                    "Think_Deep": { "0.0": "System Constraint Prompt" }, 
+                    "Think_Lite": { "0.5": "[SYSTEM CONSTRAINT: Provide a balanced and informative response.]" } 
+                };
+                if (!mapObj.think_off) mapObj.think_off = { 
+                    "Long_Answer": { "0.8": "[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]" }, 
+                    "Short_Answer": { "1.0": "[SYSTEM CONSTRAINT: Provide a concise and direct response.]" } 
+                };
+
+                // Clean up any stray keys that shouldn't be here
+                Object.keys(mapObj).forEach(k => {
+                    if (k !== 'type' && k !== 'think_on' && k !== 'think_off') delete mapObj[k];
+                });
+
                 const currentThinkMode = (configObj.user_moved_flags && configObj.user_moved_flags.think_mode) || 'Auto';
 
                 let modes = [];
-                if (currentThinkMode === 'On') {
-                    modes = [ { id: 'think_deep', title: 'Think Deep', defTemp: '0.0' }, { id: 'think_lite', title: 'Think Lite', defTemp: '0.5' } ];
-                } else if (currentThinkMode === 'Off') {
-                    modes = [ { id: 'long_answer', title: 'Long Answer', defTemp: '0.8' }, { id: 'short_answer', title: 'Short Answer', defTemp: '1.0' } ];
-                } else { 
-                    modes = [
-                        { id: 'think_deep', title: 'Think Deep', defTemp: '0.0' }, 
-                        { id: 'think_lite', title: 'Think Lite', defTemp: '0.5' },
-                        { id: 'long_answer', title: 'Long Answer', defTemp: '0.8' }, 
-                        { id: 'short_answer', title: 'Short Answer', defTemp: '1.0' }
-                    ];
+                if (currentThinkMode === 'On' || currentThinkMode === 'Auto') {
+                    if(mapObj.think_on['Think_Deep']) modes.push({ id: '0.0', title: 'Think Deep', map: mapObj.think_on['Think_Deep'] });
+                    if(mapObj.think_on['Think_Lite']) modes.push({ id: '0.5', title: 'Think Lite', map: mapObj.think_on['Think_Lite'] });
+                } 
+                if (currentThinkMode === 'Off' || currentThinkMode === 'Auto') {
+                    if(mapObj.think_off['Long_Answer']) modes.push({ id: '0.8', title: 'Long Answer', map: mapObj.think_off['Long_Answer'] });
+                    if(mapObj.think_off['Short_Answer']) modes.push({ id: '1.0', title: 'Short Answer', map: mapObj.think_off['Short_Answer'] });
                 }
 
                 modes.forEach(mode => {
@@ -254,44 +280,24 @@ export async function mount(container) {
                     titleSpan.textContent = mode.title;
                     titleSpan.style.cssText = 'width: 120px; font-size: 0.85rem; font-weight: 600; color: var(--accent-color, #3b82f6);';
 
-                    const metaKey = '_meta_' + mode.id + '_temp';
-                    if (!mapObj[metaKey]) mapObj[metaKey] = mode.defTemp;
-                    const currentTemp = mapObj[metaKey];
-                    
+                    const actualTemp = Object.keys(mode.map)[0] || mode.id;
+                    const actualPrompt = mode.map[actualTemp] || '';
+
                     const tempInput = document.createElement('input');
                     tempInput.type = 'text';
-                    tempInput.placeholder = 'Temp';
-                    tempInput.value = currentTemp;
-                    tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center;';
+                    tempInput.value = actualTemp;
+                    tempInput.readOnly = true; 
+                    tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.1)); border: 1px solid var(--border, rgba(255,255,255,0.05)); color: var(--text-secondary, #aaa); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center; cursor: not-allowed;';
 
                     const promptInput = document.createElement('input');
                     promptInput.type = 'text';
                     promptInput.placeholder = 'System Constraint Prompt';
-                    promptInput.value = (currentTemp && mapObj[currentTemp] && !currentTemp.startsWith('_meta')) ? mapObj[currentTemp] : '';
+                    promptInput.value = actualPrompt;
                     promptInput.style.cssText = 'flex: 1; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem;';
 
-                    const updateMode = async () => {
-                        const oldTemp = mapObj[metaKey];
-                        const newTemp = tempInput.value.trim();
-                        
-                        if (oldTemp && oldTemp !== newTemp && !oldTemp.startsWith('_meta')) {
-                            delete mapObj[oldTemp];
-                        }
-                        
-                        mapObj[metaKey] = newTemp;
-                        if (newTemp !== '') {
-                            mapObj[newTemp] = promptInput.value;
-                        }
-                        await onSave();
-                    };
-
-                    tempInput.onchange = updateMode;
                     promptInput.onchange = async () => {
-                        const temp = tempInput.value.trim();
-                        if (temp !== '') {
-                            mapObj[temp] = promptInput.value;
-                            await onSave();
-                        }
+                        mode.map[actualTemp] = promptInput.value;
+                        await onSave();
                     };
 
                     row.appendChild(titleSpan);
@@ -301,25 +307,77 @@ export async function mount(container) {
                 });
             } else {
                 toggleSwitch.classList.remove('active');
+                mapObj.type = 'custom';
+                delete mapObj.think_on;
+                delete mapObj.think_off;
+                
+                // Get the first custom key (ignoring 'type')
+                let customKey = '';
+                let customVal = '';
+                const keys = Object.keys(mapObj).filter(k => k !== 'type');
+                if (keys.length > 0) {
+                    customKey = keys[0];
+                    customVal = mapObj[customKey];
+                    // Clean up extra keys
+                    for (let i = 1; i < keys.length; i++) delete mapObj[keys[i]];
+                } else {
+                    customKey = '0.8';
+                    customVal = '[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]';
+                    mapObj[customKey] = customVal;
+                    onSave(); // Ensure it gets saved if it was empty
+                }
+
+                const row = document.createElement('div');
+                row.style.cssText = 'display: flex; gap: 10px; align-items: center; margin-bottom: 12px;';
+
+                const tempInput = document.createElement('input');
+                tempInput.type = 'text';
+                tempInput.placeholder = 'Temp (e.g. 0.5)';
+                tempInput.value = customKey;
+                tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center;';
+
+                const promptInput = document.createElement('input');
+                promptInput.type = 'text';
+                promptInput.placeholder = 'System Constraint Prompt';
+                promptInput.value = customVal;
+                promptInput.style.cssText = 'flex: 1; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem;';
+
+                const updateEntry = async () => {
+                    const newTemp = tempInput.value.trim();
+                    const newPrompt = promptInput.value;
+                    
+                    Object.keys(mapObj).forEach(k => { if (k !== 'type') delete mapObj[k]; });
+                    if (newTemp !== '') mapObj[newTemp] = newPrompt;
+                    await onSave();
+                };
+
+                tempInput.onchange = updateEntry;
+                promptInput.onchange = updateEntry;
+
+                row.appendChild(tempInput);
+                row.appendChild(promptInput);
+                dropContainer.appendChild(row);
             }
         };
 
         toggleSwitch.addEventListener('click', async () => {
-            const isActive = !toggleSwitch.classList.contains('active');
-            if (isActive) {
-                mapObj['_mode_enabled'] = 'true';
-                if (!mapObj['_meta_think_deep_temp']) mapObj['_meta_think_deep_temp'] = '0.0';
-                if (!mapObj['_meta_think_lite_temp']) mapObj['_meta_think_lite_temp'] = '0.5';
-                if (!mapObj['_meta_long_answer_temp']) mapObj['_meta_long_answer_temp'] = '0.8';
-                if (!mapObj['_meta_short_answer_temp']) mapObj['_meta_short_answer_temp'] = '1.0';
+            isModeEnabled = !isModeEnabled;
+            if (isModeEnabled) {
+                mapObj.type = 'predefined';
+                Object.keys(mapObj).forEach(k => { if (k !== 'type' && k !== 'think_on' && k !== 'think_off') delete mapObj[k]; });
             } else {
-                delete mapObj['_mode_enabled'];
+                mapObj.type = 'custom';
+                delete mapObj.think_on;
+                delete mapObj.think_off;
             }
-            await onSave();
             renderMap();
+            await onSave();
         });
 
         renderMap();
+        if (needsCleanupSave) {
+            onSave();
+        }
 
         document.addEventListener('ggufConfigChanged', (e) => {
             if (e.detail.key === 'think_mode') {

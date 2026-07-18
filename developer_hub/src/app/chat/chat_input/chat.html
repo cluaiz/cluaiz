@@ -183,6 +183,17 @@
                                                     </div>
                                                 </button>
                                             </div>
+                                            <div class="flex-col gap-1-5" id="custom-response-length" style="display: none; padding: 0 4px;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                                                    <span style="font-size: 0.75rem; color: #9ca3af;">Custom Length Map</span>
+                                                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                                        <input type="checkbox" id="enable-custom-constraint" style="cursor: pointer; width: 12px; height: 12px;">
+                                                        <span style="font-size: 0.7rem; color: #9ca3af;">Enable</span>
+                                                    </label>
+                                                </div>
+                                                <input type="number" id="custom-temp-input" placeholder="Temp (e.g. 0.7)" step="0.1" min="0" max="2" style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; outline: none; width: 100%;">
+                                                <textarea id="custom-prompt-input" placeholder="System Constraint..." style="background: var(--bg-secondary); border: 1px solid var(--border-color); color: #fff; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; outline: none; width: 100%; min-height: 40px; resize: none; margin-top: 4px;"></textarea>
+                                            </div>
                                         </div>
                                     </div>
 
