@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+pub mod config_manager;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnvironmentMode {
     Development,
@@ -148,7 +150,7 @@ impl EnvironmentManager {
         // GAP C FIX: Legacy Config Migration Block
         let engine_dir = self.engine_dir();
         let legacy_files = vec![
-            "Permission.json", "Permission.bin", 
+            "permission.json", "permission.bin", 
             "system_control.json", "system_control.bin",
             "package.json", "package.bin"
         ];

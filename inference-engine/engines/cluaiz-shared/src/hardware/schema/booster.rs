@@ -160,19 +160,10 @@ pub struct BoosterControl {
     pub kv_cache_quantization: KvCacheQuantization,
     pub context_shifting: ContextShiftingMode,
     pub force_vram_reclaim: FeatureState, // 🏠 'Landlord' Mode Flag
-    #[serde(default = "default_n_gpu_layers")]
-    pub n_gpu_layers: i32,
-    #[serde(default)]
-    pub think_mode: FeatureState,
-    pub response_length: String, // "auto", "short", "long"
     #[serde(default)]
     pub enforce_json: bool, // Strict Grammar Masking trigger
     #[serde(default)]
     pub force_memory_lock: FeatureState, // OS VirtualLock / mlock
-}
-
-fn default_n_gpu_layers() -> i32 {
-    -1
 }
 
 impl BoosterControl {
@@ -229,9 +220,6 @@ impl Default for BoosterControl {
             kv_cache_quantization: KvCacheQuantization::Auto,
             context_shifting: ContextShiftingMode::Auto,
             force_vram_reclaim: FeatureState::Off,
-            n_gpu_layers: -1,
-            think_mode: FeatureState::Auto,
-            response_length: "auto".to_string(),
             enforce_json: false,
             force_memory_lock: FeatureState::Off,
         }
@@ -281,9 +269,12 @@ impl From<&BoosterControl> for cluaizBoosterContext {
             speculative_decoding_mode: spec_mode,
             kv_cache_quantization_mode: kv_mode,
             context_shifting_mode: shift_mode,
-            n_gpu_layers: config.n_gpu_layers,
+            n_gpu_layers: -1, // Sourced from GGUF metadata headers instead
             force_memory_lock: config.force_memory_lock == FeatureState::On,
             max_context_length: 0,
         }
     }
 }
+
+// Generate the fast zero-copy load/save functions using the macro!
+crate::define_config!(BoosterControl, "llm_optimization");

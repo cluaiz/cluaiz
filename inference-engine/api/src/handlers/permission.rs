@@ -38,6 +38,6 @@ pub async fn update_permission(
     payload.save();
     Json(json!({
         "status": "success",
-        "message": "Permission.json successfully updated."
+        "message": "permission.json successfully updated."
     }))
 }

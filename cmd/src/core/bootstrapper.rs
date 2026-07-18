@@ -15,7 +15,7 @@ impl Bootstrapper {
         let _ = Self::sync_dev_artifacts("all", None, local_dir, profile);
         Self::ensure_global_path();
         
-        // 🚀 0. Neural Foundry Genesis (Create Permission.json and Trigger Compiler Daemons)
+        // 🚀 0. Neural Foundry Genesis (Create permission.json and Trigger Compiler Daemons)
         tracing::info!("🧠 [cluaiz] Igniting Neural Foundry (Permissions & Skills)...");
         let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         permissions.auto_assign_defaults();

@@ -11,7 +11,7 @@ fn resolve_active_model_path() -> Option<PathBuf> {
     let local_hub = env.local_dir.clone();
     let global_hub = env.global_dir.clone();
     
-    let perm_path = local_hub.join("engine").join("config").join("Permission.json");
+    let perm_path = local_hub.join("engine").join("config").join("permission.json");
     let perm_str = std::fs::read_to_string(&perm_path).ok()?;
     let perm_json: serde_json::Value = serde_json::from_str(&perm_str).ok()?;
     let active_id = perm_json
@@ -114,12 +114,12 @@ impl NeuralDispatcher {
                         None => {
                             tracing::error!(
                                 "❌ [Dispatcher] No active model configured. \
-                                 Check ~/.cluaiz/engine/config/Permission.json \
+                                 Check ~/.cluaiz/engine/config/permission.json \
                                  and verify the model directory exists under ~/.cluaiz/models/chat/."
                             );
                             let _ = tx.send(
                                 "Error: No active model is configured. \
-                                 Please set a model in Permission.json or via the /models/load API."
+                                 Please set a model in permission.json or via the /models/load API."
                                     .to_string(),
                             ).await;
                             let _ = tx.send("\n[DONE]\n".to_string()).await;

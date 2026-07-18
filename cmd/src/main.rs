@@ -115,8 +115,8 @@ enum CliCommand {
     /// Start the background API Daemon (Server mode).
     Serve,
 
-    /// View or configure the system performance booster settings.
-    Booster {
+    /// View or configure the LLM optimization settings.
+    LlmOptimization {
         /// Set KV-Cache Quantization level (auto, kv16, kv8, kv4)
         #[arg(long)]
         kv_quant: Option<String>,
@@ -463,9 +463,9 @@ async fn main() -> Result<()> {
             println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), port);
             cluaiz_api::run_daemon().await; 
         }
-        Some(CliCommand::Booster { kv_quant, context_shift, mode, spec_decode }) => {
-            if let Err(e) = crate::cli::booster::execute(kv_quant, context_shift, mode, spec_decode).await {
-                eprintln!("\n  {} [Cluaiz] Booster Config Error: {}\n", "❌".red(), e);
+        Some(CliCommand::LlmOptimization { kv_quant, context_shift, mode, spec_decode }) => {
+            if let Err(e) = crate::cli::llm_optimization::execute(kv_quant, context_shift, mode, spec_decode).await {
+                eprintln!("\n  {} [Cluaiz] LLM Optimization Config Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }
@@ -661,7 +661,7 @@ async fn main() -> Result<()> {
                             }
                             _ => {}
                         }
-                        if changed { schema.save(); println!("  {} Permission.json updated.", "✅".green()); }
+                        if changed { schema.save(); println!("  {} permission.json updated.", "✅".green()); }
                     } else {
                         break;
                     }

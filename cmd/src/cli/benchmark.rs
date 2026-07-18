@@ -406,13 +406,13 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
             );
 
             // Reconfigure booster
-            let mut booster = HardwareGovernor::load_booster_settings().unwrap_or_default();
-            booster.think_mode = if think_mode {
-                FeatureState::On
+            let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+            gguf_meta.user_moved_flags.think_mode = if think_mode {
+                "On".to_string()
             } else {
-                FeatureState::Off
+                "Off".to_string()
             };
-            let _ = HardwareGovernor::save_booster_settings(&booster);
+            let _ = gguf_meta.save();
 
             let mut highest_tps = 0.0;
             let mut best_run_output = String::new();

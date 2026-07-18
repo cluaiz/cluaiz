@@ -56,7 +56,7 @@ struct MinimalPermissionSchema {
 }
 
 fn get_active_embedding_model() -> Option<String> {
-    let permission_path = crate::environment::EnvironmentManager::current().config_dir().join("Permission.json");
+    let permission_path = crate::environment::EnvironmentManager::current().config_dir().join("permission.json");
     if permission_path.exists() {
         if let Ok(content) = fs::read_to_string(permission_path) {
             if let Ok(schema) = serde_json::from_str::<MinimalPermissionSchema>(&content) {

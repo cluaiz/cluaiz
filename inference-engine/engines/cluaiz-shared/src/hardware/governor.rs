@@ -171,7 +171,7 @@ impl HardwareGovernor {
     ) -> usize {
         let mut arbiter = ARBITER.lock().unwrap();
 
-        let path = Self::resolve_engine_path().join("config").join("system_booster.json");
+        let path = Self::resolve_engine_path().join("config").join("llm_optimization.json");
 
         // 🔍 LIVE SILICON PROBE: We don't trust cached values for safety-critical negotiation.
         if let Ok(control) = Self::load_system_control() {
@@ -282,7 +282,8 @@ impl HardwareGovernor {
         let arch_cap = dna.max_context_length.unwrap_or(usize::MAX);
 
         // If CPU-only Mode (n_gpu_layers = 0), calculate context based on System RAM instead of VRAM
-        if booster.n_gpu_layers == 0 {
+        let gguf_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        if gguf_meta.hardware_and_execution.n_gpu_layers == 0 {
             let mut system_ram_gb = 0.0;
             let mut sys = sysinfo::System::new();
             sys.refresh_memory();
@@ -599,70 +600,11 @@ impl HardwareGovernor {
     // ─── 🚀 BOOSTER CONTROL (USER SETTINGS) ───
 
     pub fn load_booster_settings() -> anyhow::Result<BoosterControl> {
-        let base = Self::resolve_engine_path().join("config");
-        let bin_path = base.join("system_booster.bin");
-        let json_path = base.join("system_booster.json");
-
-        // 🚀 Priority 1: Binary Truth (Panic-Safe Rkyv)
-        if bin_path.exists() {
-            if let Ok(bytes_raw) = std::fs::read(&bin_path) {
-                let mut bytes = rkyv::AlignedVec::with_capacity(bytes_raw.len());
-                bytes.extend_from_slice(&bytes_raw);
-                {
-                    let result = std::panic::catch_unwind(|| {
-                        if bytes.len() < 32 {
-                            return None;
-                        }
-                        let archived = unsafe { rkyv::archived_root::<BoosterControl>(&bytes) };
-                        archived.deserialize(&mut rkyv::Infallible).ok()
-                    });
-
-                    if let Ok(Some(control)) = result {
-                        return Ok(control);
-                    }
-                }
-                // If panic or error, wipe it
-                let _ = std::fs::remove_file(&bin_path);
-            }
-        }
-
-        // 🛡️ Priority 2: JSON Fallback (User Editable Truth)
-        if json_path.exists() {
-            if let Ok(data) = std::fs::read_to_string(&json_path) {
-                match serde_json::from_str::<BoosterControl>(&data) {
-                    Ok(control) => {
-                        // Always sync to binary truth to keep .bin updated in real-time when loaded
-                        let _ = Self::save_booster_settings(&control);
-                        return Ok(control);
-                    }
-                    Err(e) => {
-                        eprintln!("❌ [Arbiter] Failed to parse system_booster.json: {}. Using default.", e);
-                    }
-                }
-            }
-        }
-
-        Ok(BoosterControl::default())
+        Ok(BoosterControl::load())
     }
 
-    pub fn save_booster_settings(control: &BoosterControl) -> anyhow::Result<()> {
-        let base = Self::resolve_engine_path().join("config");
-        std::fs::create_dir_all(&base)?;
-
-        let json_path = base.join("system_booster.json");
-        let bin_path = base.join("system_booster.bin");
-
-        // 🔓 Sovereign Freedom: Removed Read-Only locking to allow real-time manual edits.
-
-        // ✍️ Write Booster Settings
-        let json_data = serde_json::to_string_pretty(control)?;
-        std::fs::write(&json_path, json_data)?;
-
-        let bytes = rkyv::to_bytes::<_, 1024>(control)
-            .map_err(|e| anyhow::anyhow!("Binary Serialization Failed: {}", e))?;
-        std::fs::write(&bin_path, bytes.as_slice())?;
-
-        Ok(())
+    pub fn save_booster_settings(config: &BoosterControl) -> anyhow::Result<()> {
+        config.save()
     }
 
     /// 🔒 Applies OS-level protection to a file to prevent manual deletion or tampering.

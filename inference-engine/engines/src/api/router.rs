@@ -583,7 +583,7 @@ impl CoreRouter {
                         
                         cluaiz_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
                         let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                        booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
+                        // n_gpu_layers is controlled via GgufMetadataHeaders
                         
                         if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
                             &path_clone.to_string_lossy(),
@@ -1150,7 +1150,7 @@ pub fn agentic_pause_compile_cache(
                 
                 cluaiz_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
                 let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                booster.n_gpu_layers = 0; // Force CPU-only to avoid CUDA device context collisions
+                // n_gpu_layers is now controlled via GgufMetadataHeaders
                 
                 if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
                     &path_clone.to_string_lossy(),

@@ -66,6 +66,7 @@ pub fn stream_tokens(
         }
 
         let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
 
         let templater = cluaiz_shared::prompting::templater::TemplateManager::default();
         let mut formatted_prompt = if is_pivot {
@@ -82,7 +83,7 @@ pub fn stream_tokens(
             }
         };
 
-        let mut suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+        let mut suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
             suppress_thinking = true;
@@ -563,7 +564,8 @@ pub fn stream_tokens(
                 }
 
                 // 🧠 EOS Bias for "short" mode (runs every token — affects output length)
-                if booster.response_length == "short" && n_gen > 30 {
+                let is_short = gguf_meta.user_moved_flags.response_length.values().any(|v| v == "short");
+                if is_short && n_gen > 30 {
                     let eos_id = llama_cpp::llama_vocab_eos(vocab);
                     if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
                         let logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);

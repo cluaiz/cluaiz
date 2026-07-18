@@ -83,7 +83,7 @@ const DESCRIPTIONS = {
         'Off': 'Standard routing.'
     },
     outputStyle: {
-        'separated': 'The reasoning process is parsed and cleanly separated from the final answer.',
+        'separated': 'The reasoning process is parsed  and cleanly separated from the final answer.',
         'raw': 'The raw thinking stream including <think> tags is provided directly.'
     }
 };
@@ -131,7 +131,7 @@ export async function mount(container) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(boosterConfig)
             });
-        } catch(e) {
+        } catch (e) {
             console.error("Failed to update booster setting:", e);
         }
     };
@@ -144,7 +144,7 @@ export async function mount(container) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(permData)
             });
-        } catch(e) {
+        } catch (e) {
             console.error("Failed to update permission setting:", e);
         }
     };
@@ -163,14 +163,14 @@ export async function mount(container) {
 
             if (isActive) toggle.classList.add('active');
             else toggle.classList.remove('active');
-            
+
             desc.textContent = mapping[isActive];
 
             toggle.addEventListener('click', async () => {
                 toggle.classList.toggle('active');
                 const newState = toggle.classList.contains('active');
                 desc.textContent = mapping[newState];
-                
+
                 if (isSystemState) {
                     await updatePermissionSetting(key, newState);
                 } else {
@@ -195,7 +195,7 @@ export async function mount(container) {
             let initialValue = configVal !== undefined ? String(configVal) : defaultValue;
             if (configVal === true) initialValue = 'On';
             if (configVal === false) initialValue = 'Off';
-            
+
             desc.textContent = mapping[initialValue] || mapping['Auto'] || '';
 
             const dropdown = new Dropdown({
@@ -208,7 +208,7 @@ export async function mount(container) {
                     if (val === 'Off') finalVal = 'Off';
                     if (val === 'Auto') finalVal = 'Auto';
                     if (key === 'n_gpu_layers') finalVal = parseInt(val, 10);
-                    
+
                     await updateBoosterSetting(key, finalVal);
                     if (onValueChange) onValueChange(finalVal);
                 }
@@ -227,9 +227,9 @@ export async function mount(container) {
 
     // Booster Settings
     setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Auto');
-    setupCustomDropdown('container-booster-profile', 'desc-booster-profile', DESCRIPTIONS.boosterProfile, 
-        makeOptions(['edge', 'multitasking', 'balance', 'max_boost', 'ultra_max_boost', 'hyper_cluster'], 
-                    ['Edge (Low Power)', 'Multitasking', 'Balanced', 'Max Boost', 'Ultra Max Boost', 'Hyper Cluster']), 
+    setupCustomDropdown('container-booster-profile', 'desc-booster-profile', DESCRIPTIONS.boosterProfile,
+        makeOptions(['edge', 'multitasking', 'balance', 'max_boost', 'ultra_max_boost', 'hyper_cluster'],
+            ['Edge (Low Power)', 'Multitasking', 'Balanced', 'Max Boost', 'Ultra Max Boost', 'Hyper Cluster']),
         'mode_run', 'balance');
     setupCustomDropdown('container-flash-attn', 'desc-flash-attn', DESCRIPTIONS.flashAttn, autoOnOff, 'flash_attention', 'Auto');
     setupCustomDropdown('container-context', 'desc-context', DESCRIPTIONS.context, makeOptions(['Auto', 'Off', 'Minimal', 'Standard', 'Aggressive', 'Extreme']), 'context_shifting', 'Auto');
@@ -237,13 +237,13 @@ export async function mount(container) {
     setupCustomDropdown('container-turbo', 'desc-turbo', DESCRIPTIONS.turbo, autoOnOff, 'turbo_quant', 'Auto');
     setupCustomDropdown('container-spec-dec', 'desc-spec-dec', DESCRIPTIONS.specDec, autoOnOff, 'speculative_decoding', 'Auto');
     setupCustomDropdown('container-auto-round', 'desc-auto-round', DESCRIPTIONS.autoRound, autoOnOff, 'auto_round', 'Auto');
-    
+
     // dflash is an object in rust, let's treat it as string Auto/On/Off if the API accepts it, or just ignore for now if it breaks.
     // Assuming UI maps to 'Auto' 'On' 'Off' properly, we will just pass it to the backend.
     // Wait, DFlashConfig is SmartState<DFlashConfig>. The UI sets it as string 'Auto', 'On', 'Off'. 
     setupCustomDropdown('container-dflash', 'desc-dflash', DESCRIPTIONS.dflash, autoOnOff, 'dflash', 'Auto');
     setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
-    setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers, 
+    setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers,
         makeOptions(['-1', '0', '32'], ['GPU (Auto/Full)', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
     setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
     setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
@@ -260,7 +260,7 @@ export async function mount(container) {
             chatOptions = makeOptions(chatModels);
             activeChat = chatModels[0];
         }
-        
+
         const vectorModels = installedModels.filter(m => m.category === 'vector').map(m => m.id);
         if (vectorModels.length > 0) {
             vectorOptions = makeOptions(vectorModels);
@@ -328,7 +328,7 @@ export async function mount(container) {
                         keep_alive: 0
                     })
                 });
-                
+
                 if (res.ok) {
                     btnUnload.innerText = 'Success!';
                 } else {
@@ -341,4 +341,28 @@ export async function mount(container) {
             setTimeout(() => btnUnload.innerText = originalText, 2000);
         });
     }
+
+    // Tab switching logic for GGUF Metadata Headers
+    const tabs = container.querySelectorAll('.booster-tab');
+    const contents = container.querySelectorAll('.booster-tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => {
+                t.classList.remove('active');
+                t.style.background = 'transparent';
+                t.style.color = '#8b949e';
+            });
+            contents.forEach(c => c.style.display = 'none');
+
+            tab.classList.add('active');
+            tab.style.background = 'rgba(255,255,255,0.1)';
+            tab.style.color = 'white';
+
+            const targetId = tab.getAttribute('data-target');
+            const targetContent = container.querySelector('#' + targetId);
+            if (targetContent) {
+                targetContent.style.display = 'block';
+            }
+        });
+    });
 }

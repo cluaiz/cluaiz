@@ -11,7 +11,7 @@ pub async fn execute() -> Result<()> {
         return Ok(());
     }
 
-    // Set Permission.json text chat model to bonsai1:8b and embedding model dynamically from roster
+    // Set permission.json text chat model to bonsai1:8b and embedding model dynamically from roster
     engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model("bonsai1:8b".to_string());
     let roster = engines::models::registry::CoreRoster::load_roster();
     if let Some(m) = roster.iter().find(|m| (m.architecture_type == "onnx" || m.category == "embedding") && m.local_path.is_some()) {

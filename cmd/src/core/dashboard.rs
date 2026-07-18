@@ -56,7 +56,7 @@ impl DashboardEngine {
         // 🚀 cluaiz AUTO-BOOT: Activate the latest engine silently only if no model is loaded
         let is_engine_loaded = state.Core_engine.is_loaded.load(std::sync::atomic::Ordering::SeqCst);
         if !is_engine_loaded {
-            // Find the best cached model to boot: prefer the last active one from Permission.json
+            // Find the best cached model to boot: prefer the last active one from permission.json
             let active_schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             let active_chat_id = active_schema.get_active_chat_model().unwrap_or_default();
             
@@ -142,8 +142,8 @@ impl DashboardEngine {
         let watcher_engine = state.Core_engine.clone();
         tokio::spawn(async move {
             let env = cluaiz_shared::environment::EnvironmentManager::current();
-            let booster_path = env.engine_dir().join("system_booster.json");
-            let perm_path = env.engine_dir().join("Permission.json");
+            let booster_path = env.engine_dir().join("llm_optimization.json");
+            let perm_path = env.engine_dir().join("permission.json");
             
             let mut last_booster_modified = std::fs::metadata(&booster_path).and_then(|m| m.modified()).ok();
             let mut last_perm_modified = std::fs::metadata(&perm_path).and_then(|m| m.modified()).ok();
@@ -398,7 +398,8 @@ impl DashboardEngine {
                             }
                             
                             let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                            let suppress_thinking = booster.think_mode == cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                            let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                            let suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
                             
                             let active_model = state._active_model_id.clone().unwrap_or_default().to_lowercase();
                             let is_reasoning_model = active_model.contains("deepseek") || active_model.contains("r1") || active_model.contains("reason") || active_model.contains("bonsai") || active_model.contains("think");
@@ -865,33 +866,37 @@ impl DashboardEngine {
                     stdout().flush()?;
                     
                     let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                    let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                     if mode_ans.contains("Flash Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Edge;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                        gguf_meta.user_moved_flags.think_mode = "Off".to_string();
                     } else if mode_ans.contains("Think Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::On;
+                        gguf_meta.user_moved_flags.think_mode = "On".to_string();
                     } else if mode_ans.contains("Boot Mode") {
                         booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Balance;
-                        booster.think_mode = cluaiz_shared::hardware::schema::booster::FeatureState::Auto;
+                        gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                     }
                     
                     let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
+                    let _ = gguf_meta.save();
                     
-                    println!("  {} {} activated and saved to system_booster.json.", "✅".green(), mode_ans.bold());
+                    println!("  {} {} activated and saved to llm_optimization.json.", "✅".green(), mode_ans.bold());
                     return Ok(());
                 } else if master_ans.contains("System Booster") {
-                    let booster_path = cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("system_booster.json");
+                    let booster_path = cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("llm_optimization.json");
 
                     loop {
                         let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         
-                        let compute_mode_str = match booster.n_gpu_layers {
+                        let compute_mode_str = match gguf_meta.hardware_and_execution.n_gpu_layers {
                             0 => "CPU Only".to_string(),
                             -1 => "GPU (Full Offload)".to_string(),
                             n => format!("Hybrid ({} Layers)", n),
                         };
 
+                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         let mut options = vec![
                             format!("Neural Mode (Current: {:?})", booster.mode_run),
                             format!("Compute Device (Current: {})", compute_mode_str),
@@ -903,8 +908,8 @@ impl DashboardEngine {
                             format!("Context Shifting (Current: {:?})", booster.context_shifting),
                             format!("Force VRAM Reclaim (Current: {:?})", booster.force_vram_reclaim),
                             format!("KV Cache Quantization (Current: {:?})", booster.kv_cache_quantization),
-                            format!("Think Mode (Current: {:?})", booster.think_mode),
-                            format!("Response Length (Current: {})", booster.response_length),
+                            format!("Think Mode (Current: {:?})", gguf_meta.user_moved_flags.think_mode),
+                            format!("Response Length Constraints: {} defined", gguf_meta.user_moved_flags.response_length.len()),
                             format!("Force Memory Lock (Current: {:?})", booster.force_memory_lock),
                         ];
                         options.push("🔙 Back to Menu".to_string());
@@ -950,10 +955,10 @@ impl DashboardEngine {
 
                             match selected_device.as_str() {
                                 "GPU (Full Offload)" => {
-                                    booster.n_gpu_layers = -1;
+                                    gguf_meta.hardware_and_execution.n_gpu_layers = -1;
                                 }
                                 "CPU Only" => {
-                                    booster.n_gpu_layers = 0;
+                                    gguf_meta.hardware_and_execution.n_gpu_layers = 0;
                                 }
                                 "Custom Layers" => {
                                     let layers_input = inquire::CustomType::<i32>::new("Enter number of GPU layers (-1 for full offload):")
@@ -962,7 +967,7 @@ impl DashboardEngine {
                                         .prompt();
                                     match layers_input {
                                         Ok(layers) => {
-                                            booster.n_gpu_layers = layers;
+                                            gguf_meta.hardware_and_execution.n_gpu_layers = layers;
                                         }
                                         Err(_) => {
                                             print!("\x1B[1A\x1B[2K\r");
@@ -977,6 +982,7 @@ impl DashboardEngine {
                             }
 
                             if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
+                                let _ = gguf_meta.save();
                                 println!("  {} System Booster updated: Compute Device = {}", "✅".green(), selected_device.bold());
                             } else {
                                 println!("  {} Failed to save system booster settings.", "❌".red());
@@ -1129,9 +1135,11 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            booster.response_length = selected_len.to_lowercase();
+                            // Note: Advanced users can modify this map via JSON. The dashboard only sets the "default" fallback if they use this menu.
+                            gguf_meta.user_moved_flags.response_length.insert("default".to_string(), selected_len.to_lowercase());
 
                             if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
+                                let _ = gguf_meta.save();
                                 println!("  {} System Booster updated: Response Length = {}", "✅".green(), selected_len.bold());
                             } else {
                                 println!("  {} Failed to save system booster settings.", "❌".red());
@@ -1173,12 +1181,15 @@ impl DashboardEngine {
                                 };
                             },
                             "Force VRAM Reclaim" => booster.force_vram_reclaim = feature_state,
-                            "Think Mode" => booster.think_mode = feature_state,
+                            "Think Mode" => {
+                                gguf_meta.user_moved_flags.think_mode = val_ans.clone();
+                            },
                             "Force Memory Lock" => booster.force_memory_lock = feature_state,
                             _ => {}
                         }
                         
                         if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
+                            let _ = gguf_meta.save();
                             println!("  {} System Booster updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
                         } else {
                             println!("  {} Failed to save system booster settings.", "❌".red());
@@ -1248,9 +1259,9 @@ impl DashboardEngine {
             let is_vector = master_ans.contains("Vector");
             
             if is_vector {
-                // For vector models, just update Permission.json, DO NOT load them into CoreRouter!
+                // For vector models, just update permission.json, DO NOT load them into CoreRouter!
                 engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.manifest.id.clone());
-                println!("  {} Vector Model switched successfully. (Saved to Permission.json)", "✅".green());
+                println!("  {} Vector Model switched successfully. (Saved to permission.json)", "✅".green());
             } else {
                 if let Some(path_str) = &model.manifest.local_path {
                     let path = std::path::PathBuf::from(path_str);

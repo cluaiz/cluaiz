@@ -632,14 +632,14 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
             return;
         }
 
-        // Fetch active model from Permission.json
+        // Fetch active model from permission.json
         let activeModelId = chatModels.length > 0 ? chatModels[0].id : 'default';
         try {
             const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
             if (permRes.ok) {
                 const permData = await permRes.json();
                 if (permData.permission?.chat_models?.text) {
-                    // Strict Rule: Always use what is in Permission.json, do not fallback to random array index
+                    // Strict Rule: Always use what is in permission.json, do not fallback to random array index
                     activeModelId = permData.permission.chat_models.text;
                 }
             }
@@ -686,7 +686,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                 btn.appendChild(check);
                 if (window.lucide) window.lucide.createIcons();
 
-                // Update active model in Permission.json via API
+                // Update active model in permission.json via API
                 try {
                     const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
                     if (permRes.ok) {

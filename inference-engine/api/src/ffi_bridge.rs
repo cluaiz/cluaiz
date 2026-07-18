@@ -502,14 +502,17 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     kv_cache_quantization: if vram_gb < 4.0 { KvCacheQuantization::Kv8 } else { KvCacheQuantization::Auto },
                                     context_shifting: ContextShiftingMode::Auto,
                                     force_vram_reclaim: FeatureState::Off,
-                                    n_gpu_layers: optimal_gpu_layers,
-                                    think_mode: FeatureState::Auto,
-                                    response_length: "auto".to_string(),
                                     enforce_json: false,
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
                                 };
 
                                 let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_booster);
+                                
+                                let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                                gguf_meta.hardware_and_execution.n_gpu_layers = optimal_gpu_layers;
+                                gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
+                                let _ = gguf_meta.save();
+
                                 let response = serde_json::json!({"status": "success", "booster": optimal_booster});
                                 let _ = pipe.write_all(response.to_string().as_bytes()).await;
                                 continue;

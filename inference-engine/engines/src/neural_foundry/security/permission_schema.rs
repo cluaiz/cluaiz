@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+#[archive(check_bytes)]
 pub struct ModelSelection {
     pub text: Option<String>,
     pub vision: Option<String>,
@@ -14,7 +16,8 @@ fn default_connection_protocol() -> String {
     "http".to_string()
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+#[archive(check_bytes)]
 pub struct ApiAuth {
     #[serde(default = "default_require_api_auth")]
     pub required: bool,
@@ -31,7 +34,8 @@ impl Default for ApiAuth {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+#[archive(check_bytes)]
 pub struct PermissionSchema {
     #[serde(default)]
     pub vector_models: ModelSelection,
@@ -129,61 +133,7 @@ fn default_api_port() -> u16 {
 }
 
 impl PermissionSchema {
-    /// Loads the Permission.json from ~/.cluaiz/engine/Permission.json
-    /// If it doesn't exist, it creates a default one and returns it.
-    pub fn load() -> Self {
-        let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
-        let config_dir = env_manager.config_dir();
-        let permission_path = config_dir.join("Permission.json");
-        let permission_bin_path = config_dir.join("Permission.bin");
-
-        // Ensure config dir exists
-        let _ = env_manager.ensure_config_dir();
-
-        // 🚀 Priority 1: Binary Truth (Bincode)
-        if permission_bin_path.exists() {
-            if let Ok(bytes) = fs::read(&permission_bin_path) {
-                if let Ok(schema) = bincode::deserialize::<Self>(&bytes) {
-                    return schema;
-                }
-            }
-        }
-
-        // 🛡️ Priority 2: JSON Fallback (User Editable Truth)
-        if permission_path.exists() {
-            match fs::read_to_string(&permission_path) {
-                Ok(content) => match serde_json::from_str::<Self>(&content) {
-                    Ok(schema) => {
-                        // Sync to .bin for next fast load
-                        if let Ok(bin_data) = bincode::serialize(&schema) {
-                            let _ = fs::write(&permission_bin_path, bin_data);
-                        }
-                        return schema;
-                    }
-                    Err(e) => {
-                        warn!("❌ Failed to parse Permission.json: {}. Using default.", e);
-                    }
-                },
-                Err(e) => {
-                    warn!("❌ Failed to read Permission.json: {}. Using default.", e);
-                }
-            }
-        }
-
-        // 🧬 Priority 3: Create Default
-        let default_schema = Self::default();
-        if let Err(e) = fs::create_dir_all(&config_dir) {
-            warn!("Failed to create config directory: {}", e);
-            return default_schema;
-        }
-        if let Ok(json) = serde_json::to_string_pretty(&default_schema) {
-            let _ = fs::write(&permission_path, json);
-        }
-        if let Ok(bin_data) = bincode::serialize(&default_schema) {
-            let _ = fs::write(&permission_bin_path, bin_data);
-        }
-        default_schema
-    }
+    // Removed custom load method. It is now handled by cluaiz_shared::define_config!
 
     /// Automatically scans installed models and assigns defaults if null
     pub fn auto_assign_defaults(&mut self) {
@@ -194,7 +144,6 @@ impl PermissionSchema {
     pub fn get_active_chat_model(&self) -> Option<String> {
         self.chat_models.text.clone()
     }
-
     pub fn get_active_embedding_model(&self) -> Option<String> {
         self.vector_models.text.clone()
     }
@@ -202,40 +151,16 @@ impl PermissionSchema {
     pub fn set_active_chat_model(model_id: String) {
         let mut schema = Self::load();
         schema.chat_models.text = Some(model_id);
-        schema.save();
+        let _ = schema.save();
     }
 
     pub fn set_active_embedding_model(model_id: String) {
         let mut schema = Self::load();
         schema.vector_models.text = Some(model_id);
-        schema.save();
+        let _ = schema.save();
     }
 
-    pub fn save(&self) {
-        let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
-        let config_dir = env_manager.config_dir();
-        let permission_path = config_dir.join("Permission.json");
-        let permission_bin_path = config_dir.join("Permission.bin");
-
-        let _ = env_manager.ensure_config_dir();
-        if let Err(e) = fs::create_dir_all(&config_dir) {
-            warn!(
-                "Failed to create config directory for saving Permission.json: {}",
-                e
-            );
-            return;
-        }
-
-        if let Ok(json) = serde_json::to_string_pretty(self) {
-            if let Err(e) = fs::write(&permission_path, json) {
-                warn!("Failed to save Permission.json: {}", e);
-            } else {
-                info!("✅ Updated Permission.json with active models.");
-                // Sync to .bin
-                if let Ok(bin_data) = bincode::serialize(self) {
-                    let _ = fs::write(&permission_bin_path, bin_data);
-                }
-            }
-        }
-    }
+    // Removed custom save method. It is now handled by cluaiz_shared::define_config!
 }
+
+cluaiz_shared::define_config!(PermissionSchema, "permission");

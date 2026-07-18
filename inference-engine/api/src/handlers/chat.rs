@@ -181,8 +181,22 @@ pub async fn chat_completions(
         }
     }
 
-
-
+    // 🌡️ TEMPERATURE-BASED RESPONSE LENGTH CONSTRAINT
+    let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+    let current_temp_str = format!("{:.1}", gguf_meta.samplers.temp);
+    if let Some(constraint) = gguf_meta.user_moved_flags.response_length.get(&current_temp_str) {
+        if !constraint.is_empty() {
+            tracing::info!("🌡️ [Prompt] Injecting temperature ({}) constraint.", current_temp_str);
+            if let Some(sys_msg) = augmented_messages.iter_mut().find(|m| m.role.to_lowercase() == "system") {
+                sys_msg.content = format!("{}\n\n{}", sys_msg.content, constraint);
+            } else {
+                augmented_messages.insert(0, ExternalMessage {
+                    role: "system".to_string(),
+                    content: constraint.clone(),
+                });
+            }
+        }
+    }
     // Serialize the entire message array to JSON to preserve full chat history
     let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| last_message.clone());
 

@@ -236,7 +236,7 @@ impl CoreFoundry {
                     result.responses.push(content);
                 }
                 SkillLoadResult::NoModel => {
-                    warn!("⚠️ [CoreFoundry] No text model assigned in Permission.json. Skipping Zero-Copy injection for skill {}.", skill_id);
+                    warn!("⚠️ [CoreFoundry] No text model assigned in permission.json. Skipping Zero-Copy injection for skill {}.", skill_id);
                 }
                 SkillLoadResult::None => {}
             }

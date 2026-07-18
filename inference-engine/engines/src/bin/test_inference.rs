@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Set Permission.json text chat model to bonsai1:8b
+    // Set permission.json text chat model to bonsai1:8b
     engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model("bonsai1:8b".to_string());
 
     let dna = StructuralDNA::default();

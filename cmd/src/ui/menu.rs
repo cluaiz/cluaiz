@@ -124,12 +124,12 @@ pub async fn run_native(
                 }
             }
             "⚡ System & Hardware" => {
-                let h_opts = vec!["⚙️ System Booster Config", "🛡️ Firewall & Permissions", "📊 Hardware Status & Health", "🔄 Re-calibrate Hardware", "⏱️ Run Benchmark", "🔙 Back"];
+                let h_opts = vec!["⚙️ LLM Optimization Config", "🛡️ Firewall & Permissions", "📊 Hardware Status & Health", "🔄 Re-calibrate Hardware", "⏱️ Run Benchmark", "🔙 Back"];
                 if let Ok(h_ans) = Select::new("System & Hardware:", h_opts).with_render_config(config.clone()).prompt() {
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match h_ans {
-                        "⚙️ System Booster Config" => {
-                            let _ = crate::cli::booster::execute(None, None, None, None).await;
+                        "⚙️ LLM Optimization Config" => {
+                            let _ = crate::cli::llm_optimization::execute(None, None, None, None).await;
                         }
                         "🛡️ Firewall & Permissions" => {
                             loop {
@@ -228,7 +228,7 @@ pub async fn run_native(
                                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                                     if changed {
                                         perms.save();
-                                        println!("  {} Permission.json updated.", "✅".green());
+                                        println!("  {} permission.json updated.", "✅".green());
                                     }
                                 } else {
                                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;

@@ -75,7 +75,7 @@ pub async fn run_daemon() {
     // ── Build API Routes ──
     let app = routes::build(state.clone());
 
-    // ── Bind to Dynamic Port (from Permission.json or cluaiz_PORT) ──
+    // ── Bind to Dynamic Port (from permission.json or cluaiz_PORT) ──
     let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
     let port: u16 = env::var("cluaiz_PORT")
         .ok()

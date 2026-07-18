@@ -61,6 +61,36 @@ pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Val
     }
 }
 
+// ─── GET /v1/system/gguf_config ───────────────────────────────────────
+pub async fn get_gguf_config() -> Json<Value> {
+    use cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders;
+    let config = GgufMetadataHeaders::load();
+    Json(serde_json::to_value(config).unwrap_or(json!({})))
+}
+
+// ─── POST /v1/system/gguf_config ──────────────────────────────────────
+pub async fn update_gguf_config(Json(payload): Json<cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders>) -> Json<Value> {
+    match payload.save() {
+        Ok(_) => Json(json!({"status": "success"})),
+        Err(e) => Json(json!({"status": "error", "message": e.to_string()}))
+    }
+}
+
+// ─── GET /v1/system/onnx_config ───────────────────────────────────────
+pub async fn get_onnx_config() -> Json<Value> {
+    use cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders;
+    let config = OnnxMetadataHeaders::load();
+    Json(serde_json::to_value(config).unwrap_or(json!({})))
+}
+
+// ─── POST /v1/system/onnx_config ──────────────────────────────────────
+pub async fn update_onnx_config(Json(payload): Json<cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders>) -> Json<Value> {
+    match payload.save() {
+        Ok(_) => Json(json!({"status": "success"})),
+        Err(e) => Json(json!({"status": "error", "message": e.to_string()}))
+    }
+}
+
 
 
 

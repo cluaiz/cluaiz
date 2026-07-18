@@ -4,7 +4,7 @@ pub mod list;
 pub mod rm;
 pub mod help;
 pub mod ps;
-pub mod booster;
+pub mod llm_optimization;
 pub mod benchmark;
 pub mod component;
 pub mod ingest;

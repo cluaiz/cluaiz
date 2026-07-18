@@ -139,7 +139,7 @@ fn main() {
     // Since Bootstrapper inside cluaiz.exe handles all the 1:1 artifact syncing
     // (copying to ~/.cluaiz/engine/ and renaming to dashed-names),
     // we do NOT manually copy files here.
-    // JSON configs (Permission.json, system_control.json) are auto-generated
+    // JSON configs (permission.json, system_control.json) are auto-generated
     // by the engine natively upon first startup.
     
     println!("✅ Build Successful!");

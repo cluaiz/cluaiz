@@ -79,7 +79,6 @@ impl BoosterConfig {
 
         if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
             config.flash_attn = control.flash_attention.is_active();
-            config.n_gpu_layers = control.n_gpu_layers;
             config.dflash = match control.dflash {
                 cluaiz_shared::hardware::schema::booster::SmartState::Static(s) => s,
                 _ => "Auto".to_string(),
@@ -121,11 +120,6 @@ impl BoosterConfig {
                 cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme => "Extreme".to_string(),
                 cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto => "Auto".to_string(),
             };
-            config.think_mode = match control.think_mode {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
-                _ => "Auto".to_string(),
-            };
             config.force_memory_lock = match control.force_memory_lock {
                 cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
                 cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
@@ -137,6 +131,9 @@ impl BoosterConfig {
                 _ => "Auto".to_string(),
             };
         }
+        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        config.n_gpu_layers = gguf_meta.hardware_and_execution.n_gpu_layers;
+        config.think_mode = gguf_meta.user_moved_flags.think_mode;
         config.use_mmap = true;
         config
     }
@@ -298,15 +295,6 @@ impl BoosterConfig {
             } else {
                 FeatureState::Off
             },
-            n_gpu_layers: self.n_gpu_layers,
-            think_mode: if self.think_mode == "On" {
-                FeatureState::On
-            } else if self.think_mode == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
-            },
-            response_length: "auto".to_string(),
             enforce_json: false,
             force_memory_lock: if self.force_memory_lock == "On" {
                 FeatureState::On

@@ -101,6 +101,10 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/control", get(crate::handlers::system::get_system_control))
         .route("/v1/system/permission", get(crate::handlers::permission::get_permission))
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
+        .route("/v1/system/gguf_config", get(crate::handlers::system::get_gguf_config))
+        .route("/v1/system/gguf_config", post(crate::handlers::system::update_gguf_config))
+        .route("/v1/system/onnx_config", get(crate::handlers::system::get_onnx_config))
+        .route("/v1/system/onnx_config", post(crate::handlers::system::update_onnx_config))
 
 
 

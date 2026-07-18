@@ -78,10 +78,11 @@ pub async fn execute(
         }
     } else {
         // Loop-based Interactive configuration
-        println!("\n  {} {}", "🚀".cyan(), "cluaiz Booster - Interactive Performance Setup".bold());
+        println!("\n  {} {}", "🚀".cyan(), "cluaiz LLM Optimization - Interactive Performance Setup".bold());
         
         loop {
-            println!("\n  {} {}", "📊".cyan(), "Current Booster Settings:".bold());
+            let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+            println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
             println!("    ├─ Mode:             {:?}", control.mode_run);
             println!("    ├─ KV Cache Quant:   {:?}", control.kv_cache_quantization);
             println!("    ├─ Context Shifting: {:?}", control.context_shifting);
@@ -92,9 +93,9 @@ pub async fn execute(
             println!("    ├─ VRAM Reclaim:     {:?}", control.force_vram_reclaim);
             println!("    ├─ Memory Lock:      {:?}", control.force_memory_lock);
             println!("    ├─ DFlash:           {:?}", control.dflash);
-            println!("    ├─ Think Mode:       {:?}", control.think_mode);
-            println!("    ├─ Response Length:  {}", control.response_length);
-            println!("    └─ N GPU Layers:     {}", control.n_gpu_layers);
+            println!("    ├─ Think Mode:       {:?}", gguf_meta.user_moved_flags.think_mode);
+            println!("    ├─ Response Length:  {} defined", gguf_meta.user_moved_flags.response_length.len());
+            println!("    └─ N GPU Layers:     {}", gguf_meta.hardware_and_execution.n_gpu_layers);
 
             let options = vec![
                 "Mode (Execution Profile)",
@@ -170,27 +171,29 @@ pub async fn execute(
                 "Response Length" => {
                     let rl_opts = vec!["Long", "Short", "Auto"];
                     if let Ok(rl) = inquire::Select::new("Response Length:", rl_opts).with_help_message("").prompt() {
-                        control.response_length = rl.to_lowercase();
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        gguf_meta.user_moved_flags.response_length.insert("default".to_string(), rl.to_lowercase());
+                        let _ = gguf_meta.save();
                     }
                 }
                 "N GPU Layers" => {
                     let gpu_opts = vec!["GPU Only (Max Acceleration)", "CPU Only (No GPU)", "Hybrid (Custom Layers)"];
                     if let Ok(g_ans) = inquire::Select::new("Compute Architecture:", gpu_opts).with_help_message("").prompt() {
+                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         match g_ans {
                             "GPU Only (Max Acceleration)" => {
-                                control.n_gpu_layers = -1;
-                                let _ = HardwareGovernor::save_booster_settings(&control);
+                                gguf_meta.hardware_and_execution.n_gpu_layers = -1;
+                                let _ = gguf_meta.save();
                             }
                             "CPU Only (No GPU)" => {
-                                control.n_gpu_layers = 0;
-                                let _ = HardwareGovernor::save_booster_settings(&control);
+                                gguf_meta.hardware_and_execution.n_gpu_layers = 0;
+                                let _ = gguf_meta.save();
                             }
                             "Hybrid (Custom Layers)" => {
                                 if let Ok(val) = inquire::Text::new("Enter N GPU Layers (e.g. 10):").with_help_message("").prompt() {
                                     if let Ok(num) = val.parse::<i32>() {
-                                        control.n_gpu_layers = num;
-                                        let _ = HardwareGovernor::save_booster_settings(&control);
+                                        gguf_meta.hardware_and_execution.n_gpu_layers = num;
+                                        let _ = gguf_meta.save();
                                     }
                                 }
                             }
@@ -216,7 +219,15 @@ pub async fn execute(
                             "Auto Round" => control.auto_round = state,
                             "Force VRAM Reclaim" => control.force_vram_reclaim = state,
                             "Force Memory Lock" => control.force_memory_lock = state,
-                            "Think Mode" => control.think_mode = state,
+                            "Think Mode" => {
+                                let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                                gguf_meta.user_moved_flags.think_mode = match state {
+                                    FeatureState::On => "On".to_string(),
+                                    FeatureState::Off => "Off".to_string(),
+                                    _ => "Auto".to_string(),
+                                };
+                                let _ = gguf_meta.save();
+                            },
                             _ => {}
                         }
                         let _ = HardwareGovernor::save_booster_settings(&control);
