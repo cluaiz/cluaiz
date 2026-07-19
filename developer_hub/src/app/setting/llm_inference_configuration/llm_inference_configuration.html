@@ -42,8 +42,7 @@
                 <span class="setting-desc">Applies regex-based rules to force specific tensors (e.g. FFN layers) to run on CPU instead of GPU, useful for fine-grained VRAM management.</span>
             </div>
             <div class="setting-control">
-                <input type="text" id="gguf-override-tensor" class="setting-input"
-                    style="background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 16px; border-radius: 6px; height: 38px; outline: none; font-size: 0.9rem; font-weight: 600; width: 250px;">
+                <div id="container-gguf-override-tensor" class="dropdown-container"></div>
             </div>
         </div>
 
@@ -61,22 +60,6 @@
                 <span class="setting-desc">Micro-batch size for evaluation. Modifying this helps balance GPU compute load during heavy continuous batching.</span>
             </div>
             <div class="setting-control" id="container-gguf-ubatch-size"></div>
-        </div>
-
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Cache Type K (cache_type_k)</span>
-                <span class="setting-desc">Quantization format for the Key cache. Compressing to 'q8_0' or 'q5_0' saves massive amounts of VRAM with negligible quality loss.</span>
-            </div>
-            <div class="setting-control" id="container-gguf-cache-k"></div>
-        </div>
-
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Cache Type V (cache_type_v)</span>
-                <span class="setting-desc">Quantization format for the Value cache. Lower precision formats allow for significantly larger context windows.</span>
-            </div>
-            <div class="setting-control" id="container-gguf-cache-v"></div>
         </div>
 
         <div class="setting-item">
@@ -108,11 +91,9 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Chat Template File</span>
-                <span class="setting-desc">The Jinja2 template file used to format the conversation history before passing it to the model (e.g. froggeric_fix.jinja).</span>
+                <span class="setting-desc">The Jinja2 template file used to format the conversation history before passing it to the model (leave empty for Auto/Header read, e.g. froggeric_fix.jinja).</span>
             </div>
-            <div class="setting-control">
-                <input type="text" id="gguf-chat-template" class="setting-input"
-                    style="background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 16px; border-radius: 6px; height: 38px; outline: none; font-size: 0.9rem; font-weight: 600; width: 250px;">
+            <div class="setting-control" id="container-gguf-chat-template">
             </div>
         </div>
 
@@ -121,9 +102,7 @@
                 <span class="setting-label">Chat Template Kwargs</span>
                 <span class="setting-desc">Additional JSON arguments passed into the Jinja template to control internal rendering logic (e.g. {"preserve_thinking": true}).</span>
             </div>
-            <div class="setting-control">
-                <input type="text" id="gguf-chat-kwargs" class="setting-input"
-                    style="background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 16px; border-radius: 6px; height: 38px; outline: none; font-size: 0.9rem; font-weight: 600; width: 250px;">
+            <div class="setting-control" id="container-gguf-chat-kwargs">
             </div>
         </div>
 
@@ -168,7 +147,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));">
                 <div class="setting-info" style="margin-bottom: 0;">
                     <span class="setting-label">Response Length Map (Temperature Based)</span>
-                    <span class="setting-desc">JSON map of temperatures to system constraint prompts.</span>
+                    <span class="setting-desc">Toggle ON for built-in rules (e.g. Think Deep). Toggle OFF to create custom rules or leave empty. Temperatures (0.0 to 2.0) map to system constraints: 0.0 for strict logic, up to 2.0 for maximum creativity.</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Enable Predefined Modes</span>
@@ -199,8 +178,8 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <span class="setting-label">Intra-Op Threads</span>
-                <span class="setting-desc">Number of threads used to parallelize the execution within a single operator (e.g. matrix multiplication). 0 means auto-detect.</span>
+                <span class="setting-label">Intra-Op Threads (Node Execution)</span>
+                <span class="setting-desc">Number of threads used to parallelize the execution within a single operator/node (e.g., matrix multiplication). 0 means auto-detect.</span>
             </div>
             <div class="setting-control" id="container-onnx-intra-threads"></div>
         </div>
@@ -229,8 +208,8 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <span class="setting-label">Inter-Op Threads</span>
-                <span class="setting-desc">Number of threads used to parallelize the execution of independent operators across the graph.</span>
+                <span class="setting-label">Inter-Op Threads (Graph Execution)</span>
+                <span class="setting-desc">Number of threads used to parallelize the execution of independent operators across the graph. Keep at 0 for sequential LLM inference.</span>
             </div>
             <div class="setting-control" id="container-onnx-inter-threads"></div>
         </div>

@@ -67,7 +67,8 @@ export async function mount(container) {
                 onChange: async (val) => {
                     let finalVal = val;
                     if (val === 'true') finalVal = true;
-                    if (val === 'false') finalVal = false;
+                    else if (val === 'false') finalVal = false;
+                    else if (typeof val === 'string' && val.trim() !== '' && !isNaN(val)) finalVal = Number(val);
 
                     if (section) configObj[section][key] = finalVal;
                     else configObj[key] = finalVal;
@@ -175,39 +176,80 @@ export async function mount(container) {
         if (!targetObj[key]) targetObj[key] = {};
         let samplersObj = targetObj[key];
 
-        const samplerKeys = ['temperature', 'top_k', 'top_p', 'min_p', 'presence_penalty', 'repeat_penalty'];
+        const samplerRanges = {
+            temp: { min: 0, max: 2, step: 0.01 },
+            top_k: { min: 0, max: 100, step: 1 },
+            top_p: { min: 0, max: 1, step: 0.01 },
+            min_p: { min: 0, max: 1, step: 0.01 },
+            presence_penalty: { min: 0, max: 2, step: 0.01 },
+            repeat_penalty: { min: 1, max: 2, step: 0.01 }
+        };
+        const samplerKeys = Object.keys(samplerRanges);
         dropContainer.innerHTML = '';
 
         samplerKeys.forEach(sKey => {
+            const config = samplerRanges[sKey];
             const wrapper = document.createElement('div');
             wrapper.style.display = 'flex';
             wrapper.style.flexDirection = 'column';
-            wrapper.style.gap = '4px';
+            wrapper.style.gap = '8px';
+            wrapper.style.backgroundColor = 'rgba(0,0,0,0.1)';
+            wrapper.style.padding = '12px';
+            wrapper.style.borderRadius = '8px';
+
+            const headerRow = document.createElement('div');
+            headerRow.style.display = 'flex';
+            headerRow.style.justifyContent = 'space-between';
+            headerRow.style.alignItems = 'center';
 
             const label = document.createElement('label');
-            label.textContent = sKey.replace('_', ' ').toUpperCase();
+            label.textContent = sKey === 'temp' ? 'TEMPERATURE' : sKey.replace('_', ' ').toUpperCase();
             label.style.fontSize = '0.8rem';
             label.style.color = 'var(--text-secondary)';
+            label.style.fontWeight = 'bold';
 
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.step = sKey === 'top_k' ? '1' : '0.01';
-            input.className = 'setting-input';
-            input.style.cssText = 'background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem;';
-            input.value = samplersObj[sKey] !== undefined ? samplersObj[sKey] : '';
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.min = config.min;
+            numInput.max = config.max;
+            numInput.step = config.step;
+            numInput.className = 'setting-input';
+            numInput.style.cssText = 'background-color: var(--bg-panel, rgba(0,0,0,0.3)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 4px 8px; border-radius: 4px; outline: none; font-size: 0.8rem; width: 60px; text-align: center;';
+            numInput.value = samplersObj[sKey] !== undefined ? samplersObj[sKey] : '';
 
-            input.onchange = async (e) => {
-                const val = parseFloat(e.target.value);
+            headerRow.appendChild(label);
+            headerRow.appendChild(numInput);
+
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = config.min;
+            slider.max = config.max;
+            slider.step = config.step;
+            slider.value = samplersObj[sKey] !== undefined ? samplersObj[sKey] : (config.min + (config.max - config.min) / 2);
+            slider.style.width = '100%';
+            slider.style.cursor = 'pointer';
+
+            const syncValues = async (valStr) => {
+                let val = parseFloat(valStr);
                 if (!isNaN(val)) {
+                    if (val < config.min) val = config.min;
+                    if (val > config.max) val = config.max;
                     samplersObj[sKey] = val;
+                    numInput.value = val;
+                    slider.value = val;
                 } else {
                     delete samplersObj[sKey];
+                    numInput.value = '';
                 }
                 await onSave();
             };
 
-            wrapper.appendChild(label);
-            wrapper.appendChild(input);
+            numInput.onchange = (e) => syncValues(e.target.value);
+            slider.onchange = (e) => syncValues(e.target.value);
+            slider.oninput = (e) => { numInput.value = e.target.value; }; // instant UI update for slider sliding
+
+            wrapper.appendChild(headerRow);
+            wrapper.appendChild(slider);
             dropContainer.appendChild(wrapper);
         });
     };
@@ -219,6 +261,15 @@ export async function mount(container) {
 
         let targetObj = section ? (configObj[section] || (configObj[section] = {})) : configObj;
         if (!targetObj[key]) targetObj[key] = {};
+
+        // If the backend sent a stringified JSON (like "{}"), parse it to an object first!
+        if (typeof targetObj[key] === 'string') {
+            try {
+                targetObj[key] = JSON.parse(targetObj[key]);
+            } catch (e) {
+                targetObj[key] = {};
+            }
+        }
         let mapObj = targetObj[key];
 
         // Silent cleanup for legacy architecture keys
@@ -241,18 +292,39 @@ export async function mount(container) {
 
         const renderMap = () => {
             dropContainer.innerHTML = '';
+
+            // Update top-level description dynamically (Only explain the feature)
+            const topDesc = toggleSwitch.closest('.setting-item').querySelector('.setting-desc');
+            if (topDesc) {
+                if (isModeEnabled) {
+                    topDesc.textContent = 'Predefined Mode: Enables standard built-in modes for the AI engine.';
+                } else {
+                    topDesc.textContent = 'Custom Mode: Enables fully customizable inputs for every request.';
+                }
+            }
+
+            // Bottom section: Single, combined, non-colorful description
+            const modeDetails = document.createElement('p');
+            modeDetails.style.cssText = 'color: var(--text-muted, #9ca3af); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;';
             
+            if (isModeEnabled) {
+                modeDetails.textContent = 'Temperature controls the AI creativity: 0.0 forces strict logic and factual accuracy, while higher values (up to 2.0) make it more creative and unpredictable. You have 4 predefined options to configure your temperature and system prompts (2 for Thinking Mode ON, 2 for Thinking Mode OFF).';
+            } else {
+                modeDetails.textContent = 'Temperature controls the AI creativity: 0.0 forces strict logic and factual accuracy, while higher values (up to 2.0) make it more creative and unpredictable. You can manually send your own custom temperature and prompt with every input request, and the AI will adapt dynamically.';
+            }
+            dropContainer.appendChild(modeDetails);
+
             if (isModeEnabled) {
                 toggleSwitch.classList.add('active');
                 mapObj.type = 'predefined';
-                
-                if (!mapObj.think_on) mapObj.think_on = { 
-                    "Think_Deep": { "0.0": "System Constraint Prompt" }, 
-                    "Think_Lite": { "0.5": "[SYSTEM CONSTRAINT: Provide a balanced and informative response.]" } 
+
+                if (!mapObj.think_on) mapObj.think_on = {
+                    "Think_Deep": { "0.0": "Analyze the request deeply step-by-step. Provide a highly detailed, comprehensive, and deeply reasoned response." },
+                    "Think_Lite": { "0.5": "Think carefully but provide a balanced, concise, and to-the-point response." }
                 };
-                if (!mapObj.think_off) mapObj.think_off = { 
-                    "Long_Answer": { "0.8": "[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]" }, 
-                    "Short_Answer": { "1.0": "[SYSTEM CONSTRAINT: Provide a concise and direct response.]" } 
+                if (!mapObj.think_off) mapObj.think_off = {
+                    "Long_Answer": { "0.8": "Provide a detailed, thorough, and to-the-point answer without unnecessary fluff." },
+                    "Short_Answer": { "1.0": "Provide a very concise, direct, and to-the-point answer." }
                 };
 
                 // Clean up any stray keys that shouldn't be here
@@ -264,12 +336,12 @@ export async function mount(container) {
 
                 let modes = [];
                 if (currentThinkMode === 'On' || currentThinkMode === 'Auto') {
-                    if(mapObj.think_on['Think_Deep']) modes.push({ id: '0.0', title: 'Think Deep', map: mapObj.think_on['Think_Deep'] });
-                    if(mapObj.think_on['Think_Lite']) modes.push({ id: '0.5', title: 'Think Lite', map: mapObj.think_on['Think_Lite'] });
-                } 
+                    if (mapObj.think_on['Think_Deep']) modes.push({ id: '0.0', title: 'Think Deep', map: mapObj.think_on['Think_Deep'] });
+                    if (mapObj.think_on['Think_Lite']) modes.push({ id: '0.5', title: 'Think Lite', map: mapObj.think_on['Think_Lite'] });
+                }
                 if (currentThinkMode === 'Off' || currentThinkMode === 'Auto') {
-                    if(mapObj.think_off['Long_Answer']) modes.push({ id: '0.8', title: 'Long Answer', map: mapObj.think_off['Long_Answer'] });
-                    if(mapObj.think_off['Short_Answer']) modes.push({ id: '1.0', title: 'Short Answer', map: mapObj.think_off['Short_Answer'] });
+                    if (mapObj.think_off['Long_Answer']) modes.push({ id: '0.8', title: 'Long Answer', map: mapObj.think_off['Long_Answer'] });
+                    if (mapObj.think_off['Short_Answer']) modes.push({ id: '1.0', title: 'Short Answer', map: mapObj.think_off['Short_Answer'] });
                 }
 
                 modes.forEach(mode => {
@@ -284,10 +356,35 @@ export async function mount(container) {
                     const actualPrompt = mode.map[actualTemp] || '';
 
                     const tempInput = document.createElement('input');
-                    tempInput.type = 'text';
+                    tempInput.type = 'number';
+                    tempInput.min = 0;
+                    tempInput.max = 2;
+                    tempInput.step = 0.01;
                     tempInput.value = actualTemp;
-                    tempInput.readOnly = true; 
-                    tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.1)); border: 1px solid var(--border, rgba(255,255,255,0.05)); color: var(--text-secondary, #aaa); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center; cursor: not-allowed;';
+                    tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.3)); border: 1px solid var(--border, rgba(255,255,255,0.2)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center;';
+
+                    tempInput.onchange = async () => {
+                        let newTemp = parseFloat(tempInput.value);
+                        if (isNaN(newTemp)) newTemp = parseFloat(actualTemp) || 0.0;
+                        if (newTemp < 0) newTemp = 0;
+                        if (newTemp > 2) newTemp = 2;
+
+                        // Keep max 2 decimal places to avoid crazy long numbers
+                        newTemp = Math.round(newTemp * 100) / 100;
+                        let newTempStr = newTemp.toString();
+                        // ensure it at least has .0 if it's an integer for consistency
+                        if (!newTempStr.includes('.')) newTempStr += '.0';
+
+                        tempInput.value = newTempStr;
+
+                        const oldKey = Object.keys(mode.map)[0];
+                        const val = mode.map[oldKey];
+                        delete mode.map[oldKey];
+                        mode.map[newTempStr] = val;
+
+                        await onSave();
+                        renderMap();
+                    };
 
                     const promptInput = document.createElement('input');
                     promptInput.type = 'text';
@@ -310,7 +407,7 @@ export async function mount(container) {
                 mapObj.type = 'custom';
                 delete mapObj.think_on;
                 delete mapObj.think_off;
-                
+
                 // Get the first custom key (ignoring 'type')
                 let customKey = '';
                 let customVal = '';
@@ -320,19 +417,17 @@ export async function mount(container) {
                     customVal = mapObj[customKey];
                     // Clean up extra keys
                     for (let i = 1; i < keys.length; i++) delete mapObj[keys[i]];
-                } else {
-                    customKey = '0.8';
-                    customVal = '[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]';
-                    mapObj[customKey] = customVal;
-                    onSave(); // Ensure it gets saved if it was empty
                 }
 
                 const row = document.createElement('div');
                 row.style.cssText = 'display: flex; gap: 10px; align-items: center; margin-bottom: 12px;';
 
                 const tempInput = document.createElement('input');
-                tempInput.type = 'text';
-                tempInput.placeholder = 'Temp (e.g. 0.5)';
+                tempInput.type = 'number';
+                tempInput.min = 0;
+                tempInput.max = 2;
+                tempInput.step = 0.01;
+                tempInput.placeholder = 'Temp';
                 tempInput.value = customKey;
                 tempInput.style.cssText = 'width: 80px; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-weight: 600; font-size: 0.9rem; text-align: center;';
 
@@ -343,11 +438,26 @@ export async function mount(container) {
                 promptInput.style.cssText = 'flex: 1; background-color: var(--bg-panel, rgba(0,0,0,0.2)); border: 1px solid var(--border, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem;';
 
                 const updateEntry = async () => {
-                    const newTemp = tempInput.value.trim();
-                    const newPrompt = promptInput.value;
-                    
+                    const tempRaw = tempInput.value.toString().trim();
                     Object.keys(mapObj).forEach(k => { if (k !== 'type') delete mapObj[k]; });
-                    if (newTemp !== '') mapObj[newTemp] = newPrompt;
+
+                    if (tempRaw === '') {
+                        // Keep it empty
+                        await onSave();
+                        return;
+                    }
+
+                    let newTemp = parseFloat(tempRaw);
+                    if (isNaN(newTemp)) newTemp = 0.0;
+                    if (newTemp < 0) newTemp = 0;
+                    if (newTemp > 2) newTemp = 2;
+
+                    newTemp = Math.round(newTemp * 100) / 100;
+                    let newTempStr = newTemp.toString();
+                    if (!newTempStr.includes('.')) newTempStr += '.0';
+
+                    tempInput.value = newTempStr;
+                    mapObj[newTempStr] = promptInput.value;
                     await onSave();
                 };
 
@@ -407,7 +517,16 @@ export async function mount(container) {
         ggufConfig, 'hardware_and_execution', 'n_gpu_layers', saveGguf);
 
     setupToggle('toggle-gguf-no-mmap', ggufConfig, 'hardware_and_execution', 'no_mmap', saveGguf);
-    setupInput('gguf-override-tensor', ggufConfig, 'hardware_and_execution', 'override_tensor', false, saveGguf);
+
+    const overrideTensorOptions = [
+        { value: '', label: 'Auto - Full GPU' },
+        { value: 'blk\\.(1[0-9]|2[0-9])\\.ffn_.*=CPU', label: 'Offload Middle Layers (8B/7B)' },
+        { value: 'blk\\.(2[0-9]|3[0-9]|4[0-3])\\.ffn_.*=CPU', label: 'Offload Middle Layers (70B)' },
+        { isInput: true, placeholder: 'Custom Regex (e.g. blk...=CPU)', inputType: 'text' }
+    ];
+    setupCustomDropdown('container-gguf-override-tensor', undefined, undefined,
+        overrideTensorOptions,
+        ggufConfig, 'hardware_and_execution', 'override_tensor', saveGguf);
 
     setupCustomDropdown('container-gguf-batch-size', undefined, undefined,
         makeOptions(['128', '256', '512', '1024', '2048', '4096', '8192']),
@@ -417,16 +536,8 @@ export async function mount(container) {
         makeOptions(['128', '256', '512', '1024', '2048']),
         ggufConfig, 'hardware_and_execution', 'ubatch_size', saveGguf);
 
-    setupCustomDropdown('container-gguf-cache-k', undefined, undefined,
-        makeOptions(['q5_0', 'q8_0', 'f16']),
-        ggufConfig, 'hardware_and_execution', 'cache_type_k', saveGguf);
-
-    setupCustomDropdown('container-gguf-cache-v', undefined, undefined,
-        makeOptions(['q4_1', 'q8_0', 'f16']),
-        ggufConfig, 'hardware_and_execution', 'cache_type_v', saveGguf);
-
     setupCustomDropdown('container-gguf-parallel', undefined, undefined,
-        makeOptions(['1', '2', '4', '8']),
+        makeOptions(['1', '2', '4', '8']).concat([{ isInput: true, placeholder: 'Custom', inputType: 'number' }]),
         ggufConfig, 'hardware_and_execution', 'parallel', saveGguf);
 
     setupCustomDropdown('container-gguf-spec-type', undefined, undefined,
@@ -438,8 +549,14 @@ export async function mount(container) {
         ggufConfig, 'hardware_and_execution', 'spec_draft_n_max', saveGguf);
 
     // Templating
-    setupInput('gguf-chat-template', ggufConfig, 'templating_flags', 'chat_template_file', false, saveGguf);
-    setupInput('gguf-chat-kwargs', ggufConfig, 'templating_flags', 'chat_template_kwargs', false, saveGguf);
+    setupCustomDropdown('container-gguf-chat-template', undefined, undefined,
+        makeOptions([''], ['Auto (Read from Model)']).concat([{ isInput: true, placeholder: 'Custom Template (.jinja)', inputType: 'text' }]),
+        ggufConfig, 'templating_flags', 'chat_template_file', saveGguf);
+
+    setupCustomDropdown('container-gguf-chat-kwargs', undefined, undefined,
+        makeOptions([''], ['Auto (Default Kwargs)']).concat([{ isInput: true, placeholder: 'Custom JSON (e.g. {"preserve_thinking": true})', inputType: 'text' }]),
+        ggufConfig, 'templating_flags', 'chat_template_kwargs', saveGguf);
+
     setupToggle('toggle-gguf-jinja', ggufConfig, 'templating_flags', 'jinja', saveGguf);
     setupCustomDropdown('container-gguf-fit', undefined, undefined,
         makeOptions(['off', 'on']),
@@ -456,7 +573,7 @@ export async function mount(container) {
 
 
     // ----- ONNX INITIALIZATION -----
-    
+
     // Check system control for Apple Silicon
     let isAppleSilicon = false;
     try {
@@ -467,28 +584,28 @@ export async function mount(container) {
                 isAppleSilicon = true;
             }
         }
-    } catch(e) {}
+    } catch (e) { }
 
-    let onnxHardwareOptions = isAppleSilicon ? 
-        makeOptions(['Auto'], ['Auto (Apple Silicon)']) : 
-        makeOptions(['Auto', 'CPU', 'GPU']);
+    let onnxHardwareOptions = isAppleSilicon ?
+        makeOptions(['Auto', 'CPU'], ['Auto (Apple Silicon)', 'CPU Only']) :
+        makeOptions(['Auto', 'CPU'], ['GPU Full Load (Auto)', 'CPU Only']);
 
     setupCustomDropdown('container-onnx-hardware-offload', undefined, undefined,
         onnxHardwareOptions,
-        onnxConfig, null, 'hardware_offload', saveOnnx);
+        onnxConfig, null, 'execution_provider', saveOnnx);
 
     setupCustomDropdown('container-onnx-intra-threads', undefined, undefined,
-        makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']),
+        makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']).concat([{ isInput: true, placeholder: 'Custom', inputType: 'number' }]),
         onnxConfig, null, 'intra_op_num_threads', saveOnnx);
 
     setupCustomDropdown('container-onnx-graph-opt', undefined, undefined,
-        makeOptions(['ORT_ENABLE_ALL', 'ORT_ENABLE_BASIC', 'ORT_DISABLE_ALL']),
+        makeOptions(['ORT_ENABLE_ALL', 'ORT_ENABLE_EXTENDED', 'ORT_ENABLE_BASIC', 'ORT_DISABLE_ALL']),
         onnxConfig, null, 'graph_optimization_level', saveOnnx);
 
     setupToggle('toggle-onnx-profiling', onnxConfig, null, 'enable_profiling', saveOnnx);
 
     setupCustomDropdown('container-onnx-inter-threads', undefined, undefined,
-        makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']),
+        makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']).concat([{ isInput: true, placeholder: 'Custom', inputType: 'number' }]),
         onnxConfig, null, 'inter_op_num_threads', saveOnnx);
 
     setupToggle('toggle-onnx-mem-pattern', onnxConfig, null, 'enable_mem_pattern', saveOnnx);
@@ -499,7 +616,7 @@ export async function mount(container) {
         onnxConfig, null, 'execution_mode', saveOnnx);
 
     setupCustomDropdown('container-onnx-gpu-limit', undefined, undefined,
-        makeOptions(['0', '2147483648', '4294967296', '8589934592'], ['Unlimited (0)', '2 GB', '4 GB', '8 GB']),
+        makeOptions(['0', '2147483648', '4294967296', '8589934592'], ['Unlimited (0)', '2 GB', '4 GB', '8 GB']).concat([{ isInput: true, placeholder: 'Custom (Bytes)', inputType: 'number' }]),
         onnxConfig, null, 'gpu_mem_limit_bytes', saveOnnx);
 
     setupCustomDropdown('container-onnx-arena-strategy', undefined, undefined,
@@ -509,7 +626,7 @@ export async function mount(container) {
     setupToggle('toggle-onnx-ort-opt', onnxConfig, null, 'enable_ort_transformers_optimization', saveOnnx);
 
     setupCustomDropdown('container-onnx-kv-data-type', undefined, undefined,
-        makeOptions(['ort_fp16', 'ort_fp32']),
+        makeOptions(['ort_fp32', 'ort_fp16', 'ort_int8'], ['fp32 (Highest Quality)', 'fp16 (Half memory)', 'int8 (Quarter memory)']),
         onnxConfig, null, 'kv_cache_data_type', saveOnnx);
 
     setupToggle('toggle-onnx-deterministic', onnxConfig, null, 'use_deterministic_compute', saveOnnx);

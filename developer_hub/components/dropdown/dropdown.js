@@ -11,7 +11,7 @@ export class Dropdown {
         this.props = props;
         this.id = props.id || `dropdown-${Math.random().toString(36).substr(2, 9)}`;
         this.options = this._normalizeOptions(props.options || []);
-        this.value = props.defaultValue || (this.options.length > 0 ? this.options[0].value : null);
+        this.value = props.defaultValue !== undefined ? props.defaultValue : (this.options.length > 0 ? this.options[0].value : null);
         this.onChange = props.onChange || (() => {});
         
         this.element = null;
