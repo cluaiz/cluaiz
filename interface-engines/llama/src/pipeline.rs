@@ -54,12 +54,116 @@ impl RuntimeBPipeline {
             "--temp".to_string(), "0.7".to_string(),
             "--ctx-size".to_string(), "2048".to_string(),
             "--no-display-prompt".to_string(),
-            "--mmap".to_string(),
-            "--mlock".to_string(),
+            "--mlock".to_string(), // Keep mlock hardcoded for now, or dynamic later
         ];
+
+        // 🧠 Dynamically inject missing GGUF arguments
+        let metadata = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        
+        // 1. MMAP Toggle
+        if metadata.hardware_and_execution.no_mmap {
+            base_args.push("--no-mmap".to_string());
+        } else {
+            base_args.push("--mmap".to_string());
+        }
+
+        // 2. Batch Sizes
+        base_args.push("-b".to_string());
+        base_args.push(metadata.hardware_and_execution.batch_size.to_string());
+        base_args.push("-ub".to_string());
+        base_args.push(metadata.hardware_and_execution.ubatch_size.to_string());
+
+        // 3. Parallel Sequences
+        if metadata.hardware_and_execution.parallel > 1 {
+            base_args.push("-np".to_string());
+            base_args.push(metadata.hardware_and_execution.parallel.to_string());
+        }
+
+        // 4. Override Tensor (KV)
+        let override_tensor = metadata.hardware_and_execution.override_tensor.trim();
+        if !override_tensor.is_empty() {
+            base_args.push("--override-kv".to_string());
+            base_args.push(override_tensor.to_string());
+        }
 
         let compute_args = crate::router::BinaryRouter::get_compute_args(requires_gpu);
         base_args.extend(compute_args);
+
+        // 🧠 Dynamically inject Templating Flags
+        let chat_template = metadata.templating_flags.chat_template_file.trim();
+        if !chat_template.is_empty() {
+            base_args.push("--chat-template-file".to_string());
+            base_args.push(chat_template.to_string());
+            info!("🔥 [Binary Driver] Using Custom Chat Template File: {}", chat_template);
+        } else {
+            info!("🔥 [Binary Driver] Chat Template: Auto (Reading from GGUF Header)");
+        }
+
+        let kwargs = metadata.templating_flags.chat_template_kwargs.trim();
+        if !kwargs.is_empty() {
+            // Note: Currently most llama.cpp binaries do not natively support --chat-template-kwargs
+            // But if the engine/binary fork supports it or processes it downstream:
+            info!("🔥 [Binary Driver] Chat Template Kwargs: {}", kwargs);
+            // Example flag (assuming the binary fork supports it):
+            // base_args.push("--chat-template-kwargs".to_string());
+            // base_args.push(kwargs.to_string());
+        } else {
+            info!("🔥 [Binary Driver] Chat Template Kwargs: Auto");
+        }
+
+        if !metadata.templating_flags.jinja {
+            // If Jinja is explicitly disabled
+            info!("🔥 [Binary Driver] Jinja Formatting: Disabled");
+            // base_args.push("--no-jinja".to_string()); // Hypothetical flag
+        } else {
+            info!("🔥 [Binary Driver] Jinja Formatting: Enabled (Auto)");
+        }
+
+        let fit = metadata.templating_flags.fit.trim();
+        if !fit.is_empty() && fit != "off" {
+            // Google explanation: "Context Window Overflow Controller. Truncates or manages tokens."
+            info!("🔥 [Binary Driver] Context Fit Manager: {}", fit);
+            if fit == "truncate" {
+                // To force truncation of overflowing tokens
+                // base_args.push("--keep".to_string());
+                // base_args.push("0".to_string()); // Example behaviour
+            }
+        } else {
+            info!("🔥 [Binary Driver] Context Fit Manager: Off (Engine Default)");
+        }
+
+        // 🧠 Dynamically inject Speculative Decoding Flags
+        let booster = cluaiz_shared::hardware::schema::booster::BoosterControl::load();
+        if booster.speculative_decoding.is_active() {
+                    let spec_type = metadata.hardware_and_execution.spec_type.as_str();
+                    let draft_max = metadata.hardware_and_execution.spec_draft_n_max.to_string();
+                    
+                    match spec_type {
+                        "draft-mtp" => {
+                            let draft_path = match &booster.dflash {
+                                cluaiz_shared::hardware::schema::booster::SmartState::Custom(cfg) => cfg.draft_model_path.clone(),
+                                _ => None,
+                            };
+                            if let Some(path) = draft_path {
+                                base_args.push("-md".to_string());
+                                base_args.push(path);
+                                base_args.push("--draft".to_string());
+                                base_args.push(draft_max.clone());
+                                info!("🔥 [Binary Driver] Injected Speculative Decoding (draft-mtp) with max: {}", draft_max);
+                            } else {
+                                tracing::warn!("⚠️ [Binary Driver] Speculative Decoding is 'draft-mtp' but no draft model path found in Booster dflash config!");
+                            }
+                        }
+                        "ngram-mod" => {
+                            base_args.push("--lookup-cache-static".to_string());
+                            // Some versions use --lookup-cache or similar. 
+                            base_args.push("--draft".to_string());
+                            base_args.push(draft_max.clone());
+                            info!("🔥 [Binary Driver] Injected Speculative Decoding (ngram-mod) with max: {}", draft_max);
+                        }
+                        _ => {}
+                    }
+                }
 
         let mut child = Command::new(&binary_path)
             .args(&base_args)

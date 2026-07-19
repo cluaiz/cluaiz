@@ -65,8 +65,7 @@ pub struct GgufHardwareExecution {
     pub override_tensor: String,
     pub batch_size: usize,
     pub ubatch_size: usize,
-    pub cache_type_k: String,
-    pub cache_type_v: String,
+
     pub parallel: usize,
     pub spec_type: String,
     pub spec_draft_n_max: usize,
@@ -80,8 +79,6 @@ impl Default for GgufHardwareExecution {
             override_tensor: String::new(),
             batch_size: 512,
             ubatch_size: 512,
-            cache_type_k: "f16".to_string(),
-            cache_type_v: "f16".to_string(),
             parallel: 1,
             spec_type: String::new(),
             spec_draft_n_max: 0,
