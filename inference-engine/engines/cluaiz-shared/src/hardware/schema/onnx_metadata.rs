@@ -28,7 +28,7 @@ pub struct OnnxMetadataHeaders {
 impl Default for OnnxMetadataHeaders {
     fn default() -> Self {
         Self {
-            execution_provider: "CUDA".to_string(),
+            execution_provider: "Auto".to_string(),
             intra_op_num_threads: 0,
             graph_optimization_level: "ORT_ENABLE_ALL".to_string(),
             enable_profiling: false,
