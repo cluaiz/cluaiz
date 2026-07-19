@@ -396,8 +396,14 @@ export async function mount(container) {
     // ----- GGUF INITIALIZATION -----
 
     // Hardware & Execution
+    const customDropdownOptions = [
+        { value: '-1', label: 'Full GPU (Auto)' },
+        { value: '0', label: 'CPU Only' },
+        { isInput: true, placeholder: 'Hybrid Layers (e.g. 16)', suffix: 'Layers', inputType: 'number' }
+    ];
+
     setupCustomDropdown('container-gguf-gpu-layers', undefined, undefined,
-        makeOptions(['-1', '0', '32', '64'], ['Full GPU (-1)', 'CPU Only (0)', '32 Layers', '64 Layers']),
+        customDropdownOptions,
         ggufConfig, 'hardware_and_execution', 'n_gpu_layers', saveGguf);
 
     setupToggle('toggle-gguf-no-mmap', ggufConfig, 'hardware_and_execution', 'no_mmap', saveGguf);
@@ -450,10 +456,26 @@ export async function mount(container) {
 
 
     // ----- ONNX INITIALIZATION -----
+    
+    // Check system control for Apple Silicon
+    let isAppleSilicon = false;
+    try {
+        const sysRes = await fetch(window.getApiBaseUrl() + '/v1/system/control').catch(() => null);
+        if (sysRes && sysRes.ok) {
+            const sysData = await sysRes.json();
+            if (sysData?.identity?.os_target === 'macOS' || sysData?.silicon_truth?.memory?.is_unified_memory) {
+                isAppleSilicon = true;
+            }
+        }
+    } catch(e) {}
 
-    setupCustomDropdown('container-onnx-exec-provider', undefined, undefined,
-        makeOptions(['CUDA', 'CPU']),
-        onnxConfig, null, 'execution_provider', saveOnnx);
+    let onnxHardwareOptions = isAppleSilicon ? 
+        makeOptions(['Auto'], ['Auto (Apple Silicon)']) : 
+        makeOptions(['Auto', 'CPU', 'GPU']);
+
+    setupCustomDropdown('container-onnx-hardware-offload', undefined, undefined,
+        onnxHardwareOptions,
+        onnxConfig, null, 'hardware_offload', saveOnnx);
 
     setupCustomDropdown('container-onnx-intra-threads', undefined, undefined,
         makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']),

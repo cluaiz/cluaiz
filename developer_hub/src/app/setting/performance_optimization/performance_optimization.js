@@ -250,10 +250,10 @@ export async function mount(container) {
 
     // Chat and Vector Models
     try {
-        let chatOptions = [{ value: 'llama3:8b', label: 'llama3:8b' }];
-        let vectorOptions = [{ value: 'all-minilm-l6-v2', label: 'all-minilm-l6-v2' }];
-        let activeChat = 'llama3:8b';
-        let activeVector = 'all-minilm-l6-v2';
+        let chatOptions = [];
+        let vectorOptions = [];
+        let activeChat = '';
+        let activeVector = '';
 
         const chatModels = installedModels.filter(m => m.category === 'chat').map(m => m.id);
         if (chatModels.length > 0) {
@@ -261,19 +261,19 @@ export async function mount(container) {
             activeChat = chatModels[0];
         }
 
-        const vectorModels = installedModels.filter(m => m.category === 'vector').map(m => m.id);
+        const vectorModels = installedModels.filter(m => m.category === 'embedding' || m.category === 'vision').map(m => m.id);
         if (vectorModels.length > 0) {
             vectorOptions = makeOptions(vectorModels);
             activeVector = vectorModels[0];
         }
 
-        if (permData.chat_models?.text) {
+        if (permData.chat_models?.text && activeChat !== '') {
             activeChat = permData.chat_models.text;
             if (!chatOptions.find(o => o.value === activeChat)) {
                 chatOptions.unshift({ value: activeChat, label: activeChat });
             }
         }
-        if (permData.vector_models?.text) {
+        if (permData.vector_models?.text && activeVector !== '') {
             activeVector = permData.vector_models.text;
             if (!vectorOptions.find(o => o.value === activeVector)) {
                 vectorOptions.unshift({ value: activeVector, label: activeVector });
@@ -288,7 +288,9 @@ export async function mount(container) {
                 onChange: async (val) => {
                     console.log('Chat Model changed to:', val);
                     if (!permData.chat_models) permData.chat_models = {};
-                    permData.chat_models.text = val;
+                    permData.chat_models.text = val !== '' ? val : null;
+                    permData.chat_models.vision = val !== '' ? val : null;
+                    permData.chat_models.audio = val !== '' ? val : null;
                     await updatePermissionSetting('chat_models', permData.chat_models);
                 }
             });
@@ -303,7 +305,9 @@ export async function mount(container) {
                 onChange: async (val) => {
                     console.log('Vector Model changed to:', val);
                     if (!permData.vector_models) permData.vector_models = {};
-                    permData.vector_models.text = val;
+                    permData.vector_models.text = val !== '' ? val : null;
+                    permData.vector_models.vision = val !== '' ? val : null;
+                    permData.vector_models.audio = val !== '' ? val : null;
                     await updatePermissionSetting('vector_models', permData.vector_models);
                 }
             });

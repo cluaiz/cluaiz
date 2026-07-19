@@ -103,12 +103,22 @@ impl OnnxEngine {
         tracing::info!("🏊 [ONNX Pool] Building {} sessions ({} threads each)...", pool_size, intra_threads_per_session);
 
         for i in 0..pool_size {
-            let session = Session::builder()
+            let mut builder = Session::builder()
                 .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
                 .with_intra_threads(intra_threads_per_session)
-                .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?
-                .commit_from_file(model_path)
+                .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
+
+            if use_gpu {
+                // Attempt to attach CUDA or CoreML. If neither is available, it gracefully falls back to CPU.
+                builder = builder.with_execution_providers([
+                    ort::execution_providers::CUDAExecutionProvider::default().build(),
+                    ort::execution_providers::CoreMLExecutionProvider::default().build()
+                ]).map_err(|e| anyhow::anyhow!("Execution Provider error: {:?}", e))?;
+            }
+
+            let session = builder.commit_from_file(model_path)
                 .map_err(|e| anyhow::anyhow!("ORT Session [{}] failed: {}", i, e))?;
+                
             self.session_pool.push(Arc::new(std::sync::Mutex::new(session)));
         }
 
@@ -168,11 +178,20 @@ impl OnnxEngine {
         }
 
         let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
-        let session = Session::builder()
+        let mut builder = Session::builder()
             .map_err(|e| anyhow::anyhow!("Vision Session builder error: {:?}", e))?
             .with_intra_threads(threads)
-            .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?
-            .commit_from_file(model_path)
+            .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?;
+
+        if use_gpu {
+            // Attempt to attach CUDA or CoreML. If neither is available, it gracefully falls back to CPU.
+            builder = builder.with_execution_providers([
+                ort::execution_providers::CUDAExecutionProvider::default().build(),
+                ort::execution_providers::CoreMLExecutionProvider::default().build()
+            ]).map_err(|e| anyhow::anyhow!("Execution Provider error: {:?}", e))?;
+        }
+
+        let session = builder.commit_from_file(model_path)
             .map_err(|e| anyhow::anyhow!("ORT Vision Session failed: {}", e))?;
 
         if use_gpu {

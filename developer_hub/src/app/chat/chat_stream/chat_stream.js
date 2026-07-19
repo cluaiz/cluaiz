@@ -139,8 +139,9 @@ function setupChatStream() {
             sendToAI(content, think_mode, response_length);
         };
         window.addEventListener('chat:send', window.chatSendHandler);
+    }
         
-        // Scroll handler to hide header
+    // Scroll handler to hide header
         const streamContainer = document.getElementById('chat-stream-container');
         if (streamContainer) {
             let lastScrollTop = streamContainer.scrollTop;
@@ -392,7 +393,6 @@ function setupChatStream() {
             });
             unloadBtn.dataset.bound = "true";
         }
-    }
 }
 
 async function sendToAI(userMessage, think_mode, response_length) {

@@ -1,0 +1,57 @@
+<div class="settings-module" id="vector_generation_configuration">
+    <div class="settings-header">
+        <h2 class="settings-title">Vector Generation Configuration</h2>
+        <p class="settings-description">Configure the embedding models used for RAG and semantic search operations.</p>
+    </div>
+
+    <!-- GGUF Vector Settings -->
+    <h3 class="settings-section-title" style="margin-top: 30px;">Hardware & Execution (GGUF)</h3>
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">GPU Layers (n_gpu_layers)</span>
+            <span class="setting-desc">Number of layers to offload to the GPU for the GGUF embedding model. -1 offloads all layers.</span>
+        </div>
+        <div class="setting-control" id="container-vector-gguf-gpu-layers"></div>
+    </div>
+
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Batch Size</span>
+            <span class="setting-desc">The number of tokens processed simultaneously during embedding generation.</span>
+        </div>
+        <div class="setting-control" id="container-vector-gguf-batch-size"></div>
+    </div>
+
+    <!-- ONNX Vector Settings -->
+    <h3 class="settings-section-title" style="margin-top: 30px;">Hardware & Execution (ONNX)</h3>
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Hardware Offload</span>
+            <span class="setting-desc">Choose where to run the ONNX model. The engine will automatically pick the best driver (CUDA, DirectML, ROCm, etc.) if GPU is selected.</span>
+        </div>
+        <div class="setting-control" id="container-vector-onnx-provider"></div>
+    </div>
+
+    <!-- Vector Processing Options -->
+    <h3 class="settings-section-title" style="margin-top: 30px;">Vector Processing (General)</h3>
+    
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Normalize Vectors</span>
+            <span class="setting-desc">Apply L2 normalization to the generated embeddings. Required for cosine similarity search.</span>
+        </div>
+        <div class="setting-control">
+            <div class="setting-toggle" id="toggle-vector-normalize">
+                <div class="setting-toggle-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="setting-item">
+        <div class="setting-info">
+            <span class="setting-label">Pooling Strategy</span>
+            <span class="setting-desc">Method used to aggregate token embeddings into a single sentence vector (Mean is most common).</span>
+        </div>
+        <div class="setting-control" id="container-vector-pooling"></div>
+    </div>
+</div>

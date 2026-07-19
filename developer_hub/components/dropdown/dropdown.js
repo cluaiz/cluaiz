@@ -63,7 +63,17 @@ export class Dropdown {
 
     updateDisplay() {
         if (!this.selectedDisplay) return;
-        const selectedOpt = this.options.find(o => o.value === this.value);
+        let selectedOpt = this.options.find(o => String(o.value) === String(this.value));
+        
+        // If not found in standard options, check if there's an input option
+        if (!selectedOpt) {
+            const inputOpt = this.options.find(o => o.isInput);
+            if (inputOpt) {
+                // Synthesize an option label for the custom value
+                selectedOpt = { value: this.value, label: `${this.value} ${inputOpt.suffix || ''}`.trim() };
+            }
+        }
+        
         this.selectedDisplay.innerHTML = `<span class="dropdown-text">${selectedOpt ? selectedOpt.label : ''}</span>`;
         const span = this.selectedDisplay.querySelector('.dropdown-text');
         this.addHoverSlide(this.selectedDisplay, span);
@@ -72,10 +82,11 @@ export class Dropdown {
 
     _highlightSelected() {
         if (!this.itemsContainer) return;
-        const items = this.itemsContainer.querySelectorAll('div[data-value]');
+        const items = this.itemsContainer.querySelectorAll('.select-item-row');
         items.forEach(item => {
             const check = item.querySelector('.dropdown-check');
-            if (item.getAttribute('data-value') === this.value) {
+            const dataVal = item.getAttribute('data-value');
+            if (dataVal && String(dataVal) === String(this.value)) {
                 item.classList.add('same-as-selected');
                 if (check) check.style.opacity = '1';
             } else {
@@ -111,41 +122,89 @@ export class Dropdown {
         this.itemsContainer.innerHTML = '';
         
         this.options.forEach(opt => {
-            const itemDiv = document.createElement('div');
-            itemDiv.setAttribute('data-value', opt.value);
-            
-            const isSelected = opt.value === this.value;
-            itemDiv.innerHTML = `
-                <span class="dropdown-text">${opt.label}</span>
-                <span class="dropdown-check" style="opacity: ${isSelected ? '1' : '0'}">✓</span>
-            `;
-            
-            const span = itemDiv.querySelector('.dropdown-text');
-            this.addHoverSlide(itemDiv, span);
-            
-            if (isSelected) {
-                itemDiv.classList.add('same-as-selected');
-            }
-            if (opt.disabled) {
-                itemDiv.classList.add('disabled-option');
-            }
+            if (opt.isInput) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'dropdown-input-wrapper select-item-row';
+                itemDiv.style.padding = '8px 16px';
+                itemDiv.style.borderTop = '1px solid var(--border-color, rgba(255,255,255,0.05))';
+                
+                const inputEl = document.createElement('input');
+                inputEl.type = opt.inputType || 'number';
+                inputEl.placeholder = opt.placeholder || 'Custom value...';
+                // If current value is not in standard options, it must be the custom value
+                const isStandardOption = this.options.some(o => !o.isInput && String(o.value) === String(this.value));
+                if (!isStandardOption && this.value !== null) {
+                    inputEl.value = this.value;
+                }
+                
+                inputEl.className = 'setting-input';
+                inputEl.style.cssText = 'width: 100%; background-color: var(--bg-panel, rgba(0,0,0,0.3)); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); color: var(--text-main, #fff); padding: 6px 12px; border-radius: 4px; outline: none; font-size: 0.85rem;';
+                
+                // Prevent dropdown closing when interacting with input
+                itemDiv.onclick = (e) => e.stopPropagation();
+                inputEl.onclick = (e) => e.stopPropagation();
+                
+                inputEl.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    if (val === '') return;
+                    this.value = val;
+                    this.updateDisplay();
+                    this._highlightSelected();
+                    
+                    this.itemsContainer.classList.add('select-hide');
+                    this.selectedDisplay.classList.remove('select-arrow-active');
+                    
+                    this.onChange(this.value);
+                });
+                
+                // Also support pressing Enter
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        inputEl.blur(); // Triggers change event
+                    }
+                });
 
-            itemDiv.onclick = (e) => {
-                e.stopPropagation();
-                if (itemDiv.classList.contains('disabled-option')) return;
+                itemDiv.appendChild(inputEl);
+                this.itemsContainer.appendChild(itemDiv);
+            } else {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'select-item-row';
+                itemDiv.setAttribute('data-value', opt.value);
                 
-                this.value = opt.value;
-                this.updateDisplay();
-                this._highlightSelected();
+                const isSelected = String(opt.value) === String(this.value);
+                itemDiv.innerHTML = `
+                    <span class="dropdown-text">${opt.label}</span>
+                    <span class="dropdown-check" style="opacity: ${isSelected ? '1' : '0'}">✓</span>
+                `;
                 
-                // Close dropdown
-                this.itemsContainer.classList.add('select-hide');
-                this.selectedDisplay.classList.remove('select-arrow-active');
+                const span = itemDiv.querySelector('.dropdown-text');
+                this.addHoverSlide(itemDiv, span);
                 
-                this.onChange(this.value);
-            };
-            
-            this.itemsContainer.appendChild(itemDiv);
+                if (isSelected) {
+                    itemDiv.classList.add('same-as-selected');
+                }
+                if (opt.disabled) {
+                    itemDiv.classList.add('disabled-option');
+                }
+
+                itemDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    if (itemDiv.classList.contains('disabled-option')) return;
+                    
+                    this.value = opt.value;
+                    this.updateDisplay();
+                    this._highlightSelected();
+                    
+                    // Close dropdown
+                    this.itemsContainer.classList.add('select-hide');
+                    this.selectedDisplay.classList.remove('select-arrow-active');
+                    
+                    this.onChange(this.value);
+                };
+                
+                this.itemsContainer.appendChild(itemDiv);
+            }
         });
     }
 
