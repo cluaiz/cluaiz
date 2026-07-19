@@ -7,7 +7,7 @@ use tower_http::cors::{Any, CorsLayer};
 use axum::http::Method;
 
 use crate::state::AppState;
-use crate::handlers::{chat, system, models, ingest};
+use crate::handlers::{chat, system, models, ingest, embeddings};
 
 pub fn build(state: Arc<AppState>) -> Router {
     // ── CORS — Restrict to localhost origins only (Desktop, Mobile apps on localhost) ──
@@ -28,12 +28,9 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/engine/skip_think", post(system::skip_think))
         .route("/v1/system/cmd", post(system::execute_cmd))
         
-        // ── External Compatible Streaming API ──
+        // ── External Compatible Streaming & Embeddings API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
-        
-        // ── Internal Legacy Chat API ──
-        .route("/v1/legacy/chat", post(chat::chat))
-        .route("/v1/chat/stream", post(chat::chat_stream))
+        .route("/v1/embeddings", post(embeddings::generate_embeddings))
         
         // ── External Compatible Models API ──
         .route("/api/tags", get(models::tags))

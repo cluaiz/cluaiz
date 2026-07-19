@@ -13,3 +13,4 @@ pub mod extensions;
 pub mod mcp;
 pub mod cel_handler;
 pub mod components;
+pub mod embeddings;
