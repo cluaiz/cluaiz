@@ -113,42 +113,26 @@ pub async fn execute(model_id: &str) -> Result<()> {
         manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_gb;
 
         println!("    ├─ 🧠 Architecture: {}", arch.yellow());
-        println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
+        if manifest.category == "audio" || manifest.id.to_lowercase().contains("whisper") {
+            println!("    ├─ 📻 Task Modality: Audio Processing");
+            println!("    ├─ ⚡ Speed Projection: Real-Time Factor (RTF) Optimized");
+        } else {
+            println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
+            println!("    ├─ 🧮 KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
+        }
         println!("    ├─ 🧩 Parameters: {} B", params.green());
         println!("    ├─ 📦 Quantization / File Type: {}", file_type.cyan());
         println!("    ├─ 📚 Network Layers (Blocks): {}", blocks.magenta());
         println!("    ├─ ⚡ Tensor Count: {}", tensor_count.to_string().cyan());
         println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-        println!("    ├─ 🧮 KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
-        println!("    ├─ ⚙️ Base Engine Overhead: {:.2} GB", base_engine_overhead_gb);
     } else if let Err(e) = engines::models::manager::hf_hub::HuggingFaceHub::fetch_partial_gguf_metadata(&manifest.download_url).await {
         println!("    ├─ ⚠️ Could not probe remote GGUF header: {}", e);
         println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
     }
 
-    println!("\n  {} Conducting Pre-flight Silicon Audit...", "⚖️".cyan());
-    
-    // Load System Control to get real hardware stats
-    let config_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
-    let system_control = if let Ok(content) = std::fs::read_to_string(config_path) {
-        serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok()
-    } else {
-        None
-    };
-
-    let (mut user_ram, mut user_vram) = (0.0, 0.0);
-    if let Some(control) = &system_control {
-        user_ram = control.silicon_truth.memory.total_capacity_gb;
-        user_vram = control.silicon_truth.accelerators.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
-    }
-    
-    println!("    ├─ 🖥️ Host System RAM: {:.2} GB", user_ram);
-    if user_vram > 0.0 {
-        println!("    ├─ 🎮 Target VRAM (Primary GPU): {:.2} GB", user_vram);
-    }
-
+    // Perform system health audit silently in the background
     let total_required = manifest.ram_required_gb;
-    println!("    ├─ 📊 Target Allocation: {:.2} GB (Weights + Engine + 8K Context)", total_required);
+    let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
 
     // 🛑 Pre-flight Quantization Check
     if manifest.bit_depth > 0.0 && manifest.bit_depth < 3.0 {
@@ -157,25 +141,6 @@ pub async fn execute(model_id: &str) -> Result<()> {
         println!("     The current C++ backend may crash when attempting to load these weights.");
         println!("     The download will proceed, but expect 'invalid ggml type' errors at runtime.");
     }
-
-    if user_vram > 0.0 {
-        if total_required <= user_vram {
-            println!("    ├─ ⚡ Offload Status: Full GPU Acceleration (100% VRAM)");
-            println!("    ├─ 🧮 Remaining VRAM post-load: {:.2} GB", user_vram - total_required);
-        } else {
-            let vram_ratio = user_vram / total_required;
-            println!("    ├─ ⚡ Offload Status: Partial GPU Acceleration ({:.0}% in VRAM)", vram_ratio * 100.0);
-            println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - (total_required - user_vram));
-        }
-    } else {
-        println!("    ├─ ⚡ Offload Status: CPU Inference (No dedicated VRAM)");
-        println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - total_required);
-    }
-
-    println!("    ├─ 🚀 Measured Speed: unavailable until a real benchmark or generation run");
-
-    let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
-    println!("    ├─ System Status: {:?}", status);
     
     if status == engines::models::manager::auditor::HealthStatus::Disabled {
         return Err(color_eyre::eyre::eyre!("❌ DENIED: Insufficient hardware resources for this model."));

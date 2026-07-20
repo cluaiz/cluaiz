@@ -195,33 +195,9 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         user_vram = control.silicon_truth.accelerators.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
     }
     
+    // Perform system health audit silently in the background
     let total_required = manifest.ram_required_gb;
     let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
-
-    if !is_local {
-        println!("\n  {} Conducting Pre-flight Silicon Audit...", "⚖️".cyan());
-        println!("    ├─ 🖥️ Host System RAM: {:.2} GB", user_ram);
-        if user_vram > 0.0 {
-            println!("    ├─ 🎮 Target VRAM (Primary GPU): {:.2} GB", user_vram);
-        }
-        println!("    ├─ 📊 Target Allocation: {:.2} GB (Weights + Engine + 8K Context)", total_required);
-        
-        if user_vram > 0.0 {
-            if total_required <= user_vram {
-                println!("    ├─ ⚡ Offload Status: Full GPU Acceleration (100% VRAM)");
-                println!("    ├─ 🧮 Remaining VRAM post-load: {:.2} GB", user_vram - total_required);
-            } else {
-                let vram_ratio = user_vram / total_required;
-                println!("    ├─ ⚡ Offload Status: Partial GPU Acceleration ({:.0}% in VRAM)", vram_ratio * 100.0);
-                println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - (total_required - user_vram));
-            }
-        } else {
-            println!("    ├─ ⚡ Offload Status: CPU Inference (No dedicated VRAM)");
-            println!("    ├─ 🧮 Remaining System RAM post-load: {:.2} GB", user_ram - total_required);
-        }
-        println!("    ├─ 🚀 Measured Speed: unavailable until a real benchmark or generation run");
-        println!("    ├─ System Status: {:?}", status);
-    }
     
     if status == engines::models::manager::auditor::HealthStatus::Disabled {
         return Err(color_eyre::eyre::eyre!("❌ DENIED: Insufficient hardware resources for this model."));

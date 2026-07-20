@@ -51,6 +51,38 @@ It then automatically compiles the optimal execution graph before the first toke
 
 ---
 
+## 🧠 vLLM-Grade Active Slots & Task Tag System
+
+To ensure crash-proof model routing and flexible multi-model serving, the engine uses a dynamic Slot Allocation and Task Tagging system configured in `permission.json`.
+
+### 1. Slot Specification & Supported Tasks
+
+The system classifies models into dedicated functional slots, dynamically reading model manifests and capabilities on selection:
+
+*   **`chat_slot` (Generative LLMs)**
+    *   *Supported Tasks:* `["text-generation", "chat-completion", "multimodal-vision", "multimodal-audio"]`
+*   *   **`vision_slot` (Multimodal Vision / OCR / Image Gen)**
+    *   *Supported Tasks:* `["vision-chat", "image-to-text", "visual-question-answering", "image-generation", "video-generation"]`
+*   *   **`embed_slot` (Vector Embedding Models)**
+    *   *Supported Tasks:* `["embedding", "feature-extraction", "vision-embedding"]`
+*   *   **`audio_slot` (Speech Recognition / TTS)**
+    *   *Supported Tasks:* `["automatic-speech-recognition", "text-to-speech"]`
+
+### 2. Auto-Detection and Synchronization Flow
+
+When a model is chosen via UI (IPC `SET_MODEL`), REST API (`POST /v1/system/permission`), or CLI setters, the engine automatically checks its structural properties from the roster registry to dynamically populate active slots:
+
+```mermaid
+graph TD
+    UI["Tauri UI / API Settings"] -->|"Save/Set Model Command"| Schema["PermissionSchema Setter / Handler"]
+    Schema -->|"1. Look up in CoreRoster"| Roster["Core Roster Index"]
+    Roster -->|"2. Extract Format & Modalities"| Detect["Format & Task Tag Detection"]
+    Detect -->|"3. Write to active_slots map"| ConfigFile["permission.json / permission.bin"]
+    ConfigFile -->|"4. Dispatch checks"| RouteGuard["Pre-flight Router Guards (400 Bad Request if Mismatch)"]
+```
+
+---
+
 ## 🚀 Execution & Deployment
 
 **Run the HTTP Gateway:**
