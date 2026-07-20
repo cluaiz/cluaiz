@@ -46,6 +46,11 @@ pub struct SkillRouter {
 }
 
 #[derive(serde::Deserialize)]
+struct MinimalSlotConfig {
+    model_id: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
 struct MinimalModelSelection {
     text: Option<String>,
 }
@@ -53,6 +58,7 @@ struct MinimalModelSelection {
 #[derive(serde::Deserialize)]
 struct MinimalPermissionSchema {
     vector_models: Option<MinimalModelSelection>,
+    active_slots: Option<std::collections::HashMap<String, MinimalSlotConfig>>,
 }
 
 fn get_active_embedding_model() -> Option<String> {
@@ -60,6 +66,15 @@ fn get_active_embedding_model() -> Option<String> {
     if permission_path.exists() {
         if let Ok(content) = fs::read_to_string(permission_path) {
             if let Ok(schema) = serde_json::from_str::<MinimalPermissionSchema>(&content) {
+                // Priority 1: New active_slots schema
+                if let Some(ref slots) = schema.active_slots {
+                    if let Some(slot) = slots.get("embed_slot") {
+                        if slot.model_id.is_some() {
+                            return slot.model_id.clone();
+                        }
+                    }
+                }
+                // Priority 2: Fallback legacy schema
                 if let Some(vector_models) = schema.vector_models {
                     return vector_models.text;
                 }

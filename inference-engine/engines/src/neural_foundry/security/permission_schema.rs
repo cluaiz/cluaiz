@@ -6,6 +6,14 @@ use tracing::{info, warn};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
+pub struct SlotConfig {
+    pub model_id: Option<String>,
+    pub format_type: Option<String>,
+    pub supported_tasks: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+#[archive(check_bytes)]
 pub struct ModelSelection {
     pub text: Option<String>,
     pub vision: Option<String>,
@@ -38,8 +46,10 @@ impl Default for ApiAuth {
 #[archive(check_bytes)]
 pub struct PermissionSchema {
     #[serde(default)]
+    pub active_slots: std::collections::HashMap<String, SlotConfig>,
+    #[serde(skip_serializing)]
     pub vector_models: ModelSelection,
-    #[serde(default)]
+    #[serde(skip_serializing)]
     pub chat_models: ModelSelection,
     #[serde(default = "default_wasm_firewall")]
     pub wasm_firewall: String,
@@ -76,6 +86,7 @@ impl Default for ModelSelection {
 impl Default for PermissionSchema {
     fn default() -> Self {
         Self {
+            active_slots: std::collections::HashMap::new(),
             vector_models: ModelSelection::default(),
             chat_models: ModelSelection::default(),
             wasm_firewall: default_wasm_firewall(),
@@ -142,21 +153,249 @@ impl PermissionSchema {
     }
 
     pub fn get_active_chat_model(&self) -> Option<String> {
+        if let Some(slot) = self.active_slots.get("chat_slot") {
+            if slot.model_id.is_some() {
+                return slot.model_id.clone();
+            }
+        }
         self.chat_models.text.clone()
     }
+    
     pub fn get_active_embedding_model(&self) -> Option<String> {
+        if let Some(slot) = self.active_slots.get("embed_slot") {
+            if slot.model_id.is_some() {
+                return slot.model_id.clone();
+            }
+        }
         self.vector_models.text.clone()
+    }
+
+    pub fn get_active_vision_model(&self) -> Option<String> {
+        if let Some(slot) = self.active_slots.get("vision_slot") {
+            if slot.model_id.is_some() {
+                return slot.model_id.clone();
+            }
+        }
+        self.vector_models.vision.clone()
+    }
+
+    pub fn get_active_audio_model(&self) -> Option<String> {
+        if let Some(slot) = self.active_slots.get("audio_slot") {
+            if slot.model_id.is_some() {
+                return slot.model_id.clone();
+            }
+        }
+        self.vector_models.audio.clone()
+    }
+
+    pub fn sync_active_slots(&mut self) {
+        let roster = crate::models::registry::CoreRoster::load_roster();
+        let mut new_slots = std::collections::HashMap::new();
+
+        // Helper to detect properties of a model dynamically by probing weights or using structural DNA
+        let get_model_props = |model_id: &str| -> (String, Vec<String>, bool, bool) {
+            let clean_id = model_id.replace(":", "-").to_lowercase();
+            
+            // 1. Try loading from Core Roster manifest to check local path
+            let manifest = roster.iter().find(|m| {
+                m.id.to_lowercase() == clean_id ||
+                m.id.replace(":", "-").to_lowercase() == clean_id ||
+                m.huggingface_filename.to_lowercase().contains(&clean_id) ||
+                clean_id.contains(&m.huggingface_filename.to_lowercase()) ||
+                m.name.to_lowercase() == clean_id
+            });
+
+            let mut local_path = None;
+            let mut manifest_has_vision = false;
+            let mut manifest_has_audio = false;
+            let mut format = "gguf".to_string();
+
+            if let Some(m) = manifest {
+                local_path = m.local_path.clone().map(std::path::PathBuf::from);
+                manifest_has_vision = m.has_vision;
+                manifest_has_audio = m.has_audio;
+                format = m.architecture_type.clone();
+            }
+
+            // Fallback path search if manifest didn't resolve path
+            let search_path = local_path.unwrap_or_else(|| {
+                cluaiz_shared::environment::EnvironmentManager::current()
+                    .models_dir()
+                    .join(&clean_id)
+            });
+
+            // Dynamic format detection based on weights files inside search_path
+            if search_path.exists() && search_path.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&search_path) {
+                    let mut has_gguf = false;
+                    let mut has_onnx = false;
+                    let mut has_transformer = false;
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file() {
+                            let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                            if ext == "gguf" {
+                                has_gguf = true;
+                            } else if ext == "onnx" {
+                                has_onnx = true;
+                            } else if ext == "safetensors" || ext == "bin" || ext == "pt" || path.file_name().and_then(|s| s.to_str()) == Some("config.json") {
+                                has_transformer = true;
+                            }
+                        }
+                    }
+                    if has_gguf {
+                        format = "gguf".to_string();
+                    } else if has_onnx {
+                        format = "onnx".to_string();
+                    } else if has_transformer {
+                        format = "Transformer".to_string();
+                    }
+                }
+            }
+
+            let mut has_vision = manifest_has_vision;
+            let mut has_audio = manifest_has_audio;
+            let mut detected_arch = String::new();
+
+            // 2. Real weights probing (No hardcoded names!)
+            if search_path.exists() && search_path.is_dir() {
+                // Scan for gguf file to run GGUFProber
+                let mut gguf_file = None;
+                let mut onnx_file = None;
+
+                if let Ok(entries) = std::fs::read_dir(&search_path) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file() {
+                            if path.extension().and_then(|s| s.to_str()) == Some("gguf") {
+                                gguf_file = Some(path);
+                                break;
+                            } else if path.extension().and_then(|s| s.to_str()) == Some("onnx") {
+                                onnx_file = Some(path);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(gp) = gguf_file {
+                    format = "gguf".to_string();
+                    if let Ok((metadata, tensor_infos, _count)) = cluaiz_shared::utils::GGUFProber::probe(&gp) {
+                        if let Some(arch) = metadata.get("general.architecture") {
+                            detected_arch = arch.to_lowercase();
+                            if detected_arch == "whisper" {
+                                has_audio = true;
+                            } else if detected_arch == "bert" {
+                                // BERT family is for embeddings
+                            }
+                        }
+
+                        // Dynamic vision layer check: GGUF models with clip vision projection layers
+                        let has_clip = tensor_infos.keys().any(|k| k.contains("mm_projector") || k.contains("v_projector") || k.contains("vision"));
+                        if has_clip {
+                            has_vision = true;
+                        }
+                    }
+                } else if onnx_file.is_some() {
+                    format = "onnx".to_string();
+                    // Fallback configuration analysis from structural DNA
+                    let dna_path = search_path.join("structural_dna.json");
+                    if let Ok(dna_str) = std::fs::read_to_string(&dna_path) {
+                        if let Ok(dna) = serde_json::from_str::<cluaiz_shared::StructuralDNA>(&dna_str) {
+                            has_vision = dna.signature.is_multimodal;
+                        }
+                    }
+                }
+            }
+
+            // Assign tasks based on dynamic architecture categories (e.g. whisper, bert)
+            let mut tasks = Vec::new();
+            if detected_arch == "whisper" || has_audio {
+                tasks.push("automatic-speech-recognition".to_string());
+                tasks.push("text-to-speech".to_string());
+            } else if detected_arch == "bert" || format == "safetensors" || clean_id.contains("embedding") {
+                tasks.push("embedding".to_string());
+                if has_vision {
+                    tasks.push("vision-embedding".to_string());
+                }
+            } else {
+                tasks.push("text-generation".to_string());
+                tasks.push("chat-completion".to_string());
+                if has_vision {
+                    tasks.push("multimodal-vision".to_string());
+                }
+            }
+
+            (format, tasks, has_vision, has_audio)
+        };
+
+        // 1. Process Chat Model
+        if let Some(ref chat_id) = self.chat_models.text {
+            let (format, tasks, _, _) = get_model_props(chat_id);
+            new_slots.insert("chat_slot".to_string(), SlotConfig {
+                model_id: Some(chat_id.clone()),
+                format_type: Some(format),
+                supported_tasks: tasks,
+            });
+        }
+
+        // 2. Process Embedding Model
+        if let Some(ref embed_id) = self.vector_models.text {
+            let (format, tasks, _, _) = get_model_props(embed_id);
+            new_slots.insert("embed_slot".to_string(), SlotConfig {
+                model_id: Some(embed_id.clone()),
+                format_type: Some(format),
+                supported_tasks: tasks,
+            });
+        }
+
+        // 3. Process Vision Model
+        if let Some(ref vision_id) = self.vector_models.vision {
+            let (format, _, _, _) = get_model_props(vision_id);
+            new_slots.insert("vision_slot".to_string(), SlotConfig {
+                model_id: Some(vision_id.clone()),
+                format_type: Some(format),
+                supported_tasks: vec!["vision-chat".to_string(), "image-to-text".to_string(), "visual-question-answering".to_string()],
+            });
+        }
+
+        // 4. Process Audio Model
+        if let Some(ref audio_id) = self.vector_models.audio {
+            let (format, _, _, _) = get_model_props(audio_id);
+            new_slots.insert("audio_slot".to_string(), SlotConfig {
+                model_id: Some(audio_id.clone()),
+                format_type: Some(format),
+                supported_tasks: vec!["automatic-speech-recognition".to_string(), "text-to-speech".to_string()],
+            });
+        }
+
+        self.active_slots = new_slots;
     }
 
     pub fn set_active_chat_model(model_id: String) {
         let mut schema = Self::load();
         schema.chat_models.text = Some(model_id);
+        schema.sync_active_slots();
         let _ = schema.save();
     }
 
     pub fn set_active_embedding_model(model_id: String) {
         let mut schema = Self::load();
         schema.vector_models.text = Some(model_id);
+        schema.sync_active_slots();
+        let _ = schema.save();
+    }
+
+    pub fn set_active_vision_model(model_id: String) {
+        let mut schema = Self::load();
+        schema.vector_models.vision = Some(model_id);
+        schema.sync_active_slots();
+        let _ = schema.save();
+    }
+
+    pub fn set_active_audio_model(model_id: String) {
+        let mut schema = Self::load();
+        schema.vector_models.audio = Some(model_id);
+        schema.sync_active_slots();
         let _ = schema.save();
     }
 

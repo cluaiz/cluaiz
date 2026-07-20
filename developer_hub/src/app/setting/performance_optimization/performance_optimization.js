@@ -248,37 +248,64 @@ export async function mount(container) {
     setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
     setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
 
-    // Chat and Vector Models
+    // Chat, Vector, Vision, and Audio Models Selection
     try {
         let chatOptions = [];
         let vectorOptions = [];
-        let activeChat = '';
-        let activeVector = '';
+        let visionOptions = [];
+        let audioOptions = [];
 
-        const chatModels = installedModels.filter(m => m.category === 'chat').map(m => m.id);
+        let activeChat = permData.chat_models?.text || '';
+        let activeVector = permData.vector_models?.text || '';
+        let activeVision = permData.vector_models?.vision || '';
+        let activeAudio = permData.vector_models?.audio || '';
+
+        const chatModels = permData.available_chat_models || [];
         if (chatModels.length > 0) {
             chatOptions = makeOptions(chatModels);
-            activeChat = chatModels[0];
         }
-
-        const vectorModels = installedModels.filter(m => m.category === 'embedding' || m.category === 'vision').map(m => m.id);
-        if (vectorModels.length > 0) {
-            vectorOptions = makeOptions(vectorModels);
-            activeVector = vectorModels[0];
-        }
-
-        if (permData.chat_models?.text && activeChat !== '') {
-            activeChat = permData.chat_models.text;
+        if (activeChat !== '') {
             if (!chatOptions.find(o => o.value === activeChat)) {
                 chatOptions.unshift({ value: activeChat, label: activeChat });
             }
         }
-        if (permData.vector_models?.text && activeVector !== '') {
-            activeVector = permData.vector_models.text;
+
+        const vectorModels = permData.available_vector_models || [];
+        if (vectorModels.length > 0) {
+            vectorOptions = makeOptions(vectorModels);
+        }
+        if (activeVector !== '') {
             if (!vectorOptions.find(o => o.value === activeVector)) {
                 vectorOptions.unshift({ value: activeVector, label: activeVector });
             }
         }
+
+        // Vision models reside in the vision folder category
+        const visionModels = permData.available_vision_models || [];
+        if (visionModels.length > 0) {
+            visionOptions = makeOptions(visionModels);
+        }
+        if (activeVision !== '') {
+            if (!visionOptions.find(o => o.value === activeVision)) {
+                visionOptions.unshift({ value: activeVision, label: activeVision });
+            }
+        }
+
+        const audioModels = permData.available_audio_models || [];
+        if (audioModels.length > 0) {
+            audioOptions = makeOptions(audioModels);
+        }
+        if (activeAudio !== '') {
+            if (!audioOptions.find(o => o.value === activeAudio)) {
+                audioOptions.unshift({ value: activeAudio, label: activeAudio });
+            }
+        }
+
+        // Add fallback options if lists are completely empty or unselected to avoid empty dropdowns
+        chatOptions.unshift({ value: '', label: 'Select Chat Model...' });
+        vectorOptions.unshift({ value: '', label: 'Select Vector Model...' });
+        visionOptions.unshift({ value: '', label: 'Select Vision Model...' });
+        audioOptions.unshift({ value: '', label: 'Select Audio Model...' });
 
         const chatContainer = container.querySelector('#container-chat-model');
         if (chatContainer) {
@@ -289,8 +316,6 @@ export async function mount(container) {
                     console.log('Chat Model changed to:', val);
                     if (!permData.chat_models) permData.chat_models = {};
                     permData.chat_models.text = val !== '' ? val : null;
-                    permData.chat_models.vision = val !== '' ? val : null;
-                    permData.chat_models.audio = val !== '' ? val : null;
                     await updatePermissionSetting('chat_models', permData.chat_models);
                 }
             });
@@ -306,12 +331,40 @@ export async function mount(container) {
                     console.log('Vector Model changed to:', val);
                     if (!permData.vector_models) permData.vector_models = {};
                     permData.vector_models.text = val !== '' ? val : null;
-                    permData.vector_models.vision = val !== '' ? val : null;
-                    permData.vector_models.audio = val !== '' ? val : null;
                     await updatePermissionSetting('vector_models', permData.vector_models);
                 }
             });
             vectorContainer.appendChild(vectorDropdown.render());
+        }
+
+        const visionContainer = container.querySelector('#container-vision-model');
+        if (visionContainer) {
+            const visionDropdown = new Dropdown({
+                options: visionOptions,
+                defaultValue: activeVision,
+                onChange: async (val) => {
+                    console.log('Vision Model changed to:', val);
+                    if (!permData.vector_models) permData.vector_models = {};
+                    permData.vector_models.vision = val !== '' ? val : null;
+                    await updatePermissionSetting('vector_models', permData.vector_models);
+                }
+            });
+            visionContainer.appendChild(visionDropdown.render());
+        }
+
+        const audioContainer = container.querySelector('#container-audio-model');
+        if (audioContainer) {
+            const audioDropdown = new Dropdown({
+                options: audioOptions,
+                defaultValue: activeAudio,
+                onChange: async (val) => {
+                    console.log('Audio Model changed to:', val);
+                    if (!permData.vector_models) permData.vector_models = {};
+                    permData.vector_models.audio = val !== '' ? val : null;
+                    await updatePermissionSetting('vector_models', permData.vector_models);
+                }
+            });
+            audioContainer.appendChild(audioDropdown.render());
         }
     } catch (e) {
         console.error('Failed to setup models:', e);
