@@ -68,9 +68,9 @@ impl ModelManager {
 
         // 5. Check Weights & Assets (The Surgical Repair)
         let weight_file = model_path.join(&manifest.huggingface_filename);
-        let dna_file = model_path.join("structural_dna.json");
 
-        let needs_repair = !weight_file.exists() || !dna_file.exists();
+
+        let needs_repair = !weight_file.exists();
         // Check if any asset is missing (Removed external JSON checks, only check weights and DNA)
         if !needs_repair {
             println!("  {} Model '{}' is healthy and ready.", "✅".green(), manifest.id);
@@ -84,18 +84,7 @@ impl ModelManager {
             println!("  {} Weights verified.", "✅".green());
         }
 
-        let tokenizer_file = model_path.join("tokenizer.json");
-        if !tokenizer_file.exists() && manifest.download_url.contains("huggingface.co") {
-            // Attempt to fetch tokenizer.json, ignore failure if not present.
-            let repo = manifest.download_url.split("/resolve").next().unwrap_or("");
-            if !repo.is_empty() {
-                let tokenizer_url = format!("{}/resolve/main/tokenizer.json", repo);
-                println!("  {} Synchronizing native tokenizer...", "🔍".cyan());
-                let _ = installer.download_weights(&tokenizer_url, "tokenizer.json").await;
-            }
-        }
-
-        // 10. Universal Multi-Part Downloader (ONNX Data & GGUF Splits)
+        // 10. Universal Multi-Part Downloader (GGUF Splits)
         if manifest.download_url.contains("huggingface.co") {
             let repo = manifest.download_url.split("/resolve").next().unwrap_or("");
             if !repo.is_empty() {
@@ -114,9 +103,7 @@ impl ModelManager {
 
                         for item in items {
                             if let Some(path) = item.get("path").and_then(|p| p.as_str()) {
-                                let is_related = if manifest.huggingface_filename.ends_with(".onnx") {
-                                    path.starts_with(&format!("{}_data", base_name))
-                                } else if manifest.huggingface_filename.ends_with(".gguf") {
+                                let is_related = if manifest.huggingface_filename.ends_with(".gguf") {
                                     path.starts_with(base_prefix) && path.ends_with(".gguf") && path != base_name
                                 } else {
                                     false
@@ -136,16 +123,6 @@ impl ModelManager {
                 }
             }
         }
-
-        // 8. Save/Refresh local manifest
-        let local_manifest_path = model_path.join("model_manifest.json");
-        let manifest_json = serde_json::to_string_pretty(&manifest)
-            .map_err(|e| format!("JSON Serialize Error: {}", e))?;
-        tokio::fs::write(local_manifest_path, manifest_json).await
-            .map_err(|e| format!("Failed to save local manifest: {}", e))?;
-
-        // 9. 🧬 Neural DNA Handshake (Always ensure DNA is fresh)
-        let _ = crate::models::fetch::ModelDownloader::generate_cluaiz_dna(&manifest, &model_path, &weight_file);
 
         println!("  {} Model '{}' synchronized and ready.\n", "✅".green(), manifest.id);
         Ok(())

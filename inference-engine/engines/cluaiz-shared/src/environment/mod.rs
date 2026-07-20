@@ -90,6 +90,9 @@ impl EnvironmentManager {
     pub fn vision_models_dir(&self) -> PathBuf {
         self.models_dir().join("vision")
     }
+    pub fn audio_models_dir(&self) -> PathBuf {
+        self.models_dir().join("audio")
+    }
     pub fn kv_cache_dir(&self) -> PathBuf {
         self.local_dir.join("kv_cache")
     }
@@ -203,6 +206,14 @@ impl EnvironmentManager {
 
     pub fn ensure_vision_models_dir(&self) -> std::io::Result<PathBuf> {
         let dir = self.vision_models_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_audio_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.audio_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }

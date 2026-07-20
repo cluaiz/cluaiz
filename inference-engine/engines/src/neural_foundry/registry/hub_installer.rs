@@ -316,8 +316,8 @@ impl HubInstaller {
         };
 
         let config = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-        let active_emb = config.vector_models.text.clone().unwrap_or_default().replace(":", "-");
-        let active_chat = config.chat_models.text.clone().unwrap_or_default().replace(":", "-");
+        let active_emb = config.get_active_embedding_model().unwrap_or_default().replace(":", "-");
+        let active_chat = config.get_active_chat_model().unwrap_or_default().replace(":", "-");
         
         let active_emb_file = format!("{}.emb.safetensors", active_emb);
         let active_chat_file = format!("{}.kvcache.safetensors", active_chat);
@@ -393,8 +393,8 @@ impl HubInstaller {
         };
 
         let config = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-        let active_emb = config.vector_models.text.clone().unwrap_or_default().replace(":", "-");
-        let active_chat = config.chat_models.text.clone().unwrap_or_default().replace(":", "-");
+        let active_emb = config.get_active_embedding_model().unwrap_or_default().replace(":", "-");
+        let active_chat = config.get_active_chat_model().unwrap_or_default().replace(":", "-");
         
         let active_emb_file = format!("{}.emb.safetensors", active_emb);
         let active_chat_file = format!("{}.kvcache.safetensors", active_chat);

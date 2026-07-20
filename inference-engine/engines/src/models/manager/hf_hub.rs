@@ -112,7 +112,7 @@ impl HuggingFaceHub {
         }
 
         let family = if family_parts.is_empty() { fallback.clone() } else { family_parts.join("_") };
-        let sovereign_id = format!("{}:{}:{}:{}", family, size, format_ext, quant);
+        let sovereign_id = repo_id.replace('/', "-");
 
         // 🧠 Intelligent Categorization via HuggingFace API
         let mut is_embedding = false;

@@ -233,6 +233,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut available_chat_models: Vec<String> = Vec::new();
                                 let mut available_vector_models: Vec<String> = Vec::new();
+                                let mut available_audio_models: Vec<String> = Vec::new();
                                 let mut all_models: Vec<String> = Vec::new();
 
                                 for model in &roster {
@@ -242,6 +243,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     // ~/.cluaiz/models/chat/     → chat models
                                     // ~/.cluaiz/models/embedding/ → vector models (text embeddings)
                                     // ~/.cluaiz/models/vision/    → vector models (image embeddings / CLIP)
+                                    // ~/.cluaiz/models/audio/     → audio models
                                     let folder_category = model.local_path.as_deref()
                                         .and_then(|p| {
                                             let p_lower = p.replace('\\', "/").to_lowercase();
@@ -251,6 +253,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                                 Some("embedding")
                                             } else if p_lower.contains("/models/vision/") {
                                                 Some("vision")
+                                            } else if p_lower.contains("/models/audio/") {
+                                                Some("audio")
                                             } else {
                                                 None
                                             }
@@ -261,11 +265,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         .unwrap_or_else(|| model.category.as_str())
                                         .to_lowercase();
 
-                                    // "embedding" and "vision" models go into vector list.
-                                    // Vision/CLIP models can embed images into vector space.
                                     match cat.as_str() {
                                         "embedding" | "vision" | "multimodal" => {
                                             available_vector_models.push(model.id.clone());
+                                        }
+                                        "audio" => {
+                                            available_audio_models.push(model.id.clone());
                                         }
                                         _ => {
                                             available_chat_models.push(model.id.clone());
@@ -274,21 +279,28 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
 
                                 // Safety: always ensure the currently-active model appears in its list
-                                let active_text_id = perms.chat_models.text.clone();
+                                let active_text_id = perms.get_active_chat_model();
                                 if let Some(ref t) = active_text_id {
                                     if !t.is_empty() && !available_chat_models.contains(t) {
                                         available_chat_models.push(t.clone());
                                     }
                                 }
-                                if let Some(ref t) = perms.vector_models.text {
+                                let active_embed_id = perms.get_active_embedding_model();
+                                if let Some(ref t) = active_embed_id {
                                     if !t.is_empty() && !available_vector_models.contains(t) {
                                         available_vector_models.push(t.clone());
                                     }
                                 }
+                                let active_audio_id = perms.get_active_audio_model();
+                                if let Some(ref t) = active_audio_id {
+                                    if !t.is_empty() && !available_audio_models.contains(t) {
+                                        available_audio_models.push(t.clone());
+                                    }
+                                }
 
                                 // Fetch manifests for the currently active models so frontend can do deep combined validation
-                                let active_chat_manifest = active_text_id.and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
-                                let active_vector_manifest = perms.vector_models.text.clone().and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
+                                let active_chat_manifest = active_text_id.clone().and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
+                                let active_vector_manifest = active_embed_id.clone().and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
 
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
@@ -304,11 +316,13 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         "lazy_load_model": perms.lazy_load_model,
                                         "enable_kvcache": perms.enable_kvcache,
                                         "api_port": perms.api_port,
+                                        "active_slots": perms.active_slots,
                                         "vector_models": perms.vector_models,
                                         "api_auth": perms.api_auth,
                                         "available_models": all_models,
                                         "available_chat_models": available_chat_models,
                                         "available_vector_models": available_vector_models,
+                                        "available_audio_models": available_audio_models,
                                         "available_devices": ["auto", "gpu", "cpu"]
                                     },
                                     "booster": booster,
@@ -455,8 +469,9 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                                         if let Ok(mut perms_json) = serde_json::to_value(&perms) {
                                             perms_json[key] = value.clone();
-                                            if let Ok(updated_perms) = serde_json::from_value::<engines::neural_foundry::security::permission_schema::PermissionSchema>(perms_json) {
-                                                updated_perms.save();
+                                            if let Ok(mut updated_perms) = serde_json::from_value::<engines::neural_foundry::security::permission_schema::PermissionSchema>(perms_json) {
+                                                updated_perms.sync_active_slots();
+                                                let _ = updated_perms.save();
                                                 let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                             } else {
                                                 let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid permission format\"}").await;
@@ -526,7 +541,16 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "SET_MODEL" => {
                                 tracing::info!("🚀 [IPC] Received SET_MODEL: {:?}", json_cmd);
-                                // Here we would unload current model and load new one
+                                if let (Some(model_id), Some(model_type)) = (
+                                    json_cmd.get("model_id").and_then(|v| v.as_str()),
+                                    json_cmd.get("model_type").and_then(|v| v.as_str())
+                                ) {
+                                    if model_type == "chat" {
+                                        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model_id.to_string());
+                                    } else if model_type == "embedding" || model_type == "vector" {
+                                        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model_id.to_string());
+                                    }
+                                }
                                 let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                 continue;
                             }
@@ -555,7 +579,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             
                             let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                             let roster = engines::models::registry::CoreRoster::load_roster();
-                            if let Some(id) = perms.chat_models.text {
+                            if let Some(id) = perms.get_active_chat_model() {
                                 if let Some(model) = roster.iter().find(|m| m.id == id) {
                                     if let Some(path) = &model.local_path {
                                         if let Ok(dna) = cluaiz_shared::metadata::dna::StructuralDNA::load(std::path::Path::new(path)) {
