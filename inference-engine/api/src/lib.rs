@@ -9,8 +9,10 @@
 mod state;
 mod handlers;
 mod routes;
-mod ffi_bridge;
-mod auth;
+pub mod utils;
+pub mod ffi_bridge;
+pub mod auth;
+pub mod url_resolver;
 
 use colored::*;
 use dispatcher::NeuralDispatcher;

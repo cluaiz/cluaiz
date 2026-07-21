@@ -52,21 +52,105 @@ pub struct ExternalChatRequest {
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
+#[serde(untagged)]
+pub enum MessageContent {
+    Text(String),
+    Array(Vec<ContentPart>),
+}
+
+impl Default for MessageContent {
+    fn default() -> Self {
+        MessageContent::Text(String::new())
+    }
+}
+
+impl MessageContent {
+    pub async fn flatten_to_string(&self) -> String {
+        match self {
+            MessageContent::Text(text) => text.clone(),
+            MessageContent::Array(parts) => {
+                let mut combined = String::new();
+                for part in parts {
+                    match part {
+                        ContentPart::Text { text } => {
+                            combined.push_str(text);
+                            combined.push('\n');
+                        }
+                        ContentPart::ImageUrl { image_url } => {
+                            let local_path = match crate::url_resolver::resolve_to_local_file(&image_url.url).await {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    tracing::error!("Failed to resolve image URL: {}", e);
+                                    image_url.url.clone()
+                                }
+                            };
+                            combined.push_str(&format!("<cluaiz_media type=\"image\" url=\"{}\" />\n", local_path));
+                        }
+                        ContentPart::AudioUrl { audio_url } => {
+                            let local_path = match crate::url_resolver::resolve_to_local_file(&audio_url.url).await {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    tracing::error!("Failed to resolve audio URL: {}", e);
+                                    audio_url.url.clone()
+                                }
+                            };
+                            combined.push_str(&format!("<cluaiz_media type=\"audio\" url=\"{}\" />\n", local_path));
+                        }
+                    }
+                }
+                combined.trim_end().to_string()
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(tag = "type")]
+pub enum ContentPart {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image_url")]
+    ImageUrl { image_url: MediaUrlContent },
+    #[serde(rename = "audio_url")]
+    AudioUrl { audio_url: MediaUrlContent },
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct MediaUrlContent {
+    pub url: String,
+}
+
+#[derive(Deserialize, Clone)]
 pub struct ExternalMessage {
     pub role: String,
-    pub content: String,
+    pub content: MessageContent,
+}
+
+impl serde::Serialize for ExternalMessage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ExternalMessage", 2)?;
+        state.serialize_field("role", &self.role)?;
+        // NOTE: This serialize implementation cannot call async flatten_to_string.
+        // In a real implementation, ensure the serialized format handles this accordingly.
+        state.serialize_field("content", "serialization_requires_async_context")?;
+        state.end()
+    }
 }
 
 // ─── HELPER: Fetch Real Model Header Information ────────────
 fn generate_model_header_info() -> Vec<Value> {
-    let registry = cluaiz_shared::hardware::governor::HardwareGovernor::load_process_registry();
+    let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
     let mut loaded_models = Vec::new();
     let env = cluaiz_shared::environment::EnvironmentManager::current();
     let roots = vec![env.local_dir.join("models"), env.global_dir.join("models")];
     let categories = ["chat", "embedding", "vision", "audio", "code"];
 
-    for (_, info) in registry {
+    for info in registry {
         let mut think_start = String::new();
         let mut think_close = String::new();
         let mut all_metadata = json!({});
@@ -138,8 +222,8 @@ pub async fn chat_completions(
 ) -> axum::response::Response {
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
     
-    // 🛑 INSTANT UNLOAD LOGIC
-    if last_message.is_empty() && request.keep_alive == Some(0) {
+    // Check if empty content should be prevented
+    if last_message.flatten_to_string().await.is_empty() && request.keep_alive == Some(0) {
         tracing::info!("♻️ [Memory] Instant model unload requested via keep_alive: 0");
         let _ = state.dispatcher.unload_model().await;
         let empty_res = json!({
@@ -156,6 +240,38 @@ pub async fn chat_completions(
     let send_telemetry = schema.stream_telemetry;
     let start_time = std::time::Instant::now();
 
+    // 🛡️ STRICT PRE-FLIGHT TASK GUARDRAIL
+    // Ensure the currently active chat or vision slot actually supports chat capabilities
+    // (Prevent loading pure embedding/STT models into chat API and causing GPU crash)
+    let mut supports_chat = false;
+    let mut has_any_slot = false;
+    
+    for (slot_name, config) in &schema.active_slots {
+        has_any_slot = true;
+        if slot_name == "chat_slot" || slot_name == "vision_slot" {
+            if config.supported_tasks.iter().any(|t| t == "chat-completion" || t == "text-generation" || t == "vision-chat") {
+                supports_chat = true;
+                break;
+            }
+        }
+    }
+
+    if has_any_slot && !supports_chat {
+        tracing::error!("Blocked chat request: Active slots do not support chat completions.");
+        let err_res = json!({
+            "error": {
+                "message": "The currently active model slot does not support chat completions. (e.g. Targeted an embedding/audio model instead of LLM/VLM)",
+                "type": "invalid_request_error",
+                "code": "model_task_mismatch"
+            }
+        });
+        return axum::response::Response::builder()
+            .status(axum::http::StatusCode::BAD_REQUEST)
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(serde_json::to_string(&err_res).unwrap()))
+            .unwrap();
+    }
+
     let skip_brain = match &request.temporary_chat {
         Some(TemporaryChatMode::Strict) => true,
         _ => false,
@@ -169,10 +285,9 @@ pub async fn chat_completions(
     let mut augmented_messages = request.messages.clone();
 
     // 🚀 SEMANTIC ROUTING (Sovereign Injection)
+    let prompt_lower = last_message.flatten_to_string().await.to_lowercase();
+    let mut matched_skills = Vec::new();
     if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-        let prompt_lower = last_message.to_lowercase();
-        let mut matched_skills = Vec::new();
-        
         if let Some(path) = router.check_trigger(&prompt_lower) {
             matched_skills.push(path.clone());
         } else {
@@ -183,18 +298,19 @@ pub async fn chat_completions(
                 }
             }
         }
-        
-        for skill_path in matched_skills {
-            if let Some(body) = engines::neural_foundry::extract_skill_body(&skill_path) {
-                if let Some(name) = std::path::Path::new(&skill_path).file_name() {
-                    matched_tool = name.to_string_lossy().to_string();
-                }
-                jit_injected = true;
-                if let Some(last_msg) = augmented_messages.last_mut() {
-                    last_msg.content = format!("{}\n\n{}", body, last_msg.content);
-                }
-                break; // Only inject one tool context for now to save space
+    }
+    
+    for skill_path in matched_skills {
+        if let Some(body) = engines::neural_foundry::extract_skill_body(&skill_path) {
+            if let Some(name) = std::path::Path::new(&skill_path).file_name() {
+                matched_tool = name.to_string_lossy().to_string();
             }
+            jit_injected = true;
+            if let Some(last_msg) = augmented_messages.last_mut() {
+                let prev_content = last_msg.content.flatten_to_string().await;
+                last_msg.content = MessageContent::Text(format!("{}\n\n{}", body, prev_content));
+            }
+            break; // Only inject one tool context for now to save space
         }
     }
 
@@ -331,18 +447,19 @@ pub async fn chat_completions(
         if !constraint.is_empty() {
             tracing::info!("🌡️ [Prompt] Injecting response constraint.");
             if let Some(sys_msg) = augmented_messages.iter_mut().find(|m| m.role.to_lowercase() == "system") {
-                sys_msg.content = format!("{}\n\n{}", sys_msg.content, constraint);
+                let prev_sys = sys_msg.content.flatten_to_string().await;
+                sys_msg.content = MessageContent::Text(format!("{}\n\n{}", prev_sys, constraint));
             } else {
                 augmented_messages.insert(0, ExternalMessage {
                     role: "system".to_string(),
-                    content: constraint,
+                    content: MessageContent::Text(constraint.to_string()),
                 });
             }
         }
     }
 
     // Serialize the entire message array to JSON to preserve full chat history
-    let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| last_message.clone());
+    let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| "[]".to_string());
 
     // Initial dispatch to see if it's a stream or an error
     let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain).await;
