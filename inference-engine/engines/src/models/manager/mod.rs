@@ -124,6 +124,78 @@ impl ModelManager {
             }
         }
 
+        // Dynamically probe model keys and register into model_registry.json
+        let format_type = if manifest.huggingface_filename.ends_with(".gguf") { "gguf" } else { "onnx" };
+        let mut architecture = manifest.architecture.clone();
+        let mut context_window = manifest.context_window.clone();
+
+        // Perform GGUF metadata probing if applicable
+        if format_type == "gguf" {
+            if let Ok(metadata) = cluaiz_shared::utils::gguf_prober::GGUFProber::probe(&weight_file) {
+                if let Some(arch) = metadata.0.get("general.architecture") {
+                    architecture = arch.clone();
+                }
+                if let Some(ctx) = metadata.0.get("general.context_length") {
+                    context_window = ctx.clone();
+                }
+            }
+        }
+
+        // Dynamically resolve SlotType configuration properties
+        let (slot_type, detected_caps) = cluaiz_shared::utils::model_registry::SlotType::detect_from_metadata(
+            format_type,
+            &manifest.category,
+            &architecture,
+            manifest.has_vision,
+            manifest.has_audio,
+            Some(&model_path),
+        );
+
+        let category = slot_type.as_str().to_string();
+        let supported_tasks = slot_type.supported_tasks(&detected_caps);
+
+        let mut files = vec![cluaiz_shared::utils::RegistryModelFile {
+            name: manifest.huggingface_filename.clone(),
+            size_bytes: std::fs::metadata(&weight_file).map(|m| m.len()).unwrap_or(0),
+            is_primary: true,
+        }];
+
+        // Register any other files downloaded inside directory (e.g. splits)
+        if let Ok(mut entries) = std::fs::read_dir(&model_path) {
+            while let Some(Ok(entry)) = entries.next() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name != manifest.huggingface_filename && (name.ends_with(".gguf") || name.ends_with(".onnx")) {
+                    files.push(cluaiz_shared::utils::RegistryModelFile {
+                        name,
+                        size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
+                        is_primary: false,
+                    });
+                }
+            }
+        }
+
+        let registry_entry = cluaiz_shared::utils::ModelRegistryEntry {
+            id: safe_id,
+            category,
+            format_type: format_type.to_string(),
+            huggingface_repo: manifest.huggingface_repo.clone(),
+            local_dir: model_path.to_string_lossy().to_string(),
+            files,
+            supported_tasks,
+            requires_gpu: false,
+            metadata: cluaiz_shared::utils::RegistryModelMetadata {
+                architecture,
+                parameters: "unknown".to_string(),
+                context_window,
+            },
+        };
+
+        if let Err(e) = cluaiz_shared::utils::ModelRegistry::register_model(registry_entry) {
+            println!("  {} Failed to register model inside configuration database: {}", "⚠️".yellow(), e);
+        } else {
+            println!("  {} Model successfully registered inside configuration database.", "📝".green());
+        }
+
         println!("  {} Model '{}' synchronized and ready.\n", "✅".green(), manifest.id);
         Ok(())
     }

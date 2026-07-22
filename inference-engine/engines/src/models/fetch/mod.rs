@@ -88,10 +88,30 @@ impl ModelDownloader {
             .build()
             .map_err(|e| e.to_string())?;
 
-        // 1. Download the main weights (The ONLY file downloaded)
+        // 1. Download the main weights (Primary Weight File)
         Self::download_single_file(&client, download_url, &dest_dir.join(file_basename), tx.clone(), abort.clone()).await?;
 
-        // 2. ✅ Save model_manifest.json — makes the folder fully self-contained & portable
+        // 2. 🌐 AUTO-FETCH SUPPLEMENTARY METADATA FILES (config.json, tokenizer.json, processor_config.json)
+        let resolved_repo = Self::extract_repo_id(repo_id, download_url);
+        if let Some(repo) = resolved_repo {
+            info!("🌐 [Downloader] Fetching supplementary metadata JSONs for HF repo '{}'", repo);
+            let metadata_files = [
+                "config.json",
+                "tokenizer.json",
+                "tokenizer_config.json",
+                "processor_config.json",
+                "preprocessor_config.json",
+            ];
+            for meta_file in metadata_files {
+                let target_path = dest_dir.join(meta_file);
+                if !target_path.exists() {
+                    let meta_url = format!("https://huggingface.co/{}/resolve/main/{}", repo, meta_file);
+                    let _ = Self::download_optional_metadata_file(&client, &meta_url, &target_path).await;
+                }
+            }
+        }
+
+        // 3. ✅ Save model_manifest.json — makes the folder fully self-contained & portable
         let weight_path = dest_dir.join(file_basename);
         if let Some(m) = manifest {
             let manifest_path = dest_dir.join("model_manifest.json");
@@ -104,6 +124,38 @@ impl ModelDownloader {
         }
 
         Ok(weight_path)
+    }
+
+    /// Helper to extract HF Repo ID (org/repo) from repo_id or download_url
+    pub fn extract_repo_id(repo_id: &str, download_url: &str) -> Option<String> {
+        if repo_id.contains('/') && !repo_id.starts_with("http") {
+            return Some(repo_id.to_string());
+        }
+        // Extract org/repo from URLs like https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf/resolve/main/...
+        if let Some(hf_pos) = download_url.find("huggingface.co/") {
+            let rest = &download_url[hf_pos + "huggingface.co/".len()..];
+            let parts: Vec<&str> = rest.split('/').collect();
+            if parts.len() >= 2 {
+                return Some(format!("{}/{}", parts[0], parts[1]));
+            }
+        }
+        None
+    }
+
+    /// Download optional metadata file quietly without failing main model download
+    async fn download_optional_metadata_file(
+        client: &reqwest::Client,
+        url: &str,
+        dest_path: &std::path::Path
+    ) -> Result<(), String> {
+        let res = client.get(url).send().await.map_err(|e| e.to_string())?;
+        if res.status().is_success() {
+            if let Ok(bytes) = res.bytes().await {
+                let _ = std::fs::write(dest_path, bytes);
+                info!("✅ [Downloader] Saved metadata file {:?}", dest_path.file_name().unwrap_or_default());
+            }
+        }
+        Ok(())
     }
 
     /// 🧬 DNA GENERATOR: Creates the structural backbone for the engine's loader by probing the binary.
