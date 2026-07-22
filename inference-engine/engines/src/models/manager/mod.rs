@@ -141,14 +141,11 @@ impl ModelManager {
             }
         }
 
-        // Dynamically resolve SlotType configuration properties
-        let (slot_type, detected_caps) = cluaiz_shared::utils::model_registry::SlotType::detect_from_metadata(
-            format_type,
+        // Dynamically resolve SlotType configuration properties via decoupled CapabilityResolver
+        let (slot_type, detected_caps, metadata) = cluaiz_shared::utils::model_discovery::CapabilityResolver::discover(
+            &weight_file,
+            &model_path,
             &manifest.category,
-            &architecture,
-            manifest.has_vision,
-            manifest.has_audio,
-            Some(&model_path),
         );
 
         let category = slot_type.as_str().to_string();
@@ -183,11 +180,7 @@ impl ModelManager {
             files,
             supported_tasks,
             requires_gpu: false,
-            metadata: cluaiz_shared::utils::RegistryModelMetadata {
-                architecture,
-                parameters: "unknown".to_string(),
-                context_window,
-            },
+            metadata,
         };
 
         if let Err(e) = cluaiz_shared::utils::ModelRegistry::register_model(registry_entry) {
