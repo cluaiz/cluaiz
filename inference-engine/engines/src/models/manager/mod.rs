@@ -142,7 +142,7 @@ impl ModelManager {
         }
 
         // Dynamically resolve SlotType configuration properties via decoupled CapabilityResolver
-        let (slot_type, detected_caps, metadata) = cluaiz_shared::utils::model_discovery::CapabilityResolver::discover(
+        let (slot_type, detected_caps, metadata, requires_gpu) = cluaiz_shared::utils::model_discovery::CapabilityResolver::discover(
             &weight_file,
             &model_path,
             &manifest.category,
@@ -179,7 +179,7 @@ impl ModelManager {
             local_dir: model_path.to_string_lossy().to_string(),
             files,
             supported_tasks,
-            requires_gpu: false,
+            requires_gpu,
             metadata,
         };
 

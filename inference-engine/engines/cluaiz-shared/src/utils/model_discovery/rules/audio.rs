@@ -7,7 +7,7 @@ pub fn evaluate_audio_rules(
     caps: &mut ModelCapabilities,
 ) {
     let is_gemma4 = arch_lower.contains("gemma4") || arch_lower.contains("gemma-4");
-    if has_audio_keys || has_audio_tensors || arch_lower.contains("whisper") || arch_lower.contains("bark") || is_gemma4 {
+    if has_audio_keys || has_audio_tensors || arch_lower.contains("whisper") || arch_lower.contains("bark") || arch_lower.contains("kokoro") || arch_lower.contains("tts") || is_gemma4 {
         caps.has_audio = true;
         if arch_lower.contains("whisper") {
             caps.is_asr = true;

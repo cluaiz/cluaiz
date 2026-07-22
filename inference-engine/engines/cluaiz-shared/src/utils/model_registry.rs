@@ -16,6 +16,10 @@ pub struct RegistryModelMetadata {
     pub context_window: String,
     pub quantization: Option<String>,
     pub bit_depth: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub think_start_tag: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub think_end_tag: Option<String>,
     pub chat_template: Option<String>,
 }
 
@@ -87,7 +91,9 @@ impl SlotType {
     pub fn supported_tasks(&self, caps: &ModelCapabilities) -> Vec<String> {
         match self {
             Self::Chat => crate::utils::model_discovery::rules::chat::get_chat_tasks(caps),
-            Self::Embedding => crate::utils::model_discovery::rules::embedding::get_embedding_tasks(caps),
+            Self::Embedding => {
+                crate::utils::model_discovery::rules::embedding::get_embedding_tasks(caps)
+            }
             Self::Vision => crate::utils::model_discovery::rules::vision::get_vision_tasks(caps),
             Self::Audio => crate::utils::model_discovery::rules::audio::get_audio_tasks(caps),
         }
@@ -258,11 +264,12 @@ impl ModelRegistry {
                             };
 
                             // Delegate Capability Discovery & Metadata probing cleanly to model_discovery module
-                            let (slot_type, final_caps, metadata) = crate::utils::model_discovery::CapabilityResolver::discover(
-                                &p_path_clone,
-                                &entry.path(),
-                                cat,
-                            );
+                            let (slot_type, final_caps, metadata, requires_gpu) =
+                                crate::utils::model_discovery::CapabilityResolver::discover(
+                                    &p_path_clone,
+                                    &entry.path(),
+                                    cat,
+                                );
 
                             let mut files = Vec::new();
                             for (_fpath, fname, fsize) in &all_files {
@@ -281,7 +288,7 @@ impl ModelRegistry {
                                 local_dir: entry.path().to_string_lossy().to_string(),
                                 files,
                                 supported_tasks: slot_type.supported_tasks(&final_caps),
-                                requires_gpu: false,
+                                requires_gpu,
                                 metadata,
                             };
 

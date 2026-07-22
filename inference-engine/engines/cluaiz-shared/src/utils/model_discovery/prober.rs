@@ -8,6 +8,9 @@ pub struct BinaryProbeResult {
     pub quantization: Option<String>,
     pub bit_depth: Option<String>,
     pub chat_template: Option<String>,
+    pub think_start_tag: Option<String>,
+    pub think_end_tag: Option<String>,
+    pub requires_gpu: bool,
     pub has_vision_keys: bool,
     pub has_vision_tensors: bool,
     pub has_audio_keys: bool,
@@ -16,6 +19,8 @@ pub struct BinaryProbeResult {
 }
 
 pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbeResult {
+    let file_size_bytes = weight_path.metadata().map_or(0, |m| m.len());
+
     let mut res = BinaryProbeResult {
         architecture: "Unknown".to_string(),
         context_window: "Unknown".to_string(),
@@ -23,6 +28,9 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
         quantization: None,
         bit_depth: None,
         chat_template: None,
+        think_start_tag: None,
+        think_end_tag: None,
+        requires_gpu: false, // GGUF and ONNX models support CPU Execution Provider
         has_vision_keys: false,
         has_vision_tensors: false,
         has_audio_keys: false,
@@ -67,9 +75,12 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
                 res.parameters_str = format!("{:.2}B", total_params as f64 / 1_000_000_000.0);
             }
 
-            // 4. Chat Template
+            // 4. Header Binary Chat Template & Reasoning Tag Extraction
             if let Some(tmpl) = metadata.get("tokenizer.chat_template") {
                 res.chat_template = Some(tmpl.clone());
+                let (start, end) = find_header_reasoning_tags(tmpl);
+                res.think_start_tag = start;
+                res.think_end_tag = end;
             }
 
             // 5. Pooling & Namespaces
@@ -99,6 +110,10 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
             res.architecture = "whisper".to_string();
             res.has_audio_keys = true;
             res.has_audio_tensors = true;
+        } else if file_stem.contains("kokoro") || parent_dir.contains("kokoro") || file_stem.contains("tts") || parent_dir.contains("tts") || file_stem.contains("bark") || parent_dir.contains("bark") {
+            res.architecture = "kokoro".to_string();
+            res.has_audio_keys = true;
+            res.has_audio_tensors = true;
         } else if file_stem.contains("bert") || parent_dir.contains("bert") {
             res.architecture = "bert".to_string();
             res.has_pooling = true;
@@ -120,4 +135,31 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
     }
 
     res
+}
+
+pub fn find_header_reasoning_tags(tmpl: &str) -> (Option<String>, Option<String>) {
+    if tmpl.contains("<think>") {
+        return (Some("<think>".to_string()), Some("</think>".to_string()));
+    }
+    if tmpl.contains("<|think|>") {
+        let end = if tmpl.contains("<channel|>") {
+            "<channel|>".to_string()
+        } else if tmpl.contains("<|think_end|>") {
+            "<|think_end|>".to_string()
+        } else {
+            "</think>".to_string()
+        };
+        return (Some("<|think|>".to_string()), Some(end));
+    }
+    if tmpl.contains("<|channel>thought") || tmpl.contains("<channel|>thought") {
+        return (Some("<|channel>thought".to_string()), Some("<channel|>".to_string()));
+    }
+    if tmpl.contains("<thought>") {
+        return (Some("<thought>".to_string()), Some("</thought>".to_string()));
+    }
+    if tmpl.contains("<reasoning>") {
+        return (Some("<reasoning>".to_string()), Some("</reasoning>".to_string()));
+    }
+
+    (None, None)
 }
