@@ -18,6 +18,13 @@ pub fn enrich_from_fallback_jsons(dir: &Path, caps: &mut ModelCapabilities) -> E
     if config_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&config_path) {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Extract precise pipeline task if available
+                if let Some(tag) = v.get("pipeline_tag").and_then(|t| t.as_str()) {
+                    caps.explicit_tasks.push(tag.to_string());
+                } else if let Some(tag) = v.get("task").and_then(|t| t.as_str()) {
+                    caps.explicit_tasks.push(tag.to_string());
+                }
+
                 // Vision config detection
                 if v.get("visual").is_some() || v.get("vision_config").is_some() || v.get("image_size").is_some() {
                     caps.has_vision = true;

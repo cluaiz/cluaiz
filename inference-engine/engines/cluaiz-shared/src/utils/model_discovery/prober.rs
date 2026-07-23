@@ -16,6 +16,7 @@ pub struct BinaryProbeResult {
     pub has_audio_keys: bool,
     pub has_audio_tensors: bool,
     pub has_pooling: bool,
+    pub explicit_tasks: Vec<String>,
 }
 
 pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbeResult {
@@ -36,6 +37,7 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
         has_audio_keys: false,
         has_audio_tensors: false,
         has_pooling: false,
+        explicit_tasks: vec![],
     };
 
     if format_type == "gguf" {
@@ -46,6 +48,12 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
                 if let Some(ctx) = metadata.get(&format!("{}.context_length", arch)) {
                     res.context_window = ctx.clone();
                 }
+            }
+
+            if let Some(tag) = metadata.get("general.pipeline_tag") {
+                res.explicit_tasks.push(tag.clone());
+            } else if let Some(tag) = metadata.get("general.task") {
+                res.explicit_tasks.push(tag.clone());
             }
 
             // 2. Quantization & Bit Depth Extraction

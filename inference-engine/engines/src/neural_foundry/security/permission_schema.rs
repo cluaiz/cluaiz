@@ -47,9 +47,9 @@ impl Default for ApiAuth {
 pub struct PermissionSchema {
     #[serde(default)]
     pub active_slots: std::collections::HashMap<String, SlotConfig>,
-    #[serde(skip_serializing)]
+    #[serde(default)]
     pub vector_models: ModelSelection,
-    #[serde(skip_serializing)]
+    #[serde(default)]
     pub chat_models: ModelSelection,
     #[serde(default = "default_wasm_firewall")]
     pub wasm_firewall: String,
@@ -310,8 +310,8 @@ impl PermissionSchema {
             // Assign tasks based on dynamic architecture categories (e.g. whisper, bert)
             let mut tasks = Vec::new();
             if detected_arch == "whisper" || has_audio {
-                tasks.push("automatic-speech-recognition".to_string());
-                tasks.push("text-to-speech".to_string());
+                tasks.push("speech_to_text".to_string());
+                tasks.push("text_to_speech".to_string());
             } else if detected_arch == "bert" || format == "safetensors" || clean_id.contains("embedding") {
                 tasks.push("embedding".to_string());
                 if has_vision {
@@ -327,6 +327,36 @@ impl PermissionSchema {
 
             (format, tasks, has_vision, has_audio)
         };
+
+        // Synchronize active_slots overrides back into primary model fields
+        if let Some(slot) = self.active_slots.get("chat_slot") {
+            if let Some(ref mid) = slot.model_id {
+                if !mid.trim().is_empty() {
+                    self.chat_models.text = Some(mid.clone());
+                }
+            }
+        }
+        if let Some(slot) = self.active_slots.get("embed_slot") {
+            if let Some(ref mid) = slot.model_id {
+                if !mid.trim().is_empty() {
+                    self.vector_models.text = Some(mid.clone());
+                }
+            }
+        }
+        if let Some(slot) = self.active_slots.get("vision_slot") {
+            if let Some(ref mid) = slot.model_id {
+                if !mid.trim().is_empty() {
+                    self.vector_models.vision = Some(mid.clone());
+                }
+            }
+        }
+        if let Some(slot) = self.active_slots.get("audio_slot") {
+            if let Some(ref mid) = slot.model_id {
+                if !mid.trim().is_empty() {
+                    self.vector_models.audio = Some(mid.clone());
+                }
+            }
+        }
 
         // 1. Process Chat Model
         if let Some(ref chat_id) = self.chat_models.text {
@@ -364,11 +394,13 @@ impl PermissionSchema {
             new_slots.insert("audio_slot".to_string(), SlotConfig {
                 model_id: Some(audio_id.clone()),
                 format_type: Some(format),
-                supported_tasks: vec!["automatic-speech-recognition".to_string(), "text-to-speech".to_string()],
+                supported_tasks: vec!["speech_to_text".to_string(), "text_to_speech".to_string()],
             });
         }
 
-        self.active_slots = new_slots;
+        for (k, v) in new_slots {
+            self.active_slots.insert(k, v);
+        }
     }
 
     pub fn set_active_chat_model(model_id: String) {

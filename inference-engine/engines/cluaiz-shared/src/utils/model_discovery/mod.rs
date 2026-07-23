@@ -29,6 +29,7 @@ impl CapabilityResolver {
         let requires_gpu = probe.requires_gpu;
 
         let mut caps = ModelCapabilities::default();
+        caps.explicit_tasks.extend(probe.explicit_tasks);
 
         // Evaluate Rules
         let model_dir_name = model_dir

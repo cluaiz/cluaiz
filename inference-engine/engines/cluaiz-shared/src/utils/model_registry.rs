@@ -61,6 +61,7 @@ pub struct ModelCapabilities {
     pub is_tts: bool,
     pub is_audio_to_audio: bool,
     pub is_audio_class: bool,
+    pub explicit_tasks: Vec<String>,
 }
 
 impl ModelCapabilities {
@@ -83,6 +84,7 @@ impl ModelCapabilities {
             is_tts: true,
             is_audio_to_audio: true,
             is_audio_class: true,
+            explicit_tasks: vec![],
         }
     }
 }
