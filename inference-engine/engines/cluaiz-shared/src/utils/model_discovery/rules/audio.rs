@@ -30,8 +30,8 @@ pub fn get_audio_tasks(caps: &ModelCapabilities) -> Vec<String> {
         // "automatic-speech-recognition": Applied for speech-to-text transcription models (e.g. Whisper).
         tasks.push("automatic-speech-recognition".to_string());
     }
-    if caps.is_tts {
-        // "text-to-speech": Applied for text-to-speech synthesis models (e.g. Bark, Coqui).
+    if caps.is_tts || (tasks.is_empty() && !caps.is_asr) {
+        // "text-to-speech": Applied for text-to-speech synthesis models (e.g. Bark, Coqui, Kokoro).
         tasks.push("text-to-speech".to_string());
     }
     if caps.is_audio_to_audio {

@@ -21,7 +21,7 @@ pub fn evaluate_embedding_rules(
 
 pub fn get_embedding_tasks(caps: &ModelCapabilities) -> Vec<String> {
     let mut tasks = vec![];
-    if caps.is_embedding {
+    if caps.is_embedding || tasks.is_empty() {
         // "embedding": Applied strictly when the model generates dense or sparse text vector embeddings via pooled encoder hidden states.
         tasks.push("embedding".to_string());
     }

@@ -8,10 +8,17 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 /// 🧠 VRAM Arbiter State: Tracks real-time resource allocations.
+pub struct AllocationInfo {
+    pub vram_gb: f64,
+    pub context_size: usize,
+    pub pid: u32,
+    pub engine: String,
+}
+
 pub struct ArbiterState {
     pub total_vram_gb: f64,
     pub allocated_vram_gb: f64,
-    pub active_allocations: HashMap<String, f64>,
+    pub active_allocations: HashMap<String, AllocationInfo>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -35,8 +42,12 @@ static ARBITER: Lazy<Mutex<ArbiterState>> = Lazy::new(|| {
 pub struct HardwareGovernor;
 
 impl HardwareGovernor {
-    /// 🚀 Initialize the Governor and resolve hardware state.
     pub fn start() -> Self {
+        // Legacy Cleanup: Remove active_processes.json to prevent confusion
+        let legacy_path = Self::resolve_engine_path().join("config").join("active_processes.json");
+        if legacy_path.exists() {
+            let _ = std::fs::remove_file(legacy_path);
+        }
         Self
     }
 
@@ -131,28 +142,20 @@ impl HardwareGovernor {
 
         // Allocate
         arbiter.allocated_vram_gb += required_gb;
-        arbiter
-            .active_allocations
-            .insert(engine_id.to_string(), required_gb);
+        arbiter.active_allocations.insert(
+            engine_id.to_string(),
+            AllocationInfo {
+                vram_gb: required_gb,
+                context_size: 0,
+                pid: std::process::id(),
+                engine: "Native Llama".to_string(),
+            }
+        );
 
         crate::dev_info!(
             "✅ [VRAM Arbiter] Allocated {:.2}GB to '{}'. Current Load: {:.2}/{:.2}GB",
             required_gb, engine_id, arbiter.allocated_vram_gb, arbiter.total_vram_gb
         );
-
-        // Sync to cross-process registry
-        let mut registry = Self::load_process_registry();
-        registry.insert(
-            std::process::id().to_string(),
-            ProcessInfo {
-                pid: std::process::id(),
-                model_id: engine_id.to_string(),
-                vram_gb: required_gb,
-                context_size: 0, // Will be updated by negotiate_vram_envelope
-                engine: "Native Llama".to_string(),
-            },
-        );
-        Self::save_process_registry(&registry);
 
         Ok(())
     }
@@ -243,7 +246,7 @@ impl HardwareGovernor {
                     && id.as_str() != "onnx"
                     && id.as_str() != "whisper"
             })
-            .map(|(_, gb)| gb)
+            .map(|(_, info)| info.vram_gb)
             .sum::<f64>();
         let available_gb = (total_gb * (1.0 - margin)) - other_allocations;
         let final_available_gb = (available_gb - (dna.weights_size_gb as f64)).max(0.0);
@@ -316,11 +319,9 @@ impl HardwareGovernor {
 
             println!("⚖️ [Arbiter] CPU-only Mode detected (n_gpu_layers = 0). Safe Context: {} tokens (Free RAM: {:.2} GB)", cpu_ctx, system_ram_gb);
 
-            let mut registry = Self::load_process_registry();
-            let pid_str = std::process::id().to_string();
-            if let Some(info) = registry.get_mut(&pid_str) {
+            let my_pid = std::process::id();
+            if let Some((_, info)) = arbiter.active_allocations.iter_mut().find(|(_, info)| info.pid == my_pid) {
                 info.context_size = cpu_ctx;
-                Self::save_process_registry(&registry);
             }
             return cpu_ctx;
         }
@@ -359,12 +360,10 @@ impl HardwareGovernor {
         }
 
         // Envelope Negotiation Log Hidden for clean UI
-        // Sync context size to cross-process registry
-        let mut registry = Self::load_process_registry();
-        let pid_str = std::process::id().to_string();
-        if let Some(info) = registry.get_mut(&pid_str) {
+        // Sync context size to RAM state
+        let my_pid = std::process::id();
+        if let Some((_, info)) = arbiter.active_allocations.iter_mut().find(|(_, info)| info.pid == my_pid) {
             info.context_size = current_ctx;
-            Self::save_process_registry(&registry);
         }
 
         current_ctx
@@ -376,37 +375,54 @@ impl HardwareGovernor {
             .lock()
             .map_err(|_| anyhow::anyhow!("Arbiter Lock Poisoned"))?;
 
-        if let Some(freed_gb) = arbiter.active_allocations.remove(engine_id) {
-            arbiter.allocated_vram_gb -= freed_gb;
+        if let Some(info) = arbiter.active_allocations.remove(engine_id) {
+            arbiter.allocated_vram_gb -= info.vram_gb;
             crate::dev_info!(
                 "🔓 [VRAM Arbiter] Released {:.2}GB from '{}'. Current Load: {:.2}/{:.2}GB",
-                freed_gb, engine_id, arbiter.allocated_vram_gb, arbiter.total_vram_gb
+                info.vram_gb, engine_id, arbiter.allocated_vram_gb, arbiter.total_vram_gb
             );
         }
-
-        // Remove from cross-process registry
-        let mut registry = Self::load_process_registry();
-        registry.remove(&std::process::id().to_string());
-        Self::save_process_registry(&registry);
 
         Ok(())
     }
 
-    /// Load the cross-process registry of active LLMs.
-    pub fn load_process_registry() -> HashMap<String, ProcessInfo> {
-        let path = Self::resolve_engine_path().join("config").join("active_processes.json");
-        if let Ok(data) = std::fs::read_to_string(&path) {
-            serde_json::from_str(&data).unwrap_or_default()
-        } else {
-            HashMap::new()
+    /// Returns a list of all active allocations currently tracked in RAM.
+    pub fn get_active_allocations() -> Vec<ProcessInfo> {
+        let mut processes = Vec::new();
+        if let Ok(arbiter) = ARBITER.lock() {
+            for (id, info) in arbiter.active_allocations.iter() {
+                processes.push(ProcessInfo {
+                    pid: info.pid,
+                    model_id: id.clone(),
+                    vram_gb: info.vram_gb,
+                    context_size: info.context_size,
+                    engine: info.engine.clone(),
+                });
+            }
+        }
+        processes
+    }
+
+    pub fn register_allocation(engine_id: &str, vram_gb: f64, context_size: usize, engine: &str) {
+        if let Ok(mut arbiter) = ARBITER.lock() {
+            arbiter.allocated_vram_gb += vram_gb;
+            arbiter.active_allocations.insert(
+                engine_id.to_string(),
+                AllocationInfo {
+                    vram_gb,
+                    context_size,
+                    pid: std::process::id(),
+                    engine: engine.to_string(),
+                }
+            );
         }
     }
 
-    /// Save the cross-process registry.
-    pub fn save_process_registry(registry: &HashMap<String, ProcessInfo>) {
-        let path = Self::resolve_engine_path().join("config").join("active_processes.json");
-        if let Ok(data) = serde_json::to_string_pretty(registry) {
-            let _ = std::fs::write(&path, data);
+    pub fn unregister_allocation(engine_id: &str) {
+        if let Ok(mut arbiter) = ARBITER.lock() {
+            if let Some(info) = arbiter.active_allocations.remove(engine_id) {
+                arbiter.allocated_vram_gb -= info.vram_gb;
+            }
         }
     }
 

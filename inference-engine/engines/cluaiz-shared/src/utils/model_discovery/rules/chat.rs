@@ -19,11 +19,14 @@ pub fn evaluate_chat_rules(
 pub fn get_chat_tasks(caps: &ModelCapabilities) -> Vec<String> {
     let mut tasks = vec![];
     if caps.is_base {
-        // "text-generation": Applied strictly when the model is a raw base completion model (unaligned, next-token predictor).
+        // "text-generation": Applied strictly when the model is a raw base completion model.
         tasks.push("text-generation".to_string());
     }
     if caps.is_instruct {
-        // "chat-completion": Applied strictly when the model is instruction-tuned/RLHF-aligned for multi-turn chat (supports chat template & system prompts).
+        // "chat-completion": Applied strictly when the model is instruction-tuned/RLHF-aligned for multi-turn chat.
+        tasks.push("chat-completion".to_string());
+    }
+    if tasks.is_empty() {
         tasks.push("chat-completion".to_string());
     }
     if caps.has_vision {
