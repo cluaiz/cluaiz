@@ -62,10 +62,11 @@ pub async fn auth_middleware(
     let bearer_token = match auth_header {
         Some(header) => match header.to_str() {
             Ok(val) => {
-                if val.starts_with("Bearer ") {
-                    val.trim_start_matches("Bearer ").trim()
+                let val_trimmed = val.trim();
+                if val_trimmed.starts_with("Bearer ") {
+                    val_trimmed.trim_start_matches("Bearer ").trim()
                 } else {
-                    return Err(unauthorized_response("Invalid Authorization header format. Expected 'Bearer <token>'."));
+                    val_trimmed
                 }
             }
             Err(_) => return Err(unauthorized_response("Invalid Authorization header string.")),

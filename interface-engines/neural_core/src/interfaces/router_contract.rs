@@ -22,5 +22,5 @@ pub trait EmbeddingDriver: Send + Sync {
     fn gen_embedding(&self, text: &str) -> Result<Vec<f32>, EngineError>;
     
     /// Generate a multimodal embedding (e.g. from Audio bytes or Image bytes)
-    fn gen_multimodal_embedding(&self, bytes: &[u8], modality: Modality) -> Result<Vec<f32>, EngineError>;
+    fn gen_multimodal_embedding(&self, bytes: &[u8], modality: Modality, instruction: Option<String>) -> Result<Vec<f32>, EngineError>;
 }

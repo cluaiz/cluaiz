@@ -7,7 +7,7 @@ use tower_http::cors::{Any, CorsLayer};
 use axum::http::Method;
 
 use crate::state::AppState;
-use crate::handlers::{chat, system, models, ingest, embeddings};
+use crate::handlers::{chat, system, models, ingest, embeddings, audio};
 
 pub fn build(state: Arc<AppState>) -> Router {
     // ── CORS — Restrict to localhost origins only (Desktop, Mobile apps on localhost) ──
@@ -31,6 +31,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         // ── External Compatible Streaming & Embeddings API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
         .route("/v1/embeddings", post(embeddings::generate_embeddings))
+        .route("/v1/audio/execute", post(audio::execute_audio))
         
         // ── External Compatible Models API ──
         .route("/api/tags", get(models::tags))
@@ -98,6 +99,11 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/control", get(crate::handlers::system::get_system_control))
         .route("/v1/system/permission", get(crate::handlers::permission::get_permission))
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
+        
+        // ── Storage Control API ──
+        .route("/v1/system/storage/temp_media", get(crate::handlers::storage::get_temp_media_status))
+        .route("/v1/system/storage/temp_media/clean", post(crate::handlers::storage::clean_temp_media))
+        .route("/v1/system/storage/settings", get(crate::handlers::storage::get_storage_settings).post(crate::handlers::storage::update_storage_settings))
         .route("/v1/system/gguf_config", get(crate::handlers::system::get_gguf_config))
         .route("/v1/system/gguf_config", post(crate::handlers::system::update_gguf_config))
         .route("/v1/system/onnx_config", get(crate::handlers::system::get_onnx_config))

@@ -14,3 +14,5 @@ pub mod mcp;
 pub mod cel_handler;
 pub mod components;
 pub mod embeddings;
+pub mod storage;
+pub mod audio;
