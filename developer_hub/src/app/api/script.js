@@ -412,19 +412,24 @@ export function initEditor() {
 
     const headersContainer = document.getElementById("headers-editor-container");
     if (headersContainer) {
-        const savedHeaders = localStorage.getItem('apiTesterHeaders');
-        const initialHeaders = savedHeaders ? savedHeaders : '{\n  "Authorization": "Bearer ..."\n}';
-
         state.headersEditor = new CodeEditor({
             id: 'headers-body-editor',
             mode: 'application/json',
-            value: initialHeaders,
-            onChange: (val) => {
-                localStorage.setItem('apiTesterHeaders', val);
-            }
+            value: '{\n  "Authorization": ""\n}'
         });
         headersContainer.appendChild(state.headersEditor.render());
         state.headersEditor.mount();
+
+        // Always fetch active API token directly from permission.json via engine REST API
+        fetch(window.getApiBaseUrl() + '/v1/system/permission')
+            .then(res => res.json())
+            .then(pData => {
+                if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
+                    const activeToken = pData.permission.api_auth.tokens[0].trim();
+                    state.headersEditor.setValue('{\n  "Authorization": "' + activeToken + '"\n}');
+                }
+            })
+            .catch(() => {});
     }
 }
 
@@ -764,12 +769,31 @@ export async function sendRequest() {
         }
     };
 
+    // Apply custom headers from Headers UI CodeEditor
+    if (state.headersEditor) {
+        try {
+            const editorVal = state.headersEditor.getValue();
+            const customHeaders = JSON.parse(editorVal);
+            if (typeof customHeaders === 'object' && customHeaders !== null) {
+                for (let k in customHeaders) {
+                    let v = customHeaders[k];
+                    if (typeof v === 'string') {
+                        v = v.trim();
+                    }
+                    options.headers[k] = v;
+                }
+            }
+        } catch (e) {}
+    }
+
     try {
         const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
         if (pRes.ok) {
             const pData = await pRes.json();
             if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
-                options.headers['Authorization'] = 'Bearer ' + pData.permission.api_auth.tokens[0];
+                if (!options.headers['Authorization']) {
+                    options.headers['Authorization'] = pData.permission.api_auth.tokens[0].trim();
+                }
             }
         }
     } catch (e) {

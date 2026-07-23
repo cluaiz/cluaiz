@@ -11,14 +11,29 @@ export async function mount(container) {
         user_moved_flags: {}
     };
 
+    let headers = { 'Content-Type': 'application/json' };
+    
+    // Fetch auth token if required
+    try {
+        const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission').catch(() => null);
+        if (pRes && pRes.ok) {
+            const pData = await pRes.json();
+            if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.required && pData.permission.api_auth.tokens.length > 0) {
+                headers['Authorization'] = 'Bearer ' + pData.permission.api_auth.tokens[0];
+            }
+        }
+    } catch (e) {
+        console.error("Failed to fetch permission", e);
+    }
+
     // Load initial configs from standard endpoint (if available) or fallback to empty structures
     try {
-        const ggufRes = await fetch(window.getApiBaseUrl() + '/v1/system/gguf_config').catch(() => null);
+        const ggufRes = await fetch(window.getApiBaseUrl() + '/v1/system/gguf_config', { headers }).catch(() => null);
         if (ggufRes && ggufRes.ok) {
             ggufConfig = await ggufRes.json();
         }
 
-        const onnxRes = await fetch(window.getApiBaseUrl() + '/v1/system/onnx_config').catch(() => null);
+        const onnxRes = await fetch(window.getApiBaseUrl() + '/v1/system/onnx_config', { headers }).catch(() => null);
         if (onnxRes && onnxRes.ok) {
             onnxConfig = await onnxRes.json();
         }
@@ -30,7 +45,7 @@ export async function mount(container) {
         try {
             await fetch(window.getApiBaseUrl() + '/v1/system/gguf_config', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(ggufConfig)
             });
         } catch (e) { console.error("Auto-save GGUF failed", e); }
@@ -40,7 +55,7 @@ export async function mount(container) {
         try {
             await fetch(window.getApiBaseUrl() + '/v1/system/onnx_config', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: headers,
                 body: JSON.stringify(onnxConfig)
             });
         } catch (e) { console.error("Auto-save ONNX failed", e); }
@@ -306,7 +321,7 @@ export async function mount(container) {
             // Bottom section: Single, combined, non-colorful description
             const modeDetails = document.createElement('p');
             modeDetails.style.cssText = 'color: var(--text-muted, #9ca3af); font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4;';
-            
+
             if (isModeEnabled) {
                 modeDetails.textContent = 'Temperature controls the AI creativity: 0.0 forces strict logic and factual accuracy, while higher values (up to 2.0) make it more creative and unpredictable. You have 4 predefined options to configure your temperature and system prompts (2 for Thinking Mode ON, 2 for Thinking Mode OFF).';
             } else {

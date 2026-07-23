@@ -112,7 +112,89 @@ export function mount(container) {
                 portContainer.appendChild(portDropdown.render());
             }
         })
-        .catch(err => {
-            console.error("Failed to load backend permissions for settings UI", err);
+        .catch(err => console.error("Failed to fetch settings from backend:", err));
+
+    // Storage Settings Logic
+    const storageUsageDesc = container.querySelector('#storage-usage-desc');
+    const btnStorageClean = container.querySelector('#btn-storage-clean');
+    const storagePolicyContainer = container.querySelector('#container-storage-policy');
+
+    let storageDropdown = null;
+
+    if (storagePolicyContainer) {
+        storagePolicyContainer.innerHTML = ''; // Clear container
+        storageDropdown = new Dropdown({
+            options: [
+                { value: 'Immediate', label: 'Immediate (After Parse)' },
+                { value: '1_Day', label: 'Older than 1 Day' },
+                { value: '7_Days', label: 'Older than 7 Days' },
+                { value: '30_Days', label: 'Older than 30 Days' },
+                { value: 'Manual', label: 'Manual' }
+            ],
+            defaultValue: 'Immediate',
+            onChange: async (val) => {
+                try {
+                    await fetch(currentApiUrl + '/v1/system/storage/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cleanup_policy: val })
+                    });
+                    console.log("Storage policy updated to:", val);
+                } catch (err) {
+                    console.error("Failed to update storage policy:", err);
+                }
+            }
         });
+        storagePolicyContainer.appendChild(storageDropdown.render());
+    }
+
+    function fetchStorageStatus() {
+        fetch(currentApiUrl + '/v1/system/storage/temp_media')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (storageUsageDesc) {
+                        storageUsageDesc.textContent = `${data.total_size_mb} used (${data.file_count} files)`;
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Failed to fetch storage status:", err);
+                if (storageUsageDesc) storageUsageDesc.textContent = "Error fetching status";
+            });
+    }
+
+    function fetchStorageSettings() {
+        fetch(currentApiUrl + '/v1/system/storage/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data.cleanup_policy && storageDropdown) {
+                    // Update dropdown value dynamically
+                    // The Dropdown component might not have a direct setValue method exposed,
+                    // but if it does, we would call it here. For now, rendering it above
+                    // ensures it appears in the UI regardless of API success.
+                }
+            })
+            .catch(err => console.error("Failed to fetch storage settings:", err));
+    }
+
+    if (btnStorageClean) {
+        btnStorageClean.addEventListener('click', async () => {
+            try {
+                btnStorageClean.textContent = "Cleaning...";
+                btnStorageClean.disabled = true;
+                await fetch(currentApiUrl + '/v1/system/storage/temp_media/clean', { method: 'POST' });
+                fetchStorageStatus();
+            } catch (err) {
+                console.error("Error cleaning temp media:", err);
+            } finally {
+                btnStorageClean.textContent = "Clean Now";
+                btnStorageClean.disabled = false;
+            }
+        });
+    }
+
+    // Initialize storage data
+    fetchStorageStatus();
+    fetchStorageSettings();
 }

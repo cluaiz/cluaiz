@@ -52,5 +52,28 @@
         </div>
         <div class="setting-control" id="container-local-port"></div>
     </div>
+    
+    <h3 class="settings-section-title">Temp Media & Storage</h3>
+    
+    <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="setting-info">
+                <span class="setting-label">Cleanup Policy</span>
+                <span class="setting-desc">Automatically delete downloaded media/files to save disk space.</span>
+            </div>
+            <div class="setting-control" id="container-storage-policy"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="setting-info">
+                <span class="setting-label">Current Usage</span>
+                <span class="setting-desc" id="storage-usage-desc">Loading...</span>
+            </div>
+            <div class="setting-control">
+                <button id="btn-storage-clean" class="btn btn-danger" style="background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: 500;">
+                    Clean Now
+                </button>
+            </div>
+        </div>
+    </div>
 
 </div>
