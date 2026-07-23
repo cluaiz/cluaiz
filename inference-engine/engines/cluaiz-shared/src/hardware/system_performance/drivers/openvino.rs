@@ -50,6 +50,10 @@ impl HardwareDriver for OpenVinoDriver {
             let bytes = s.lines().nth(3).unwrap_or("0").trim().parse::<u64>().unwrap_or(0);
             return Ok(bytes / 1024 / 1024);
         }
+        #[cfg(not(target_os = "windows"))]
+        {
+            Ok(0)
+        }
     }
 
     fn power_draw_watts(&self) -> Result<f32> { Ok(0.0) }
