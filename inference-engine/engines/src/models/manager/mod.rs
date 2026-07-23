@@ -157,16 +157,22 @@ impl ModelManager {
             is_primary: true,
         }];
 
-        // Register any other files downloaded inside directory (e.g. splits)
+        let mut extra_files = Vec::new();
+
+        // Register any other files downloaded inside directory (e.g. splits, jsons, yamls)
         if let Ok(mut entries) = std::fs::read_dir(&model_path) {
             while let Some(Ok(entry)) = entries.next() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name != manifest.huggingface_filename && (name.ends_with(".gguf") || name.ends_with(".onnx")) {
-                    files.push(cluaiz_shared::utils::RegistryModelFile {
-                        name,
-                        size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
-                        is_primary: false,
-                    });
+                if name != manifest.huggingface_filename {
+                    if name.ends_with(".gguf") || name.ends_with(".onnx") {
+                        files.push(cluaiz_shared::utils::RegistryModelFile {
+                            name,
+                            size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
+                            is_primary: false,
+                        });
+                    } else if name.ends_with(".json") || name.ends_with(".yaml") || name.ends_with(".md") || name.ends_with(".txt") {
+                        extra_files.push(name);
+                    }
                 }
             }
         }
@@ -178,6 +184,7 @@ impl ModelManager {
             huggingface_repo: manifest.huggingface_repo.clone(),
             local_dir: model_path.to_string_lossy().to_string(),
             files,
+            extra_files,
             supported_tasks,
             requires_gpu,
             metadata,

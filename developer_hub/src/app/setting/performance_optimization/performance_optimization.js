@@ -329,7 +329,7 @@ export async function mount(container) {
             const context = meta.context_window || 'Unknown';
             const tasks = modelData.supported_tasks || [];
             const hfRepo = modelData.huggingface_repo || (selectedModelId.includes('/') ? selectedModelId : '');
-            const extraFiles = modelData.extra_files || ['model_manifest.json', 'structural_dna.json', 'config.json'];
+            const extraFiles = Array.isArray(modelData.extra_files) ? modelData.extra_files : [];
 
             let taskPillsHtml = tasks.map(t => `<span class="task-pill" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; display: inline-block;">${t}</span>`).join(' ');
 
