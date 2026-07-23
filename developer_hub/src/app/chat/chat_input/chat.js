@@ -599,22 +599,35 @@ function setupChatLogic() {
                         }
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
 
             const res = await fetch(window.getApiBaseUrl() + configEndpoint);
             if (res.ok) {
                 const data = await res.json();
-                if (data.user_moved_flags && data.user_moved_flags.response_length) {
-                    isResponseLengthMapEnabled = data.user_moved_flags.response_length['type'] !== 'custom';
-                    
-                    const thinkOptionsOn = document.getElementById('think-options-on');
-                    const thinkOptionsOff = document.getElementById('think-options-off');
-                    const customResponseLength = document.getElementById('custom-response-length');
-                    
-                    if (!isResponseLengthMapEnabled) {
-                        if (thinkOptionsOn) thinkOptionsOn.style.display = 'none';
-                        if (thinkOptionsOff) thinkOptionsOff.style.display = 'none';
-                        if (customResponseLength) customResponseLength.style.display = 'flex';
+                if (data.user_moved_flags) {
+                    if (data.user_moved_flags.think_mode === "On") {
+                        isThinkModeOn = true;
+                        const thinkToggle = document.getElementById('think-toggle');
+                        const thinkToggleThumb = document.getElementById('think-toggle-thumb');
+                        if (thinkToggle && thinkToggleThumb) {
+                            thinkToggle.classList.replace('bg-secondary', 'bg-accent');
+                            thinkToggle.style.borderColor = 'transparent';
+                            thinkToggleThumb.style.transform = 'translateY(-50%) translateX(14px)';
+                        }
+                    }
+
+                    if (data.user_moved_flags.response_length) {
+                        isResponseLengthMapEnabled = data.user_moved_flags.response_length['type'] !== 'custom';
+
+                        const thinkOptionsOn = document.getElementById('think-options-on');
+                        const thinkOptionsOff = document.getElementById('think-options-off');
+                        const customResponseLength = document.getElementById('custom-response-length');
+
+                        if (!isResponseLengthMapEnabled) {
+                            if (thinkOptionsOn) thinkOptionsOn.style.display = 'none';
+                            if (thinkOptionsOff) thinkOptionsOff.style.display = 'none';
+                            if (customResponseLength) customResponseLength.style.display = 'flex';
+                        }
                     }
                 }
             }
@@ -707,7 +720,8 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
-        const installed = data.installed || [];
+        const installedRaw = data.installed || data.installed_models || data.models || [];
+        const installed = Array.isArray(installedRaw) ? installedRaw : Object.values(installedRaw);
 
         // Filter for chat models only (same logic as Tauri app)
         const chatModels = installed.filter(m => m.category === 'chat');
@@ -728,9 +742,10 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
             const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
             if (permRes.ok) {
                 const permData = await permRes.json();
-                if (permData.permission?.chat_models?.text) {
-                    // Strict Rule: Always use what is in permission.json, do not fallback to random array index
-                    activeModelId = permData.permission.chat_models.text;
+                const perm = permData.permission || permData;
+                const activeId = perm.active_slots?.chat_slot?.model_id || perm.chat_models?.text;
+                if (activeId) {
+                    activeModelId = activeId;
                 }
             }
         } catch (e) {
@@ -779,20 +794,19 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                 // Update active model in permission.json via API
                 try {
                     const permRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
-                    if (permRes.ok) {
-                        const permData = await permRes.json();
-                        if (permData.permission) {
-                            const newPerm = permData.permission;
-                            if (!newPerm.chat_models) newPerm.chat_models = {};
-                            newPerm.chat_models.text = model.id;
+                    const permData = await permRes.json();
+                    const newPerm = permData.permission || permData;
+                    if (!newPerm.active_slots) newPerm.active_slots = {};
+                    if (!newPerm.active_slots.chat_slot) newPerm.active_slots.chat_slot = {};
+                    newPerm.active_slots.chat_slot.model_id = model.id;
+                    if (!newPerm.chat_models) newPerm.chat_models = {};
+                    newPerm.chat_models.text = model.id;
 
-                            await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(newPerm)
-                            });
-                        }
-                    }
+                    await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newPerm)
+                    });
                 } catch (e) {
                     console.error('Failed to update active model in permissions:', e);
                 }
