@@ -142,11 +142,16 @@ impl ModelManager {
         }
 
         // Dynamically resolve SlotType configuration properties via decoupled CapabilityResolver
-        let (slot_type, detected_caps, metadata, requires_gpu) = cluaiz_shared::utils::model_discovery::CapabilityResolver::discover(
+        let (slot_type, detected_caps, mut metadata, requires_gpu) = cluaiz_shared::utils::model_discovery::CapabilityResolver::discover(
             &weight_file,
             &model_path,
             &manifest.category,
         );
+
+        // If manifest explicitly defines human parameter label (e.g. "Effective 2B", "4B"), prefer manifest parameter definition!
+        if !manifest.parameters.trim().is_empty() && manifest.parameters != "Unknown" {
+            metadata.parameters = manifest.parameters.clone();
+        }
 
         let category = slot_type.as_str().to_string();
         let supported_tasks = slot_type.supported_tasks(&detected_caps);

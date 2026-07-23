@@ -144,7 +144,27 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
                 ctx.clone()
             };
 
-            let params = metadata.get("general.parameter_count").unwrap_or(&"Unknown".to_string()).to_string();
+            let raw_params = metadata.get("general.parameter_count");
+            let params = if let Some(p) = raw_params {
+                if let Ok(num) = p.parse::<f64>() {
+                    format!("{:.2}B", num / 1_000_000_000.0)
+                } else {
+                    p.clone()
+                }
+            } else if !manifest.parameters.is_empty() && manifest.parameters != "Unknown" {
+                manifest.parameters.clone()
+            } else {
+                let mut found = "Unknown".to_string();
+                for part in resolved_id.split(&['-', '_', '/', '.'][..]) {
+                    let u = part.to_uppercase();
+                    if (u.ends_with('B') || u.ends_with('M')) && u.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+                        found = u;
+                        break;
+                    }
+                }
+                found
+            };
+
             let file_type = metadata.get("general.file_type").unwrap_or(&"Unknown".to_string()).to_string();
             let blocks = metadata.get(&format!("{}.block_count", arch)).unwrap_or(&"Unknown".to_string()).to_string();
             
@@ -154,23 +174,36 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             let hidden_size = metadata.get(&format!("{}.embedding_length", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(4096);
             
             let head_dim = hidden_size / num_heads.max(1);
-            let standard_context_tokens = 8192;
-            let kv_cache_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * standard_context_tokens;
-            let kv_cache_gb = kv_cache_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            let max_ctx_tokens = ctx.parse::<u64>().unwrap_or(8192);
+            
+            let kv_cache_8k_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * 8192;
+            let kv_cache_8k_gb = kv_cache_8k_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            
+            let kv_cache_full_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * max_ctx_tokens;
+            let kv_cache_full_gb = kv_cache_full_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            
             let base_engine_overhead_gb = 0.30;
             
             // Dynamically override manifest RAM based on exact architectural math
-            manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_gb;
+            manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_8k_gb;
 
             if !is_local {
                 println!("    ├─ 🧠 Architecture: {}", arch.yellow());
                 println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
-                println!("    ├─ 🧩 Parameters: {} B", params.green());
+                println!("    ├─ 🧩 Parameters: {}", params.green());
                 println!("    ├─ 📦 Quantization / File Type: {}", file_type.cyan());
                 println!("    ├─ 📚 Network Layers (Blocks): {}", blocks.magenta());
                 println!("    ├─ ⚡ Tensor Count: {}", tensor_count.to_string().cyan());
-                println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-                println!("    ├─ 🧮 KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
+                println!("    ├─ 💾 Model File Size: {:.2} GB", manifest.download_size_gb);
+                println!("    ├─ 🧮 KV Cache (8K baseline): {:.2} GB", kv_cache_8k_gb);
+                if max_ctx_tokens != 8192 {
+                    let ctx_str = if max_ctx_tokens >= 1024 {
+                        format!("{}K", max_ctx_tokens / 1024)
+                    } else {
+                        format!("{}", max_ctx_tokens)
+                    };
+                    println!("    ├─ 🧮 KV Cache (Full {} ctx): {:.2} GB", ctx_str, kv_cache_full_gb);
+                }
                 println!("    ├─ ⚙️ Base Engine Overhead: {:.2} GB", base_engine_overhead_gb);
             }
         } else if let Err(e) = probe_result {
@@ -183,16 +216,42 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     
     // Load System Control to get real hardware stats
     let config_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
-    let system_control = if let Ok(content) = std::fs::read_to_string(config_path) {
+    let mut system_control = if let Ok(content) = std::fs::read_to_string(&config_path) {
         serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok()
     } else {
         None
     };
 
+    if system_control.is_none() || system_control.as_ref().map_or(true, |sc| sc.silicon_truth.memory.total_capacity_gb <= 0.0) {
+        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
+        if let Ok(content) = std::fs::read_to_string(&config_path) {
+            system_control = serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok();
+        }
+    }
+
     let (mut user_ram, mut user_vram) = (0.0, 0.0);
+    let mut gpu_name = "System GPU".to_string();
     if let Some(control) = &system_control {
-        user_ram = control.silicon_truth.memory.total_capacity_gb;
-        user_vram = control.silicon_truth.accelerators.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
+        user_ram = control.silicon_truth.memory.available_capacity_gb;
+        if let Some(gpu) = control.silicon_truth.accelerators.gpus.first() {
+            user_vram = gpu.vram_available_gb;
+            gpu_name = gpu.model.clone();
+        }
+    }
+
+    if !is_local {
+        println!("    ├─ 🖥️  Available VRAM ({}): {:.2} GB", gpu_name.cyan(), user_vram);
+        println!("    ├─ 💻 Available System RAM: {:.2} GB", user_ram);
+        
+        let model_size = manifest.download_size_gb;
+        if user_vram >= model_size + 0.5 {
+            println!("    └─ 🚀 Hardware Offload: FULL GPU (Zero Bottleneck)");
+        } else if user_vram > 0.5 {
+            let gpu_pct = ((user_vram / model_size) * 100.0).min(100.0);
+            println!("    └─ ⚠️  Hardware Offload: HYBRID ({:.0}% GPU / {:.0}% System RAM) — Slow Speed", gpu_pct, 100.0 - gpu_pct);
+        } else {
+            println!("    └─ 🐢 Hardware Offload: PURE CPU (System RAM only)");
+        }
     }
     
     // Perform system health audit silently in the background
@@ -211,15 +270,16 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             }
             manager.pull_model_with_manifest(&manifest).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
             
-            println!("\n  {} HuggingFace Model Downloaded! Launching dynamic session...", "✅".green());
-            is_local = true;
+            println!("\n  {} Model '{}' downloaded and registered successfully.", "✅".green(), manifest.id);
+            return Ok(());
         } else {
-            let confirm = inquire::Confirm::new("Audit passed. Proceed with model download and initialization?").with_default(true).prompt()?;
+            let confirm = inquire::Confirm::new("Audit passed. Proceed with model download?").with_default(true).prompt()?;
             if !confirm {
                 return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
             }
             manager.pull_model(&resolved_id).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
-            is_local = true;
+            println!("\n  {} Model '{}' downloaded and registered successfully.", "✅".green(), manifest.id);
+            return Ok(());
         }
     }
 

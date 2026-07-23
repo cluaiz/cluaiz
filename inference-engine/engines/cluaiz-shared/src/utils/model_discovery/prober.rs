@@ -119,10 +119,22 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
 
             // 3. Compute parameter count
             let mut total_params: u64 = 0;
-            for (_name, dims) in &tensor_infos {
-                if !dims.is_empty() {
-                    let count: u64 = dims.iter().map(|&d| d as u64).product();
-                    total_params += count;
+            if let Some(param_cnt_str) = metadata.get("general.parameter_count") {
+                if let Ok(cnt) = param_cnt_str.parse::<u64>() {
+                    total_params = cnt;
+                }
+            }
+            if total_params == 0 {
+                let has_embd = tensor_infos.keys().any(|k| k.contains("token_embd"));
+                for (name, dims) in &tensor_infos {
+                    // Skip tied lm_head output weight double counting
+                    if has_embd && name.contains("output.weight") {
+                        continue;
+                    }
+                    if !dims.is_empty() {
+                        let count: u64 = dims.iter().map(|&d| d as u64).product();
+                        total_params += count;
+                    }
                 }
             }
             if total_params > 0 {

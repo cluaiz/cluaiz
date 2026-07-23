@@ -118,6 +118,8 @@ pub struct ModelRegistryEntry {
     pub huggingface_repo: String,
     pub local_dir: String,
     pub files: Vec<RegistryModelFile>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_files: Vec<String>,
     pub supported_tasks: Vec<String>,
     pub requires_gpu: bool,
     pub metadata: RegistryModelMetadata,
@@ -229,31 +231,34 @@ impl ModelRegistry {
                     if let Ok(ft) = entry.file_type() {
                         if ft.is_dir() {
                             let id = entry.file_name().to_string_lossy().to_string();
-                            if reg.installed_models.contains_key(&id) {
-                                continue;
-                            }
 
-                            let mut all_files = Vec::new();
+                            let mut all_weight_files = Vec::new();
+                            let mut extra_files = Vec::new();
+
                             if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
                                 for f in sub_entries.filter_map(|e| e.ok()) {
                                     let fname = f.file_name().to_string_lossy().to_string();
-                                    if fname.ends_with(".gguf")
-                                        || fname.ends_with(".onnx")
-                                        || fname.ends_with(".bin")
-                                    {
+                                    if !fname.starts_with('.') && fname != "cluaiz-engine.ready" {
                                         let size = f.metadata().map(|m| m.len()).unwrap_or(0);
-                                        all_files.push((f.path(), fname, size));
+                                        let fpath = f.path();
+
+                                        if fname.ends_with(".gguf") || fname.ends_with(".onnx") {
+                                            all_weight_files.push((fpath, fname, size));
+                                        } else {
+                                            extra_files.push(fname);
+                                        }
                                     }
                                 }
                             }
 
-                            if all_files.is_empty() {
+                            if all_weight_files.is_empty() {
                                 continue;
                             }
 
-                            all_files.sort_by(|a, b| a.1.cmp(&b.1));
+                            all_weight_files.sort_by(|a, b| a.1.cmp(&b.1));
+                            extra_files.sort();
 
-                            let (p_path, p_name, _) = &all_files[0];
+                            let (p_path, p_name, _) = &all_weight_files[0];
                             let p_path_clone = p_path.clone();
                             let p_name_clone = p_name.clone();
 
@@ -264,15 +269,29 @@ impl ModelRegistry {
                             };
 
                             // Delegate Capability Discovery & Metadata probing cleanly to model_discovery module
-                            let (slot_type, final_caps, metadata, requires_gpu) =
+                            let (slot_type, final_caps, mut metadata, requires_gpu) =
                                 crate::utils::model_discovery::CapabilityResolver::discover(
                                     &p_path_clone,
                                     &entry.path(),
                                     cat,
                                 );
 
+                            // Also check local model_manifest.json if present for human parameters override
+                            let manifest_file = entry.path().join("model_manifest.json");
+                            if manifest_file.exists() {
+                                if let Ok(manifest_content) = std::fs::read_to_string(&manifest_file) {
+                                    if let Ok(manifest_val) = serde_json::from_str::<serde_json::Value>(&manifest_content) {
+                                        if let Some(param_str) = manifest_val.get("parameters").and_then(|p| p.as_str()) {
+                                            if !param_str.trim().is_empty() && param_str != "Unknown" {
+                                                metadata.parameters = param_str.to_string();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             let mut files = Vec::new();
-                            for (_fpath, fname, fsize) in &all_files {
+                            for (_fpath, fname, fsize) in &all_weight_files {
                                 files.push(RegistryModelFile {
                                     name: fname.clone(),
                                     size_bytes: *fsize,
@@ -280,19 +299,24 @@ impl ModelRegistry {
                                 });
                             }
 
+                            let hf_repo = reg.installed_models.get(&id).map(|e| e.huggingface_repo.clone()).unwrap_or_default();
+
                             let registry_entry = ModelRegistryEntry {
                                 id: id.clone(),
                                 category: slot_type.as_str().to_string(),
                                 format_type: format_type.to_string(),
-                                huggingface_repo: "".to_string(),
+                                huggingface_repo: hf_repo,
                                 local_dir: entry.path().to_string_lossy().to_string(),
                                 files,
+                                extra_files,
                                 supported_tasks: slot_type.supported_tasks(&final_caps),
                                 requires_gpu,
                                 metadata,
                             };
 
-                            println!("  {} Found new local model folder '{}'. Registering via header read...", "📦".green(), id);
+                            if !reg.installed_models.contains_key(&id) {
+                                println!("  {} Found new local model folder '{}'. Registering via header read...", "📦".green(), id);
+                            }
                             reg.installed_models.insert(id, registry_entry);
                             changes_made = true;
                         }
