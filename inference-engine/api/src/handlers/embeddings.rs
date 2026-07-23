@@ -50,7 +50,57 @@ pub async fn generate_embeddings(
         EmbeddingInput::Multiple(vec) => vec,
     };
 
-    let model_name = payload.model.unwrap_or_else(|| "onnx-embedding".to_string());
+    let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+    let target_slot = "embed_slot";
+
+    if let Err(err_response) = crate::utils::slots::require_capability(
+        &schema, 
+        target_slot, 
+        &["embedding", "feature-extraction", "vision-embedding", "audio-embedding"]
+    ) {
+        tracing::error!("Blocked embeddings request: Active slot '{}' does not support embedding tasks.", target_slot);
+        return err_response.into_response();
+    }
+
+    let mut resolved_model_name = String::new();
+    let mut active_model_path = None;
+
+    // 1. Agar model explicitly diya hai payload mein (jo model diya usi model ko load karta hai)
+    if let Some(req_model) = &payload.model {
+        if !req_model.trim().is_empty() {
+            if let Some(explicit_path) = crate::utils::slots::resolve_model_by_id(req_model) {
+                active_model_path = Some(explicit_path);
+                resolved_model_name = req_model.clone();
+                tracing::info!("🤖 [API] Embeddings model override requested: '{}'", resolved_model_name);
+            }
+        }
+    }
+
+    // 2. Agar payload mein model nahi mila, toh default settings se uthao (jo setting mein set hai wo pick karta hai)
+    if resolved_model_name.is_empty() {
+        if let Some(slot) = schema.active_slots.get(target_slot) {
+            if let Some(m_id) = &slot.model_id {
+                if !m_id.trim().is_empty() {
+                    resolved_model_name = m_id.clone();
+                    active_model_path = crate::utils::slots::resolve_model_path(&schema, target_slot);
+                    tracing::info!("🤖 [API] No model provided, falling back to slot setting: '{}'", resolved_model_name);
+                }
+            }
+        }
+    }
+
+    // 3. Agar setting mein bhi kuch nahi hai, toh seedha error (model not defined)
+    if resolved_model_name.is_empty() || active_model_path.is_none() {
+        let err_res = json!({
+            "error": {
+                "message": "Model not defined. Please specify a model in the request payload or configure a default embedding model in the settings.",
+                "type": "invalid_request_error",
+                "code": "model_not_found"
+            }
+        });
+        return axum::response::Json(err_res).into_response();
+    }
+
     let dispatcher = state.embedding_dispatcher.clone();
 
     let result = tokio::task::spawn_blocking(move || {
@@ -83,13 +133,13 @@ pub async fn generate_embeddings(
             Json(json!(EmbeddingResponse {
                 object: "list",
                 data: data_list,
-                model: model_name,
+                model: resolved_model_name,
                 usage: EmbeddingUsage {
                     prompt_tokens: total_tokens,
                     total_tokens,
                 },
             })),
-        ),
+        ).into_response(),
         Ok(Err(err_msg)) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
@@ -100,7 +150,7 @@ pub async fn generate_embeddings(
                     "code": null
                 }
             })),
-        ),
+        ).into_response(),
         Err(join_err) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({
@@ -111,6 +161,6 @@ pub async fn generate_embeddings(
                     "code": null
                 }
             })),
-        ),
+        ).into_response(),
     }
 }

@@ -241,7 +241,7 @@ impl cluaizInference for NativeOnnxWrapper {
         
         if std::path::Path::new(clean_path).is_file() {
             let ingestor = crate::neural_foundry::ingestion::DocumentIngestor::new();
-            match ingestor.ingest_and_vectorize(clean_path, &self.engine) {
+            match ingestor.ingest_and_vectorize(clean_path, &self.engine, None, 512, None, true, &[]) {
                 Ok(chunks) => {
                     for (chunk_text, vector) in chunks {
                         let mut out = String::new();

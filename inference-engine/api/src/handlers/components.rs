@@ -179,30 +179,6 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
     Json(serde_json::json!({"status": "success"}))
 }
 
-pub async fn get_file(State(_state): State<Arc<AppState>>, Query(query): Query<SettingsQuery>) -> Json<Value> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
-    let comp_type = query.component_type.trim_end_matches('s');
-    let comp_id = query.component_id;
-    
-    let base_dir = env.global_dir.join(format!("{}s", comp_type));
-    let comp_dir = base_dir.join(&comp_id);
-    let file_name = if comp_type == "skill" { "SKILL.md".to_string() } else { format!("manifest-{}.yaml", comp_type) };
-    let file_path = comp_dir.join(&file_name);
-
-    if !file_path.exists() {
-        return Json(serde_json::json!({
-            "status": "error",
-            "message": format!("File not found at {}", file_path.display())
-        }));
-    }
-
-    let content = std::fs::read_to_string(&file_path).unwrap_or_default();
-    
-    Json(serde_json::json!({
-        "status": "success",
-        "content": content
-    }))
-}
 
 pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
     let comp_type = payload.get("component_type").and_then(|v| v.as_str()).unwrap_or("").trim_end_matches('s');
@@ -307,19 +283,37 @@ pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<
 pub async fn get_specific_file(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
     let env = cluaiz_shared::environment::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
-    let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
     
-    let file_path = if let Some(p) = &query.file_path {
-        comp_dir.join(p)
+    let file_path = if comp_type == "model" || comp_type == "chat" || comp_type == "embedding" || comp_type == "vision" || comp_type == "audio" {
+        // Resolve model from models directory across categories (chat, embedding, vision, audio)
+        let models_base = env.models_dir();
+        let relative = query.file_path.as_deref().unwrap_or("");
+        
+        let mut found_path = None;
+        let categories = ["embedding", "chat", "vision", "audio", "image_gen"];
+        for cat in &categories {
+            let candidate = models_base.join(cat).join(&query.component_id).join(relative);
+            if candidate.exists() {
+                found_path = Some(candidate);
+                break;
+            }
+        }
+        found_path
     } else {
-        if comp_type == "skill" { comp_dir.join("SKILL.md") } else { comp_dir.join(format!("manifest-{}.yaml", comp_type)) }
+        let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+        if let Some(p) = &query.file_path {
+            Some(comp_dir.join(p))
+        } else {
+            if comp_type == "skill" { Some(comp_dir.join("SKILL.md")) } else { Some(comp_dir.join(format!("manifest-{}.yaml", comp_type))) }
+        }
     };
 
-    if !file_path.exists() {
-        return Json(serde_json::json!({"status": "error", "message": "File not found"}));
-    }
+    let target_file = match file_path {
+        Some(p) if p.exists() => p,
+        _ => return Json(serde_json::json!({"status": "error", "message": "File not found"})),
+    };
 
-    let content = std::fs::read_to_string(&file_path).unwrap_or_default();
+    let content = std::fs::read_to_string(&target_file).unwrap_or_default();
     Json(serde_json::json!({"status": "success", "content": content}))
 }
 

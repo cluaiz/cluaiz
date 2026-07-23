@@ -67,62 +67,21 @@ pub async fn tags(State(_state): State<Arc<AppState>>) -> Json<Value> {
 }
 
 // ─── GET /v1/models/installed ────────────────────────────────────────
-// Directly scans ~/.cluaiz/models on disk — no registry, no inference.
+// Returns full synchronized ModelRegistry database entries including probed metadata
 pub async fn list_installed_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let models_root = cluaiz_shared::environment::EnvironmentManager::current()
-        .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
-    let mut installed = Vec::new();
-
-    let categories = ["chat", "embedding", "vision", "audio", "code"];
-    for category in &categories {
-        let cat_path = models_root.join(category);
-        if !cat_path.is_dir() { continue; }
-        if let Ok(entries) = std::fs::read_dir(&cat_path) {
-            for entry in entries.flatten() {
-                let model_dir = entry.path();
-                if !model_dir.is_dir() { continue; }
-                let model_id = model_dir.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-
-                // Find the .gguf file inside this dir
-                let mut gguf_file = None;
-                let mut size_bytes: u64 = 0;
-                if let Ok(files) = std::fs::read_dir(&model_dir) {
-                    for f in files.flatten() {
-                        let p = f.path();
-                        if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                            size_bytes = p.metadata().map(|m| m.len()).unwrap_or(0);
-                            gguf_file = p.file_name().and_then(|n| n.to_str()).map(|s| s.to_string());
-                            break;
-                        }
-                    }
-                }
-
-                installed.push(json!({
-                    "id": model_id,
-                    "category": category,
-                    "file": gguf_file,
-                    "size_bytes": size_bytes,
-                    "size_gb": format!("{:.2} GB", size_bytes as f64 / 1_073_741_824.0),
-                    "path": model_dir.to_string_lossy()
-                }));
-            }
-        }
-    }
-
-    installed.sort_by(|a, b| {
-        a["id"].as_str().unwrap_or("").cmp(b["id"].as_str().unwrap_or(""))
-    });
+    let registry = cluaiz_shared::utils::ModelRegistry::load();
+    let installed_map = registry.installed_models.clone();
+    let installed_vec: Vec<cluaiz_shared::utils::ModelRegistryEntry> = installed_map.values().cloned().collect();
 
     Json(json!({
-        "count": installed.len(),
-        "models_root": models_root.to_string_lossy(),
-        "installed": installed
+        "status": "success",
+        "count": installed_vec.len(),
+        "installed": installed_vec.clone(),
+        "models": installed_vec,
+        "installed_models": installed_map
     }))
 }
+
 
 
 #[derive(serde::Deserialize)]

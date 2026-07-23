@@ -716,9 +716,9 @@ impl DashboardEngine {
 
                         
                         let ttft_secs = f64::from_bits(ttft_ref.load(Ordering::SeqCst));
-                        let registry = cluaiz_shared::hardware::governor::HardwareGovernor::load_process_registry();
-                        let my_pid = std::process::id().to_string();
-                        let vram_used_gb = registry.get(&my_pid).map(|i| i.vram_gb).unwrap_or(0.0);
+                        let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
+                        let mut vram_used_gb = 0.0;
+                        for info in registry { if info.pid == std::process::id() { vram_used_gb = info.vram_gb; } }
 
                         let schema_for_telemetry = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                         if schema_for_telemetry.stream_telemetry {

@@ -23,7 +23,7 @@ pub enum TemporaryChatMode {
 
 #[derive(Deserialize)]
 pub struct ExternalChatRequest {
-    pub model: String,
+    pub model: Option<String>,
     pub messages: Vec<ExternalMessage>,
     #[serde(default)]
     pub stream: bool,
@@ -47,7 +47,6 @@ pub struct ExternalChatRequest {
     pub presence_penalty: Option<f32>,
     pub stop: Option<Vec<String>>,
     pub seed: Option<i64>,
-    pub user: Option<String>,
     pub response_format: Option<serde_json::Value>,
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
 }
@@ -127,20 +126,7 @@ pub struct ExternalMessage {
     pub content: MessageContent,
 }
 
-impl serde::Serialize for ExternalMessage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("ExternalMessage", 2)?;
-        state.serialize_field("role", &self.role)?;
-        // NOTE: This serialize implementation cannot call async flatten_to_string.
-        // In a real implementation, ensure the serialized format handles this accordingly.
-        state.serialize_field("content", "serialization_requires_async_context")?;
-        state.end()
-    }
-}
+// `ExternalMessage` intentionally does not derive Serialize here because its `content` field needs to be resolved asynchronously before serialization.
 
 // ─── HELPER: Fetch Real Model Header Information ────────────
 fn generate_model_header_info() -> Vec<Value> {
@@ -230,7 +216,7 @@ pub async fn chat_completions(
             "id": "chatcmpl-123",
             "object": "chat.completion",
             "created": chrono::Utc::now().timestamp(),
-            "model": request.model.clone(),
+            "model": request.model.clone().unwrap_or_else(|| "default-model".to_string()),
             "choices": []
         });
         return axum::response::Json(empty_res).into_response();
@@ -243,33 +229,59 @@ pub async fn chat_completions(
     // 🛡️ STRICT PRE-FLIGHT TASK GUARDRAIL
     // Ensure the currently active chat or vision slot actually supports chat capabilities
     // (Prevent loading pure embedding/STT models into chat API and causing GPU crash)
-    let mut supports_chat = false;
-    let mut has_any_slot = false;
+    let mut target_slot = "chat_slot";
     
-    for (slot_name, config) in &schema.active_slots {
-        has_any_slot = true;
-        if slot_name == "chat_slot" || slot_name == "vision_slot" {
-            if config.supported_tasks.iter().any(|t| t == "chat-completion" || t == "text-generation" || t == "vision-chat") {
-                supports_chat = true;
-                break;
-            }
+    // Simple heuristic: If image url is present, we might want vision_slot. 
+    // In actual implementation, we might check which slot has the model.
+    let has_image = request.messages.iter().any(|m| {
+        match &m.content {
+            crate::handlers::chat::MessageContent::Array(parts) => {
+                parts.iter().any(|p| matches!(p, crate::handlers::chat::ContentPart::ImageUrl { .. }))
+            },
+            _ => false
         }
+    });
+
+    if has_image && schema.active_slots.contains_key("vision_slot") {
+        target_slot = "vision_slot";
     }
 
-    if has_any_slot && !supports_chat {
-        tracing::error!("Blocked chat request: Active slots do not support chat completions.");
+    if let Err(err_response) = crate::utils::slots::require_capability(
+        &schema, 
+        target_slot, 
+        &["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]
+    ) {
+        tracing::error!("Blocked chat request: Active slot '{}' does not support chat completions.", target_slot);
+        return err_response.into_response();
+    }
+
+    let mut active_model_path = crate::utils::slots::resolve_model_path(&schema, target_slot);
+    let mut resolved_model_name = "default-system-model".to_string();
+
+    if let Some(ref m_id) = request.model {
+        if !m_id.trim().is_empty() {
+            if let Some(explicit_path) = crate::utils::slots::resolve_model_by_id(m_id) {
+                tracing::info!("🤖 [API] Model override requested. Resolved '{}' to {:?}", m_id, explicit_path);
+                active_model_path = Some(explicit_path);
+                resolved_model_name = m_id.clone();
+            } else {
+                tracing::warn!("⚠️ [API] Requested model '{}' not found in registry. Falling back to default slot model.", m_id);
+            }
+        }
+    } else {
+        tracing::info!("🤖 [API] No model specified (null). Falling back to default '{}' model.", target_slot);
+    }
+    
+    // Ensure we actually have a path to load
+    if active_model_path.is_none() {
         let err_res = json!({
             "error": {
-                "message": "The currently active model slot does not support chat completions. (e.g. Targeted an embedding/audio model instead of LLM/VLM)",
+                "message": format!("No model is currently loaded in slot '{}' and no valid override was provided.", target_slot),
                 "type": "invalid_request_error",
-                "code": "model_task_mismatch"
+                "code": "model_not_found"
             }
         });
-        return axum::response::Response::builder()
-            .status(axum::http::StatusCode::BAD_REQUEST)
-            .header("content-type", "application/json")
-            .body(axum::body::Body::from(serde_json::to_string(&err_res).unwrap()))
-            .unwrap();
+        return axum::response::Json(err_res).into_response();
     }
 
     let skip_brain = match &request.temporary_chat {
@@ -458,11 +470,20 @@ pub async fn chat_completions(
         }
     }
 
-    // Serialize the entire message array to JSON to preserve full chat history
-    let json_prompt = serde_json::to_string(&augmented_messages).unwrap_or_else(|_| "[]".to_string());
-
+    // Serialize the entire message array to JSON to preserve full chat history.
+    // We flatten the content asynchronously so that all media URLs are resolved to local paths
+    // and injected into the prompt as <cluaiz_media> tags.
+    let mut serialized_messages = Vec::new();
+    for msg in &augmented_messages {
+        let content_str = msg.content.flatten_to_string().await;
+        serialized_messages.push(json!({
+            "role": msg.role,
+            "content": content_str
+        }));
+    }
+    let json_prompt = serde_json::to_string(&serialized_messages).unwrap_or_else(|_| "[]".to_string());
     // Initial dispatch to see if it's a stream or an error
-    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain).await;
+    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain, active_model_path.clone()).await;
 
     if request.stream {
 
@@ -488,7 +509,7 @@ pub async fn chat_completions(
                              "id": "chatcmpl-123",
                              "object": "chat.completion.chunk",
                              "created": Utc::now().timestamp(),
-                             "model": request.model.clone(),
+                             "model": resolved_model_name.clone(),
                              "choices": [],
                              "usage": {
                                  "model_header_info": {
@@ -631,7 +652,7 @@ pub async fn chat_completions(
                                 "id": "chatcmpl-123",
                                 "object": "chat.completion.chunk",
                                 "created": Utc::now().timestamp(),
-                                "model": request.model.clone(),
+                                "model": resolved_model_name.clone(),
                                 "choices": [{"delta": {"content": token}}]
                             });
                             yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
@@ -639,7 +660,7 @@ pub async fn chat_completions(
                         
                         if tool_executed {
                             tracing::info!("🔄 [API] Resuming generation with tool result (Single-Pass)...");
-                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain).await;
+                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain, active_model_path.clone()).await;
                             if let EngineResponse::TokenStream(new_rx) = new_dispatch {
                                 rx = new_rx;
                                 continue;
@@ -681,7 +702,7 @@ pub async fn chat_completions(
                             "id": "chatcmpl-123",
                             "object": "chat.completion.chunk",
                             "created": Utc::now().timestamp(),
-                            "model": request.model.clone(),
+                            "model": resolved_model_name.clone(),
                             "choices": [],
                             "usage": usage_json
                         });
@@ -739,7 +760,7 @@ pub async fn chat_completions(
             "id": "chatcmpl-123",
             "object": "chat.completion",
             "created": Utc::now().timestamp(),
-            "model": request.model,
+            "model": resolved_model_name.clone(),
             "choices": [{
                 "message": {
                     "role": "assistant",

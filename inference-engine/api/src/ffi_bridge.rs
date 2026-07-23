@@ -108,11 +108,11 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SYSTEM_PS" => {
-                                let registry = cluaiz_shared::hardware::governor::HardwareGovernor::load_process_registry();
+                                let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
                                 let mut processes = Vec::new();
-                                for (pid_str, info) in registry {
+                                for info in registry {
                                     processes.push(serde_json::json!({
-                                        "pid": pid_str,
+                                        "pid": info.pid.to_string(),
                                         "model_id": info.model_id,
                                         "vram_gb": info.vram_gb,
                                         "context_size": info.context_size,
@@ -568,8 +568,11 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                     let response = format!("{{\"status\": \"success\", \"query\": \"{}\"}}", command);
                     let _ = pipe.write_all(response.as_bytes()).await;
                 } else {
+                    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                    let active_model_path = crate::utils::slots::resolve_model_path(&perms, "chat_slot");
+                    
                     // Dispatch natural language inference via Master Router
-                    match state.dispatcher.dispatch_stream(command, false).await {
+                    match state.dispatcher.dispatch_stream(command, false, active_model_path).await {
                         EngineResponse::TokenStream(mut rx) => {
                             let mut in_think_block = false;
 
@@ -577,7 +580,6 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             let mut start_tag = "<think>".to_string();
                             let mut end_tag = "</think>".to_string();
                             
-                            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                             let roster = engines::models::registry::CoreRoster::load_roster();
                             if let Some(id) = perms.get_active_chat_model() {
                                 if let Some(model) = roster.iter().find(|m| m.id == id) {

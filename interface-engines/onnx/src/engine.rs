@@ -350,7 +350,11 @@ impl EmbeddingDriver for OnnxEngine {
         &self,
         bytes: &[u8],
         modality: Modality,
+        instruction: Option<String>
     ) -> Result<Vec<f32>, EngineError> {
+        if let Some(ins) = instruction {
+            tracing::info!("OnnxEngine: Received multimodal instruction: {}", ins);
+        }
         match modality {
             Modality::Image => self.execute_vision_embedding(bytes),
             _ => Err(EngineError::UnsupportedModality(

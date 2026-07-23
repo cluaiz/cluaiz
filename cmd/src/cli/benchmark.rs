@@ -349,9 +349,9 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
 
     println!("⚡ Warmup complete. Running main benchmark...");
     
-    let registry = HardwareGovernor::load_process_registry();
-    let my_pid = std::process::id().to_string();
-    let (vram_used_gb, context_size) = if let Some(info) = registry.get(&my_pid) {
+    let registry = HardwareGovernor::get_active_allocations();
+    let my_pid = std::process::id();
+    let (vram_used_gb, context_size) = if let Some(info) = registry.iter().find(|i| i.pid == my_pid) {
         (info.vram_gb, info.context_size)
     } else {
         (approx_params_b as f64 * 0.8, dna.max_context_length.unwrap_or(8192))

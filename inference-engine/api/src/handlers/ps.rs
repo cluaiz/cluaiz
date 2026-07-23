@@ -10,17 +10,17 @@ use crate::AppState;
 use cluaiz_shared::hardware::governor::HardwareGovernor;
 
 fn gather_ps_data() -> Value {
-    let registry = HardwareGovernor::load_process_registry();
+    let active_processes = HardwareGovernor::get_active_allocations();
     let roster = engines::CoreRoster::load_roster();
     let mut processes = Vec::new();
-    for (pid_str, info) in registry {
+    for info in active_processes {
         let original_ctx = roster.iter()
             .find(|m| m.id == info.model_id || m.huggingface_filename == info.model_id || m.id.contains(&info.model_id))
             .map(|m| m.context_window.clone())
             .unwrap_or_else(|| "Unknown".to_string());
 
         processes.push(json!({
-            "pid": pid_str,
+            "pid": info.pid.to_string(),
             "model_id": info.model_id,
             "vram_gb": info.vram_gb,
             "context_size": info.context_size,

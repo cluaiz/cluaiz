@@ -6,34 +6,24 @@ use cluaiz_shared::hardware::governor::HardwareGovernor;
 pub async fn execute() -> Result<()> {
     println!("\n  {} [cluaiz] Sovereign Process Audit...", "🔍".cyan());
 
-    let mut registry = HardwareGovernor::load_process_registry();
-    let mut sys = System::new_all();
-    sys.refresh_all();
+    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+    let port = std::env::var("cluaiz_PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(perms.api_port);
+    let url = format!("{}://localhost:{}/v1/system/ps", perms.connection_protocol, port);
 
-    let mut to_remove = Vec::new();
-    let mut active_processes = Vec::new();
-
-    // Check which processes are still alive
-    for (pid_str, info) in registry.iter() {
-        if let Ok(pid) = pid_str.parse::<usize>() {
-            if sys.process(sysinfo::Pid::from(pid)).is_none() {
-                // Process is dead
-                to_remove.push(pid_str.clone());
-            } else {
-                active_processes.push(info.clone());
-            }
-        } else {
-            to_remove.push(pid_str.clone());
+    let client = reqwest::Client::new(); 
+    let res = match client.get(&url).send().await {
+        Ok(r) => r,
+        Err(_) => {
+            println!("  {} No active daemon found. Please run `cluaiz serve` first.", "❌".red());
+            return Ok(());
         }
-    }
+    };
 
-    // Auto-heal stale processes
-    if !to_remove.is_empty() {
-        for pid in to_remove {
-            registry.remove(&pid);
-        }
-        HardwareGovernor::save_process_registry(&registry);
-    }
+    let data: serde_json::Value = res.json().await?;
+    let active_processes = data["active_processes"].as_array().unwrap_or(&vec![]).clone();
 
     if active_processes.is_empty() {
         println!("  {} No active neural engines running.", "💤".yellow());
@@ -52,13 +42,19 @@ pub async fn execute() -> Result<()> {
 
     // Print rows
     for info in active_processes {
-        let vram_str = format!("{:.2} GB", info.vram_gb);
+        let model_id = info["model_id"].as_str().unwrap_or("Unknown");
+        let pid = info["pid"].as_str().unwrap_or("Unknown");
+        let vram_gb = info["vram_gb"].as_f64().unwrap_or(0.0);
+        let context_size = info["context_size"].as_i64().unwrap_or(0);
+        let engine = info["engine"].as_str().unwrap_or("Unknown");
+
+        let vram_str = format!("{:.2} GB", vram_gb);
         println!("  {0:<15} | {1:<6} | {2:<12} | {3:<10} | {4:<15}", 
-            info.model_id.cyan(), 
-            info.pid.to_string().yellow(), 
+            model_id.cyan(), 
+            pid.yellow(), 
             vram_str.magenta(), 
-            info.context_size.to_string().green(), 
-            info.engine
+            context_size.to_string().green(), 
+            engine
         );
     }
 

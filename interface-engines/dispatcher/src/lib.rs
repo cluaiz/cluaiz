@@ -6,42 +6,6 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
 use tokio::sync::mpsc;
 
-fn resolve_active_model_path() -> Option<PathBuf> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
-    let local_hub = env.local_dir.clone();
-    let global_hub = env.global_dir.clone();
-    
-    let perm_path = local_hub.join("engine").join("config").join("permission.json");
-    let perm_str = std::fs::read_to_string(&perm_path).ok()?;
-    let perm_json: serde_json::Value = serde_json::from_str(&perm_str).ok()?;
-    let active_id = perm_json
-        .get("chat_models")?
-        .get("text")?
-        .as_str()?
-        .replace(':', "-");
-    
-    let categories = ["chat", "embedding", "vision", "audio", "code"];
-    
-    // Check local models root first, then global models root
-    let roots = [local_hub.join("models"), global_hub.join("models")];
-    
-    for models_root in &roots {
-        for category in &categories {
-            let model_dir = models_root.join(category).join(&active_id);
-            if model_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&model_dir) {
-                    for entry in entries.flatten() {
-                        let p = entry.path();
-                        if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                            return Some(p);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
 
 pub enum EngineResponse {
     TokenStream(mpsc::Receiver<String>),
@@ -80,7 +44,7 @@ impl NeuralDispatcher {
 
     /// Primary entry point for real-time token streaming.
     /// Used by both the FFI Named Pipes (Native Desktop) and HTTP SSE (External).
-    pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool) -> EngineResponse {
+    pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool, model_path_opt: Option<PathBuf>) -> EngineResponse {
         // 🚀 Real-time Silicon Probe
         let hardware = cluaiz_shared::hardware::HardwareOrchestrator::probe().silicon_truth;
         let backend = GlobalFeatureRegistry::select_runtime(&self.current_signature, &hardware);
@@ -108,7 +72,7 @@ impl NeuralDispatcher {
                     };
                     tracing::info!("🔢 [Dispatcher] Inference slot acquired. Running generation...");
 
-                    let active_path = resolve_active_model_path();
+                    let active_path = model_path_opt;
                     let model_path = match active_path {
                         Some(ref path) => path.clone(),
                         None => {
@@ -139,15 +103,14 @@ impl NeuralDispatcher {
 
                     if load_new {
                         // Free previous engine if it existed
-                        if let Some((_, safe_ptr, lib)) = engine_lock.take() {
+                        if let Some((cached_path, safe_ptr, lib)) = engine_lock.take() {
                             unsafe {
                                 if let Ok(free_fn) = lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
                                     tracing::info!("🗑️ [Dispatcher] Freeing previous model instance");
                                     free_fn(safe_ptr.0);
                                     
-                                    let mut registry = cluaiz_shared::HardwareGovernor::load_process_registry();
-                                    registry.remove(&std::process::id().to_string());
-                                    cluaiz_shared::HardwareGovernor::save_process_registry(&registry);
+                                    let engine_id = cached_path.file_name().unwrap_or_default().to_string_lossy().to_string();
+                                    cluaiz_shared::HardwareGovernor::unregister_allocation(&engine_id);
                                 }
                             }
                             // 🛑 CRITICAL FIX: Leak the library handle so the DLL is never unloaded from memory.
@@ -231,18 +194,12 @@ impl NeuralDispatcher {
                                             }
                                         }
 
-                                        let mut registry = cluaiz_shared::HardwareGovernor::load_process_registry();
-                                        registry.insert(
-                                            std::process::id().to_string(),
-                                            cluaiz_shared::hardware::governor::ProcessInfo {
-                                                pid: std::process::id(),
-                                                model_id: model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                                                vram_gb,
-                                                context_size: dynamic_ctx,
-                                                engine: "Native Llama".to_string(),
-                                            },
+                                        cluaiz_shared::HardwareGovernor::register_allocation(
+                                            &model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                                            vram_gb,
+                                            dynamic_ctx,
+                                            "Native Llama"
                                         );
-                                        cluaiz_shared::HardwareGovernor::save_process_registry(&registry);
                                     }
                                 }
                             }
@@ -404,8 +361,8 @@ impl NeuralDispatcher {
     }
 
     /// Legacy blocking call, to be deprecated once all clients shift to `dispatch_stream`.
-    pub async fn dispatch_prompt(&self, prompt: &str) -> Result<String> {
-        let mut stream = match self.dispatch_stream(prompt, false).await {
+    pub async fn dispatch_prompt(&self, prompt: &str, model_path_opt: Option<PathBuf>) -> Result<String> {
+        let mut stream = match self.dispatch_stream(prompt, false, model_path_opt).await {
             EngineResponse::TokenStream(rx) => rx,
             EngineResponse::Error(e) => return Err(anyhow::anyhow!(e)),
             EngineResponse::FinalResult(r) => return Ok(r),
@@ -448,7 +405,7 @@ unsafe impl Send for EmbeddingDispatcher {}
 unsafe impl Sync for EmbeddingDispatcher {}
 
                impl EmbeddingDispatcher {
-    pub fn new() -> Result<Self> {
+    pub fn new(format_type: Option<String>) -> Result<Self> {
         let target_os = std::env::consts::OS;
         let ext = match target_os {
             "windows" => "dll",
@@ -456,7 +413,11 @@ unsafe impl Sync for EmbeddingDispatcher {}
             _ => "so",
         };
         let prefix = if target_os == "windows" { "" } else { "lib" };
-        let binary_name = format!("{}cluaiz-onnx.{}", prefix, ext);
+        
+        let is_gguf = format_type.as_deref().unwrap_or("").eq_ignore_ascii_case("GGUF");
+        let core_name = if is_gguf { "cluaiz-llama" } else { "cluaiz-onnx" };
+        
+        let binary_name = format!("{}{}.{}", prefix, core_name, ext);
         
         // Use persistence or fallback to target/debug
         let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
@@ -464,10 +425,10 @@ unsafe impl Sync for EmbeddingDispatcher {}
             
         // 🛡️ Strict FFI Validation Boundary
         let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
-            .join("cluaiz-onnx.ready");
+            .join(format!("{}.ready", core_name));
             
         if !binary_path.exists() || !marker_path.exists() {
-            return Err(anyhow::anyhow!("FFI Validation Failed: ONNX kernel binary or manifest missing at {:?}", binary_path));
+            return Err(anyhow::anyhow!("FFI Validation Failed: Kernel binary or manifest missing at {:?}", binary_path));
         }
 
         unsafe {
@@ -493,21 +454,21 @@ unsafe impl Sync for EmbeddingDispatcher {}
 
             
             let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaiz_kernel_init")
-                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaiz_kernel_init' missing"))?;
+                .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_init' missing"))?;
             init();
 
             let instantiate_fn: libloading::Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void> = 
                 lib.get(b"cluaiz_kernel_instantiate")
-                .map_err(|_| anyhow::anyhow!("Invalid ONNX Kernel: 'cluaiz_kernel_instantiate' missing"))?;
+                .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_instantiate' missing"))?;
             
             let c_path = std::ffi::CString::new("default")?;
             let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
             
             if engine_ptr.is_null() {
-                return Err(anyhow::anyhow!("ONNX Kernel Instantiation Failed"));
+                return Err(anyhow::anyhow!("Kernel Instantiation Failed"));
             }
 
-            tracing::info!("✅ [Dispatcher] ONNX Kernel Dynamically Linked.");
+            tracing::info!("✅ [Dispatcher] {} Kernel Dynamically Linked for Embeddings.", core_name);
             Ok(Self {
                 active_lib: std::sync::Arc::new(lib),
                 engine_ptr,
@@ -521,9 +482,9 @@ unsafe impl Sync for EmbeddingDispatcher {}
         self.gen_embedding(text).map_err(|e| anyhow::anyhow!("Embedding Error: {:?}", e))
     }
 
-    pub fn dispatch_multimodal(&self, bytes: &[u8], modality: neural_core::interfaces::router_contract::Modality) -> Result<Vec<f32>> {
+    pub fn dispatch_multimodal(&self, bytes: &[u8], modality: neural_core::interfaces::router_contract::Modality, instruction: Option<String>) -> Result<Vec<f32>> {
         use neural_core::interfaces::router_contract::EmbeddingDriver;
-        self.gen_multimodal_embedding(bytes, modality).map_err(|e| anyhow::anyhow!("Multimodal Error: {:?}", e))
+        self.gen_multimodal_embedding(bytes, modality, instruction).map_err(|e| anyhow::anyhow!("Multimodal Error: {:?}", e))
     }
 }
 
@@ -558,7 +519,7 @@ impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDisp
         }
     }
 
-    fn gen_multimodal_embedding(&self, _bytes: &[u8], _modality: neural_core::interfaces::router_contract::Modality) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
+    fn gen_multimodal_embedding(&self, _bytes: &[u8], _modality: neural_core::interfaces::router_contract::Modality, _instruction: Option<String>) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
         Err(neural_core::interfaces::router_contract::EngineError::UnsupportedModality("Multimodal FFI not implemented yet".to_string()))
     }
 }

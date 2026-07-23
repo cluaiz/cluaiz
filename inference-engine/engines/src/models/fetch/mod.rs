@@ -68,7 +68,7 @@ impl ModelDownloader {
         abort: Arc<AtomicBool>
     ) -> Result<PathBuf, String> {
         let model_name = repo_id.split('/').next_back().unwrap_or(repo_id);
-        let dest_dir = Self::get_models_dir().join(category).join(model_name);
+        let dest_dir = Self::get_models_dir().join(category).join(&model_name);
         std::fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
 
         let file_basename = std::path::Path::new(filename)
@@ -99,6 +99,8 @@ impl ModelDownloader {
                 "config.json",
                 "tokenizer.json",
                 "tokenizer_config.json",
+                "special_tokens_map.json",
+                "chat_template.json",
                 "processor_config.json",
                 "preprocessor_config.json",
             ];

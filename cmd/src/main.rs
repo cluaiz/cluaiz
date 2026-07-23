@@ -176,6 +176,10 @@ enum CliCommand {
         #[command(subcommand)]
         command: SetupCommand,
     },
+    
+    /// Manage Temporary Storage and Media
+    #[command(alias = "store")]
+    Storage(crate::cli::storage::StorageCli),
 }
 
 #[derive(Subcommand)]
@@ -535,6 +539,10 @@ async fn main() -> Result<()> {
                 eprintln!("\n  {} [Cluaiz] Setup Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
+        }
+        Some(CliCommand::Storage(cli_cmd)) => {
+            let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            crate::cli::storage::handle_storage_command(cli_cmd, schema.api_port).await;
         }
         Some(CliCommand::Permission { command }) => {
             let mut schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();

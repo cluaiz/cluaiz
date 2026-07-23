@@ -350,3 +350,16 @@ pub extern "C" fn cluaiz_kernel_load_kv_cache(
         Err(_) => -5,
     }
 }
+
+// ─── Sovereign Embedding FFI Placeholder ──────────────────────────────────────
+#[no_mangle]
+pub extern "C" fn cluaiz_kernel_generate_embedding(
+    _engine: *mut std::ffi::c_void,
+    _text: *const std::os::raw::c_char,
+    _out_buffer: *mut f32,
+    _max_dims: usize,
+    _out_len: *mut usize,
+) -> i32 {
+    tracing::warn!("🧬 [Llama-Lib] cluaiz_kernel_generate_embedding invoked but GGUF embeddings are not yet natively implemented in this kernel!");
+    -1 // Return error code for now until natively implemented
+}

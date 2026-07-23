@@ -26,81 +26,34 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
         .ensure_models_dir()
         .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
 
+    let registry = cluaiz_shared::utils::ModelRegistry::load();
+
     let mut available_chat_models: Vec<String> = Vec::new();
     let mut available_vector_models: Vec<String> = Vec::new();
     let mut available_vision_models: Vec<String> = Vec::new();
     let mut available_audio_models: Vec<String> = Vec::new();
     let mut all_models: Vec<String> = Vec::new();
 
-    // 1. Scan Chat models
-    if let Ok(entries) = std::fs::read_dir(models_root.join("chat")) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    let id = name.to_string();
-                    available_chat_models.push(id.clone());
-                    all_models.push(id);
-                }
-            }
+    // Dynamically categorize from model_registry database
+    for (id, entry) in &registry.installed_models {
+        all_models.push(id.clone());
+        match entry.category.as_str() {
+            "chat" => available_chat_models.push(id.clone()),
+            "embedding" => available_vector_models.push(id.clone()),
+            "vision" => available_vision_models.push(id.clone()),
+            "audio" => available_audio_models.push(id.clone()),
+            _ => available_chat_models.push(id.clone()), // fallback
         }
     }
 
-    // 2. Scan Embedding (Vector) models
-    if let Ok(entries) = std::fs::read_dir(models_root.join("embedding")) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    let id = name.to_string();
-                    available_vector_models.push(id.clone());
-                    all_models.push(id);
-                }
-            }
-        }
-    }
-
-    // 3. Scan Vision models
-    if let Ok(entries) = std::fs::read_dir(models_root.join("vision")) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    let id = name.to_string();
-                    available_vision_models.push(id.clone());
-                    all_models.push(id);
-                }
-            }
-        }
-    }
-
-    // 4. Scan Audio models
-    if let Ok(entries) = std::fs::read_dir(models_root.join("audio")) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                if let Some(name) = entry.file_name().to_str() {
-                    let id = name.to_string();
-                    available_audio_models.push(id.clone());
-                    all_models.push(id);
-                }
-            }
-        }
-    }
-
-    // Check if active slots configuration points to models that no longer exist on disk
+    // Check if active slots configuration points to models that no longer exist on disk (synced with registry state)
     let mut changed = false;
     let mut active_slots = schema.active_slots.clone();
     
     for (slot_name, slot_config) in active_slots.iter_mut() {
         if let Some(ref model_id) = slot_config.model_id {
-            // Find if this model folder exists in any of the categories
-            let mut found = false;
-            let categories = ["chat", "embedding", "vision", "audio"];
-            for cat in &categories {
-                if models_root.join(cat).join(model_id).exists() {
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                // Model was manually deleted by user from disk! Reset the slot.
+            if !registry.installed_models.contains_key(model_id) {
+                // Model was manually deleted or unregistered. Reset slot safely.
                 slot_config.model_id = None;
                 slot_config.format_type = None;
                 slot_config.supported_tasks = Vec::new();

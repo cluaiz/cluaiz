@@ -46,6 +46,12 @@ pub async fn run_daemon() {
     // ── Initialize the cluaiz pillars ──
     tracing::info!("🔧 Initializing cluaiz Engine...");
     
+    // 📡 Boot-time Model Registry Scan
+    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
+        .ensure_models_dir()
+        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+    
+    cluaiz_shared::utils::ModelRegistry::sync_from_disk(&cluaiz_root);
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
@@ -69,7 +75,12 @@ pub async fn run_daemon() {
         KernelSignature::default() // Default to CPU fallback; dynamically updated during /models/load
     );
 
-    let embedding_dispatcher = Arc::new(dispatcher::EmbeddingDispatcher::new().expect("Failed to initialize ONNX embedding engine"));
+    // Read embed_slot format to determine if we load ONNX or GGUF embedding backend
+    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+    let embed_format = perms.active_slots.get("embed_slot")
+        .and_then(|slot| slot.format_type.clone());
+
+    let embedding_dispatcher = Arc::new(dispatcher::EmbeddingDispatcher::new(embed_format).expect("Failed to initialize embedding engine"));
 
     // ── Create shared state ──
     let state = Arc::new(AppState { dispatcher, embedding_dispatcher });

@@ -37,6 +37,11 @@ pub async fn resolve_to_local_file(url: &str) -> Result<String> {
             h if h.contains("audio/ogg") => "ogg",
             h if h.contains("audio/flac") => "flac",
             h if h.contains("video/mp4") => "mp4",
+            h if h.contains("text/plain") => "txt",
+            h if h.contains("text/markdown") => "md",
+            h if h.contains("text/csv") => "csv",
+            h if h.contains("application/pdf") => "pdf",
+            h if h.contains("application/json") => "json",
             _ => "bin",
         };
                   
@@ -69,6 +74,11 @@ pub async fn resolve_to_local_file(url: &str) -> Result<String> {
             c if c.contains("audio/ogg") => "ogg",
             c if c.contains("audio/flac") => "flac",
             c if c.contains("video/mp4") => "mp4",
+            c if c.contains("text/plain") => "txt",
+            c if c.contains("text/markdown") => "md",
+            c if c.contains("text/csv") => "csv",
+            c if c.contains("application/pdf") => "pdf",
+            c if c.contains("application/json") => "json",
             _ => "bin",
         };
                   

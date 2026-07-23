@@ -189,22 +189,28 @@ impl RuntimeB {
 
             // Only protect if we actually know there's limited VRAM (vram_gb > 0)
             if weights_gb > 0.0 && vram_gb > 0.0 {
-                // Reserve 15% VRAM for OS/Display and Context Cache
-                let usable_vram = vram_gb * 0.85;
-                // Only clamp if model weights alone exceed the usable VRAM
+                // 🛡️ CERD DOCTRINE: Safe VRAM allocation
+                // A 15B model triggers clamping because weights_gb > 3.4GB, leaving room for KV cache.
+                // A 7B model (weights ~2.9GB) bypasses a flat 15% clamp (2.9 < 3.4) and fully offloads.
+                // BUT KV cache adds ~1.0GB - 1.5GB, pushing 2.9GB to 4.4GB (OOM Thrashing).
+                // FIX: Strictly reserve max(20% VRAM, 1.2 GB) for KV Cache and OS on lower VRAM GPUs.
+                let reserved_vram = (vram_gb * 0.20).max(1.2);
+                let usable_vram = (vram_gb - reserved_vram).max(0.0);
+                
+                // Compare weights against usable_vram WITH the KV Cache margin accounted for
                 if weights_gb > usable_vram {
                     if layers > 0 {
                         let ratio = usable_vram / weights_gb;
                         let safe_layers = (layers as f32 * ratio) as i32;
-                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds safe VRAM limit ({:.2}GB / {:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, usable_vram, vram_gb, safe_layers, layers);
+                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) + KV Cache exceeds safe VRAM limit ({:.2}GB / {:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, usable_vram, vram_gb, safe_layers, layers);
                         model_params.n_gpu_layers = safe_layers;
                     } else {
                         let safe_layers = 10;
-                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) exceeds safe VRAM limit ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
+                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) + KV Cache exceeds safe VRAM limit ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
                         model_params.n_gpu_layers = safe_layers;
                     }
                 } else {
-                    cluaiz_shared::dev_info!("✅ [Arbiter] Model ({:.2}GB) fits within usable VRAM ({:.2}GB / {:.2}GB). Full GPU Offload enabled ({} layers).", weights_gb, usable_vram, vram_gb, layers);
+                    cluaiz_shared::dev_info!("✅ [Arbiter] Model ({:.2}GB) + KV Cache fits within usable VRAM ({:.2}GB / {:.2}GB). Full GPU Offload enabled ({} layers).", weights_gb, usable_vram, vram_gb, layers);
                     model_params.n_gpu_layers = layers as i32; // Full GPU offload using exact layer count
                 }
             }

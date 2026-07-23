@@ -31,7 +31,7 @@ pub async fn execute(file_path: &str) -> Result<()> {
         return Ok(());
     }
 
-    match ingestor.ingest_and_vectorize(file_path, &onnx_driver) {
+    match ingestor.ingest_and_vectorize(file_path, &onnx_driver, None, 512, None, true, &[]) {
         Ok(results) => {
             println!("  {} Successfully processed and chunked.", "âœ…".green());
             println!("  {} Total Semantic Chunks Generated: {}\n", "âœ‚ï¸".cyan(), results.len().to_string().yellow().bold());
