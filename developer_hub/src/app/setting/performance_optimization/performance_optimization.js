@@ -1,4 +1,6 @@
 import { Dropdown } from '../../../../components/dropdown/dropdown.js?v=3';
+import { showModal } from '../../../../components/modal/modal.js';
+import { CodeEditor } from '../../../../components/editor/editor.js';
 
 const DESCRIPTIONS = {
     brainMode: {
@@ -248,64 +250,368 @@ export async function mount(container) {
     setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
     setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
 
-    // Chat, Vector, Vision, and Audio Models Selection
+    // Chat, Vector, Vision, and Audio Models Selection & Rich Card Rendering
     try {
+        let registryMap = {};
+        try {
+            const registryRes = await fetch(window.getApiBaseUrl() + '/v1/models/installed').catch(() => null);
+            if (registryRes && registryRes.ok) {
+                const regData = await registryRes.json();
+                const rawList = Array.isArray(regData.models) ? regData.models : (Array.isArray(regData.installed) ? regData.installed : []);
+                if (rawList.length > 0) {
+                    rawList.forEach(m => {
+                        if (m && m.id) registryMap[m.id] = m;
+                    });
+                } else if (regData.installed_models && typeof regData.installed_models === 'object') {
+                    registryMap = regData.installed_models;
+                }
+            }
+        } catch (err) {
+            console.warn("Could not fetch full registry map:", err);
+        }
+
         let chatOptions = [];
         let vectorOptions = [];
         let visionOptions = [];
         let audioOptions = [];
 
-        let activeChat = permData.chat_models?.text || '';
-        let activeVector = permData.vector_models?.text || '';
-        let activeVision = permData.vector_models?.vision || '';
-        let activeAudio = permData.vector_models?.audio || '';
+        let activeChat = permData.active_slots?.chat_slot?.model_id || permData.chat_models?.text || '';
+        let activeVector = permData.active_slots?.embed_slot?.model_id || permData.vector_models?.text || '';
+        let activeVision = permData.active_slots?.vision_slot?.model_id || permData.vector_models?.vision || '';
+        let activeAudio = permData.active_slots?.audio_slot?.model_id || permData.vector_models?.audio || '';
 
         const chatModels = permData.available_chat_models || [];
-        if (chatModels.length > 0) {
-            chatOptions = makeOptions(chatModels);
-        }
-        if (activeChat !== '') {
-            if (!chatOptions.find(o => o.value === activeChat)) {
-                chatOptions.unshift({ value: activeChat, label: activeChat });
-            }
+        if (chatModels.length > 0) chatOptions = makeOptions(chatModels);
+        if (activeChat && !chatOptions.find(o => o.value === activeChat)) {
+            chatOptions.unshift({ value: activeChat, label: activeChat });
         }
 
         const vectorModels = permData.available_vector_models || [];
-        if (vectorModels.length > 0) {
-            vectorOptions = makeOptions(vectorModels);
-        }
-        if (activeVector !== '') {
-            if (!vectorOptions.find(o => o.value === activeVector)) {
-                vectorOptions.unshift({ value: activeVector, label: activeVector });
-            }
+        if (vectorModels.length > 0) vectorOptions = makeOptions(vectorModels);
+        if (activeVector && !vectorOptions.find(o => o.value === activeVector)) {
+            vectorOptions.unshift({ value: activeVector, label: activeVector });
         }
 
-        // Vision models reside in the vision folder category
         const visionModels = permData.available_vision_models || [];
-        if (visionModels.length > 0) {
-            visionOptions = makeOptions(visionModels);
-        }
-        if (activeVision !== '') {
-            if (!visionOptions.find(o => o.value === activeVision)) {
-                visionOptions.unshift({ value: activeVision, label: activeVision });
-            }
+        if (visionModels.length > 0) visionOptions = makeOptions(visionModels);
+        if (activeVision && !visionOptions.find(o => o.value === activeVision)) {
+            visionOptions.unshift({ value: activeVision, label: activeVision });
         }
 
         const audioModels = permData.available_audio_models || [];
-        if (audioModels.length > 0) {
-            audioOptions = makeOptions(audioModels);
-        }
-        if (activeAudio !== '') {
-            if (!audioOptions.find(o => o.value === activeAudio)) {
-                audioOptions.unshift({ value: activeAudio, label: activeAudio });
-            }
+        if (audioModels.length > 0) audioOptions = makeOptions(audioModels);
+        if (activeAudio && !audioOptions.find(o => o.value === activeAudio)) {
+            audioOptions.unshift({ value: activeAudio, label: activeAudio });
         }
 
-        // Add fallback options if lists are completely empty or unselected to avoid empty dropdowns
         chatOptions.unshift({ value: '', label: 'Select Chat Model...' });
         vectorOptions.unshift({ value: '', label: 'Select Vector Model...' });
         visionOptions.unshift({ value: '', label: 'Select Vision Model...' });
         audioOptions.unshift({ value: '', label: 'Select Audio Model...' });
+
+        // Helper function to render Rich Model Card
+        const renderModelCard = (cardElementId, selectedModelId) => {
+            const cardEl = container.querySelector('#' + cardElementId);
+            if (!cardEl) return;
+
+            if (!selectedModelId || !registryMap[selectedModelId]) {
+                cardEl.style.display = 'none';
+                cardEl.innerHTML = '';
+                return;
+            }
+
+            const modelData = registryMap[selectedModelId];
+            const meta = modelData.metadata || {};
+            const format = (modelData.format_type || 'gguf').toUpperCase();
+            const bitDepth = meta.bit_depth || 'N/A';
+            const quant = meta.quantization || 'Standard';
+            const params = meta.parameters || 'Unknown';
+            const context = meta.context_window || 'Unknown';
+            const tasks = modelData.supported_tasks || [];
+            const hfRepo = modelData.huggingface_repo || (selectedModelId.includes('/') ? selectedModelId : '');
+            const extraFiles = modelData.extra_files || ['model_manifest.json', 'structural_dna.json', 'config.json'];
+
+            let taskPillsHtml = tasks.map(t => `<span class="task-pill" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 11px; padding: 2px 8px; border-radius: 12px; display: inline-block;">${t}</span>`).join(' ');
+
+            const hfIconHtml = hfRepo ? `
+                <a href="https://huggingface.co/${hfRepo}" target="_blank" title="View on HuggingFace Hub (${hfRepo})" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(255, 210, 0, 0.15); border: 1px solid rgba(255, 210, 0, 0.3); border-radius: 6px; text-decoration: none; color: #ffd200; font-size: 13px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1.0)'">
+                    🤗
+                </a>
+            ` : '';
+
+            cardEl.style.display = 'block';
+            cardEl.innerHTML = `
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 14px; margin-top: 6px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 8px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="background: ${format === 'GGUF' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)'}; color: ${format === 'GGUF' ? '#10b981' : '#c084fc'}; border: 1px solid ${format === 'GGUF' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(168, 85, 247, 0.3)'}; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">${format}</span>
+                            <span style="font-weight: 600; color: #f3f4f6; font-size: 0.9rem;">${selectedModelId}</span>
+                            ${hfIconHtml}
+                        </div>
+                        <button class="inspect-btn" data-model="${selectedModelId}" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🔍 Inspect Files & Header</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                            <div style="font-size: 10px; color: #9ca3af;">Parameters</div>
+                            <div style="font-size: 12px; font-weight: 600; color: #38bdf8;">${params}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                            <div style="font-size: 10px; color: #9ca3af;">Bit Precision</div>
+                            <div style="font-size: 12px; font-weight: 600; color: #a78bfa;">${bitDepth}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                            <div style="font-size: 10px; color: #9ca3af;">Context Window</div>
+                            <div style="font-size: 12px; font-weight: 600; color: #34d399;">${context}</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
+                            <div style="font-size: 10px; color: #9ca3af;">Quantization</div>
+                            <div style="font-size: 12px; font-weight: 600; color: #fbbf24;">${quant}</div>
+                        </div>
+                    </div>
+                    ${taskPillsHtml ? `<div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;"><span style="font-size: 11px; color: #6b7280; margin-right: 4px;">Supported Tasks:</span> ${taskPillsHtml}</div>` : ''}
+                </div>
+            `;
+
+            // Multi-tab inspector button listener
+            const inspectBtn = cardEl.querySelector('.inspect-btn');
+            if (inspectBtn) {
+                inspectBtn.addEventListener('click', () => {
+                    const chatTmpl = meta.chat_template || "No template found.";
+                    const localDir = modelData.local_dir || '';
+                                    // Clean up tab display titles (remove .json extension, format clean titles)
+                    const formatTabName = (filename) => {
+                        const clean = filename.replace(/\.json$/, '').replace(/\.yaml$/, '').replace(/\.md$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
+                        return clean.charAt(0).toUpperCase() + clean.slice(1);
+                    };
+
+                    const hasChatTemplate = chatTmpl && chatTmpl.trim() !== "No template found." && chatTmpl.trim() !== "";
+                    
+                    showModal(`${selectedModelId}`, `
+                        <div style="display: flex; flex-direction: column; height: 100%; width: 100%; text-align: left; gap: 12px;">
+                            <!-- Top Scrollable Tab Navigation Bar -->
+                            <div class="modal-tab-bar" style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; white-space: nowrap;">
+                                <style>.modal-tab-bar::-webkit-scrollbar { display: none; }</style>
+                                <button class="modal-tab-btn active" data-tab="tab-header" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">⚡ Binary Header Probe</button>
+                                ${hasChatTemplate ? `<button class="modal-tab-btn" data-tab="tab-template" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">💬 Chat Template</button>` : ''}
+                                ${extraFiles.map((f, i) => `<button class="modal-tab-btn" data-tab="tab-file-${i}" data-filename="${f}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">📄 ${formatTabName(f)}</button>`).join('')}
+                            </div>
+                            
+                            <!-- Tab Content: Live Binary Header Probe (Active Default) -->
+                            <div id="tab-header" class="modal-tab-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: #9ca3af; font-family: monospace;">Hardware Probe & Binary Structure Details</span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn-export-tab" data-export-type="header" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                    </div>
+                                </div>
+                                <div id="editor-container-header" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+                            </div>
+
+                            <!-- Tab Content: Chat Template (Conditional) -->
+                            ${hasChatTemplate ? `
+                            <div id="tab-template" class="modal-tab-content" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <span style="font-size: 11px; color: #9ca3af;">Jinja2 Prompt Formatter template extracted from binary:</span>
+                                    <button class="btn-export-tab" data-export-type="template" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                </div>
+                                <div id="editor-container-template" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+                            </div>
+                            ` : ''}
+
+                            <!-- Dynamic Extra Files Content Slots -->
+                            ${extraFiles.map((f, i) => `
+                                <div id="tab-file-${i}" class="modal-tab-content" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 11px; color: #9ca3af; font-family: monospace;">Path: ${localDir}\\${f}</span>
+                                        <button class="btn-export-tab" data-export-filename="${f}" data-tab-id="tab-file-${i}" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                    </div>
+                                    <div id="editor-container-tab-file-${i}" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `, { hideFooter: true });
+
+                    // Tab switcher binding & Auto Header Initialization inside modal
+                    setTimeout(() => {
+                        const modalOverlay = document.getElementById('hub-global-modal-overlay');
+                        if (!modalOverlay) return;
+                        
+                        const tabBtns = modalOverlay.querySelectorAll('.modal-tab-btn');
+                        const tabContents = modalOverlay.querySelectorAll('.modal-tab-content');
+                        const editorsMap = {};
+
+                        // Helper to get or create CodeEditor instance inside modal container
+                        const getOrCreateEditor = (containerId, initialVal = "", mode = "application/json") => {
+                            if (editorsMap[containerId]) return editorsMap[containerId];
+                            const containerEl = modalOverlay.querySelector('#' + containerId);
+                            if (!containerEl) return null;
+
+                            const editor = new CodeEditor({
+                                value: initialVal,
+                                mode: mode,
+                                readOnly: true,
+                                className: 'modal-code-editor'
+                            });
+                            containerEl.appendChild(editor.render());
+                            editor.mount();
+                            editorsMap[containerId] = editor;
+                            return editor;
+                        };
+                        
+                        tabBtns.forEach(btn => {
+                            btn.addEventListener('click', async () => {
+                                tabBtns.forEach(b => {
+                                    b.style.background = 'rgba(255,255,255,0.05)';
+                                    b.style.borderColor = 'rgba(255,255,255,0.1)';
+                                    b.style.color = '#9ca3af';
+                                });
+                                tabContents.forEach(c => c.style.display = 'none');
+                                
+                                btn.style.background = 'rgba(59, 130, 246, 0.2)';
+                                btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                                btn.style.color = '#60a5fa';
+                                
+                                const tabId = btn.getAttribute('data-tab');
+                                const targetTab = modalOverlay.querySelector('#' + tabId);
+                                if (targetTab) targetTab.style.display = 'flex';
+
+                                if (tabId === 'tab-template' && hasChatTemplate) {
+                                    const ed = getOrCreateEditor('editor-container-template', chatTmpl, 'jinja2');
+                                    if (ed && ed.cm) setTimeout(() => ed.cm.refresh(), 20);
+                                } else if (tabId === 'tab-header') {
+                                    const ed = getOrCreateEditor('editor-container-header', JSON.stringify(probedHeaderData, null, 2), 'application/json');
+                                    if (ed && ed.cm) setTimeout(() => ed.cm.refresh(), 20);
+                                } else if (tabId && tabId.startsWith('tab-file-')) {
+                                    const filename = btn.getAttribute('data-filename');
+                                    const containerId = `editor-container-${tabId}`;
+                                    const containerEl = modalOverlay.querySelector('#' + containerId);
+                                    let ed = editorsMap[containerId];
+                                    
+                                    if (!ed) {
+                                        // Create a high-tech glowing loader overlay inside the container before mount
+                                        const loaderOverlay = document.createElement('div');
+                                        loaderOverlay.className = 'editor-tab-loader';
+                                        loaderOverlay.style.cssText = 'position: absolute; inset: 0; background: #090d13; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; gap: 12px; font-family: sans-serif;';
+                                        loaderOverlay.innerHTML = `
+                                            <div style="width: 32px; height: 32px; border: 3px solid rgba(96, 165, 250, 0.2); border-top-color: #60a5fa; border-radius: 50%; animation: spinLoader 0.8s linear infinite;"></div>
+                                            <style>@keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+                                            <span style="font-size: 12px; color: #9ca3af; font-family: monospace;">Loading ${filename} from disk...</span>
+                                        `;
+                                        if (containerEl) {
+                                            containerEl.style.position = 'relative';
+                                            containerEl.appendChild(loaderOverlay);
+                                        }
+
+                                        try {
+                                            // Non-blocking async fetch
+                                            const fileRes = await fetch(`/api/components/file?component_type=model&component_id=${encodeURIComponent(selectedModelId)}&file_path=${encodeURIComponent(filename)}`);
+                                            const fileJson = await fileRes.json();
+                                            
+                                            let content = "";
+                                            if (fileJson.status === 'success' && fileJson.content) {
+                                                content = fileJson.content;
+                                            } else {
+                                                content = fileJson.message || "// File content empty or unavailable.";
+                                            }
+
+                                            let isTruncated = false;
+                                            let fileSizeMb = 0;
+                                            if (content.length > 500000) {
+                                                isTruncated = true;
+                                                fileSizeMb = (content.length / 1024 / 1024).toFixed(2);
+                                                content = content.substring(0, 500000);
+                                            }
+
+                                            // Show top warning banner if file was truncated for performance
+                                            const tabContainerEl = modalOverlay.querySelector('#' + tabId);
+                                            if (isTruncated && tabContainerEl) {
+                                                const alertBar = document.createElement('div');
+                                                alertBar.style.cssText = 'background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+                                                alertBar.innerHTML = `
+                                                    <span style="overflow: hidden; text-overflow: ellipsis;">⚠️ Large file (${fileSizeMb} MB): Showing 500 KB snippet for performance.</span>
+                                                    <span style="font-weight: 500; font-size: 10px; opacity: 0.85; margin-left: 12px; flex-shrink: 0;">Use "Export" to download full file</span>
+                                                `;
+                                                tabContainerEl.insertBefore(alertBar, containerEl);
+                                            }
+
+                                            // Mount editor smoothly with pure clean JSON
+                                            ed = getOrCreateEditor(containerId, content, filename.endsWith('.json') ? 'application/json' : 'text/plain');
+                                            
+                                        } catch (err) {
+                                            ed = getOrCreateEditor(containerId, `// Error loading file: ${err.message}`, 'text/plain');
+                                        } finally {
+                                            // Remove loader overlay smoothly
+                                            if (loaderOverlay && loaderOverlay.parentNode) {
+                                                loaderOverlay.parentNode.removeChild(loaderOverlay);
+                                            }
+                                        }
+                                    }
+                                    if (ed && ed.cm) setTimeout(() => ed.cm.refresh(), 20);
+                                }
+                            });
+                        });
+
+                        // Auto-populate Binary Header Probe CodeEditor immediately on modal open
+                        const probedHeaderData = {
+                            model_id: selectedModelId,
+                            architecture: meta.architecture || "Unknown",
+                            format: format,
+                            quantization: quant,
+                            bit_precision: bitDepth,
+                            parameters: params,
+                            context_window: context,
+                            chat_template_available: hasChatTemplate,
+                            storage_path: localDir,
+                            files: modelData.files || [],
+                            probed_timestamp: new Date().toISOString()
+                        };
+
+                        const headerEd = getOrCreateEditor('editor-container-header', JSON.stringify(probedHeaderData, null, 2), 'application/json');
+                        if (headerEd && headerEd.cm) setTimeout(() => headerEd.cm.refresh(), 50);
+
+                        // Bind Export Button for ALL Tabs (Format: <model_id>-<file_name>)
+                        const exportBtns = modalOverlay.querySelectorAll('.btn-export-tab');
+                        exportBtns.forEach(exportBtn => {
+                            exportBtn.addEventListener('click', () => {
+                                const exportType = exportBtn.getAttribute('data-export-type');
+                                const exportFilename = exportBtn.getAttribute('data-export-filename');
+                                const tabId = exportBtn.getAttribute('data-tab-id');
+
+                                let contentToExport = "";
+                                let downloadName = "";
+
+                                if (exportType === "header") {
+                                    contentToExport = JSON.stringify(probedHeaderData, null, 2);
+                                    downloadName = `${selectedModelId}-header.json`;
+                                } else if (exportType === "template") {
+                                    contentToExport = chatTmpl;
+                                    downloadName = `${selectedModelId}-chat_template.jinja2`;
+                                } else if (exportFilename && tabId) {
+                                    const containerId = `editor-container-${tabId}`;
+                                    const ed = editorsMap[containerId];
+                                    if (ed) {
+                                        contentToExport = ed.getValue();
+                                    }
+                                    downloadName = `${selectedModelId}-${exportFilename}`;
+                                }
+
+                                if (!contentToExport || contentToExport.startsWith("// Loading")) return;
+
+                                const blob = new Blob([contentToExport], { type: 'text/plain;charset=utf-8' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = downloadName.replace(/\//g, '_');
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                            });
+                        });
+                    }, 50);
+                });
+            }
+        };
 
         const chatContainer = container.querySelector('#container-chat-model');
         if (chatContainer) {
@@ -314,12 +620,15 @@ export async function mount(container) {
                 defaultValue: activeChat,
                 onChange: async (val) => {
                     console.log('Chat Model changed to:', val);
-                    if (!permData.chat_models) permData.chat_models = {};
-                    permData.chat_models.text = val !== '' ? val : null;
-                    await updatePermissionSetting('chat_models', permData.chat_models);
+                    if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.chat_slot) permData.active_slots.chat_slot = {};
+                    permData.active_slots.chat_slot.model_id = val !== '' ? val : null;
+                    await updatePermissionSetting('active_slots', permData.active_slots);
+                    renderModelCard('card-chat-model', val);
                 }
             });
             chatContainer.appendChild(chatDropdown.render());
+            renderModelCard('card-chat-model', activeChat);
         }
 
         const vectorContainer = container.querySelector('#container-vector-model');
@@ -329,12 +638,15 @@ export async function mount(container) {
                 defaultValue: activeVector,
                 onChange: async (val) => {
                     console.log('Vector Model changed to:', val);
-                    if (!permData.vector_models) permData.vector_models = {};
-                    permData.vector_models.text = val !== '' ? val : null;
-                    await updatePermissionSetting('vector_models', permData.vector_models);
+                    if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.embed_slot) permData.active_slots.embed_slot = {};
+                    permData.active_slots.embed_slot.model_id = val !== '' ? val : null;
+                    await updatePermissionSetting('active_slots', permData.active_slots);
+                    renderModelCard('card-vector-model', val);
                 }
             });
             vectorContainer.appendChild(vectorDropdown.render());
+            renderModelCard('card-vector-model', activeVector);
         }
 
         const visionContainer = container.querySelector('#container-vision-model');
@@ -344,12 +656,15 @@ export async function mount(container) {
                 defaultValue: activeVision,
                 onChange: async (val) => {
                     console.log('Vision Model changed to:', val);
-                    if (!permData.vector_models) permData.vector_models = {};
-                    permData.vector_models.vision = val !== '' ? val : null;
-                    await updatePermissionSetting('vector_models', permData.vector_models);
+                    if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.vision_slot) permData.active_slots.vision_slot = {};
+                    permData.active_slots.vision_slot.model_id = val !== '' ? val : null;
+                    await updatePermissionSetting('active_slots', permData.active_slots);
+                    renderModelCard('card-vision-model', val);
                 }
             });
             visionContainer.appendChild(visionDropdown.render());
+            renderModelCard('card-vision-model', activeVision);
         }
 
         const audioContainer = container.querySelector('#container-audio-model');
@@ -359,12 +674,15 @@ export async function mount(container) {
                 defaultValue: activeAudio,
                 onChange: async (val) => {
                     console.log('Audio Model changed to:', val);
-                    if (!permData.vector_models) permData.vector_models = {};
-                    permData.vector_models.audio = val !== '' ? val : null;
-                    await updatePermissionSetting('vector_models', permData.vector_models);
+                    if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.audio_slot) permData.active_slots.audio_slot = {};
+                    permData.active_slots.audio_slot.model_id = val !== '' ? val : null;
+                    await updatePermissionSetting('active_slots', permData.active_slots);
+                    renderModelCard('card-audio-model', val);
                 }
             });
             audioContainer.appendChild(audioDropdown.render());
+            renderModelCard('card-audio-model', activeAudio);
         }
     } catch (e) {
         console.error('Failed to setup models:', e);

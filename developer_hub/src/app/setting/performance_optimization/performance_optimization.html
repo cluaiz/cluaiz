@@ -54,36 +54,48 @@
             </div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Default Chat Model</span>
-                <span class="setting-desc">The primary generative AI model loaded into memory for conversation.</span>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">Default Chat Model</span>
+                    <span class="setting-desc">The primary generative AI model loaded into memory for conversation.</span>
+                </div>
+                <div class="setting-control" id="container-chat-model"></div>
             </div>
-            <div class="setting-control" id="container-chat-model"></div>
+            <div id="card-chat-model" class="model-info-card" style="display: none;"></div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Default Vector Model</span>
-                <span class="setting-desc">The embedding model used for semantic graph memory and search.</span>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">Default Vector Model</span>
+                    <span class="setting-desc">The embedding model used for semantic graph memory and search.</span>
+                </div>
+                <div class="setting-control" id="container-vector-model"></div>
             </div>
-            <div class="setting-control" id="container-vector-model"></div>
+            <div id="card-vector-model" class="model-info-card" style="display: none;"></div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Default Vision Model</span>
-                <span class="setting-desc">The multimodal model used for image and visual processing tasks.</span>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">Default Vision Model</span>
+                    <span class="setting-desc">The multimodal model used for image and visual processing tasks.</span>
+                </div>
+                <div class="setting-control" id="container-vision-model"></div>
             </div>
-            <div class="setting-control" id="container-vision-model"></div>
+            <div id="card-vision-model" class="model-info-card" style="display: none;"></div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Default Audio Model</span>
-                <span class="setting-desc">The automatic speech recognition (ASR) and audio processing model.</span>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">Default Audio Model</span>
+                    <span class="setting-desc">The automatic speech recognition (ASR) and audio processing model.</span>
+                </div>
+                <div class="setting-control" id="container-audio-model"></div>
             </div>
-            <div class="setting-control" id="container-audio-model"></div>
+            <div id="card-audio-model" class="model-info-card" style="display: none;"></div>
         </div>
     </div>
 

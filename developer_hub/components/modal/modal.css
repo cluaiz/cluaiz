@@ -24,11 +24,22 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 24px;
-    width: 400px;
-    max-width: 90%;
+    width: 900px;
+    max-width: 94vw;
+    height: 88vh;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     transform: translateY(20px) scale(0.95);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.modal-content .modal-text {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-overlay.show .modal-content {
@@ -42,7 +53,7 @@
 }
 
 .modal-text {
-    margin: 0 0 24px 0;
+    margin: 0;
     color: #a0a0a0;
     font-size: 0.95rem;
     line-height: 1.5;

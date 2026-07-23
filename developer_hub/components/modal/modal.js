@@ -31,6 +31,7 @@ export function showModal(title, message, options = {}) {
             confirmText: options.confirmText || 'Confirm',
             cancelText: options.cancelText || 'Cancel',
             showCancel: options.showCancel !== false,
+            hideFooter: options.hideFooter || false,
         };
 
         let overlay = document.getElementById('hub-global-modal-overlay');
@@ -44,9 +45,10 @@ export function showModal(title, message, options = {}) {
             overlay.className = 'modal-overlay';
             
             overlay.innerHTML = `
-                <div class="modal-content glass-panel">
+                <div class="modal-content glass-panel" style="position: relative;">
+                    <button id="hub-global-modal-close-icon" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: #9ca3af; font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; border-radius: 4px; transition: color 0.2s;" onmouseover="this.style.color='#ffffff'" onmouseout="this.style.color='#9ca3af'">✕</button>
                     <h3 class="modal-title" id="hub-global-modal-title"></h3>
-                    <p class="modal-text" id="hub-global-modal-message"></p>
+                    <div class="modal-text" id="hub-global-modal-message"></div>
                     <div class="modal-actions" id="hub-global-modal-actions">
                         <button id="hub-global-modal-cancel" class="btn-secondary"></button>
                         <button id="hub-global-modal-confirm" class="btn-primary"></button>
@@ -61,6 +63,8 @@ export function showModal(title, message, options = {}) {
         const messageEl = document.getElementById('hub-global-modal-message');
         const cancelBtn = document.getElementById('hub-global-modal-cancel');
         const confirmBtn = document.getElementById('hub-global-modal-confirm');
+        const closeIconBtn = document.getElementById('hub-global-modal-close-icon');
+        const actionsEl = document.getElementById('hub-global-modal-actions');
 
         titleEl.textContent = title;
         messageEl.innerHTML = message;
@@ -68,36 +72,41 @@ export function showModal(title, message, options = {}) {
         confirmBtn.textContent = config.confirmText;
         cancelBtn.textContent = config.cancelText;
         cancelBtn.style.display = config.showCancel ? 'inline-block' : 'none';
+        if (actionsEl) {
+            actionsEl.style.display = config.hideFooter ? 'none' : 'flex';
+        }
 
         // Event handler cleanup
         const cleanup = () => {
             overlay.classList.remove('show');
             setTimeout(() => {
                 overlay.style.display = 'none';
-            }, 300); // Wait for transition
+            }, 300);
         };
 
-        const handleConfirm = () => {
+        const handleDismiss = () => {
             cleanup();
-            confirmBtn.removeEventListener('click', handleConfirm);
-            cancelBtn.removeEventListener('click', handleCancel);
-            resolve(true);
-        };
-
-        const handleCancel = () => {
-            cleanup();
-            confirmBtn.removeEventListener('click', handleConfirm);
-            cancelBtn.removeEventListener('click', handleCancel);
+            confirmBtn.removeEventListener('click', handleDismiss);
+            cancelBtn.removeEventListener('click', handleDismiss);
+            if (closeIconBtn) closeIconBtn.removeEventListener('click', handleDismiss);
+            overlay.removeEventListener('click', handleBackdropClick);
             resolve(false);
         };
 
+        const handleBackdropClick = (e) => {
+            if (e.target === overlay) {
+                handleDismiss();
+            }
+        };
+
         // Attach listeners
-        confirmBtn.addEventListener('click', handleConfirm);
-        cancelBtn.addEventListener('click', handleCancel);
+        confirmBtn.addEventListener('click', handleDismiss);
+        cancelBtn.addEventListener('click', handleDismiss);
+        if (closeIconBtn) closeIconBtn.addEventListener('click', handleDismiss);
+        overlay.addEventListener('click', handleBackdropClick);
 
         // Show modal
         overlay.style.display = 'flex';
-        // Force reflow for transition
         overlay.offsetHeight; 
         overlay.classList.add('show');
     });
