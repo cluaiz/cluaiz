@@ -19,7 +19,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">GPU Layers (n_gpu_layers)</span>
-                <span class="setting-desc">Determines how many transformer layers are offloaded to the GPU. -1 offloads all layers for maximum speed, while 0 forces CPU-only execution.</span>
+                <span class="setting-desc">VRAM layer offload count. Use -1 for full VRAM allocation, 0 for host CPU execution.</span>
             </div>
             <div class="setting-control" id="container-gguf-gpu-layers"></div>
         </div>
@@ -27,7 +27,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">No MMAP (no_mmap)</span>
-                <span class="setting-desc">Disables memory-mapped file I/O. Enabling this forces the model to load entirely into RAM, bypassing disk swap for faster inference.</span>
+                <span class="setting-desc">Bypasses mmap() file I/O calls. Reads tensor weights directly into physical host RAM.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-gguf-no-mmap">
@@ -39,7 +39,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Override Tensor (override_tensor)</span>
-                <span class="setting-desc">Applies regex-based rules to force specific tensors (e.g. FFN layers) to run on CPU instead of GPU, useful for fine-grained VRAM management.</span>
+                <span class="setting-desc">Regex tensor placement rules. Forces designated layers (e.g. FFN blocks) to host RAM.</span>
             </div>
             <div class="setting-control">
                 <div id="container-gguf-override-tensor" class="dropdown-container"></div>
@@ -49,7 +49,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Batch Size (batch_size)</span>
-                <span class="setting-desc">The number of tokens processed simultaneously during prompt evaluation. Higher values increase speed but consume more VRAM.</span>
+                <span class="setting-desc">Logical prompt evaluation batch length evaluated per step.</span>
             </div>
             <div class="setting-control" id="container-gguf-batch-size"></div>
         </div>
@@ -57,7 +57,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">UBatch Size (ubatch_size)</span>
-                <span class="setting-desc">Micro-batch size for evaluation. Modifying this helps balance GPU compute load during heavy continuous batching.</span>
+                <span class="setting-desc">Physical micro-batch chunk size dispatched per compute kernel launch.</span>
             </div>
             <div class="setting-control" id="container-gguf-ubatch-size"></div>
         </div>
@@ -65,7 +65,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Parallel Sequences (parallel)</span>
-                <span class="setting-desc">Maximum number of parallel sequences the engine can decode simultaneously. Essential for handling concurrent chat requests.</span>
+                <span class="setting-desc">Maximum concurrent sequence slots allocated in KV cache state.</span>
             </div>
             <div class="setting-control" id="container-gguf-parallel"></div>
         </div>
@@ -73,7 +73,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Speculative Type (spec_type)</span>
-                <span class="setting-desc">Speculative decoding algorithm (e.g. draft-mtp, ngram-mod) used to guess upcoming tokens and drastically increase generation speed.</span>
+                <span class="setting-desc">Speculative decoding strategy (draft-mtp or n-gram) for lookahead proposal.</span>
             </div>
             <div class="setting-control" id="container-gguf-spec-type"></div>
         </div>
@@ -81,7 +81,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Speculative Draft Max (spec_draft_n_max)</span>
-                <span class="setting-desc">The maximum number of tokens the draft model is allowed to predict ahead of the main model.</span>
+                <span class="setting-desc">Max sequence depth for speculative draft lookahead verification.</span>
             </div>
             <div class="setting-control" id="container-gguf-spec-max"></div>
         </div>
@@ -91,7 +91,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Chat Template File</span>
-                <span class="setting-desc">The Jinja2 template file used to format the conversation history before passing it to the model (leave empty for Auto/Header read, e.g. froggeric_fix.jinja).</span>
+                <span class="setting-desc">Jinja2 template path for conversation formatting (e.g. froggeric_fix.jinja). Empty reads header default.</span>
             </div>
             <div class="setting-control" id="container-gguf-chat-template">
             </div>
@@ -100,7 +100,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Chat Template Kwargs</span>
-                <span class="setting-desc">Additional JSON arguments passed into the Jinja template to control internal rendering logic (e.g. {"preserve_thinking": true}).</span>
+                <span class="setting-desc">JSON parameters merged into Jinja evaluation context (e.g. {"preserve_thinking": true}).</span>
             </div>
             <div class="setting-control" id="container-gguf-chat-kwargs">
             </div>
@@ -109,7 +109,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Enable Jinja (jinja)</span>
-                <span class="setting-desc">Enables the Jinja2 templating engine for processing the chat template. Disabling it falls back to basic string concatenation.</span>
+                <span class="setting-desc">Toggles Jinja2 template processing engine versus native string formatting.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-gguf-jinja">
@@ -121,14 +121,13 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Fit (fit)</span>
-                <span class="setting-desc">Controls how the sequence context window fits or truncates overflowing tokens when the conversation exceeds maximum context length.</span>
+                <span class="setting-desc">Context window overflow strategy (truncate, slide, or error) when prompt exceeds max context limit.</span>
             </div>
             <div class="setting-control" id="container-gguf-fit"></div>
         </div>
 
         <h3 class="settings-section-title" style="margin-top: 30px;">Samplers</h3>
-        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Manage temp, top_p, top_k, min_p,
-            presence_penalty, repeat_penalty.</p>
+        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 15px;">Configure temp, top_p, top_k, min_p, presence_penalty, repeat_penalty.</p>
         <div id="container-gguf-samplers" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
             <!-- Rendered via JS -->
         </div>
@@ -138,7 +137,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Think Mode</span>
-                <span class="setting-desc">Enables deep Chain-of-Thought (CoT) reasoning before responding. Modifies generation behavior for logic-heavy queries.</span>
+                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission during decoding.</span>
             </div>
             <div class="setting-control" id="container-gguf-think-mode"></div>
         </div>
@@ -147,7 +146,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));">
                 <div class="setting-info" style="margin-bottom: 0;">
                     <span class="setting-label">Response Length Map (Temperature Based)</span>
-                    <span class="setting-desc">Toggle ON for built-in rules (e.g. Think Deep). Toggle OFF to create custom rules or leave empty. Temperatures (0.0 to 2.0) map to system constraints: 0.0 for strict logic, up to 2.0 for maximum creativity.</span>
+                    <span class="setting-desc">JSON map mapping temperature ranges (0.0 - 2.0) to system token budget constraints.</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Enable Predefined Modes</span>
@@ -171,7 +170,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Hardware Offload</span>
-                <span class="setting-desc">Choose where to run the ONNX model. The engine automatically picks the best driver (CUDA, ROCm, etc.) for GPU.</span>
+                <span class="setting-desc">Target Execution Provider backend driver (CUDA, ROCm, DirectML, CPU).</span>
             </div>
             <div class="setting-control" id="container-onnx-hardware-offload"></div>
         </div>
@@ -179,7 +178,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Intra-Op Threads (Node Execution)</span>
-                <span class="setting-desc">Number of threads used to parallelize the execution within a single operator/node (e.g., matrix multiplication). 0 means auto-detect.</span>
+                <span class="setting-desc">Thread count for intra-node operator kernel parallelism (e.g. GEMM). 0 auto-detects CPU core count.</span>
             </div>
             <div class="setting-control" id="container-onnx-intra-threads"></div>
         </div>
@@ -187,7 +186,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Graph Optimization Level</span>
-                <span class="setting-desc">Controls the aggressiveness of ONNX graph fusions and simplifications. ORT_ENABLE_ALL provides the best performance.</span>
+                <span class="setting-desc">ONNX Runtime graph transformation pass level (ORT_DISABLE_ALL, ORT_ENABLE_BASIC, ORT_ENABLE_ALL).</span>
             </div>
             <div class="setting-control" id="container-onnx-graph-opt"></div>
         </div>
@@ -195,7 +194,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Enable Profiling</span>
-                <span class="setting-desc">Generates detailed execution profiles for operators. Keep off during normal usage to prevent disk bloat.</span>
+                <span class="setting-desc">Emits Chrome trace JSON profiling logs for operator execution runtimes.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-onnx-profiling">
@@ -209,7 +208,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Inter-Op Threads (Graph Execution)</span>
-                <span class="setting-desc">Number of threads used to parallelize the execution of independent operators across the graph. Keep at 0 for sequential LLM inference.</span>
+                <span class="setting-desc">Thread count for concurrent graph branch operators. Recommended 0 for sequential transformer inference.</span>
             </div>
             <div class="setting-control" id="container-onnx-inter-threads"></div>
         </div>
@@ -217,7 +216,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Enable Memory Pattern</span>
-                <span class="setting-desc">Optimizes the memory layout pattern for intermediate tensors, reducing allocation overhead during inference.</span>
+                <span class="setting-desc">Pre-allocates static memory layout patterns for intermediate tensor shapes.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-onnx-mem-pattern">
@@ -229,7 +228,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Enable CPU Memory Arena</span>
-                <span class="setting-desc">Utilizes an arena-based allocator for CPU memory, significantly speeding up memory allocations and reducing fragmentation.</span>
+                <span class="setting-desc">Uses slab/arena memory allocator for host CPU memory allocations to eliminate heap fragmentation.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-onnx-cpu-arena">
@@ -241,7 +240,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Execution Mode</span>
-                <span class="setting-desc">Determines if operators are executed sequentially or in parallel. ORT_SEQUENTIAL is usually safer and faster for LLMs.</span>
+                <span class="setting-desc">ONNX operator execution strategy (ORT_SEQUENTIAL vs ORT_PARALLEL).</span>
             </div>
             <div class="setting-control" id="container-onnx-exec-mode"></div>
         </div>
@@ -249,7 +248,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">GPU Memory Limit Bytes</span>
-                <span class="setting-desc">Hard limit on the amount of VRAM the ONNX session can allocate. Set to 0 for unlimited access.</span>
+                <span class="setting-desc">Maximum VRAM allocation limit for ONNX session. 0 specifies unconstrained allocation.</span>
             </div>
             <div class="setting-control" id="container-onnx-gpu-limit"></div>
         </div>
@@ -257,7 +256,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Arena Extend Strategy</span>
-                <span class="setting-desc">Strategy used when the memory arena runs out of space. 'kNextPowerOfTwo' allocates memory in exponentially larger chunks.</span>
+                <span class="setting-desc">Arena memory expansion strategy (kNextPowerOfTwo vs kSameAsRequested).</span>
             </div>
             <div class="setting-control" id="container-onnx-arena-strategy"></div>
         </div>
@@ -267,7 +266,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Enable ORT Transformers Opt.</span>
-                <span class="setting-desc">Enables highly specialized fused operators (like MultiHeadAttention) designed specifically for Transformer models.</span>
+                <span class="setting-desc">Enables specialized fused operator kernels (e.g. MultiHeadAttention, FastGelu) for Transformer graphs.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-onnx-ort-opt">
@@ -279,7 +278,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">KV Cache Data Type</span>
-                <span class="setting-desc">The precision of the Key-Value cache. 'ort_fp16' halves memory usage compared to fp32, vital for long context ONNX inference.</span>
+                <span class="setting-desc">KV cache precision representation (ort_fp16 vs ort_fp32) for sequence memory footprint.</span>
             </div>
             <div class="setting-control" id="container-onnx-kv-data-type"></div>
         </div>
@@ -287,7 +286,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Use Deterministic Compute</span>
-                <span class="setting-desc">Forces algorithms to use deterministic mathematical operations, ensuring identical outputs at the cost of some execution speed.</span>
+                <span class="setting-desc">Enforces deterministic kernel execution pathways across floating-point compute steps.</span>
             </div>
             <div class="setting-control">
                 <div class="setting-toggle" id="toggle-onnx-deterministic">
@@ -301,7 +300,7 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Think Mode</span>
-                <span class="setting-desc">Enables deep Chain-of-Thought (CoT) reasoning before responding. Modifies generation behavior for logic-heavy queries.</span>
+                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission during decoding.</span>
             </div>
             <div class="setting-control" id="container-onnx-think-mode"></div>
         </div>
@@ -310,7 +309,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));">
                 <div class="setting-info" style="margin-bottom: 0;">
                     <span class="setting-label">Response Length Map (Temperature Based)</span>
-                    <span class="setting-desc">JSON map of temperatures to system constraint prompts.</span>
+                    <span class="setting-desc">JSON map mapping temperature ranges (0.0 - 2.0) to system token budget constraints.</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Enable Predefined Modes</span>
