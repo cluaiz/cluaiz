@@ -8,7 +8,8 @@
         "pages": [
           { "slug": "welcome", "title": "🌟 Welcome", "file_path": "docs/get-started/welcome.md" },
           { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
-          { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" }
+          { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" },
+          { "slug": "model-downloading", "title": "📥 Model Downloading", "file_path": "docs/get-started/model-downloading.md" }
         ]
       },
       {

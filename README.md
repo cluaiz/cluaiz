@@ -134,6 +134,8 @@ $ cluaiz plugin install web-scraper
 
 - **[Terminal Commands & CLI Reference](docs/reference/terminal-commands.md)**  
   An exhaustive, deeply technical engineering manual for all 32 native `cluaiz` commands. It documents the exact execution flow of the kernel, internal JSON state mutations (like `Permission.json` updates), and exact API route mappings for `serve`, `pull`, `booster`, and WASM skills orchestration.
+- **[Model Downloading & Vault Management](docs/get-started/model-downloading.md)**  
+  Detailed architecture and usage guide for HuggingFace model downloading. Explains variant grouping, prefix-compatible scoped metadata filtering, local folder flattening, and GGUF/ONNX format capabilities.
 
 ### 2. Execution & Native Logic
 
