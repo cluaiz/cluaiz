@@ -23,7 +23,13 @@ When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `POST
 
 ## 💻 Terminal / CLI Downloading Interface
 
-When pulling models via the CLI (`cluaiz run <repo-id>`), the engine displays a structured file bundle tree showing the model binaries, external data files, and variant-specific configurations:
+When pulling models via the CLI (`cluaiz run <repo-id>`), you can pass any HuggingFace repository ID directly. For example, to download and run the optimized Whisper Large V3 Turbo model:
+
+```bash
+cluaiz run onnx-community/whisper-large-v3-turbo
+```
+
+Upon execution, the engine displays a structured file bundle tree showing the model binaries, external data files, and variant-specific configurations before asking for download confirmation:
 
 ![HuggingFace CLI Downloader](../../assets/hf-download-model.png)
 
