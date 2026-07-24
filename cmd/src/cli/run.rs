@@ -17,6 +17,7 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "⚙️".yellow(), model_id.bold());
 
     let mut manifest: Option<engines::models::registry::ModelManifest> = None;
+    let mut selected_variant_bundle: Option<engines::models::manager::hf_hub::HfVariant> = None;
     let mut is_local = false;
     let mut is_hf = false;
     let mut resolved_id = model_id.to_string();
@@ -40,13 +41,19 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
         let variants = engines::models::manager::hf_hub::HuggingFaceHub::list_variants(&repo_id).await
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
             
-        let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.filename, v.size_gb)).collect();
-        let selection = inquire::Select::new("Select model variant to download:", options).prompt()
+        let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
+        let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
+            .with_page_size(12)
+            .raw_prompt()
             .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
             
-        let selected_filename = selection.split(" (").next().unwrap().to_string();
+        let selected_variant = variants.into_iter().nth(selected_option.index)
+            .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?;
+
+        let selected_filename = selected_variant.primary_file.clone();
+        let selected_size_gb = selected_variant.size_gb;
         
-        // 🚀 NEW: Check if this specific variant is already in the local roster!
+        // 🚀 Check if this specific variant is already in the local roster!
         if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
             println!("\n  {} Warning: This exact variant is already downloaded locally under ID: '{}'", "⚠️".yellow(), existing.id.cyan());
             println!("     To run it instantly, use: cluaiz run {}", existing.id.green());
@@ -54,15 +61,25 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
             return Ok(());
         }
 
-        let selected_size_str = selection.split(" (").nth(1).unwrap().replace(" GB)", "");
-        let selected_size_gb: f64 = selected_size_str.parse().unwrap_or(0.0);
-        
         println!("  {} Fetching precise metadata...", "📡".cyan());
         let hf_manifest = engines::models::manager::hf_hub::HuggingFaceHub::build_manifest(&repo_id, &selected_filename, selected_size_gb).await
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
             
         manifest = Some(hf_manifest);
+        selected_variant_bundle = Some(selected_variant);
         is_local = false;
+
+        // Append quant tag to manifest ID for flat vault folder naming
+        // e.g. GLM-5.2-GGUF + UD-IQ1_S → GLM-5.2-GGUF-UD-IQ1_S (flat, not nested)
+        if let (Some(ref mut m), Some(ref bundle)) = (&mut manifest, &selected_variant_bundle) {
+            let qt = bundle.quant_tag.clone();
+            if !qt.is_empty() && qt != "DEFAULT" {
+                m.id = format!("{}-{}", m.id, qt);
+            }
+            // Set huggingface_filename to the flat basename of the primary file
+            let flat_name = bundle.primary_file.rsplit('/').next().unwrap_or(&bundle.primary_file).to_string();
+            m.huggingface_filename = flat_name;
+        }
     } else {
         // 🚀 REGISTRY OR LOCAL ID REQUEST
         if let Some(m) = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase()) {
@@ -109,178 +126,62 @@ pub async fn execute(model_id: &str, _interactive: bool) -> Result<()> {
     let model_file = model_path.join(&manifest.huggingface_filename);
 
     if !is_local {
-        println!("  {} Fetching Deep Metadata (Binary Probe)...", "📡".cyan());
-    }
-    
-    let is_onnx = manifest.architecture_type == "onnx";
-    
-    if is_onnx {
-        // ONNX specific metadata display
-        if !is_local {
-            println!("    ├─ 🧠 Architecture: {}", manifest.architecture.yellow());
-            println!("    ├─ 🧩 Type: ONNX Optimized Execution Graph");
-            println!("    ├─ 📦 Quantization: fp32");
-            println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-            println!("    ├─ ⚙️ RAM Requirement: {:.2} GB", manifest.ram_required_gb);
+        let quant_display = selected_variant_bundle.as_ref()
+            .map(|v| v.quant_tag.clone())
+            .unwrap_or_else(|| "DEFAULT".to_string());
+            
+        let is_onnx = manifest.huggingface_filename.ends_with(".onnx") || manifest.architecture_type == "onnx";
+        let format_display = if is_onnx { "ONNX" } else if manifest.huggingface_filename.ends_with(".gguf") { "GGUF" } else { "SafeTensors" };
+
+        println!("\n  {} Model Metadata Summary:", "📋".cyan().bold());
+        println!("    ├─ 📦 Format: {}", format_display.cyan());
+        println!("    ├─ 🏷️  Precision / Quant Tag: {}", quant_display.magenta().bold());
+        println!("    ├─ 🧠 Architecture: {}", manifest.architecture.yellow().bold());
+        if !manifest.parameters.is_empty() && manifest.parameters != "Unknown" {
+            println!("    ├─ 🧩 Parameters: {}", manifest.parameters.green());
         }
-    } else {
-        let probe_result = if is_local && model_file.exists() {
-            cluaiz_shared::utils::gguf_prober::GGUFProber::probe(&model_file).map_err(|e| e.to_string())
+        println!("    ├─ 💾 Total Download Size: {:.2} GB", manifest.download_size_gb);
+
+        // Bundled Files Preview — show all weight shards + JSON configs
+        if let Some(bundle) = &selected_variant_bundle {
+            let total = bundle.all_files.len();
+            println!("    └─ 📁 Bundled Files to Download ({} files):", total.to_string().cyan().bold());
+            for (idx, f) in bundle.all_files.iter().enumerate() {
+                let is_last = idx == total - 1;
+                let connector = if is_last { "       └─" } else { "       ├─" };
+                let icon = if f.ends_with(".gguf") || f.ends_with(".onnx") || f.ends_with(".safetensors") {
+                    "⚖️ "
+                } else if f.ends_with(".onnx_data") || f.ends_with(".data") {
+                    "📦"
+                } else {
+                    "📄"
+                };
+                println!("{} {} {}", connector, icon, f.cyan());
+            }
         } else {
-            engines::models::manager::hf_hub::HuggingFaceHub::fetch_partial_gguf_metadata(&manifest.download_url).await
-        };
-
-        if let Ok((metadata, _tensor_infos, tensor_count)) = probe_result {
-            let arch = metadata.get("general.architecture").unwrap_or(&"Unknown".to_string()).to_string();
-            let ctx = metadata.get(&format!("{}.context_length", arch)).or(metadata.get("llama.context_length")).unwrap_or(&"Unknown".to_string()).to_string();
-            
-            let ctx_display = if let Ok(ctx_val) = ctx.parse::<u32>() {
-                if ctx_val >= 1024 {
-                    format!("{} ({}K)", ctx_val, ctx_val / 1024)
-                } else {
-                    ctx.clone()
-                }
-            } else {
-                ctx.clone()
-            };
-
-            let raw_params = metadata.get("general.parameter_count");
-            let params = if let Some(p) = raw_params {
-                if let Ok(num) = p.parse::<f64>() {
-                    format!("{:.2}B", num / 1_000_000_000.0)
-                } else {
-                    p.clone()
-                }
-            } else if !manifest.parameters.is_empty() && manifest.parameters != "Unknown" {
-                manifest.parameters.clone()
-            } else {
-                let mut found = "Unknown".to_string();
-                for part in resolved_id.split(&['-', '_', '/', '.'][..]) {
-                    let u = part.to_uppercase();
-                    if (u.ends_with('B') || u.ends_with('M')) && u.chars().next().map_or(false, |c| c.is_ascii_digit()) {
-                        found = u;
-                        break;
-                    }
-                }
-                found
-            };
-
-            let file_type = metadata.get("general.file_type").unwrap_or(&"Unknown".to_string()).to_string();
-            let blocks = metadata.get(&format!("{}.block_count", arch)).unwrap_or(&"Unknown".to_string()).to_string();
-            
-            let num_layers = blocks.parse::<u64>().unwrap_or(32);
-            let num_heads = metadata.get(&format!("{}.attention.head_count", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(32);
-            let num_kv_heads = metadata.get(&format!("{}.attention.head_count_kv", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(num_heads);
-            let hidden_size = metadata.get(&format!("{}.embedding_length", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(4096);
-            
-            let head_dim = hidden_size / num_heads.max(1);
-            let max_ctx_tokens = ctx.parse::<u64>().unwrap_or(8192);
-            
-            let kv_cache_8k_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * 8192;
-            let kv_cache_8k_gb = kv_cache_8k_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-            
-            let kv_cache_full_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * max_ctx_tokens;
-            let kv_cache_full_gb = kv_cache_full_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-            
-            let base_engine_overhead_gb = 0.30;
-            
-            // Dynamically override manifest RAM based on exact architectural math
-            manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_8k_gb;
-
-            if !is_local {
-                println!("    ├─ 🧠 Architecture: {}", arch.yellow());
-                println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
-                println!("    ├─ 🧩 Parameters: {}", params.green());
-                println!("    ├─ 📦 Quantization / File Type: {}", file_type.cyan());
-                println!("    ├─ 📚 Network Layers (Blocks): {}", blocks.magenta());
-                println!("    ├─ ⚡ Tensor Count: {}", tensor_count.to_string().cyan());
-                println!("    ├─ 💾 Model File Size: {:.2} GB", manifest.download_size_gb);
-                println!("    ├─ 🧮 KV Cache (8K baseline): {:.2} GB", kv_cache_8k_gb);
-                if max_ctx_tokens != 8192 {
-                    let ctx_str = if max_ctx_tokens >= 1024 {
-                        format!("{}K", max_ctx_tokens / 1024)
-                    } else {
-                        format!("{}", max_ctx_tokens)
-                    };
-                    println!("    ├─ 🧮 KV Cache (Full {} ctx): {:.2} GB", ctx_str, kv_cache_full_gb);
-                }
-                println!("    ├─ ⚙️ Base Engine Overhead: {:.2} GB", base_engine_overhead_gb);
-            }
-        } else if let Err(e) = probe_result {
-            if !is_local {
-                println!("    ├─ ⚠️ Could not probe remote GGUF header: {}", e);
-                println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-            }
+            println!("    └─ 📁 File: {}", manifest.huggingface_filename.cyan());
         }
-    }
-    
-    // Load System Control to get real hardware stats
-    let config_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json");
-    let mut system_control = if let Ok(content) = std::fs::read_to_string(&config_path) {
-        serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok()
-    } else {
-        None
-    };
 
-    if system_control.is_none() || system_control.as_ref().map_or(true, |sc| sc.silicon_truth.memory.total_capacity_gb <= 0.0) {
-        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
-        if let Ok(content) = std::fs::read_to_string(&config_path) {
-            system_control = serde_json::from_str::<cluaiz_shared::hardware::schema::profiles::SystemControl>(&content).ok();
+        let confirm = inquire::Confirm::new("\nProceed with model download?").with_default(true).prompt()?;
+        if !confirm {
+            return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
         }
-    }
+        let files_to_pull = selected_variant_bundle.as_ref()
+            .map(|v| v.all_files.clone())
+            .unwrap_or_else(|| vec![manifest.huggingface_filename.clone()]);
 
-    let (mut user_ram, mut user_vram) = (0.0, 0.0);
-    let mut gpu_name = "System GPU".to_string();
-    if let Some(control) = &system_control {
-        user_ram = control.silicon_truth.memory.available_capacity_gb;
-        if let Some(gpu) = control.silicon_truth.accelerators.gpus.first() {
-            user_vram = gpu.vram_available_gb;
-            gpu_name = gpu.model.clone();
-        }
-    }
-
-    if !is_local {
-        println!("    ├─ 🖥️  Available VRAM ({}): {:.2} GB", gpu_name.cyan(), user_vram);
-        println!("    ├─ 💻 Available System RAM: {:.2} GB", user_ram);
+        manager.pull_model_bundle_with_manifest(&manifest, &files_to_pull).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
         
-        let model_size = manifest.download_size_gb;
-        if user_vram >= model_size + 0.5 {
-            println!("    └─ 🚀 Hardware Offload: FULL GPU (Zero Bottleneck)");
-        } else if user_vram > 0.5 {
-            let gpu_pct = ((user_vram / model_size) * 100.0).min(100.0);
-            println!("    └─ ⚠️  Hardware Offload: HYBRID ({:.0}% GPU / {:.0}% System RAM) — Slow Speed", gpu_pct, 100.0 - gpu_pct);
-        } else {
-            println!("    └─ 🐢 Hardware Offload: PURE CPU (System RAM only)");
-        }
-    }
-    
-    // Perform system health audit silently in the background
-    let total_required = manifest.ram_required_gb;
-    let status = manager.audit_model_health(total_required as f32, manifest.requires_gpu);
-    
-    if status == engines::models::manager::auditor::HealthStatus::Disabled {
-        return Err(color_eyre::eyre::eyre!("❌ DENIED: Insufficient hardware resources for this model."));
-    }
-    
-    if !is_local {
-        if is_hf {
-            let confirm = inquire::Confirm::new("Audit passed. Proceed with model download?").with_default(true).prompt()?;
-            if !confirm {
-                return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
-            }
-            manager.pull_model_with_manifest(&manifest).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
-            
-            println!("\n  {} Model '{}' downloaded and registered successfully.", "✅".green(), manifest.id);
-            return Ok(());
-        } else {
-            let confirm = inquire::Confirm::new("Audit passed. Proceed with model download?").with_default(true).prompt()?;
-            if !confirm {
-                return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
-            }
-            manager.pull_model(&resolved_id).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
-            println!("\n  {} Model '{}' downloaded and registered successfully.", "✅".green(), manifest.id);
-            return Ok(());
-        }
+        let safe_id = manifest.id.replace(':', "-");
+        let local_path = cluaiz_root.join(&manifest.category).join(&safe_id);
+
+        println!("\n  {} Model downloaded and registered successfully!", "✅".green().bold());
+        println!("  ┌─────────────────────────────────────────────────────────────┐");
+        println!("  │ 🆔 Registered ID:  {}", manifest.id.cyan().bold());
+        println!("  │ 📁 Vault Path:     {}", local_path.display().to_string().yellow());
+        println!("  │ 🚀 Run Command:   {}", format!("cluaiz run {}", manifest.id).green().bold());
+        println!("  └─────────────────────────────────────────────────────────────┘\n");
+        return Ok(());
     }
 
     if !model_file.exists() {

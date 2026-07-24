@@ -47,14 +47,16 @@ impl ModelManager {
             return Err("Cluaiz Audit Failed: Insufficient hardware resources for this model.".to_string());
         }
 
-        self.pull_model_with_manifest(&manifest).await
+        self.pull_model_bundle_with_manifest(&manifest, &vec![manifest.huggingface_filename.clone()]).await
     }
 
     /// Installation & Repair: Pull a specific model using an already resolved manifest
     pub async fn pull_model_with_manifest(&self, manifest: &crate::models::registry::ModelManifest) -> Result<(), String> {
+        self.pull_model_bundle_with_manifest(manifest, &vec![manifest.huggingface_filename.clone()]).await
+    }
 
-
-        // 3. Construct Path
+    /// Installation & Repair: Pull a specific model bundle using a resolved manifest and variant file list
+    pub async fn pull_model_bundle_with_manifest(&self, manifest: &crate::models::registry::ModelManifest, all_files: &[String]) -> Result<(), String> {
         let safe_id = manifest.id.replace(':', "-");
         let mut model_path = self.base_models_dir.clone();
         model_path.push(&manifest.category);
@@ -63,69 +65,37 @@ impl ModelManager {
         tokio::fs::create_dir_all(&model_path).await
             .map_err(|e| format!("Failed to create model directory: {}", e))?;
 
-        // 4. Initialize Installer
         let installer = ModelInstaller::new(model_path.clone());
 
-        // 5. Check Weights & Assets (The Surgical Repair)
-        let weight_file = model_path.join(&manifest.huggingface_filename);
-
-
-        let needs_repair = !weight_file.exists();
-        // Check if any asset is missing (Removed external JSON checks, only check weights and DNA)
-        if !needs_repair {
-            println!("  {} Model '{}' is healthy and ready.", "✅".green(), manifest.id);
-            return Ok(());
-        }
-
-        // 6. Pull Missing Weights
-        if !weight_file.exists() {
-            installer.download_weights(&manifest.download_url, &manifest.huggingface_filename).await?;
-        } else {
-            println!("  {} Weights verified.", "✅".green());
-        }
-
-        // 10. Universal Multi-Part Downloader (GGUF Splits)
         if manifest.download_url.contains("huggingface.co") {
             let repo = manifest.download_url.split("/resolve").next().unwrap_or("");
             if !repo.is_empty() {
-                let api_url = format!("{}/tree/main?recursive=true", repo.replace("huggingface.co/", "huggingface.co/api/models/"));
-                let client = reqwest::Client::new();
-                if let Ok(res) = client.get(&api_url).send().await {
-                    if let Ok(items) = res.json::<Vec<serde_json::Value>>().await {
-                        let base_name = std::path::Path::new(&manifest.huggingface_filename)
-                            .file_name().and_then(|n| n.to_str()).unwrap_or(&manifest.huggingface_filename);
-                        
-                        let base_prefix = if base_name.ends_with(".gguf") && base_name.contains("-of-") {
-                            base_name.split("-0").next().unwrap_or(base_name)
-                        } else {
-                            base_name
-                        };
-
-                        for item in items {
-                            if let Some(path) = item.get("path").and_then(|p| p.as_str()) {
-                                let is_related = if manifest.huggingface_filename.ends_with(".gguf") {
-                                    path.starts_with(base_prefix) && path.ends_with(".gguf") && path != base_name
-                                } else {
-                                    false
-                                };
-
-                                if is_related {
-                                    let part_file = model_path.join(path);
-                                    if !part_file.exists() {
-                                        let part_url = format!("{}/resolve/main/{}", repo, path);
-                                        println!("  {} Resolving Multi-Part Split: Fetching {}...", "🧠".cyan(), path);
-                                        let _ = installer.download_weights(&part_url, path).await;
-                                    }
-                                }
-                            }
-                        }
+                println!("  {} [Cluaiz Downloader] Initiating atomic download for {} files...", "📦".cyan(), all_files.len());
+                for (idx, rel_path) in all_files.iter().enumerate() {
+                    // Strip directory prefixes for flat local storage
+                    // e.g. "UD-IQ1_S/model-00001.gguf" → "model-00001.gguf" (flat in vault)
+                    let flat_name = rel_path.rsplit('/').next().unwrap_or(rel_path);
+                    let dest_file = model_path.join(flat_name);
+                    if !dest_file.exists() {
+                        let download_url = format!("{}/resolve/main/{}", repo, rel_path);
+                        println!("   ├─ [{}/{}] Fetching {}...", idx + 1, all_files.len(), flat_name.yellow());
+                        let _ = installer.download_weights(&download_url, flat_name).await;
+                    } else {
+                        println!("   ├─ [{}/{}] Verified {}", idx + 1, all_files.len(), flat_name.green());
                     }
                 }
+            }
+        } else {
+            let weight_file = model_path.join(&manifest.huggingface_filename);
+            if !weight_file.exists() {
+                installer.download_weights(&manifest.download_url, &manifest.huggingface_filename).await?;
             }
         }
 
         // Dynamically probe model keys and register into model_registry.json
         let format_type = if manifest.huggingface_filename.ends_with(".gguf") { "gguf" } else { "onnx" };
+        let weight_file = model_path.join(&manifest.huggingface_filename);
+
         let mut architecture = manifest.architecture.clone();
         let mut context_window = manifest.context_window.clone();
 
