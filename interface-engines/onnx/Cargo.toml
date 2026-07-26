@@ -24,6 +24,7 @@ tokio = { version = "1.0", features = ["rt"] }
 # ── Audio Decoding: WAV + M4A/AAC support ──
 hound = "3.5"
 symphonia = { version = "0.5", features = ["aac", "isomp4", "pcm", "wav", "mp3", "mkv", "flac"] }
+audiopus = "0.2"
 moosicbox_opus = "0.4"
 rustfft = "6"
 base64 = "0.22"

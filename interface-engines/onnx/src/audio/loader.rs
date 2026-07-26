@@ -38,7 +38,11 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         hint.with_extension("webm");
     } else if lower_path.ends_with(".mp3") || lower_path.contains("audio/mp3") {
         hint.with_extension("mp3");
-    } else if lower_path.ends_with(".m4a") || lower_path.ends_with(".mp4") || lower_path.contains("audio/mp4") || lower_path.contains("audio/m4a") {
+    } else if lower_path.ends_with(".m4a")
+        || lower_path.ends_with(".mp4")
+        || lower_path.contains("audio/mp4")
+        || lower_path.contains("audio/m4a")
+    {
         hint.with_extension("m4a");
     } else if lower_path.ends_with(".wav") || lower_path.contains("audio/wav") {
         hint.with_extension("wav");
@@ -75,7 +79,12 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         .or_else(|_| {
             let source_fallback2: Box<dyn MediaSource> = Box::new(Cursor::new(audio_bytes.clone()));
             let mss_fallback2 = MediaSourceStream::new(source_fallback2, Default::default());
-            symphonia::default::get_probe().format(&Hint::new(), mss_fallback2, &fmt_opts, &meta_opts)
+            symphonia::default::get_probe().format(
+                &Hint::new(),
+                mss_fallback2,
+                &fmt_opts,
+                &meta_opts,
+            )
         })
         .map_err(|e| anyhow!("Audio format probe error for input: {}", e))?;
 
@@ -89,27 +98,39 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
     let src_channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1);
 
     let dec_opts: DecoderOptions = Default::default();
-    let mut decoder: Box<dyn symphonia::core::codecs::Decoder> = symphonia::default::get_codecs()
-        .make(&track.codec_params, &dec_opts)
-        .or_else(|_| {
-            let mut params = track.codec_params.clone();
-            if params.extra_data.is_none() {
-                let mut header = Vec::with_capacity(19);
-                header.extend_from_slice(b"OpusHead");
-                header.push(1);
-                header.push(src_channels as u8);
-                header.extend_from_slice(&(312u16.to_le_bytes()));
-                header.extend_from_slice(&(src_sample_rate.to_le_bytes()));
-                header.extend_from_slice(&(0i16.to_le_bytes()));
-                header.push(0);
-                params.extra_data = Some(header.into_boxed_slice());
-            }
-            moosicbox_opus::OpusDecoder::try_new(&params, &dec_opts)
-                .map(|dec| Box::new(dec) as Box<dyn symphonia::core::codecs::Decoder>)
-        })
-        .map_err(|e| anyhow!("Audio decoder initialization error: {}", e))?;
+    let mut symphonia_decoder: Option<Box<dyn symphonia::core::codecs::Decoder>> =
+        symphonia::default::get_codecs()
+            .make(&track.codec_params, &dec_opts)
+            .ok();
+
+    let mut audiopus_decoder = if symphonia_decoder.is_none() {
+        audiopus::coder::Decoder::new(
+            audiopus::SampleRate::Hz48000,
+            if src_channels > 1 {
+                audiopus::Channels::Stereo
+            } else {
+                audiopus::Channels::Mono
+            },
+        )
+        .ok()
+    } else {
+        None
+    };
+
+    if symphonia_decoder.is_none() && audiopus_decoder.is_none() {
+        return Err(anyhow!(
+            "Audio decoder initialization error: Unsupported codec"
+        ));
+    }
 
     let mut all_samples: Vec<f32> = Vec::new();
+    let mut actual_sample_rate = if audiopus_decoder.is_some() {
+        48000
+    } else if src_sample_rate > 0 {
+        src_sample_rate
+    } else {
+        48000
+    };
 
     loop {
         let packet = match format.next_packet() {
@@ -123,18 +144,35 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
             continue;
         }
 
-        if let Ok(decoded) = decoder.decode(&packet) {
-            let spec = *decoded.spec();
-            let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
-            sample_buf.copy_interleaved_ref(decoded);
-            let samples = sample_buf.samples();
+        if let Some(ref mut dec) = symphonia_decoder {
+            if let Ok(decoded) = dec.decode(&packet) {
+                actual_sample_rate = decoded.spec().rate;
+                let spec = *decoded.spec();
+                let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
+                sample_buf.copy_interleaved_ref(decoded);
+                let samples = sample_buf.samples();
 
-            if src_channels > 1 {
-                for chunk in samples.chunks(src_channels) {
-                    all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                if src_channels > 1 {
+                    for chunk in samples.chunks(src_channels) {
+                        all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                    }
+                } else {
+                    all_samples.extend_from_slice(samples);
                 }
-            } else {
-                all_samples.extend_from_slice(samples);
+            }
+        } else if let Some(ref mut opus_dec) = audiopus_decoder {
+            let mut pcm_buf = vec![0.0f32; 5760 * src_channels];
+            if let Ok(num_samples) = opus_dec.decode_float(Some(packet.buf()), &mut pcm_buf, false)
+            {
+                let count = num_samples as usize;
+                let decoded_samples = &pcm_buf[..count * src_channels];
+                if src_channels > 1 {
+                    for chunk in decoded_samples.chunks(src_channels) {
+                        all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                    }
+                } else {
+                    all_samples.extend_from_slice(decoded_samples);
+                }
             }
         }
     }
@@ -143,11 +181,20 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         return Err(anyhow!("Audio decoded to zero samples"));
     }
 
-    Ok(if src_sample_rate != config.sample_rate {
-        linear_resample(&all_samples, src_sample_rate, config.sample_rate)
-    } else {
-        all_samples
-    })
+    let max_amp = all_samples.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+    if max_amp > 1.0 {
+        for s in &mut all_samples {
+            *s /= max_amp;
+        }
+    }
+
+    Ok(
+        if actual_sample_rate != config.sample_rate && actual_sample_rate > 0 {
+            linear_resample(&all_samples, actual_sample_rate, config.sample_rate)
+        } else {
+            all_samples
+        },
+    )
 }
 
 fn linear_resample(samples: &[f32], src_rate: u32, dst_rate: u32) -> Vec<f32> {
