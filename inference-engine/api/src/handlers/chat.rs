@@ -718,10 +718,21 @@ pub async fn chat_completions(
 
                     yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
                     
-                    // 🛑 POST-GENERATION UNLOAD
+                    // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
                     if keep_alive_val == Some(0) {
                         tracing::info!("♻️ [Memory] Unloading model post-generation due to keep_alive: 0");
                         let _ = state_clone.dispatcher.unload_model().await;
+                    } else if let Some(mins) = keep_alive_val {
+                        if mins > 0 {
+                            let secs = (mins as u64) * 60;
+                            let state_timer = Arc::clone(&state_clone);
+                            tracing::info!("⏳ [Memory] Scheduling model unload in {} minutes ({}s)", mins, secs);
+                            tokio::spawn(async move {
+                                tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+                                tracing::info!("♻️ [Memory] Unloading model post keep_alive timeout ({}m)", mins);
+                                let _ = state_timer.dispatcher.unload_model().await;
+                            });
+                        }
                     }
                 };
                 
@@ -794,10 +805,21 @@ pub async fn chat_completions(
             response["usage"] = usage_json;
         }
 
-        // 🛑 POST-GENERATION UNLOAD
+        // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
         if keep_alive_val == Some(0) {
             tracing::info!("♻️ [Memory] Unloading model post-generation (non-streaming) due to keep_alive: 0");
             let _ = state.dispatcher.unload_model().await;
+        } else if let Some(mins) = keep_alive_val {
+            if mins > 0 {
+                let secs = (mins as u64) * 60;
+                let state_timer = Arc::clone(&state);
+                tracing::info!("⏳ [Memory] Scheduling model unload in {} minutes ({}s)", mins, secs);
+                tokio::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+                    tracing::info!("♻️ [Memory] Unloading model post keep_alive timeout ({}m)", mins);
+                    let _ = state_timer.dispatcher.unload_model().await;
+                });
+            }
         }
 
         return Json(response).into_response();

@@ -75,12 +75,7 @@ pub async fn run_daemon() {
         KernelSignature::default() // Default to CPU fallback; dynamically updated during /models/load
     );
 
-    // Read embed_slot format to determine if we load ONNX or GGUF embedding backend
-    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-    let embed_format = perms.active_slots.get("embed_slot")
-        .and_then(|slot| slot.format_type.clone());
-
-    let embedding_dispatcher = Arc::new(dispatcher::EmbeddingDispatcher::new(embed_format).expect("Failed to initialize embedding engine"));
+    let embedding_dispatcher = Arc::new(dispatcher::EmbeddingDispatcher::new(None).expect("Failed to initialize embedding engine"));
 
     // ── Create shared state ──
     let state = Arc::new(AppState { dispatcher, embedding_dispatcher });

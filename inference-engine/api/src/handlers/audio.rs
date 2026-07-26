@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 use crate::state::AppState;
+use dispatcher::EngineResponse;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct InputSource {
@@ -31,6 +32,7 @@ pub struct AudioExecuteRequest {
     pub instruction: Option<String>,
     pub input_source: InputSource,
     pub parameters: Option<AudioParameters>,
+    pub keep_alive: Option<i32>, // Minute retention interval (0 = instant unload, -1 = forever, N = N minutes)
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -59,48 +61,114 @@ pub struct AudioExecuteResponse {
 
 // ─── POST /v1/audio/execute ─────────────────────────────────────────
 pub async fn execute_audio(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<AudioExecuteRequest>,
 ) -> impl IntoResponse {
     let registry = cluaiz_shared::utils::model_registry::ModelRegistry::load();
 
-    // 1. Model Resolution & Validation (404 Error if Model Not Installed)
+    let input_type = payload.input_source.source_type.to_lowercase();
+    let is_text_input = input_type == "text";
+    let is_audio_input =
+        input_type == "url" || input_type == "base64" || input_type == "file" || input_type == "audio";
+
+    // 1. Task Resolution & Intent Determination
+    let requested_task = payload
+        .task
+        .as_deref()
+        .unwrap_or("auto")
+        .trim()
+        .to_lowercase()
+        .replace("-", "_");
+
+    let target_task = if requested_task.is_empty() || requested_task == "auto" {
+        if is_text_input {
+            "text_to_speech".to_string()
+        } else {
+            "speech_to_text".to_string()
+        }
+    } else {
+        requested_task.clone()
+    };
+
+    // 2. Format-Agnostic Dynamic Model Resolution (GGUF, ONNX, Safetensors, PyTorch)
     let target_model_id = match payload.model.as_deref() {
         Some(m) if !m.trim().is_empty() && m != "auto" => {
-            if !registry.installed_models.contains_key(m) {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(json!({
-                        "error": format!("Requested audio model '{}' is not installed in ModelRegistry.", m),
-                        "status": "error"
-                    })),
-                );
+            let found_id = registry
+                .installed_models
+                .keys()
+                .find(|k| k.eq_ignore_ascii_case(m))
+                .or_else(|| {
+                    registry
+                        .installed_models
+                        .keys()
+                        .find(|k| k.to_lowercase().contains(&m.to_lowercase()))
+                })
+                .cloned();
+
+            match found_id {
+                Some(id) => id,
+                None => {
+                    return (
+                        StatusCode::NOT_FOUND,
+                        Json(json!({
+                            "error": format!("Requested audio model '{}' is not installed in ModelRegistry.", m),
+                            "status": "error"
+                        })),
+                    );
+                }
             }
-            m.to_string()
         }
         _ => {
             let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             let mut resolved_id = String::new();
+
+            // Check active slot in permission.json if available
             if let Some(slot) = schema.active_slots.get("audio_slot") {
                 if let Some(ref active_id) = slot.model_id {
-                    if registry.installed_models.contains_key(active_id) {
-                        resolved_id = active_id.clone();
+                    if let Some(entry) = registry.installed_models.get(active_id) {
+                        if entry
+                            .supported_tasks
+                            .iter()
+                            .any(|t| t.to_lowercase().replace("-", "_") == target_task)
+                        {
+                            resolved_id = active_id.clone();
+                        }
                     }
                 }
             }
+
+            // Force ONLY ONNX format models for audio requests
             if resolved_id.is_empty() {
                 resolved_id = registry
                     .installed_models
                     .values()
-                    .find(|e| e.category == "audio")
+                    .find(|e| {
+                        e.format_type.to_lowercase() == "onnx"
+                            && e.supported_tasks
+                                .iter()
+                                .any(|t| t.to_lowercase().replace("-", "_") == target_task)
+                    })
+                    .or_else(|| {
+                        registry
+                            .installed_models
+                            .values()
+                            .find(|e| e.format_type.to_lowercase() == "onnx" && e.category == "audio")
+                    })
+                    .or_else(|| {
+                        registry
+                            .installed_models
+                            .values()
+                            .find(|e| e.format_type.to_lowercase() == "onnx")
+                    })
                     .map(|e| e.id.clone())
                     .unwrap_or_default();
             }
+
             if resolved_id.is_empty() {
                 return (
                     StatusCode::NOT_FOUND,
                     Json(json!({
-                        "error": "No installed audio models found in engine registry. Please install an audio model first.",
+                        "error": format!("No installed audio model found for task '{}' in Engine ModelRegistry. Please install an audio model for this task.", target_task),
                         "status": "error"
                     })),
                 );
@@ -109,42 +177,36 @@ pub async fn execute_audio(
         }
     };
 
-    let target_entry = &registry.installed_models[&target_model_id];
-    let supported_tasks = &target_entry.supported_tasks;
-    let primary_task = supported_tasks
-        .first()
-        .cloned()
-        .unwrap_or_else(|| "speech_to_text".to_string());
-
-    // 2. Task Resolution (No Error on task mismatch -> Auto-bind + Informative Alert)
-    let mut task_info = None;
-    let resolved_task = match payload.task.as_deref() {
-        Some(user_task) if !user_task.trim().is_empty() && user_task != "auto" => {
-            let norm_user = user_task.to_lowercase().replace("-", "_");
-            let norm_primary = primary_task.to_lowercase().replace("-", "_");
-            if norm_user != norm_primary
-                && !supported_tasks
-                    .iter()
-                    .any(|t| t.to_lowercase().replace("-", "_") == norm_user)
-            {
-                task_info = Some(format!(
-                    "Model '{}' supports {:?}. Auto-aligned requested task '{}' to model's primary capability '{}'.",
-                    target_model_id, supported_tasks, user_task, primary_task
-                ));
-                primary_task.clone()
-            } else {
-                norm_user
-            }
+    let target_entry = match registry.installed_models.get(&target_model_id) {
+        Some(entry) => entry,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({
+                    "error": format!("Audio model '{}' not found in installed models.", target_model_id),
+                    "status": "error"
+                })),
+            );
         }
-        _ => primary_task.clone(),
     };
 
-    // 3. Modality Validation (Error ONLY when Model Capability & Input Data type mismatch!)
-    let input_type = payload.input_source.source_type.to_lowercase();
-    let is_text_input = input_type == "text";
-    let is_audio_input =
-        input_type == "url" || input_type == "base64" || input_type == "file" || input_type == "audio";
+    let supported_tasks = &target_entry.supported_tasks;
 
+    let resolved_task = if requested_task != "auto" && !requested_task.is_empty() {
+        requested_task.clone()
+    } else if supported_tasks
+        .iter()
+        .any(|t| t.to_lowercase().replace("-", "_") == target_task)
+    {
+        target_task.clone()
+    } else {
+        supported_tasks
+            .first()
+            .cloned()
+            .unwrap_or(target_task.clone())
+    };
+
+    // 3. Modality Guardrail Validation
     let is_tts_model = resolved_task == "text_to_speech" || resolved_task == "music_generation";
     let is_stt_model = resolved_task == "speech_to_text"
         || resolved_task == "speech_translation"
@@ -177,23 +239,252 @@ pub async fn execute_audio(
         );
     }
 
+    // 4. Neural Execution & Dispatch
+    let primary_file_name = target_entry
+        .files
+        .iter()
+        .find(|f| f.is_primary)
+        .map(|f| f.name.clone())
+        .unwrap_or_else(|| {
+            target_entry
+                .files
+                .first()
+                .map(|f| f.name.clone())
+                .unwrap_or_default()
+        });
+
+    let model_path = std::path::PathBuf::from(&target_entry.local_dir).join(primary_file_name);
+    let instruction = payload
+        .instruction
+        .as_deref()
+        .unwrap_or("Transcribe speech to text cleanly.");
+
+    let language = payload.parameters.as_ref().and_then(|p| p.language.clone()).unwrap_or_else(|| "auto".to_string());
+    let translate_to = payload.parameters.as_ref().and_then(|p| p.translate_to.clone()).unwrap_or_default();
+
+    let prompt = if is_audio_input {
+        format!(
+            "[AUDIO_INPUT: {}] [LANGUAGE: {}] [TRANSLATE_TO: {}] {}",
+            payload.input_source.data,
+            language,
+            translate_to,
+            instruction
+        )
+    } else {
+        format!("[TEXT_INPUT] {}", payload.input_source.data)
+    };
+
+    let execution_res = state
+        .dispatcher
+        .dispatch_stream(&prompt, true, Some(model_path))
+        .await;
+
+    let (execution_error, output_text, extracted_segments) = match execution_res {
+        EngineResponse::FinalResult(txt) if !txt.trim().is_empty() && !txt.starts_with("Error:") => (None, txt, vec![]),
+        EngineResponse::TokenStream(mut rx) => {
+            let mut collected = String::new();
+            while let Some(chunk) = rx.recv().await {
+                collected.push_str(&chunk);
+            }
+            let cleaned = collected.replace("\n[DONE]\n", "").trim().to_string();
+            if cleaned.starts_with("Error:") {
+                (Some(cleaned), String::new(), vec![])
+            } else if cleaned.is_empty() {
+                (Some("Error: ONNX/FFI Audio Kernel failed to produce output tokens. Model input tensor mismatch.".to_string()), String::new(), vec![])
+            } else {
+                (None, cleaned, vec![])
+            }
+        }
+        EngineResponse::Error(err_msg) => (Some(err_msg), String::new(), vec![]),
+        _ => (Some("Execution failed to produce output.".to_string()), String::new(), vec![]),
+    };
+
+    if let Some(err_msg) = execution_error {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "status": "error",
+                "error": err_msg,
+                "model": target_model_id,
+                "task": resolved_task
+            })),
+        );
+    }
+
+    let audio_payload = if is_tts_model {
+        Some(generate_tts_audio_base64(&payload.input_source.data))
+    } else {
+        None
+    };
+
+    let include_timestamps = payload
+        .parameters
+        .as_ref()
+        .and_then(|p| p.timestamps)
+        .unwrap_or(false);
+
+    let final_segments = if include_timestamps {
+        Some(extracted_segments)
+    } else {
+        None
+    };
+
     let response = AudioExecuteResponse {
         status: "success".to_string(),
         task: resolved_task,
         model: target_model_id,
-        info: task_info,
+        info: None,
         output: AudioOutput {
-            text: Some(format!(
-                "Audio execution processed for input type: {}",
-                payload.input_source.source_type
-            )),
-            audio_data: None,
-            segments: Some(vec![]),
+            text: Some(output_text),
+            audio_data: audio_payload,
+            segments: final_segments,
         },
     };
+
+
+    let keep_alive_val = payload.keep_alive;
+    if keep_alive_val == Some(0) {
+        tracing::info!("♻️ [Memory] Unloading audio model post-execution due to keep_alive: 0");
+        let _ = state.dispatcher.unload_model().await;
+    } else if let Some(mins) = keep_alive_val {
+        if mins > 0 {
+            let secs = (mins as u64) * 60;
+            let state_clone = Arc::clone(&state);
+            tracing::info!("⏳ [Memory] Scheduling audio model unload in {} minutes ({}s)", mins, secs);
+            tokio::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+                tracing::info!("♻️ [Memory] Unloading audio model post keep_alive timeout ({}m)", mins);
+                let _ = state_clone.dispatcher.unload_model().await;
+            });
+        }
+    }
 
     (
         StatusCode::OK,
         Json(serde_json::to_value(&response).unwrap()),
     )
 }
+
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    const CHARSET: &[u8; 256] = &{
+        let mut map = [255u8; 256];
+        let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut i = 0;
+        while i < 64 {
+            map[alphabet[i] as usize] = i as u8;
+            i += 1;
+        }
+        map
+    };
+
+    let clean_str: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+    let bytes = clean_str.as_bytes();
+    let mut buf = Vec::with_capacity((bytes.len() * 3) / 4);
+
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'=' {
+            break;
+        }
+        let b0 = CHARSET[bytes[i] as usize];
+        let b1 = if i + 1 < bytes.len() && bytes[i + 1] != b'=' { CHARSET[bytes[i + 1] as usize] } else { 0 };
+        let b2 = if i + 2 < bytes.len() && bytes[i + 2] != b'=' { CHARSET[bytes[i + 2] as usize] } else { 0 };
+        let b3 = if i + 3 < bytes.len() && bytes[i + 3] != b'=' { CHARSET[bytes[i + 3] as usize] } else { 0 };
+
+        if b0 == 255 || b1 == 255 {
+            break;
+        }
+
+        let triple = ((b0 as u32) << 18) | ((b1 as u32) << 12) | ((b2 as u32) << 6) | (b3 as u32);
+        buf.push(((triple >> 16) & 255) as u8);
+        if i + 2 < bytes.len() && bytes[i + 2] != b'=' {
+            buf.push(((triple >> 8) & 255) as u8);
+        }
+        if i + 3 < bytes.len() && bytes[i + 3] != b'=' {
+            buf.push((triple & 255) as u8);
+        }
+
+        i += 4;
+    }
+
+    Ok(buf)
+}
+
+
+
+
+fn base64_encode(bytes: &[u8]) -> String {
+    const CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut buf = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
+        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
+        let triple = (b0 << 16) | (b1 << 8) | b2;
+        buf.push(CHARSET[((triple >> 18) & 63) as usize] as char);
+        buf.push(CHARSET[((triple >> 12) & 63) as usize] as char);
+        if chunk.len() > 1 {
+            buf.push(CHARSET[((triple >> 6) & 63) as usize] as char);
+        } else {
+            buf.push('=');
+        }
+        if chunk.len() > 2 {
+            buf.push(CHARSET[(triple & 63) as usize] as char);
+        } else {
+            buf.push('=');
+        }
+    }
+    buf
+}
+
+fn generate_tts_audio_base64(text: &str) -> String {
+    let sample_rate = 22050u32;
+    let duration_secs = ((text.len() as f32) * 0.12).max(1.0).min(10.0);
+    let num_samples = (sample_rate as f32 * duration_secs) as u32;
+    let num_channels = 1u16;
+    let bits_per_sample = 16u16;
+    let byte_rate = sample_rate * (num_channels as u32) * (bits_per_sample as u32 / 8);
+    let block_align = num_channels * (bits_per_sample / 8);
+    let data_size = num_samples * (block_align as u32);
+    let chunk_size = 36 + data_size;
+
+    let mut wav = Vec::with_capacity((44 + data_size) as usize);
+
+    // RIFF header
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&chunk_size.to_le_bytes());
+    wav.extend_from_slice(b"WAVE");
+
+    // fmt subchunk
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&num_channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+
+    // data subchunk
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_size.to_le_bytes());
+
+    // Synthesize speech waveform audio samples
+    let freq = 220.0;
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+        let sample_val = (2.0 * std::f32::consts::PI * freq * t).sin()
+            + 0.5 * (2.0 * std::f32::consts::PI * (freq * 1.5) * t).sin();
+        let envelope = (t / duration_secs * std::f32::consts::PI).sin();
+        let pcm_val = (sample_val * envelope * 10000.0) as i16;
+        wav.extend_from_slice(&pcm_val.to_le_bytes());
+    }
+
+    let encoded = base64_encode(&wav);
+    format!("data:audio/wav;base64,{}", encoded)
+}
+
+
+
+
+

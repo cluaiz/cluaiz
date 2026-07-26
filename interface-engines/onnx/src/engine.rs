@@ -10,11 +10,15 @@ use tokenizers::Tokenizer;
 pub struct OnnxEngine {
     // 🏊 Session Pool: N concurrent sessions for parallel embedding requests
     pub(crate) session_pool: Vec<Arc<std::sync::Mutex<Session>>>,
+    // 🎧 Encoder Session: Whisper encoder (input_features -> encoder_hidden_states)
+    pub(crate) encoder_session: Option<Arc<std::sync::Mutex<Session>>>,
     pub(crate) tokenizer: Option<Arc<Tokenizer>>,
     // 🔢 Active Inference Counter: tracks in-flight requests for safe hot swap
     pub(crate) active_inferences: Arc<AtomicUsize>,
     // 🧠 KV Cache for Chat Generation
     pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, Vec<f32>)>>,
+    // 📂 Model Directory Path for loading dynamic configs
+    pub(crate) model_dir: Option<std::path::PathBuf>,
 }
 
 impl OnnxEngine {
@@ -26,9 +30,11 @@ impl OnnxEngine {
 
         Ok(Self {
             session_pool: Vec::new(),
+            encoder_session: None,
             tokenizer: None,
             active_inferences: Arc::new(AtomicUsize::new(0)),
             active_kv_cache: None,
+            model_dir: None,
         })
     }
 
@@ -82,6 +88,9 @@ impl OnnxEngine {
             self.tokenizer = None;
         }
         tracing::info!("📦 [ONNX] Loading model from: {}", model_path);
+        let path = std::path::Path::new(model_path);
+        let dir = path.parent().unwrap_or(path).to_path_buf();
+        self.model_dir = Some(dir);
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING
         let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
@@ -225,14 +234,40 @@ impl OnnxEngine {
             tracing::info!("🚀 [ONNX] CUDA Execution Provider ready for pool sessions.");
         }
 
-        let tokenizer = Tokenizer::from_file(tokenizer_path)
-            .map_err(|e| anyhow::anyhow!("Tokenizer failed: {}", e))?;
-        self.tokenizer = Some(Arc::new(tokenizer));
+        if let Ok(tokenizer) = Tokenizer::from_file(tokenizer_path) {
+            self.tokenizer = Some(Arc::new(tokenizer));
+            tracing::info!("✅ [ONNX Pool] Tokenizer loaded successfully.");
+        } else {
+            tracing::info!("ℹ️ [ONNX Pool] Tokenizer file not found at {}. Session pool ready without tokenizer.", tokenizer_path);
+        }
 
         tracing::info!(
-            "✅ [ONNX Pool] {} text sessions loaded and ready.",
+            "✅ [ONNX Pool] {} session(s) loaded and ready.",
             pool_size
         );
+        Ok(())
+    }
+
+    /// Load a Whisper-style encoder ONNX alongside the decoder session pool.
+    /// The encoder takes `input_features` [1, 80, 3000] and outputs `last_hidden_state`.
+    pub fn load_encoder_model(&mut self, encoder_path: &str) -> Result<()> {
+        tracing::info!("📦 [ONNX Encoder] Loading encoder from: {}", encoder_path);
+
+        let session = Session::builder()
+            .map_err(|e| anyhow::anyhow!("Encoder session builder error: {:?}", e))?
+            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
+            .map_err(|e| anyhow::anyhow!("Encoder opt level error: {:?}", e))?
+            .with_intra_threads(4)
+            .map_err(|e| anyhow::anyhow!("Encoder threads error: {:?}", e))?
+            .with_execution_providers([
+                ort::execution_providers::CPUExecutionProvider::default().build()
+            ])
+            .map_err(|e| anyhow::anyhow!("Encoder EP error: {:?}", e))?
+            .commit_from_file(encoder_path)
+            .map_err(|e| anyhow::anyhow!("Encoder load failed: {:?}", e))?;
+
+        self.encoder_session = Some(Arc::new(std::sync::Mutex::new(session)));
+        tracing::info!("✅ [ONNX Encoder] Encoder session ready.");
         Ok(())
     }
 
@@ -259,6 +294,9 @@ impl OnnxEngine {
             self.session_pool.clear();
         }
         tracing::info!("👁️ [ONNX] Loading Vision Model from: {}", model_path);
+        let path = std::path::Path::new(model_path);
+        let dir = path.parent().unwrap_or(path).to_path_buf();
+        self.model_dir = Some(dir);
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING (Same as text)
         let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();

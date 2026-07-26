@@ -21,6 +21,13 @@ tokenizers = { version = "0.15", default-features = false, features = ["onig"] }
 image = "0.24"
 ndarray = "0.15"
 tokio = { version = "1.0", features = ["rt"] }
+# ── Audio Decoding: WAV + M4A/AAC support ──
+hound = "3.5"
+symphonia = { version = "0.5", features = ["aac", "isomp4", "pcm", "wav", "mp3", "mkv", "flac"] }
+moosicbox_opus = "0.4"
+rustfft = "6"
+base64 = "0.22"
 
 [features]
 default = []
+

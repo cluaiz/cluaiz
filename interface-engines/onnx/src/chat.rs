@@ -124,7 +124,30 @@ impl cluaizInference for OnnxEngine {
         max_tokens: usize,
         mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> Result<()> {
-        let tokenizer = self.tokenizer.clone().ok_or_else(|| anyhow!("Tokenizer not loaded"))?;
+        // ── Audio vs Text routing ─────────────────────────────────────────────
+        // Route by prompt prefix, NOT by tokenizer presence.
+        // Whisper loads tokenizer.json too, so we can't rely on tokenizer==None.
+        if prompt.starts_with("[AUDIO_INPUT:") {
+            tracing::info!("🎧 [ONNX Stream] Audio prompt detected — routing to execute_audio_graph.");
+            match self.execute_audio_graph(prompt) {
+                Ok(out) => {
+                    callback(out);
+                    return Ok(());
+                }
+                Err(e) => {
+                    tracing::error!("❌ [ONNX Audio] execute_audio_graph failed: {}", e);
+                    callback(format!("Error: {}", e));
+                    return Ok(());
+                }
+            }
+        }
+
+        let tokenizer = match self.tokenizer.clone() {
+            Some(t) => t,
+            None => {
+                return Err(anyhow!("Tokenizer not loaded for text generation."));
+            }
+        };
         let encoding = tokenizer.encode(prompt, false).map_err(|e| anyhow!(e.to_string()))?;
         let mut current_ids: Vec<u32> = encoding.get_ids().to_vec();
 

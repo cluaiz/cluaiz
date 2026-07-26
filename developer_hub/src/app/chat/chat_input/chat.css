@@ -746,5 +746,5 @@
 }
 
 #chat-input-container:focus-within {
-    border-color: var(--text-accent) !important;
+    border-color: var(--text-accent);
 }

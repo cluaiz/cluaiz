@@ -203,7 +203,7 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
             res.architecture = "clip".to_string();
             res.has_vision_keys = true;
             res.has_vision_tensors = true;
-        } else if file_stem.contains("whisper") || parent_dir.contains("whisper") {
+         } else if file_stem.contains("whisper") || parent_dir.contains("whisper") {
             res.architecture = "whisper".to_string();
             res.has_audio_keys = true;
             res.has_audio_tensors = true;

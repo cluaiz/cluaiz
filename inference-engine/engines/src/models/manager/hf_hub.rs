@@ -322,7 +322,18 @@ impl HuggingFaceHub {
             "GGUF Graph".to_string()
         };
         
-        let category = if is_embedding {
+        let repo_lower = repo_id.to_lowercase();
+        let file_lower = filename.to_lowercase();
+        let is_chat = repo_lower.contains("instruct")
+            || repo_lower.contains("chat")
+            || repo_lower.contains("-it")
+            || file_lower.contains("instruct")
+            || file_lower.contains("chat")
+            || file_lower.contains("-it");
+
+        let category = if is_chat {
+            "chat".to_string()
+        } else if is_embedding {
             "embedding".to_string()
         } else if is_image_gen {
             "image_gen".to_string()
@@ -417,16 +428,54 @@ fn extract_quant_tag(path: &str) -> String {
             let p_lower = parent.to_lowercase();
             if p_lower != "onnx" && p_lower != "models" && p_lower != "weights" {
                 if p_lower.contains('q') || p_lower.contains("bf16") || p_lower.contains("fp16") || p_lower.contains("int") || p_lower.contains("ud") {
-                    return parent.to_string();
+                    return parent.to_string().to_uppercase();
                 }
             }
         }
     }
 
-    // 2. Scan filename tokens for compound quant tags (e.g. UD-Q2_K_XL, Q4_K_M, Q8_0, Q3_K_S)
+    // Get filename and clean extensions and shard suffixes
     let file_name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or(path);
-    let lower = file_name.to_lowercase();
+    let mut clean_name = file_name.to_string();
+    for ext in &[".gguf", ".onnx", ".onnx_data", ".onnx.data"] {
+        if clean_name.to_lowercase().ends_with(ext) {
+            clean_name = clean_name[..clean_name.len() - ext.len()].to_string();
+        }
+    }
+    if let Some(idx) = clean_name.to_lowercase().find("-00001-of-").or_else(|| clean_name.to_lowercase().find("_00001-of-")) {
+        clean_name = clean_name[..idx].to_string();
+    }
+
+    let lower = clean_name.to_lowercase();
+
+    // 2. Try compound/suffix matching first for full names (e.g. UD-Q4_K_M)
+    let candidates = [
+        "ud-q",
+        "ud-iq",
+        "iq1_", "iq2_", "iq3_", "iq4_",
+        "q1_", "q2_", "q3_", "q4_", "q5_", "q6_", "q8_",
+        "bf16", "fp16", "fp32", "int8", "int4"
+    ];
     
+    let mut best_idx = None;
+    for &cand in &candidates {
+        if let Some(idx) = lower.find(cand) {
+            match best_idx {
+                None => best_idx = Some(idx),
+                Some(current) => {
+                    if idx < current {
+                        best_idx = Some(idx);
+                    }
+                }
+            }
+        }
+    }
+    
+    if let Some(idx) = best_idx {
+        return clean_name[idx..].to_string().to_uppercase();
+    }
+
+    // 3. Fallback to old token scanning behavior for general model name formatting
     let parts: Vec<&str> = lower.split(&['/', '\\', '.', ' '][..]).collect();
     for part in parts.iter().rev() {
         if part.starts_with("ud-q") || part.starts_with("q4_") || part.starts_with("q5_") || part.starts_with("q8_") || part.starts_with("q2_") || part.starts_with("q3_") || part.starts_with("q6_") {

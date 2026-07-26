@@ -118,7 +118,7 @@ impl NeuralDispatcher {
                             Box::leak(Box::new(lib));
                         }
 
-                        // Resolve path and load DLL
+                        // Resolve path and load DLL (dynamic routing for GGUF vs ONNX)
                         let target_os = std::env::consts::OS;
                         let ext = match target_os {
                             "windows" => "dll",
@@ -126,15 +126,23 @@ impl NeuralDispatcher {
                             _ => "so",
                         };
                         let prefix = if target_os == "windows" { "" } else { "lib" };
-                        let binary_name = format!("{}cluaiz-llama.{}", prefix, ext);
-                        
+
+                        let path_str_lower = model_path.to_string_lossy().to_lowercase();
+                        let is_onnx = model_path
+                            .extension()
+                            .map_or(false, |e| e.to_string_lossy().eq_ignore_ascii_case("onnx"))
+                            || path_str_lower.contains("onnx");
+                        let core_name = if is_onnx { "cluaiz-onnx" } else { "cluaiz-llama" };
+
+                        let binary_name = format!("{}{}.{}", prefix, core_name, ext);
+
                         let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
                             .join(&binary_name);
-                            
+
                         // 🛡️ Strict FFI Validation Boundary
                         let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
-                            .join("cluaiz-llama.ready");
-                            
+                            .join(format!("{}.ready", core_name));
+
                         if !binary_path.exists() || !marker_path.exists() {
                             tracing::error!("❌ [Dispatcher] FFI Validation Failed: Kernel binary or manifest marker missing at {:?}", binary_path);
                             let _ = tx.blocking_send("Error: Missing kernel binary or manifest validation failed.".to_string());
@@ -186,20 +194,22 @@ impl NeuralDispatcher {
                                             .map(|m| m.len() as f64 / (1024.0 * 1024.0 * 1024.0))
                                             .unwrap_or(0.0);
 
-                                        let mut dynamic_ctx = 0;
-                                        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
-                                        if let Some(parent) = model_path.parent() {
-                                            if dna.discover_from_path(parent).is_ok() {
-                                                dynamic_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope(&dna);
+                                        if !is_onnx {
+                                            let mut dynamic_ctx = 0;
+                                            let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                                            if let Some(parent) = model_path.parent() {
+                                                if dna.discover_from_path(parent).is_ok() {
+                                                    dynamic_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope(&dna);
+                                                }
                                             }
-                                        }
 
-                                        cluaiz_shared::HardwareGovernor::register_allocation(
-                                            &model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                                            vram_gb,
-                                            dynamic_ctx,
-                                            "Native Llama"
-                                        );
+                                            cluaiz_shared::HardwareGovernor::register_allocation(
+                                                &model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                                                vram_gb,
+                                                dynamic_ctx,
+                                                "Native Llama"
+                                            );
+                                        }
                                     }
                                 }
                             }

@@ -54,6 +54,17 @@ pub extern "C" fn cluaiz_kernel_instantiate(
                     tracing::error!("❌ [ONNX-Lib] Text Model Load Failed: {}", e);
                     return std::ptr::null_mut();
                 }
+
+                // Check for encoder model in the same directory for Whisper speech models
+                let encoder_path = dir.join("encoder_model_int8.onnx");
+                if encoder_path.exists() {
+                    let enc_str = encoder_path.to_string_lossy();
+                    if let Err(e) = engine.load_encoder_model(&enc_str) {
+                        tracing::warn!("⚠️ [ONNX-Lib] Encoder Model Load Failed (optional): {}", e);
+                    } else {
+                        tracing::info!("✅ [ONNX-Lib] Encoder Model loaded alongside decoder.");
+                    }
+                }
             }
         }
 

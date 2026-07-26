@@ -8,7 +8,8 @@ members = [
     "test/dummy_plugin",
     "developer_hub",
     "interface-engines/llama",
-    "interface-engines/onnx"
+    "interface-engines/onnx",
+    "interface-engines/dispatcher"
 , "inference-cel", "test/extension_testing", "test/engine_cel_test", "test/ai_search_e2e_test", "test/comprehensive_e2e_trace"]
 
 resolver = "2"

@@ -1,3 +1,5 @@
+import { setupMicVoiceInput, checkAudioModelAndToggleMic } from './voice_input.js';
+
 export async function mountChat(rootElement) {
     try {
         const response = await fetch('/src/app/chat/chat_input/chat.html?v=' + new Date().getTime());
@@ -61,6 +63,9 @@ function setupChatLogic() {
 
     // Dynamically fetch and populate tools/skills/plugins/extensions/mcp
     fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, renderSkills);
+
+    // Setup Mic Voice Input Logic
+    setupMicVoiceInput(textarea);
 
     // Textarea Auto-expand & Layout shift
     textarea.addEventListener('input', () => {
@@ -722,6 +727,9 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
         const data = await response.json();
         const installedRaw = data.installed || data.installed_models || data.models || [];
         const installed = Array.isArray(installedRaw) ? installedRaw : Object.values(installedRaw);
+
+        // Delegate audio model STT detection to modular voice_input component
+        checkAudioModelAndToggleMic(installed);
 
         // Filter for chat models only (same logic as Tauri app)
         const chatModels = installed.filter(m => m.category === 'chat');

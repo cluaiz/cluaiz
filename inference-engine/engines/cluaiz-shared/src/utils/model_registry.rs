@@ -134,9 +134,17 @@ pub struct ModelRegistry {
 
 impl ModelRegistry {
     pub fn get_registry_path() -> PathBuf {
-        crate::environment::EnvironmentManager::current()
+        let primary = crate::environment::EnvironmentManager::current()
             .config_dir()
-            .join("model_registry.json")
+            .join("model_registry.json");
+        if primary.exists() {
+            return primary;
+        }
+        let fallback = PathBuf::from(".cluaiz/engine/config/model_registry.json");
+        if fallback.exists() {
+            return fallback;
+        }
+        primary
     }
 
     pub fn get_tasks_for_category(category: &str) -> Vec<String> {
@@ -150,9 +158,14 @@ impl ModelRegistry {
     }
 
     pub fn load() -> Self {
-        let path = Self::get_registry_path();
+        let mut path = Self::get_registry_path();
         if !path.exists() {
-            return Self::default();
+            let fallback = PathBuf::from(".cluaiz/engine/config/model_registry.json");
+            if fallback.exists() {
+                path = fallback;
+            } else {
+                return Self::default();
+            }
         }
 
         let content = match std::fs::read_to_string(&path) {
@@ -281,10 +294,18 @@ impl ModelRegistry {
                             // Also check local model_manifest.json if present for human parameters override
                             let manifest_file = entry.path().join("model_manifest.json");
                             if manifest_file.exists() {
-                                if let Ok(manifest_content) = std::fs::read_to_string(&manifest_file) {
-                                    if let Ok(manifest_val) = serde_json::from_str::<serde_json::Value>(&manifest_content) {
-                                        if let Some(param_str) = manifest_val.get("parameters").and_then(|p| p.as_str()) {
-                                            if !param_str.trim().is_empty() && param_str != "Unknown" {
+                                if let Ok(manifest_content) =
+                                    std::fs::read_to_string(&manifest_file)
+                                {
+                                    if let Ok(manifest_val) =
+                                        serde_json::from_str::<serde_json::Value>(&manifest_content)
+                                    {
+                                        if let Some(param_str) =
+                                            manifest_val.get("parameters").and_then(|p| p.as_str())
+                                        {
+                                            if !param_str.trim().is_empty()
+                                                && param_str != "Unknown"
+                                            {
                                                 metadata.parameters = param_str.to_string();
                                             }
                                         }
@@ -301,7 +322,11 @@ impl ModelRegistry {
                                 });
                             }
 
-                            let hf_repo = reg.installed_models.get(&id).map(|e| e.huggingface_repo.clone()).unwrap_or_default();
+                            let hf_repo = reg
+                                .installed_models
+                                .get(&id)
+                                .map(|e| e.huggingface_repo.clone())
+                                .unwrap_or_default();
 
                             let registry_entry = ModelRegistryEntry {
                                 id: id.clone(),

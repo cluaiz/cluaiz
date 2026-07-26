@@ -232,10 +232,11 @@
                             </div>
 
                             <!-- Mic Button -->
-                            <div id="mic-wrapper" class="flex items-center">
-                                <button
-                                    class="w-[2.25rem] h-[2.25rem] flex-shrink-0 rounded-full flex items-center justify-center text-muted hover-bg-secondary hover-text-primary transition-colors border-none bg-transparent cursor-pointer">
-                                    <i data-lucide="mic" class="w-5 h-5"></i>
+                            <div id="mic-wrapper" class="flex items-center mr-1" style="display: none;">
+                                <button id="btn-mic" type="button"
+                                    class="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-muted hover-bg-secondary hover-text-primary transition-colors border-none bg-transparent cursor-pointer"
+                                    title="Voice Input (Speech-to-Text)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4.5 h-4.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                                 </button>
                             </div>
 
@@ -243,7 +244,7 @@
                             <div id="send-wrapper"
                                 class="flex items-center transition-all duration-100 ease-out overflow-hidden w-0 opacity-0 scale-0">
                                 <button id="send-btn"
-                                    class="w-[2.25rem] h-[2.25rem] flex-shrink-0 rounded-full flex items-center justify-center bg-accent text-black hover-opacity-90 transition-transform active-scale-95 border-none cursor-pointer">
+                                    class="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center bg-accent text-black hover-opacity-90 transition-transform active-scale-95 border-none cursor-pointer">
                                     <i data-lucide="send" class="w-4 h-4 -ml-0-5"></i>
                                 </button>
                             </div>

@@ -77,13 +77,55 @@
           "desc": "Model ID to use.",
           "default": "bonsai:8b"
         },
-        { "name": "temperature", "type": "number", "req": false, "desc": "Sampling temperature (0.0 to 2.0). Overrides the response_length mapping.", "default": null },
-        { "name": "top_p", "type": "number", "req": false, "desc": "Nucleus sampling probability.", "default": null },
-        { "name": "top_k", "type": "integer", "req": false, "desc": "Top-K sampling limit.", "default": null },
-        { "name": "min_p", "type": "number", "req": false, "desc": "Minimum P sampling limit.", "default": null },
-        { "name": "repetition_penalty", "type": "number", "req": false, "desc": "Penalty for token repetition.", "default": null },
-        { "name": "max_tokens", "type": "integer", "req": false, "desc": "Maximum number of tokens to generate.", "default": null },
-        { "name": "keep_alive", "type": "integer", "req": false, "desc": "How long (in seconds) to keep the model loaded in VRAM after request.", "default": null }
+        {
+          "name": "temperature",
+          "type": "number",
+          "req": false,
+          "desc": "Sampling temperature (0.0 to 2.0). Overrides the response_length mapping.",
+          "default": null
+        },
+        {
+          "name": "top_p",
+          "type": "number",
+          "req": false,
+          "desc": "Nucleus sampling probability.",
+          "default": null
+        },
+        {
+          "name": "top_k",
+          "type": "integer",
+          "req": false,
+          "desc": "Top-K sampling limit.",
+          "default": null
+        },
+        {
+          "name": "min_p",
+          "type": "number",
+          "req": false,
+          "desc": "Minimum P sampling limit.",
+          "default": null
+        },
+        {
+          "name": "repetition_penalty",
+          "type": "number",
+          "req": false,
+          "desc": "Penalty for token repetition.",
+          "default": null
+        },
+        {
+          "name": "max_tokens",
+          "type": "integer",
+          "req": false,
+          "desc": "Maximum number of tokens to generate.",
+          "default": null
+        },
+        {
+          "name": "keep_alive",
+          "type": "integer",
+          "req": false,
+          "desc": "How long (in seconds) to keep the model loaded in VRAM after request.",
+          "default": null
+        }
       ],
       "request_payload": "{\n  \"model\": \"qwen2-vl\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"Describe this image in detail.\"\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg\"\n          }\n        }\n      ]\n    }\n  ],\n  \"think_mode\": \"Auto\",\n  \"stream\": true\n}",
       "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"llama-3-8b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
@@ -346,7 +388,7 @@
           "type": "string",
           "req": false,
           "desc": "Optional prompt instruction for the audio model.",
-          "default": "Transcribe this audio cleanly into Hindi."
+          "default": "Transcribe this audio cleanly."
         },
         {
           "name": "input_source",
@@ -365,10 +407,10 @@
           "desc": "Task-Specific Hyperparameters Object:\n• temperature (All): Randomness (0.0 = exact)\n• language (STT/Translation): Source language ('hi', 'en', 'auto')\n• speed (TTS): Voice playback rate (1.0 = normal)\n• voice_id (TTS): Voice speaker persona ('alloy', 'echo')\n• translate_to (Translation): Target language ('en', 'hi')\n• timestamps (STT): Enable segment timestamps\n• beam_size (STT): Decoding beam width (1-10)\n• vad_filter (STT): Voice Activity Detection silence filter\n• speaker_labels (Diarization): Enable speaker tagging",
           "default": {
             "temperature": 0.0,
-            "language": "hi",
+            "language": "",
             "speed": 1.0,
             "voice_id": "alloy",
-            "translate_to": "en",
+            "translate_to": "",
             "timestamps": false,
             "beam_size": 5,
             "vad_filter": true,
@@ -376,23 +418,23 @@
           }
         }
       ],
-      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"auto\",\n  \"instruction\": \"Transcribe this audio cleanly into Hindi.\",\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://example.com/audio.mp3\"\n  },\n  \"parameters\": {\n    \"temperature\": 0.0,\n    \"language\": \"hi\",\n    \"speed\": 1.0,\n    \"voice_id\": \"alloy\",\n    \"translate_to\": \"en\",\n    \"timestamps\": false,\n    \"beam_size\": 5,\n    \"vad_filter\": true,\n    \"speaker_labels\": false\n  }\n}",
+      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"auto\",\n  \"instruction\": \"Transcribe this audio cleanly.\",\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://example.com/audio.mp3\"\n  },\n  \"keep_alive\": null,\n  \"parameters\": {\n    \"temperature\": 0.0,\n    \"language\": \"\",\n    \"speed\": 1.0,\n    \"voice_id\": \"alloy\",\n    \"translate_to\": \"\",\n    \"timestamps\": false,\n    \"beam_size\": 5,\n    \"vad_filter\": true,\n    \"speaker_labels\": false\n  }\n}",
       "response": "{\n  \"status\": \"success\",\n  \"task\": \"speech_to_text\",\n  \"model\": \"whisper-large-v3-turbo\",\n  \"info\": null,\n  \"output\": {\n    \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n    \"audio_data\": null,\n    \"segments\": [\n      {\n        \"start\": 0.0,\n        \"end\": 4.2,\n        \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n        \"speaker\": \"Speaker 1\"\n      }\n    ]\n  }\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/audio/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"auto\",\n    \"task\": \"auto\",\n    \"input_source\": {\n      \"type\": \"url\",\n      \"data\": \"https://example.com/audio.mp3\"\n    },\n    \"parameters\": {\n      \"temperature\": 0.0,\n      \"language\": \"hi\",\n      \"speed\": 1.0,\n      \"voice_id\": \"alloy\",\n      \"translate_to\": \"en\",\n      \"timestamps\": false,\n      \"beam_size\": 5,\n      \"vad_filter\": true,\n      \"speaker_labels\": false\n    }\n  }'"
+          "code": "curl -X POST http://localhost:8000/v1/audio/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"auto\",\n    \"task\": \"auto\",\n    \"keep_alive\": null,\n    \"input_source\": {\n      \"type\": \"url\",\n      \"data\": \"https://example.com/audio.mp3\"\n    },\n    \"parameters\": {\n      \"temperature\": 0.0,\n      \"language\": \"\",\n      \"speed\": 1.0,\n      \"voice_id\": \"alloy\",\n      \"translate_to\": \"\",\n      \"timestamps\": false,\n      \"beam_size\": 5,\n      \"vad_filter\": true,\n      \"speaker_labels\": false\n    }\n  }'"
         },
         {
           "language": "python",
           "title": "Python (requests)",
-          "code": "import requests\n\nresponse = requests.post(\n    'http://localhost:8000/v1/audio/execute',\n    json={\n        'model': 'auto',\n        'task': 'auto',\n        'input_source': {\n            'type': 'url',\n            'data': 'https://example.com/audio.mp3'\n        },\n        'parameters': {\n            'temperature': 0.0,\n            'language': 'hi',\n            'speed': 1.0,\n            'voice_id': 'alloy',\n            'translate_to': 'en',\n            'timestamps': False,\n            'beam_size': 5,\n            'vad_filter': True,\n            'speaker_labels': False\n        }\n    }\n)\nprint(response.json())"
+          "code": "import requests\n\nresponse = requests.post(\n    'http://localhost:8000/v1/audio/execute',\n    json={\n        'model': 'auto',\n        'task': 'auto',\n        'keep_alive': None,\n        'input_source': {\n            'type': 'url',\n            'data': 'https://example.com/audio.mp3'\n        },\n        'parameters': {\n            'temperature': 0.0,\n            'language': '',\n            'speed': 1.0,\n            'voice_id': 'alloy',\n            'translate_to': '',\n            'timestamps': False,\n            'beam_size': 5,\n            'vad_filter': True,\n            'speaker_labels': False\n        }\n    }\n)\nprint(response.json())"
         },
         {
           "language": "javascript",
           "title": "JavaScript (fetch)",
-          "code": "const res = await fetch('http://localhost:8000/v1/audio/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: 'auto',\n    task: 'auto',\n    input_source: { type: 'url', data: 'https://example.com/audio.mp3' },\n    parameters: {\n      temperature: 0.0,\n      language: 'hi',\n      speed: 1.0,\n      voice_id: 'alloy',\n      translate_to: 'en',\n      timestamps: false,\n      beam_size: 5,\n      vad_filter: true,\n      speaker_labels: false\n    }\n  })\n});\nconst data = await res.json();\nconsole.log(data);"
+          "code": "const res = await fetch('http://localhost:8000/v1/audio/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: 'auto',\n    task: 'auto',\n    keep_alive: null,\n    input_source: { type: 'url', data: 'https://example.com/audio.mp3' },\n    parameters: {\n      temperature: 0.0,\n      language: '',\n      speed: 1.0,\n      voice_id: 'alloy',\n      translate_to: '',\n      timestamps: false,\n      beam_size: 5,\n      vad_filter: true,\n      speaker_labels: false\n    }\n  })\n});\nconst data = await res.json();\nconsole.log(data);"
         }
       ]
     }
