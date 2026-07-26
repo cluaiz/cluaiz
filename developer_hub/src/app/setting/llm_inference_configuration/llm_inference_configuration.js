@@ -601,9 +601,11 @@ export async function mount(container) {
         }
     } catch (e) { }
 
-    let onnxHardwareOptions = isAppleSilicon ?
-        makeOptions(['Auto', 'CPU'], ['Auto (Apple Silicon)', 'CPU Only']) :
-        makeOptions(['Auto', 'CPU'], ['GPU Full Load (Auto)', 'CPU Only']);
+    let onnxHardwareOptions = [
+        { value: 'Auto', label: isAppleSilicon ? 'Auto (Apple Silicon)' : 'GPU Full Load (Auto)' },
+        { value: 'CPU', label: 'CPU Only' },
+        { isInput: true, placeholder: 'Hybrid Layers (e.g. 16)', suffix: 'Layers', inputType: 'number' }
+    ];
 
     setupCustomDropdown('container-onnx-hardware-offload', undefined, undefined,
         onnxHardwareOptions,
