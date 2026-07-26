@@ -299,6 +299,23 @@ pub async fn execute_audio(
         _ => (Some("Execution failed to produce output.".to_string()), String::new(), vec![]),
     };
 
+    let keep_alive_val = payload.keep_alive;
+    if keep_alive_val == Some(0) {
+        tracing::info!("♻️ [Memory] Unloading audio model post-execution due to keep_alive: 0");
+        let _ = state.dispatcher.unload_model().await;
+    } else if let Some(mins) = keep_alive_val {
+        if mins > 0 {
+            let secs = (mins as u64) * 60;
+            let state_clone = Arc::clone(&state);
+            tracing::info!("⏳ [Memory] Scheduling audio model unload in {} minutes ({}s)", mins, secs);
+            tokio::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+                tracing::info!("♻️ [Memory] Unloading audio model post keep_alive timeout ({}m)", mins);
+                let _ = state_clone.dispatcher.unload_model().await;
+            });
+        }
+    }
+
     if let Some(err_msg) = execution_error {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -342,22 +359,6 @@ pub async fn execute_audio(
     };
 
 
-    let keep_alive_val = payload.keep_alive;
-    if keep_alive_val == Some(0) {
-        tracing::info!("♻️ [Memory] Unloading audio model post-execution due to keep_alive: 0");
-        let _ = state.dispatcher.unload_model().await;
-    } else if let Some(mins) = keep_alive_val {
-        if mins > 0 {
-            let secs = (mins as u64) * 60;
-            let state_clone = Arc::clone(&state);
-            tracing::info!("⏳ [Memory] Scheduling audio model unload in {} minutes ({}s)", mins, secs);
-            tokio::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
-                tracing::info!("♻️ [Memory] Unloading audio model post keep_alive timeout ({}m)", mins);
-                let _ = state_clone.dispatcher.unload_model().await;
-            });
-        }
-    }
 
     (
         StatusCode::OK,

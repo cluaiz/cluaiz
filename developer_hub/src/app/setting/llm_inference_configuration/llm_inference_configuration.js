@@ -602,14 +602,14 @@ export async function mount(container) {
     } catch (e) { }
 
     let onnxHardwareOptions = [
-        { value: 'Auto', label: isAppleSilicon ? 'Auto (Apple Silicon)' : 'GPU Full Load (Auto)' },
-        { value: 'CPU', label: 'CPU Only' },
+        { value: '-1', label: isAppleSilicon ? 'Auto (Apple Silicon)' : 'GPU Full Load (Auto)' },
+        { value: '0', label: 'CPU Only' },
         { isInput: true, placeholder: 'Hybrid Layers (e.g. 16)', suffix: 'Layers', inputType: 'number' }
     ];
 
     setupCustomDropdown('container-onnx-hardware-offload', undefined, undefined,
         onnxHardwareOptions,
-        onnxConfig, null, 'execution_provider', saveOnnx);
+        onnxConfig, null, 'n_gpu_layers', saveOnnx);
 
     setupCustomDropdown('container-onnx-intra-threads', undefined, undefined,
         makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']).concat([{ isInput: true, placeholder: 'Custom', inputType: 'number' }]),
