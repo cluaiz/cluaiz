@@ -45,9 +45,27 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
             // 1. Architecture & Context Length
             if let Some(arch) = metadata.get("general.architecture") {
                 res.architecture = arch.clone();
-                if let Some(ctx) = metadata.get(&format!("{}.context_length", arch)) {
-                    res.context_window = ctx.clone();
+                if let Some(ctx) = metadata.get(&format!("{}.context_length", arch))
+                    .or_else(|| metadata.get("whisper.max_audio_ctx"))
+                    .or_else(|| metadata.get("whisper.context_length"))
+                    .or_else(|| metadata.get("general.context_length"))
+                {
+                    if let Ok(val) = ctx.parse::<u64>() {
+                        if val >= 1024 {
+                            res.context_window = format!("{}K", val / 1024);
+                        } else {
+                            res.context_window = ctx.clone();
+                        }
+                    } else {
+                        res.context_window = ctx.clone();
+                    }
+                } else if arch.contains("whisper") {
+                    res.context_window = "30s (3000 frames)".to_string();
                 }
+            }
+
+            if res.context_window == "Unknown" && (res.has_audio_keys || res.has_audio_tensors) {
+                res.context_window = "30s (3000 frames)".to_string();
             }
 
             if let Some(tag) = metadata.get("general.pipeline_tag") {
@@ -133,12 +151,7 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
                 }
             }
             if total_params == 0 {
-                let has_embd = tensor_infos.keys().any(|k| k.contains("token_embd"));
-                for (name, dims) in &tensor_infos {
-                    // Skip tied lm_head output weight double counting
-                    if has_embd && name.contains("output.weight") {
-                        continue;
-                    }
+                for (_name, dims) in &tensor_infos {
                     if !dims.is_empty() {
                         let count: u64 = dims.iter().map(|&d| d as u64).product();
                         total_params += count;
@@ -160,22 +173,72 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
             // 5. Pooling & Namespaces
             res.has_pooling = metadata.contains_key("general.pooling_type");
             res.has_vision_keys = metadata.keys().any(|k| {
-                k.starts_with("clip.vision.") || k.starts_with("vision.") || k.starts_with("llava.")
+                let kl = k.to_lowercase();
+                kl.starts_with("clip.vision.")
+                    || kl.starts_with("vision.")
+                    || kl.starts_with("llava.")
+                    || kl.starts_with("gemma4.")
+                    || kl.starts_with("qwen2_vl.")
+                    || kl.starts_with("qwen3_vl.")
+                    || kl.starts_with("minicpm")
+                    || kl.starts_with("mllama.")
+                    || kl.starts_with("pixtral.")
+                    || kl.starts_with("internvl.")
+                    || kl.starts_with("internlm.")
+                    || kl.starts_with("cogvlm.")
+                    || kl.starts_with("moondream.")
+                    || kl.starts_with("phi3v.")
+                    || kl.starts_with("phi4v.")
+                    || kl.starts_with("florence.")
+                    || kl.starts_with("blip.")
+                    || kl.starts_with("paligemma.")
+                    || kl.starts_with("sam.")
+                    || kl.starts_with("molmo.")
+                    || kl.starts_with("deepseek_vl.")
             });
             res.has_vision_tensors = tensor_infos.iter().any(|(name, _)| {
-                name.contains("visual") || name.contains("mm_projector") || name.contains("v.proj")
+                let n = name.to_lowercase();
+                n.contains("visual")
+                    || n.contains("mm_projector")
+                    || n.contains("v.proj")
+                    || n.contains("vision_encoder")
+                    || n.contains("img_proj")
+                    || n.contains("multi_modal")
+                    || n.contains("image_newline")
+                    || n.contains("img_attn")
+                    || n.contains("patch_embed")
+                    || n.contains("resampler")
+                    || n.contains("vision_tower")
+                    || n.contains("cross_attn")
             });
+            if let Some(tmpl) = metadata.get("tokenizer.chat_template") {
+                let tmpl_lower = tmpl.to_lowercase();
+                if tmpl_lower.contains("<image>") || tmpl_lower.contains("<picture>") || tmpl_lower.contains("<|vision_start|>") || tmpl_lower.contains("image") {
+                    res.has_vision_keys = true;
+                }
+            }
+
             res.has_audio_keys = metadata.keys().any(|k| {
-                k.starts_with("whisper.") || k.starts_with("audio.") || k.starts_with("bark.")
+                k.starts_with("whisper.") || k.starts_with("audio.") || k.starts_with("bark.") || k.starts_with("kokoro.")
             });
             res.has_audio_tensors = tensor_infos.iter().any(|(name, _)| {
-                name.contains("audio_encoder")
-                    || name.contains("mel_filters")
-                    || name.contains("speech")
+                let n = name.to_lowercase();
+                n.contains("audio_encoder")
+                    || n.contains("mel_filters")
+                    || n.contains("speech")
+                    || n.contains("audio_proj")
             });
         }
     } else if format_type == "onnx" {
-        // ONNX Prober Branch
+        // ONNX Prober Branch - Read binary Protobuf initializer headers directly
+        let (_elements, param_str, ctx_window) = ONNXProber::probe(weight_path);
+        if param_str != "Unknown" {
+            res.parameters_str = param_str;
+        }
+        if let Some(ctx) = ctx_window {
+            res.context_window = ctx;
+        }
+
         let file_stem = weight_path
             .file_stem()
             .and_then(|s| s.to_str())
@@ -205,6 +268,7 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
             res.has_vision_tensors = true;
          } else if file_stem.contains("whisper") || parent_dir.contains("whisper") {
             res.architecture = "whisper".to_string();
+            res.context_window = "30s (3000 frames)".to_string();
             res.has_audio_keys = true;
             res.has_audio_tensors = true;
         } else if file_stem.contains("kokoro")
@@ -278,10 +342,369 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
         }
     }
 
+    if let Some(parent) = weight_path.parent() {
+        let manifest_path = parent.join("model_manifest.json");
+        let config_path = parent.join("config.json");
+        let target_json = if manifest_path.exists() {
+            Some(manifest_path)
+        } else if config_path.exists() {
+            Some(config_path)
+        } else {
+            None
+        };
+
+        if let Some(jpath) = target_json {
+            if let Ok(content) = std::fs::read_to_string(&jpath) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(tasks_arr) = json.get("supported_tasks").or_else(|| json.get("tasks")).and_then(|v| v.as_array()) {
+                        for t in tasks_arr {
+                            if let Some(ts) = t.as_str() {
+                                if !res.explicit_tasks.contains(&ts.to_string()) {
+                                    res.explicit_tasks.push(ts.to_string());
+                                }
+                            }
+                        }
+                    }
+                    if let Some(arch) = json.get("architectures").and_then(|v| v.as_array()).and_then(|arr| arr.first()).and_then(|v| v.as_str()) {
+                        let arch_lower = arch.to_lowercase();
+                        if arch_lower.contains("gemma4")
+                            || arch_lower.contains("qwen2_vl")
+                            || arch_lower.contains("qwen3_vl")
+                            || arch_lower.contains("minicpm")
+                            || arch_lower.contains("llava")
+                            || arch_lower.contains("mllama")
+                            || arch_lower.contains("pixtral")
+                            || arch_lower.contains("internvl")
+                            || arch_lower.contains("cogvlm")
+                            || arch_lower.contains("moondream")
+                            || arch_lower.contains("phi3v")
+                            || arch_lower.contains("phi4v")
+                            || arch_lower.contains("florence")
+                            || arch_lower.contains("blip")
+                            || arch_lower.contains("paligemma")
+                            || arch_lower.contains("molmo")
+                            || arch_lower.contains("deepseek_vl")
+                        {
+                            res.has_vision_keys = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     res
 }
 
 /// No hardcoded reasoning tag guessing in prober. Metadata comes strictly from tokenizer files or remains None.
 pub fn find_header_reasoning_tags(_tmpl: &str) -> (Option<String>, Option<String>) {
     (None, None)
+}
+
+pub struct ONNXProber;
+
+impl ONNXProber {
+    pub fn probe(path: &Path) -> (u64, String, Option<String>) {
+        let dir = if path.is_file() {
+            path.parent().unwrap_or(path)
+        } else {
+            path
+        };
+
+        let mut total_elements: u64 = 0;
+        let mut ctx_window: Option<String> = None;
+
+        if dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_file() && p.extension().map_or(false, |ext| ext == "onnx") {
+                        if let Ok(mut file) = std::fs::File::open(&p) {
+                            use std::io::Read;
+                            let mut buffer = Vec::new();
+                            if file.read_to_end(&mut buffer).is_ok() {
+                                total_elements += Self::parse_protobuf_initializers(&buffer, &mut ctx_window);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if path.is_file() {
+            if let Ok(mut file) = std::fs::File::open(path) {
+                use std::io::Read;
+                let mut buffer = Vec::new();
+                if file.read_to_end(&mut buffer).is_ok() {
+                    total_elements = Self::parse_protobuf_initializers(&buffer, &mut ctx_window);
+                }
+            }
+        }
+
+        let param_str = if total_elements > 0 {
+            format!("{:.2}B", total_elements as f64 / 1_000_000_000.0)
+        } else {
+            "Unknown".to_string()
+        };
+
+        (total_elements, param_str, ctx_window)
+    }
+
+    fn parse_protobuf_initializers(buf: &[u8], ctx_window: &mut Option<String>) -> u64 {
+        let mut idx = 0;
+        let mut total_elements: u64 = 0;
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            // ModelProto field 2 is GraphProto
+            if field_num == 2 && wire_type == 2 {
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    total_elements += Self::parse_graph_proto(&buf[new_idx..end], ctx_window);
+                    idx = end;
+                    continue;
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+        total_elements
+    }
+
+    fn parse_graph_proto(buf: &[u8], ctx_window: &mut Option<String>) -> u64 {
+        let mut idx = 0;
+        let mut total_elements: u64 = 0;
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            // GraphProto field 5 is TensorProto (initializer)
+            if field_num == 5 && wire_type == 2 {
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    total_elements += Self::parse_tensor_proto(&buf[new_idx..end]);
+                    idx = end;
+                    continue;
+                }
+            } else if field_num == 11 && wire_type == 2 && ctx_window.is_none() {
+                // GraphProto field 11 is input ValueInfoProto
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    if let Some(dim) = Self::parse_input_value_info(&buf[new_idx..end]) {
+                        if dim == 77 {
+                            *ctx_window = Some("77 Tokens (224x224 PX)".to_string());
+                        } else if dim > 0 {
+                            *ctx_window = Some(format!("{}", dim));
+                        }
+                    }
+                    idx = end;
+                    continue;
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+        total_elements
+    }
+
+    fn parse_input_value_info(buf: &[u8]) -> Option<u64> {
+        let mut idx = 0;
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            if field_num == 2 && wire_type == 2 {
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    return Self::parse_type_proto(&buf[new_idx..end]);
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+        None
+    }
+
+    fn parse_type_proto(buf: &[u8]) -> Option<u64> {
+        let mut idx = 0;
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            if field_num == 1 && wire_type == 2 {
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    return Self::parse_tensor_shape_proto(&buf[new_idx..end]);
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+        None
+    }
+
+    fn parse_tensor_shape_proto(buf: &[u8]) -> Option<u64> {
+        let mut idx = 0;
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            if field_num == 1 && wire_type == 2 {
+                if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                    let end = (new_idx + length as usize).min(len);
+                    let mut sub_idx = new_idx;
+                    while sub_idx < end {
+                        let (sub_tag, next_sub) = match Self::read_varint(buf, sub_idx) {
+                            Some(r) => r,
+                            None => break,
+                        };
+                        let fnum = sub_tag >> 3;
+                        let wtype = sub_tag & 0x07;
+                        if fnum == 1 && wtype == 2 {
+                            if let Some((dim_len, d_idx)) = Self::read_varint(buf, next_sub) {
+                                let d_end = (d_idx + dim_len as usize).min(end);
+                                let mut d_sub = d_idx;
+                                while d_sub < d_end {
+                                    let (d_tag, d_next) = match Self::read_varint(buf, d_sub) {
+                                        Some(r) => r,
+                                        None => break,
+                                    };
+                                    if (d_tag >> 3) == 1 && (d_tag & 0x07) == 0 {
+                                        if let Some((val, _)) = Self::read_varint(buf, d_next) {
+                                            if val > 1 && val <= 32768 {
+                                                return Some(val);
+                                            }
+                                        }
+                                    }
+                                    d_sub = Self::skip_field(buf, d_next, d_tag & 0x07);
+                                }
+                            }
+                        }
+                        sub_idx = Self::skip_field(buf, next_sub, wtype);
+                    }
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+        None
+    }
+
+    fn parse_tensor_proto(buf: &[u8]) -> u64 {
+        let mut idx = 0;
+        let mut dims: Vec<u64> = Vec::new();
+        let len = buf.len();
+
+        while idx < len {
+            let (tag_wire, new_idx) = match Self::read_varint(buf, idx) {
+                Some(res) => res,
+                None => break,
+            };
+            idx = new_idx;
+            let field_num = tag_wire >> 3;
+            let wire_type = tag_wire & 0x07;
+
+            // TensorProto field 7 is dims (repeated int64)
+            if field_num == 7 {
+                if wire_type == 0 {
+                    if let Some((dim_val, new_idx)) = Self::read_varint(buf, idx) {
+                        dims.push(dim_val);
+                        idx = new_idx;
+                        continue;
+                    }
+                } else if wire_type == 2 {
+                    if let Some((length, new_idx)) = Self::read_varint(buf, idx) {
+                        let end = (new_idx + length as usize).min(len);
+                        let mut sub_idx = new_idx;
+                        while sub_idx < end {
+                            if let Some((d, next_sub)) = Self::read_varint(buf, sub_idx) {
+                                dims.push(d);
+                                sub_idx = next_sub;
+                            } else {
+                                break;
+                            }
+                        }
+                        idx = end;
+                        continue;
+                    }
+                }
+            }
+            idx = Self::skip_field(buf, idx, wire_type);
+        }
+
+        if !dims.is_empty() {
+            dims.iter().product()
+        } else {
+            0
+        }
+    }
+
+    fn read_varint(buf: &[u8], mut idx: usize) -> Option<(u64, usize)> {
+        let mut val: u64 = 0;
+        let mut shift = 0;
+        while idx < buf.len() {
+            let byte = buf[idx];
+            idx += 1;
+            val |= ((byte & 0x7f) as u64) << shift;
+            if (byte & 0x80) == 0 {
+                return Some((val, idx));
+            }
+            shift += 7;
+            if shift >= 64 {
+                break;
+            }
+        }
+        None
+    }
+
+    fn skip_field(buf: &[u8], idx: usize, wire_type: u64) -> usize {
+        match wire_type {
+            0 => {
+                let mut i = idx;
+                while i < buf.len() && (buf[i] & 0x80) != 0 {
+                    i += 1;
+                }
+                if i < buf.len() { i + 1 } else { buf.len() }
+            }
+            1 => (idx + 8).min(buf.len()),
+            2 => {
+                if let Some((len, new_idx)) = Self::read_varint(buf, idx) {
+                    (new_idx + len as usize).min(buf.len())
+                } else {
+                    buf.len()
+                }
+            }
+            5 => (idx + 4).min(buf.len()),
+            _ => buf.len(),
+        }
+    }
 }

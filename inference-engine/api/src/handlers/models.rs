@@ -181,3 +181,115 @@ pub async fn load_model(
     }))
 }
 
+// ─── GET /v1/models/{model_id}/inspect_raw_header ───────────────────────
+pub async fn inspect_raw_header(
+    State(_state): State<Arc<AppState>>,
+    Path(model_id): Path<String>,
+) -> Json<Value> {
+    let roster = CoreRoster::load_roster();
+    let mut model_file_opt = None;
+    let mut is_gguf = false;
+    let mut is_onnx = false;
+
+    if let Some(manifest) = roster.into_iter().find(|m| 
+        m.id.to_lowercase() == model_id.to_lowercase() ||
+        m.huggingface_filename.to_lowercase() == model_id.to_lowercase() ||
+        m.name.to_lowercase() == model_id.to_lowercase() ||
+        m.id.replace(":", "-").to_lowercase() == model_id.to_lowercase()
+    ) {
+        model_file_opt = manifest.local_path.clone()
+            .map(|lp| std::path::Path::new(&lp).join(&manifest.huggingface_filename))
+            .or_else(|| engines::models::fetch::ModelDownloader::get_cached_path(&manifest.category, &manifest.id, &manifest.huggingface_filename));
+        is_gguf = manifest.huggingface_filename.ends_with(".gguf");
+        is_onnx = manifest.huggingface_filename.ends_with(".onnx");
+    } else {
+        println!("Manifest not found in roster for model_id={}", model_id);
+        let reg = cluaiz_shared::utils::ModelRegistry::load();
+        if let Some(entry) = reg.installed_models.get(&model_id).or_else(|| 
+            reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase())
+        ) {
+            if let Some(primary_file) = entry.files.iter().find(|f| f.is_primary).or(entry.files.first()) {
+                model_file_opt = Some(std::path::Path::new(&entry.local_dir).join(&primary_file.name));
+                is_gguf = primary_file.name.ends_with(".gguf");
+                is_onnx = primary_file.name.ends_with(".onnx");
+            }
+        }
+    }
+
+    if let Some(model_file) = model_file_opt {
+        if model_file.exists() {
+            if is_gguf {
+                match cluaiz_shared::utils::GGUFProber::probe(&model_file) {
+                    Ok((metadata, tensor_infos, tensor_count)) => {
+                        return Json(json!({
+                            "status": "success",
+                            "model_id": model_id,
+                            "file_path": model_file.to_string_lossy().to_string(),
+                            "format": "GGUF",
+                            "tensor_count": tensor_count,
+                            "metadata_kv": metadata,
+                            "tensors_shape_map": tensor_infos
+                        }));
+                    },
+                    Err(e) => {
+                        println!("GGUF probe error for {}: {:?}", model_file.display(), e);
+                    }
+                }
+            } else if is_onnx {
+                // ── ONNX: Read file size + sibling config files + engine config ──
+                let file_size_bytes = std::fs::metadata(&model_file).map(|m| m.len()).unwrap_or(0);
+                let file_size_mb = (file_size_bytes as f64) / (1024.0 * 1024.0);
+                
+                // Read sibling JSON configs from the model directory (config.json, generation_config.json, etc.)
+                let model_dir = model_file.parent().unwrap_or(std::path::Path::new(""));
+                let mut sibling_configs: serde_json::Map<String, Value> = serde_json::Map::new();
+                if let Ok(entries) = std::fs::read_dir(model_dir) {
+                    for entry in entries.flatten() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        if name.ends_with(".json") && name != "model_manifest.json" {
+                            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                                if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
+                                    sibling_configs.insert(name, parsed);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Read engine-level onnx_metadata_headers.json
+                let engine_onnx_config = cluaiz_shared::environment::EnvironmentManager::current()
+                    .config_dir()
+                    .join("onnx_metadata_headers.json");
+                let onnx_engine_settings: Value = std::fs::read_to_string(&engine_onnx_config)
+                    .ok()
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or(Value::Null);
+
+                return Json(json!({
+                    "status": "success",
+                    "model_id": model_id,
+                    "file_path": model_file.to_string_lossy().to_string(),
+                    "format": "ONNX",
+                    "file_size_mb": format!("{:.2}", file_size_mb),
+                    "file_size_bytes": file_size_bytes,
+                    "model_configs": sibling_configs,
+                    "engine_onnx_settings": onnx_engine_settings,
+                    "note": "ONNX protobuf header probing not available. Showing file metadata and config files."
+                }));
+            } else {
+                println!("Unrecognized file extension");
+            }
+        } else {
+            println!("File does not exist: {}", model_file.display());
+        }
+    } else {
+        println!("Could not determine model_file_opt");
+    }
+    
+    Json(json!({
+        "status": "error",
+        "message": format!("Model '{}' not found in vault or could not read binary header.", model_id)
+    }))
+}
+
+

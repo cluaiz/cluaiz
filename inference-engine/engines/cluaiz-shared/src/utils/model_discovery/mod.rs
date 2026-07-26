@@ -56,26 +56,21 @@ impl CapabilityResolver {
         // Level 2: Secondary Fallback JSON Ingestion
         let extra_fallback = enrich_from_fallback_jsons(model_dir, &mut caps);
 
-        let slot = if caps.is_embedding {
-            SlotType::Embedding
-        } else if caps.is_asr || caps.is_tts || caps.is_audio_to_audio {
-            SlotType::Audio
-        } else if (caps.is_image_gen || caps.is_video_gen || caps.is_image_to_text)
-            && !caps.is_instruct
-        {
-            SlotType::Vision
-        } else {
-            match category_folder {
-                "audio" => SlotType::Audio,
-                "vision" => {
-                    if caps.is_instruct {
-                        SlotType::Chat
-                    } else {
-                        SlotType::Vision
-                    }
+        let slot = match category_folder {
+            "chat" => SlotType::Chat,
+            "audio" => SlotType::Audio,
+            "vision" => SlotType::Vision,
+            "embedding" => SlotType::Embedding,
+            _ => {
+                if caps.is_embedding {
+                    SlotType::Embedding
+                } else if caps.is_asr || caps.is_tts || caps.is_audio_to_audio {
+                    SlotType::Audio
+                } else if caps.has_vision || caps.is_vision_chat || caps.is_image_to_text {
+                    SlotType::Vision
+                } else {
+                    SlotType::Chat
                 }
-                "embedding" => SlotType::Embedding,
-                _ => SlotType::Chat,
             }
         };
 
@@ -99,10 +94,28 @@ impl CapabilityResolver {
             think_end_tag = None;
         }
 
+        let mut context_window = probe.context_window;
+        if (context_window == "Unknown" || context_window.is_empty()) {
+            if let Some(ctx) = extra_fallback.context_window {
+                context_window = ctx;
+            } else if slot == SlotType::Audio {
+                context_window = "30s (3000 frames)".to_string();
+            } else if slot == SlotType::Vision {
+                context_window = "224x224 (Images)".to_string();
+            }
+        }
+
+        let mut parameters = probe.parameters_str;
+        if (parameters == "Unknown" || parameters.is_empty()) {
+            if let Some(p) = extra_fallback.parameters {
+                parameters = p;
+            }
+        }
+
         let metadata = RegistryModelMetadata {
             architecture: probe.architecture,
-            parameters: probe.parameters_str,
-            context_window: probe.context_window,
+            parameters,
+            context_window,
             quantization: probe.quantization,
             bit_depth: probe.bit_depth,
             think_start_tag,

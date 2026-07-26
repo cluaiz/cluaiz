@@ -1,78 +1,77 @@
 use crate::utils::ModelCapabilities;
 
 pub fn evaluate_vision_rules(
-    arch_lower: &str,
+    _arch_lower: &str,
     has_vision_keys: bool,
     has_vision_tensors: bool,
     caps: &mut ModelCapabilities,
 ) {
-    let is_qwen_vl = arch_lower.contains("qwen") && arch_lower.contains("vl");
-    let is_gemma4 = arch_lower.contains("gemma4") || arch_lower.contains("gemma-4");
-
-    if has_vision_keys
-        || has_vision_tensors
-        || is_qwen_vl
-        || arch_lower.contains("llava")
-        || arch_lower.contains("phi3v")
-        || is_gemma4
-    {
+    if has_vision_keys || has_vision_tensors {
         caps.has_vision = true;
         if caps.is_instruct {
             caps.is_vision_chat = true;
         }
-        if arch_lower.contains("vqa") || arch_lower.contains("pali") {
-            caps.is_vqa = true;
-        }
-        if arch_lower.contains("ocr")
-            || arch_lower.contains("caption")
-            || arch_lower.contains("nougat")
-            || arch_lower.contains("surya")
-        {
-            caps.is_image_to_text = true;
-        }
     }
+}
 
-    if arch_lower.contains("diffusion")
-        || arch_lower.contains("flux")
-        || arch_lower.contains("sdxl")
-        || arch_lower.contains("pixart")
-    {
-        caps.is_image_gen = true;
-    }
-
-    if arch_lower.contains("cogvideo")
-        || arch_lower.contains("svd")
-        || arch_lower.contains("animatediff")
-    {
-        caps.is_video_gen = true;
-        caps.has_video = true;
+fn normalize_vision_task(task: &str) -> String {
+    match task.to_lowercase().replace("-", "_").as_str() {
+        "visual_question_answering" | "vqa" => "visual-question-answering".to_string(),
+        "doc_vqa" | "document_question_answering" | "document_understanding" | "visual_document_understanding" => "document-question-answering".to_string(),
+        "multimodal_dialogue" | "visual_dialogue" | "vision_chat" | "multimodal_chat" | "vlm" => "multimodal-dialogue".to_string(),
+        "image_to_text" | "captioning" | "image_captioning" => "image-to-text".to_string(),
+        "ocr" | "optical_character_recognition" | "document_parsing" => "optical-character-recognition".to_string(),
+        "image_classification" | "vision_feature_extraction" | "feature_extraction" | "image_embedding" => "vision-feature-extraction".to_string(),
+        "zero_shot_image_classification" | "clip" => "zero-shot-image-classification".to_string(),
+        "object_detection" | "detection" => "object-detection".to_string(),
+        "zero_shot_object_detection" | "grounding" => "zero-shot-object-detection".to_string(),
+        "pose_estimation" | "keypoint_detection" => "pose-estimation".to_string(),
+        "object_tracking" | "video_tracking" => "object-tracking".to_string(),
+        "image_segmentation" | "segmentation" | "mask_generation" | "sam" => "image-segmentation".to_string(),
+        "depth_estimation" | "monocular_depth" => "depth-estimation".to_string(),
+        "text_to_image" | "image_generation" | "diffusion" => "text-to-image".to_string(),
+        "image_to_image" | "img2img" => "image-to-image".to_string(),
+        "image_inpainting" | "inpainting" => "image-inpainting".to_string(),
+        "super_resolution" | "image_upscaling" | "upscaling" => "super-resolution".to_string(),
+        "text_to_video" | "video_generation" => "text-to-video".to_string(),
+        "image_to_video" | "img2vid" => "image-to-video".to_string(),
+        "video_to_video" | "vid2vid" => "video-to-video".to_string(),
+        "video_classification" | "action_recognition" => "video-classification".to_string(),
+        "video_captioning" | "video_to_text" => "video-captioning".to_string(),
+        "3d_reconstruction" | "nerf" | "gaussian_splatting" => "3d-reconstruction".to_string(),
+        other => other.replace("_", "-"),
     }
 }
 
 pub fn get_vision_tasks(caps: &ModelCapabilities) -> Vec<String> {
-    let mut tasks = vec![];
-    if caps.is_vision_chat {
-        // "vision-chat": Applied when a dedicated vision-first model is optimized for interactive visual dialogue.
-        tasks.push("vision-chat".to_string());
+    if !caps.explicit_tasks.is_empty() {
+        return caps
+            .explicit_tasks
+            .iter()
+            .map(|t| normalize_vision_task(t))
+            .collect();
     }
-    if caps.has_vision && !caps.is_instruct {
-        tasks.push("vision-feature-extraction".to_string());
+    let mut tasks = vec![];
+
+    if caps.is_vision_chat || (caps.has_vision && caps.is_instruct) {
+        tasks.push("multimodal-dialogue".to_string());
     }
     if caps.is_image_to_text {
-        // "image-to-text": Applied for dedicated image captioning or optical character recognition (OCR) models.
         tasks.push("image-to-text".to_string());
     }
     if caps.is_vqa {
-        // "visual-question-answering": Applied when the model is specialized for answering questions grounded in input images.
         tasks.push("visual-question-answering".to_string());
     }
     if caps.is_image_gen {
-        // "image-generation": Applied for diffusion or autoregressive image generation models (text/image to image output).
-        tasks.push("image-generation".to_string());
+        tasks.push("text-to-image".to_string());
     }
     if caps.is_video_gen || caps.has_video {
-        // "video-generation": Applied for video diffusion/generation models (text/image to video output).
-        tasks.push("video-generation".to_string());
+        tasks.push("text-to-video".to_string());
     }
+
+    if tasks.is_empty() && caps.has_vision {
+        tasks.push("vision-feature-extraction".to_string());
+    }
+
     tasks
 }

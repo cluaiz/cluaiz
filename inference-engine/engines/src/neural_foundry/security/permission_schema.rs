@@ -7,16 +7,22 @@ use tracing::{info, warn};
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
 pub struct SlotConfig {
+    #[serde(default)]
     pub model_id: Option<String>,
+    #[serde(default)]
     pub format_type: Option<String>,
+    #[serde(default)]
     pub supported_tasks: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
 pub struct ModelSelection {
+    #[serde(default)]
     pub text: Option<String>,
+    #[serde(default)]
     pub vision: Option<String>,
+    #[serde(default)]
     pub audio: Option<String>,
 }
 

@@ -313,6 +313,8 @@ impl ModelRegistry {
                                 }
                             }
 
+
+
                             let mut files = Vec::new();
                             for (_fpath, fname, fsize) in &all_weight_files {
                                 files.push(RegistryModelFile {
@@ -330,7 +332,7 @@ impl ModelRegistry {
 
                             let registry_entry = ModelRegistryEntry {
                                 id: id.clone(),
-                                category: slot_type.as_str().to_string(),
+                                category: cat.to_string(),
                                 format_type: format_type.to_string(),
                                 huggingface_repo: hf_repo,
                                 local_dir: entry.path().to_string_lossy().to_string(),

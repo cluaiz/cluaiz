@@ -35,6 +35,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/hardware", get(models::hardware_status))
         .route("/models/download", post(models::download_model))
         .route("/models/load", post(models::load_model))
+        .route("/v1/models/{model_id}/inspect_raw_header", get(models::inspect_raw_header))
 
         
         // ── Booster & Hardware Tuning API ──

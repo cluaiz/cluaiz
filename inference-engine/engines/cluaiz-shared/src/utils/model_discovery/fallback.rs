@@ -5,6 +5,8 @@ pub struct ExtraMetadataFallback {
     pub chat_template: Option<String>,
     pub think_start_tag: Option<String>,
     pub think_end_tag: Option<String>,
+    pub parameters: Option<String>,
+    pub context_window: Option<String>,
 }
 
 pub fn enrich_from_fallback_jsons(dir: &Path, caps: &mut ModelCapabilities) -> ExtraMetadataFallback {
@@ -12,12 +14,48 @@ pub fn enrich_from_fallback_jsons(dir: &Path, caps: &mut ModelCapabilities) -> E
         chat_template: None,
         think_start_tag: None,
         think_end_tag: None,
+        parameters: None,
+        context_window: None,
     };
+
+    let manifest_path = dir.join("model_manifest.json");
+    if manifest_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(p) = v.get("parameters").and_then(|p| p.as_str()) {
+                    if !p.is_empty() && p != "Unknown" {
+                        extra.parameters = Some(p.to_string());
+                    }
+                }
+                if let Some(c) = v.get("context_window").and_then(|c| c.as_str()) {
+                    if !c.is_empty() && c != "Unknown" {
+                        extra.context_window = Some(c.to_string());
+                    }
+                }
+            }
+        }
+    }
 
     let config_path = dir.join("config.json");
     if config_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&config_path) {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
+                if extra.context_window.is_none() {
+                    if let Some(ctx) = v.get("max_position_embeddings")
+                        .or_else(|| v.get("n_ctx"))
+                        .or_else(|| v.get("max_sequence_length"))
+                    {
+                        extra.context_window = Some(ctx.to_string());
+                    }
+                }
+                if extra.parameters.is_none() {
+                    if let Some(p) = v.get("num_parameters")
+                        .or_else(|| v.get("n_parameters"))
+                    {
+                        extra.parameters = Some(p.to_string());
+                    }
+                }
+
                 // Extract precise pipeline task if available
                 if let Some(tag) = v.get("pipeline_tag").and_then(|t| t.as_str()) {
                     caps.explicit_tasks.push(tag.to_string());
