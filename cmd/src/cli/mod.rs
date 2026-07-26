@@ -12,3 +12,4 @@ pub mod test_jit;
 pub mod setup;
 pub mod config_cmd;
 pub mod storage;
+pub mod inspect;

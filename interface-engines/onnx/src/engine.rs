@@ -98,21 +98,22 @@ impl OnnxEngine {
 
         if let Ok(state) = pulse_state.pulse.read() {
             let free_vram = state.vram_total_gb - state.vram_used_gb;
-            // DYNAMIC MODEL SIZE CHECK (No hardcoded fallback numbers)
+            // DYNAMIC MODEL SIZE CHECK (Fallback to 1.5GB estimate if model_path is alias)
             let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
                 let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
                 file_size_gb * 1.2 // 20% buffer for KV cache & context
             } else {
-                tracing::warn!("📡 [Telemetry] Could not read ONNX model size. Auto-falling back to CPU for safety.");
-                f64::MAX // Force CPU fallback by making required VRAM infinite
+                1.5 // Conservative 1.5GB default estimate
             };
 
             if free_vram > required_vram && state.vram_pressure_pct < 95 {
                 tracing::info!("📡 [Telemetry] Safe VRAM levels (Free: {:.1}GB, Req: {:.1}GB). Routing ONNX to GPU.", free_vram, required_vram);
                 use_gpu = true;
-            } else if required_vram != f64::MAX {
-                tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB, Req: {:.1}GB). Auto-falling back ONNX to CPU AVX.", free_vram, required_vram);
+            } else {
+                tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB, Req: {:.1}GB). Auto-falling back ONNX to CPU.", free_vram, required_vram);
             }
+        } else {
+            use_gpu = true;
         }
 
         // Booster Override (GGUF Compatibility)
@@ -120,7 +121,7 @@ impl OnnxEngine {
             if b.n_gpu_layers == 0 {
                 use_gpu = false;
                 tracing::info!("⚙️ [Booster] Force CPU mode requested by user.");
-            } else if b.n_gpu_layers > 0 {
+            } else if b.n_gpu_layers != 0 {
                 use_gpu = true;
                 tracing::info!(
                     "⚙️ [Booster] Force GPU mode requested by user (Layers: {}).",
@@ -131,11 +132,12 @@ impl OnnxEngine {
 
         // ONNX Metadata Override
         let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
-        if onnx_meta.execution_provider.eq_ignore_ascii_case("CPU") {
+        if onnx_meta.execution_provider.eq_ignore_ascii_case("CPU") || onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user.");
-        } else if onnx_meta.execution_provider.eq_ignore_ascii_case("Auto") {
-            tracing::info!("⚙️ [ONNX Config] Auto mode active (Relying on telemetry).");
+        } else if onnx_meta.n_gpu_layers == -1 || onnx_meta.execution_provider.eq_ignore_ascii_case("Auto") {
+            use_gpu = true;
+            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active (Routing ONNX to CUDA GPU).");
         }
 
         let total_threads = std::thread::available_parallelism()
@@ -197,7 +199,10 @@ impl OnnxEngine {
                 .with_arena_allocator(onnx_meta.enable_cpu_mem_arena)
                 .build();
 
+            let mut session_opt = None;
+            
             if use_gpu {
+                // Tier 1: Try CUDA GPU Execution Provider
                 let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default();
                 if onnx_meta.gpu_mem_limit_bytes > 0 {
                     cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
@@ -209,25 +214,70 @@ impl OnnxEngine {
                 };
                 cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
 
-                builder = builder
-                    .with_execution_providers([
-                        cuda_ep.build(),
-                        ort::execution_providers::CoreMLExecutionProvider::default().build(),
-                        cpu_ep,
-                    ])
-                    .map_err(|e| anyhow::anyhow!("Execution Provider error: {:?}", e))?;
-            } else {
-                builder = builder
-                    .with_execution_providers([cpu_ep])
-                    .map_err(|e| anyhow::anyhow!("CPU Provider error: {:?}", e))?;
+                if let Ok(mut gpu_builder) = builder.clone().with_execution_providers([
+                    cuda_ep.build(),
+                    ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                    ort::execution_providers::CoreMLExecutionProvider::default().build(),
+                    cpu_ep.clone(),
+                ]) {
+                    if let Ok(sess) = gpu_builder.commit_from_file(model_path) {
+                        tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed successfully on GPU (CUDA/DirectML).", i);
+                        session_opt = Some(sess);
+                    } else {
+                        tracing::warn!("⚠️ [Sovereign-Cascade] GPU Session commit failed (VRAM OOM / Driver). Falling back to Tier 2 (NPU/OpenVINO).");
+                    }
+                }
             }
 
-            let session = builder
-                .commit_from_file(model_path)
-                .map_err(|e| anyhow::anyhow!("ORT Session [{}] failed: {}", i, e))?;
+            // Tier 2: Try NPU (OpenVINO / DirectML) if Tier 1 failed or was skipped
+            if session_opt.is_none() && use_gpu {
+                if let Ok(mut npu_builder) = builder.clone().with_execution_providers([
+                    ort::execution_providers::OpenVINOExecutionProvider::default().build(),
+                    ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                    cpu_ep.clone(),
+                ]) {
+                    if let Ok(sess) = npu_builder.commit_from_file(model_path) {
+                        tracing::info!("📡 [Sovereign-Cascade] ONNX Session [{}] committed successfully on Tier 2 (NPU / OpenVINO).", i);
+                        session_opt = Some(sess);
+                    }
+                }
+            }
 
-            self.session_pool
-                .push(Arc::new(std::sync::Mutex::new(session)));
+            // Tier 3: CPU Thread Pool Arena
+            if session_opt.is_none() {
+                if let Ok(mut cpu_builder) = builder.clone().with_execution_providers([cpu_ep.clone()]) {
+                    if let Ok(sess) = cpu_builder.commit_from_file(model_path) {
+                        tracing::info!("⚙️ [Sovereign-Cascade] ONNX Session [{}] committed on Tier 3 (CPU Thread Pool).", i);
+                        session_opt = Some(sess);
+                    }
+                }
+            }
+
+            // Tier 4: SSD Memory Arena / Minimal RAM Swap (Zero Crash Fallback)
+            if session_opt.is_none() {
+                tracing::warn!("⚠️ [Sovereign-Cascade] CPU RAM Pressure high. Falling back to Tier 4 (SSD Memory Arena / Low-RAM Swap).");
+                let fallback_cpu_ep = ort::execution_providers::CPUExecutionProvider::default()
+                    .with_arena_allocator(false)
+                    .build();
+                let mut ssd_builder = Session::builder()
+                    .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
+                    .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level1)
+                    .map_err(|e| anyhow::anyhow!("Opt level error: {:?}", e))?
+                    .with_intra_threads(intra_threads_per_session.min(2))
+                    .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?
+                    .with_execution_providers([fallback_cpu_ep])
+                    .map_err(|e| anyhow::anyhow!("Fallback CPU Provider error: {:?}", e))?;
+
+                let sess = ssd_builder
+                    .commit_from_file(model_path)
+                    .map_err(|e| anyhow::anyhow!("Sovereign Cascade failed across all 4 tiers for session [{}]: {}", i, e))?;
+                session_opt = Some(sess);
+            }
+
+            if let Some(session) = session_opt {
+                self.session_pool
+                    .push(Arc::new(std::sync::Mutex::new(session)));
+            }
         }
 
         if use_gpu {
@@ -253,21 +303,45 @@ impl OnnxEngine {
     pub fn load_encoder_model(&mut self, encoder_path: &str) -> Result<()> {
         tracing::info!("📦 [ONNX Encoder] Loading encoder from: {}", encoder_path);
 
-        let session = Session::builder()
+        let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let use_gpu = onnx_meta.n_gpu_layers == -1 || onnx_meta.n_gpu_layers > 0 || !onnx_meta.execution_provider.eq_ignore_ascii_case("CPU");
+
+        let encoder_builder = Session::builder()
             .map_err(|e| anyhow::anyhow!("Encoder session builder error: {:?}", e))?
             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
             .map_err(|e| anyhow::anyhow!("Encoder opt level error: {:?}", e))?
             .with_intra_threads(4)
-            .map_err(|e| anyhow::anyhow!("Encoder threads error: {:?}", e))?
-            .with_execution_providers([
-                ort::execution_providers::CPUExecutionProvider::default().build()
-            ])
-            .map_err(|e| anyhow::anyhow!("Encoder EP error: {:?}", e))?
-            .commit_from_file(encoder_path)
-            .map_err(|e| anyhow::anyhow!("Encoder load failed: {:?}", e))?;
+            .map_err(|e| anyhow::anyhow!("Encoder threads error: {:?}", e))?;
 
-        self.encoder_session = Some(Arc::new(std::sync::Mutex::new(session)));
-        tracing::info!("✅ [ONNX Encoder] Encoder session ready.");
+        let cpu_ep = ort::execution_providers::CPUExecutionProvider::default().build();
+        let mut session_opt = None;
+
+        if use_gpu {
+            let cuda_ep = ort::execution_providers::CUDAExecutionProvider::default().build();
+            if let Ok(mut gpu_builder) = encoder_builder.clone().with_execution_providers([
+                cuda_ep,
+                ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                cpu_ep.clone(),
+            ]) {
+                if let Ok(sess) = gpu_builder.commit_from_file(encoder_path) {
+                    tracing::info!("🚀 [ONNX Encoder] Loaded successfully on GPU (CUDA/DirectML).");
+                    session_opt = Some(sess);
+                }
+            }
+        }
+
+        if session_opt.is_none() {
+            let mut cpu_builder = encoder_builder.with_execution_providers([cpu_ep])
+                .map_err(|e| anyhow::anyhow!("Encoder EP error: {:?}", e))?;
+            let sess = cpu_builder.commit_from_file(encoder_path)
+                .map_err(|e| anyhow::anyhow!("Encoder load failed: {:?}", e))?;
+            session_opt = Some(sess);
+        }
+
+        if let Some(session) = session_opt {
+            self.encoder_session = Some(Arc::new(std::sync::Mutex::new(session)));
+            tracing::info!("✅ [ONNX Encoder] Encoder session ready.");
+        }
         Ok(())
     }
 

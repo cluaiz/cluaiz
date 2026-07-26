@@ -90,8 +90,20 @@ impl NativeLlama {
         // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend 
         // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
         // We must gracefully fallback to CPU-only.
+        if model_ptr.is_null() && model_params.n_gpu_layers > 1 {
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
+            let mut half_params = model_params;
+            half_params.n_gpu_layers /= 2;
+            model_ptr =
+                unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), half_params) };
+        }
+
+        // 🛡️ CERD DOCTRINE GPU-FALLBACK (No Hardcoded Strings)
+        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend 
+        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
+        // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed on GPU. Tensor format (e.g. BitNet) may not be supported by CUDA. Falling back to CPU-only...");
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
             cpu_params.no_host = false;  // CRITICAL: Must allow host memory allocation for CPU inference!

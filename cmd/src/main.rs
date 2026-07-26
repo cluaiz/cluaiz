@@ -76,6 +76,13 @@ enum CliCommand {
     #[command(alias = "ls")]
     List,
 
+    /// Directly read and inspect a model's raw binary header from disk.
+    #[command(alias = "probe")]
+    Inspect {
+        /// Model ID to inspect (e.g. gemma2:2b)
+        model_id: String,
+    },
+
     /// Download and register a model into the local vault.
     #[command(alias = "install", alias = "i")]
     Pull {
@@ -390,6 +397,12 @@ async fn main() -> Result<()> {
         Some(CliCommand::List) => {
             if let Err(e) = crate::cli::list::execute().await {
                 eprintln!("\n  {} [Cluaiz] List Error: {}\n", "❌".red(), e);
+                std::process::exit(1);
+            }
+        }
+        Some(CliCommand::Inspect { model_id }) => {
+            if let Err(e) = crate::cli::inspect::execute(&model_id).await {
+                eprintln!("\n  {} [Cluaiz] Inspect Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }
