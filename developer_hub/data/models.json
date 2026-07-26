@@ -285,6 +285,38 @@
           "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/models/llama-3-8b\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{model_id}/inspect_raw_header",
+      "desc": "Directly reads and parses the raw binary GGUF header from disk without loading the model into RAM. Returns all metadata key-values and the tensor shape map.",
+      "docs_url": "",
+      "params": [
+        { "name": "model_id", "type": "string (path)", "req": true, "desc": "The vault model ID. Use URL-encoded form for IDs with special characters.", "default": "gemma4-e4b-gguf-q4_k_m" }
+      ],
+      "response": "{\n  \"status\": \"success\",\n  \"model_id\": \"gemma4-e4b-gguf-q4_k_m\",\n  \"file_path\": \"C:/Users/Aryan/.cluaiz/models/chat/gemma4-e4b-gguf-q4_k_m/gemma4-e4b-gguf-q4_k_m.gguf\",\n  \"format\": \"GGUF\",\n  \"tensor_count\": 248,\n  \"metadata_kv\": {\n    \"general.architecture\": \"gemma3\",\n    \"general.name\": \"gemma-4-e4b-it\",\n    \"llm.context_length\": 32768,\n    \"tokenizer.ggml.model\": \"llama\"\n  },\n  \"tensors_shape_map\": [\n    [\"token_embd.weight\", [262144, 1152]],\n    [\"blk.0.attn_q.weight\", [1152, 1152]]\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/models/gemma4-e4b-gguf-q4_k_m/inspect_raw_header"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nmodel_id = 'gemma4-e4b-gguf-q4_k_m'\nres = requests.get(f'http://localhost:8000/v1/models/{model_id}/inspect_raw_header')\ndata = res.json()\n\nprint('Architecture:', data['metadata_kv'].get('general.architecture'))\nprint('Tensor Count:', data['tensor_count'])\nprint('Tensors:', data['tensors_shape_map'][:5])"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const modelId = 'gemma4-e4b-gguf-q4_k_m';\nconst response = await fetch(`http://localhost:8000/v1/models/${encodeURIComponent(modelId)}/inspect_raw_header`);\nconst data = await response.json();\n\nconsole.log('Architecture:', data.metadata_kv?.['general.architecture']);\nconsole.log('Tensor count:', data.tensor_count);\nconsole.log('First tensor:', data.tensors_shape_map?.[0]);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let model_id = \"gemma4-e4b-gguf-q4_k_m\";\nlet url = format!(\"http://localhost:8000/v1/models/{}/inspect_raw_header\", model_id);\nlet res = reqwest::get(&url).await?;\nlet data = res.json::<serde_json::Value>().await?;\n\nprintln!(\"Architecture: {}\", data[\"metadata_kv\"][\"general.architecture\"]);\nprintln!(\"Tensor count: {}\", data[\"tensor_count\"]);"
+        }
+      ]
     }
   ]
 }

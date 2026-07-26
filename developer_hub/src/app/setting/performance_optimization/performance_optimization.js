@@ -141,10 +141,19 @@ export async function mount(container) {
     const updatePermissionSetting = async (key, value) => {
         try {
             permData[key] = value;
+            const payload = { ...permData };
+            delete payload.available_models;
+            delete payload.available_chat_models;
+            delete payload.available_vector_models;
+            delete payload.available_vision_models;
+            delete payload.available_audio_models;
+            delete payload.lan_ip;
+            delete payload.status;
+
             await fetch(window.getApiBaseUrl() + '/v1/system/permission', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(permData)
+                body: JSON.stringify(payload)
             });
         } catch (e) {
             console.error("Failed to update permission setting:", e);
@@ -280,28 +289,45 @@ export async function mount(container) {
         let activeVision = permData.active_slots?.vision_slot?.model_id || permData.vector_models?.vision || '';
         let activeAudio = permData.active_slots?.audio_slot?.model_id || permData.vector_models?.audio || '';
 
-        const chatModels = permData.available_chat_models || [];
+        // Extract models strictly by registry category if available
+        let chatModels = permData.available_chat_models || [];
+        let vectorModels = permData.available_vector_models || [];
+        let visionModels = permData.available_vision_models || [];
+        let audioModels = permData.available_audio_models || [];
+
+        if (Object.keys(registryMap).length > 0) {
+            chatModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'chat');
+            vectorModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'embedding');
+            visionModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'vision');
+            audioModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'audio');
+        }
+
         if (chatModels.length > 0) chatOptions = makeOptions(chatModels);
         if (activeChat && !chatOptions.find(o => o.value === activeChat)) {
-            chatOptions.unshift({ value: activeChat, label: activeChat });
+            if (!registryMap[activeChat] || registryMap[activeChat].category === 'chat') {
+                chatOptions.unshift({ value: activeChat, label: activeChat });
+            }
         }
 
-        const vectorModels = permData.available_vector_models || [];
         if (vectorModels.length > 0) vectorOptions = makeOptions(vectorModels);
         if (activeVector && !vectorOptions.find(o => o.value === activeVector)) {
-            vectorOptions.unshift({ value: activeVector, label: activeVector });
+            if (!registryMap[activeVector] || registryMap[activeVector].category === 'embedding') {
+                vectorOptions.unshift({ value: activeVector, label: activeVector });
+            }
         }
 
-        const visionModels = permData.available_vision_models || [];
         if (visionModels.length > 0) visionOptions = makeOptions(visionModels);
         if (activeVision && !visionOptions.find(o => o.value === activeVision)) {
-            visionOptions.unshift({ value: activeVision, label: activeVision });
+            if (!registryMap[activeVision] || registryMap[activeVision].category === 'vision') {
+                visionOptions.unshift({ value: activeVision, label: activeVision });
+            }
         }
 
-        const audioModels = permData.available_audio_models || [];
         if (audioModels.length > 0) audioOptions = makeOptions(audioModels);
         if (activeAudio && !audioOptions.find(o => o.value === activeAudio)) {
-            audioOptions.unshift({ value: activeAudio, label: activeAudio });
+            if (!registryMap[activeAudio] || registryMap[activeAudio].category === 'audio') {
+                audioOptions.unshift({ value: activeAudio, label: activeAudio });
+            }
         }
 
         chatOptions.unshift({ value: '', label: 'Select Chat Model...' });
@@ -326,8 +352,21 @@ export async function mount(container) {
             const bitDepth = meta.bit_depth || 'N/A';
             const quant = meta.quantization || 'Standard';
             const params = meta.parameters || 'Unknown';
-            const context = meta.context_window || 'Unknown';
             const tasks = modelData.supported_tasks || [];
+            
+            let contextLabel = 'Context Window';
+            let context = meta.context_window || 'Unknown';
+
+            if (modelData.category === 'audio' || tasks.includes('speech_to_text')) {
+                contextLabel = 'Audio Window';
+                if (!meta.context_window || meta.context_window === 'Unknown') {
+                    context = '30s Max';
+                }
+            } else if (modelData.category === 'vision' && (!meta.context_window || meta.context_window === 'Unknown')) {
+                contextLabel = 'Vision Window';
+                context = '224x224 PX';
+            }
+
             const hfRepo = modelData.huggingface_repo || (selectedModelId.includes('/') ? selectedModelId : '');
             const extraFiles = Array.isArray(modelData.extra_files) ? modelData.extra_files : [];
 
@@ -360,7 +399,7 @@ export async function mount(container) {
                             <div style="font-size: 12px; font-weight: 600; color: #a78bfa;">${bitDepth}</div>
                         </div>
                         <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
-                            <div style="font-size: 10px; color: #9ca3af;">Context Window</div>
+                            <div style="font-size: 10px; color: #9ca3af;">${contextLabel}</div>
                             <div style="font-size: 12px; font-weight: 600; color: #34d399;">${context}</div>
                         </div>
                         <div style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 4px;">
@@ -392,6 +431,7 @@ export async function mount(container) {
                             <div class="modal-tab-bar" style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; white-space: nowrap;">
                                 <style>.modal-tab-bar::-webkit-scrollbar { display: none; }</style>
                                 <button class="modal-tab-btn active" data-tab="tab-header" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">⚡ Binary Header Probe</button>
+                                <button class="modal-tab-btn" data-tab="tab-raw-header" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">🏗️ Inspect Raw Header</button>
                                 ${hasChatTemplate ? `<button class="modal-tab-btn" data-tab="tab-template" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">💬 Chat Template</button>` : ''}
                                 ${extraFiles.map((f, i) => `<button class="modal-tab-btn" data-tab="tab-file-${i}" data-filename="${f}" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;">📄 ${formatTabName(f)}</button>`).join('')}
                             </div>
@@ -405,6 +445,29 @@ export async function mount(container) {
                                     </div>
                                 </div>
                                 <div id="editor-container-header" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
+                            </div>
+
+                            <!-- Tab Content: Inspect Raw Header -->
+                            <div id="tab-raw-header" class="modal-tab-content" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 11px; color: #9ca3af; font-family: monospace;">Zero-load Binary Parse — Raw <span style="background: ${format === 'GGUF' ? 'rgba(16,185,129,0.15)' : 'rgba(168,85,247,0.15)'}; color: ${format === 'GGUF' ? '#10b981' : '#c084fc'}; border: 1px solid ${format === 'GGUF' ? 'rgba(16,185,129,0.3)' : 'rgba(168,85,247,0.3)'}; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;">${format}</span> header read directly from local storage</span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="btn-tab-search" data-search-target="editor-container-raw-header" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #9ca3af; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;" title="Search (Ctrl+F)">🔍</button>
+                                        <button id="btn-reload-raw-header" style="background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px;">🔄 Reload</button>
+                                        <button class="btn-export-tab" data-export-type="raw_header" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                    </div>
+                                </div>
+                                <div class="tab-search-bar" style="display: none; align-items: center; gap: 6px; margin-bottom: 6px; background: rgba(10,20,35,0.95); border: 1px solid rgba(96,165,250,0.35); border-radius: 6px; padding: 5px 10px;">
+                                    <span style="color:#6b7280; font-size:13px; flex-shrink:0;">🔍</span>
+                                    <input class="tab-search-input" type="text" placeholder="Search in header..." style="flex: 1; background: transparent; border: none; outline: none; color: #f3f4f6; font-size: 12px; font-family: monospace; min-width: 0;">
+                                    <span class="tab-search-count" style="font-size: 11px; color: #6b7280; min-width: 52px; text-align: center; font-family: monospace;"></span>
+                                    <button class="tab-search-exact" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; font-family: serif; display:flex; align-items:center; justify-content:center; margin-right: 2px;" title="Match Case (Exact)">Aa</button>
+                                    <button class="tab-search-word" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; font-family: monospace; display:flex; align-items:center; justify-content:center; margin-right: 4px;" title="Match Whole Word"><span style="border-bottom: 1.5px solid currentColor; line-height: 1.1;">ab</span></button>
+                                    <button class="tab-search-prev" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 13px; display:flex; align-items:center; justify-content:center;">↑</button>
+                                    <button class="tab-search-next" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 13px; display:flex; align-items:center; justify-content:center;">↓</button>
+                                    <button class="tab-search-close" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 18px; padding: 0 2px; line-height: 1;">×</button>
+                                </div>
+                                <div id="editor-container-raw-header" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
                             </div>
 
                             <!-- Tab Content: Chat Template (Conditional) -->
@@ -422,8 +485,21 @@ export async function mount(container) {
                             ${extraFiles.map((f, i) => `
                                 <div id="tab-file-${i}" class="modal-tab-content" style="display: none; flex-direction: column; flex: 1; min-height: 0;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 11px; color: #9ca3af; font-family: monospace;">Path: ${localDir}\\${f}</span>
-                                        <button class="btn-export-tab" data-export-filename="${f}" data-tab-id="tab-file-${i}" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                        <span style="font-size: 11px; color: #9ca3af; font-family: monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;">Path: ${localDir}\\${f}</span>
+                                        <div style="display:flex; gap:6px; flex-shrink:0; margin-left:8px;">
+                                            <button class="btn-tab-search" data-search-target="editor-container-tab-file-${i}" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #9ca3af; padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;" title="Search (Ctrl+F)">🔍</button>
+                                            <button class="btn-export-tab" data-export-filename="${f}" data-tab-id="tab-file-${i}" style="background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #c084fc; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer;">📥 Export</button>
+                                        </div>
+                                    </div>
+                                    <div class="tab-search-bar" style="display: none; align-items: center; gap: 6px; margin-bottom: 6px; background: rgba(10,20,35,0.95); border: 1px solid rgba(96,165,250,0.35); border-radius: 6px; padding: 5px 10px;">
+                                        <span style="color:#6b7280; font-size:13px; flex-shrink:0;">🔍</span>
+                                        <input class="tab-search-input" type="text" placeholder="Search in file..." style="flex: 1; background: transparent; border: none; outline: none; color: #f3f4f6; font-size: 12px; font-family: monospace; min-width: 0;">
+                                        <span class="tab-search-count" style="font-size: 11px; color: #6b7280; min-width: 52px; text-align: center; font-family: monospace;"></span>
+                                        <button class="tab-search-exact" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; font-family: serif; display:flex; align-items:center; justify-content:center; margin-right: 2px;" title="Match Case (Exact)">Aa</button>
+                                        <button class="tab-search-word" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; font-family: monospace; display:flex; align-items:center; justify-content:center; margin-right: 4px;" title="Match Whole Word"><span style="border-bottom: 1.5px solid currentColor; line-height: 1.1;">ab</span></button>
+                                        <button class="tab-search-prev" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 13px; display:flex; align-items:center; justify-content:center;">↑</button>
+                                        <button class="tab-search-next" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 13px; display:flex; align-items:center; justify-content:center;">↓</button>
+                                        <button class="tab-search-close" style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 18px; padding: 0 2px; line-height: 1;">×</button>
                                     </div>
                                     <div id="editor-container-tab-file-${i}" style="flex: 1; height: 100%; min-height: 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08);"></div>
                                 </div>
@@ -458,6 +534,58 @@ export async function mount(container) {
                             return editor;
                         };
                         
+                        // ── Reusable fetch helper for Inspect Raw Header tab ──
+                        const fetchAndShowRawHeader = (forceReload) => {
+                            const containerId = 'editor-container-raw-header';
+                            const containerEl = modalOverlay.querySelector('#' + containerId);
+                            if (!containerEl) return;
+
+                            if (forceReload) {
+                                // Clear cached editor so we re-fetch fresh
+                                delete editorsMap[containerId];
+                                containerEl.innerHTML = '';
+                            }
+
+                            if (editorsMap[containerId]) {
+                                // Already loaded — just refresh
+                                const existing = editorsMap[containerId];
+                                if (existing && existing.cm) setTimeout(() => existing.cm.refresh(), 20);
+                                return;
+                            }
+
+                            // Show glowing loader
+                            const loaderEl = document.createElement('div');
+                            loaderEl.style.cssText = 'position: absolute; inset: 0; background: #090d13; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; gap: 12px; font-family: sans-serif;';
+                            loaderEl.innerHTML = `
+                                <style>@keyframes spinRH { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }</style>
+                                <div style="width: 32px; height: 32px; border: 3px solid rgba(96,165,250,0.2); border-top-color: #60a5fa; border-radius: 50%; animation: spinRH 0.8s linear infinite;"></div>
+                                <span style="font-size: 12px; color: #9ca3af; font-family: monospace;">Reading GGUF Binary Header from disk...</span>
+                            `;
+                            containerEl.style.position = 'relative';
+                            containerEl.appendChild(loaderEl);
+
+                            (async () => {
+                                let ed;
+                                try {
+                                    const res = await fetch(`/v1/models/${encodeURIComponent(selectedModelId)}/inspect_raw_header`);
+                                    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                                    const rawData = await res.json();
+                                    ed = getOrCreateEditor(containerId, JSON.stringify(rawData, null, 2), 'application/json');
+                                } catch (err) {
+                                    ed = getOrCreateEditor(containerId, `// Error: ${err.message}\n// Make sure the API server is running and the model is in the vault.`, 'text/plain');
+                                } finally {
+                                    if (loaderEl && loaderEl.parentNode) loaderEl.parentNode.removeChild(loaderEl);
+                                    if (ed && ed.cm) setTimeout(() => ed.cm.refresh(), 20);
+                                }
+                            })();
+                        };
+
+                        // Wire up the Reload button
+                        const reloadRawHeaderBtn = modalOverlay.querySelector('#btn-reload-raw-header');
+                        if (reloadRawHeaderBtn) {
+                            reloadRawHeaderBtn.addEventListener('click', () => fetchAndShowRawHeader(true));
+                        }
+
                         tabBtns.forEach(btn => {
                             btn.addEventListener('click', async () => {
                                 tabBtns.forEach(b => {
@@ -481,6 +609,8 @@ export async function mount(container) {
                                 } else if (tabId === 'tab-header') {
                                     const ed = getOrCreateEditor('editor-container-header', JSON.stringify(probedHeaderData, null, 2), 'application/json');
                                     if (ed && ed.cm) setTimeout(() => ed.cm.refresh(), 20);
+                                } else if (tabId === 'tab-raw-header') {
+                                    fetchAndShowRawHeader(false);
                                 } else if (tabId && tabId.startsWith('tab-file-')) {
                                     const filename = btn.getAttribute('data-filename');
                                     const containerId = `editor-container-${tabId}`;
@@ -515,23 +645,9 @@ export async function mount(container) {
                                             }
 
                                             let isTruncated = false;
-                                            let fileSizeMb = 0;
                                             if (content.length > 500000) {
                                                 isTruncated = true;
-                                                fileSizeMb = (content.length / 1024 / 1024).toFixed(2);
                                                 content = content.substring(0, 500000);
-                                            }
-
-                                            // Show top warning banner if file was truncated for performance
-                                            const tabContainerEl = modalOverlay.querySelector('#' + tabId);
-                                            if (isTruncated && tabContainerEl) {
-                                                const alertBar = document.createElement('div');
-                                                alertBar.style.cssText = 'background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
-                                                alertBar.innerHTML = `
-                                                    <span style="overflow: hidden; text-overflow: ellipsis;">⚠️ Large file (${fileSizeMb} MB): Showing 500 KB snippet for performance.</span>
-                                                    <span style="font-weight: 500; font-size: 10px; opacity: 0.85; margin-left: 12px; flex-shrink: 0;">Use "Export" to download full file</span>
-                                                `;
-                                                tabContainerEl.insertBefore(alertBar, containerEl);
                                             }
 
                                             // Mount editor smoothly with pure clean JSON
@@ -550,6 +666,209 @@ export async function mount(container) {
                                 }
                             });
                         });
+
+                        // ── VS Code-style In-tab Search ─────────────────────────────────
+                        if (!document.getElementById('cm-search-styles')) {
+                            const _ss = document.createElement('style');
+                            _ss.id = 'cm-search-styles';
+                            _ss.textContent = [
+                                '.cm-search-match { background: rgba(255,200,0,0.22); border-radius: 2px; }',
+                                '.cm-search-current { background: rgba(255,130,0,0.65); border-radius: 2px; }'
+                            ].join('');
+                            document.head.appendChild(_ss);
+                        }
+
+                        const wireTabSearch = (searchBar, getEditorFn) => {
+                            if (searchBar._wired) return;
+                            searchBar._wired = true;
+                            const input    = searchBar.querySelector('.tab-search-input');
+                            const exactBtn = searchBar.querySelector('.tab-search-exact');
+                            const wordBtn  = searchBar.querySelector('.tab-search-word');
+                            const countEl  = searchBar.querySelector('.tab-search-count');
+                            const prevBtn  = searchBar.querySelector('.tab-search-prev');
+                            const nextBtn  = searchBar.querySelector('.tab-search-next');
+                            const closeBtn = searchBar.querySelector('.tab-search-close');
+                            let matches = [], cur = -1, marks = [], debTimer = null;
+                            let isExactMatch = false;
+                            let isWholeWord = false;
+                            let rafId = null;
+
+                            exactBtn.addEventListener('click', () => {
+                                isExactMatch = !isExactMatch;
+                                exactBtn.style.background = isExactMatch ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.06)';
+                                exactBtn.style.color = isExactMatch ? '#60a5fa' : '#9ca3af';
+                                exactBtn.style.borderColor = isExactMatch ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255,255,255,0.1)';
+                                doSearch(input.value);
+                            });
+
+                            wordBtn.addEventListener('click', () => {
+                                isWholeWord = !isWholeWord;
+                                wordBtn.style.background = isWholeWord ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.06)';
+                                wordBtn.style.color = isWholeWord ? '#60a5fa' : '#9ca3af';
+                                wordBtn.style.borderColor = isWholeWord ? 'rgba(59, 130, 246, 0.4)' : 'rgba(255,255,255,0.1)';
+                                doSearch(input.value);
+                            });
+
+                            // Clear only the rendered mark window (never all at once)
+                            const clearMarks = () => { marks.forEach(m => { try { m.clear(); } catch(_){} }); marks = []; };
+
+                            // Only mark a window of ±40 around current match — avoids marking 10k items
+                            const highlight = (idx) => {
+                                const ed = getEditorFn(); const cm = ed && ed.cm;
+                                if (!cm || !matches.length) return;
+                                if (rafId) cancelAnimationFrame(rafId);
+                                
+                                rafId = requestAnimationFrame(() => {
+                                    clearMarks();
+                                    const win = 40;
+                                    const lo = Math.max(0, idx - win), hi = Math.min(matches.length - 1, idx + win);
+                                    for (let i = lo; i <= hi; i++) {
+                                        marks.push(cm.markText(matches[i].from, matches[i].to, {
+                                            className: i === idx ? 'cm-search-current' : 'cm-search-match'
+                                        }));
+                                    }
+                                    cm.scrollIntoView(matches[idx], 80);
+                                    countEl.textContent = `${idx + 1} / ${matches.length}`;
+                                    countEl.style.color = '#60a5fa';
+                                });
+                            };
+
+                            const doSearch = (q) => {
+                                const ed = getEditorFn(); const cm = ed && ed.cm;
+                                clearMarks(); matches = []; cur = -1;
+                                if (!cm || !q || q.length < 1) { countEl.textContent = ''; countEl.style.color = '#6b7280'; return; }
+                                // Raw string scan — use RegExp to preserve exact original indices even with case-insensitivity
+                                const text = cm.getValue();
+                                const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                const flags = (isExactMatch ? 'g' : 'gi') + 'u'; // 'u' flag for Unicode matching
+                                let pattern = escapeRegExp(q);
+                                if (isWholeWord) {
+                                    // True Unicode-aware word boundaries using lookarounds
+                                    pattern = `(?<![\\p{L}\\p{N}_])${pattern}(?![\\p{L}\\p{N}_])`;
+                                }
+                                const regex = new RegExp(pattern, flags);
+                                
+                                const rawPositions = [];
+                                let match;
+                                // find all occurrences to show accurate count, up to 100k
+                                while ((match = regex.exec(text)) !== null) {
+                                    rawPositions.push({ _pos: match.index, _len: match[0].length });
+                                    if (rawPositions.length >= 100000) break;
+                                }
+                                
+                                if (!rawPositions.length) {
+                                    countEl.textContent = 'No results'; countEl.style.color = '#f87171'; return;
+                                }
+                                
+                                // Convert to lazily resolved objects
+                                matches = rawPositions.map(m => ({ _pos: m._pos, _len: m._len, from: null, to: null }));
+                                
+                                const resolve = (i) => {
+                                    if (!matches[i].from) {
+                                        matches[i].from = cm.posFromIndex(matches[i]._pos);
+                                        matches[i].to   = cm.posFromIndex(matches[i]._pos + matches[i]._len);
+                                    }
+                                    return matches[i];
+                                };
+                                
+                                const pre = Math.min(80, matches.length);
+                                for (let i = 0; i < pre; i++) resolve(i);
+                                
+                                cur = 0; 
+                                resolve(cur); 
+                                highlight(cur);
+                                matches._resolve = resolve;
+                            };
+
+                            let _debTimer = null;
+                            input.addEventListener('input', () => {
+                                clearTimeout(_debTimer);
+                                countEl.textContent = '...'; countEl.style.color = '#6b7280';
+                                _debTimer = setTimeout(() => doSearch(input.value), 250);
+                            });
+                            
+                            input.addEventListener('keydown', e => {
+                                if (e.key === 'Escape') { closeBtn.click(); return; }
+                                if (e.key !== 'Enter' || !matches.length) return;
+                                e.preventDefault();
+                                cur = e.shiftKey ? (cur - 1 + matches.length) % matches.length : (cur + 1) % matches.length;
+                                if (matches._resolve) matches._resolve(cur);
+                                highlight(cur);
+                            });
+                            
+                            prevBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!matches.length) return;
+                                cur = (cur - 1 + matches.length) % matches.length;
+                                if (matches._resolve) matches._resolve(cur);
+                                highlight(cur);
+                            });
+                            
+                            nextBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!matches.length) return;
+                                cur = (cur + 1) % matches.length;
+                                if (matches._resolve) matches._resolve(cur);
+                                highlight(cur);
+                            });
+                            
+                            closeBtn.addEventListener('click', () => {
+                                searchBar.style.display = 'none';
+                                input.value = ''; clearMarks(); matches = []; countEl.textContent = ''; clearTimeout(_debTimer);
+                                if(rafId) cancelAnimationFrame(rafId);
+                            });
+                        };
+
+                        const openSearch = (btn) => {
+                            const targetId = btn.getAttribute('data-search-target');
+                            const tabContent = btn.closest('.modal-tab-content');
+                            if (!tabContent) return;
+                            const searchBar = tabContent.querySelector('.tab-search-bar');
+                            if (!searchBar) return;
+                            const isOpen = searchBar.style.display !== 'none';
+                            searchBar.style.display = isOpen ? 'none' : 'flex';
+                            if (!isOpen) {
+                                wireTabSearch(searchBar, () => editorsMap[targetId]);
+                                const inp = searchBar.querySelector('.tab-search-input');
+                                inp.focus();
+                                inp.select();
+                            }
+                        };
+
+                        modalOverlay.querySelectorAll('.btn-tab-search').forEach(btn => {
+                            btn.addEventListener('click', () => openSearch(btn));
+                        });
+
+                        // Ctrl+F / Cmd+F shortcut inside the modal
+                        modalOverlay.addEventListener('keydown', e => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                                e.preventDefault();
+                                const activeTabContent = [...modalOverlay.querySelectorAll('.modal-tab-content')]
+                                    .find(el => el.style.display !== 'none');
+                                if (!activeTabContent) return;
+                                const searchBtn = activeTabContent.querySelector('.btn-tab-search');
+                                if (searchBtn) searchBtn.click();
+                            }
+                        }, true);
+
+                        // Fix for Copy issue in global modal
+                        modalOverlay.addEventListener('copy', (e) => {
+                            const activeTabContent = [...modalOverlay.querySelectorAll('.modal-tab-content')]
+                                .find(el => el.style.display !== 'none');
+                            if (!activeTabContent) return;
+                            const editorContainer = activeTabContent.querySelector('[id^="editor-container-"]');
+                            if (!editorContainer) return;
+                            const ed = editorsMap[editorContainer.id];
+                            if (ed && ed.cm) {
+                                const selectedText = ed.cm.getSelection();
+                                if (selectedText) {
+                                    e.preventDefault();
+                                    e.clipboardData.setData('text/plain', selectedText);
+                                }
+                            }
+                        }, true);
 
                         // Auto-populate Binary Header Probe CodeEditor immediately on modal open
                         const probedHeaderData = {
@@ -583,6 +902,10 @@ export async function mount(container) {
                                 if (exportType === "header") {
                                     contentToExport = JSON.stringify(probedHeaderData, null, 2);
                                     downloadName = `${selectedModelId}-header.json`;
+                                } else if (exportType === "raw_header") {
+                                    const ed = editorsMap['editor-container-raw-header'];
+                                    contentToExport = ed ? ed.getValue() : '';
+                                    downloadName = `${selectedModelId}-Inspect-Raw-Header.json`;
                                 } else if (exportType === "template") {
                                     contentToExport = chatTmpl;
                                     downloadName = `${selectedModelId}-chat_template.jinja2`;
