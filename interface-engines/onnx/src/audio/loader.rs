@@ -24,7 +24,9 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
             .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(&cleaned))
             .map_err(|e| anyhow!("Base64 audio decode error: {}", e))?
     } else {
-        std::fs::read(audio_path_or_url)
+        let clean_path = audio_path_or_url.replace('\\', "/");
+        std::fs::read(&clean_path)
+            .or_else(|_| std::fs::read(audio_path_or_url))
             .map_err(|e| anyhow!("Cannot open audio file '{}': {}", audio_path_or_url, e))?
     };
 
@@ -47,7 +49,7 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
     } else if lower_path.ends_with(".wav") || lower_path.contains("audio/wav") {
         hint.with_extension("wav");
     } else if lower_path.ends_with(".webm") || lower_path.contains("audio/webm") {
-        hint.with_extension("webm");
+        hint.with_extension("mkv");
     } else if lower_path.ends_with(".flac") {
         hint.with_extension("flac");
     } else if lower_path.ends_with(".ogg") {
@@ -63,13 +65,8 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
     let probed = symphonia::default::get_probe()
         .format(&hint, mss, &fmt_opts, &meta_opts)
         .or_else(|_| {
-            let mut webm_hint = Hint::new();
-            webm_hint.with_extension("webm");
             let source_fallback: Box<dyn MediaSource> = Box::new(Cursor::new(audio_bytes.clone()));
             let mss_fallback = MediaSourceStream::new(source_fallback, Default::default());
-            symphonia::default::get_probe().format(&webm_hint, mss_fallback, &fmt_opts, &meta_opts)
-        })
-        .or_else(|_| {
             let mut mkv_hint = Hint::new();
             mkv_hint.with_extension("mkv");
             let source_fallback: Box<dyn MediaSource> = Box::new(Cursor::new(audio_bytes.clone()));
@@ -90,7 +87,11 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
 
     let mut format = probed.format;
     let track = format
-        .default_track()
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.sample_rate.is_some())
+        .or_else(|| format.tracks().iter().find(|t| t.codec_params.codec != symphonia::core::codecs::CODEC_TYPE_NULL))
+        .or_else(|| format.default_track())
         .ok_or_else(|| anyhow!("No supported audio track found"))?;
 
     let track_id = track.id;
@@ -136,8 +137,7 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         let packet = match format.next_packet() {
             Ok(p) => p,
             Err(symphonia::core::errors::Error::IoError(_)) => break,
-            Err(symphonia::core::errors::Error::ResetRequired) => continue,
-            Err(_) => break,
+            Err(_) => continue,
         };
 
         if packet.track_id() != track_id {
@@ -145,19 +145,37 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         }
 
         if let Some(ref mut dec) = symphonia_decoder {
-            if let Ok(decoded) = dec.decode(&packet) {
-                actual_sample_rate = decoded.spec().rate;
-                let spec = *decoded.spec();
-                let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
-                sample_buf.copy_interleaved_ref(decoded);
-                let samples = sample_buf.samples();
+            match dec.decode(&packet) {
+                Ok(decoded) => {
+                    actual_sample_rate = decoded.spec().rate;
+                    let spec = *decoded.spec();
+                    let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
+                    sample_buf.copy_interleaved_ref(decoded);
+                    let samples = sample_buf.samples();
 
-                if src_channels > 1 {
-                    for chunk in samples.chunks(src_channels) {
-                        all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                    if src_channels > 1 {
+                        for chunk in samples.chunks(src_channels) {
+                            all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                        }
+                    } else {
+                        all_samples.extend_from_slice(samples);
                     }
-                } else {
-                    all_samples.extend_from_slice(samples);
+                }
+                Err(_) => {
+                    if let Some(ref mut opus_dec) = audiopus_decoder {
+                        let mut pcm_buf = vec![0.0f32; 5760 * src_channels];
+                        if let Ok(num_samples) = opus_dec.decode_float(Some(packet.buf()), &mut pcm_buf, false) {
+                            let count = num_samples as usize;
+                            let decoded_samples = &pcm_buf[..count * src_channels];
+                            if src_channels > 1 {
+                                for chunk in decoded_samples.chunks(src_channels) {
+                                    all_samples.push(chunk.iter().sum::<f32>() / src_channels as f32);
+                                }
+                            } else {
+                                all_samples.extend_from_slice(decoded_samples);
+                            }
+                        }
+                    }
                 }
             }
         } else if let Some(ref mut opus_dec) = audiopus_decoder {
@@ -188,13 +206,13 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
         }
     }
 
-    Ok(
-        if actual_sample_rate != config.sample_rate && actual_sample_rate > 0 {
-            linear_resample(&all_samples, actual_sample_rate, config.sample_rate)
-        } else {
-            all_samples
-        },
-    )
+    let resampled = if actual_sample_rate != config.sample_rate && actual_sample_rate > 0 {
+        linear_resample(&all_samples, actual_sample_rate, config.sample_rate)
+    } else {
+        all_samples
+    };
+
+    Ok(resampled)
 }
 
 fn linear_resample(samples: &[f32], src_rate: u32, dst_rate: u32) -> Vec<f32> {
