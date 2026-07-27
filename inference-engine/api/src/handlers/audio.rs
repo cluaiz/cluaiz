@@ -114,7 +114,7 @@ pub async fn execute_audio(
                             "error": format!("Requested audio model '{}' is not installed in ModelRegistry.", m),
                             "status": "error"
                         })),
-                    );
+                    ).into_response();
                 }
             }
         }
@@ -171,7 +171,7 @@ pub async fn execute_audio(
                         "error": format!("No installed audio model found for task '{}' in Engine ModelRegistry. Please install an audio model for this task.", target_task),
                         "status": "error"
                     })),
-                );
+                ).into_response();
             }
             resolved_id
         }
@@ -186,7 +186,7 @@ pub async fn execute_audio(
                     "error": format!("Audio model '{}' not found in installed models.", target_model_id),
                     "status": "error"
                 })),
-            );
+            ).into_response();
         }
     };
 
@@ -223,7 +223,7 @@ pub async fn execute_audio(
                 ),
                 "status": "error"
             })),
-        );
+        ).into_response();
     }
 
     if is_stt_model && is_text_input {
@@ -236,7 +236,7 @@ pub async fn execute_audio(
                 ),
                 "status": "error"
             })),
-        );
+        ).into_response();
     }
 
     // 4. Neural Execution & Dispatch
@@ -279,18 +279,23 @@ pub async fn execute_audio(
         .dispatch_stream(&prompt, true, Some(model_path))
         .await;
 
-    let (execution_error, output_text, extracted_segments) = match execution_res {
+    let (execution_error, output_text, extracted_segments): (Option<String>, String, Vec<AudioSegment>) = match execution_res {
         EngineResponse::FinalResult(txt) if !txt.trim().is_empty() && !txt.starts_with("Error:") => (None, txt, vec![]),
         EngineResponse::TokenStream(mut rx) => {
-            let mut collected = String::new();
+            let mut collected = String::with_capacity(256);
             while let Some(chunk) = rx.recv().await {
+                if chunk.contains("\n[DONE]\n") {
+                    let text_before = chunk.replace("\n[DONE]\n", "");
+                    collected.push_str(&text_before);
+                    break;
+                }
                 collected.push_str(&chunk);
             }
-            let cleaned = collected.replace("\n[DONE]\n", "").trim().to_string();
+            let cleaned = collected.trim().to_string();
             if cleaned.starts_with("Error:") {
                 (Some(cleaned), String::new(), vec![])
             } else if cleaned.is_empty() {
-                (Some("Error: ONNX/FFI Audio Kernel failed to produce output tokens. Model input tensor mismatch.".to_string()), String::new(), vec![])
+                (Some("Error: Audio Kernel produced empty output.".to_string()), String::new(), vec![])
             } else {
                 (None, cleaned, vec![])
             }
@@ -325,7 +330,7 @@ pub async fn execute_audio(
                 "model": target_model_id,
                 "task": resolved_task
             })),
-        );
+        ).into_response();
     }
 
     let audio_payload = if is_tts_model {
@@ -363,7 +368,7 @@ pub async fn execute_audio(
     (
         StatusCode::OK,
         Json(serde_json::to_value(&response).unwrap()),
-    )
+    ).into_response()
 }
 
 fn base64_decode(input: &str) -> Result<Vec<u8>, String> {

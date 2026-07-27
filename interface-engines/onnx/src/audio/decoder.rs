@@ -140,9 +140,31 @@ impl OnnxEngine {
                 }
             }
         }
+        println!("⏱️ [BENCHMARK] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {})", t_pcm.elapsed(), pcm_samples.len() as f32 / config.sample_rate as f32, pcm_samples.len());
         println!("⏱️ [BENCHMARK] Step C - Encoder ONNX Model Inference Time: {:?}", t_enc.elapsed());
 
-        let max_speech_len = 112;
+        // Dynamic Audio Duration & Multi-Modality Math Algorithm
+        let prompt_lower = prompt.to_lowercase();
+        let audio_duration_secs = (pcm_samples.len() as f32) / (config.sample_rate as f32);
+        
+        let dynamic_stt_tokens = ((audio_duration_secs * 1.8) + 6.0).ceil() as usize;
+        let dynamic_tts_tokens = ((audio_duration_secs * 6.0) + 16.0).ceil() as usize;
+        let dynamic_music_tokens = ((audio_duration_secs * 10.0) + 32.0).ceil() as usize;
+        let dynamic_caption_tokens = ((audio_duration_secs * 2.0) + 8.0).ceil() as usize;
+
+        let (max_speech_len, rep_repeat_limit) = if prompt_lower.contains("music_generation") || prompt_lower.contains("text_to_music") || prompt_lower.contains("music_classification") {
+            (dynamic_music_tokens.clamp(48, 256), 4usize) // Dynamic Music & Acoustic frame scaling
+        } else if prompt_lower.contains("text_to_speech") || prompt_lower.contains("tts") || prompt_lower.contains("voice_conversion") || prompt_lower.contains("audio_enhancement") || prompt_lower.contains("noise_reduction") || prompt_lower.contains("source_separation") {
+            (dynamic_tts_tokens.clamp(24, 192), 3usize) // Dynamic Speech Synthesis & Audio Processing scaling
+        } else if prompt_lower.contains("audio_classification") || prompt_lower.contains("speaker_identification") || prompt_lower.contains("speaker_verification") || prompt_lower.contains("speaker_diarization") || prompt_lower.contains("emotion_recognition") || prompt_lower.contains("language_identification") || prompt_lower.contains("keyword_spotting") || prompt_lower.contains("wake_word_detection") || prompt_lower.contains("voice_activity_detection") {
+            (16usize, 2usize)  // Short sequence for classification / tagging / VAD / KWS
+        } else if prompt_lower.contains("audio_captioning") {
+            (dynamic_caption_tokens.clamp(16, 64), 2usize)  // Dynamic Captioning sequence length
+        } else {
+            // Flexible Dynamic Speech-to-Text / Transcription (clamped to realistic spoken token bounds)
+            (dynamic_stt_tokens.clamp(16, 48), 2usize)
+        };
+
         let mut speech_tokens: Vec<u32> = Vec::new();
         let mut speech_tokens_set: std::collections::HashSet<u32> = std::collections::HashSet::new();
 
@@ -319,15 +341,17 @@ impl OnnxEngine {
 
             let is_eot = next_tok == config.end_of_text_token as u32
                 || next_tok == 50257
-                || next_tok == 50256;
+                || next_tok == 50256
+                || next_tok == 50363
+                || next_tok == 50364;
 
             if is_eot {
                 break;
             }
 
-            // Early break on trailing repeated silence / pad tokens
+            // Early break on trailing repeated silence / pad tokens (Task-Adaptive Repetition Threshold)
             let len = speech_tokens.len();
-            if len >= 4 && speech_tokens[len - 1] == next_tok && speech_tokens[len - 2] == next_tok {
+            if len >= rep_repeat_limit && speech_tokens[len - 1] == next_tok && speech_tokens[len - 2] == next_tok {
                 break;
             }
 
@@ -337,7 +361,9 @@ impl OnnxEngine {
             total_step_runs += 1;
         }
 
-        println!("⏱️ [BENCHMARK] Step D - Decoder ONNX Token Loop Time: {:?} (Total Steps: {})", t_dec_loop.elapsed(), total_step_runs);
+        let dec_elapsed = t_dec_loop.elapsed();
+        let avg_step_ms = if total_step_runs > 0 { dec_elapsed.as_secs_f64() * 1000.0 / (total_step_runs as f64) } else { 0.0 };
+        println!("⏱️ [BENCHMARK] Step D - Decoder ONNX Token Loop Time: {:?} (Total Steps: {}, Avg: {:.2}ms/token)", dec_elapsed, total_step_runs, avg_step_ms);
         println!("⏱️ [BENCHMARK] Total Audio Execute Pipeline Time: {:?}", t_start.elapsed());
 
         if speech_tokens.is_empty() {
