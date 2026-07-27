@@ -41,16 +41,17 @@ impl UnifiedBackend for OnnxEngine {
 }
 
 impl cluaizInference for OnnxEngine {
-    fn forward_raw(&mut self, input_ids: &[u32], _pos: usize) -> Result<Vec<f32>> {
+    fn forward_raw(&mut self, input_ids: &[u32], pos: usize) -> Result<Vec<f32>> {
         let session_arc = self.acquire_session().map_err(|e| anyhow!("{:?}", e))?;
         
         let batch_size = 1;
         let seq_len = input_ids.len();
+        let total_seq_len = pos + seq_len;
         let ids: Vec<i64> = input_ids.iter().map(|&x| x as i64).collect();
-        let mask: Vec<i64> = vec![1; seq_len];
+        let mask: Vec<i64> = vec![1; total_seq_len];
 
         let ids_val = Value::from_array(([batch_size, seq_len], ids.clone())).map_err(|_| anyhow!("Bad alloc for input_ids"))?;
-        let mask_val = Value::from_array(([batch_size, seq_len], mask)).map_err(|_| anyhow!("Bad alloc for attention_mask"))?;
+        let mask_val = Value::from_array(([batch_size, total_seq_len], mask)).map_err(|_| anyhow!("Bad alloc for attention_mask"))?;
 
         let mut locked_session = session_arc.lock().map_err(|_| anyhow!("Mutex Poisoned"))?;
 
@@ -67,14 +68,14 @@ impl cluaizInference for OnnxEngine {
                     let val_name = format!("past_key_values.{}.value", layer_idx);
                     
                     let k_shape = cache[layer_idx * 2].0.clone();
-                    let k_data = cache[layer_idx * 2].1.clone();
-                    if let Ok(k_val) = Value::from_array((k_shape, k_data)) {
+                    let k_data = &cache[layer_idx * 2].1;
+                    if let Ok(k_val) = Value::from_array((k_shape, k_data.as_ref().clone())) {
                         inputs.insert(key_name, k_val.into());
                     }
                     
                     let v_shape = cache[layer_idx * 2 + 1].0.clone();
-                    let v_data = cache[layer_idx * 2 + 1].1.clone();
-                    if let Ok(v_val) = Value::from_array((v_shape, v_data)) {
+                    let v_data = &cache[layer_idx * 2 + 1].1;
+                    if let Ok(v_val) = Value::from_array((v_shape, v_data.as_ref().clone())) {
                         inputs.insert(val_name, v_val.into());
                     }
                 }
@@ -105,7 +106,7 @@ impl cluaizInference for OnnxEngine {
                 if let Some(val) = outputs.get(output_name) {
                     if let Ok(tuple) = val.try_extract_tensor::<f32>() {
                         let shape = tuple.0.iter().map(|&x| x as usize).collect();
-                        new_cache.push((shape, tuple.1.to_vec()));
+                        new_cache.push((shape, std::sync::Arc::new(tuple.1.to_vec())));
                     }
                 }
             }
@@ -241,7 +242,7 @@ impl cluaizInference for OnnxEngine {
             let data: Vec<f32> = unsafe {
                 std::slice::from_raw_parts(bytes.as_ptr() as *const f32, data_len)
             }.to_vec();
-            new_cache.push((shape, data));
+            new_cache.push((shape, std::sync::Arc::new(data)));
         }
 
         self.active_kv_cache = Some(new_cache);

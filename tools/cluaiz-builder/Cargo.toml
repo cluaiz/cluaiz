@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[workspace]
-
 [dependencies]
 cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 dirs = "6.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"

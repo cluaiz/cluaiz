@@ -1,6 +1,7 @@
 use super::config::AudioConfig;
 use super::mel_bank::build_mel_filterbank;
 use std::f32::consts::PI;
+use rayon::prelude::*;
 
 pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> Vec<f32> {
     let target_len = config.max_samples;
@@ -28,27 +29,43 @@ pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> Vec
 
     let filters = build_mel_filterbank(config);
     let n_bins = config.n_fft / 2 + 1;
-    let mut mel_matrix = vec![vec![0.0f32; config.max_frames]; config.n_mels];
 
-    let mut planner = rustfft::FftPlanner::<f32>::new();
-    let fft_plan = planner.plan_fft_forward(config.n_fft);
+    // Parallel STFT computation across all 3000 frames using Rayon
+    let frame_energies: Vec<Vec<f32>> = (0..config.max_frames)
+        .into_par_iter()
+        .map(|frame_idx| {
+            let mut planner = rustfft::FftPlanner::<f32>::new();
+            let fft_plan = planner.plan_fft_forward(config.n_fft);
 
-    for frame_idx in 0..config.max_frames {
-        let start = frame_idx * config.hop_length;
-        let mut frame = vec![0.0f32; config.n_fft];
-        for i in 0..config.n_fft {
-            let s = if start + i < padded.len() { padded[start + i] } else { 0.0 };
-            frame[i] = s * window[i];
-        }
+            let start = frame_idx * config.hop_length;
+            let mut complex_buf = vec![rustfft::num_complex::Complex::new(0.0f32, 0.0f32); config.n_fft];
 
-        let power = fft_power_spectrum_with_plan(&frame, config.n_fft, &*fft_plan);
-
-        for mel_idx in 0..config.n_mels {
-            let mut energy = 0.0f32;
-            for bin in 0..n_bins {
-                energy += filters[mel_idx][bin] * power[bin];
+            for i in 0..config.n_fft {
+                let s = if start + i < padded.len() { padded[start + i] } else { 0.0 };
+                let windowed = s * window[i];
+                complex_buf[i].re = windowed;
             }
-            mel_matrix[mel_idx][frame_idx] = energy.max(1e-10).log10();
+
+            fft_plan.process(&mut complex_buf);
+
+            let mut mels = vec![0.0f32; config.n_mels];
+            for mel_idx in 0..config.n_mels {
+                let filter_row = &filters[mel_idx];
+                let mut energy = 0.0f32;
+                for bin in 0..n_bins {
+                    let power = complex_buf[bin].norm_sqr();
+                    energy += filter_row[bin] * power;
+                }
+                mels[mel_idx] = energy.max(1e-10).log10();
+            }
+            mels
+        })
+        .collect();
+
+    let mut mel_matrix = vec![vec![0.0f32; config.max_frames]; config.n_mels];
+    for (frame_idx, mels) in frame_energies.into_iter().enumerate() {
+        for mel_idx in 0..config.n_mels {
+            mel_matrix[mel_idx][frame_idx] = mels[mel_idx];
         }
     }
 

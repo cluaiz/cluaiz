@@ -212,7 +212,7 @@ jobs:
         if: contains(matrix.backend, 'cuda')
         uses: jimver/cuda-toolkit@v0.2.21
         with:
-          cuda: ${{ matrix.backend == 'cuda-v11' && '11.8.0' || matrix.backend == 'cuda-v12' && '12.2.0' || '12.5.0' }}
+          cuda: ${{ matrix.cuda_v == 'v11' && '11.8.0' || matrix.cuda_v == 'v12' && '12.6.0' || matrix.cuda_v == 'v13' && '13.2.0' || '12.6.0' }}
 
       # ── Vulkan: Linux installs glslc via the official LunarG apt repo.
       # Ubuntu universe shaderc package does NOT provide /usr/bin/glslc on 22.04.
@@ -327,6 +327,23 @@ jobs:
           echo "ASCEND_TOOLKIT_HOME=$HOME/Ascend/ascend-toolkit/latest/x86_64-linux" >> $GITHUB_ENV
           echo "CANN_INSTALL_DIR=$HOME/Ascend/ascend-toolkit/latest/x86_64-linux" >> $GITHUB_ENV
 
+      - name: Fetch ONNX 1.28.0 for CUDA 13
+        if: matrix.cuda_v == 'v13'
+        shell: bash
+        run: |
+          echo "Downloading ONNX Runtime 1.28.0 (CUDA 13)..."
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            curl -LO https://github.com/microsoft/onnxruntime/releases/download/v1.28.0/onnxruntime-win-x64-gpu_cuda13-1.28.0.zip
+            unzip onnxruntime-win-x64-gpu_cuda13-1.28.0.zip -d onnx_custom
+            echo "ORT_STRATEGY=system" >> $GITHUB_ENV
+            echo "ORT_LIB_LOCATION=$PWD/onnx_custom/onnxruntime-win-x64-gpu_cuda13-1.28.0/lib" >> $GITHUB_ENV
+          else
+            curl -LO https://github.com/microsoft/onnxruntime/releases/download/v1.28.0/onnxruntime-linux-x64-gpu_cuda13-1.28.0.tgz
+            mkdir -p onnx_custom && tar -xzf onnxruntime-linux-x64-gpu_cuda13-1.28.0.tgz -C onnx_custom
+            echo "ORT_STRATEGY=system" >> $GITHUB_ENV
+            echo "ORT_LIB_LOCATION=$PWD/onnx_custom/onnxruntime-linux-x64-gpu_cuda13-1.28.0/lib" >> $GITHUB_ENV
+          fi
+
       - name: Build Driver (Foundry)
         shell: bash
         env:
@@ -368,6 +385,14 @@ jobs:
             "
           else
             cargo build --release --target ${{ matrix.target }} -p onnx --features "${{ matrix.features }}"
+          fi
+
+          if [[ "${{ matrix.cuda_v }}" == "v13" ]]; then
+            if [ "${{ runner.os }}" == "Windows" ]; then
+              cp onnx_custom/onnxruntime-win-x64-gpu_cuda13-1.28.0/lib/*.dll target/${{ matrix.target }}/release/ || cp onnx_custom/onnxruntime-win-x64-gpu_cuda13-1.28.0/lib/*.dll D:/t/${{ matrix.target }}/release/ || true
+            else
+              cp onnx_custom/onnxruntime-linux-x64-gpu_cuda13-1.28.0/lib/*.so target/${{ matrix.target }}/release/ || true
+            fi
           fi
 
       - name: Prepare Driver Binary

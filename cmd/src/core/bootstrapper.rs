@@ -335,6 +335,22 @@ impl Bootstrapper {
                 if let Err(e) = copy_with_rename(&kernel_src, &kernel_dest) {
                     tracing::warn!("⚠️ [DevSync] {} Kernel Link Failed: {}.", dest_name, e);
                 } else {
+                    // Also overwrite active dynamic driver inside engine/drivers/ if present
+                    let drivers_dir = interface_path.join("drivers");
+                    if drivers_dir.exists() {
+                        if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
+                            for entry in entries.flatten() {
+                                let p = entry.path();
+                                if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
+                                    if fname.starts_with("cluaiz-driver-") && fname.ends_with(ext) {
+                                        let _ = copy_with_rename(&kernel_src, &p);
+                                        tracing::info!("🧬 [DevSync] Overwrote active driver DLL: {:?}", p);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Create a ready marker
                     if !src_name.starts_with("onnxruntime") {
                         let marker_name = format!("{}.ready", dest_name);

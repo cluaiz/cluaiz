@@ -27,6 +27,7 @@ symphonia = { version = "0.5", features = ["aac", "isomp4", "pcm", "wav", "mp3",
 audiopus = "0.2"
 moosicbox_opus = "0.4"
 rustfft = "6"
+rayon = "1.10"
 base64 = "0.22"
 
 [features]

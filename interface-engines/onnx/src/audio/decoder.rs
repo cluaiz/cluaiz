@@ -86,6 +86,8 @@ impl OnnxEngine {
         }
 
         // ─── 3. STT (Speech-to-Text) Execution Graph ───────────────────────
+        let t_start = std::time::Instant::now();
+
         let audio_path = extract_audio_path(prompt)
             .ok_or_else(|| anyhow!("No [AUDIO_INPUT: ...] tag found in prompt"))?;
 
@@ -93,7 +95,9 @@ impl OnnxEngine {
         let req_translate = extract_parameter(prompt, "TRANSLATE_TO").unwrap_or_default();
 
         let config = AudioConfig::from_model_dir(&self.model_dir);
+        let t_pcm = std::time::Instant::now();
         let pcm_samples = load_audio_to_pcm(&audio_path, &config)?;
+        println!("⏱️ [BENCHMARK] Step A - PCM Load Time: {:?}", t_pcm.elapsed());
 
         if is_audio_embedding {
             let sample_len = pcm_samples.len();
@@ -110,11 +114,14 @@ impl OnnxEngine {
             }
         }
 
+        let t_mel = std::time::Instant::now();
         let mel_flat = compute_log_mel_spectrogram(&pcm_samples, &config);
+        println!("⏱️ [BENCHMARK] Step B - Mel Spectrogram Compute Time: {:?}", t_mel.elapsed());
         let shape_vec = vec![1usize, config.n_mels, config.max_frames];
 
         let mut real_encoder_hidden_states: Option<(Vec<usize>, Vec<f32>)> = None;
 
+        let t_enc = std::time::Instant::now();
         if let Some(enc_arc) = &self.encoder_session {
             if let Ok(mut enc_guard) = enc_arc.lock() {
                 if let Ok(mel_tensor) = Value::from_array((shape_vec.clone(), mel_flat)) {
@@ -124,19 +131,20 @@ impl OnnxEngine {
                     if let Ok(outputs) = enc_guard.run(enc_inputs) {
                         for (_, v) in outputs.into_iter() {
                             if let Ok((shape, data_tensor)) = v.try_extract_tensor::<f32>() {
-                                let shape_usize: Vec<usize> =
-                                    shape.iter().map(|&d| d as usize).collect();
-                                let data_vec: Vec<f32> = data_tensor.to_vec();
-                                real_encoder_hidden_states = Some((shape_usize, data_vec));
+                                let shape_usize: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
+                                real_encoder_hidden_states = Some((shape_usize, data_tensor.to_vec()));
+                                break;
                             }
                         }
                     }
                 }
             }
         }
+        println!("⏱️ [BENCHMARK] Step C - Encoder ONNX Model Inference Time: {:?}", t_enc.elapsed());
 
-        let max_speech_len = 224;
+        let max_speech_len = 112;
         let mut speech_tokens: Vec<u32> = Vec::new();
+        let mut speech_tokens_set: std::collections::HashSet<u32> = std::collections::HashSet::new();
 
         let mut chosen_lang_token: Option<i64> = None;
         let transcribe = config.transcribe_token;
@@ -179,39 +187,47 @@ impl OnnxEngine {
 
         let mut is_auto_detecting = chosen_lang_token.is_none();
 
+        // Pre-allocate static fallback array & ONNX Value ONCE outside the 224 token loop
+        let dummy_shape = vec![1usize, 1500, 1280];
+        let dummy_data: Vec<f32> = vec![0.0f32; 1 * 1500 * 1280];
+        let dummy_val_opt: Option<Value> = Value::from_array((dummy_shape, dummy_data)).ok().map(|v| v.into());
+
+        let encoder_val_opt: Option<Value> = if let Some((ref hs_shape, ref hs_vec)) = real_encoder_hidden_states {
+            Value::from_array((hs_shape.clone(), hs_vec.clone())).ok().map(|v| v.into())
+        } else {
+            None
+        };
+
+        let t_dec_loop = std::time::Instant::now();
+        let mut total_step_runs = 0usize;
+
         for _step in 0..max_speech_len {
-            let mut step_inputs: HashMap<String, Value> = HashMap::new();
+            let seq_len = current_decoder_ids.len();
+            let input_ids_val = match Value::from_array(([1usize, seq_len], current_decoder_ids.clone())) {
+                Ok(v) => v,
+                Err(_) => break,
+            };
+            let input_ids_dyn: Value = input_ids_val.into();
+
+            let mut step_inputs: HashMap<String, &Value> = HashMap::with_capacity(decoder_input_names.len());
 
             for name in &decoder_input_names {
                 let name_str: &str = name.as_str();
                 if name_str.contains("input_ids") || name_str.contains("decoder_input_ids") {
-                    let seq_len = current_decoder_ids.len();
-                    if let Ok(val) =
-                        Value::from_array(([1usize, seq_len], current_decoder_ids.clone()))
-                    {
-                        step_inputs.insert(name.clone(), val.into());
-                    }
+                    step_inputs.insert(name.clone(), &input_ids_dyn);
                 } else {
-                    if let Some((ref hs_shape, ref hs_data)) = real_encoder_hidden_states {
-                        if let Ok(val) = Value::from_array((hs_shape.clone(), hs_data.clone())) {
-                            step_inputs.insert(name.clone(), val.into());
-                            continue;
-                        }
-                    }
-                    let dummy_shape = vec![1usize, 1500, 1280];
-                    let dummy_data = vec![0.0f32; 1 * 1500 * 1280];
-                    if let Ok(val) = Value::from_array((dummy_shape, dummy_data)) {
-                        step_inputs.insert(name.clone(), val.into());
+                    if let Some(ref enc_val) = encoder_val_opt {
+                        step_inputs.insert(name.clone(), enc_val);
+                    } else if let Some(ref d_val) = dummy_val_opt {
+                        step_inputs.insert(name.clone(), d_val);
                     }
                 }
             }
 
-            let mut last_ort_err = String::new();
             let output_tensors = match session_guard.run(step_inputs) {
                 Ok(out) => out,
                 Err(e) => {
-                    last_ort_err = format!("ORT decoder run error: {}", e);
-                    eprintln!("{}", last_ort_err);
+                    eprintln!("ORT decoder run error: {}", e);
                     break;
                 }
             };
@@ -251,7 +267,7 @@ impl OnnxEngine {
                         }
                     }
                 } else {
-                    let max_allowed_tok = config.end_of_text_token as u32;
+                    let max_allowed_tok = (step_logits.len().saturating_sub(1)) as u32;
                     let rep_penalty = 1.25f32;
 
                     for (idx, &val) in step_logits.iter().enumerate() {
@@ -265,8 +281,7 @@ impl OnnxEngine {
                             }
 
                             let mut adjusted_val = val;
-                            // Apply repetition penalty to already predicted tokens
-                            if speech_tokens.contains(&tok_id) {
+                            if speech_tokens_set.contains(&tok_id) {
                                 adjusted_val = if adjusted_val < 0.0 {
                                     adjusted_val * rep_penalty
                                 } else {
@@ -274,7 +289,6 @@ impl OnnxEngine {
                                 };
                             }
 
-                            // Prevent 3-gram identical repeat loop
                             let len = speech_tokens.len();
                             if len >= 3
                                 && tok_id == speech_tokens[len - 1]
@@ -303,13 +317,28 @@ impl OnnxEngine {
                 continue;
             }
 
-            if next_tok == config.end_of_text_token as u32 {
+            let is_eot = next_tok == config.end_of_text_token as u32
+                || next_tok == 50257
+                || next_tok == 50256;
+
+            if is_eot {
+                break;
+            }
+
+            // Early break on trailing repeated silence / pad tokens
+            let len = speech_tokens.len();
+            if len >= 4 && speech_tokens[len - 1] == next_tok && speech_tokens[len - 2] == next_tok {
                 break;
             }
 
             speech_tokens.push(next_tok);
+            speech_tokens_set.insert(next_tok);
             current_decoder_ids.push(next_tok as i64);
+            total_step_runs += 1;
         }
+
+        println!("⏱️ [BENCHMARK] Step D - Decoder ONNX Token Loop Time: {:?} (Total Steps: {})", t_dec_loop.elapsed(), total_step_runs);
+        println!("⏱️ [BENCHMARK] Total Audio Execute Pipeline Time: {:?}", t_start.elapsed());
 
         if speech_tokens.is_empty() {
             return Err(anyhow!("ONNX/FFI Audio Kernel failed to produce output tokens. Decoder step run failed."));

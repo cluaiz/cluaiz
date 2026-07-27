@@ -16,13 +16,26 @@ pub struct OnnxEngine {
     // 🔢 Active Inference Counter: tracks in-flight requests for safe hot swap
     pub(crate) active_inferences: Arc<AtomicUsize>,
     // 🧠 KV Cache for Chat Generation
-    pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, Vec<f32>)>>,
+    pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, std::sync::Arc<Vec<f32>>)>>,
     // 📂 Model Directory Path for loading dynamic configs
     pub(crate) model_dir: Option<std::path::PathBuf>,
 }
 
 impl OnnxEngine {
     pub fn new() -> Result<Self> {
+        // Prepend C:\Users\Aryan\.cluaiz\engine\drivers to PATH so ONNX Runtime loads CUDA/TensorRT DLLs
+        let drivers_dir = cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("drivers");
+        if drivers_dir.exists() {
+            let current_path = std::env::var_os("PATH").unwrap_or_default();
+            let mut new_path = drivers_dir.into_os_string();
+            if !current_path.is_empty() {
+                new_path.push(";");
+                new_path.push(current_path);
+            }
+            std::env::set_var("PATH", new_path);
+            tracing::info!("🔗 [ONNX] PATH environment variable updated with drivers directory.");
+        }
+
         // Initialize ONNX Runtime environment implicitly.
         ort::init().with_name("cluaiz_onnx_env").commit();
 
@@ -100,26 +113,22 @@ impl OnnxEngine {
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING
         let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
-        let mut use_gpu = false;
+        let mut use_gpu = true;
 
         if let Ok(state) = pulse_state.pulse.read() {
             let free_vram = state.vram_total_gb - state.vram_used_gb;
-            // DYNAMIC MODEL SIZE CHECK (Fallback to 1.5GB estimate if model_path is alias)
             let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
                 let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                file_size_gb * 1.2 // 20% buffer for KV cache & context
+                file_size_gb * 1.2
             } else {
-                1.5 // Conservative 1.5GB default estimate
+                1.5
             };
 
             if free_vram > required_vram && state.vram_pressure_pct < 95 {
                 tracing::info!("📡 [Telemetry] Safe VRAM levels (Free: {:.1}GB, Req: {:.1}GB). Routing ONNX to GPU.", free_vram, required_vram);
-                use_gpu = true;
             } else {
-                tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB, Req: {:.1}GB). Auto-falling back ONNX to CPU.", free_vram, required_vram);
+                tracing::info!("📡 [Telemetry] Moderate VRAM pressure (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation with dynamic fallback.", free_vram, required_vram);
             }
-        } else {
-            use_gpu = true;
         }
 
         // Booster Override (GGUF Compatibility)
@@ -221,7 +230,7 @@ impl OnnxEngine {
             let mut session_opt = None;
             
             if use_gpu {
-                // Tier 1: Try CUDA GPU Execution Provider
+                // Tier 1A: Direct Native CUDA Execution Provider
                 let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default();
                 if onnx_meta.gpu_mem_limit_bytes > 0 {
                     cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
@@ -233,19 +242,33 @@ impl OnnxEngine {
                 };
                 cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
 
-                if let Ok(mut gpu_builder) = builder.clone().with_execution_providers([
-                    cuda_ep.build(),
-                    ort::execution_providers::DirectMLExecutionProvider::default().build(),
-                    ort::execution_providers::CoreMLExecutionProvider::default().build(),
-                    cpu_ep.clone(),
-                ]) {
-                    match gpu_builder.commit_from_file(model_path) {
+                if let Ok(mut cuda_builder) = builder.clone().with_execution_providers([cuda_ep.build(), cpu_ep.clone()]) {
+                    match cuda_builder.commit_from_file(model_path) {
                         Ok(sess) => {
-                            tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed successfully on GPU (CUDA/DirectML).", i);
+                            tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed ON NATIVE NVIDIA CUDA GPU!", i);
                             session_opt = Some(sess);
                         }
                         Err(e) => {
-                            tracing::warn!("⚠️ [Sovereign-Cascade] GPU Session commit failed (VRAM OOM / Driver): {:?}", e);
+                            tracing::warn!("⚠️ [Sovereign-Cascade] Native CUDA EP commit failed: {:?}. Trying DirectML/CoreML fallback...", e);
+                        }
+                    }
+                }
+
+                // Tier 1B: Fallback to DirectML / CoreML if native CUDA failed
+                if session_opt.is_none() {
+                    if let Ok(mut gpu_builder) = builder.clone().with_execution_providers([
+                        ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                        ort::execution_providers::CoreMLExecutionProvider::default().build(),
+                        cpu_ep.clone(),
+                    ]) {
+                        match gpu_builder.commit_from_file(model_path) {
+                            Ok(sess) => {
+                                tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed on DirectML/CoreML GPU.", i);
+                                session_opt = Some(sess);
+                            }
+                            Err(e) => {
+                                tracing::warn!("⚠️ [Sovereign-Cascade] DirectML/CoreML Session commit failed: {:?}", e);
+                            }
                         }
                     }
                 }
@@ -313,6 +336,24 @@ impl OnnxEngine {
             tracing::info!("ℹ️ [ONNX Pool] Tokenizer file not found at {}. Session pool ready without tokenizer.", tokenizer_path);
         }
 
+        // ────── GPU / CUDA Warmup Routine ──────
+         if let Some(session_arc) = self.session_pool.first() {
+            if let Ok(mut locked) = session_arc.lock() {
+                let dummy_ids = vec![1i64];
+                let dummy_mask = vec![1i64];
+                if let (Ok(ids_val), Ok(mask_val)) = (
+                    ort::value::Value::from_array(([1usize, 1usize], dummy_ids)),
+                    ort::value::Value::from_array(([1usize, 1usize], dummy_mask)),
+                ) {
+                    let mut inputs = std::collections::HashMap::<String, ort::value::Value>::new();
+                    inputs.insert("input_ids".to_string(), ids_val.into());
+                    inputs.insert("attention_mask".to_string(), mask_val.into());
+                    let _ = locked.run(inputs);
+                    tracing::info!("🔥 [ONNX Warmup] Text session CUDA kernel graph & GPU allocator warmed up.");
+                }
+            }
+        }
+
         tracing::info!(
             "✅ [ONNX Pool] {} session(s) loaded and ready.",
             pool_size
@@ -329,25 +370,22 @@ impl OnnxEngine {
 
         // 📡 DYNAMIC HARDWARE TELEMETRY WIRING
         let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
-        let mut use_gpu = false;
+        let mut use_gpu = true;
 
         if let Ok(state) = pulse_state.pulse.read() {
             let free_vram = state.vram_total_gb - state.vram_used_gb;
             let required_vram = if let Ok(meta) = std::fs::metadata(encoder_path) {
                 let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                file_size_gb * 1.5 // 50% buffer for audio activations
+                file_size_gb * 1.5
             } else {
-                0.5 // Default small encoder size
+                0.5
             };
 
             if free_vram > required_vram && state.vram_pressure_pct < 95 {
                 tracing::info!("📡 [Telemetry] Safe VRAM levels for Encoder (Free: {:.1}GB, Req: {:.1}GB).", free_vram, required_vram);
-                use_gpu = true;
             } else {
-                tracing::warn!("📡 [Telemetry] High VRAM pressure (Free: {:.1}GB, Req: {:.1}GB). Auto-falling back Encoder to CPU.", free_vram, required_vram);
+                tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram, required_vram);
             }
-        } else {
-            use_gpu = true;
         }
 
         let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
@@ -445,7 +483,17 @@ impl OnnxEngine {
         }
 
         if let Some(session) = session_opt {
-            self.encoder_session = Some(Arc::new(std::sync::Mutex::new(session)));
+            let enc_arc = Arc::new(std::sync::Mutex::new(session));
+            if let Ok(mut enc_guard) = enc_arc.lock() {
+                let dummy_mel = vec![0.0f32; 1 * 80 * 3000];
+                if let Ok(mel_val) = ort::value::Value::from_array(([1usize, 80usize, 3000usize], dummy_mel)) {
+                    let mut enc_inputs = std::collections::HashMap::new();
+                    enc_inputs.insert("input_features".to_string(), mel_val);
+                    let _ = enc_guard.run(enc_inputs);
+                    tracing::info!("🔥 [ONNX Warmup] Encoder CUDA session warmed up successfully.");
+                }
+            }
+            self.encoder_session = Some(enc_arc);
             tracing::info!("✅ [ONNX Encoder] Encoder session ready.");
         }
         Ok(())

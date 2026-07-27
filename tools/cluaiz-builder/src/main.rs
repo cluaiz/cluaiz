@@ -1,3 +1,5 @@
+mod local_ci;
+
 use std::process::Command;
 use std::env;
 
@@ -9,6 +11,8 @@ fn print_help() {
     println!("  all               Build the entire workspace (Core + All Drivers + CLI)");
     println!("  core              Build only the Core Engine and CLI (cluaiz, engines)");
     println!("  drivers           Build all hardware drivers (llama, onnx)");
+    println!("  onnx              Build the ONNX hardware driver in isolation");
+    println!("  llama             Build the LLaMA hardware driver in isolation");
     println!("  driver <name>     Build a specific driver (e.g., 'llama' or 'onnx')");
     println!("");
     println!("Options:");
@@ -34,13 +38,17 @@ fn main() {
             "all" | "core" | "drivers" => {
                 command_type = args[i].clone();
             }
+            "onnx" | "llama" => {
+                command_type = "driver".to_string();
+                driver_name = args[i].clone();
+            }
             "driver" => {
                 command_type = "driver".to_string();
                 if i + 1 < args.len() && !args[i + 1].starts_with("--") {
                     driver_name = args[i + 1].clone();
                     i += 1;
                 } else {
-                    eprintln!("❌ Error: 'driver' command requires a driver name (e.g., llama)");
+                    eprintln!("❌ Error: 'driver' command requires a driver name (e.g., llama or onnx)");
                     std::process::exit(1);
                 }
             }
@@ -123,8 +131,26 @@ fn main() {
         _ => unreachable!(),
     }
 
-    for (name, args) in commands_to_run {
+    for (name, mut args) in commands_to_run {
+        // --- LOCAL FIRST CI ARCHITECTURE ---
+        let target_driver = if name == "Driver" {
+            driver_name.to_lowercase()
+        } else if name.starts_with("Driver: ") {
+            name.strip_prefix("Driver: ").unwrap().to_lowercase()
+        } else {
+            String::new()
+        };
+
+        if !target_driver.is_empty() {
+            let extra_args = local_ci::execute_local_ci_for_driver(&target_driver, &profile);
+            for arg in extra_args {
+                args.push(Box::leak(arg.into_boxed_str()));
+            }
+        }
+        // -----------------------------------
+
         println!("🚀 Executing [{}] -> cargo {}", name, args.join(" "));
+
         let status = Command::new("cargo")
             .args(&args)
             .status()
@@ -136,12 +162,55 @@ fn main() {
         }
     }
 
-    // Since Bootstrapper inside cluaiz.exe handles all the 1:1 artifact syncing
-    // (copying to ~/.cluaiz/engine/ and renaming to dashed-names),
-    // we do NOT manually copy files here.
-    // JSON configs (permission.json, system_control.json) are auto-generated
-    // by the engine natively upon first startup.
-    
-    println!("✅ Build Successful!");
-    println!("💡 Note: The cluaiz Bootstrapper will automatically sync these artifacts to your ~/.cluaiz directory the next time you run 'cluaiz'.");
+    // Auto-sync compiled driver DLLs directly to .cluaiz runtime folders
+    let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let engine_dir = root.join(".cluaiz").join("engine");
+    let drivers_dir = engine_dir.join("drivers");
+    let target_dir = if profile == "release" { root.join("target").join("release") } else { root.join("target").join("debug") };
+
+    let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
+
+    if engine_dir.exists() {
+        let drivers_to_sync = if !driver_name.is_empty() {
+            vec![driver_name.clone()]
+        } else {
+            vec!["onnx".to_string(), "llama".to_string()]
+        };
+
+        for d in drivers_to_sync {
+            let src_name = format!("cluaiz_{}.{}", d, ext);
+            let alt_src_name = format!("{}.{}", d, ext);
+            let src_path = if target_dir.join(&src_name).exists() {
+                target_dir.join(&src_name)
+            } else if target_dir.join(&alt_src_name).exists() {
+                target_dir.join(&alt_src_name)
+            } else {
+                continue;
+            };
+
+            let dest_name = format!("cluaiz-{}.{}", d, ext);
+            let dest_path = engine_dir.join(&dest_name);
+            
+            if std::fs::copy(&src_path, &dest_path).is_ok() {
+                println!("🧬 [cluaiz-builder] Auto-synced engine: {:?}", dest_path);
+            }
+
+            if drivers_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
+                            if fname.contains(&d) || (d == "onnx" && fname.contains("cuda")) {
+                                if std::fs::copy(&src_path, &p).is_ok() {
+                                    println!("🧬 [cluaiz-builder] Overwrote active driver DLL: {:?}", p);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("✅ Build & Sync Successful!");
 }

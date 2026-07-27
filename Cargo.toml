@@ -5,6 +5,7 @@ members = [
     "inference-engine/engines/cluaiz-shared",
     "inference-engine/engines/system-booster",
     "cmd",
+    "tools/cluaiz-builder",
     "test/dummy_plugin",
     "developer_hub",
     "interface-engines/llama",
