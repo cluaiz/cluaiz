@@ -352,14 +352,13 @@ export function setupMicVoiceInput(textarea) {
                             })
                         });
 
-                        stopDotTimer();
-
                         const contentType = res.headers.get('content-type') || '';
                         if (res.ok && contentType.includes('text/event-stream') && res.body) {
                             const reader = res.body.getReader();
                             const decoder = new TextDecoder('utf-8');
                             let transcribedText = '';
                             let buffer = '';
+                            let hasReceivedFirstToken = false;
 
                             while (true) {
                                 const { done, value } = await reader.read();
@@ -374,6 +373,10 @@ export function setupMicVoiceInput(textarea) {
                                         try {
                                             const payload = JSON.parse(jsonStr);
                                             if (payload.token && textarea) {
+                                                if (!hasReceivedFirstToken) {
+                                                    hasReceivedFirstToken = true;
+                                                    stopDotTimer(); // Stop dots & spinner ONLY when first text word token arrives
+                                                }
                                                 transcribedText += payload.token;
                                                 textarea.value = (baseText ? baseText + ' ' : '') + transcribedText.trim();
                                                 textarea.dispatchEvent(new Event('input'));

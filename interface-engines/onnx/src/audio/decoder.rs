@@ -89,7 +89,18 @@ impl OnnxEngine {
             for name in &decoder_input_names {
                 let name_str: &str = name.as_str();
 
-                if name_str.contains("_len") || name_str.contains("length") {
+                if name_str.contains("speed") || name_str.contains("scale") || name_str.contains("pitch") {
+                    if let Ok(val) = Value::from_array(([1usize], vec![1.0f32])) {
+                        tts_inputs.insert(name.clone(), val.into());
+                    }
+                } else if name_str.contains("style") {
+                    let style_vec = vec![0.0f32; 256];
+                    if let Ok(val) = Value::from_array(([1usize, 256usize], style_vec)) {
+                        tts_inputs.insert(name.clone(), val.into());
+                    } else if let Ok(val) = Value::from_array(([1usize], vec![0.0f32])) {
+                        tts_inputs.insert(name.clone(), val.into());
+                    }
+                } else if name_str.contains("_len") || name_str.contains("length") {
                     let seq_len = text_input.bytes().count();
                     if let Ok(val) = Value::from_array(([1usize], vec![seq_len as i64])) {
                         tts_inputs.insert(name.clone(), val.into());
