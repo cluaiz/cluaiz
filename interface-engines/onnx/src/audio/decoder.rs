@@ -29,20 +29,34 @@ impl OnnxEngine {
             .iter()
             .map(|i| i.name().to_string())
             .collect();
+        let decoder_output_names: Vec<String> = session_guard
+            .outputs()
+            .iter()
+            .map(|o| o.name().to_string())
+            .collect();
+
+        eprintln!("🔊 [ONNX Audio Probe] Decoder Inputs: {:?}", decoder_input_names);
+        eprintln!("🔊 [ONNX Audio Probe] Decoder Outputs: {:?}", decoder_output_names);
 
         // ─── 1. Determine Model Modality & Task ─────────────────────────────
-        let is_tts = decoder_input_names.iter().any(|n: &String| {
+        let is_asr = decoder_input_names
+            .iter()
+            .any(|n: &String| n.contains("encoder_hidden_states") || n.contains("audio_features") || n.contains("mel"));
+
+        let is_tts = !is_asr && decoder_input_names.iter().any(|n: &String| {
             n.contains("text")
                 || n.contains("input_ids")
                 || n.contains("phonemes")
-                || n.contains("style")
-        }) && !decoder_input_names
-            .iter()
-            .any(|n: &String| n.contains("encoder_hidden_states"));
+                || n.contains("speech")
+                || n.contains("feat")
+                || n.contains("input")
+        });
 
         let is_audio_embedding = decoder_input_names
             .iter()
             .any(|n: &String| n.contains("waveform") || n.contains("audio_embed"));
+
+        eprintln!("🔊 [ONNX Audio Probe] Detected Flags -> is_tts: {}, is_asr: {}, is_audio_embedding: {}", is_tts, is_asr, is_audio_embedding);
 
         // ─── 2. TTS (Text-to-Speech) Execution Graph ───────────────────────
         if is_tts {
@@ -50,37 +64,47 @@ impl OnnxEngine {
                 .or_else(|| extract_clean_text_prompt(prompt))
                 .ok_or_else(|| anyhow!("No text prompt provided for Text-to-Speech synthesis."))?;
 
+            eprintln!("🔊 [ONNX Audio Probe] Processing TTS Text Input: '{}'", text_input);
+
             let mut tts_inputs: HashMap<String, Value> = HashMap::new();
 
             for name in &decoder_input_names {
                 let name_str: &str = name.as_str();
-                if name_str.contains("input_ids")
-                    || name_str.contains("tokens")
-                    || name_str.contains("text")
-                {
-                    let token_ids: Vec<i64> = text_input.bytes().map(|b| b as i64).collect();
-                    let seq_len = token_ids.len();
-                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids)) {
+
+                if name_str.contains("_len") || name_str.contains("length") {
+                    let seq_len = text_input.bytes().count();
+                    if let Ok(val) = Value::from_array(([1usize], vec![seq_len as i64])) {
                         tts_inputs.insert(name.clone(), val.into());
                     }
-                } else if name_str.contains("style") || name_str.contains("voice") {
-                    let dummy_style = vec![0.0f32; 128];
-                    if let Ok(val) = Value::from_array(([1usize, 128], dummy_style)) {
+                } else if name_str == "input" || name_str.contains("speech") || name_str.contains("audio") || name_str.contains("feat") {
+                    let token_ids_f32: Vec<f32> = text_input.bytes().map(|b| b as f32).collect();
+                    let seq_len = token_ids_f32.len();
+                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_f32)) {
                         tts_inputs.insert(name.clone(), val.into());
                     }
-                } else if name_str.contains("speed") {
-                    if let Ok(val) = Value::from_array(([1usize], vec![1.0f32])) {
+                } else {
+                    let token_ids_i64: Vec<i64> = text_input.bytes().map(|b| b as i64).collect();
+                    let seq_len = token_ids_i64.len();
+                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_i64)) {
                         tts_inputs.insert(name.clone(), val.into());
                     }
                 }
             }
 
+            eprintln!("🔊 [ONNX Audio Probe] Input Tensor Map Keys: {:?}", tts_inputs.keys().collect::<Vec<_>>());
+
             let output_tensors = session_guard
                 .run(tts_inputs)
                 .map_err(|e| anyhow!("TTS ONNX graph execution failed: {}", e))?;
 
+            eprintln!("🔊 [ONNX Audio Probe] Output Tensor Map Keys: {:?}", output_tensors.keys().collect::<Vec<_>>());
+
             if let Some(val) = output_tensors.values().next() {
-                if let Ok((_shape, wav_tensor)) = val.try_extract_tensor::<f32>() {
+                if let Ok((shape, wav_tensor)) = val.try_extract_tensor::<f32>() {
+                    eprintln!("🔊 [ONNX Audio Probe] Extracted f32 audio tensor shape: {:?}, samples count: {}", shape, wav_tensor.len());
+                    if wav_tensor.is_empty() {
+                        return Err(anyhow!("ONNX model output f32 tensor was empty (0 samples)."));
+                    }
                     use base64::Engine;
                     let raw_bytes: Vec<u8> = wav_tensor
                         .iter()
@@ -88,7 +112,11 @@ impl OnnxEngine {
                         .collect();
                     let b64 = base64::engine::general_purpose::STANDARD.encode(&raw_bytes);
                     return Ok(format!("data:audio/wav;base64,{}", b64));
+                } else {
+                    eprintln!("⚠️ [ONNX Audio Probe] Failed to extract f32 tensor from output.");
                 }
+            } else {
+                eprintln!("⚠️ [ONNX Audio Probe] output_tensors was empty!");
             }
             return Err(anyhow!("TTS graph produced empty waveform output."));
         }

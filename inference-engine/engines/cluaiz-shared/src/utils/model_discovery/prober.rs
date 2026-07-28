@@ -365,6 +365,11 @@ pub fn probe_weight_binary(weight_path: &Path, format_type: &str) -> BinaryProbe
                             }
                         }
                     }
+                    if let Some(task_str) = json.get("task").or_else(|| json.get("pipeline_tag")).and_then(|v| v.as_str()) {
+                        if !res.explicit_tasks.contains(&task_str.to_string()) {
+                            res.explicit_tasks.push(task_str.to_string());
+                        }
+                    }
                     if let Some(arch) = json.get("architectures").and_then(|v| v.as_array()).and_then(|arr| arr.first()).and_then(|v| v.as_str()) {
                         let arch_lower = arch.to_lowercase();
                         if arch_lower.contains("gemma4")

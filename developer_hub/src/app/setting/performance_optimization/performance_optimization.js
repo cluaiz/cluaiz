@@ -874,6 +874,7 @@ export async function mount(container) {
                         const probedHeaderData = {
                             model_id: selectedModelId,
                             architecture: meta.architecture || "Unknown",
+                            supported_tasks: tasks,
                             format: format,
                             quantization: quant,
                             bit_precision: bitDepth,

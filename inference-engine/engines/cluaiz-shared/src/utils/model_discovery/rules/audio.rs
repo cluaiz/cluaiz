@@ -12,6 +12,10 @@ pub fn evaluate_audio_rules(
         || arch_lower.contains("whisper")
         || arch_lower.contains("bark")
         || arch_lower.contains("kokoro")
+        || arch_lower.contains("cosyvoice")
+        || arch_lower.contains("chattts")
+        || arch_lower.contains("parler")
+        || arch_lower.contains("fastspeech")
         || arch_lower.contains("tts")
         || is_gemma4
     {
@@ -23,6 +27,11 @@ pub fn evaluate_audio_rules(
             || arch_lower.contains("piper")
             || arch_lower.contains("vits")
             || arch_lower.contains("kokoro")
+            || arch_lower.contains("cosyvoice")
+            || arch_lower.contains("chattts")
+            || arch_lower.contains("parler")
+            || arch_lower.contains("fastspeech")
+            || arch_lower.contains("tts")
         {
             caps.is_tts = true;
         }

@@ -221,9 +221,16 @@ pub async fn inspect_raw_header(
             if is_gguf {
                 match cluaiz_shared::utils::GGUFProber::probe(&model_file) {
                     Ok((metadata, tensor_infos, tensor_count)) => {
+                        let reg = cluaiz_shared::utils::ModelRegistry::load();
+                        let supported_tasks = reg.installed_models.get(&model_id)
+                            .or_else(|| reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase()))
+                            .map(|e| e.supported_tasks.clone())
+                            .unwrap_or_default();
+
                         return Json(json!({
                             "status": "success",
                             "model_id": model_id,
+                            "supported_tasks": supported_tasks,
                             "file_path": model_file.to_string_lossy().to_string(),
                             "format": "GGUF",
                             "tensor_count": tensor_count,
@@ -265,9 +272,16 @@ pub async fn inspect_raw_header(
                     .and_then(|s| serde_json::from_str(&s).ok())
                     .unwrap_or(Value::Null);
 
+                let reg = cluaiz_shared::utils::ModelRegistry::load();
+                let supported_tasks = reg.installed_models.get(&model_id)
+                    .or_else(|| reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase()))
+                    .map(|e| e.supported_tasks.clone())
+                    .unwrap_or_default();
+
                 return Json(json!({
                     "status": "success",
                     "model_id": model_id,
+                    "supported_tasks": supported_tasks,
                     "file_path": model_file.to_string_lossy().to_string(),
                     "format": "ONNX",
                     "file_size_mb": format!("{:.2}", file_size_mb),

@@ -128,8 +128,8 @@ impl cluaizInference for OnnxEngine {
         // ── Audio vs Text routing ─────────────────────────────────────────────
         // Route by prompt prefix, NOT by tokenizer presence.
         // Whisper loads tokenizer.json too, so we can't rely on tokenizer==None.
-        if prompt.starts_with("[AUDIO_INPUT:") {
-            tracing::info!("🎧 [ONNX Stream] Audio prompt detected — routing to execute_audio_graph.");
+        if prompt.starts_with("[AUDIO_INPUT:") || prompt.starts_with("[TEXT_INPUT]") || prompt.contains("[TEXT_INPUT]") {
+            tracing::info!("🎧 [ONNX Stream] Audio/TTS prompt detected — routing to execute_audio_graph.");
             match self.execute_audio_graph_streaming(prompt, Some(&mut callback)) {
                 Ok(_out) => {
                     return Ok(());
