@@ -246,21 +246,29 @@ pub async fn execute_audio(
         ).into_response();
     }
 
-    // 4. Neural Execution & Dispatch
-    let primary_file_name = target_entry
-        .files
-        .iter()
-        .find(|f| f.is_primary)
-        .map(|f| f.name.clone())
-        .unwrap_or_else(|| {
-            target_entry
-                .files
-                .first()
-                .map(|f| f.name.clone())
-                .unwrap_or_default()
-        });
+    // 4. Neural Execution & Dispatch with Multi-ONNX Model Fallback Probe
+    let mut onnx_candidates: Vec<std::path::PathBuf> = Vec::new();
 
-    let model_path = std::path::PathBuf::from(&target_entry.local_dir).join(primary_file_name);
+    // Primary ONNX file candidate first
+    if let Some(primary_file) = target_entry.files.iter().find(|f| f.is_primary) {
+        onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&primary_file.name));
+    }
+
+    // Add remaining ONNX files in model directory as fallbacks
+    for file in &target_entry.files {
+        let p = std::path::PathBuf::from(&target_entry.local_dir).join(&file.name);
+        if !onnx_candidates.contains(&p) && file.name.ends_with(".onnx") {
+            onnx_candidates.push(p);
+        }
+    }
+
+    if onnx_candidates.is_empty() {
+        if let Some(first) = target_entry.files.first() {
+            onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&first.name));
+        }
+    }
+
+    let model_path = onnx_candidates[0].clone();
     let instruction = payload
         .instruction
         .as_deref()
@@ -283,10 +291,27 @@ pub async fn execute_audio(
 
     let should_stream = payload.stream.unwrap_or(true);
 
-    let execution_res = state
+    // Attempt execution on primary ONNX file, falling back to secondary candidates if graph loading/rank errors occur
+    let mut execution_res = state
         .dispatcher
-        .dispatch_stream(&prompt, true, Some(model_path))
+        .dispatch_stream(&prompt, true, Some(model_path.clone()))
         .await;
+
+    if let EngineResponse::Error(ref err_msg) = execution_res {
+        if err_msg.contains("Invalid rank") || err_msg.contains("failed") || err_msg.contains("Graph") || err_msg.contains("No text prompt") {
+            for candidate in onnx_candidates.iter().skip(1) {
+                tracing::warn!("⚠️ [Audio Handler] ONNX execution failed on {:?}. Attempting fallback probe to {:?}", model_path, candidate);
+                let fallback_res = state
+                    .dispatcher
+                    .dispatch_stream(&prompt, true, Some(candidate.clone()))
+                    .await;
+                if !matches!(fallback_res, EngineResponse::Error(_)) {
+                    execution_res = fallback_res;
+                    break;
+                }
+            }
+        }
+    }
 
     if should_stream {
         if let EngineResponse::TokenStream(rx) = execution_res {
@@ -343,10 +368,10 @@ pub async fn execute_audio(
             let cleaned = collected.trim().to_string();
             if cleaned.starts_with("Error:") {
                 (Some(cleaned), String::new(), vec![])
-            } else if cleaned.is_empty() {
-                (Some("Error: Audio Kernel produced empty output.".to_string()), String::new(), vec![])
-            } else {
+            } else if !cleaned.is_empty() {
                 (None, cleaned, vec![])
+            } else {
+                (Some("Error: Audio Kernel produced empty output.".to_string()), String::new(), vec![])
             }
         }
         EngineResponse::Error(err_msg) => (Some(err_msg), String::new(), vec![]),
@@ -382,10 +407,10 @@ pub async fn execute_audio(
         ).into_response();
     }
 
-    let audio_payload = if is_tts_model {
-        Some(generate_tts_audio_base64(&payload.input_source.data))
+    let (final_text, final_audio_data) = if is_tts_model {
+        (None, Some(output_text))
     } else {
-        None
+        (Some(output_text), None)
     };
 
     let include_timestamps = payload
@@ -406,8 +431,8 @@ pub async fn execute_audio(
         model: target_model_id,
         info: None,
         output: AudioOutput {
-            text: Some(output_text),
-            audio_data: audio_payload,
+            text: final_text,
+            audio_data: final_audio_data,
             segments: final_segments,
         },
     };

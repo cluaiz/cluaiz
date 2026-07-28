@@ -131,7 +131,12 @@ impl cluaizInference for OnnxEngine {
         if prompt.starts_with("[AUDIO_INPUT:") || prompt.starts_with("[TEXT_INPUT]") || prompt.contains("[TEXT_INPUT]") {
             tracing::info!("🎧 [ONNX Stream] Audio/TTS prompt detected — routing to execute_audio_graph.");
             match self.execute_audio_graph_streaming(prompt, Some(&mut callback)) {
-                Ok(_out) => {
+                Ok(audio_output) => {
+                    // Send the final audio payload (e.g. data:audio/wav;base64,...) through the callback
+                    // so the dispatcher receives it and the API handler can return it to the client.
+                    if !audio_output.is_empty() {
+                        callback(audio_output);
+                    }
                     return Ok(());
                 }
                 Err(e) => {

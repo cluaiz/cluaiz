@@ -66,6 +66,24 @@ impl OnnxEngine {
 
             eprintln!("🔊 [ONNX Audio Probe] Processing TTS Text Input: '{}'", text_input);
 
+            // Check if model is Flow Estimator (CosyVoice flow matching graph)
+            let is_flow_estimator = decoder_input_names.iter().any(|n| n == "cond" || n == "spks" || n == "mu");
+
+            if is_flow_estimator {
+                eprintln!("🔊 [ONNX Native Pipeline] Flow Estimator Graph Detected. Executing Flow-Matching Sampler...");
+                let seq_len = (text_input.bytes().count() * 4).max(30);
+                let mel_data = super::flow_matching::FlowMatchingSampler::sample_mel_features(&mut session_guard, seq_len, 10)?;
+                
+                eprintln!("🔊 [ONNX Native Pipeline] Flow Mel-Spectrogram Generated. Synthesizing PCM WAV via Native Vocoder...");
+                let vocoder = super::vocoder::NativeVocoder::default();
+                let pcm_samples = vocoder.synthesize_mel_to_pcm(&mel_data, seq_len);
+                let wav_bytes = vocoder.encode_wav_bytes(&pcm_samples);
+
+                use base64::Engine;
+                let b64 = base64::engine::general_purpose::STANDARD.encode(&wav_bytes);
+                return Ok(format!("data:audio/wav;base64,{}", b64));
+            }
+
             let mut tts_inputs: HashMap<String, Value> = HashMap::new();
 
             for name in &decoder_input_names {
@@ -79,13 +97,34 @@ impl OnnxEngine {
                 } else if name_str == "input" || name_str.contains("speech") || name_str.contains("audio") || name_str.contains("feat") {
                     let token_ids_f32: Vec<f32> = text_input.bytes().map(|b| b as f32).collect();
                     let seq_len = token_ids_f32.len();
-                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_f32)) {
+                    
+                    // Construct both 80-bin layouts: [1, seq_len, 80] and [1, 80, seq_len]
+                    let mut mel_matrix_1 = vec![0.0f32; 1 * seq_len * 80];
+                    for i in 0..seq_len {
+                        mel_matrix_1[i * 80] = token_ids_f32[i];
+                    }
+
+                    if let Ok(val) = Value::from_array(([1usize, seq_len, 80usize], mel_matrix_1)) {
                         tts_inputs.insert(name.clone(), val.into());
+                    } else {
+                        let mut mel_matrix_2 = vec![0.0f32; 1 * 80 * seq_len];
+                        for row in 0..80 {
+                            for col in 0..seq_len {
+                                mel_matrix_2[row * seq_len + col] = token_ids_f32[col];
+                            }
+                        }
+                        if let Ok(val) = Value::from_array(([1usize, 80usize, seq_len], mel_matrix_2)) {
+                            tts_inputs.insert(name.clone(), val.into());
+                        } else if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_f32)) {
+                            tts_inputs.insert(name.clone(), val.into());
+                        }
                     }
                 } else {
                     let token_ids_i64: Vec<i64> = text_input.bytes().map(|b| b as i64).collect();
                     let seq_len = token_ids_i64.len();
-                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_i64)) {
+                    if let Ok(val) = Value::from_array(([1usize, seq_len], token_ids_i64.clone())) {
+                        tts_inputs.insert(name.clone(), val.into());
+                    } else if let Ok(val) = Value::from_array(([1usize, 1usize, seq_len], token_ids_i64)) {
                         tts_inputs.insert(name.clone(), val.into());
                     }
                 }
@@ -105,18 +144,19 @@ impl OnnxEngine {
                     if wav_tensor.is_empty() {
                         return Err(anyhow!("ONNX model output f32 tensor was empty (0 samples)."));
                     }
+
+                    let vocoder = super::vocoder::NativeVocoder::default();
+                    let pcm_samples = if shape.len() >= 2 && shape[1] == 80 {
+                        vocoder.synthesize_mel_to_pcm(&wav_tensor, shape[shape.len() - 1] as usize)
+                    } else {
+                        wav_tensor.to_vec()
+                    };
+
+                    let wav_bytes = vocoder.encode_wav_bytes(&pcm_samples);
                     use base64::Engine;
-                    let raw_bytes: Vec<u8> = wav_tensor
-                        .iter()
-                        .flat_map(|f: &f32| f.to_le_bytes())
-                        .collect();
-                    let b64 = base64::engine::general_purpose::STANDARD.encode(&raw_bytes);
+                    let b64 = base64::engine::general_purpose::STANDARD.encode(&wav_bytes);
                     return Ok(format!("data:audio/wav;base64,{}", b64));
-                } else {
-                    eprintln!("⚠️ [ONNX Audio Probe] Failed to extract f32 tensor from output.");
                 }
-            } else {
-                eprintln!("⚠️ [ONNX Audio Probe] output_tensors was empty!");
             }
             return Err(anyhow!("TTS graph produced empty waveform output."));
         }

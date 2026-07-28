@@ -36,15 +36,15 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
     let mut hint = Hint::new();
     let lower_path = audio_path_or_url.to_lowercase();
 
-    if audio_bytes.len() >= 4 {
+    if lower_path.ends_with(".webm") || lower_path.contains("audio/webm") || lower_path.contains("codecs=opus") {
+        hint.with_extension("mkv");
+    } else if audio_bytes.len() >= 4 {
         if &audio_bytes[0..4] == b"RIFF" {
             hint.with_extension("wav");
         } else if &audio_bytes[0..4] == b"\x1a\x45\xdf\xa3" {
             hint.with_extension("mkv");
         } else if &audio_bytes[0..3] == b"ID3" || (audio_bytes[0] == 0xFF && (audio_bytes[1] & 0xE0) == 0xE0) {
             hint.with_extension("mp3");
-        } else if lower_path.contains("codecs=opus") || lower_path.contains("audio/opus") || lower_path.ends_with(".webm") || lower_path.contains("audio/webm") {
-            hint.with_extension("mkv");
         } else if lower_path.ends_with(".m4a") || lower_path.ends_with(".mp4") || lower_path.contains("audio/mp4") {
             hint.with_extension("m4a");
         } else if lower_path.ends_with(".flac") {
@@ -57,7 +57,10 @@ pub fn load_audio_to_pcm(audio_path_or_url: &str, config: &AudioConfig) -> Resul
     let source: Box<dyn MediaSource> = Box::new(Cursor::new(audio_bytes.clone()));
     let mss = MediaSourceStream::new(source, Default::default());
 
-    let meta_opts: MetadataOptions = Default::default();
+    let meta_opts = MetadataOptions {
+        limit_metadata_bytes: symphonia::core::meta::Limit::Maximum(0),
+        limit_visual_bytes: symphonia::core::meta::Limit::Maximum(0),
+    };
     let fmt_opts: FormatOptions = FormatOptions {
         enable_gapless: false,
         ..Default::default()
