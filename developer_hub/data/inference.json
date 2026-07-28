@@ -401,6 +401,13 @@
           }
         },
         {
+          "name": "stream",
+          "type": "boolean",
+          "req": false,
+          "desc": "Enable real-time Server-Sent Events (SSE) token streaming (true) or return single full JSON payload (false).",
+          "default": false
+        },
+        {
           "name": "parameters",
           "type": "object",
           "req": false,
@@ -418,7 +425,7 @@
           }
         }
       ],
-      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"auto\",\n  \"instruction\": \"Transcribe this audio cleanly.\",\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://example.com/audio.mp3\"\n  },\n  \"keep_alive\": null,\n  \"parameters\": {\n    \"temperature\": 0.0,\n    \"language\": \"\",\n    \"speed\": 1.0,\n    \"voice_id\": \"alloy\",\n    \"translate_to\": \"\",\n    \"timestamps\": false,\n    \"beam_size\": 5,\n    \"vad_filter\": true,\n    \"speaker_labels\": false\n  }\n}",
+      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"auto\",\n  \"instruction\": \"Transcribe this audio cleanly.\",\n  \"stream\": true,\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://example.com/audio.mp3\"\n  },\n  \"keep_alive\": null,\n  \"parameters\": {\n    \"temperature\": 0.0,\n    \"language\": \"\",\n    \"speed\": 1.0,\n    \"voice_id\": \"alloy\",\n    \"translate_to\": \"\",\n    \"timestamps\": false,\n    \"beam_size\": 5,\n    \"vad_filter\": true,\n    \"speaker_labels\": false\n  }\n}",
       "response": "{\n  \"status\": \"success\",\n  \"task\": \"speech_to_text\",\n  \"model\": \"whisper-large-v3-turbo\",\n  \"info\": null,\n  \"output\": {\n    \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n    \"audio_data\": null,\n    \"segments\": [\n      {\n        \"start\": 0.0,\n        \"end\": 4.2,\n        \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n        \"speaker\": \"Speaker 1\"\n      }\n    ]\n  }\n}",
       "examples": [
         {

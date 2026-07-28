@@ -308,6 +308,7 @@ export function setupMicVoiceInput(textarea) {
                                 model: 'auto',
                                 task: 'speech_to_text',
                                 keep_alive: -1,
+                                stream: true,
                                 instruction: 'Transcribe the audio accurately in the exact language spoken by the user.',
                                 input_source: {
                                     type: 'base64',
@@ -321,26 +322,45 @@ export function setupMicVoiceInput(textarea) {
 
                         stopDotTimer();
 
-                        if (res.ok) {
+                        const contentType = res.headers.get('content-type') || '';
+                        if (res.ok && contentType.includes('text/event-stream') && res.body) {
+                            const reader = res.body.getReader();
+                            const decoder = new TextDecoder('utf-8');
+                            let currentText = priorText ? priorText + ' ' : '';
+                            let buffer = '';
+                            if (textarea) textarea.value = currentText;
+
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                buffer += decoder.decode(value, { stream: true });
+                                const lines = buffer.split('\n');
+                                buffer = lines.pop() || '';
+                                for (const line of lines) {
+                                    const trimmed = line.trim();
+                                    if (trimmed.startsWith('data:')) {
+                                        const jsonStr = trimmed.slice(5).trim();
+                                        try {
+                                            const payload = JSON.parse(jsonStr);
+                                            if (payload.token && textarea) {
+                                                currentText += payload.token;
+                                                textarea.value = currentText;
+                                                textarea.dispatchEvent(new Event('input'));
+                                                textarea.scrollTop = textarea.scrollHeight;
+                                            }
+                                        } catch (e) {
+                                            // Non-JSON SSE line
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (res.ok) {
                             const out = await res.json();
                             const transcriptText = (typeof out.output === 'string' ? out.output : (out.output?.text || out.text || '')).trim();
                             if (textarea && transcriptText) {
-                                let currentText = priorText ? priorText + ' ' : '';
-                                let charIdx = 0;
-                                textarea.value = currentText;
-                                const typeInterval = setInterval(() => {
-                                    if (charIdx < transcriptText.length) {
-                                        currentText += transcriptText.charAt(charIdx);
-                                        textarea.value = currentText;
-                                        textarea.dispatchEvent(new Event('input'));
-                                        textarea.scrollTop = textarea.scrollHeight;
-                                        charIdx++;
-                                    } else {
-                                        clearInterval(typeInterval);
-                                    }
-                                }, 12);
-                            } else if (textarea) {
-                                textarea.value = priorText;
+                                textarea.value = (priorText ? priorText + ' ' : '') + transcriptText;
+                                textarea.dispatchEvent(new Event('input'));
+                                textarea.scrollTop = textarea.scrollHeight;
                             }
                         } else {
                             const errJson = await res.json().catch(() => ({}));

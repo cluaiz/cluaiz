@@ -130,9 +130,8 @@ impl cluaizInference for OnnxEngine {
         // Whisper loads tokenizer.json too, so we can't rely on tokenizer==None.
         if prompt.starts_with("[AUDIO_INPUT:") {
             tracing::info!("🎧 [ONNX Stream] Audio prompt detected — routing to execute_audio_graph.");
-            match self.execute_audio_graph(prompt) {
-                Ok(out) => {
-                    callback(out);
+            match self.execute_audio_graph_streaming(prompt, Some(&mut callback)) {
+                Ok(_out) => {
                     return Ok(());
                 }
                 Err(e) => {

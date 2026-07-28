@@ -828,21 +828,60 @@ export async function sendRequest() {
     const start = performance.now();
     try {
         const response = await fetch(url, options);
-        const time = (performance.now() - start).toFixed(2);
+        const headersTime = (performance.now() - start).toFixed(2);
         const statusClass = response.ok ? 'status-ok' : 'status-err';
+        const contentType = response.headers.get('content-type') || '';
+        const isSse = contentType.includes('text/event-stream');
 
-        const text = await response.text();
-        let size = new Blob([text]).size;
+        if (isSse && response.body) {
+            const initialTtft = (headersTime / 1000).toFixed(2) + 's';
+            resStatus.innerHTML = `<span class="${statusClass}">Status: ${response.status} ${response.statusText}</span><span>TTFT: ${initialTtft}</span><span>Total: ...</span><span>Size: ... B</span>`;
 
-        resStatus.innerHTML = `<span class="${statusClass}">Status: ${response.status} ${response.statusText}</span><span>Time: ${time} ms</span><span>Size: ${size} B</span>`;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let accumulatedText = '';
+            let parsedTotalSecs = null;
+            let parsedTtftSecs = null;
 
-        try {
-            const json = JSON.parse(text);
-            resBody.textContent = JSON.stringify(json, null, 2);
-            resBody.style.color = "#a5d6ff";
-        } catch (e) {
-            resBody.textContent = text;
-            resBody.style.color = "#a5d6ff";
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunkStr = decoder.decode(value, { stream: true });
+                accumulatedText += chunkStr;
+                resBody.textContent = accumulatedText;
+                resBody.style.color = "#a5d6ff";
+
+                if (chunkStr.includes('"metrics"')) {
+                    const matchTotal = chunkStr.match(/"total_execution_time_sec"\s*:\s*"([^"]+)"/);
+                    if (matchTotal && matchTotal[1]) {
+                        parsedTotalSecs = matchTotal[1];
+                    }
+                    const matchTtft = chunkStr.match(/"ttft_ms"\s*:\s*([0-9.]+)/);
+                    if (matchTtft && matchTtft[1]) {
+                        parsedTtftSecs = (parseFloat(matchTtft[1]) / 1000).toFixed(2) + 's';
+                    }
+                }
+            }
+
+            const finalTotal = parsedTotalSecs || (((performance.now() - start) / 1000).toFixed(2) + 's');
+            const finalTtft = parsedTtftSecs || initialTtft;
+            const finalSize = new Blob([accumulatedText]).size;
+            resStatus.innerHTML = `<span class="${statusClass}">Status: ${response.status} ${response.statusText}</span><span>TTFT: ${finalTtft}</span><span>Total: ${finalTotal}</span><span>Size: ${finalSize} B</span>`;
+        } else {
+            const text = await response.text();
+            const time = (performance.now() - start).toFixed(2);
+            let size = new Blob([text]).size;
+
+            resStatus.innerHTML = `<span class="${statusClass}">Status: ${response.status} ${response.statusText}</span><span>Time: ${time} ms</span><span>Size: ${size} B</span>`;
+
+            try {
+                const json = JSON.parse(text);
+                resBody.textContent = JSON.stringify(json, null, 2);
+                resBody.style.color = "#a5d6ff";
+            } catch (e) {
+                resBody.textContent = text;
+                resBody.style.color = "#a5d6ff";
+            }
         }
     } catch (e) {
         resStatus.innerHTML = `<span class="status-err">Error</span><span>Time: - ms</span><span>Size: - B</span>`;

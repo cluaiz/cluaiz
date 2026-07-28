@@ -8,6 +8,14 @@ use std::collections::HashMap;
 
 impl OnnxEngine {
     pub fn execute_audio_graph(&self, prompt: &str) -> Result<String> {
+        self.execute_audio_graph_streaming(prompt, None)
+    }
+
+    pub fn execute_audio_graph_streaming(
+        &self,
+        prompt: &str,
+        mut callback: Option<&mut (dyn FnMut(String) -> bool + Send)>,
+    ) -> Result<String> {
         let session_arc = self
             .acquire_session()
             .map_err(|e| anyhow!("Failed to acquire audio session: {}", e))?;
@@ -115,8 +123,8 @@ impl OnnxEngine {
         }
 
         let t_mel = std::time::Instant::now();
-        let mel_flat = compute_log_mel_spectrogram(&pcm_samples, &config);
-        println!("⏱️ [BENCHMARK] Step B - Mel Spectrogram Compute Time: {:?}", t_mel.elapsed());
+        let (mel_flat, actual_frames) = compute_log_mel_spectrogram(&pcm_samples, &config);
+        println!("⏱️ [BENCHMARK] Step B - Mel Spectrogram Compute Time: {:?} (actual_frames: {}, padded_to: {})", t_mel.elapsed(), actual_frames, config.max_frames);
         let shape_vec = vec![1usize, config.n_mels, config.max_frames];
 
         let mut real_encoder_hidden_states: Option<(Vec<usize>, Vec<f32>)> = None;
@@ -358,6 +366,16 @@ impl OnnxEngine {
             speech_tokens_set.insert(next_tok);
             current_decoder_ids.push(next_tok as i64);
             total_step_runs += 1;
+
+            if let Some(cb) = callback.as_mut() {
+                if let Some(tokenizer) = &self.tokenizer {
+                    if let Ok(piece) = tokenizer.decode(&[next_tok], false) {
+                        if !piece.is_empty() {
+                            cb(piece);
+                        }
+                    }
+                }
+            }
         }
 
         let dec_elapsed = t_dec_loop.elapsed();

@@ -1,7 +1,13 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Json, Sse, sse::Event},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use std::convert::Infallible;
+use futures::stream::Stream;
 use crate::state::AppState;
 use dispatcher::EngineResponse;
 
@@ -32,6 +38,7 @@ pub struct AudioExecuteRequest {
     pub instruction: Option<String>,
     pub input_source: InputSource,
     pub parameters: Option<AudioParameters>,
+    pub stream: Option<bool>, // Enable real-time SSE token streaming
     pub keep_alive: Option<i32>, // Minute retention interval (0 = instant unload, -1 = forever, N = N minutes)
 }
 
@@ -274,10 +281,52 @@ pub async fn execute_audio(
         format!("[TEXT_INPUT] {}", payload.input_source.data)
     };
 
+    let should_stream = payload.stream.unwrap_or(true);
+
     let execution_res = state
         .dispatcher
         .dispatch_stream(&prompt, true, Some(model_path))
         .await;
+
+    if should_stream {
+        if let EngineResponse::TokenStream(rx) = execution_res {
+            let stream_start = std::time::Instant::now();
+            let stream = async_stream::stream! {
+                let mut rx = rx;
+                let mut first_token_time: Option<f64> = None;
+                while let Some(chunk) = rx.recv().await {
+                    if first_token_time.is_none() && !chunk.is_empty() {
+                        first_token_time = Some(stream_start.elapsed().as_secs_f64() * 1000.0);
+                    }
+                    if chunk.contains("\n[DONE]\n") {
+                        let text_before = chunk.replace("\n[DONE]\n", "");
+                        if !text_before.is_empty() {
+                            let data = json!({ "token": text_before, "status": "chunk" }).to_string();
+                            yield Ok::<Event, Infallible>(Event::default().data(data));
+                        }
+                        let total_elapsed = stream_start.elapsed();
+                        let ttft = first_token_time.unwrap_or_else(|| total_elapsed.as_secs_f64() * 1000.0);
+                        let done_data = json!({
+                            "token": "",
+                            "status": "done",
+                            "metrics": {
+                                "ttft_ms": (ttft * 10.0).round() / 10.0,
+                                "total_execution_time_ms": (total_elapsed.as_secs_f64() * 1000.0 * 10.0).round() / 10.0,
+                                "total_execution_time_sec": format!("{:.2}s", total_elapsed.as_secs_f64())
+                            }
+                        }).to_string();
+                        yield Ok::<Event, Infallible>(Event::default().data(done_data));
+                        break;
+                    }
+                    if !chunk.is_empty() {
+                        let data = json!({ "token": chunk, "status": "chunk" }).to_string();
+                        yield Ok::<Event, Infallible>(Event::default().data(data));
+                    }
+                }
+            };
+            return Sse::new(stream).into_response();
+        }
+    }
 
     let (execution_error, output_text, extracted_segments): (Option<String>, String, Vec<AudioSegment>) = match execution_res {
         EngineResponse::FinalResult(txt) if !txt.trim().is_empty() && !txt.starts_with("Error:") => (None, txt, vec![]),
