@@ -1,3 +1,5 @@
+import { playTtsAudio, setTtsButtonIcon, showToastNotification } from '../chat_input/voice_input.js';
+
 // Conversation history for context
 const conversationHistory = [];
 
@@ -767,11 +769,24 @@ function renderTelemetry(container, usage, fullContent) {
 
     telemetryEl.innerHTML = `<span>⚡ ${tps} TPS</span><span>⏱️ ${time}s</span><span>🚀 ${ttft}s TTFT</span><span>🪙 ${tokens} Tokens</span>${hardwareHtml}`;
 
-    // Add copy button here
+    // Add action buttons (TTS Read Aloud & Copy)
     if (fullContent) {
+        const actionGroup = document.createElement('div');
+        actionGroup.style.cssText = "display: flex; align-items: center; gap: 6px; margin-left: auto;";
+
+        // TTS Sound Button
+        const soundBtn = document.createElement('button');
+        soundBtn.className = "tts-speak-btn";
+        soundBtn.style.cssText = "background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s;";
+        setTtsButtonIcon(soundBtn, 'idle');
+        soundBtn.addEventListener('click', () => {
+            playTtsAudio(fullContent, soundBtn);
+        });
+
+        // Copy Button
         const copyBtn = document.createElement('button');
         copyBtn.title = "Copy text";
-        copyBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #9ca3af; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s; margin-left: auto;";
+        copyBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #9ca3af; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s;";
         copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
         
         copyBtn.addEventListener('click', () => {
@@ -781,7 +796,14 @@ function renderTelemetry(container, usage, fullContent) {
                 setTimeout(() => copyBtn.innerHTML = originalSvg, 2000);
             });
         });
-        telemetryEl.appendChild(copyBtn);
+
+        actionGroup.appendChild(soundBtn);
+        actionGroup.appendChild(copyBtn);
+        telemetryEl.appendChild(actionGroup);
+
+        window.addEventListener('audio:capabilities_updated', () => {
+            setTtsButtonIcon(soundBtn, 'idle');
+        });
     }
 }
 

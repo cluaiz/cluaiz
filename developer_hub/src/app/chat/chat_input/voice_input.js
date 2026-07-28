@@ -1,25 +1,51 @@
-// ─── Voice Input Component (Pure Bulk Audio Recording & Engine STT Dispatcher) ───
+// ─── Voice & Audio Engine Component (STT & TTS Dynamic Integration) ───
 
-let activeAudioModelId = null;
+export let activeSttModel = null;
+export let activeTtsModel = null;
+
+let currentAudioPlayer = null;
+let currentPlayingBtn = null;
+let recordingBaseText = '';
 
 export function checkAudioModelAndToggleMic(installedModels) {
     const installed = Array.isArray(installedModels) ? installedModels : Object.values(installedModels || {});
 
-    // Clean API schema check using model registry capabilities & supported_tasks
-    const audioModel = installed.find(m => {
-        const isAudioCategory = m.category === 'audio';
+    // Dynamic STT Model Detection (Whisper, etc.)
+    activeSttModel = installed.find(m => {
         const tasks = m.capabilities?.supported_tasks || m.capabilities?.explicit_tasks || m.supported_tasks || [];
-        return isAudioCategory || tasks.includes('speech_to_text');
-    });
+        const id = (m.id || '').toLowerCase();
+        const cat = (m.category || '').toLowerCase();
+        return tasks.includes('speech_to_text') || tasks.includes('speech_translation') || id.includes('whisper') || (cat === 'audio' && !tasks.includes('text_to_speech'));
+    }) || null;
 
-    if (audioModel) {
-        activeAudioModelId = audioModel.id;
-    }
+    // Dynamic TTS Model Detection (CosyVoice, Kokoro, etc.)
+    activeTtsModel = installed.find(m => {
+        const tasks = m.capabilities?.supported_tasks || m.capabilities?.explicit_tasks || m.supported_tasks || [];
+        const id = (m.id || '').toLowerCase();
+        return tasks.includes('text_to_speech') || tasks.includes('music_generation') || id.includes('cosyvoice') || id.includes('kokoro');
+    }) || null;
 
     const micWrapper = document.getElementById('mic-wrapper');
+    const btnMic = document.getElementById('btn-mic');
+
     if (micWrapper) {
-        micWrapper.style.display = audioModel ? 'flex' : 'none';
+        micWrapper.style.display = 'flex'; // Keep mic wrapper visible
+        if (btnMic) {
+            if (activeSttModel) {
+                btnMic.style.opacity = '1';
+                btnMic.style.cursor = 'pointer';
+                btnMic.setAttribute('title', `Voice Input (STT Model: ${activeSttModel.id})`);
+            } else {
+                btnMic.style.opacity = '0.5';
+                btnMic.setAttribute('title', 'Speech-to-Text (STT) model not installed in model_registry.json (Click for info)');
+            }
+        }
     }
+
+    // Dispatch global event so UI components can re-evaluate audio icons
+    window.dispatchEvent(new CustomEvent('audio:capabilities_updated', {
+        detail: { sttModel: activeSttModel, ttsModel: activeTtsModel }
+    }));
 }
 
 export function setupMicVoiceInput(textarea) {
@@ -191,6 +217,11 @@ export function setupMicVoiceInput(textarea) {
             e.stopPropagation();
         }
 
+        if (!activeSttModel) {
+            showToastNotification("No Speech-to-Text (STT) model found in model_registry.json. Please install a Whisper model.", "warning");
+            return;
+        }
+
         if (isTranscribing) {
             return; // Ignore clicks during transcription loading state
         }
@@ -221,12 +252,12 @@ export function setupMicVoiceInput(textarea) {
             btnMic.innerHTML = spinnerSvg;
             btnMic.setAttribute('title', 'Transcribing full audio via Engine API...');
 
-            const priorText = textarea ? textarea.value.replace(/(\.|\.\.|\.\.\.)$/g, '').trim() : '';
+            recordingBaseText = textarea ? textarea.value.trim() : '';
 
             // 500ms Smooth Delay before starting typing dots loader
             setTimeout(() => {
                 if (isTranscribing) {
-                    startDotTimer(priorText);
+                    startDotTimer(recordingBaseText);
                 }
             }, 500);
 
@@ -244,6 +275,7 @@ export function setupMicVoiceInput(textarea) {
         // Start Recording Bulk Audio
         try {
             stopDotTimer(); // Ensure zero dots during live recording
+            recordingBaseText = textarea ? textarea.value.trim() : '';
             micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioChunks = [];
             isRecording = true;
@@ -274,7 +306,7 @@ export function setupMicVoiceInput(textarea) {
 
             mediaRecorder.onstop = async () => {
                 const originalPlaceholder = textarea ? textarea.placeholder : 'Ask AI...';
-                const priorText = textarea ? textarea.value.replace(/(\.|\.\.|\.\.\.)$/g, '').trim() : '';
+                const baseText = recordingBaseText;
 
                 // Stop microphone stream tracks
                 if (micStream) {
@@ -326,9 +358,8 @@ export function setupMicVoiceInput(textarea) {
                         if (res.ok && contentType.includes('text/event-stream') && res.body) {
                             const reader = res.body.getReader();
                             const decoder = new TextDecoder('utf-8');
-                            let currentText = priorText ? priorText + ' ' : '';
+                            let transcribedText = '';
                             let buffer = '';
-                            if (textarea) textarea.value = currentText;
 
                             while (true) {
                                 const { done, value } = await reader.read();
@@ -343,8 +374,8 @@ export function setupMicVoiceInput(textarea) {
                                         try {
                                             const payload = JSON.parse(jsonStr);
                                             if (payload.token && textarea) {
-                                                currentText += payload.token;
-                                                textarea.value = currentText;
+                                                transcribedText += payload.token;
+                                                textarea.value = (baseText ? baseText + ' ' : '') + transcribedText.trim();
                                                 textarea.dispatchEvent(new Event('input'));
                                                 textarea.scrollTop = textarea.scrollHeight;
                                             }
@@ -358,18 +389,18 @@ export function setupMicVoiceInput(textarea) {
                             const out = await res.json();
                             const transcriptText = (typeof out.output === 'string' ? out.output : (out.output?.text || out.text || '')).trim();
                             if (textarea && transcriptText) {
-                                textarea.value = (priorText ? priorText + ' ' : '') + transcriptText;
+                                textarea.value = (baseText ? baseText + ' ' : '') + transcriptText;
                                 textarea.dispatchEvent(new Event('input'));
                                 textarea.scrollTop = textarea.scrollHeight;
                             }
                         } else {
                             const errJson = await res.json().catch(() => ({}));
                             console.error('STT API execution error status:', res.status, errJson);
-                            if (textarea) textarea.value = priorText;
+                            if (textarea) textarea.value = baseText;
                         }
                     } catch (err) {
                         console.error('Audio STT execution error:', err);
-                        if (textarea) textarea.value = priorText;
+                        if (textarea) textarea.value = baseText;
                     } finally {
                         stopDotTimer();
                         if (textarea) {
@@ -389,4 +420,157 @@ export function setupMicVoiceInput(textarea) {
             resetMicUi();
         }
     });
+}
+
+// ─── Text-to-Speech (TTS Audio Synthesizer & Playback Engine) ───
+
+export async function playTtsAudio(text, btnElement) {
+    if (!activeTtsModel) {
+        showToastNotification("No Text-to-Speech (TTS) model found in model_registry.json. Please install CosyVoice2 or Kokoro.", "warning");
+        return;
+    }
+
+    // Toggle stop if already playing this exact button
+    if (currentAudioPlayer && currentPlayingBtn === btnElement) {
+        currentAudioPlayer.pause();
+        currentAudioPlayer = null;
+        currentPlayingBtn = null;
+        setTtsButtonIcon(btnElement, 'idle');
+        return;
+    }
+
+    // Stop previous player if any
+    if (currentAudioPlayer) {
+        currentAudioPlayer.pause();
+        if (currentPlayingBtn) setTtsButtonIcon(currentPlayingBtn, 'idle');
+    }
+
+    setTtsButtonIcon(btnElement, 'loading');
+
+    try {
+        const cleanText = text.replace(/<think>[\s\S]*?<\/think>/g, '')
+                              .replace(/```[\s\S]*?```/g, '')
+                              .replace(/<[^>]*>/g, '')
+                              .trim();
+
+        if (!cleanText) {
+            setTtsButtonIcon(btnElement, 'idle');
+            return;
+        }
+
+        const reqHeaders = { 'Content-Type': 'application/json' };
+        const apiToken = localStorage.getItem('cluaiz_api_token');
+        if (apiToken) {
+            reqHeaders['Authorization'] = 'Bearer ' + apiToken;
+        }
+
+        const response = await fetch(window.getApiBaseUrl() + '/v1/audio/execute', {
+            method: 'POST',
+            headers: reqHeaders,
+            body: JSON.stringify({
+                model: activeTtsModel.id,
+                task: 'text_to_speech',
+                input_source: {
+                    type: 'text',
+                    data: cleanText
+                },
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const audioData = data.output?.audio_data;
+
+        if (!audioData) {
+            throw new Error("Engine returned empty audio payload");
+        }
+
+        const audio = new Audio(audioData);
+        currentAudioPlayer = audio;
+        currentPlayingBtn = btnElement;
+
+        setTtsButtonIcon(btnElement, 'playing');
+
+        audio.onended = () => {
+            setTtsButtonIcon(btnElement, 'idle');
+            currentAudioPlayer = null;
+            currentPlayingBtn = null;
+        };
+
+        audio.onerror = (err) => {
+            console.error('TTS playback error:', err);
+            setTtsButtonIcon(btnElement, 'idle');
+            currentAudioPlayer = null;
+            currentPlayingBtn = null;
+            showToastNotification("Audio playback failed", "error");
+        };
+
+        await audio.play();
+
+    } catch (err) {
+        console.error('TTS execution error:', err);
+        setTtsButtonIcon(btnElement, 'idle');
+        currentAudioPlayer = null;
+        currentPlayingBtn = null;
+        showToastNotification(`TTS Error: ${err.message}`, "error");
+    }
+}
+
+export function setTtsButtonIcon(btn, state) {
+    if (!btn) return;
+    if (state === 'loading') {
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`;
+        btn.title = "Synthesizing Audio via ONNX Vocoder...";
+    } else if (state === 'playing') {
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+        btn.title = "Playing Audio (Click to stop)";
+    } else {
+        // Idle
+        if (activeTtsModel) {
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+            btn.title = `Read Aloud (TTS Model: ${activeTtsModel.id})`;
+            btn.style.color = '#9ca3af';
+            btn.style.opacity = '1';
+        } else {
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`;
+            btn.title = "No TTS Model Installed in model_registry.json (Click for info)";
+            btn.style.color = '#eab308';
+            btn.style.opacity = '0.7';
+        }
+    }
+}
+
+export function showToastNotification(message, type = 'info') {
+    let container = document.getElementById('hub-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'hub-toast-container';
+        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none;';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const bg = type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6';
+    toast.style.cssText = `background: ${bg}; color: #ffffff; padding: 10px 16px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: auto; opacity: 0; transform: translateY(-10px); transition: all 0.3s ease; max-width: 380px; display: flex; align-items: center; gap: 8px;`;
+
+    const icon = type === 'warning' ? '⚠️' : type === 'error' ? '❌' : 'ℹ️';
+    toast.innerHTML = `<span>${icon}</span> <span>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }

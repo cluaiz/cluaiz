@@ -132,9 +132,9 @@ impl cluaizInference for OnnxEngine {
             tracing::info!("🎧 [ONNX Stream] Audio/TTS prompt detected — routing to execute_audio_graph.");
             match self.execute_audio_graph_streaming(prompt, Some(&mut callback)) {
                 Ok(audio_output) => {
-                    // Send the final audio payload (e.g. data:audio/wav;base64,...) through the callback
-                    // so the dispatcher receives it and the API handler can return it to the client.
-                    if !audio_output.is_empty() {
+                    // Only send final audio payload (data:audio/wav;base64,...) for TTS requests.
+                    // STT (Whisper) tokens are already streamed token-by-token during the decoder loop.
+                    if audio_output.starts_with("data:audio/") {
                         callback(audio_output);
                     }
                     return Ok(());
