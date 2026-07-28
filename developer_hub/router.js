@@ -6,10 +6,18 @@ window.getApiBaseUrl = function() {
     return window.location.origin;
 };
 
+let currentMountedPath = null;
+
 async function route() {
     const path = window.location.pathname;
     const root = document.getElementById('app-root');
-    
+
+    if (currentMountedPath === path && path === '/api') {
+        // Same route path, only query params changed — do NOT wipe and re-mount DOM!
+        return;
+    }
+    currentMountedPath = path;
+
     // Check if we are transitioning away from settings
     if (path !== '/setting' && path !== '/settings') {
         const settingsMount = document.getElementById('settings-app-mount');

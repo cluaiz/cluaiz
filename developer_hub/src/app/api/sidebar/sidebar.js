@@ -78,12 +78,21 @@ export class Sidebar {
     // Programmatically select an endpoint from outside
     selectEndpoint(path, method) {
         if (!this.element) return;
+        const norm = p => '/' + (p || '').trim().replace(/^\/+/, '').replace(/\{[^}]+\}/g, '<param>').replace(/<[^>]+>/g, '<param>');
+        const targetNorm = norm(path);
         const links = this.element.querySelectorAll('.nav-link');
         links.forEach(l => {
             l.classList.remove('active');
-            if (l.dataset.path === path && l.dataset.method === method) {
+            if (norm(l.dataset.path) === targetNorm && (!method || l.dataset.method.toUpperCase() === method.toUpperCase())) {
                 l.classList.add('active');
                 this.activeLink = l;
+                // Auto-expand parent nav-items and title
+                const parentItems = l.closest('.nav-items');
+                if (parentItems) {
+                    parentItems.classList.add('open');
+                    const parentTitle = parentItems.previousElementSibling;
+                    if (parentTitle) parentTitle.classList.add('open');
+                }
             }
         });
     }

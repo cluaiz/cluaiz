@@ -84,6 +84,7 @@ export async function mountApiWorkspace(rootElement) {
 
 async function initApp() {
     console.log("initApp called");
+    let initialEp = null;
 
     // 1. Fetch API Data & Render Sidebar
     try {
@@ -109,8 +110,26 @@ async function initApp() {
         // Filter out any failed loads
         state.apiData = responses.filter(data => data !== null);
 
-        if (state.apiData.length > 0 && state.apiData[0].endpoints.length > 0) {
-            openEndpoint(state.apiData[0].endpoints[0]);
+        // Restore endpoint from URL query parameter e.g. /api?endpoint=/v1/audio/execute
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPath = urlParams.get('endpoint');
+        const targetMethod = urlParams.get('method');
+        const norm = p => '/' + (p || '').trim().replace(/^\/+/, '').replace(/\{[^}]+\}/g, '<param>').replace(/<[^>]+>/g, '<param>');
+
+        if (targetPath) {
+            const targetNorm = norm(targetPath);
+            for (const group of state.apiData) {
+                if (group && group.endpoints) {
+                    const found = group.endpoints.find(e => norm(e.path) === targetNorm && (!targetMethod || e.method.toUpperCase() === targetMethod.toUpperCase()));
+                    if (found) {
+                        initialEp = found;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!initialEp && state.apiData.length > 0 && state.apiData[0].endpoints.length > 0) {
+            initialEp = state.apiData[0].endpoints[0];
         }
     } catch (e) {
         console.error("Failed to render initial view:", e);
@@ -118,7 +137,7 @@ async function initApp() {
 
     mountApiListeners();
 
-    // 4. Initialize Other UI Components
+    // Initialize UI Components FIRST so custom selects and CodeMirror exist
     try {
         setupCustomSelects();
         initEditor();
@@ -128,8 +147,15 @@ async function initApp() {
         console.error("Failed to initialize UI components:", e);
     }
 
-    // 5. Render Sidebar (Must be after editors are initialized!)
+    // Render Sidebar
     renderSidebar();
+
+    // Open active endpoint after DOM components are fully mounted
+    setTimeout(() => {
+        if (initialEp) {
+            openEndpoint(initialEp);
+        }
+    }, 50);
 }
 
 function mountApiListeners() {
@@ -140,6 +166,15 @@ function mountApiListeners() {
 
     document.getElementById('response-header').addEventListener('click', () => toggleResponsePanel());
     document.getElementById('btn-send').addEventListener('click', sendRequest);
+
+    const resetBtn = document.getElementById('btn-reset-payload');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (state.activeEndpoint) {
+                openEndpoint(state.activeEndpoint, true);
+            }
+        });
+    }
 }
 
 function renderSidebar() {
@@ -157,14 +192,36 @@ function renderSidebar() {
     navContainer.appendChild(state.sidebarComponent.render());
 }
 
-function openEndpoint(ep) {
+function openEndpoint(ep, forceDefault = false) {
+    if (!ep) return;
     state.activeEndpoint = ep;
+
+    // Highlight active link in sidebar
+    if (state.sidebarComponent) {
+        state.sidebarComponent.selectEndpoint(ep.path, ep.method);
+    }
+
+    // Sync clean URL parameter without percent escaping slashes
+    try {
+        const cleanUrl = `${window.location.pathname}?endpoint=${ep.path}${ep.method ? '&method=' + ep.method : ''}`;
+        window.history.pushState({}, '', cleanUrl);
+    } catch (e) {
+        console.error("Failed to sync URL query param:", e);
+    }
+
+    // Check for saved non-empty user payload in localStorage unless forceDefault is requested
+    const storageKey = `cluaiz_payload_${ep.method || 'POST'}_${ep.path}`;
+    if (forceDefault) {
+        localStorage.removeItem(storageKey);
+    }
+    const savedPayload = forceDefault ? null : localStorage.getItem(storageKey);
+    const hasValidSavedPayload = savedPayload && savedPayload.trim().length > 0;
 
     // Update Custom Select Value for Method
     updateCustomSelect('custom-req-method', ep.method);
 
     // Calculate Available Methods for this specific Path
-    let currentGroup = state.apiData.find(g => g.endpoints.includes(ep));
+    let currentGroup = state.apiData.find(g => g.endpoints && g.endpoints.some(e => e.path === ep.path));
     if (currentGroup) {
         const endpointsWithSamePath = currentGroup.endpoints.filter(e => e.path === ep.path);
         const availableMethods = [...new Set(endpointsWithSamePath.map(e => e.method))];
@@ -187,11 +244,12 @@ function openEndpoint(ep) {
     updateCustomSelect('custom-req-protocol', targetProtocol);
     onProtocolChange(false); // Trigger UI update without clearing default payload
 
-    // Generate default payload
-    const bodyEditor = document.getElementById('req-body');
-    const payloadDesc = document.getElementById('payload-desc');
-
-    if (ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') {
+    // Generate payload or restore saved payload
+    if (hasValidSavedPayload && state.editor) {
+        state.editor.setValue(savedPayload);
+        state.editor.setOption("mode", isRawCode ? "text/plain" : "application/json");
+        state.editor.setOption("readOnly", false);
+    } else if (ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') {
         if (isRawCode) {
             // Put raw code in editor, not wrapped in JSON
             let rawCode = "";
@@ -404,7 +462,14 @@ export function initEditor() {
         state.editor = new CodeEditor({
             id: 'req-body-editor',
             mode: 'application/json',
-            value: ''
+            value: '',
+            onChange: (val) => {
+                if (state.activeEndpoint && val !== undefined && val !== null) {
+                    const ep = state.activeEndpoint;
+                    const storageKey = `cluaiz_payload_${ep.method || 'POST'}_${ep.path}`;
+                    localStorage.setItem(storageKey, val);
+                }
+            }
         });
         editorContainer.appendChild(state.editor.render());
         state.editor.mount();
@@ -807,6 +872,12 @@ export async function sendRequest() {
                 try {
                     JSON.parse(bodyStr); // Validate JSON
                     options.body = bodyStr;
+
+                    // Persist user modified JSON payload in localStorage
+                    if (ep) {
+                        const storageKey = `cluaiz_payload_${ep.method || 'POST'}_${ep.path}`;
+                        localStorage.setItem(storageKey, bodyStr);
+                    }
                 } catch (e) {
                     resBody.textContent = "Invalid JSON in request payload:\n" + e.message;
                     resBody.style.color = "var(--method-delete)";

@@ -49,7 +49,10 @@
     <div class="panels">
         <!-- Top Panel: Editor -->
         <div class="panel-top" id="panel-top-container">
-            <div class="panel-header" id="panel-left-title">Request Payload</div>
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="panel-left-title">Request Payload</span>
+                <button id="btn-reset-payload" style="background: transparent; border: 1px solid var(--border); color: #8b949e; border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer; transition: all 0.2s;" title="Restore original data JSON payload">↺ Reset Payload</button>
+            </div>
             <div class="panel-body" id="panel-params" style="padding: 0;">
                 <div class="form-group" style="height: 100%; display: flex; flex-direction: column; margin: 0;">
                     <div style="flex: 1 1 auto; position: relative;" id="editor-container">
