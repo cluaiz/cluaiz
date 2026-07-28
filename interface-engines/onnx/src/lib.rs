@@ -1,6 +1,7 @@
 pub mod engine;
 pub use engine::OnnxEngine;
 
+pub mod llm_optimization;
 pub mod text;
 pub mod audio;
 pub mod vision;

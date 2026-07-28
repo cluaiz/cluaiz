@@ -18,7 +18,6 @@ pub struct OnnxMetadataHeaders {
     pub gpu_mem_limit_bytes: usize,
     pub arena_extend_strategy: String,
     
-    // Quantization & Graph Transformer Features
     pub enable_ort_transformers_optimization: bool,
     pub kv_cache_data_type: String,
     pub use_deterministic_compute: bool,

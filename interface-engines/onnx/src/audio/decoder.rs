@@ -22,6 +22,8 @@ impl OnnxEngine {
             .map(|i| i.name().to_string())
             .collect();
 
+        println!("🔍 [ONNX Decoder Graph Inputs] Inputs: {:?}", decoder_input_names);
+
         // ─── 1. Determine Model Modality & Task ─────────────────────────────
         let is_tts = decoder_input_names.iter().any(|n: &String| {
             n.contains("text")
@@ -115,20 +117,27 @@ impl OnnxEngine {
         }
 
         let t_mel = std::time::Instant::now();
-        let mel_flat = compute_log_mel_spectrogram(&pcm_samples, &config);
-        println!("⏱️ [BENCHMARK] Step B - Mel Spectrogram Compute Time: {:?}", t_mel.elapsed());
+        let (mel_flat, actual_frames) = compute_log_mel_spectrogram(&pcm_samples, &config);
+        println!("⏱️ [BENCHMARK] Step B - Mel Spectrogram Compute Time: {:?} (actual_frames: {}, padded_to: {})", t_mel.elapsed(), actual_frames, config.max_frames);
         let shape_vec = vec![1usize, config.n_mels, config.max_frames];
 
         let mut real_encoder_hidden_states: Option<(Vec<usize>, Vec<f32>)> = None;
 
         let t_enc = std::time::Instant::now();
         if let Some(enc_arc) = &self.encoder_session {
+            let t_lock = std::time::Instant::now();
             if let Ok(mut enc_guard) = enc_arc.lock() {
+                let lock_dur = t_lock.elapsed();
+                let t_arr = std::time::Instant::now();
                 if let Ok(mel_tensor) = Value::from_array((shape_vec.clone(), mel_flat)) {
+                    let arr_dur = t_arr.elapsed();
                     let mut enc_inputs = HashMap::new();
                     enc_inputs.insert("input_features", mel_tensor);
 
+                    let t_run = std::time::Instant::now();
                     if let Ok(outputs) = enc_guard.run(enc_inputs) {
+                        let run_dur = t_run.elapsed();
+                        let t_vec = std::time::Instant::now();
                         for (_, v) in outputs.into_iter() {
                             if let Ok((shape, data_tensor)) = v.try_extract_tensor::<f32>() {
                                 let shape_usize: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
@@ -136,6 +145,7 @@ impl OnnxEngine {
                                 break;
                             }
                         }
+                        println!("⏱️ [MICRO-BENCHMARK] Step C Breakdown -> Lock: {:?}, TensorPrep: {:?}, ORT GPU Run: {:?}, VecExtract: {:?}", lock_dur, arr_dur, run_dur, t_vec.elapsed());
                     }
                 }
             }
@@ -227,9 +237,13 @@ impl OnnxEngine {
             n_str.contains("input_ids") || n_str.contains("decoder_input_ids")
         }).collect();
 
+        // Detect if loaded decoder model graph supports KV-Cache tensors
+        let has_kv_cache_inputs = decoder_input_names.iter().any(|n| n.contains("past_key_values") || n.contains("past_sequence_length"));
+        let mut past_kv_tensors: HashMap<String, Value> = HashMap::new();
+
         for _step in 0..max_speech_len {
             let seq_len = current_decoder_ids.len();
-            let input_ids_val = match Value::from_array(([1usize, seq_len], current_decoder_ids.clone())) {
+            let input_ids_val = match Value::from_array(([1usize, seq_len], current_decoder_ids.clone().into_boxed_slice())) {
                 Ok(v) => v,
                 Err(_) => break,
             };
@@ -238,17 +252,21 @@ impl OnnxEngine {
             let mut step_inputs: HashMap<&str, &Value> = HashMap::with_capacity(decoder_input_names.len());
 
             for (idx, name) in decoder_input_names.iter().enumerate() {
+                let name_str = name.as_str();
                 if is_decoder_ids_name[idx] {
-                    step_inputs.insert(name.as_str(), &input_ids_dyn);
-                } else {
-                    if let Some(ref enc_val) = encoder_val_opt {
-                        step_inputs.insert(name.as_str(), enc_val);
-                    } else if let Some(ref d_val) = dummy_val_opt {
-                        step_inputs.insert(name.as_str(), d_val);
+                    step_inputs.insert(name_str, &input_ids_dyn);
+                } else if name_str.contains("past_key_values") {
+                    if let Some(kv_val) = past_kv_tensors.get(name_str) {
+                        step_inputs.insert(name_str, kv_val);
                     }
+                } else if let Some(ref enc_val) = encoder_val_opt {
+                    step_inputs.insert(name_str, enc_val);
+                } else if let Some(ref d_val) = dummy_val_opt {
+                    step_inputs.insert(name_str, d_val);
                 }
             }
 
+            let t_step_run = std::time::Instant::now();
             let output_tensors = match session_guard.run(step_inputs) {
                 Ok(out) => out,
                 Err(e) => {
@@ -256,7 +274,23 @@ impl OnnxEngine {
                     break;
                 }
             };
+            let run_dur = t_step_run.elapsed();
 
+            // Extract and update KV-Cache tensors for subsequent single-token iterations
+            if has_kv_cache_inputs {
+                for (name, val) in output_tensors.iter() {
+                    if name.contains("present") || name.contains("past_key_values") {
+                        if let Ok((shape, data)) = val.try_extract_tensor::<f32>() {
+                            let shape_vec: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
+                            if let Ok(new_val) = Value::from_array((shape_vec, data.to_vec())) {
+                                past_kv_tensors.insert(name.replace("present", "past_key_values"), new_val.into());
+                            }
+                        }
+                    }
+                }
+            }
+
+            let t_extract = std::time::Instant::now();
             let logits_val_ref = output_tensors.get("logits");
             let next_tok = if let Some(ref logits) = logits_val_ref {
                 let (shape, data_tensor) = match logits.try_extract_tensor::<f32>() { 
@@ -352,6 +386,10 @@ impl OnnxEngine {
             let len = speech_tokens.len();
             if len >= rep_repeat_limit && speech_tokens[len - 1] == next_tok && speech_tokens[len - 2] == next_tok {
                 break;
+            }
+
+            if _step == 0 {
+                println!("⏱️ [MICRO-BENCHMARK] Step 0 ONNX Session Run: {:?}, Tensor Extract: {:?}", run_dur, t_extract.elapsed());
             }
 
             speech_tokens.push(next_tok);

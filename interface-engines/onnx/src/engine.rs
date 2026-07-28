@@ -145,6 +145,9 @@ impl OnnxEngine {
             }
         }
 
+        // Dynamic ONNX LLM Optimization Configuration System (.cluaiz/engine/config/llm_optimization.json)
+        let llm_opt_config = crate::llm_optimization::OnnxLlmOptimizationConfig::load_from_system();
+
         // ONNX Metadata Override
         let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
@@ -152,7 +155,7 @@ impl OnnxEngine {
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user.");
         } else if onnx_meta.n_gpu_layers == -1 {
             use_gpu = true;
-            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active.");
+            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active (FlashAttn: {}, KvQuant: {}).", llm_opt_config.flash_attention, llm_opt_config.kv_cache_quantization);
         } else {
             // Apply telemetry fallback if not forced Auto/CPU
             // Telemetry has already decided use_gpu
@@ -223,11 +226,22 @@ impl OnnxEngine {
             let mut session_opt = None;
             
             if use_gpu {
-                // Tier 1A: Direct Native CUDA Execution Provider
-                let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default();
+                // Tier 1A: Direct Native CUDA Execution Provider with Tensor Core + Flash-Attn Wiring
+                let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default()
+                    .with_tf32(true)
+                    .with_conv1d_pad_to_nc1d(true)
+                    .with_fuse_conv_bias(true)
+                    .with_prefer_nhwc(true)
+                    .with_attention_backend(
+                        ort::ep::cuda::AttentionBackend::FLASH_ATTENTION
+                        | ort::ep::cuda::AttentionBackend::EFFICIENT_ATTENTION
+                        | ort::ep::cuda::AttentionBackend::MATH
+                    );
                 if onnx_meta.gpu_mem_limit_bytes > 0 {
                     cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
                 }
+
+                tracing::info!("⚡ [ONNX CUDA EP] TF32 + FlashAttention + EfficientAttention + ConvFusion enabled.");
                 
                 let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
                     "kSameAsRequested" => ort::execution_providers::ArenaExtendStrategy::SameAsRequested,
@@ -404,11 +418,22 @@ impl OnnxEngine {
         let mut session_opt = None;
 
         if use_gpu {
-            let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default();
+            let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default()
+                .with_tf32(true)
+                .with_conv1d_pad_to_nc1d(true)
+                .with_fuse_conv_bias(true)
+                .with_prefer_nhwc(true)
+                .with_attention_backend(
+                    ort::ep::cuda::AttentionBackend::FLASH_ATTENTION
+                    | ort::ep::cuda::AttentionBackend::EFFICIENT_ATTENTION
+                    | ort::ep::cuda::AttentionBackend::MATH
+                );
             if onnx_meta.gpu_mem_limit_bytes > 0 {
                 cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
             }
             
+            tracing::info!("⚡ [ONNX Encoder CUDA EP] TF32 + FlashAttention + EfficientAttention + ConvFusion enabled.");
+
             let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
                 "kSameAsRequested" => ort::execution_providers::ArenaExtendStrategy::SameAsRequested,
                 _ => ort::execution_providers::ArenaExtendStrategy::NextPowerOfTwo,
@@ -571,11 +596,22 @@ impl OnnxEngine {
         let mut session_opt = None;
 
         if use_gpu {
-            let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default();
+            let mut cuda_ep = ort::execution_providers::CUDAExecutionProvider::default()
+                .with_tf32(true)
+                .with_conv1d_pad_to_nc1d(true)
+                .with_fuse_conv_bias(true)
+                .with_prefer_nhwc(true)
+                .with_attention_backend(
+                    ort::ep::cuda::AttentionBackend::FLASH_ATTENTION
+                    | ort::ep::cuda::AttentionBackend::EFFICIENT_ATTENTION
+                    | ort::ep::cuda::AttentionBackend::MATH
+                );
             if onnx_meta.gpu_mem_limit_bytes > 0 {
                 cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
             }
             
+            tracing::info!("⚡ [ONNX Vision CUDA EP] TF32 + FlashAttention + EfficientAttention + ConvFusion enabled.");
+
             let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
                 "kSameAsRequested" => ort::execution_providers::ArenaExtendStrategy::SameAsRequested,
                 _ => ort::execution_providers::ArenaExtendStrategy::NextPowerOfTwo,
