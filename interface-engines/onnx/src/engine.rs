@@ -169,22 +169,15 @@ impl OnnxEngine {
         let intra_threads_per_session = if onnx_meta.intra_op_num_threads > 0 {
             onnx_meta.intra_op_num_threads
         } else {
-            (total_threads / pool_size).max(1)
+            total_threads
         };
 
         let opt_level = match onnx_meta.graph_optimization_level.to_uppercase().as_str() {
             "ORT_DISABLE_ALL" => ort::session::builder::GraphOptimizationLevel::Disable,
             "ORT_ENABLE_BASIC" => ort::session::builder::GraphOptimizationLevel::Level1,
             "ORT_ENABLE_EXTENDED" => ort::session::builder::GraphOptimizationLevel::Level2,
-            "ORT_ENABLE_ALL" => {
-                if use_gpu {
-                    // Level3 node fusions are often unsupported by DirectML, forcing CPU fallback. 
-                    ort::session::builder::GraphOptimizationLevel::Level1
-                } else {
-                    ort::session::builder::GraphOptimizationLevel::Level3
-                }
-            },
-            _ => ort::session::builder::GraphOptimizationLevel::Level1,
+            "ORT_ENABLE_ALL" => ort::session::builder::GraphOptimizationLevel::Level3,
+            _ => ort::session::builder::GraphOptimizationLevel::Level3,
         };
 
         tracing::info!(

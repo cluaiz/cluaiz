@@ -97,7 +97,7 @@ impl OnnxEngine {
         let config = AudioConfig::from_model_dir(&self.model_dir);
         let t_pcm = std::time::Instant::now();
         let pcm_samples = load_audio_to_pcm(&audio_path, &config)?;
-        println!("⏱️ [BENCHMARK] Step A - PCM Load Time: {:?}", t_pcm.elapsed());
+        println!("⏱️ [BENCHMARK] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {})", t_pcm.elapsed(), pcm_samples.len() as f32 / config.sample_rate as f32, pcm_samples.len());
 
         if is_audio_embedding {
             let sample_len = pcm_samples.len();
@@ -140,7 +140,6 @@ impl OnnxEngine {
                 }
             }
         }
-        println!("⏱️ [BENCHMARK] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {})", t_pcm.elapsed(), pcm_samples.len() as f32 / config.sample_rate as f32, pcm_samples.len());
         println!("⏱️ [BENCHMARK] Step C - Encoder ONNX Model Inference Time: {:?}", t_enc.elapsed());
 
         // Dynamic Audio Duration & Multi-Modality Math Algorithm
@@ -223,6 +222,11 @@ impl OnnxEngine {
         let t_dec_loop = std::time::Instant::now();
         let mut total_step_runs = 0usize;
 
+        let is_decoder_ids_name: Vec<bool> = decoder_input_names.iter().map(|n| {
+            let n_str = n.as_str();
+            n_str.contains("input_ids") || n_str.contains("decoder_input_ids")
+        }).collect();
+
         for _step in 0..max_speech_len {
             let seq_len = current_decoder_ids.len();
             let input_ids_val = match Value::from_array(([1usize, seq_len], current_decoder_ids.clone())) {
@@ -231,17 +235,16 @@ impl OnnxEngine {
             };
             let input_ids_dyn: Value = input_ids_val.into();
 
-            let mut step_inputs: HashMap<String, &Value> = HashMap::with_capacity(decoder_input_names.len());
+            let mut step_inputs: HashMap<&str, &Value> = HashMap::with_capacity(decoder_input_names.len());
 
-            for name in &decoder_input_names {
-                let name_str: &str = name.as_str();
-                if name_str.contains("input_ids") || name_str.contains("decoder_input_ids") {
-                    step_inputs.insert(name.clone(), &input_ids_dyn);
+            for (idx, name) in decoder_input_names.iter().enumerate() {
+                if is_decoder_ids_name[idx] {
+                    step_inputs.insert(name.as_str(), &input_ids_dyn);
                 } else {
                     if let Some(ref enc_val) = encoder_val_opt {
-                        step_inputs.insert(name.clone(), enc_val);
+                        step_inputs.insert(name.as_str(), enc_val);
                     } else if let Some(ref d_val) = dummy_val_opt {
-                        step_inputs.insert(name.clone(), d_val);
+                        step_inputs.insert(name.as_str(), d_val);
                     }
                 }
             }
@@ -254,14 +257,9 @@ impl OnnxEngine {
                 }
             };
 
-            let logits_val = output_tensors
-                .iter()
-                .find(|(k, _)| k.contains("logits"))
-                .map(|(_, v)| v)
-                .or_else(|| output_tensors.values().next());
-
-            let next_tok = if let Some(logits) = logits_val {
-                let (shape, data_tensor) = match logits.try_extract_tensor::<f32>() {
+            let logits_val_ref = output_tensors.get("logits");
+            let next_tok = if let Some(ref logits) = logits_val_ref {
+                let (shape, data_tensor) = match logits.try_extract_tensor::<f32>() { 
                     Ok(res) => res,
                     Err(_) => break,
                 };
@@ -342,6 +340,7 @@ impl OnnxEngine {
             let is_eot = next_tok == config.end_of_text_token as u32
                 || next_tok == 50257
                 || next_tok == 50256
+                || next_tok == 50362
                 || next_tok == 50363
                 || next_tok == 50364;
 

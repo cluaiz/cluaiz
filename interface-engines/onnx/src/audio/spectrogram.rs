@@ -30,7 +30,7 @@ pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> Vec
     let filters = build_mel_filterbank(config);
     let n_bins = config.n_fft / 2 + 1;
 
-    // Parallel STFT computation across all 3000 frames using Rayon
+    // Parallel STFT computation across all 3000 max_frames using Rayon
     let frame_energies: Vec<Vec<f32>> = (0..config.max_frames)
         .into_par_iter()
         .map(|frame_idx| {
