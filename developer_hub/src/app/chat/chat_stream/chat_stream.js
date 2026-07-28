@@ -615,7 +615,8 @@ async function sendToAI(userMessage, think_mode, response_length) {
                         displayContent = fullContent.replace(/<think>([\s\S]*?)(<\/think>|$)/g, (match, content, endTag) => {
                             const isOpen = endTag === '' ? 'open' : '';
                             const summaryText = endTag === '' ? 'Thinking Process...' : 'Thought Process';
-                            return `\n\n<details class="think-accordion" ${isOpen}><summary><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="think-icon"><polyline points="6 9 12 15 18 9"></polyline></svg> <span>${summaryText}</span></summary><div class="think-content">\n\n${content}\n\n</div></details>\n\n`;
+                            const closingHtml = endTag === '</think>' ? '</div></details>' : '';
+                            return `\n\n<details class="think-accordion" ${isOpen}><summary><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="think-icon"><polyline points="6 9 12 15 18 9"></polyline></svg> <span>${summaryText}</span></summary><div class="think-content">\n\n${content}\n\n${closingHtml}\n\n`;
                         });
                     }
 
@@ -632,11 +633,24 @@ async function sendToAI(userMessage, think_mode, response_length) {
                     if (typeof marked !== 'undefined') {
                         if (!window.cluaizMarkedRenderer) {
                             window.cluaizMarkedRenderer = new marked.Renderer();
-                            window.cluaizMarkedRenderer.code = function(code, language) {
-                                language = language || 'plaintext';
+                            window.cluaizMarkedRenderer.code = function(codeArg, langArg) {
+                                let code = '';
+                                let language = '';
+                                if (typeof codeArg === 'object' && codeArg !== null) {
+                                    code = codeArg.text || '';
+                                    language = codeArg.lang || langArg || 'plaintext';
+                                } else {
+                                    code = String(codeArg || '');
+                                    language = langArg || 'plaintext';
+                                }
+
                                 const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                // Use base64 encoding to safely pass the code in the onclick attribute
-                                const encodedData = btoa(encodeURIComponent(code));
+                                let encodedData = '';
+                                try {
+                                    encodedData = btoa(unescape(encodeURIComponent(code)));
+                                } catch (e) {
+                                    encodedData = '';
+                                }
                                 return '<div class="code-block-wrapper" style="position: relative; margin-top: 1em; margin-bottom: 1em; background: #1e1e1e; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">' +
                                     '<div style="background: rgba(255,255,255,0.05); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-family: monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">' +
                                         '<span>' + escapeHtml(language) + '</span>' +
@@ -648,7 +662,14 @@ async function sendToAI(userMessage, think_mode, response_length) {
                                 '</div>';
                             };
                         }
-                        aiTextEl.innerHTML = marked.parse(displayContent, { renderer: window.cluaizMarkedRenderer });
+                        try {
+                            if (typeof marked.setOptions === 'function') {
+                                marked.setOptions({ gfm: true, breaks: true });
+                            }
+                            aiTextEl.innerHTML = marked.parse(displayContent, { renderer: window.cluaizMarkedRenderer, gfm: true, breaks: true });
+                        } catch (mErr) {
+                            console.error('Marked parse error:', mErr);
+                        }
                     } else {
                         aiTextEl.innerHTML = displayContent; // Use innerHTML to render details if marked is missing
                     }
@@ -668,7 +689,9 @@ async function sendToAI(userMessage, think_mode, response_length) {
                         container.scrollTop = container.scrollHeight;
                     }
 
-                } catch (_parseErr) { }
+                } catch (_parseErr) {
+                    console.error('SSE Stream event render error:', _parseErr);
+                }
             }
         }
 
@@ -693,8 +716,20 @@ async function sendToAI(userMessage, think_mode, response_length) {
                 }
             }
         } else {
-            updateStatus(`[Error] Connection failed: ${e.message}`);
-            aiTextEl.textContent = 'Connection error: ' + e.message;
+            if (fullContent.trim()) {
+                if (!window.canContinue) {
+                    conversationHistory.push({ role: 'assistant', content: fullContent });
+                    window.canContinue = true;
+                }
+                updateStatus(`⚠️ Connection lost: ${e.message}`);
+                const errBadge = document.createElement('div');
+                errBadge.style.cssText = 'color: #ef4444; font-size: 0.75rem; margin-top: 8px; font-family: monospace; display: flex; align-items: center; gap: 4px; opacity: 0.9;';
+                errBadge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Stream disconnected (${escapeHtml(e.message)})`;
+                aiTextEl.appendChild(errBadge);
+            } else {
+                updateStatus(`[Error] Connection failed: ${e.message}`);
+                aiTextEl.textContent = 'Connection error: ' + e.message;
+            }
             showErrorTooltip('Connection error: ' + e.message);
         }
     } finally {

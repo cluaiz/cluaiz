@@ -160,7 +160,14 @@ impl OnnxEngine {
                     let pcm_samples = if shape.len() >= 2 && shape[1] == 80 {
                         vocoder.synthesize_mel_to_pcm(&wav_tensor, shape[shape.len() - 1] as usize)
                     } else {
-                        wav_tensor.to_vec()
+                        let raw_samples = wav_tensor.to_vec();
+                        let max_val = raw_samples.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+                        if max_val > 1e-5 {
+                            let scale = 0.90 / max_val.max(0.90);
+                            raw_samples.iter().map(|s| s * scale).collect()
+                        } else {
+                            raw_samples
+                        }
                     };
 
                     let wav_bytes = vocoder.encode_wav_bytes(&pcm_samples);

@@ -649,9 +649,11 @@ function setupChatLogic() {
     const thinkOptionsOff = document.getElementById('think-options-off');
     const customResponseLength = document.getElementById('custom-response-length');
 
-    thinkToggle.addEventListener('click', (e) => {
+    thinkToggle.addEventListener('click', async (e) => {
         e.stopPropagation();
         isThinkModeOn = !isThinkModeOn;
+        const newThinkMode = isThinkModeOn ? "On" : "Off";
+
         if (isThinkModeOn) {
             thinkToggle.classList.replace('bg-secondary', 'bg-accent');
             thinkToggle.style.borderColor = 'transparent';
@@ -660,6 +662,34 @@ function setupChatLogic() {
             thinkToggle.classList.replace('bg-accent', 'bg-secondary');
             thinkToggle.style.borderColor = 'var(--border-color)';
             thinkToggleThumb.style.transform = 'translateY(-50%) translateX(2px)';
+        }
+
+        // Real-time backend sync via standard gguf_config / onnx_config APIs
+        try {
+            const gRes = await fetch(window.getApiBaseUrl() + '/v1/system/gguf_config');
+            if (gRes.ok) {
+                const ggufData = await gRes.json();
+                if (!ggufData.user_moved_flags) ggufData.user_moved_flags = {};
+                ggufData.user_moved_flags.think_mode = newThinkMode;
+                await fetch(window.getApiBaseUrl() + '/v1/system/gguf_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ggufData)
+                });
+            }
+            const oRes = await fetch(window.getApiBaseUrl() + '/v1/system/onnx_config');
+            if (oRes.ok) {
+                const onnxData = await oRes.json();
+                if (!onnxData.user_moved_flags) onnxData.user_moved_flags = {};
+                onnxData.user_moved_flags.think_mode = newThinkMode;
+                await fetch(window.getApiBaseUrl() + '/v1/system/onnx_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(onnxData)
+                });
+            }
+        } catch (err) {
+            console.error('Failed to sync think_mode in real-time:', err);
         }
 
         if (!isResponseLengthMapEnabled) {
