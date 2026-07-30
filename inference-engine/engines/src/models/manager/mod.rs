@@ -126,30 +126,43 @@ impl ModelManager {
         let category = slot_type.as_str().to_string();
         let supported_tasks = slot_type.supported_tasks(&detected_caps);
 
-        let mut files = vec![cluaiz_shared::utils::RegistryModelFile {
-            name: manifest.huggingface_filename.clone(),
-            size_bytes: std::fs::metadata(&weight_file).map(|m| m.len()).unwrap_or(0),
-            is_primary: true,
-        }];
-
+        let mut weight_files = Vec::new();
         let mut extra_files = Vec::new();
 
-        // Register any other files downloaded inside directory (e.g. splits, jsons, yamls)
+        // Scan directory for all downloaded weight files (.onnx / .gguf) and metadata assets
         if let Ok(mut entries) = std::fs::read_dir(&model_path) {
             while let Some(Ok(entry)) = entries.next() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name != manifest.huggingface_filename {
-                    if name.ends_with(".gguf") || name.ends_with(".onnx") {
-                        files.push(cluaiz_shared::utils::RegistryModelFile {
-                            name,
-                            size_bytes: entry.metadata().map(|m| m.len()).unwrap_or(0),
-                            is_primary: false,
-                        });
-                    } else if name.ends_with(".json") || name.ends_with(".yaml") || name.ends_with(".md") || name.ends_with(".txt") {
-                        extra_files.push(name);
-                    }
+                let lower = name.to_lowercase();
+                if lower.ends_with(".gguf") || lower.ends_with(".onnx") {
+                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                    weight_files.push((name, size));
+                } else if lower.ends_with(".json") || lower.ends_with(".yaml") || lower.ends_with(".md") || lower.ends_with(".txt") {
+                    extra_files.push(name);
                 }
             }
+        }
+
+        // Evaluate all weight files using AssetResolver priority scoring to find the true Primary Graph
+        let mut best_score = usize::MAX;
+        let mut primary_name = manifest.huggingface_filename.clone();
+
+        for (name, _) in &weight_files {
+            let score = crate::models::fetch::AssetResolver::score_model_file_priority(&category, name);
+            if score < best_score {
+                best_score = score;
+                primary_name = name.clone();
+            }
+        }
+
+        let mut files = Vec::new();
+        for (name, size_bytes) in weight_files {
+            let is_primary = name == primary_name;
+            files.push(cluaiz_shared::utils::RegistryModelFile {
+                name,
+                size_bytes,
+                is_primary,
+            });
         }
 
         let registry_entry = cluaiz_shared::utils::ModelRegistryEntry {

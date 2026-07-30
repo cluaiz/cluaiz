@@ -238,28 +238,33 @@ impl OnnxEngine {
                 if let Ok(mut cuda_builder) = builder.clone().with_execution_providers([cuda_ep.build(), cpu_ep.clone()]) {
                     match cuda_builder.commit_from_file(model_path) {
                         Ok(sess) => {
+                            eprintln!("🎙️ [ONNX Hardware Binding] Session committed ON NATIVE NVIDIA CUDA GPU!");
                             tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed ON NATIVE NVIDIA CUDA GPU!", i);
                             session_opt = Some(sess);
                         }
                         Err(e) => {
+                            eprintln!("🎙️ [ONNX Hardware Binding] CUDA EP commit failed: {:?}. Trying DirectML GPU fallback...", e);
                             tracing::warn!("⚠️ [Sovereign-Cascade] Native CUDA EP commit failed: {:?}. Trying DirectML/CoreML fallback...", e);
                         }
                     }
                 }
 
-                // Tier 1B: Fallback to DirectML / CoreML if native CUDA failed
+                // Tier 1B: Fallback to DirectML (Explicit NVIDIA GPU Device ID 0) / CoreML if native CUDA failed
                 if session_opt.is_none() {
+                    let dml_ep = ort::execution_providers::DirectMLExecutionProvider::default().with_device_id(0);
                     if let Ok(mut gpu_builder) = builder.clone().with_execution_providers([
-                        ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                        dml_ep.build(),
                         ort::execution_providers::CoreMLExecutionProvider::default().build(),
                         cpu_ep.clone(),
                     ]) {
                         match gpu_builder.commit_from_file(model_path) {
                             Ok(sess) => {
+                                eprintln!("🎙️ [ONNX Hardware Binding] Session committed ON DIRECTX 12 DIRECTML GPU (Device 0)!");
                                 tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed on DirectML/CoreML GPU.", i);
                                 session_opt = Some(sess);
                             }
                             Err(e) => {
+                                eprintln!("🎙️ [ONNX Hardware Binding] DirectML GPU Session commit failed: {:?}", e);
                                 tracing::warn!("⚠️ [Sovereign-Cascade] DirectML/CoreML Session commit failed: {:?}", e);
                             }
                         }

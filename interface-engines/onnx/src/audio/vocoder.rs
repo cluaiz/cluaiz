@@ -40,51 +40,107 @@ impl NativeVocoder {
         let mut audio = vec![0.0f32; total_samples];
         let mut normalization = vec![0.0f32; total_samples];
 
-        // Hanning window for overlap-add synthesis
+        // Periodic Hanning window for overlap-add synthesis
         let window: Vec<f32> = (0..self.n_fft)
-            .map(|i| 0.5 * (1.0 - (2.0 * PI * i as f32 / (self.n_fft as f32 - 1.0)).cos()))
+            .map(|i| 0.5 * (1.0 - (2.0 * PI * (i as f32) / (self.n_fft as f32)).cos()))
             .collect();
 
         let num_bins = self.n_fft / 2 + 1;
 
+        // Precompute Hz frequency for each FFT bin
+        let bin_frequencies: Vec<f32> = (0..num_bins)
+            .map(|b| b as f32 * (self.sample_rate as f32 / self.n_fft as f32))
+            .collect();
+
+        // Convert Hz to Slaney Mel scale
+        let hz_to_mel = |hz: f32| -> f32 {
+            if hz >= 1000.0 {
+                15.0 + (hz / 1000.0).ln() / 0.06870054
+            } else {
+                3.0 * hz / 200.0
+            }
+        };
+
+        let max_mel = hz_to_mel((self.sample_rate / 2) as f32);
+
+        // Accumulated phase state per frequency bin across time frames
+        let mut phase_acc = vec![0.0f32; num_bins];
+
         for t in 0..num_frames {
-            let sample_offset = t * self.hop_size;
-            
-            // Reconstruct linear spectrogram magnitudes from mel slice using logarithmic scale
-            let frame_mel = &mel_data[t * self.num_mels..(t + 1) * self.num_mels.min(mel_data.len() - t * self.num_mels)];
+            let start_idx = t * self.num_mels;
+            if start_idx >= mel_data.len() {
+                break;
+            }
+            let end_idx = (start_idx + self.num_mels).min(mel_data.len());
+            let frame_mel = &mel_data[start_idx..end_idx];
+
             let mut mag = vec![0.0f32; num_bins];
 
             for b in 0..num_bins {
-                let mel_idx = ((b as f32 / num_bins as f32) * (self.num_mels - 1) as f32) as usize;
-                let val = if mel_idx < frame_mel.len() { frame_mel[mel_idx] } else { 0.0 };
-                mag[b] = val.exp(); // De-log scale
+                let freq_hz = bin_frequencies[b];
+                let mel_val = hz_to_mel(freq_hz);
+                let mel_norm = (mel_val / max_mel).clamp(0.0, 1.0);
+                let mel_idx_float = mel_norm * (self.num_mels.saturating_sub(1) as f32);
+                let idx_floor = mel_idx_float as usize;
+                let idx_ceil = (idx_floor + 1).min(frame_mel.len().saturating_sub(1));
+                let frac = mel_idx_float - idx_floor as f32;
+
+                let m0 = if idx_floor < frame_mel.len() { frame_mel[idx_floor] } else { -4.0 };
+                let m1 = if idx_ceil < frame_mel.len() { frame_mel[idx_ceil] } else { m0 };
+                let log_mel = m0 + frac * (m1 - m0);
+
+                // Denormalize mel (-4.0 to +4.0 log-energy range)
+                let energy = (log_mel * 2.0).exp().max(1e-5);
+                mag[b] = energy;
             }
 
-            // Harmonic Phase Reconstruction (Fast ISTFT approximation)
+            // Update accumulated phase for smooth continuous waveform synthesis
+            let dt_sec = self.hop_size as f32 / self.sample_rate as f32;
+            for b in 1..num_bins {
+                phase_acc[b] = (phase_acc[b] + 2.0 * PI * bin_frequencies[b] * dt_sec) % (2.0 * PI);
+            }
+
+            let sample_offset = t * self.hop_size;
+
+            // ISTFT Synthesis across all bins up to 128 harmonics
+            let max_harmonic_bin = num_bins.min(128);
             for n in 0..self.n_fft {
                 let mut sample_val = 0.0f32;
-                let t_sec = (sample_offset + n) as f32 / self.sample_rate as f32;
+                let n_sec = n as f32 / self.sample_rate as f32;
 
-                for k in 1..num_bins.min(64) {
-                    let freq = k as f32 * (self.sample_rate as f32 / self.n_fft as f32);
-                    let phase = 2.0 * PI * freq * t_sec;
-                    sample_val += mag[k] * phase.cos();
+                for k in 1..max_harmonic_bin {
+                    if mag[k] > 1e-4 {
+                        let phase = phase_acc[k] + 2.0 * PI * bin_frequencies[k] * n_sec;
+                        sample_val += mag[k] * phase.cos();
+                    }
                 }
 
                 let win_sample = sample_val * window[n];
-                if sample_offset + n < total_samples {
-                    audio[sample_offset + n] += win_sample;
-                    normalization[sample_offset + n] += window[n] * window[n];
+                let out_idx = sample_offset + n;
+                if out_idx < total_samples {
+                    audio[out_idx] += win_sample;
+                    normalization[out_idx] += window[n] * window[n];
                 }
             }
         }
 
-        // Normalize overlap-add buffer and bound volume
+        // Normalize overlap-add buffer and peak scale
+        let mut max_val = 0.0f32;
         for i in 0..total_samples {
-            if normalization[i] > 1e-5 {
+            if normalization[i] > 1e-4 {
                 audio[i] /= normalization[i];
             }
-            audio[i] = audio[i].max(-0.99).min(0.99);
+            if audio[i].abs() > max_val {
+                max_val = audio[i].abs();
+            }
+        }
+
+        if max_val > 1e-5 {
+            let target_peak = 0.85f32;
+            let scale = target_peak / max_val;
+            for i in 0..total_samples {
+                audio[i] = (audio[i] * scale).clamp(-0.95, 0.95);
+            }
         }
 
         audio

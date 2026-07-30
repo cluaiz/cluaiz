@@ -104,6 +104,8 @@ impl HuggingFaceHub {
                         }
                     }
 
+                    filter_duplicate_metadata_files(&mut bundle_files);
+
                     // Extract precision/quant tag from path
                     let quant_tag = extract_quant_tag(&primary_file);
                     let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
@@ -164,6 +166,8 @@ impl HuggingFaceHub {
                             }
                         }
                     }
+
+                    filter_duplicate_metadata_files(&mut bundle_files);
 
                     let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
                     let variant_id = format!("ONNX {} ({})", quant_tag, parent_dir);
@@ -528,4 +532,62 @@ fn is_directory_prefix(meta_path: &str, primary_path: &str) -> bool {
     
     true
 }
+
+fn is_compatible_subfolder_metadata(meta_path: &str, primary_path: &str) -> bool {
+    let lower = meta_path.to_lowercase();
+    let is_asset = lower.ends_with(".json") 
+        || lower.ends_with(".txt") 
+        || lower.ends_with(".yaml") 
+        || lower.ends_with(".yml") 
+        || lower.contains("vocab") 
+        || lower.contains("merges") 
+        || lower.contains("token");
+        
+    if !is_asset {
+        return false;
+    }
+
+    let meta_dir = std::path::Path::new(meta_path).parent().and_then(|p| p.to_str()).unwrap_or("");
+    if meta_dir.is_empty() {
+        return true;
+    }
+
+    let meta_dir_lower = meta_dir.to_lowercase();
+    // Do not cross-pollute incompatible precision subfolders (e.g. q4/ vs fp16/)
+    if (meta_dir_lower.contains("q4") || meta_dir_lower.contains("int8") || meta_dir_lower.contains("fp16") || meta_dir_lower.contains("quant")) 
+        && !primary_path.to_lowercase().contains(&meta_dir_lower) 
+    {
+        return false;
+    }
+
+    true
+}
+
+fn filter_duplicate_metadata_files(bundle_files: &mut Vec<String>) {
+    let mut subfolder_basenames = std::collections::HashSet::new();
+    for f in bundle_files.iter() {
+        if let Some(parent) = std::path::Path::new(f).parent() {
+            if !parent.as_os_str().is_empty() {
+                if let Some(basename) = std::path::Path::new(f).file_name().and_then(|s| s.to_str()) {
+                    subfolder_basenames.insert(basename.to_lowercase());
+                }
+            }
+        }
+    }
+
+    bundle_files.retain(|f| {
+        let path = std::path::Path::new(f);
+        let parent = path.parent().and_then(|p| p.to_str()).unwrap_or("");
+        if parent.is_empty() {
+            if let Some(basename) = path.file_name().and_then(|s| s.to_str()) {
+                if subfolder_basenames.contains(&basename.to_lowercase()) {
+                    return false; // Drop root file if subfolder version already exists!
+                }
+            }
+        }
+        true
+    });
+}
+
+
 

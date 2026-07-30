@@ -266,11 +266,29 @@ impl ModelRegistry {
                                 }
                             }
 
-                            if all_weight_files.is_empty() {
-                                continue;
+                            if cat == &"audio" && all_weight_files.len() > 1 {
+                                all_weight_files.sort_by(|a, b| {
+                                    let name_a = a.1.to_lowercase();
+                                    let name_b = b.1.to_lowercase();
+                                    let score_a = if name_a.contains("flow") || name_a.contains("estimator") || name_a.contains("generator") || name_a.contains("tts") || name_a.contains("synth") {
+                                        0
+                                    } else if name_a.contains("campplus") || name_a.contains("speaker") || name_a.contains("embed") || name_a.contains("encoder") {
+                                        2
+                                    } else {
+                                        1
+                                    };
+                                    let score_b = if name_b.contains("flow") || name_b.contains("estimator") || name_b.contains("generator") || name_b.contains("tts") || name_b.contains("synth") {
+                                        0
+                                    } else if name_b.contains("campplus") || name_b.contains("speaker") || name_b.contains("embed") || name_b.contains("encoder") {
+                                        2
+                                    } else {
+                                        1
+                                    };
+                                    score_a.cmp(&score_b).then_with(|| a.1.cmp(&b.1))
+                                });
+                            } else {
+                                all_weight_files.sort_by(|a, b| a.1.cmp(&b.1));
                             }
-
-                            all_weight_files.sort_by(|a, b| a.1.cmp(&b.1));
                             extra_files.sort();
 
                             let (p_path, p_name, _) = &all_weight_files[0];

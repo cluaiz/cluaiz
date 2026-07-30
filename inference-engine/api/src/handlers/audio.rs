@@ -249,7 +249,7 @@ pub async fn execute_audio(
     // 4. Neural Execution & Dispatch with Multi-ONNX Model Fallback Probe
     let mut onnx_candidates: Vec<std::path::PathBuf> = Vec::new();
 
-    // Primary ONNX file candidate first
+    // Primary ONNX file candidate first if defined
     if let Some(primary_file) = target_entry.files.iter().find(|f| f.is_primary) {
         onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&primary_file.name));
     }
@@ -266,6 +266,23 @@ pub async fn execute_audio(
         if let Some(first) = target_entry.files.first() {
             onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&first.name));
         }
+    }
+
+    // 🎯 SMART TTS CANDIDATE PRIORITIZATION:
+    // If running Text-to-Speech, move helper/speaker-extractor models (campplus, speaker_encoder, embedding) to fallback tail
+    // and prioritize main speech synthesis models (flow, estimator, tts, decoder, generator)
+    if is_tts_model && onnx_candidates.len() > 1 {
+        onnx_candidates.sort_by_key(|path| {
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+            if name.contains("flow") || name.contains("estimator") || name.contains("generator") || name.contains("tts") || name.contains("synth") {
+                0 // Top priority: Flow Estimator / Speech Synthesizer
+            } else if name.contains("campplus") || name.contains("speaker") || name.contains("embed") || name.contains("encoder") {
+                2 // Low priority: Speaker Extractor / Embedding models
+            } else {
+                1 // Normal priority
+            }
+        });
+        tracing::info!("🎯 [Audio Handler] TTS Multi-ONNX Model Candidates Prioritized: {:?}", onnx_candidates);
     }
 
     let model_path = onnx_candidates[0].clone();

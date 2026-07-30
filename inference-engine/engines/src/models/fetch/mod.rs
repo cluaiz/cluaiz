@@ -1,3 +1,7 @@
+pub mod asset_resolver;
+
+pub use asset_resolver::AssetResolver;
+
 use std::path::PathBuf;
 use tracing::info;
 use tokio::sync::mpsc;
@@ -95,16 +99,7 @@ impl ModelDownloader {
         let resolved_repo = Self::extract_repo_id(repo_id, download_url);
         if let Some(repo) = resolved_repo {
             info!("🌐 [Downloader] Fetching supplementary metadata JSONs for HF repo '{}'", repo);
-            let metadata_files = [
-                "config.json",
-                "tokenizer.json",
-                "tokenizer_config.json",
-                "special_tokens_map.json",
-                "chat_template.json",
-                "processor_config.json",
-                "preprocessor_config.json",
-            ];
-            for meta_file in metadata_files {
+            for meta_file in AssetResolver::supplementary_metadata_files() {
                 let target_path = dest_dir.join(meta_file);
                 if !target_path.exists() {
                     let meta_url = format!("https://huggingface.co/{}/resolve/main/{}", repo, meta_file);
