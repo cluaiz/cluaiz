@@ -65,8 +65,12 @@ enum CliCommand {
         model_id: String,
         
         /// Enter interactive chat mode (Default: true)
-        #[arg(short, long, default_value_t = true, action = clap::ArgAction::Set)]
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         interactive: bool,
+
+        /// Show/download all files bypassing allowed formats
+        #[arg(short = 'a', long = "all")]
+        all: bool,
     },
 
     /// Open the cluaiz Main Menu.
@@ -378,11 +382,11 @@ async fn main() -> Result<()> {
         Some(CliCommand::Menu) => {
             start_menu().await?;
         }
-        Some(CliCommand::Run { model_id, interactive }) => {
+        Some(CliCommand::Run { model_id, interactive, all }) => {
             if model_id.trim().is_empty() {
                 start_dashboard().await?;
             } else {
-                if let Err(e) = crate::cli::run::execute(&model_id, interactive).await {
+                if let Err(e) = crate::cli::run::execute(&model_id, interactive, all).await {
                     eprintln!("\n  {} [Cluaiz] Run Error: {}\n", "❌".red(), e);
                     std::process::exit(1);
                 }

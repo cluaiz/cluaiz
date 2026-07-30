@@ -2,10 +2,12 @@ use reqwest::Client;
 use serde::Deserialize;
 use crate::models::registry::ModelManifest;
 
-#[derive(Debug, Deserialize)]
-struct HfTreeItem {
-    path: String,
-    size: Option<u64>,
+#[derive(Debug, Deserialize, Clone)]
+pub struct HfTreeItem {
+    pub path: String,
+    pub size: Option<u64>,
+    #[serde(rename = "type")]
+    pub r#type: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -22,6 +24,20 @@ pub struct HfVariant {
 pub struct HuggingFaceHub;
 
 impl HuggingFaceHub {
+    /// Fetch raw file tree items from HuggingFace repository
+    pub async fn list_raw_tree(repo_id: &str) -> Result<Vec<HfTreeItem>, String> {
+        let client = Client::new();
+        let url = format!("https://huggingface.co/api/models/{}/tree/main?recursive=true", repo_id);
+        
+        let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+        if !response.status().is_success() {
+            return Err(format!("Failed to fetch repository '{}'. Does it exist?", repo_id));
+        }
+
+        let items: Vec<HfTreeItem> = response.json().await.map_err(|e| e.to_string())?;
+        Ok(items)
+    }
+
     /// List all supported model variants (GGUF, ONNX, SafeTensors) in a repository grouped into cohesive bundles
     pub async fn list_variants(repo_id: &str) -> Result<Vec<HfVariant>, String> {
         let client = Client::new();
