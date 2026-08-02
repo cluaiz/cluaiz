@@ -709,7 +709,7 @@ fn run_directory_tree_picker(repo_id: &str, raw_items: &[engines::models::manage
                     }
                     TreeItemNode::Folder { name, selected_count, total_count, .. } => {
                         let check = if *selected_count == *total_count && *total_count > 0 {
-                            "[x]".green().bold()
+                            "[✓]".green().bold()
                         } else if *selected_count > 0 {
                             "[-]".yellow().bold()
                         } else {
@@ -724,7 +724,7 @@ fn run_directory_tree_picker(repo_id: &str, raw_items: &[engines::models::manage
                         }
                     }
                     TreeItemNode::File { name, size_bytes, is_selected, .. } => {
-                        let check = if *is_selected { "[x]".green().bold() } else { "[ ]".dimmed() };
+                        let check = if *is_selected { "[✓]".green().bold() } else { "[ ]".dimmed() };
                         let size_mb = *size_bytes as f64 / (1024.0 * 1024.0);
                         let size_str = format!("({:.1} MB)", size_mb).dimmed();
                         if is_cursor {
@@ -738,8 +738,8 @@ fn run_directory_tree_picker(repo_id: &str, raw_items: &[engines::models::manage
 
             render_buf.push_str(&format!("  {}\x1B[K\r\n", "─".repeat(60).dimmed()));
             render_buf.push_str(&format!("  Selected: {} files ({:.2} GB)\x1B[K\r\n", selected_files.len().to_string().green().bold(), total_gb));
-            render_buf.push_str(&format!("  {}  {}  {}  {}  {}  {}\x1B[K\r\n", 
-                "Up/Dn".yellow(), "Enter".cyan(), "Space".magenta(), "Back".blue(), "Y:Get".green().bold(), "Q:Exit".red().bold()));
+            render_buf.push_str(&format!("  {}  {}  {}  {}  {}  {}  {}\x1B[K\r\n", 
+                "⌨".white().bold(), "↕:Up/Dn".yellow(), "↩:Enter".cyan(), "␣:Space".magenta(), "←:Back".blue(), "Y:Get".green().bold(), "Q:Exit".red().bold()));
 
             write!(stdout, "{}", render_buf)?;
             stdout.flush()?;
