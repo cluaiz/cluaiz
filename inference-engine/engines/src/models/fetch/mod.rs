@@ -1,6 +1,8 @@
 pub mod asset_resolver;
+pub mod tts_resolver;
 
 pub use asset_resolver::AssetResolver;
+pub use tts_resolver::TtsAssetResolver;
 
 use std::path::PathBuf;
 use tracing::info;
@@ -104,6 +106,22 @@ impl ModelDownloader {
                 if !target_path.exists() {
                     let meta_url = format!("https://huggingface.co/{}/resolve/main/{}", repo, meta_file);
                     let _ = Self::download_optional_metadata_file(&client, &meta_url, &target_path).await;
+                }
+            }
+            
+            // 🌐 AUTO-FETCH HF API METADATA FOR 3-WAY DISCOVERY VOTING
+            let api_url = format!("https://huggingface.co/api/models/{}", repo);
+            if let Ok(res) = client.get(&api_url).send().await {
+                if res.status().is_success() {
+                    if let Ok(bytes) = res.bytes().await {
+                        let hf_meta_path = dest_dir.join("hf_metadata.json");
+                        if let Ok(json_val) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                            if let Ok(pretty) = serde_json::to_string_pretty(&json_val) {
+                                let _ = std::fs::write(&hf_meta_path, pretty);
+                            }
+                        }
+                        info!("✅ [Downloader] Saved HuggingFace API metadata to hf_metadata.json");
+                    }
                 }
             }
         }

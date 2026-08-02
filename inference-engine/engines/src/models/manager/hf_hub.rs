@@ -1,6 +1,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 use crate::models::registry::ModelManifest;
+use crate::models::fetch::tts_resolver::TtsAssetResolver;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HfTreeItem {
@@ -50,11 +51,22 @@ impl HuggingFaceHub {
 
         let items: Vec<HfTreeItem> = response.json().await.map_err(|e| e.to_string())?;
         
-        // Harvest all global and subfolder metadata config JSONs / auxiliary text files
+        // Harvest all global and subfolder metadata config JSONs / auxiliary text files & binary style assets
         let metadata_files: Vec<String> = items.iter().filter_map(|item| {
             let path = &item.path;
             let lower = path.to_lowercase();
-            if lower.ends_with(".json") || lower.ends_with(".txt") || lower.ends_with("vocab.json") || lower.ends_with("merges.txt") || lower.ends_with("cluaiz-engine.ready") {
+            if lower.ends_with(".json") 
+                || lower.ends_with(".txt") 
+                || lower.ends_with(".yaml")
+                || lower.ends_with("vocab.json") 
+                || lower.ends_with("merges.txt") 
+                || lower.ends_with("cluaiz-engine.ready")
+                || lower.contains("voices/")
+                || lower.contains("voice_styles/")
+                || lower.contains("vocoder/")
+                || lower.contains("codec/")
+                || lower.ends_with("speaker_embeddings.bin")
+            {
                 Some(path.clone())
             } else {
                 None
@@ -108,14 +120,20 @@ impl HuggingFaceHub {
                     let primary_file = bundle_files[0].clone();
                     
                     // Only attach metadata JSONs that are directories-prefix compatible with the primary model file
-                    // e.g. for primary_file "Q4_K_M/cuda/decoder/model.onnx":
-                    // - include root-level JSONs like "config.json"
-                    // - include path JSONs like "Q4_K_M/cuda/tokenizer.json"
-                    // - skip sibling/other path JSONs like "Q4_K_M/default/tokenizer.json"
                     for meta in &metadata_files {
                         if !bundle_files.contains(meta) {
                             if is_directory_prefix(meta, &primary_file) {
                                 bundle_files.push(meta.clone());
+                            }
+                        }
+                    }
+
+                    // GGUF + ONNX Hybrid: Always attach frontend models and configs if present anywhere in the repo
+                    for any_item in &items {
+                        let path_lower = any_item.path.to_lowercase();
+                        if path_lower.contains("frontend-onnx/") || path_lower.contains("voices/") || path_lower.contains("voice_styles/") || path_lower.contains("espeak-ng-data/") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml") {
+                            if !bundle_files.contains(&any_item.path) {
+                                bundle_files.push(any_item.path.clone());
                             }
                         }
                     }
@@ -127,10 +145,14 @@ impl HuggingFaceHub {
                     let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
                     let shard_count = bundle_files.iter().filter(|f| f.ends_with(".gguf")).count();
                     
+                    let file_stem = std::path::Path::new(&primary_file)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
                     let variant_id = if shard_count > 1 {
-                        format!("GGUF {} ({} Shards)", quant_tag, shard_count)
+                        format!("GGUF {} ({}) ({} Shards)", quant_tag, file_stem, shard_count)
                     } else {
-                        format!("GGUF {}", quant_tag)
+                        format!("GGUF {} ({})", quant_tag, file_stem)
                     };
 
                     variants.push(HfVariant {
@@ -144,10 +166,50 @@ impl HuggingFaceHub {
                     });
                 }
             } else if lower.ends_with(".onnx") {
-                // Group ONNX models by precision tag / sub-directory
-                let quant_tag = extract_quant_tag(path);
+                // SUBCOMPONENT ENTRYPOINT GATING: Do not create standalone variants for sub-graphs (vocoder, denoiser, tokenizer)
+                // if a primary backbone model exists, OR if another subcomponent already created the unified pipeline variant.
                 let parent_dir = std::path::Path::new(path).parent().and_then(|p| p.to_str()).unwrap_or("");
+                let is_subcomp = TtsAssetResolver::is_subcomponent_file(path);
+
+                if is_subcomp {
+                    // Check if there is a primary entrypoint file in the same directory
+                    let has_primary = items.iter().any(|i| {
+                        let i_lower = i.path.to_lowercase();
+                        let i_dir = std::path::Path::new(&i.path).parent().and_then(|p| p.to_str()).unwrap_or("");
+                        i_dir == parent_dir && i_lower.ends_with(".onnx") && !TtsAssetResolver::is_subcomponent_file(&i.path)
+                    });
+
+                    if has_primary {
+                        continue; // Skip creating standalone variant — this subcomponent will be bundled into the primary model variant
+                    }
+
+                    // If all files in the directory are subcomponents (split pipeline repo), only allow the first ONNX file to anchor the unified pipeline
+                    let first_subcomp = items.iter().find(|i| {
+                        let i_lower = i.path.to_lowercase();
+                        let i_dir = std::path::Path::new(&i.path).parent().and_then(|p| p.to_str()).unwrap_or("");
+                        i_dir == parent_dir && i_lower.ends_with(".onnx")
+                    });
+                    if let Some(first) = first_subcomp {
+                        if first.path != *path {
+                            continue; // Skip duplicate anchor — first subcomponent already gathered all pipeline stages into 1 bundle
+                        }
+                    }
+                }
+
+                // Group ONNX models by precision tag / sub-directory & attach FP16 companion vocoders
+                let quant_tag = extract_quant_tag(path);
+                let is_combined_file = lower.contains("combined");
                 
+                // If the folder is deep and contains split pipeline stages (flow/, llm/, hift/), we identify the base directory of the pipeline.
+                let pipeline_base_dir = if parent_dir.to_lowercase().ends_with("/llm") 
+                    || parent_dir.to_lowercase().ends_with("/flow") 
+                    || parent_dir.to_lowercase().ends_with("/hift") 
+                {
+                    std::path::Path::new(parent_dir).parent().and_then(|p| p.to_str()).unwrap_or(parent_dir)
+                } else {
+                    parent_dir
+                };
+
                 let mut bundle_files = Vec::new();
                 let mut total_size = 0u64;
 
@@ -155,11 +217,50 @@ impl HuggingFaceHub {
                     let o_path = &onnx_item.path;
                     let o_lower = o_path.to_lowercase();
                     let o_parent = std::path::Path::new(o_path).parent().and_then(|p| p.to_str()).unwrap_or("");
+                    let o_combined = o_lower.contains("combined");
 
-                    if o_parent == parent_dir && (o_lower.ends_with(".onnx") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".onnx.data")) {
+                    let in_same_pipeline = o_parent == parent_dir || (!pipeline_base_dir.is_empty() && o_path.starts_with(pipeline_base_dir));
+
+                    if in_same_pipeline && (o_lower.ends_with(".onnx") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".onnx.data") || o_lower.ends_with(".data")) {
+                        // Enforce Combined Graph vs Split Graph Mutual Exclusion
+                        if is_combined_file && !o_combined && (o_lower.contains("flow") || o_lower.contains("hift") || o_lower.contains("vocoder")) {
+                            continue; // Skip isolated split graphs if user target is combined graph
+                        }
+                        if !is_combined_file && o_combined {
+                            continue; // Skip combined graph if user target is split graphs
+                        }
+
+                        // SCALE ISOLATION: Prevent mixing base/ vs base_small/, custom/ vs custom_small/ etc.
+                        if TtsAssetResolver::is_scale_mismatch(path, o_path) {
+                            continue; // Different architecture scales — do NOT bundle together
+                        }
+
+                        // ANTI-REDUNDANCY: Skip files that are the same model graph but different quantizations
+                        // e.g. model.onnx vs model_q4.onnx vs model_fp16.onnx should be SEPARATE variants
+                        if o_lower.ends_with(".onnx") && TtsAssetResolver::is_same_model_different_quant(path, o_path) {
+                            continue;
+                        }
+
                         let o_quant = extract_quant_tag(o_path);
-                        if o_quant == quant_tag || (quant_tag == "DEFAULT" && o_path.contains(std::path::Path::new(path).file_stem().and_then(|s| s.to_str()).unwrap_or(""))) {
-                            bundle_files.push(o_path.clone());
+                        // Always bundle matching quantization OR pipeline sub-components (denoisers, vocoders, tokenizers) OR companion .data files
+                        let is_subcomp = TtsAssetResolver::is_subcomponent_file(o_path);
+                        let is_companion_data = o_lower.ends_with(".onnx.data") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".data");
+                        
+                        if o_quant == quant_tag || is_subcomp || is_companion_data {
+                            // Strip generic subfolders (onnx/, models/, weights/) so model files save FLAT in root.
+                            // Subfolders are preserved ONLY for voice assets (voices/, voice_styles/, espeak-ng-data/, frontend-onnx/).
+                            let is_voice_asset = o_lower.contains("voices/") 
+                                || o_lower.contains("voice_styles/") 
+                                || o_lower.contains("espeak-ng-data/") 
+                                || o_lower.contains("frontend-onnx/");
+
+                            let normalized_path = if !is_voice_asset && (o_lower.starts_with("onnx/") || o_lower.starts_with("models/") || o_lower.starts_with("weights/")) {
+                                std::path::Path::new(o_path).file_name().and_then(|s| s.to_str()).unwrap_or(o_path).to_string()
+                            } else {
+                                o_path.clone()
+                            };
+
+                            bundle_files.push(normalized_path);
                             total_size += onnx_item.size.unwrap_or(0);
                             processed_paths.insert(o_path.clone());
                         }
@@ -169,16 +270,27 @@ impl HuggingFaceHub {
                 if !bundle_files.is_empty() {
                     bundle_files.sort();
                     let primary_file = bundle_files.iter()
-                        .find(|f| f.contains("decoder") || f.contains("model.onnx"))
+                        .find(|f| f.contains("slow_ar") || f.contains("kokoro") || f.contains("generator") || f.contains("speech_llm") || f.contains("decoder") || f.contains("model.onnx"))
                         .cloned()
                         .unwrap_or_else(|| bundle_files[0].clone());
 
-                    // Only attach metadata JSONs matching this ONNX variant's path prefix
-                    // e.g. Q4_K_M/cuda variant only gets Q4_K_M/cuda/*.json + root-level JSONs, NOT default/*.json or NF4/*.json
+                    // Attach metadata JSONs, YAMLs, and binary voice directories matching directory prefix
                     for meta in &metadata_files {
                         if !bundle_files.contains(meta) {
-                            if is_directory_prefix(meta, &primary_file) {
-                                bundle_files.push(meta.clone());
+                            let meta_lower = meta.to_lowercase();
+                            let is_root_meta = !meta.contains('/');
+                            let in_pipeline_path = !pipeline_base_dir.is_empty() && meta.starts_with(pipeline_base_dir);
+                            let is_voice_or_frontend_asset = meta_lower.contains("voices/") || meta_lower.contains("voice_styles/") || meta_lower.contains("vocoder/") || meta_lower.contains("codec/") || meta_lower.contains("espeak-ng-data/") || meta_lower.contains("frontend-onnx/");
+
+                            if is_root_meta || in_pipeline_path || is_voice_or_frontend_asset {
+                                let normalized_meta = if !is_voice_or_frontend_asset && (meta_lower.starts_with("onnx/") || meta_lower.starts_with("models/") || meta_lower.starts_with("weights/")) {
+                                    std::path::Path::new(meta).file_name().and_then(|s| s.to_str()).unwrap_or(meta).to_string()
+                                } else {
+                                    meta.clone()
+                                };
+                                if !bundle_files.contains(&normalized_meta) {
+                                    bundle_files.push(normalized_meta);
+                                }
                             }
                         }
                     }
@@ -186,7 +298,16 @@ impl HuggingFaceHub {
                     filter_duplicate_metadata_files(&mut bundle_files);
 
                     let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
-                    let variant_id = format!("ONNX {} ({})", quant_tag, parent_dir);
+                    let label_dir = if !pipeline_base_dir.is_empty() { pipeline_base_dir } else { parent_dir };
+                    let file_stem = std::path::Path::new(&primary_file)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
+                    let variant_id = if !label_dir.is_empty() && label_dir != "." {
+                        format!("ONNX {} ({}/{})", quant_tag, label_dir, file_stem)
+                    } else {
+                        format!("ONNX {} ({})", quant_tag, file_stem)
+                    };
 
                     variants.push(HfVariant {
                         variant_id,
@@ -474,7 +595,8 @@ fn extract_quant_tag(path: &str) -> String {
         "ud-iq",
         "iq1_", "iq2_", "iq3_", "iq4_",
         "q1_", "q2_", "q3_", "q4_", "q5_", "q6_", "q8_",
-        "bf16", "fp16", "fp32", "int8", "int4"
+        "bf16", "fp16", "fp32", "int8", "int4",
+        "_f16", "_f32"  // Detect GGUF F16/F32 precision (e.g. CosyVoice3_F16.gguf)
     ];
     
     let mut best_idx = None;
@@ -508,7 +630,9 @@ fn extract_quant_tag(path: &str) -> String {
         if (part.starts_with('q') || part.starts_with("iq")) && part.len() >= 2 && part.chars().nth(1).map_or(false, |c| c.is_digit(10)) {
             return part.to_uppercase();
         }
-        if *part == "bf16" || *part == "fp16" || *part == "fp32" || *part == "int8" || *part == "uint8" || *part == "int4" || *part == "q4f16" {
+        if *part == "bf16" || *part == "fp16" || *part == "fp32" || *part == "int8" || *part == "uint8" || *part == "int4" || *part == "q4f16"
+            || *part == "f16" || *part == "f32"  // GGUF F16/F32 precision tags
+        {
             return part.to_uppercase();
         }
     }
@@ -604,6 +728,5 @@ fn filter_duplicate_metadata_files(bundle_files: &mut Vec<String>) {
         true
     });
 }
-
 
 
