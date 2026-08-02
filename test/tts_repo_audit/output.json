@@ -1,0 +1,117 @@
+[
+    {
+        "repo_id": "Lourdle/CosyVoice2-0.5B_ONNX",
+        "detected_family": "cosyvoice",
+        "terminal_selection_flow": {
+            "raw_input_choices": [
+                "ONNX FP16 () (1.17 GB)",
+                "ONNX FP32 () (1.40 GB)"
+            ],
+            "variants": [
+                {
+                    "variant_id": "ONNX FP32 ()",
+                    "format": "ONNX",
+                    "precision_quant_tag": "FP32",
+                    "architecture": "ONNX Graph",
+                    "total_download_size_gb": 1.40,
+                    "bundled_files": [
+                        "flow_fp32.onnx",
+                        "flow_hift_combined_fp16.onnx",
+                        "flow_hift_combined_fp32.onnx",
+                        "hift.onnx"
+                    ]
+                },
+                {
+                    "variant_id": "ONNX FP16 ()",
+                    "format": "ONNX",
+                    "precision_quant_tag": "FP16",
+                    "architecture": "ONNX Graph",
+                    "total_download_size_gb": 1.17,
+                    "bundled_files": [
+                        "flow_fp16.onnx",
+                        "flow_hift_combined_fp16.onnx",
+                        "flow_hift_combined_fp32.onnx",
+                        "hift.onnx"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "repo_id": "onnx-community/Kokoro-82M-v1.0-ONNX",
+        "detected_family": "kokoro-v1",
+        "terminal_selection_flow": {
+            "raw_input_choices": [
+                "ONNX DEFAULT (onnx) (1.32 GB)"
+            ],
+            "variants": [
+                {
+                    "variant_id": "ONNX DEFAULT (onnx)",
+                    "format": "ONNX",
+                    "precision_quant_tag": "DEFAULT",
+                    "architecture": "Style_text_to_speech_2",
+                    "total_download_size_gb": 1.32,
+                    "bundled_files": [
+                        "onnx/model.onnx",
+                        "onnx/model_fp16.onnx",
+                        "onnx/model_q4.onnx",
+                        "onnx/model_q4f16.onnx",
+                        "onnx/model_q8f16.onnx",
+                        "onnx/model_quantized.onnx",
+                        "onnx/model_uint8.onnx",
+                        "onnx/model_uint8f16.onnx",
+                        "config.json",
+                        "tokenizer.json",
+                        "tokenizer_config.json"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "repo_id": "contextboxai/Kokoro-Vietnamese",
+        "detected_family": "kokoro-v1",
+        "terminal_selection_flow": {
+            "raw_input_choices": [
+                "ONNX DEFAULT () (0.30 GB)"
+            ],
+            "variants": [
+                {
+                    "variant_id": "ONNX DEFAULT ()",
+                    "format": "ONNX",
+                    "precision_quant_tag": "DEFAULT",
+                    "architecture": "Style_text_to_speech_2",
+                    "total_download_size_gb": 0.30,
+                    "bundled_files": [
+                        "kokoro_vi.onnx",
+                        "config.json",
+                        "voices.json"
+                    ]
+                }
+            ]
+        },
+        "siblings": [
+            ".gitattributes",
+            "README.md",
+            "config.json",
+            "kokoro_vi.onnx",
+            "kokoro_vi.pth",
+            "kokoro_vi_voicepack.pt",
+            "voicepacks/diem_trinh.pt",
+            "voicepacks/duc_an.pt",
+            "voicepacks/duc_duy.pt",
+            "voicepacks/hung_thinh.pt",
+            "voicepacks/mai_linh.pt",
+            "voicepacks/mai_loan.pt",
+            "voicepacks/manh_dung.pt",
+            "voicepacks/my_yen.pt",
+            "voicepacks/ngoc_huyen.pt",
+            "voicepacks/phat_tai.pt",
+            "voicepacks/storyvert.pt",
+            "voicepacks/thanh_dat.pt",
+            "voicepacks/thuc_trinh.pt",
+            "voicepacks/tuan_ngoc.pt",
+            "voices.json"
+        ]
+    }
+]

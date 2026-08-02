@@ -1,0 +1,686 @@
+{
+  "total_repos": 98,
+  "total_issues": 84,
+  "issues": [
+    {
+      "repo": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 8 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_q4.onnx', 'onnx/model_q4f16.onnx', 'onnx/model_q8f16.onnx', 'onnx/model_quantized.onnx', 'onnx/model_uint8.onnx', 'onnx/model_uint8f16.onnx']"
+    },
+    {
+      "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'vieneu_acoustic_cached' bundled 3 times with different quants: ['onnx/vieneu_acoustic_cached.onnx', 'onnx_int8/vieneu_acoustic_cached.onnx', 'onnx_update/vieneu_acoustic_cached.onnx']"
+    },
+    {
+      "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'vieneu_decode_step' bundled 2 times with different quants: ['onnx/vieneu_decode_step.onnx', 'onnx_update/vieneu_decode_step.onnx']"
+    },
+    {
+      "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'vieneu_prefill' bundled 2 times with different quants: ['onnx/vieneu_prefill.onnx', 'onnx_update/vieneu_prefill.onnx']"
+    },
+    {
+      "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+      "family": "generic-onnx-tts",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "2 separate DEFAULT ONNX variants across dirs {'ROOT', 'onnx'}. May need merging: ['denoiser.onnx', 'onnx/vieneu_acoustic_cached.onnx']"
+    },
+    {
+      "repo": "onnx-community/Kokoro-82M-ONNX",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 8 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_q4.onnx', 'onnx/model_q4f16.onnx', 'onnx/model_q8f16.onnx', 'onnx/model_quantized.onnx', 'onnx/model_uint8.onnx', 'onnx/model_uint8f16.onnx']"
+    },
+    {
+      "repo": "Supertone/supertonic-3",
+      "family": "supertonic-v3",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "MISSING_VOICES",
+      "severity": "HIGH",
+      "detail": "Repo has 10 voice files but variant bundles NONE of them"
+    },
+    {
+      "repo": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v3.batch.onnx', 'speech_tokenizer_v3.onnx']"
+    },
+    {
+      "repo": "BricksDisplay/ellie-Bert-VITS2",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 2 times with different quants: ['onnx/model.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "YatharthS/LuxTTS",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT ()",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'fm_decoder' bundled 2 times with different quants: ['fm_decoder.onnx', 'fm_decoder_int8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_model' bundled 8 times with different quants: ['onnx/decoder_model.onnx', 'onnx/decoder_model_bnb4.onnx', 'onnx/decoder_model_fp16.onnx', 'onnx/decoder_model_int8.onnx', 'onnx/decoder_model_q4.onnx', 'onnx/decoder_model_q4f16.onnx', 'onnx/decoder_model_quantized.onnx', 'onnx/decoder_model_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_model_merged' bundled 8 times with different quants: ['onnx/decoder_model_merged.onnx', 'onnx/decoder_model_merged_bnb4.onnx', 'onnx/decoder_model_merged_fp16.onnx', 'onnx/decoder_model_merged_int8.onnx', 'onnx/decoder_model_merged_q4.onnx', 'onnx/decoder_model_merged_q4f16.onnx', 'onnx/decoder_model_merged_quantized.onnx', 'onnx/decoder_model_merged_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_postnet_and_vocoder' bundled 8 times with different quants: ['onnx/decoder_postnet_and_vocoder.onnx', 'onnx/decoder_postnet_and_vocoder_bnb4.onnx', 'onnx/decoder_postnet_and_vocoder_fp16.onnx', 'onnx/decoder_postnet_and_vocoder_int8.onnx', 'onnx/decoder_postnet_and_vocoder_q4.onnx', 'onnx/decoder_postnet_and_vocoder_q4f16.onnx', 'onnx/decoder_postnet_and_vocoder_quantized.onnx', 'onnx/decoder_postnet_and_vocoder_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_with_past_model' bundled 3 times with different quants: ['onnx/decoder_with_past_model.onnx', 'onnx/decoder_with_past_model_bnb4.onnx', 'onnx/decoder_with_past_model_quantized.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'encoder_model' bundled 3 times with different quants: ['onnx/encoder_model.onnx', 'onnx/encoder_model_bnb4.onnx', 'onnx/encoder_model_quantized.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX FP16 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_postnet_and_vocoder' bundled 8 times with different quants: ['onnx/decoder_postnet_and_vocoder.onnx', 'onnx/decoder_postnet_and_vocoder_bnb4.onnx', 'onnx/decoder_postnet_and_vocoder_fp16.onnx', 'onnx/decoder_postnet_and_vocoder_int8.onnx', 'onnx/decoder_postnet_and_vocoder_q4.onnx', 'onnx/decoder_postnet_and_vocoder_q4f16.onnx', 'onnx/decoder_postnet_and_vocoder_quantized.onnx', 'onnx/decoder_postnet_and_vocoder_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX INT8 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_model' bundled 2 times with different quants: ['onnx/decoder_model_int8.onnx', 'onnx/decoder_model_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX INT8 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_model_merged' bundled 2 times with different quants: ['onnx/decoder_model_merged_int8.onnx', 'onnx/decoder_model_merged_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX INT8 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_postnet_and_vocoder' bundled 8 times with different quants: ['onnx/decoder_postnet_and_vocoder.onnx', 'onnx/decoder_postnet_and_vocoder_bnb4.onnx', 'onnx/decoder_postnet_and_vocoder_fp16.onnx', 'onnx/decoder_postnet_and_vocoder_int8.onnx', 'onnx/decoder_postnet_and_vocoder_q4.onnx', 'onnx/decoder_postnet_and_vocoder_q4f16.onnx', 'onnx/decoder_postnet_and_vocoder_quantized.onnx', 'onnx/decoder_postnet_and_vocoder_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX INT8 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_with_past_model' bundled 2 times with different quants: ['onnx/decoder_with_past_model_int8.onnx', 'onnx/decoder_with_past_model_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX INT8 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'encoder_model' bundled 2 times with different quants: ['onnx/encoder_model_int8.onnx', 'onnx/encoder_model_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX Q4 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_postnet_and_vocoder' bundled 8 times with different quants: ['onnx/decoder_postnet_and_vocoder.onnx', 'onnx/decoder_postnet_and_vocoder_bnb4.onnx', 'onnx/decoder_postnet_and_vocoder_fp16.onnx', 'onnx/decoder_postnet_and_vocoder_int8.onnx', 'onnx/decoder_postnet_and_vocoder_q4.onnx', 'onnx/decoder_postnet_and_vocoder_q4f16.onnx', 'onnx/decoder_postnet_and_vocoder_quantized.onnx', 'onnx/decoder_postnet_and_vocoder_uint8.onnx']"
+    },
+    {
+      "repo": "Xenova/speecht5_tts",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX Q4F16 (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'decoder_postnet_and_vocoder' bundled 8 times with different quants: ['onnx/decoder_postnet_and_vocoder.onnx', 'onnx/decoder_postnet_and_vocoder_bnb4.onnx', 'onnx/decoder_postnet_and_vocoder_fp16.onnx', 'onnx/decoder_postnet_and_vocoder_int8.onnx', 'onnx/decoder_postnet_and_vocoder_q4.onnx', 'onnx/decoder_postnet_and_vocoder_q4f16.onnx', 'onnx/decoder_postnet_and_vocoder_quantized.onnx', 'onnx/decoder_postnet_and_vocoder_uint8.onnx']"
+    },
+    {
+      "repo": "FunAudioLLM/CosyVoice2-0.5B",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v2.batch.onnx', 'speech_tokenizer_v2.onnx']"
+    },
+    {
+      "repo": "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 8 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_q4.onnx', 'onnx/model_q4f16.onnx', 'onnx/model_q8f16.onnx', 'onnx/model_quantized.onnx', 'onnx/model_uint8.onnx', 'onnx/model_uint8f16.onnx']"
+    },
+    {
+      "repo": "ResembleAI/chatterbox-turbo-ONNX",
+      "family": "chatterbox",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'conditional_decoder' bundled 5 times with different quants: ['onnx/conditional_decoder.onnx', 'onnx/conditional_decoder_fp16.onnx', 'onnx/conditional_decoder_q4.onnx', 'onnx/conditional_decoder_q4f16.onnx', 'onnx/conditional_decoder_quantized.onnx']"
+    },
+    {
+      "repo": "ResembleAI/chatterbox-turbo-ONNX",
+      "family": "chatterbox",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'embed_tokens' bundled 2 times with different quants: ['onnx/embed_tokens.onnx', 'onnx/embed_tokens_quantized.onnx']"
+    },
+    {
+      "repo": "ResembleAI/chatterbox-turbo-ONNX",
+      "family": "chatterbox",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'language_model' bundled 2 times with different quants: ['onnx/language_model.onnx', 'onnx/language_model_quantized.onnx']"
+    },
+    {
+      "repo": "ResembleAI/chatterbox-turbo-ONNX",
+      "family": "chatterbox",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'speech_encoder' bundled 2 times with different quants: ['onnx/speech_encoder.onnx', 'onnx/speech_encoder_quantized.onnx']"
+    },
+    {
+      "repo": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "family": "cosyvoice",
+      "variant": "ONNX DEFAULT (frontend-onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'campplus' bundled 2 times with different quants: ['frontend-onnx/campplus.int8.onnx', 'frontend-onnx/campplus.onnx']"
+    },
+    {
+      "repo": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['frontend-onnx/campplus.int8.onnx', 'frontend-onnx/campplus.onnx', 'frontend-onnx/speech_tokenizer_v3.int8.onnx', 'frontend-onnx/speech_tokenizer_v3.onnx']"
+    },
+    {
+      "repo": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+      "family": "cosyvoice",
+      "variant": "GGUF DEFAULT",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF DEFAULT' appears 2 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "lastudio-community/VieNeu-TTS-v3-Turbo-CPP",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (codec)",
+      "bug_type": "MISSING_DATA_COMPANION",
+      "severity": "CRITICAL",
+      "detail": "Data companion 'codec/moss_audio_tokenizer_encode.data' exists in repo but NOT in bundle for 'codec/moss_audio_tokenizer_encode.onnx'"
+    },
+    {
+      "repo": "lastudio-community/VieNeu-TTS-v3-Turbo-CPP",
+      "family": "generic-onnx-tts",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "2 separate DEFAULT ONNX variants across dirs {'ROOT', 'codec'}. May need merging: ['codec/moss_audio_tokenizer_decode_full.onnx', 'denoiser.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-eng",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Supertone/supertonic-2",
+      "family": "supertonic-v3",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "MISSING_VOICES",
+      "severity": "HIGH",
+      "detail": "Repo has 10 voice files but variant bundles NONE of them"
+    },
+    {
+      "repo": "agiws/Fun-CosyVoice3-0.5B",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v3.batch.onnx', 'speech_tokenizer_v3.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-vie",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-hin",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "FunAudioLLM/CosyVoice-300M-SFT",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 3 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v1.onnx']"
+    },
+    {
+      "repo": "FunAudioLLM/CosyVoice-300M",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 3 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v1.onnx']"
+    },
+    {
+      "repo": "onnx-community/Kokoro-82M-v1.1-zh-ONNX",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 8 times with different quants: ['onnx/model.onnx', 'onnx/model_bnb4.onnx', 'onnx/model_fp16.onnx', 'onnx/model_int8.onnx', 'onnx/model_q4.onnx', 'onnx/model_q4f16.onnx', 'onnx/model_quantized.onnx', 'onnx/model_uint8.onnx']"
+    },
+    {
+      "repo": "Supertone/supertonic",
+      "family": "supertonic-v3",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "MISSING_VOICES",
+      "severity": "HIGH",
+      "detail": "Repo has 10 voice files but variant bundles NONE of them"
+    },
+    {
+      "repo": "ZDisket/MOSS-TTS-PNY-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF DEFAULT",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF DEFAULT' appears 4 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "ZDisket/MOSS-TTS-PNY-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF Q8_0",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF Q8_0' appears 2 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX FP16 (base)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'qwen3_tts_codec_encoder.fp16' bundled 2 times with different quants: ['base/qwen3_tts_codec_encoder.fp16.onnx', 'base_small/qwen3_tts_codec_encoder.fp16.onnx']"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX FP16 (base)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'qwen3_tts_decoder.fp16' bundled 2 times with different quants: ['base/qwen3_tts_decoder.fp16.onnx', 'base_small/qwen3_tts_decoder.fp16.onnx']"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX FP16 (base)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'qwen3_tts_speaker_encoder.fp16' bundled 2 times with different quants: ['base/qwen3_tts_speaker_encoder.fp16.onnx', 'base_small/qwen3_tts_speaker_encoder.fp16.onnx']"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX FP16 (custom)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'qwen3_tts_decoder.fp16' bundled 2 times with different quants: ['custom/qwen3_tts_decoder.fp16.onnx', 'custom_small/qwen3_tts_decoder.fp16.onnx']"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF Q8_0",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF Q8_0' appears 5 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF Q5_K",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF Q5_K' appears 5 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "tonythethompson/CosyVoice-300M-ONNX",
+      "family": "cosyvoice",
+      "variant": "ONNX ONNX_QUANTIZED/FLOW (onnx_quantized)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'f0_predictor' bundled 2 times with different quants: ['onnx_quantized/hift/f0_predictor.int8.onnx', 'onnx_quantized_modelopt/hift/f0_predictor.int8.onnx']"
+    },
+    {
+      "repo": "tonythethompson/CosyVoice-300M-ONNX",
+      "family": "cosyvoice",
+      "variant": "ONNX ONNX_QUANTIZED/FLOW (onnx_quantized)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'source' bundled 2 times with different quants: ['onnx_quantized/hift/source.int8.onnx', 'onnx_quantized_modelopt/hift/source.int8.onnx']"
+    },
+    {
+      "repo": "tonythethompson/CosyVoice-300M-ONNX",
+      "family": "cosyvoice",
+      "variant": "ONNX ONNX_QUANTIZED/LLM (onnx_quantized)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'f0_predictor' bundled 2 times with different quants: ['onnx_quantized/hift/f0_predictor.int8.onnx', 'onnx_quantized_modelopt/hift/f0_predictor.int8.onnx']"
+    },
+    {
+      "repo": "tonythethompson/CosyVoice-300M-ONNX",
+      "family": "cosyvoice",
+      "variant": "ONNX ONNX_QUANTIZED/LLM (onnx_quantized)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'source' bundled 2 times with different quants: ['onnx_quantized/hift/source.int8.onnx', 'onnx_quantized_modelopt/hift/source.int8.onnx']"
+    },
+    {
+      "repo": "tonythethompson/CosyVoice-300M-ONNX",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 9 ONNX variants but NONE contains all 24 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'flow/encoder.onnx', 'hift/f0_predictor.onnx', 'hift/source.onnx', 'hift/vocoder.onnx', 'llm/text_encoder.onnx', 'llm/token_generator.onnx', 'onnx_quantized/flow/encoder.int8.onnx', 'onnx_quantized/hift/f0_predictor.int8.onnx', 'onnx_quantized/hift/source.int8.onnx', 'onnx_quantized/llm/text_encoder.int8.onnx', 'onnx_quantized/llm/token_generator.int8.onnx', 'onnx_quantized_modelopt/flow/encoder.int4.onnx', 'onnx_quantized_modelopt/flow/encoder.int8.onnx', 'onnx_quantized_modelopt/hift/f0_predictor.int4.onnx', 'onnx_quantized_modelopt/hift/f0_predictor.int8.onnx', 'onnx_quantized_modelopt/hift/source.int4.onnx', 'onnx_quantized_modelopt/hift/source.int8.onnx', 'onnx_quantized_modelopt/llm/text_encoder.int4.onnx', 'onnx_quantized_modelopt/llm/text_encoder.int8.onnx', 'onnx_quantized_modelopt/llm/token_generator.int4.onnx', 'onnx_quantized_modelopt/llm/token_generator.int8.onnx', 'speech_tokenizer_v1.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-fra",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "ZzWater/ViiTorVoice-NAR",
+      "family": "generic-onnx-tts",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "2 separate DEFAULT ONNX variants across dirs {'llm\\\\0p6_emotion\\\\cache\\\\onnx_backbone_fp32', 'dualcodec\\\\dualcodec_ckpts'}. May need merging: ['dualcodec/dualcodec_ckpts/dualcodec_decoder.onnx', 'llm/0p6_emotion/cache/onnx_backbone_fp32/llm_backbone_dynamic.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-spa",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Solidaxel/Qwen3-TTS-12Hz-1.7B-Base-GGUF",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF DEFAULT",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF DEFAULT' appears 2 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "Xenova/mms-tts-por",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-ara",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Tinysoft/Cosyvoice2-0.5B-GGUF",
+      "family": "cosyvoice",
+      "variant": "GGUF DEFAULT",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF DEFAULT' appears 2 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "Luigi/PrimeTTS",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (v2_mbistft_16k)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'primetts_v2_xinran' bundled 2 times with different quants: ['v2_mbistft_16k/primetts_v2_xinran.onnx', 'v2_mbistft_16k/primetts_v2_xinran_fp16.onnx']"
+    },
+    {
+      "repo": "Luigi/PrimeTTS",
+      "family": "generic-onnx-tts",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "10 separate DEFAULT ONNX variants across dirs {'v2_mbistft_16k', 'v2streamclean_streaming', 'v21_streaming', 'v1b_8k', 'v2stream_streaming', 'v21_mbistft_16k', 'v2lite_mbistft_16k', 'v3_4.6M', 'ROOT', 'v1b_16k'}. May need merging: ['acoustic_decoder.onnx', 'v1b_16k/acoustic_decoder.onnx', 'v1b_8k/acoustic_decoder.onnx', 'v21_mbistft_16k/primetts_v21_3voice.onnx', 'v21_streaming/v21_dec.onnx', 'v2_mbistft_16k/primetts_v2_xinran.onnx', 'v2lite_mbistft_16k/primetts_v2lite_xinran.onnx', 'v2stream_streaming/v2stream_dec.onnx', 'v2streamclean_streaming/v2streamclean_dec.onnx', 'v3_4.6M/acoustic_decoder.onnx']"
+    },
+    {
+      "repo": "Luigi/PrimeTTS",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF Q8",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF Q8' appears 2 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "Luigi/PrimeTTS",
+      "family": "generic-onnx-tts",
+      "variant": "GGUF DEFAULT",
+      "bug_type": "DUPLICATE_VARIANT_ID",
+      "severity": "MEDIUM",
+      "detail": "Variant ID 'GGUF DEFAULT' appears 3 times — user can't distinguish between them in UI"
+    },
+    {
+      "repo": "BricksDisplay/ellie-Bert-VITS2-small-onnx",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_q4.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "BricksDisplay/vits-cmn",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 2 times with different quants: ['onnx/model.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Prince-1/OmniVoice",
+      "family": "omnivoice",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "3 separate DEFAULT ONNX variants across dirs {'ROOT', 'onnx_parts\\\\_genai_llm'}. May need merging: ['embedding.onnx', 'onnx_parts/_genai_llm/model.onnx', 'onnx_parts/_genai_llm/model.onnx']"
+    },
+    {
+      "repo": "Soul-AILab/SoulX-Podcast-1.7B",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 2 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-deu",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Sariel00/cosyvoice2_rknn",
+      "family": "kokoro-v1",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "3 separate DEFAULT ONNX variants across dirs {'onnx\\\\models\\\\hift', 'original\\\\model\\\\CosyVoice2-0.5B', 'onnx\\\\models\\\\prompt'}. May need merging: ['onnx/models/prompt/campplus.onnx', 'onnx/models/hift/hift_decoder_fp32_mel108.simplified.onnx', 'original/model/CosyVoice2-0.5B/campplus.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-kor",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "gpustack/CosyVoice2-0.5B",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 3 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v2.onnx']"
+    },
+    {
+      "repo": "Xenova/tiny-random-vits",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "shreyask/bol-tts-marathi-onnx",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_q8.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "Xenova/mms-tts-rus",
+      "family": "piper-vits",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 3 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "synath/Kokoro-82M-v1.0-ONNX",
+      "family": "kokoro-v1",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 8 times with different quants: ['onnx/model.onnx', 'onnx/model_fp16.onnx', 'onnx/model_q4.onnx', 'onnx/model_q4f16.onnx', 'onnx/model_q8f16.onnx', 'onnx/model_quantized.onnx', 'onnx/model_uint8.onnx', 'onnx/model_uint8f16.onnx']"
+    },
+    {
+      "repo": "spybyscript/scyllasband",
+      "family": "supertonic-v3",
+      "variant": "MULTIPLE_DEFAULT",
+      "bug_type": "POSSIBLE_FRAGMENTATION",
+      "severity": "MEDIUM",
+      "detail": "2 separate DEFAULT ONNX variants across dirs {'onnx\\\\onnx\\\\components', 'onnx\\\\onnx\\\\g2p'}. May need merging: ['onnx/onnx/components/duration_predictor.onnx', 'onnx/onnx/g2p/model.fp32.onnx.data']"
+    },
+    {
+      "repo": "prince4332/CosyVoice2-0.5B-Akan",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v2.batch.onnx', 'speech_tokenizer_v2.onnx']"
+    },
+    {
+      "repo": "ylacombe/mms-guj-finetuned-monospeaker",
+      "family": "generic-onnx-tts",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "QUANT_REDUNDANCY",
+      "severity": "HIGH",
+      "detail": "Same model 'model' bundled 2 times with different quants: ['onnx/model.onnx', 'onnx/model_quantized.onnx']"
+    },
+    {
+      "repo": "eugenehp/supertonic-3",
+      "family": "supertonic-v3",
+      "variant": "ONNX DEFAULT (onnx)",
+      "bug_type": "MISSING_VOICES",
+      "severity": "HIGH",
+      "detail": "Repo has 10 voice files but variant bundles NONE of them"
+    },
+    {
+      "repo": "neriqlabs/kasanoma-tts-twi-v0.3",
+      "family": "cosyvoice",
+      "variant": "ALL_ONNX",
+      "bug_type": "PIPELINE_FRAGMENTATION",
+      "severity": "HIGH",
+      "detail": "CosyVoice repo has 2 ONNX variants but NONE contains all 4 pipeline stages: ['campplus.onnx', 'flow.decoder.estimator.fp32.onnx', 'speech_tokenizer_v3.batch.onnx', 'speech_tokenizer_v3.onnx']"
+    }
+  ],
+  "summary_by_type": {
+    "QUANT_REDUNDANCY": 52,
+    "POSSIBLE_FRAGMENTATION": 7,
+    "MISSING_VOICES": 4,
+    "PIPELINE_FRAGMENTATION": 11,
+    "DUPLICATE_VARIANT_ID": 9,
+    "MISSING_DATA_COMPANION": 1
+  }
+}
