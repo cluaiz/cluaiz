@@ -61,6 +61,7 @@ impl HuggingFaceHub {
                 || lower.ends_with("vocab.json") 
                 || lower.ends_with("merges.txt") 
                 || lower.ends_with("cluaiz-engine.ready")
+                || lower.ends_with(".onnx.data")
                 || lower.contains("voices/")
                 || lower.contains("voice_styles/")
                 || lower.contains("vocoder/")
@@ -247,20 +248,14 @@ impl HuggingFaceHub {
                         let is_companion_data = o_lower.ends_with(".onnx.data") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".data");
                         
                         if o_quant == quant_tag || is_subcomp || is_companion_data {
-                            // Strip generic subfolders (onnx/, models/, weights/) so model files save FLAT in root.
-                            // Subfolders are preserved ONLY for voice assets (voices/, voice_styles/, espeak-ng-data/, frontend-onnx/).
-                            let is_voice_asset = o_lower.contains("voices/") 
-                                || o_lower.contains("voice_styles/") 
-                                || o_lower.contains("espeak-ng-data/") 
-                                || o_lower.contains("frontend-onnx/");
-
-                            let normalized_path = if !is_voice_asset && (o_lower.starts_with("onnx/") || o_lower.starts_with("models/") || o_lower.starts_with("weights/")) {
-                                std::path::Path::new(o_path).file_name().and_then(|s| s.to_str()).unwrap_or(o_path).to_string()
-                            } else {
+                            let o_lower = o_path.to_lowercase();
+                            let is_voice = o_lower.contains("voices/") || o_lower.contains("voice_styles/") || o_lower.contains("espeak-ng-data/");
+                            let local_target_path = if is_voice {
                                 o_path.clone()
+                            } else {
+                                std::path::Path::new(o_path).file_name().and_then(|s| s.to_str()).unwrap_or(o_path).to_string()
                             };
-
-                            bundle_files.push(normalized_path);
+                            bundle_files.push(o_path.clone());
                             total_size += onnx_item.size.unwrap_or(0);
                             processed_paths.insert(o_path.clone());
                         }
@@ -270,7 +265,7 @@ impl HuggingFaceHub {
                 if !bundle_files.is_empty() {
                     bundle_files.sort();
                     let primary_file = bundle_files.iter()
-                        .find(|f| f.contains("slow_ar") || f.contains("kokoro") || f.contains("generator") || f.contains("speech_llm") || f.contains("decoder") || f.contains("model.onnx"))
+                        .find(|f| f.contains("slow_ar") || f.contains("kokoro") || f.contains("generator") || f.contains("speech_llm") || f.contains("decoder") || f.contains("model.onnx") || f.contains("model_uint8") || f.contains("model_q4") || f.contains("model_int8") || f.contains("model_quantized"))
                         .cloned()
                         .unwrap_or_else(|| bundle_files[0].clone());
 
@@ -280,16 +275,11 @@ impl HuggingFaceHub {
                             let meta_lower = meta.to_lowercase();
                             let is_root_meta = !meta.contains('/');
                             let in_pipeline_path = !pipeline_base_dir.is_empty() && meta.starts_with(pipeline_base_dir);
-                            let is_voice_or_frontend_asset = meta_lower.contains("voices/") || meta_lower.contains("voice_styles/") || meta_lower.contains("vocoder/") || meta_lower.contains("codec/") || meta_lower.contains("espeak-ng-data/") || meta_lower.contains("frontend-onnx/");
+                            let is_voice_or_frontend_asset = meta_lower.ends_with(".onnx.data") || meta_lower.contains("voices/") || meta_lower.contains("voice_styles/") || meta_lower.contains("vocoder/") || meta_lower.contains("codec/") || meta_lower.contains("espeak-ng-data/") || meta_lower.contains("frontend-onnx/");
 
                             if is_root_meta || in_pipeline_path || is_voice_or_frontend_asset {
-                                let normalized_meta = if !is_voice_or_frontend_asset && (meta_lower.starts_with("onnx/") || meta_lower.starts_with("models/") || meta_lower.starts_with("weights/")) {
-                                    std::path::Path::new(meta).file_name().and_then(|s| s.to_str()).unwrap_or(meta).to_string()
-                                } else {
-                                    meta.clone()
-                                };
-                                if !bundle_files.contains(&normalized_meta) {
-                                    bundle_files.push(normalized_meta);
+                                if !bundle_files.contains(meta) {
+                                    bundle_files.push(meta.clone());
                                 }
                             }
                         }
@@ -595,7 +585,7 @@ fn extract_quant_tag(path: &str) -> String {
         "ud-iq",
         "iq1_", "iq2_", "iq3_", "iq4_",
         "q1_", "q2_", "q3_", "q4_", "q5_", "q6_", "q8_",
-        "bf16", "fp16", "fp32", "int8", "int4",
+        "bf16", "fp16", "fp32", "int8", "uint8", "int4",
         "_f16", "_f32"  // Detect GGUF F16/F32 precision (e.g. CosyVoice3_F16.gguf)
     ];
     
@@ -679,9 +669,13 @@ fn is_compatible_subfolder_metadata(meta_path: &str, primary_path: &str) -> bool
         || lower.ends_with(".txt") 
         || lower.ends_with(".yaml") 
         || lower.ends_with(".yml") 
+        || lower.ends_with(".onnx")
+        || lower.ends_with(".onnx.data")
+        || lower.ends_with(".bin")
         || lower.contains("vocab") 
         || lower.contains("merges") 
-        || lower.contains("token");
+        || lower.contains("token")
+        || lower.contains("voices");
         
     if !is_asset {
         return false;
@@ -693,9 +687,11 @@ fn is_compatible_subfolder_metadata(meta_path: &str, primary_path: &str) -> bool
     }
 
     let meta_dir_lower = meta_dir.to_lowercase();
-    // Do not cross-pollute incompatible precision subfolders (e.g. q4/ vs fp16/)
+    let primary_lower = primary_path.to_lowercase();
+
     if (meta_dir_lower.contains("q4") || meta_dir_lower.contains("int8") || meta_dir_lower.contains("fp16") || meta_dir_lower.contains("quant")) 
-        && !primary_path.to_lowercase().contains(&meta_dir_lower) 
+        && !primary_lower.contains(&meta_dir_lower) 
+        && !meta_dir_lower.contains("voices")
     {
         return false;
     }

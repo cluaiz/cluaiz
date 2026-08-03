@@ -102,6 +102,38 @@ pub fn enrich_from_fallback_jsons(dir: &Path, caps: &mut ModelCapabilities) -> E
         caps.has_vision = true;
     }
 
+    // Robust file-based TTS detection instead of hardcoding
+    let mut has_tts_files = false;
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            if let Some(file_name) = entry.file_name().to_str() {
+                let lower_name = file_name.to_lowercase();
+                if lower_name == "tts.json" || lower_name == "config.json" {
+                    // We check config.json content earlier, but tts.json is a strong hint if present
+                    if lower_name == "tts.json" { has_tts_files = true; }
+                }
+                // Check for common TTS ONNX graph names
+                if lower_name.contains("hift") 
+                    || lower_name.contains("flow")
+                    || lower_name.contains("vocoder")
+                    || lower_name.contains("synthesizer")
+                    || lower_name.contains("kokoro")
+                    || lower_name.contains("vits") 
+                {
+                    has_tts_files = true;
+                }
+            }
+        }
+    }
+
+    
+    if let Some(dir_name) = dir.file_name().and_then(|n| n.to_str()) {
+        if dir_name.to_lowercase().contains("tts") {
+            caps.has_audio = true;
+            caps.is_tts = true;
+        }
+    }
+
     // Parse tokenizer_config.json & chat_template.json for fallback chat_template & special reasoning tokens
     let tok_config_path = dir.join("tokenizer_config.json");
     if tok_config_path.exists() {

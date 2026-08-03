@@ -34,7 +34,7 @@ impl EmbeddingGenerator {
 
         tracing::info!("Loading ONNX Embedding Model: {}...", model_id);
         let mut engine = OnnxEngine::new().ok()?;
-        engine.load_text_model(&model_path.to_string_lossy(), &tokenizer_path.to_string_lossy(), None).ok()?;
+        engine.load_model(&model_path.to_string_lossy(), 1).ok()?;
 
         Some(engine)
     }

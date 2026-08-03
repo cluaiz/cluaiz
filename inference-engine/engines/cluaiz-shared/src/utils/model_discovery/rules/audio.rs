@@ -6,40 +6,49 @@ pub fn evaluate_audio_rules(
     has_audio_tensors: bool,
     caps: &mut ModelCapabilities,
 ) {
-    let is_gemma4 = arch_lower.contains("gemma4") || arch_lower.contains("gemma-4");
-    if has_audio_keys
-        || has_audio_tensors
-        || arch_lower.contains("whisper")
-        || arch_lower.contains("bark")
-        || arch_lower.contains("kokoro")
-        || arch_lower.contains("cosyvoice")
-        || arch_lower.contains("chattts")
-        || arch_lower.contains("parler")
-        || arch_lower.contains("fastspeech")
-        || arch_lower.contains("tts")
-        || is_gemma4
-    {
+    // 🗳️ Use Arbitrator's Confident Vote
+    let has_audio_task = caps.explicit_tasks.contains(&"text_to_speech".to_string())
+        || caps.explicit_tasks.contains(&"speech_to_text".to_string())
+        || caps.explicit_tasks.contains(&"voice_conversion".to_string())
+        || caps.explicit_tasks.contains(&"audio_classification".to_string());
+
+    if has_audio_task || has_audio_keys || has_audio_tensors {
         caps.has_audio = true;
-        if arch_lower.contains("whisper") {
+        
+        if caps.explicit_tasks.contains(&"speech_to_text".to_string()) {
             caps.is_asr = true;
-        }
-        if arch_lower.contains("bark")
-            || arch_lower.contains("piper")
-            || arch_lower.contains("vits")
-            || arch_lower.contains("kokoro")
-            || arch_lower.contains("cosyvoice")
-            || arch_lower.contains("chattts")
-            || arch_lower.contains("parler")
-            || arch_lower.contains("fastspeech")
-            || arch_lower.contains("tts")
-        {
+        } else if caps.explicit_tasks.contains(&"text_to_speech".to_string()) {
             caps.is_tts = true;
-        }
-        if arch_lower.contains("conversion") || arch_lower.contains("demucs") {
+        } else if caps.explicit_tasks.contains(&"voice_conversion".to_string()) {
             caps.is_audio_to_audio = true;
-        }
-        if arch_lower.contains("clap") || arch_lower.contains("ast") {
+        } else if caps.explicit_tasks.contains(&"audio_classification".to_string()) {
             caps.is_audio_class = true;
+        } else {
+            // Fallback for cases where tasks aren't known but keys are present
+            if arch_lower.contains("whisper") {
+                caps.is_asr = true;
+            } else {
+                caps.is_tts = true;
+            }
+        }
+
+        // Detect explicit TTS / Audio Model Family
+        if arch_lower.contains("kokoro") {
+            caps.tts_family = Some("kokoro".to_string());
+        } else if arch_lower.contains("supertonic") || arch_lower.contains("luxtts") {
+            caps.tts_family = Some("supertonic".to_string());
+        } else if arch_lower.contains("matcha") {
+            caps.tts_family = Some("cosyvoice_matcha".to_string());
+        } else if arch_lower.contains("vits") || arch_lower.contains("piper") {
+            caps.tts_family = Some("vits_piper".to_string());
+        } else if arch_lower.contains("cosyvoice") {
+            caps.tts_family = Some("cosyvoice_matcha".to_string());
+        } else if arch_lower.contains("audio8") {
+            caps.tts_family = Some("audio8".to_string());
+        } else if arch_lower.contains("chatterbox") {
+            caps.tts_family = Some("chatterbox".to_string());
+        } else if arch_lower.contains("whisper") {
+            caps.tts_family = Some("whisper".to_string());
         }
     }
 }

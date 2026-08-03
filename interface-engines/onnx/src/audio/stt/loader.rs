@@ -1,8 +1,8 @@
-use super::config::AudioConfig;
+use super::super::config::AudioConfig;
 use anyhow::{anyhow, Result};
 use std::io::Cursor;
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{Decoder, DecoderOptions};
+use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::{MediaSource, MediaSourceStream};
 use symphonia::core::meta::MetadataOptions;

@@ -40,7 +40,7 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         if path_str != "default" && !path_str.is_empty() {
             // Check if vision or text based on path or logic. For simplicity, if path contains "clip" or "vision", load vision.
             if path_str.to_lowercase().contains("clip") || path_str.to_lowercase().contains("vision") {
-                if let Err(e) = engine.load_vision_model(&path_str, booster_opt) {
+                if let Err(e) = engine.load_vision_model(&path_str) {
                     tracing::error!("❌ [ONNX-Lib] Vision Model Load Failed: {}", e);
                     return std::ptr::null_mut();
                 }
@@ -50,15 +50,38 @@ pub extern "C" fn cluaiz_kernel_instantiate(
                 let dir = path.parent().unwrap_or(path);
                 let tokenizer_path = dir.join("tokenizer.json").to_string_lossy().into_owned();
                 
-                if let Err(e) = engine.load_text_model(&path_str, &tokenizer_path, booster_opt) {
+                if let Err(e) = engine.load_model(&path_str, 1) {
                     tracing::error!("❌ [ONNX-Lib] Text Model Load Failed: {}", e);
                     return std::ptr::null_mut();
                 }
 
                 // Check for encoder model in the same directory for Whisper speech models
-                let encoder_path = dir.join("encoder_model_int8.onnx");
-                if encoder_path.exists() {
-                    let enc_str = encoder_path.to_string_lossy();
+                let encoder_candidates = ["encoder_model_int8.onnx", "encoder_model.onnx", "encoder.onnx", "encoder_model_fp16.onnx"];
+                let mut found_encoder = None;
+                for cand in &encoder_candidates {
+                    let p = dir.join(cand);
+                    if p.exists() {
+                        found_encoder = Some(p);
+                        break;
+                    }
+                }
+                if found_encoder.is_none() {
+                    if let Ok(entries) = std::fs::read_dir(dir) {
+                        for entry in entries.flatten() {
+                            let p = entry.path();
+                            if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
+                                let lower = name.to_lowercase();
+                                if lower.ends_with(".onnx") && lower.contains("encoder") && !lower.contains("text_encoder") {
+                                    found_encoder = Some(p);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let Some(enc_path) = found_encoder {
+                    let enc_str = enc_path.to_string_lossy();
                     if let Err(e) = engine.load_encoder_model(&enc_str) {
                         tracing::warn!("⚠️ [ONNX-Lib] Encoder Model Load Failed (optional): {}", e);
                     } else {

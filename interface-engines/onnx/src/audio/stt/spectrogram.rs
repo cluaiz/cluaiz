@@ -1,4 +1,4 @@
-use super::config::AudioConfig;
+use super::super::config::AudioConfig;
 use super::mel_bank::build_mel_filterbank;
 use std::f32::consts::PI;
 use rayon::prelude::*;
@@ -32,7 +32,6 @@ pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> (Ve
     let filters = build_mel_filterbank(config);
     let n_bins = config.n_fft / 2 + 1;
 
-    // Thread-local FFT planner reuse — only compute actual_frames (not max_frames)
     let frame_energies: Vec<Vec<f32>> = (0..actual_frames)
         .into_par_iter()
         .map(|frame_idx| {
@@ -76,9 +75,7 @@ pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> (Ve
         .cloned()
         .fold(f32::NEG_INFINITY, f32::max);
 
-    // Silence mel value: zero-energy frame → log10(1e-10) = -10.0
-    let silence_mel = (-10.0f32).max(global_max - 8.0);
-    let silence_normalized = (silence_mel + 4.0) / 4.0;
+    let silence_normalized = -1.5f32;
 
     let mut flat = Vec::with_capacity(config.n_mels * config.max_frames);
     for mel_idx in 0..config.n_mels {
@@ -92,24 +89,4 @@ pub fn compute_log_mel_spectrogram(samples: &[f32], config: &AudioConfig) -> (Ve
         }
     }
     (flat, actual_frames)
-}
-
-fn fft_power_spectrum_with_plan(
-    frame: &[f32],
-    n_fft: usize,
-    fft_plan: &dyn rustfft::Fft<f32>,
-) -> Vec<f32> {
-    let mut buffer: Vec<rustfft::num_complex::Complex<f32>> = frame
-        .iter()
-        .map(|&s| rustfft::num_complex::Complex::new(s, 0.0))
-        .collect();
-
-    fft_plan.process(&mut buffer);
-
-    let n_bins = n_fft / 2 + 1;
-    let mut power = Vec::with_capacity(n_bins);
-    for bin in buffer.iter().take(n_bins) {
-        power.push(bin.norm_sqr());
-    }
-    power
 }

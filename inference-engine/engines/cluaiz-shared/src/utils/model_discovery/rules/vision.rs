@@ -6,9 +6,10 @@ pub fn evaluate_vision_rules(
     has_vision_tensors: bool,
     caps: &mut ModelCapabilities,
 ) {
-    if has_vision_keys || has_vision_tensors {
+    // 🗳️ Use Arbitrator's Confident Vote
+    if caps.explicit_tasks.contains(&"multimodal-vision".to_string()) || has_vision_keys || has_vision_tensors {
         caps.has_vision = true;
-        if caps.is_instruct {
+        if caps.is_instruct || caps.explicit_tasks.contains(&"chat-completion".to_string()) {
             caps.is_vision_chat = true;
         }
     }

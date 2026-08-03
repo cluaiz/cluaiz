@@ -93,27 +93,29 @@ impl Bootstrapper {
         let manifest_version = engine_info["version"].as_str().unwrap_or("unknown");
         let local_version = std::fs::read_to_string(&engine_marker).unwrap_or_default();
 
-        if !engine_path.exists() || local_version != manifest_version {
+        if (!engine_path.exists() || local_version != manifest_version) && !is_dev_sync {
             println!("  {} [cluaiz] Provisioning Core Engine ({})...", "⚙️".yellow(), manifest_version);
-            let manifest_url = engine_info["manifest_url"].as_str().ok_or_else(|| eyre!("Engine Manifest URL missing."))?;
-            
-            match async {
-                let res = client.get(manifest_url).send().await?;
-                if !res.status().is_success() {
-                    return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
+            if let Some(manifest_url) = engine_info["manifest_url"].as_str() {
+                match async {
+                    let res = client.get(manifest_url).send().await?;
+                    if !res.status().is_success() {
+                        return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
+                    }
+                    let engine_manifest: serde_json::Value = res.json().await?;
+                    Self::download_engine_with_manifest(&engine_path, &engine_manifest).await?;
+                    std::fs::write(&engine_marker, manifest_version)?;
+                    Ok::<(), color_eyre::Report>(())
+                }.await {
+                    Ok(_) => {},
+                    Err(e) if engine_path.exists() => {
+                        println!("  {} [Cluaiz] Network provisioning skipped ({}). Using local engine.", "ℹ️".blue(), e);
+                    }
+                    Err(e) => {
+                        println!("  {} [Cluaiz] Network provisioning failed ({}). Using local engine.", "⚠️".yellow(), e);
+                    }
                 }
-                let engine_manifest: serde_json::Value = res.json().await?;
-                Self::download_engine_with_manifest(&engine_path, &engine_manifest).await?;
-                std::fs::write(&engine_marker, manifest_version)?;
-                Ok::<(), color_eyre::Report>(())
-            }.await {
-                Ok(_) => {},
-                Err(e) if engine_path.exists() => {
-                    println!("  {} [Cluaiz] Provisioning failed ({}). Using cached engine.", "⚠️".yellow(), e);
-                }
-                Err(e) => {
-                    return Err(eyre!("{}\n\n💡 Dev Hint: The engine binary is missing and network provisioning failed. Please run:\n   cargo run -- dev-sync all\nto install your locally compiled artifacts.", e));
-                }
+            } else if engine_path.exists() {
+                println!("  {} [Cluaiz] Local engine binary verified: {:?}.", "✅".green(), engine_path);
             }
         }
 

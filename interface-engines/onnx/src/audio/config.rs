@@ -9,6 +9,7 @@ pub struct AudioConfig {
     pub n_fft: usize,
     pub max_frames: usize,
     pub max_samples: usize,
+    pub max_target_positions: Option<usize>,
     pub start_of_transcript: i64,
     pub transcribe_token: i64,
     pub translate_token: i64,
@@ -28,6 +29,8 @@ impl AudioConfig {
         let mut no_timestamps_token = 50364;
         let mut end_of_text_token = 50257;
 
+        let mut max_target_positions: Option<usize> = None;
+
         if let Some(ref dir) = model_dir {
             if let Ok(entries) = std::fs::read_dir(dir) {
                 for entry in entries.flatten() {
@@ -35,6 +38,14 @@ impl AudioConfig {
                     if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
                         if let Ok(content) = std::fs::read_to_string(&path) {
                             if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                                if let Some(target_pos) = json.get("max_target_positions")
+                                    .or_else(|| json.get("max_decoder_positions"))
+                                    .or_else(|| json.get("max_target_len"))
+                                    .and_then(|v| v.as_u64())
+                                {
+                                    max_target_positions = Some(target_pos as usize);
+                                }
+
                                 if let Some(mels) = json.get("num_mel_bins")
                                     .or_else(|| json.get("n_mels"))
                                     .or_else(|| json.get("feature_size"))
@@ -68,6 +79,24 @@ impl AudioConfig {
                     }
                 }
             }
+
+            // Second pass: Check tokenizer-specific config files for Whisper v3/Turbo compatibility
+            for filename in &["special_tokens_map.json", "tokenizer_config.json"] {
+                let path = dir.join(filename);
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                        if let Some(eos_id) = json.get("eos_token_id").and_then(|v| v.as_i64()) {
+                            end_of_text_token = eos_id;
+                        }
+                        if let Some(bos_id) = json.get("bos_token_id")
+                            .or_else(|| json.get("decoder_start_token_id"))
+                            .and_then(|v| v.as_i64())
+                        {
+                            start_of_transcript = bos_id;
+                        }
+                    }
+                }
+            }
         }
 
         let hop_length = 160;
@@ -81,6 +110,7 @@ impl AudioConfig {
             n_fft,
             max_frames,
             max_samples,
+            max_target_positions,
             start_of_transcript,
             transcribe_token,
             translate_token,

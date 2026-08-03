@@ -5,17 +5,24 @@ pub fn evaluate_embedding_rules(
     has_pooling: bool,
     caps: &mut ModelCapabilities,
 ) {
-    let is_embedding_arch = has_pooling 
-        || arch_lower.contains("bert")
-        || arch_lower.contains("nomic")
-        || arch_lower.contains("bge")
-        || arch_lower.contains("gte")
-        || arch_lower.contains("e5")
-        || arch_lower.contains("minilm");
-
-    if is_embedding_arch {
+    // 🗳️ Use Arbitrator's Confident Vote
+    if caps.explicit_tasks.contains(&"embedding".to_string()) || caps.explicit_tasks.contains(&"feature-extraction".to_string()) {
         caps.is_embedding = true;
         caps.is_feature_extraction = true;
+    } else {
+        // Fallback for old cases where tasks aren't known
+        let is_embedding_arch = has_pooling 
+            || arch_lower.contains("bert")
+            || arch_lower.contains("nomic")
+            || arch_lower.contains("bge")
+            || arch_lower.contains("gte")
+            || arch_lower.contains("e5")
+            || arch_lower.contains("minilm");
+
+        if is_embedding_arch {
+            caps.is_embedding = true;
+            caps.is_feature_extraction = true;
+        }
     }
 }
 

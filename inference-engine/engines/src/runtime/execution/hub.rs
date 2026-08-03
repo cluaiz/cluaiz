@@ -40,10 +40,10 @@ impl HardwareOrchestrator {
 
             if tokenizer_path.exists() {
                 tracing::info!("🔍 [Orchestrator] Tokenizer found for Vision Model. Loading as Multimodal Engine.");
-                onnx_engine.load_text_model(model_load_path, tokenizer_path.to_str().unwrap(), None)
+                onnx_engine.load_model(model_load_path, 1)
                     .map_err(|e| anyhow!("Failed to load ONNX Multimodal weights: {}", e))?;
             } else {
-                onnx_engine.load_vision_model(model_load_path, None)
+                onnx_engine.load_vision_model(model_load_path)
                     .map_err(|e| anyhow!("Failed to load ONNX Vision weights: {}", e))?;
             }
                 

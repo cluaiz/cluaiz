@@ -74,9 +74,19 @@ pub async fn execute_audio(
     let registry = cluaiz_shared::utils::model_registry::ModelRegistry::load();
 
     let input_type = payload.input_source.source_type.to_lowercase();
-    let is_text_input = input_type == "text";
-    let is_audio_input =
-        input_type == "url" || input_type == "base64" || input_type == "file" || input_type == "audio";
+    let raw_data = payload.input_source.data.trim();
+    let data_lower = raw_data.to_lowercase();
+    
+    let is_data_audio_file = data_lower.ends_with(".webm")
+        || data_lower.ends_with(".wav")
+        || data_lower.ends_with(".mp3")
+        || data_lower.ends_with(".m4a")
+        || data_lower.ends_with(".flac")
+        || data_lower.ends_with(".ogg")
+        || data_lower.starts_with("data:audio/");
+
+    let is_audio_input = input_type == "url" || input_type == "base64" || input_type == "file" || input_type == "audio" || is_data_audio_file;
+    let is_text_input = !is_audio_input && input_type == "text";
 
     // 1. Task Resolution & Intent Determination
     let requested_task = payload
@@ -145,12 +155,20 @@ pub async fn execute_audio(
             }
 
             // Force ONLY ONNX format models for audio requests
+            // CRITICAL: Never load an STT model for a TTS task or vice versa
             if resolved_id.is_empty() {
                 resolved_id = registry
                     .installed_models
                     .values()
                     .find(|e| {
+                        let id_lower = e.id.to_lowercase();
+                        let is_target_stt = target_task == "speech_to_text" || target_task == "speech_translation";
                         e.format_type.to_lowercase() == "onnx"
+                            && if is_target_stt {
+                                id_lower.contains("whisper")
+                            } else {
+                                id_lower.contains("kokoro") || id_lower.contains("piper") || id_lower.contains("vits")
+                            }
                             && e.supported_tasks
                                 .iter()
                                 .any(|t| t.to_lowercase().replace("-", "_") == target_task)
@@ -159,13 +177,35 @@ pub async fn execute_audio(
                         registry
                             .installed_models
                             .values()
-                            .find(|e| e.format_type.to_lowercase() == "onnx" && e.category == "audio")
+                            .find(|e| {
+                                e.format_type.to_lowercase() == "onnx"
+                                    && e.supported_tasks
+                                        .iter()
+                                        .any(|t| t.to_lowercase().replace("-", "_") == target_task)
+                            })
                     })
                     .or_else(|| {
+                        // Only fall back to category-based matching if the task matches the category
+                        // This prevents loading STT models for TTS and vice versa
+                        let is_tts_task = target_task == "text_to_speech" || target_task == "music_generation";
+                        let is_stt_task = target_task == "speech_to_text" || target_task == "speech_translation";
                         registry
                             .installed_models
                             .values()
-                            .find(|e| e.format_type.to_lowercase() == "onnx")
+                            .find(|e| {
+                                e.format_type.to_lowercase() == "onnx"
+                                    && e.category == "audio"
+                                    && if is_tts_task {
+                                        e.supported_tasks.iter().any(|t| t.to_lowercase().replace("-", "_") == "text_to_speech")
+                                    } else if is_stt_task {
+                                        e.supported_tasks.iter().any(|t| {
+                                            let t_norm = t.to_lowercase().replace("-", "_");
+                                            t_norm == "speech_to_text" || t_norm == "speech_translation"
+                                        })
+                                    } else {
+                                        true
+                                    }
+                            })
                     })
                     .map(|e| e.id.clone())
                     .unwrap_or_default();

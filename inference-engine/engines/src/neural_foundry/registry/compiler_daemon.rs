@@ -73,7 +73,8 @@ async fn process_skill(skill_path: PathBuf, manifest: SkillManifest) {
                     let tokenizer_file = model_dir.join("tokenizer.json");
                     if model_file.exists() && tokenizer_file.exists() {
                         if let Ok(mut engine) = cluaiz_onnx::engine::OnnxEngine::new() {
-                            if engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy(), None).is_ok() {
+                            if engine.load_model(&model_file.to_string_lossy(), 1).is_ok() {
+                                use neural_core::interfaces::router_contract::EmbeddingDriver;
                                 let mut combined_vec = Vec::new();
                                 if manifest.triggers.semantic.is_empty() {
                                     if let Ok(vec) = engine.gen_embedding(&manifest.name) {

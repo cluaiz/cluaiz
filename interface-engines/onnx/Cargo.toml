@@ -10,7 +10,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 # ── Sovereign ONNX Backend (CPU Multimodal Engine) ──
-ort = { version = "2.0.0-rc.12", features = ["copy-dylibs", "download-binaries", "cuda", "directml"] } # ONNX Runtime bindings
+ort = { version = "2.0.0-rc.13", features = ["copy-dylibs", "download-binaries", "cuda", "directml"] } # ONNX Runtime bindings
 anyhow = "1.0"
 tracing = "0.1"
 cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }

@@ -72,16 +72,28 @@ impl ModelManager {
             if !repo.is_empty() {
                 println!("  {} [Cluaiz Downloader] Initiating atomic download for {} files...", "📦".cyan(), all_files.len());
                 for (idx, rel_path) in all_files.iter().enumerate() {
-                    // Strip directory prefixes for flat local storage
-                    // e.g. "UD-IQ1_S/model-00001.gguf" → "model-00001.gguf" (flat in vault)
-                    let flat_name = rel_path.rsplit('/').next().unwrap_or(rel_path);
-                    let dest_file = model_path.join(flat_name);
+                    let rel_lower = rel_path.to_lowercase();
+                    let is_voice = rel_lower.contains("voices/") || rel_lower.contains("voice_styles/") || rel_lower.contains("espeak-ng-data/");
+                    let local_file_name = if is_voice {
+                        rel_path.clone()
+                    } else {
+                        std::path::Path::new(rel_path).file_name().and_then(|s| s.to_str()).unwrap_or(rel_path).to_string()
+                    };
+
+                    let dest_file = model_path.join(&local_file_name);
+                    if let Some(parent) = dest_file.parent() {
+                        let _ = tokio::fs::create_dir_all(parent).await;
+                    }
                     if !dest_file.exists() {
                         let download_url = format!("{}/resolve/main/{}", repo, rel_path);
-                        println!("   ├─ [{}/{}] Fetching {}...", idx + 1, all_files.len(), flat_name.yellow());
-                        let _ = installer.download_weights(&download_url, flat_name).await;
+                        println!("   ├─ [{}/{}] Fetching {}...", idx + 1, all_files.len(), rel_path.yellow());
+                        if let Err(e) = installer.download_weights(&download_url, &local_file_name).await {
+                            println!("   ❌ Failed to download {}: {}", rel_path, e);
+                        } else {
+                            println!("   ✅ Weights acquired: {}", local_file_name.green());
+                        }
                     } else {
-                        println!("   ├─ [{}/{}] Verified {}", idx + 1, all_files.len(), flat_name.green());
+                        println!("   ├─ [{}/{}] Verified {}", idx + 1, all_files.len(), local_file_name.green());
                     }
                 }
             }
@@ -89,6 +101,27 @@ impl ModelManager {
             let weight_file = model_path.join(&manifest.huggingface_filename);
             if !weight_file.exists() {
                 installer.download_weights(&manifest.download_url, &manifest.huggingface_filename).await?;
+            }
+        }
+        
+        // 🌐 AUTO-FETCH HF API METADATA FOR 3-WAY DISCOVERY VOTING
+        if manifest.download_url.contains("huggingface.co") {
+            let repo = manifest.download_url.split("/resolve").next().unwrap_or("").replace("https://huggingface.co/", "");
+            if !repo.is_empty() {
+                let api_url = format!("https://huggingface.co/api/models/{}", repo);
+                let client = reqwest::Client::new();
+                if let Ok(res) = client.get(&api_url).send().await {
+                    if res.status().is_success() {
+                        if let Ok(bytes) = res.bytes().await {
+                            let hf_meta_path = model_path.join("hf_metadata.json");
+                            if let Ok(json_val) = serde_json::from_slice::<serde_json::Value>(&bytes) {
+                                if let Ok(pretty) = serde_json::to_string_pretty(&json_val) {
+                                    let _ = tokio::fs::write(&hf_meta_path, pretty).await;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -127,21 +160,35 @@ impl ModelManager {
         let supported_tasks = slot_type.supported_tasks(&detected_caps);
 
         let mut weight_files = Vec::new();
-        let mut extra_files = Vec::new();
+        let mut extra_files_list = Vec::new();
 
-        // Scan directory for all downloaded weight files (.onnx / .gguf) and metadata assets
-        if let Ok(mut entries) = std::fs::read_dir(&model_path) {
-            while let Some(Ok(entry)) = entries.next() {
+        if let Ok(entries) = std::fs::read_dir(&model_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
                 let name = entry.file_name().to_string_lossy().to_string();
-                let lower = name.to_lowercase();
-                if lower.ends_with(".gguf") || lower.ends_with(".onnx") {
-                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                    weight_files.push((name, size));
-                } else if lower.ends_with(".json") || lower.ends_with(".yaml") || lower.ends_with(".md") || lower.ends_with(".txt") {
-                    extra_files.push(name);
+                if path.is_dir() {
+                    let mut subfolder_files = Vec::new();
+                    if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                        for sub_entry in sub_entries.flatten() {
+                            let sub_name = sub_entry.file_name().to_string_lossy().to_string();
+                            subfolder_files.push(serde_json::Value::String(sub_name));
+                        }
+                    }
+                    let mut sub_map = serde_json::Map::new();
+                    sub_map.insert(name, serde_json::Value::Array(subfolder_files));
+                    extra_files_list.push(serde_json::Value::Object(sub_map));
+                } else {
+                    let lower = name.to_lowercase();
+                    if lower.ends_with(".gguf") || lower.ends_with(".onnx") {
+                        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                        weight_files.push((name, size));
+                    } else if lower.ends_with(".json") || lower.ends_with(".yaml") || lower.ends_with(".md") || lower.ends_with(".txt") || lower.ends_with(".bin") {
+                        extra_files_list.push(serde_json::Value::String(name));
+                    }
                 }
             }
         }
+        let extra_files = serde_json::Value::Array(extra_files_list);
 
         // Evaluate all weight files using AssetResolver priority scoring to find the true Primary Graph
         let mut best_score = usize::MAX;
@@ -164,6 +211,25 @@ impl ModelManager {
                 is_primary,
             });
         }
+
+        let mut tts_family = detected_caps.tts_family.clone();
+        if tts_family.is_none() && category == "audio" {
+            tts_family = Some(crate::models::fetch::tts_resolver::TtsAssetResolver::detect_tts_family(&manifest.id, &extra_files.to_string()).to_string());
+        }
+
+        // Run Fail-Fast Package Contract Validation Gate for Audio Models
+        if category == "audio" {
+            if let Some(ref fam) = tts_family {
+                if let Err(contract_err) = crate::models::fetch::tts_resolver::TtsAssetResolver::validate_family_package_contract(fam, &model_path) {
+                    println!("  {} [TTS Manifest Gate] Package contract warning: {}", "⚠️".yellow(), contract_err);
+                } else {
+                    println!("  {} [TTS Manifest Gate] Package contract verified for family '{}'.", "✅".green(), fam);
+                }
+            }
+        }
+
+        metadata.tts_family = tts_family;
+        metadata.backend_type = Some(if format_type == "gguf" { "ggml".to_string() } else { "onnx".to_string() });
 
         let registry_entry = cluaiz_shared::utils::ModelRegistryEntry {
             id: safe_id,

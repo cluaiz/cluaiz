@@ -137,6 +137,7 @@ impl cluaizInference for OnnxEngine {
                     if audio_output.starts_with("data:audio/") {
                         callback(audio_output);
                     }
+                    callback("\n[DONE]\n".to_string());
                     return Ok(());
                 }
                 Err(e) => {

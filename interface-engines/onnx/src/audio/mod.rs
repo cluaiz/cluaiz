@@ -1,11 +1,7 @@
 pub mod config;
-pub mod decoder;
-pub mod flow_matching;
-pub mod loader;
-pub mod mel_bank;
-pub mod spectrogram;
-pub mod vocoder;
+pub mod stt;
+pub mod tts;
 
 pub use config::AudioConfig;
-pub use vocoder::NativeVocoder;
-
+pub use stt::load_audio_to_pcm;
+pub use tts::{FamilyAdapter, NativeVocoder, TtsFamily};

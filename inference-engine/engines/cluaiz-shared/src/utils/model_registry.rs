@@ -17,6 +17,10 @@ pub struct RegistryModelMetadata {
     pub quantization: Option<String>,
     pub bit_depth: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tts_family: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub think_start_tag: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub think_end_tag: Option<String>,
@@ -61,6 +65,7 @@ pub struct ModelCapabilities {
     pub is_tts: bool,
     pub is_audio_to_audio: bool,
     pub is_audio_class: bool,
+    pub tts_family: Option<String>,
     pub explicit_tasks: Vec<String>,
 }
 
@@ -84,6 +89,7 @@ impl ModelCapabilities {
             is_tts: true,
             is_audio_to_audio: true,
             is_audio_class: true,
+            tts_family: None,
             explicit_tasks: vec![],
         }
     }
@@ -120,8 +126,8 @@ pub struct ModelRegistryEntry {
     pub huggingface_repo: String,
     pub local_dir: String,
     pub files: Vec<RegistryModelFile>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub extra_files: Vec<String>,
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub extra_files: serde_json::Value,
     pub supported_tasks: Vec<String>,
     pub requires_gpu: bool,
     pub metadata: RegistryModelMetadata,
@@ -248,7 +254,7 @@ impl ModelRegistry {
                             let id = entry.file_name().to_string_lossy().to_string();
 
                             let mut all_weight_files = Vec::new();
-                            let mut extra_files = Vec::new();
+                            let mut extra_files_list = Vec::new();
 
                             if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
                                 for f in sub_entries.filter_map(|e| e.ok()) {
@@ -257,14 +263,26 @@ impl ModelRegistry {
                                         let size = f.metadata().map(|m| m.len()).unwrap_or(0);
                                         let fpath = f.path();
 
-                                        if fname.ends_with(".gguf") || fname.ends_with(".onnx") {
+                                        if fpath.is_dir() {
+                                            let mut subfolder_files = Vec::new();
+                                            if let Ok(deep_entries) = std::fs::read_dir(&fpath) {
+                                                for df in deep_entries.filter_map(|e| e.ok()) {
+                                                    let dfname = df.file_name().to_string_lossy().to_string();
+                                                    subfolder_files.push(serde_json::Value::String(dfname));
+                                                }
+                                            }
+                                            let mut sub_map = serde_json::Map::new();
+                                            sub_map.insert(fname, serde_json::Value::Array(subfolder_files));
+                                            extra_files_list.push(serde_json::Value::Object(sub_map));
+                                        } else if fname.ends_with(".gguf") || fname.ends_with(".onnx") {
                                             all_weight_files.push((fpath, fname, size));
                                         } else {
-                                            extra_files.push(fname);
+                                            extra_files_list.push(serde_json::Value::String(fname));
                                         }
                                     }
                                 }
                             }
+                            let extra_files = serde_json::Value::Array(extra_files_list);
 
                             if cat == &"audio" && all_weight_files.len() > 1 {
                                 all_weight_files.sort_by(|a, b| {
@@ -286,10 +304,11 @@ impl ModelRegistry {
                                     };
                                     score_a.cmp(&score_b).then_with(|| a.1.cmp(&b.1))
                                 });
-                            } else {
-                                all_weight_files.sort_by(|a, b| a.1.cmp(&b.1));
                             }
-                            extra_files.sort();
+
+                            if all_weight_files.is_empty() {
+                                continue;
+                            }
 
                             let (p_path, p_name, _) = &all_weight_files[0];
                             let p_path_clone = p_path.clone();

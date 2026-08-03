@@ -1,11 +1,10 @@
-use super::config::AudioConfig;
+use super::super::config::AudioConfig;
 
 pub fn build_mel_filterbank(config: &AudioConfig) -> Vec<Vec<f32>> {
     let n_mels = config.n_mels;
     let n_fft = config.n_fft;
     let n_bins = n_fft / 2 + 1;
 
-    // Dynamic Slaney Mel Filterbank (Pure Math, zero hardcoded binary files)
     let f_min = 0.0f32;
     let f_max = (config.sample_rate / 2) as f32;
 
@@ -31,7 +30,7 @@ pub fn build_mel_filterbank(config: &AudioConfig) -> Vec<Vec<f32>> {
         .map(|i| mel_min + i as f32 * (mel_max - mel_min) / (n_mels + 1) as f32)
         .collect();
     let hz_pts: Vec<f32> = mel_pts.iter().map(|&m| mel_to_hz(m)).collect();
-    let bin_pts: Vec<f32> = hz_pts.iter().map(|&h| (h * n_fft as f32 / config.sample_rate as f32)).collect();
+    let bin_pts: Vec<f32> = hz_pts.iter().map(|&h| h * n_fft as f32 / config.sample_rate as f32).collect();
 
     let mut filters = vec![vec![0.0f32; n_bins]; n_mels];
     for i in 0..n_mels {

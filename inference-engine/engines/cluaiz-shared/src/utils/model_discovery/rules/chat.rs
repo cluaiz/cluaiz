@@ -5,13 +5,21 @@ pub fn evaluate_chat_rules(
     has_chat_template: bool,
     caps: &mut ModelCapabilities,
 ) {
-    if has_chat_template || arch_lower.contains("instruct") || arch_lower.contains("chat") || arch_lower.contains("-it") {
+    // 🗳️ Use Arbitrator's Confident Vote
+    if caps.explicit_tasks.contains(&"chat-completion".to_string()) || caps.explicit_tasks.contains(&"multimodal-dialogue".to_string()) {
         caps.is_instruct = true;
-    } else {
+    } else if caps.explicit_tasks.contains(&"text-generation".to_string()) {
         caps.is_base = true;
+    } else {
+        // Fallback for old tests or manual cases without HF metadata
+        if has_chat_template || arch_lower.contains("instruct") || arch_lower.contains("chat") || arch_lower.contains("-it") {
+            caps.is_instruct = true;
+        } else {
+            caps.is_base = true;
+        }
     }
 
-    if arch_lower.contains("coder") || arch_lower.contains("starcoder") || arch_lower.contains("deepseek-coder") {
+    if caps.explicit_tasks.contains(&"multimodal-file".to_string()) || arch_lower.contains("coder") {
         caps.has_file = true;
     }
 }

@@ -25,7 +25,7 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let model_path_str = model_path.to_string_lossy();
     
     println!("  {} Loading Real ONNX Gatekeeper...", "🔮".magenta());
-    if let Err(e) = onnx_driver.load_vision_model(&model_path_str, None) {
+    if let Err(e) = onnx_driver.load_vision_model(&model_path_str) {
         eprintln!("  {} [WARNING] ONNX Vision weights not found at '{}'. Please ensure the download completed. Error: {}", "⚠️".yellow(), model_path_str, e);
         eprintln!("  {} Aborting ingestion due to missing brain.", "🛑".red());
         return Ok(());

@@ -1,12 +1,14 @@
 pub mod fallback;
 pub mod prober;
 pub mod rules;
+pub mod arbitrator;
 
 use crate::utils::model_registry::SlotType;
 use crate::utils::{ModelCapabilities, RegistryModelMetadata};
 use fallback::enrich_from_fallback_jsons;
 use prober::probe_weight_binary;
 use rules::{audio, chat, embedding, vision};
+use arbitrator::VotingArbitrator;
 use std::path::Path;
 
 pub struct CapabilityResolver;
@@ -29,7 +31,10 @@ impl CapabilityResolver {
         let requires_gpu = probe.requires_gpu;
 
         let mut caps = ModelCapabilities::default();
-        caps.explicit_tasks.extend(probe.explicit_tasks);
+        
+        // 🗳️ 3-WAY VOTING ARBITRATOR
+        let final_tasks = VotingArbitrator::resolve_tasks(model_dir, &probe.explicit_tasks, &arch_lower);
+        caps.explicit_tasks.extend(final_tasks);
 
         // Evaluate Rules
         let model_dir_name = model_dir
@@ -118,6 +123,8 @@ impl CapabilityResolver {
             context_window,
             quantization: probe.quantization,
             bit_depth: probe.bit_depth,
+            tts_family: caps.tts_family.clone(),
+            backend_type: Some(format_type.to_string()),
             think_start_tag,
             think_end_tag,
             chat_template,

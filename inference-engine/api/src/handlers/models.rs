@@ -181,10 +181,16 @@ pub async fn load_model(
     }))
 }
 
+#[derive(serde::Deserialize)]
+pub struct InspectQuery {
+    pub filename: Option<String>,
+}
+
 // ─── GET /v1/models/{model_id}/inspect_raw_header ───────────────────────
 pub async fn inspect_raw_header(
     State(_state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
+    axum::extract::Query(query): axum::extract::Query<InspectQuery>,
 ) -> Json<Value> {
     let roster = CoreRoster::load_roster();
     let mut model_file_opt = None;
@@ -208,10 +214,16 @@ pub async fn inspect_raw_header(
         if let Some(entry) = reg.installed_models.get(&model_id).or_else(|| 
             reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase())
         ) {
-            if let Some(primary_file) = entry.files.iter().find(|f| f.is_primary).or(entry.files.first()) {
-                model_file_opt = Some(std::path::Path::new(&entry.local_dir).join(&primary_file.name));
-                is_gguf = primary_file.name.ends_with(".gguf");
-                is_onnx = primary_file.name.ends_with(".onnx");
+            let target_file = if let Some(ref fname) = query.filename {
+                entry.files.iter().find(|f| f.name.to_lowercase() == fname.to_lowercase())
+            } else {
+                entry.files.iter().find(|f| f.is_primary).or(entry.files.first())
+            };
+            
+            if let Some(file_meta) = target_file {
+                model_file_opt = Some(std::path::Path::new(&entry.local_dir).join(&file_meta.name));
+                is_gguf = file_meta.name.ends_with(".gguf");
+                is_onnx = file_meta.name.ends_with(".onnx");
             }
         }
     }
