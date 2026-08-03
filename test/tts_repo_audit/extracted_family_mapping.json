@@ -1,0 +1,803 @@
+{
+  "total_repos_audited": 98,
+  "total_unique_families": 8,
+  "family_summary_counts": {
+    "piper-vits": 30,
+    "generic-onnx-tts": 22,
+    "cosyvoice": 17,
+    "kokoro-v1": 16,
+    "supertonic-v3": 5,
+    "chatterbox": 5,
+    "omnivoice": 2,
+    "matcha-v1": 1
+  },
+  "families": {
+    "kokoro-v1": [
+      {
+        "repo_id": "onnx-community/Kokoro-82M-v1.0-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.30 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.15 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.28 GB)",
+          "ONNX Q4F16 (model_q4f16.onnx) (0.14 GB)",
+          "ONNX Q8F16 (model_q8f16.onnx) (0.08 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.09 GB)",
+          "ONNX INT8 (model_uint8.onnx) (0.17 GB)",
+          "ONNX INT8F16 (model_uint8f16.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/Kokoro-82M-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.30 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.15 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.28 GB)",
+          "ONNX Q4F16 (model_q4f16.onnx) (0.14 GB)",
+          "ONNX Q8F16 (model_q8f16.onnx) (0.08 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.09 GB)",
+          "ONNX INT8 (model_uint8.onnx) (0.17 GB)",
+          "ONNX INT8F16 (model_uint8f16.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "contextboxai/Kokoro-Vietnamese",
+        "primary_onnx": [
+          "ONNX DEFAULT (kokoro_vi.onnx) (0.30 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/Kokoro-82M-v1.0-ONNX-timestamped",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.30 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.15 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.28 GB)",
+          "ONNX Q4F16 (model_q4f16.onnx) (0.14 GB)",
+          "ONNX Q8F16 (model_q8f16.onnx) (0.08 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.09 GB)",
+          "ONNX INT8 (model_uint8.onnx) (0.17 GB)",
+          "ONNX INT8F16 (model_uint8f16.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/Supertonic-TTS-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (voice_decoder.onnx) (0.24 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/Supertonic-TTS-2-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (voice_decoder.onnx) (0.24 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/Kokoro-82M-v1.1-zh-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.32 GB)",
+          "ONNX DEFAULT (model_bnb4.onnx) (0.32 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.15 GB)",
+          "ONNX INT8 (model_int8.onnx) (0.12 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.32 GB)",
+          "ONNX Q4F16 (model_q4f16.onnx) (0.15 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.12 GB)",
+          "ONNX INT8 (model_uint8.onnx) (0.12 GB)"
+        ]
+      },
+      {
+        "repo_id": "thewh1teagle/kokoro-hebrew-nc",
+        "primary_onnx": [
+          "ONNX DEFAULT (kokoro.onnx) (0.32 GB)"
+        ]
+      },
+      {
+        "repo_id": "Sariel00/cosyvoice2_rknn",
+        "primary_onnx": [
+          "ONNX FP32 (hift_decoder_fp32_mel108.simplified.onnx) (1.42 GB)",
+          "ONNX DEFAULT (hift_decoder_fp32_mel108.simplified.onnx) (0.98 GB)",
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.76 GB)"
+        ]
+      },
+      {
+        "repo_id": "elbruno/VibeVoice-Realtime-0.5B-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (acoustic_decoder.onnx) (6.97 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/kitten-tts-nano-0.1-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (model_quantized.onnx) (0.02 GB)"
+        ]
+      },
+      {
+        "repo_id": "shreyask/bol-tts-marathi-onnx",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.30 GB)",
+          "ONNX Q8 (model_q8.onnx) (0.26 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.26 GB)"
+        ]
+      },
+      {
+        "repo_id": "eugenehp/kokoro-82m",
+        "primary_onnx": [
+          "GGUF Q8_0 (kokoro-82m-q8_0.gguf) (0.13 GB)",
+          "ONNX DEFAULT (model.onnx) (0.61 GB)"
+        ]
+      },
+      {
+        "repo_id": "synath/Kokoro-82M-v1.0-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.30 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.15 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.28 GB)",
+          "ONNX Q4F16 (model_q4f16.onnx) (0.14 GB)",
+          "ONNX Q8F16 (model_q8f16.onnx) (0.08 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.09 GB)",
+          "ONNX INT8 (model_uint8.onnx) (0.17 GB)",
+          "ONNX INT8F16 (model_uint8f16.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "thelamapi/neuvoice",
+        "primary_onnx": [
+          "ONNX DEFAULT (duration_predictor.onnx) (0.37 GB)"
+        ]
+      },
+      {
+        "repo_id": "soniqo/Kokoro-82M-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (kokoro-e2e-realtime.onnx) (0.46 GB)"
+        ]
+      }
+    ],
+    "generic-onnx-tts": [
+      {
+        "repo_id": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+        "primary_onnx": [
+          "ONNX DEFAULT (denoiser.onnx) (0.07 GB)",
+          "ONNX DEFAULT (vieneu_acoustic_cached.onnx) (0.89 GB)",
+          "ONNX ONNX_INT8 (vieneu_acoustic_cached.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "notmax123/Zonos-Hebrew",
+        "primary_onnx": [
+          "ONNX DEFAULT (phonikud-1.0.onnx) (0.29 GB)"
+        ]
+      },
+      {
+        "repo_id": "YatharthS/LuxTTS",
+        "primary_onnx": [
+          "ONNX DEFAULT (fm_decoder.onnx) (0.46 GB)",
+          "ONNX INT8 (fm_decoder_int8.onnx) (0.12 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/speecht5_tts",
+        "primary_onnx": [
+          "ONNX DEFAULT (decoder_model.onnx) (1.40 GB)",
+          "ONNX DEFAULT (decoder_model_bnb4.onnx) (1.22 GB)",
+          "ONNX FP16 (decoder_model_fp16.onnx) (0.56 GB)",
+          "ONNX INT8 (decoder_model_int8.onnx) (0.54 GB)",
+          "ONNX Q4 (decoder_model_merged_q4.onnx) (0.27 GB)",
+          "ONNX Q4F16 (decoder_model_merged_q4f16.onnx) (0.22 GB)",
+          "ONNX DEFAULT (decoder_model_merged.onnx) (1.24 GB)",
+          "ONNX INT8 (decoder_model_merged_int8.onnx) (0.54 GB)"
+        ]
+      },
+      {
+        "repo_id": "pnnbao-ump/VieNeu-TTS-v2-Turbo-GGUF",
+        "primary_onnx": [
+          "GGUF DEFAULT (vieneu-tts-v2-turbo.gguf) (0.21 GB)"
+        ]
+      },
+      {
+        "repo_id": "NeuML/ljspeech-jets-onnx",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.12 GB)"
+        ]
+      },
+      {
+        "repo_id": "lastudio-community/VieNeu-TTS-v3-Turbo-CPP",
+        "primary_onnx": [
+          "GGUF DEFAULT (backbone.gguf) (0.39 GB)",
+          "ONNX DEFAULT (moss_audio_tokenizer_decode_full.onnx) (0.08 GB)",
+          "ONNX DEFAULT (denoiser.onnx) (0.07 GB)"
+        ]
+      },
+      {
+        "repo_id": "YatharthS/MiraTTS",
+        "primary_onnx": [
+          "ONNX DEFAULT (detokenizer.onnx) (0.40 GB)"
+        ]
+      },
+      {
+        "repo_id": "sengtha/khmer-tts-female-v2",
+        "primary_onnx": [
+          "ONNX DEFAULT (khmer_tts.onnx) (0.43 GB)"
+        ]
+      },
+      {
+        "repo_id": "ZDisket/MOSS-TTS-PNY-GGUF",
+        "primary_onnx": [
+          "GGUF F16 (istftnet2-vocoder-f16.gguf) (0.06 GB)",
+          "ONNX DEFAULT (istftnet2_decoder.onnx) (0.12 GB)",
+          "GGUF F16 (moss-audio-decoder4-f16.gguf) (1.49 GB)",
+          "GGUF Q8_0 (moss-audio-decoder4-q8_0.gguf) (0.79 GB)",
+          "GGUF F16 (moss-tts-pny-f16.gguf) (6.15 GB)",
+          "GGUF Q6_K (moss-tts-pny-global-q6_k.gguf) (4.35 GB)",
+          "GGUF Q8_0 (moss-tts-pny-global-q8_0.gguf) (4.72 GB)",
+          "GGUF DEFAULT (moss-tts-qwen2-tokenizer.gguf) (0.01 GB)"
+        ]
+      },
+      {
+        "repo_id": "wkwong/Lunavox-Qwen3-TTS-GGUF",
+        "primary_onnx": [
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.34 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.94 GB)",
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.34 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.29 GB)",
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.21 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.94 GB)",
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.21 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.29 GB)",
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.21 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.94 GB)"
+        ]
+      },
+      {
+        "repo_id": "ZzWater/ViiTorVoice-NAR",
+        "primary_onnx": [
+          "ONNX DEFAULT (dualcodec_decoder.onnx) (0.68 GB)",
+          "ONNX DEFAULT (llm_backbone_dynamic.onnx) (1.64 GB)"
+        ]
+      },
+      {
+        "repo_id": "Solidaxel/Qwen3-TTS-12Hz-1.7B-Base-GGUF",
+        "primary_onnx": [
+          "ONNX FP16 (qwen3_tts_decoder.fp16.onnx) (0.36 GB)",
+          "ONNX FP32 (qwen3_tts_decoder.fp32.onnx) (0.04 GB)",
+          "ONNX INT8 (qwen3_tts_decoder.int8.onnx) (0.34 GB)",
+          "GGUF F16 (qwen3_tts_predictor.f16.gguf) (0.26 GB)",
+          "GGUF Q8_0 (qwen3_tts_predictor.q8_0.gguf) (0.14 GB)",
+          "GGUF F16 (qwen3_tts_talker.f16.gguf) (2.65 GB)",
+          "GGUF Q5_K (qwen3_tts_talker.q5_k.gguf) (0.94 GB)"
+        ]
+      },
+      {
+        "repo_id": "Luigi/PrimeTTS",
+        "primary_onnx": [
+          "ONNX DEFAULT (acoustic_decoder.onnx) (0.02 GB)",
+          "ONNX G2PW_INT8 (g2pw_int8.onnx) (0.15 GB)",
+          "GGUF Q8 (gemma270m_it_q8.gguf) (0.27 GB)",
+          "GGUF Q8 (story15m_q8.gguf) (0.04 GB)",
+          "ONNX DEFAULT (acoustic_decoder.onnx) (0.02 GB)",
+          "ONNX DEFAULT (acoustic_decoder.onnx) (0.02 GB)",
+          "GGUF DEFAULT (inflect_combined_v1b.gguf) (0.01 GB)",
+          "ONNX DEFAULT (primetts_v21_3voice.onnx) (0.11 GB)",
+          "ONNX DEFAULT (v21_dec.onnx) (0.11 GB)",
+          "GGUF DEFAULT (primetts_v2_xinran.gguf) (0.10 GB)",
+          "ONNX DEFAULT (primetts_v2_xinran.onnx) (0.10 GB)",
+          "ONNX FP16 (primetts_v2_xinran_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (primetts_v2lite_xinran.onnx) (0.07 GB)",
+          "GGUF _F32 (primetts_v2stream_xinran_f32.gguf) (0.10 GB)",
+          "ONNX DEFAULT (v2stream_dec.onnx) (0.10 GB)",
+          "ONNX DEFAULT (v2streamclean_dec.onnx) (0.10 GB)",
+          "ONNX DEFAULT (acoustic_decoder.onnx) (0.02 GB)"
+        ]
+      },
+      {
+        "repo_id": "ampixa/real-nepali-v0.2-kala",
+        "primary_onnx": [
+          "ONNX FP32 (real_nepali_v02_kala.fp32.onnx) (0.07 GB)"
+        ]
+      },
+      {
+        "repo_id": "DavesArmoury/GLaDOS_TTS",
+        "primary_onnx": [
+          "ONNX DEFAULT (glados_piper_medium.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "owensong/Inflect-Micro-v2-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (decode.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "dangvansam/viet-tts",
+        "primary_onnx": [
+          "ONNX DEFAULT (speech_embedding.onnx) (0.51 GB)"
+        ]
+      },
+      {
+        "repo_id": "akamotaco/ppaso-tts-v1",
+        "primary_onnx": [
+          "ONNX DEFAULT (acoustic.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "ylacombe/mms-guj-finetuned-monospeaker",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "artificial-humanity/Sonora",
+        "primary_onnx": [
+          "ONNX DEFAULT (checkpoint_epoch=199_e2e.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "dsh0416/Qwen3-TTS-12Hz-0.6B-Base-QTS",
+        "primary_onnx": [
+          "GGUF F16 (qwen3-tts-0.6b-f16.gguf) (1.69 GB)",
+          "GGUF Q8_0 (qwen3-tts-0.6b-q8_0.gguf) (1.23 GB)",
+          "ONNX DEFAULT (qwen3-tts-reference-codec.onnx) (0.61 GB)"
+        ]
+      }
+    ],
+    "supertonic-v3": [
+      {
+        "repo_id": "Supertone/supertonic-3",
+        "primary_onnx": [
+          "ONNX DEFAULT (duration_predictor.onnx) (0.37 GB)"
+        ]
+      },
+      {
+        "repo_id": "Supertone/supertonic-2",
+        "primary_onnx": [
+          "ONNX DEFAULT (duration_predictor.onnx) (0.24 GB)"
+        ]
+      },
+      {
+        "repo_id": "Supertone/supertonic",
+        "primary_onnx": [
+          "ONNX DEFAULT (duration_predictor.onnx) (0.24 GB)"
+        ]
+      },
+      {
+        "repo_id": "spybyscript/scyllasband",
+        "primary_onnx": [
+          "ONNX ONNX-INT8/ONNX/COMPONENTS (duration_predictor.onnx) (0.01 GB)",
+          "ONNX ONNX-INT8/ONNX/G2P (model.onnx) (0.02 GB)",
+          "ONNX DEFAULT (duration_predictor.onnx) (0.01 GB)",
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "eugenehp/supertonic-3",
+        "primary_onnx": [
+          "ONNX DEFAULT (duration_predictor.onnx) (0.37 GB)",
+          "GGUF F16 (supertonic-3.f16.gguf) (0.18 GB)"
+        ]
+      }
+    ],
+    "cosyvoice": [
+      {
+        "repo_id": "FunAudioLLM/Fun-CosyVoice3-0.5B-2512",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (3.07 GB)"
+        ]
+      },
+      {
+        "repo_id": "inclusionAI/Ming-omni-tts-0.5B",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.03 GB)"
+        ]
+      },
+      {
+        "repo_id": "FunAudioLLM/CosyVoice2-0.5B",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (1.22 GB)"
+        ]
+      },
+      {
+        "repo_id": "Lourdle/Fun-CosyVoice3-0.5B-2512-GGUF",
+        "primary_onnx": [
+          "GGUF _F16 (CosyVoice3-2512_F16.gguf) (1.61 GB)",
+          "GGUF _F32 (CosyVoice3-2512_F32.gguf) (3.21 GB)",
+          "GGUF Q2_K (CosyVoice3-2512_Q2_K.gguf) (0.42 GB)",
+          "GGUF Q2_K_L (CosyVoice3-2512_Q2_K_L.gguf) (0.43 GB)",
+          "GGUF Q3_K_M (CosyVoice3-2512_Q3_K_M.gguf) (0.49 GB)",
+          "GGUF Q3_K_S (CosyVoice3-2512_Q3_K_S.gguf) (0.46 GB)",
+          "GGUF Q3_K_XXS (CosyVoice3-2512_Q3_K_XXS.gguf) (0.44 GB)",
+          "GGUF Q4_0 (CosyVoice3-2512_Q4_0.gguf) (0.49 GB)",
+          "GGUF Q4_1 (CosyVoice3-2512_Q4_1.gguf) (0.54 GB)",
+          "GGUF Q4_K_M (CosyVoice3-2512_Q4_K_M.gguf) (0.59 GB)",
+          "GGUF Q4_K_S (CosyVoice3-2512_Q4_K_S.gguf) (0.56 GB)",
+          "GGUF Q4_K_XXS (CosyVoice3-2512_Q4_K_XXS.gguf) (0.54 GB)",
+          "GGUF Q5_0 (CosyVoice3-2512_Q5_0.gguf) (0.59 GB)",
+          "GGUF Q5_1 (CosyVoice3-2512_Q5_1.gguf) (0.64 GB)",
+          "GGUF Q5_K_M (CosyVoice3-2512_Q5_K_M.gguf) (0.64 GB)",
+          "GGUF Q5_K_S (CosyVoice3-2512_Q5_K_S.gguf) (0.61 GB)",
+          "GGUF Q5_K_XXS (CosyVoice3-2512_Q5_K_XXS.gguf) (0.61 GB)",
+          "GGUF Q6_K (CosyVoice3-2512_Q6_K.gguf) (0.78 GB)",
+          "GGUF Q8_0 (CosyVoice3-2512_Q8_0.gguf) (0.88 GB)",
+          "ONNX INT8 (campplus.int8.onnx) (1.14 GB)"
+        ]
+      },
+      {
+        "repo_id": "inclusionAI/Ming-omni-tts-16.8B-A3B",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.03 GB)"
+        ]
+      },
+      {
+        "repo_id": "agiws/Fun-CosyVoice3-0.5B",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (3.07 GB)"
+        ]
+      },
+      {
+        "repo_id": "FunAudioLLM/CosyVoice-300M-SFT",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.82 GB)"
+        ]
+      },
+      {
+        "repo_id": "FunAudioLLM/CosyVoice-300M",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.82 GB)"
+        ]
+      },
+      {
+        "repo_id": "tonythethompson/CosyVoice-300M-ONNX",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.82 GB)",
+          "ONNX DEFAULT (encoder.onnx) (0.10 GB)",
+          "ONNX DEFAULT (f0_predictor.onnx) (0.15 GB)",
+          "ONNX DEFAULT (token_generator.onnx) (1.22 GB)",
+          "ONNX ONNX_QUANTIZED/FLOW (encoder.int8.onnx) (0.04 GB)",
+          "ONNX ONNX_QUANTIZED/HIFT (f0_predictor.int8.onnx) (0.00 GB)",
+          "ONNX ONNX_QUANTIZED/LLM (token_generator.int8.onnx) (0.36 GB)",
+          "ONNX ONNX_QUANTIZED_MODELOPT/FLOW (encoder.int4.onnx) (0.08 GB)",
+          "ONNX ONNX_QUANTIZED_MODELOPT/HIFT (f0_predictor.int4.onnx) (0.02 GB)",
+          "ONNX ONNX_QUANTIZED_MODELOPT/LLM (token_generator.int4.onnx) (0.93 GB)"
+        ]
+      },
+      {
+        "repo_id": "Tinysoft/Cosyvoice2-0.5B-GGUF",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.49 GB)",
+          "GGUF DEFAULT (cosyvoice.gguf) (1.20 GB)",
+          "GGUF _F16 (cosyvoice_f16.gguf) (1.20 GB)",
+          "GGUF Q4K (cosyvoice_q4k.gguf) (0.47 GB)",
+          "GGUF Q6K (cosyvoice_q6k.gguf) (0.62 GB)",
+          "GGUF Q8 (cosyvoice_q8.gguf) (0.64 GB)"
+        ]
+      },
+      {
+        "repo_id": "FunAudioLLM/CosyVoice-300M-Instruct",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.51 GB)"
+        ]
+      },
+      {
+        "repo_id": "Soul-AILab/SoulX-Podcast-1.7B",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.29 GB)"
+        ]
+      },
+      {
+        "repo_id": "gpustack/CosyVoice2-0.5B",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (0.76 GB)"
+        ]
+      },
+      {
+        "repo_id": "gglabs/cosyvoice3-multilingual-multispeaker-v3_ep49",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.93 GB)"
+        ]
+      },
+      {
+        "repo_id": "prince4332/CosyVoice2-0.5B-Akan",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (1.22 GB)"
+        ]
+      },
+      {
+        "repo_id": "spensercai/CosyVoice3-0.5B-Candle",
+        "primary_onnx": [
+          "ONNX DEFAULT (campplus.onnx) (0.93 GB)"
+        ]
+      },
+      {
+        "repo_id": "neriqlabs/kasanoma-tts-twi-v0.3",
+        "primary_onnx": [
+          "ONNX FP32 (flow.decoder.estimator.fp32.onnx) (3.07 GB)"
+        ]
+      }
+    ],
+    "piper-vits": [
+      {
+        "repo_id": "BricksDisplay/ellie-Bert-VITS2",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (1.35 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.44 GB)"
+        ]
+      },
+      {
+        "repo_id": "ayousanz/piper-plus-tsukuyomi-chan",
+        "primary_onnx": [
+          "ONNX FP16 (tsukuyomi-chan-6lang-fp16.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-eng",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "ayousanz/piper-plus-css10-ja-6lang",
+        "primary_onnx": [
+          "ONNX FP16 (css10-ja-6lang-fp16.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-vie",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-hin",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-fra",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "99eren99/piper-turkish-tts",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-spa",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-por",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-ara",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "utrobinmv/tts_ru_free_hf_vits_low_multispeaker",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.05 GB)"
+        ]
+      },
+      {
+        "repo_id": "BricksDisplay/vits-eng",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "Lucasllfs/Razo-piper-voice",
+        "primary_onnx": [
+          "ONNX DEFAULT (pt-BR-razo-medium.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "BricksDisplay/ellie-Bert-VITS2-small-onnx",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.56 GB)",
+          "ONNX Q4 (model_q4.onnx) (0.31 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.35 GB)"
+        ]
+      },
+      {
+        "repo_id": "BricksDisplay/vits-cmn",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-de_DE-thorsten-high",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-deu",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-kor",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/tiny-random-vits",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.00 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.00 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.00 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-zh_CN-huayan-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "NeuML/vctk-vits-onnx",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.14 GB)"
+        ]
+      },
+      {
+        "repo_id": "Xenova/mms-tts-rus",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)",
+          "ONNX FP16 (model_fp16.onnx) (0.05 GB)",
+          "ONNX DEFAULT (model_quantized.onnx) (0.04 GB)"
+        ]
+      },
+      {
+        "repo_id": "ufozone/piper-de_DE-jarvis-high",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.11 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-ru_RU-irina-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-de_DE-thorsten-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-en_US-lessac-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "speaches-ai/piper-en_US-amy-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "ufozone/piper-de_DE-jarvis-medium",
+        "primary_onnx": [
+          "ONNX DEFAULT (model.onnx) (0.06 GB)"
+        ]
+      },
+      {
+        "repo_id": "crazygiscool/ahsoka-piper-voice",
+        "primary_onnx": [
+          "ONNX DEFAULT (ahsoka-final.onnx) (0.06 GB)"
+        ]
+      }
+    ],
+    "chatterbox": [
+      {
+        "repo_id": "ResembleAI/chatterbox-turbo-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (conditional_decoder.onnx) (6.86 GB)",
+          "ONNX FP16 (conditional_decoder.onnx_data) (6.86 GB)",
+          "ONNX Q4 (conditional_decoder.onnx_data) (6.86 GB)",
+          "ONNX Q4F16 (conditional_decoder.onnx_data) (6.86 GB)",
+          "ONNX DEFAULT (conditional_decoder.onnx_data) (6.86 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/chatterbox-multilingual-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (conditional_decoder.onnx) (4.64 GB)",
+          "ONNX FP16 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4F16 (conditional_decoder.onnx_data) (4.63 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/chatterbox-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (conditional_decoder.onnx) (4.63 GB)",
+          "ONNX FP16 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4F16 (conditional_decoder.onnx_data) (4.63 GB)"
+        ]
+      },
+      {
+        "repo_id": "synath/chatterbox-ONNX",
+        "primary_onnx": [
+          "ONNX DEFAULT (conditional_decoder.onnx) (4.63 GB)",
+          "ONNX FP16 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4 (conditional_decoder.onnx_data) (4.63 GB)",
+          "ONNX Q4F16 (conditional_decoder.onnx_data) (4.63 GB)"
+        ]
+      },
+      {
+        "repo_id": "owensong/chatterbox-nano-ONNX",
+        "primary_onnx": [
+          "ONNX Q4 (conditional_decoder_q4.onnx) (0.53 GB)",
+          "ONNX FP16 (conditional_decoder_q4.onnx_data) (0.53 GB)",
+          "ONNX Q4F16 (conditional_decoder_q4.onnx_data) (0.53 GB)"
+        ]
+      }
+    ],
+    "matcha-v1": [
+      {
+        "repo_id": "projecte-aina/matxa-tts-cat-multiaccent",
+        "primary_onnx": [
+          "ONNX DEFAULT (matcha_multispeaker_cat_all_opset_15_10_steps.onnx) (0.21 GB)"
+        ]
+      }
+    ],
+    "omnivoice": [
+      {
+        "repo_id": "Prince-1/OmniVoice",
+        "primary_onnx": [
+          "ONNX DEFAULT (embedding.onnx) (0.06 GB)",
+          "ONNX DEFAULT (model.onnx) (0.83 GB)",
+          "ONNX DEFAULT (model.onnx) (3.76 GB)"
+        ]
+      },
+      {
+        "repo_id": "onnx-community/OmniVoice-Onnx",
+        "primary_onnx": [
+          "ONNX DEFAULT (audio_heads_decoder.onnx) (0.60 GB)",
+          "ONNX AUDIO_TOKENIZER (higgs_decoder.onnx.data) (1.03 GB)",
+          "ONNX AUDIO_TOKENIZER/FP16 (higgs_decoder.onnx) (0.35 GB)",
+          "ONNX CUDA (audio_heads_decoder.onnx) (1.15 GB)",
+          "ONNX INT4 (audio_heads_decoder.onnx) (0.36 GB)"
+        ]
+      }
+    ]
+  }
+}

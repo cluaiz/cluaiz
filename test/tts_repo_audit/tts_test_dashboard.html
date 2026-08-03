@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cluaiz Audio Engine — Complete Audio Wave Data & HTML5 TTS Inspector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(18, 24, 38, 0.85);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2.5rem 1.5rem;
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.15) 0%, transparent 40%);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .badge {
+            align-self: center;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.35rem 0.9rem;
+            border-radius: 9999px;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.75rem;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            height: 110px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: var(--text-main);
+            font-size: 1rem;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .controls-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 0.6rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            padding: 0.9rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: transform 0.15s, opacity 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+            box-shadow: 0 6px 20px 0 rgba(139, 92, 246, 0.5);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Audio Player & Waveform Visualizer Styling ── */
+        .player-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 0.85rem;
+            padding: 1.5rem;
+            border: 1px solid var(--card-border);
+        }
+
+        .audio-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .audio-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        audio#html5-audio-element {
+            width: 100%;
+            height: 52px;
+            outline: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas#waveform-canvas {
+            width: 100%;
+            height: 120px;
+            background: #050811;
+            border-radius: 0.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+        }
+
+        .metric-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 0.6rem;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-copy {
+            background: rgba(255, 255, 255, 0.1);
+            color: #d1d5db;
+            border: 1px solid var(--card-border);
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.4rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .json-box {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: #d1d5db;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="badge">Cluaiz TTS</div>
+            <h1>TTS Audio Engine & Wave Data Inspector</h1>
+            <p class="subtitle">Real-time HTML5 audio playback, PCM audio wave data extraction & visualizer</p>
+        </div>
+
+        <!-- Input Card -->
+        <div class="card">
+            <div class="card-title">
+                <span>🎙️</span> Text Input & Speech Generation
+                <span
+                    style="margin-left: auto; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem;">
+                    <span id="server-dot" class="status-dot"></span> <span id="server-status-text">Server:
+                        http://localhost:8000</span>
+                </span>
+            </div>
+
+            <div class="form-group">
+                <label for="tts-input-text">Text to Synthesize (Hindi / English / Multi-lingual)</label>
+                <textarea id="tts-input-text"
+                    placeholder="Type text here...">एक जंगल में एक शेर रहता था, उसका नाम कालू था। वह बहुत होशियार और ताकतवर था।</textarea>
+            </div>
+
+            <div class="controls-row">
+                <div class="form-group">
+                    <label for="speed-param">Speed</label>
+                    <input type="number" id="speed-param" value="1.0" step="0.1" min="0.5" max="2.0">
+                </div>
+                <div class="form-group">
+                    <label for="voice-param">Voice ID</label>
+                    <select id="voice-param">
+                        <option value="af_heart">af_heart (Default)</option>
+                        <option value="af_bella">af_bella</option>
+                        <option value="am_adam">am_adam</option>
+                        <option value="bf_emma">bf_emma</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="server-url">Endpoint</label>
+                    <input type="text" id="server-url" value="http://localhost:8000/v1/audio/execute">
+                </div>
+            </div>
+
+            <button id="btn-synthesize" class="btn-submit" onclick="synthesizeSpeech()">
+                <div id="spinner" class="spinner"></div>
+                <span id="btn-text">Generate, Play & Inspect Audio Wave Data 🔊</span>
+            </button>
+        </div>
+
+        <!-- Audio Output & Wave Data Card -->
+        <div class="card" id="output-card" style="display: none;">
+            <div class="card-title">
+                <span>🔊</span> HTML5 Audio Player & Audio Wave Visualizer
+            </div>
+
+            <div class="player-container">
+                <!-- HTML5 Audio Element explicitly rendered -->
+                <div class="audio-wrapper">
+                    <span class="audio-label">HTML5 Audio Element (&lt;audio controls autoplay&gt;)</span>
+                    <audio id="html5-audio-element" controls autoplay></audio>
+                </div>
+
+                <!-- Live PCM Waveform Canvas -->
+                <div class="audio-wrapper">
+                    <span class="audio-label">Decoded Audio Waveform Graph & Playhead</span>
+                    <canvas id="waveform-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Wave Data Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-box">
+                    <span class="metric-label">Status</span>
+                    <span class="metric-value" id="metric-status">SUCCESS</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Sample Rate</span>
+                    <span class="metric-value" id="metric-sample-rate">24000 Hz</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Duration</span>
+                    <span class="metric-value" id="metric-duration">0.00 s</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Total PCM Samples</span>
+                    <span class="metric-value" id="metric-pcm-samples">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Peak Amplitude</span>
+                    <span class="metric-value" id="metric-peak-amp">0.00</span>
+                </div>
+            </div>
+
+            <!-- Decoded Audio Wave Data Samples JSON Box -->
+            <div class="form-group">
+                <div class="box-header">
+                    <label>Decoded Audio Wave PCM Float32 Samples (Extracted from WAV)</label>
+                    <button class="btn-copy" onclick="copyWavePCMData()">📋 Copy PCM Float Array</button>
+                </div>
+                <div class="json-box" id="pcm-wave-data-box">{}</div>
+            </div>
+
+            <!-- Raw API JSON Response Box -->
+            <div class="form-group">
+                <div class="box-header">
+                    <label>API JSON Response Payload</label>
+                    <button class="btn-copy" onclick="copyFullBase64()">📋 Copy Full Base64 Data URI</button>
+                </div>
+                <div class="json-box" id="json-response">{}</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let fullRawBase64 = "";
+        let decodedPCMData = null;
+        let audioCtx = null;
+        let currentAudioBuffer = null;
+        let animFrameId = null;
+
+        function base64ToArrayBuffer(base64) {
+            const pureBase64 = base64.replace(/^data:audio\/\w+;base64,/, '');
+            const binaryString = window.atob(pureBase64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        async function decodeAndRenderWaveform(arrayBuffer, audioElement) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            try {
+                // Decode binary WAV into AudioBuffer using Web Audio API
+                currentAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+                const pcmChannel0 = currentAudioBuffer.getChannelData(0);
+
+                // Compute Wave Metrics
+                let peakAmp = 0;
+                for (let i = 0; i < pcmChannel0.length; i++) {
+                    const absVal = Math.abs(pcmChannel0[i]);
+                    if (absVal > peakAmp) peakAmp = absVal;
+                }
+
+                document.getElementById('metric-sample-rate').textContent = `${currentAudioBuffer.sampleRate} Hz`;
+                document.getElementById('metric-duration').textContent = `${currentAudioBuffer.duration.toFixed(2)} s`;
+                document.getElementById('metric-pcm-samples').textContent = pcmChannel0.length.toLocaleString();
+                document.getElementById('metric-peak-amp').textContent = peakAmp.toFixed(4);
+
+                // Format PCM Float32 Preview Array
+                const samplePreview = Array.from(pcmChannel0.slice(0, 40)).map(v => Number(v.toFixed(5)));
+                decodedPCMData = {
+                    sample_rate: currentAudioBuffer.sampleRate,
+                    channels: currentAudioBuffer.numberOfChannels,
+                    duration_seconds: Number(currentAudioBuffer.duration.toFixed(3)),
+                    total_pcm_float32_samples: pcmChannel0.length,
+                    peak_amplitude: Number(peakAmp.toFixed(4)),
+                    pcm_float32_samples_preview: samplePreview
+                };
+
+                document.getElementById('pcm-wave-data-box').textContent = JSON.stringify(decodedPCMData, null, 2);
+
+                // Render Full Static Waveform Graph + Dynamic Playhead on Canvas
+                drawWaveformGraph(pcmChannel0, audioElement);
+            } catch (e) {
+                console.error("PCM Audio Waveform Decoding Error:", e);
+            }
+        }
+
+        function drawWaveformGraph(pcmData, audioElement) {
+            const canvas = document.getElementById('waveform-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.clientWidth * window.devicePixelRatio;
+            canvas.height = canvas.clientHeight * window.devicePixelRatio;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const step = Math.ceil(pcmData.length / width);
+            const amp = height / 2;
+
+            function render() {
+                ctx.fillStyle = '#050811';
+                ctx.fillRect(0, 0, width, height);
+
+                // Center zero line
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, amp);
+                ctx.lineTo(width, amp);
+                ctx.stroke();
+
+                // Draw Waveform Bars
+                const gradient = ctx.createLinearGradient(0, 0, 0, height);
+                gradient.addColorStop(0, '#3b82f6');
+                gradient.addColorStop(0.5, '#06b6d4');
+                gradient.addColorStop(1, '#8b5cf6');
+
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                for (let i = 0; i < width; i++) {
+                    const min = pcmData[i * step] || 0;
+                    ctx.moveTo(i, amp - min * amp);
+                    ctx.lineTo(i, amp + min * amp);
+                }
+                ctx.stroke();
+
+                // Draw Playhead line if audio is playing
+                if (!audioElement.paused && audioElement.duration) {
+                    const progress = audioElement.currentTime / audioElement.duration;
+                    const playheadX = progress * width;
+
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(playheadX, 0);
+                    ctx.lineTo(playheadX, height);
+                    ctx.stroke();
+                }
+
+                animFrameId = requestAnimationFrame(render);
+            }
+
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            render();
+        }
+
+        async function synthesizeSpeech() {
+            const inputText = document.getElementById('tts-input-text').value.trim();
+            const serverUrl = document.getElementById('server-url').value.trim();
+            const speedVal = parseFloat(document.getElementById('speed-param').value) || 1.0;
+            const voiceId = document.getElementById('voice-param').value;
+
+            if (!inputText) {
+                alert('Please enter text to synthesize!');
+                return;
+            }
+
+            const btn = document.getElementById('btn-synthesize');
+            const spinner = document.getElementById('spinner');
+            const btnText = document.getElementById('btn-text');
+            const outputCard = document.getElementById('output-card');
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            btnText.textContent = 'Synthesizing Speech...';
+
+            const payload = {
+                model: "auto",
+                task: "text_to_speech",
+                stream: false,
+                input_source: {
+                    type: "text",
+                    data: inputText
+                },
+                parameters: {
+                    speed: speedVal,
+                    voice_id: voiceId
+                }
+            };
+
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(serverUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const latency = Math.round(performance.now() - startTime);
+                const rawText = await response.text();
+                
+                let data = null;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    // Fallback for Server-Sent Events (SSE) data lines ("data: {...}")
+                    const lines = rawText.split('\n');
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data: ')) {
+                            const jsonStr = trimmed.substring(6).trim();
+                            if (jsonStr && jsonStr !== '[DONE]') {
+                                try {
+                                    data = JSON.parse(jsonStr);
+                                    if (data && data.output && data.output.audio_data) break;
+                                } catch (_) {}
+                            }
+                        }
+                    }
+                }
+
+                if (!data) {
+                    throw new Error("Could not parse server response: " + rawText.substring(0, 100));
+                }
+
+                outputCard.style.display = 'flex';
+
+                if (data.status === 'success' && data.output && data.output.audio_data) {
+                    fullRawBase64 = data.output.audio_data;
+
+                    // Clean formatted JSON display (Truncate 100k char base64 string for UI performance)
+                    const cleanDisplayObj = JSON.parse(JSON.stringify(data));
+                    const rawLen = cleanDisplayObj.output.audio_data.length;
+                    cleanDisplayObj.output.audio_data = cleanDisplayObj.output.audio_data.substring(0, 60) + ` ... [${rawLen.toLocaleString()} bytes base64 WAV payload]`;
+
+                    document.getElementById('json-response').textContent = JSON.stringify(cleanDisplayObj, null, 2);
+                    document.getElementById('metric-status').textContent = 'SUCCESS';
+                    document.getElementById('metric-status').style.color = '#10b981';
+
+                    // HTML5 Audio Element Playback
+                    const audioEl = document.getElementById('html5-audio-element');
+                    audioEl.src = fullRawBase64;
+
+                    // Decode ArrayBuffer & Render PCM Wave Data Graph
+                    const arrayBuffer = base64ToArrayBuffer(fullRawBase64);
+                    await decodeAndRenderWaveform(arrayBuffer, audioEl);
+
+                    audioEl.play().catch(e => console.log("Autoplay policy info:", e));
+                } else {
+                    document.getElementById('json-response').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('metric-status').textContent = 'FAILED';
+                    document.getElementById('metric-status').style.color = '#ef4444';
+                    alert('TTS Generation failed or returned empty audio_data!');
+                }
+            } catch (err) {
+                console.error("TTS Request Error:", err);
+                alert("Error connecting to server daemon: " + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Generate, Play & Inspect Audio Wave Data 🔊';
+            }
+        }
+
+        function copyFullBase64() {
+            if (!fullRawBase64) {
+                alert("No audio base64 data available!");
+                return;
+            }
+            navigator.clipboard.writeText(fullRawBase64).then(() => {
+                alert("Full Base64 WAV data copied to clipboard!");
+            });
+        }
+
+        function copyWavePCMData() {
+            if (!decodedPCMData) {
+                alert("No decoded PCM wave data available!");
+                return;
+            }
+            navigator.clipboard.writeText(JSON.stringify(decodedPCMData, null, 2)).then(() => {
+                alert("Decoded PCM Wave Data JSON copied to clipboard!");
+            });
+        }
+    </script>
+</body>
+
+</html>

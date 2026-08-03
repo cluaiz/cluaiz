@@ -1,4 +1,5 @@
+use ort::session::Session;
+
 fn main() {
-    let builder = ort::GraphOptimizationLevel::Level3;
-    println!(\"Ort initialized\");
+    // This is just a syntax check for ORT API
 }
