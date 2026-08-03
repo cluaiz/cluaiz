@@ -66,7 +66,7 @@ export function showModal(title, message, options = {}) {
         const closeIconBtn = document.getElementById('hub-global-modal-close-icon');
         const actionsEl = document.getElementById('hub-global-modal-actions');
 
-        titleEl.textContent = title;
+        titleEl.innerHTML = title;
         messageEl.innerHTML = message;
         
         confirmBtn.textContent = config.confirmText;

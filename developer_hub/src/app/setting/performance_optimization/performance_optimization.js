@@ -424,8 +424,19 @@ export async function mount(container) {
                     };
 
                     const hasChatTemplate = chatTmpl && chatTmpl.trim() !== "No template found." && chatTmpl.trim() !== "";
+                    const modelFiles = registryMap[selectedModelId]?.files || [];
+                    const modelParts = modelFiles.filter(f => f.name.endsWith('.onnx') || f.name.endsWith('.gguf')).map(f => f.name);
+                    const primaryPart = modelFiles.find(f => f.is_primary)?.name || modelParts[0];
+                    if (!modelParts.includes(window._modalCurrentInspectFile)) {
+                        window._modalCurrentInspectFile = primaryPart;
+                    }
+
+                    let dropdownHtml = selectedModelId;
+                    if (modelParts.length > 0) {
+                        dropdownHtml = `<div id="modal-model-selector-container" style="display:inline-block; vertical-align: middle; padding-bottom: 5px;"></div>`;
+                    }
                     
-                    showModal(`${selectedModelId}`, `
+                    showModal(dropdownHtml, `
                         <div style="display: flex; flex-direction: column; height: 100%; width: 100%; text-align: left; gap: 12px;">
                             <!-- Top Scrollable Tab Navigation Bar -->
                             <div class="modal-tab-bar" style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; white-space: nowrap;">
@@ -567,7 +578,11 @@ export async function mount(container) {
                             (async () => {
                                 let ed;
                                 try {
-                                    const res = await fetch(`/v1/models/${encodeURIComponent(selectedModelId)}/inspect_raw_header`);
+                                    let url = `/v1/models/${encodeURIComponent(selectedModelId)}/inspect_raw_header`;
+                                    if (window._modalCurrentInspectFile) {
+                                        url += `?filename=${encodeURIComponent(window._modalCurrentInspectFile)}`;
+                                    }
+                                    const res = await fetch(url);
                                     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                                     const rawData = await res.json();
                                     ed = getOrCreateEditor(containerId, JSON.stringify(rawData, null, 2), 'application/json');
@@ -887,7 +902,37 @@ export async function mount(container) {
                         };
 
                         const headerEd = getOrCreateEditor('editor-container-header', JSON.stringify(probedHeaderData, null, 2), 'application/json');
-                        if (headerEd && headerEd.cm) setTimeout(() => headerEd.cm.refresh(), 50);
+                        if (headerEd && headerEd.cm) setTimeout(() => {
+                            headerEd.cm.refresh();
+                            
+                            // Restore active tab if previously set
+                            if (window._modalInitialTab) {
+                                const tabBtn = document.querySelector(`.modal-tab-btn[data-tab="${window._modalInitialTab}"]`);
+                                if (tabBtn) tabBtn.click();
+                                window._modalInitialTab = null;
+                            }
+                            
+                            // Mount Custom Dropdown component into the modal title
+                            const dropdownContainer = document.getElementById('modal-model-selector-container');
+                            if (dropdownContainer && !dropdownContainer.hasChildNodes() && modelParts && modelParts.length > 0) {
+                                import('../../../../components/dropdown/dropdown.js').then(({ Dropdown }) => {
+                                    const titleDropdown = new Dropdown({
+                                        id: 'modal-model-dropdown',
+                                        options: modelParts.map(name => ({ value: name, label: name })),
+                                        defaultValue: window._modalCurrentInspectFile,
+                                        onChange: (newVal) => {
+                                            if (newVal === window._modalCurrentInspectFile) return;
+                                            const activeTab = document.querySelector('.modal-tab-btn.active');
+                                            if (activeTab) window._modalInitialTab = activeTab.dataset.tab;
+                                            window._modalCurrentInspectFile = newVal;
+                                            const btn = document.querySelector(`.inspect-btn[data-model='${selectedModelId}']`);
+                                            if (btn) btn.click();
+                                        }
+                                    });
+                                    dropdownContainer.appendChild(titleDropdown.render ? titleDropdown.render() : titleDropdown.element);
+                                }).catch(console.error);
+                            }
+                        }, 50);
 
                         // Bind Export Button for ALL Tabs (Format: <model_id>-<file_name>)
                         const exportBtns = modalOverlay.querySelectorAll('.btn-export-tab');

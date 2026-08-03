@@ -10,6 +10,8 @@ const state = {
     methodDropdown: null,
     protocolDropdown: null,
     languageDropdown: null,
+    modelDropdown: null,
+    installedModels: [],
     sidebarComponent: null
 };
 
@@ -110,6 +112,19 @@ async function initApp() {
         // Filter out any failed loads
         state.apiData = responses.filter(data => data !== null);
 
+        // Fetch Installed Models from engine API for dynamic Model Dropdown
+        try {
+            const instRes = await fetch('/v1/models/installed');
+            if (instRes.ok) {
+                const instJson = await instRes.json();
+                if (instJson && instJson.models) {
+                    state.installedModels = instJson.models;
+                }
+            }
+        } catch (e) {
+            console.warn("Could not fetch installed models for DevHub dropdown:", e);
+        }
+
         // Restore endpoint from URL query parameter e.g. /api?endpoint=/v1/audio/execute
         const urlParams = new URLSearchParams(window.location.search);
         const targetPath = urlParams.get('endpoint');
@@ -164,8 +179,17 @@ function mountApiListeners() {
     document.getElementById('tab-docs').addEventListener('click', () => switchTab('docs'));
     document.getElementById('tab-snippets').addEventListener('click', () => switchTab('snippets'));
 
-    document.getElementById('response-header').addEventListener('click', () => toggleResponsePanel());
     document.getElementById('btn-send').addEventListener('click', sendRequest);
+    
+    const resIcon = document.getElementById('response-toggle-icon');
+    if (resIcon) {
+        resIcon.addEventListener('click', () => toggleResponsePanel());
+    }
+
+    const btnJson = document.getElementById('res-subtab-json');
+    const btnAudio = document.getElementById('res-subtab-audio');
+    if (btnJson) btnJson.addEventListener('click', () => switchResTab('json'));
+    if (btnAudio) btnAudio.addEventListener('click', () => switchResTab('audio'));
 
     const resetBtn = document.getElementById('btn-reset-payload');
     if (resetBtn) {
@@ -229,6 +253,22 @@ function openEndpoint(ep, forceDefault = false) {
     }
 
     document.getElementById('req-url').value = `${window.location.protocol}//${window.location.host}${ep.path}`;
+
+    // Update Model Dropdown options based on endpoint category
+    if (state.modelDropdown) {
+        let opts = [{ value: 'auto', label: 'Model: Auto' }];
+        if (ep.path.includes('/audio/')) {
+            const audioModels = state.installedModels.filter(m => m.category === 'audio' || (m.supported_tasks && (m.supported_tasks.includes('text_to_speech') || m.supported_tasks.includes('speech_to_text'))));
+            audioModels.forEach(m => opts.push({ value: m.id, label: `${m.id}` }));
+        } else if (ep.path.includes('/chat/')) {
+            const chatModels = state.installedModels.filter(m => m.category === 'chat' || (m.supported_tasks && m.supported_tasks.includes('chat-completion')));
+            chatModels.forEach(m => opts.push({ value: m.id, label: `${m.id}` }));
+        } else if (ep.path.includes('/embeddings')) {
+            const embModels = state.installedModels.filter(m => m.category === 'embeddings');
+            embModels.forEach(m => opts.push({ value: m.id, label: `${m.id}` }));
+        }
+        state.modelDropdown.updateOptions(opts, false);
+    }
 
     // Detect if this is a raw code endpoint (CEL or FFI)
     let isRawCode = false;
@@ -411,7 +451,6 @@ function openEndpoint(ep, forceDefault = false) {
 }
 
 export async function initApiTester() {
-    renderHome();
     switchTab('params');
     setTimeout(() => {
         if (state.editor) state.editor.refresh();
@@ -661,6 +700,53 @@ export function setupCustomSelects() {
         languageContainer.appendChild(state.languageDropdown.render());
         languageContainer.classList.add('hidden'); // hidden by default for HTTP
     }
+
+    const modelContainer = document.getElementById('model-dropdown-container');
+    if (modelContainer) {
+        modelContainer.innerHTML = '';
+        state.modelDropdown = new Dropdown({
+            id: 'custom-req-model',
+            options: [{ value: 'auto', label: 'Model: Auto' }],
+            value: 'auto',
+            onChange: (selectedModelId) => onModelSelectChange(selectedModelId)
+        });
+        modelContainer.appendChild(state.modelDropdown.render());
+    }
+}
+
+function onModelSelectChange(selectedModelId) {
+    if (!state.editor || !state.activeEndpoint) return;
+    try {
+        const currentVal = state.editor.getValue();
+        let json = JSON.parse(currentVal);
+        json.model = selectedModelId;
+
+        // Special handling for audio endpoint dynamic task and payload assignment
+        if (state.activeEndpoint.path.includes('/audio/execute')) {
+            const foundModel = state.installedModels.find(m => m.id === selectedModelId);
+            if (foundModel && foundModel.supported_tasks) {
+                if (foundModel.supported_tasks.includes('text_to_speech')) {
+                    json.task = "text_to_speech";
+                    json.input_source = {
+                        type: "text",
+                        data: "In the silent depths of space, a star was born, casting its brilliant light into the cosmic void."
+                    };
+                } else if (foundModel.supported_tasks.includes('speech_to_text')) {
+                    json.task = "speech_to_text";
+                    json.input_source = {
+                        type: "url",
+                        data: "https://audio-samples.github.io/samples/mp3/blizzard_tts_unbiased/sample-3/real.mp3"
+                    };
+                }
+            } else if (selectedModelId === 'auto') {
+                json.task = "auto";
+            }
+        }
+
+        state.editor.setValue(JSON.stringify(json, null, 2));
+    } catch (e) {
+        console.warn("Payload is not valid JSON, cannot update model field dynamically:", e);
+    }
 }
 
 export function closeAllSelect(elmnt) {
@@ -904,6 +990,9 @@ export async function sendRequest() {
         const contentType = response.headers.get('content-type') || '';
         const isSse = contentType.includes('text/event-stream');
 
+        // Always reset audio sub-tab on new request
+        hideAudioOutput();
+
         if (isSse && response.body) {
             const initialTtft = (headersTime / 1000).toFixed(2) + 's';
             resStatus.innerHTML = `<span class="${statusClass}">Status: ${response.status} ${response.statusText}</span><span>TTFT: ${initialTtft}</span><span>Total: ...</span><span>Size: ... B</span>`;
@@ -913,6 +1002,8 @@ export async function sendRequest() {
             let accumulatedText = '';
             let parsedTotalSecs = null;
             let parsedTtftSecs = null;
+            let capturedAudioBase64 = null;
+            let capturedModel = null;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -924,14 +1015,30 @@ export async function sendRequest() {
 
                 if (chunkStr.includes('"metrics"')) {
                     const matchTotal = chunkStr.match(/"total_execution_time_sec"\s*:\s*"([^"]+)"/);
-                    if (matchTotal && matchTotal[1]) {
-                        parsedTotalSecs = matchTotal[1];
-                    }
+                    if (matchTotal && matchTotal[1]) parsedTotalSecs = matchTotal[1];
                     const matchTtft = chunkStr.match(/"ttft_ms"\s*:\s*([0-9.]+)/);
-                    if (matchTtft && matchTtft[1]) {
-                        parsedTtftSecs = (parseFloat(matchTtft[1]) / 1000).toFixed(2) + 's';
+                    if (matchTtft && matchTtft[1]) parsedTtftSecs = (parseFloat(matchTtft[1]) / 1000).toFixed(2) + 's';
+                }
+                
+                // Quick inline parse for TTS audio data in SSE chunk
+                if (chunkStr.includes('"audio_data"')) {
+                    const lines = chunkStr.split('\n');
+                    for (let line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const j = JSON.parse(line.substring(6));
+                                if (j.output && j.output.audio_data) {
+                                    capturedAudioBase64 = j.output.audio_data;
+                                    capturedModel = j.model;
+                                }
+                            } catch(e){}
+                        }
                     }
                 }
+            }
+
+            if (capturedAudioBase64) {
+                showAudioOutput(capturedAudioBase64, capturedModel);
             }
 
             const finalTotal = parsedTotalSecs || (((performance.now() - start) / 1000).toFixed(2) + 's');
@@ -949,6 +1056,10 @@ export async function sendRequest() {
                 const json = JSON.parse(text);
                 resBody.textContent = JSON.stringify(json, null, 2);
                 resBody.style.color = "#a5d6ff";
+                
+                if (json.output && json.output.audio_data) {
+                    showAudioOutput(json.output.audio_data, json.model);
+                }
             } catch (e) {
                 resBody.textContent = text;
                 resBody.style.color = "#a5d6ff";
@@ -961,5 +1072,117 @@ export async function sendRequest() {
     }
 
     btn.disabled = false;
+    toggleResponsePanel(true); // Ensure response panel is forced open!
+}
+
+// -------------------------------------------------------------
+// Audio Output Tab Handling
+// -------------------------------------------------------------
+function hideAudioOutput() {
+    const btn = document.getElementById('res-subtab-audio');
+    if (btn) btn.classList.add('hidden');
+    switchResTab('json');
+}
+
+function showAudioOutput(base64Data, modelName) {
+    const btn = document.getElementById('res-subtab-audio');
+    if (btn) btn.classList.remove('hidden');
+    switchResTab('audio');
+    
+    // Ensure data URI format
+    if (!base64Data.startsWith('data:audio')) {
+        base64Data = 'data:audio/wav;base64,' + base64Data;
+    }
+    
+    const player = document.getElementById('devhub-audio-player');
+    if (player) {
+        player.src = base64Data;
+        player.load();
+    }
+    
+    // Extract raw base64 string
+    const rawB64 = base64Data.split(',')[1];
+    const byteSize = atob(rawB64).length;
+    const kbSize = (byteSize / 1024).toFixed(2);
+    
+    const meta = document.getElementById('devhub-audio-meta');
+    if (meta) {
+        meta.innerHTML = `Model: <strong style="color:#e2e8f0">${modelName || 'TTS Engine'}</strong> &nbsp;|&nbsp; Size: <strong style="color:#e2e8f0">${kbSize} KB</strong>`;
+    }
+    
+    renderWaveform(rawB64);
+}
+
+export function switchResTab(tabId) {
+    document.getElementById('res-subtab-json').classList.remove('active');
+    document.getElementById('res-subtab-audio').classList.remove('active');
+    
+    document.getElementById('res-view-json').style.display = 'none';
+    document.getElementById('res-view-audio').style.display = 'none';
+    
+    document.getElementById(`res-subtab-${tabId}`).classList.add('active');
+    if (tabId === 'json') {
+        document.getElementById('res-view-json').style.display = 'block';
+    } else if (tabId === 'audio') {
+        document.getElementById('res-view-audio').style.display = 'flex';
+    }
+}
+
+async function renderWaveform(base64Str) {
+    const canvas = document.getElementById('devhub-waveform-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width = canvas.offsetWidth || 500;
+    const height = canvas.height = canvas.offsetHeight || 100;
+    
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#050811';
+    ctx.fillRect(0, 0, width, height);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#4b5563';
+    ctx.fillText('Decoding audio...', 10, height/2 + 4);
+    
+    try {
+        const binary = atob(base64Str);
+        const arrayBuffer = new ArrayBuffer(binary.length);
+        const view = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+        
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const pcmData = audioBuffer.getChannelData(0);
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        
+        const step = Math.ceil(pcmData.length / width);
+        const amp = height / 2;
+        
+        for (let i = 0; i < width; i++) {
+            let min = 1.0;
+            let max = -1.0;
+            for (let j = 0; j < step; j++) {
+                const sample = pcmData[(i * step) + j];
+                if (sample < min) min = sample;
+                if (sample > max) max = sample;
+            }
+            const y1 = (1 + min) * amp;
+            const y2 = (1 + max) * amp;
+            ctx.moveTo(i, y1);
+            ctx.lineTo(i, y2);
+        }
+        ctx.stroke();
+    } catch(err) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#050811';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText('Failed to decode waveform', 10, height/2 + 4);
+    }
 }
 
