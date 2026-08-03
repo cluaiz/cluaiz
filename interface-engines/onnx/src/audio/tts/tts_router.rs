@@ -93,9 +93,19 @@ fn handle_flow_estimator(
     let vocoder = super::vocoder::NativeVocoder::default();
     let mut all_pcm_samples: Vec<f32> = Vec::new();
 
+    let model_dir = engine.model_dir.as_deref().unwrap_or_else(|| std::path::Path::new("."));
     for (idx, text_chunk) in text_chunks.iter().enumerate() {
-        let seq_len = (text_chunk.bytes().count() * 4).clamp(50, 200);
-        match super::flow_matching::FlowMatchingSampler::sample_mel_features_with_text(session, engine, tokenizer, text_chunk, seq_len, 10) {
+        let mut clean_chunk = text_chunk.clone();
+        while let Some(start) = clean_chunk.find('[') {
+            if let Some(end) = clean_chunk[start..].find(']') {
+                clean_chunk.replace_range(start..=end, "");
+            } else {
+                break;
+            }
+        }
+        let processed_text = super::g2p::process_text_for_family(clean_chunk.trim(), &super::family_adapter::TtsFamily::CosyVoiceMatcha, model_dir);
+        let seq_len = (processed_text.bytes().count() * 4).clamp(50, 200);
+        match super::flow_matching::FlowMatchingSampler::sample_mel_features_with_text(session, engine, tokenizer, &processed_text, seq_len, 10) {
             Ok(mel_data) => {
                 let chunk_pcm = if let Some(voc_arc) = &engine.vocoder_session {
                     if let Ok(mut voc_sess) = voc_arc.lock() {
@@ -142,9 +152,18 @@ fn handle_vits_piper(
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
     for (chunk_idx, text_chunk) in text_chunks.iter().enumerate() {
+        let mut clean_chunk = text_chunk.clone();
+        while let Some(start) = clean_chunk.find('[') {
+            if let Some(end) = clean_chunk[start..].find(']') {
+                clean_chunk.replace_range(start..=end, "");
+            } else {
+                break;
+            }
+        }
+        let processed_text = super::g2p::process_text_for_family(clean_chunk.trim(), &super::family_adapter::TtsFamily::VitsPiper, model_dir);
         // Tokenize using PhonemeMap if available, otherwise fall back to character bytes
         let token_ids: Vec<i64> = if let Some(ref pmap) = phoneme_map {
-            pmap.text_to_ids(text_chunk)
+            pmap.text_to_ids(&processed_text)
         } else {
             eprintln!("⚠️ [VITS Handler] No phoneme_id_map found in model dir. Falling back to raw byte tokenization.");
             // Fallback: BOS + char bytes + EOS (matches basic VITS input contract)
@@ -200,15 +219,27 @@ fn handle_kokoro(
 
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
+    let full_text = text_chunks.join(" ");
+    let selected_voice = extract_parameter(&full_text, "voice").unwrap_or_else(|| "af_heart".to_string());
+
     // Load style vector from voices/ directory
-    let style_vector = super::kokoro_handler::load_style_vector(model_dir, "af_heart")
+    let style_vector = super::kokoro_handler::load_style_vector(model_dir, &selected_voice)
         .or_else(|_| super::kokoro_handler::load_style_vector(model_dir, "default"))
         .or_else(|_| super::kokoro_handler::load_first_available_voice(model_dir))
-        .map_err(|e| anyhow!("Kokoro style embedding load failed: {}. Place a voice .bin file in the model's voices/ directory.", e))?;
+        .map_err(|e| anyhow!("Kokoro style embedding load failed for voice '{}': {}. Place a voice .bin file in the model's voices/ directory.", selected_voice, e))?;
 
     for (chunk_idx, text_chunk) in text_chunks.iter().enumerate() {
+        let mut clean_chunk = text_chunk.clone();
+        while let Some(start) = clean_chunk.find('[') {
+            if let Some(end) = clean_chunk[start..].find(']') {
+                clean_chunk.replace_range(start..=end, "");
+            } else {
+                break;
+            }
+        }
+        let processed_text = super::g2p::process_text_for_family(clean_chunk.trim(), &super::family_adapter::TtsFamily::Kokoro, model_dir);
         let token_ids: Vec<i64> = if let Some(ref pmap) = phoneme_map {
-            pmap.text_to_ids(text_chunk)
+            pmap.text_to_ids_no_pad(&processed_text)
         } else {
             // Kokoro uses phoneme tokens — raw bytes won't work well
             eprintln!("⚠️ [Kokoro Handler] No phoneme_id_map found. Using raw byte fallback.");
@@ -253,7 +284,11 @@ fn extract_parameter(prompt: &str, param_name: &str) -> Option<String> {
 }
 
 fn extract_clean_text_prompt(prompt: &str) -> Option<String> {
-    let clean = prompt.replace("[AUDIO_INPUT]", "").trim().to_string();
+    let clean = prompt
+        .replace("[AUDIO_INPUT]", "")
+        .replace("[TEXT_INPUT]", "")
+        .trim()
+        .to_string();
     if clean.is_empty() {
         None
     } else {

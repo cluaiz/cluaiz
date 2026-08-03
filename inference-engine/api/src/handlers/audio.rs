@@ -334,6 +334,8 @@ pub async fn execute_audio(
     let language = payload.parameters.as_ref().and_then(|p| p.language.clone()).unwrap_or_else(|| "auto".to_string());
     let translate_to = payload.parameters.as_ref().and_then(|p| p.translate_to.clone()).unwrap_or_default();
 
+    let voice_id = payload.parameters.as_ref().and_then(|p| p.voice_id.clone()).unwrap_or_default();
+
     let prompt = if is_audio_input {
         format!(
             "[AUDIO_INPUT: {}] [LANGUAGE: {}] [TRANSLATE_TO: {}] {}",
@@ -343,7 +345,11 @@ pub async fn execute_audio(
             instruction
         )
     } else {
-        format!("[TEXT_INPUT] {}", payload.input_source.data)
+        if voice_id.trim().is_empty() {
+            format!("[TEXT_INPUT] {}", payload.input_source.data)
+        } else {
+            format!("[TEXT_INPUT] [voice:{}] {}", voice_id.trim(), payload.input_source.data)
+        }
     };
 
     let should_stream = payload.stream.unwrap_or(true);

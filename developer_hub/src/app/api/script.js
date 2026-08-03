@@ -11,6 +11,7 @@ const state = {
     protocolDropdown: null,
     languageDropdown: null,
     modelDropdown: null,
+    voiceDropdown: null,
     installedModels: [],
     sidebarComponent: null
 };
@@ -180,7 +181,7 @@ function mountApiListeners() {
     document.getElementById('tab-snippets').addEventListener('click', () => switchTab('snippets'));
 
     document.getElementById('btn-send').addEventListener('click', sendRequest);
-    
+
     const resIcon = document.getElementById('response-toggle-icon');
     if (resIcon) {
         resIcon.addEventListener('click', () => toggleResponsePanel());
@@ -268,6 +269,11 @@ function openEndpoint(ep, forceDefault = false) {
             embModels.forEach(m => opts.push({ value: m.id, label: `${m.id}` }));
         }
         state.modelDropdown.updateOptions(opts, false);
+    }
+
+    const voiceDropdownContainer = document.getElementById('voice-dropdown-container');
+    if (voiceDropdownContainer) {
+        voiceDropdownContainer.style.display = 'none';
     }
 
     // Detect if this is a raw code endpoint (CEL or FFI)
@@ -533,7 +539,7 @@ export function initEditor() {
                     state.headersEditor.setValue('{\n  "Authorization": "' + activeToken + '"\n}');
                 }
             })
-            .catch(() => {});
+            .catch(() => { });
     }
 }
 
@@ -712,6 +718,27 @@ export function setupCustomSelects() {
         });
         modelContainer.appendChild(state.modelDropdown.render());
     }
+
+    const voiceContainer = document.getElementById('voice-dropdown-container');
+    if (voiceContainer) {
+        voiceContainer.innerHTML = '';
+        state.voiceDropdown = new Dropdown({
+            id: 'custom-req-voice',
+            options: [{ value: 'default', label: 'Default Voice' }],
+            value: 'default',
+            onChange: (selectedVoice) => {
+                if (!state.editor || !state.activeEndpoint) return;
+                try {
+                    const currentVal = state.editor.getValue();
+                    let json = JSON.parse(currentVal);
+                    if (!json.parameters) json.parameters = {};
+                    json.parameters.voice_id = selectedVoice;
+                    state.editor.setValue(JSON.stringify(json, null, 2));
+                } catch (e) { }
+            }
+        });
+        voiceContainer.appendChild(state.voiceDropdown.render());
+    }
 }
 
 function onModelSelectChange(selectedModelId) {
@@ -740,6 +767,46 @@ function onModelSelectChange(selectedModelId) {
                 }
             } else if (selectedModelId === 'auto') {
                 json.task = "auto";
+            }
+
+            // Update voices dropdown based on model_registry.json extra_files
+            const voiceContainer = document.getElementById('voice-dropdown-container');
+            if (state.voiceDropdown && voiceContainer) {
+                let voices = [];
+                const foundModel = state.installedModels.find(m => m.id === selectedModelId);
+                if (foundModel && foundModel.extra_files) {
+                    let voiceObj = foundModel.extra_files.find(f => typeof f === 'object' && f.voices);
+                    if (voiceObj && voiceObj.voices) {
+                        voices = voiceObj.voices.map(v => {
+                            if (typeof v === 'string') {
+                                return { value: v.replace('.bin', ''), label: v.replace('.bin', '') };
+                            } else if (typeof v === 'object' && v !== null) {
+                                return { value: v.id, label: v.name || v.id };
+                            }
+                            return null;
+                        }).filter(v => v !== null);
+                    }
+                }
+
+                if (voices.length > 0) {
+                    state.voiceDropdown.updateOptions(voices, true);
+                    if (!json.parameters) json.parameters = {};
+
+                    if (!json.parameters.voice_id || !voices.find(v => v.value === json.parameters.voice_id)) {
+                        json.parameters.voice_id = voices[0].value;
+                        state.voiceDropdown.setValue(voices[0].value, true);
+                    } else {
+                        state.voiceDropdown.setValue(json.parameters.voice_id, true);
+                    }
+
+                    voiceContainer.style.display = 'block';
+                } else {
+                    state.voiceDropdown.updateOptions([{ value: 'default', label: 'Default Voice' }], true);
+                    voiceContainer.style.display = 'none';
+                    if (json.parameters && json.parameters.voice_id) {
+                        delete json.parameters.voice_id;
+                    }
+                }
             }
         }
 
@@ -934,7 +1001,7 @@ export async function sendRequest() {
                     options.headers[k] = v;
                 }
             }
-        } catch (e) {}
+        } catch (e) { }
     }
 
     try {
@@ -1019,7 +1086,7 @@ export async function sendRequest() {
                     const matchTtft = chunkStr.match(/"ttft_ms"\s*:\s*([0-9.]+)/);
                     if (matchTtft && matchTtft[1]) parsedTtftSecs = (parseFloat(matchTtft[1]) / 1000).toFixed(2) + 's';
                 }
-                
+
                 // Quick inline parse for TTS audio data in SSE chunk
                 if (chunkStr.includes('"audio_data"')) {
                     const lines = chunkStr.split('\n');
@@ -1031,7 +1098,7 @@ export async function sendRequest() {
                                     capturedAudioBase64 = j.output.audio_data;
                                     capturedModel = j.model;
                                 }
-                            } catch(e){}
+                            } catch (e) { }
                         }
                     }
                 }
@@ -1056,7 +1123,7 @@ export async function sendRequest() {
                 const json = JSON.parse(text);
                 resBody.textContent = JSON.stringify(json, null, 2);
                 resBody.style.color = "#a5d6ff";
-                
+
                 if (json.output && json.output.audio_data) {
                     showAudioOutput(json.output.audio_data, json.model);
                 }
@@ -1088,38 +1155,38 @@ function showAudioOutput(base64Data, modelName) {
     const btn = document.getElementById('res-subtab-audio');
     if (btn) btn.classList.remove('hidden');
     switchResTab('audio');
-    
+
     // Ensure data URI format
     if (!base64Data.startsWith('data:audio')) {
         base64Data = 'data:audio/wav;base64,' + base64Data;
     }
-    
+
     const player = document.getElementById('devhub-audio-player');
     if (player) {
         player.src = base64Data;
         player.load();
     }
-    
+
     // Extract raw base64 string
     const rawB64 = base64Data.split(',')[1];
     const byteSize = atob(rawB64).length;
     const kbSize = (byteSize / 1024).toFixed(2);
-    
+
     const meta = document.getElementById('devhub-audio-meta');
     if (meta) {
         meta.innerHTML = `Model: <strong style="color:#e2e8f0">${modelName || 'TTS Engine'}</strong> &nbsp;|&nbsp; Size: <strong style="color:#e2e8f0">${kbSize} KB</strong>`;
     }
-    
+
     renderWaveform(rawB64);
 }
 
 export function switchResTab(tabId) {
     document.getElementById('res-subtab-json').classList.remove('active');
     document.getElementById('res-subtab-audio').classList.remove('active');
-    
+
     document.getElementById('res-view-json').style.display = 'none';
     document.getElementById('res-view-audio').style.display = 'none';
-    
+
     document.getElementById(`res-subtab-${tabId}`).classList.add('active');
     if (tabId === 'json') {
         document.getElementById('res-view-json').style.display = 'block';
@@ -1128,61 +1195,116 @@ export function switchResTab(tabId) {
     }
 }
 
+let currentWaveformPCM = null;
+
 async function renderWaveform(base64Str) {
     const canvas = document.getElementById('devhub-waveform-canvas');
+    const player = document.getElementById('devhub-audio-player');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const width = canvas.width = canvas.offsetWidth || 500;
     const height = canvas.height = canvas.offsetHeight || 100;
-    
+
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#050811';
     ctx.fillRect(0, 0, width, height);
     ctx.font = '12px monospace';
     ctx.fillStyle = '#4b5563';
-    ctx.fillText('Decoding audio...', 10, height/2 + 4);
-    
+    ctx.fillText('Decoding audio...', 10, height / 2 + 4);
+
     try {
         const binary = atob(base64Str);
         const arrayBuffer = new ArrayBuffer(binary.length);
         const view = new Uint8Array(arrayBuffer);
         for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-        
+
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        const pcmData = audioBuffer.getChannelData(0);
-        
-        ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, width, height);
-        
-        ctx.strokeStyle = '#60a5fa';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        
-        const step = Math.ceil(pcmData.length / width);
-        const amp = height / 2;
-        
-        for (let i = 0; i < width; i++) {
-            let min = 1.0;
-            let max = -1.0;
-            for (let j = 0; j < step; j++) {
-                const sample = pcmData[(i * step) + j];
-                if (sample < min) min = sample;
-                if (sample > max) max = sample;
-            }
-            const y1 = (1 + min) * amp;
-            const y2 = (1 + max) * amp;
-            ctx.moveTo(i, y1);
-            ctx.lineTo(i, y2);
+        currentWaveformPCM = audioBuffer.getChannelData(0);
+
+        // Initial draw
+        drawWaveformFrame();
+
+        // Bind events if not already bound
+        if (!player.hasAttribute('data-waveform-bound')) {
+            player.addEventListener('timeupdate', drawWaveformFrame);
+            player.addEventListener('seeked', drawWaveformFrame);
+            player.addEventListener('play', () => requestAnimationFrame(drawWaveformLoop));
+            player.setAttribute('data-waveform-bound', 'true');
         }
-        ctx.stroke();
-    } catch(err) {
+    } catch (err) {
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = '#050811';
         ctx.fillRect(0, 0, width, height);
         ctx.fillStyle = '#ef4444';
-        ctx.fillText('Failed to decode waveform', 10, height/2 + 4);
+        ctx.fillText('Failed to decode waveform', 10, height / 2 + 4);
+    }
+}
+
+function drawWaveformLoop() {
+    const player = document.getElementById('devhub-audio-player');
+    if (!player || player.paused || player.ended) return;
+    drawWaveformFrame();
+    requestAnimationFrame(drawWaveformLoop);
+}
+
+function drawWaveformFrame() {
+    const canvas = document.getElementById('devhub-waveform-canvas');
+    const player = document.getElementById('devhub-audio-player');
+    if (!canvas || !currentWaveformPCM || !player) return;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, width, height);
+
+    const pcmData = currentWaveformPCM;
+    const step = Math.ceil(pcmData.length / width);
+    const amp = height / 2;
+
+    let progress = 0;
+    if (player.duration) {
+        progress = player.currentTime / player.duration;
+    }
+    const progressX = width * progress;
+
+    for (let i = 0; i < width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+        for (let j = 0; j < step; j++) {
+            const idx = (i * step) + j;
+            if (idx < pcmData.length) {
+                const sample = pcmData[idx];
+                if (sample < min) min = sample;
+                if (sample > max) max = sample;
+            }
+        }
+        const y1 = (1 + min) * amp;
+        const y2 = (1 + max) * amp;
+
+        ctx.beginPath();
+        if (i <= progressX) {
+            ctx.strokeStyle = '#3b82f6'; // Blue for played
+        } else {
+            ctx.strokeStyle = '#e2e8f0'; // White/light gray for unplayed
+        }
+        ctx.lineWidth = 1;
+        ctx.moveTo(i, y1);
+        ctx.lineTo(i, y2);
+        ctx.stroke();
+    }
+
+    // Draw playhead line
+    if (progress > 0 && progress < 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.moveTo(progressX, 0);
+        ctx.lineTo(progressX, height);
+        ctx.stroke();
     }
 }
 

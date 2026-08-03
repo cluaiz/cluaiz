@@ -137,7 +137,13 @@ pub fn execute_kokoro(
             // Extract the first 256-dim vector if style_vector is larger.
             let target_dim = 256;
             let vec_slice = if style_vector.len() >= target_dim {
-                &style_vector[..target_dim]
+                let num_vectors = style_vector.len() / target_dim;
+                // Voice .bin contains pre-computed style vectors for each seq_len.
+                // We must select the slice matching our seq_len (or the last one if too long)
+                let index = if seq_len < num_vectors { seq_len } else { num_vectors - 1 };
+                let start = index * target_dim;
+                let end = start + target_dim;
+                &style_vector[start..end]
             } else {
                 style_vector
             };

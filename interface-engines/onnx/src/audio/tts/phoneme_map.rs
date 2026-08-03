@@ -194,6 +194,27 @@ impl PhonemeMap {
         ids
     }
 
+    /// Convert text string to phoneme ID sequence without padding between characters.
+    /// Used for models like Kokoro that just need BOS + IDs + EOS.
+    pub fn text_to_ids_no_pad(&self, text: &str) -> Vec<i64> {
+        let mut ids = Vec::with_capacity(text.len() + 2);
+        ids.push(self.bos_id);
+
+        for ch in text.chars() {
+            if let Some(char_ids) = self.char_to_ids.get(&ch) {
+                ids.extend_from_slice(char_ids);
+            } else {
+                let lower = ch.to_lowercase().next().unwrap_or(ch);
+                if let Some(char_ids) = self.char_to_ids.get(&lower) {
+                    ids.extend_from_slice(char_ids);
+                }
+            }
+        }
+
+        ids.push(self.eos_id);
+        ids
+    }
+
     /// Returns the pad token ID
     pub fn pad_id(&self) -> i64 {
         self.pad_id
