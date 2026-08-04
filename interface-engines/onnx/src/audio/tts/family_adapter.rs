@@ -4,21 +4,26 @@ use std::path::Path;
 use anyhow::{anyhow, Result};
 
 /// Supported ONNX TTS Model Package Families
+/// Each variant maps 1:1 to a unique pipeline topology from the taxonomy doc.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TtsFamily {
-    /// Single-Stage End-to-End Variational Inference (Piper, VITS, MMS)
+    /// Family 1: Single-Stage End-to-End Variational Inference (Piper, VITS, MMS)
     VitsPiper,
-    /// Single-Stage Phoneme & Style Decoder (Kokoro-82M, Kitten-TTS)
+    /// Family 2: Single-Stage Phoneme & Style Decoder (Kokoro-82M, Kitten-TTS)
     Kokoro,
-    /// Multi-Stage Latent Denoising Diffusion (Supertonic 2/3, OmniVoice)
+    /// Family 3: 4-Stage Iterative Latent Denoising Diffusion (Supertonic 2/3)
     Supertonic,
-    /// Acoustic Flow-Matching & Vocoder (CosyVoice, Matcha-TTS)
-    CosyVoiceMatcha,
-    /// 3-Stage Auto-Regressive Codec Transformer (Audio8)
+    /// Family 4: 3-Stage Auto-Regressive Codec Transformer (Audio8)
     Audio8,
-    /// Generator & Codec ONNX Package (Chatterbox)
+    /// Family 5: 2-Stage Acoustic Flow-Matching Pipeline (Matcha-TTS)
+    /// Flow Estimator → Mel Spectrogram → HiFi-GAN → PCM
+    Matcha,
+    /// Family 6: Multi-Stage LLM & Acoustic Flow Synthesizer (CosyVoice 1/2/3)
+    /// Speech LLM → Flow Matching → HiFT Vocoder → PCM
+    CosyVoice,
+    /// Family 7: Multi-Stage Semantic Generator & Neural Audio Codec (Chatterbox)
     Chatterbox,
-    /// Dedicated ONNX Runtime GenAI Package (OmniVoice)
+    /// Family 8: ONNX Runtime GenAI Package (OmniVoice)
     OmniVoice,
     /// Fallback / Generic ONNX TTS Model
     GenericOnnx,
@@ -68,15 +73,33 @@ impl FamilyAdapter {
                     }
                 }
             }
-            TtsFamily::CosyVoiceMatcha => {
+            TtsFamily::Matcha => {
                 let entries: Vec<String> = std::fs::read_dir(model_dir)
                     .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
                     .unwrap_or_default();
                 
-                let has_acoustic = entries.iter().any(|e| e.contains("flow") || e.contains("matcha") || e.contains("speech_llm"));
+                let has_acoustic = entries.iter().any(|e| e.contains("flow") || e.contains("matcha") || e.contains("estimator") || e.contains("fm_decoder"));
                 if !has_acoustic {
                     return Err(anyhow!(
-                        "PackageContractException: CosyVoice/Matcha model requires an acoustic flow generator graph. Boot aborted."
+                        "PackageContractException: Matcha-TTS model requires an acoustic flow estimator graph (flow.decoder.estimator.onnx, fm_decoder, or matcha_acoustic.onnx). Boot aborted."
+                    ));
+                }
+            }
+            TtsFamily::CosyVoice => {
+                let entries: Vec<String> = std::fs::read_dir(model_dir)
+                    .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
+                    .unwrap_or_default();
+                
+                let has_flow = entries.iter().any(|e| e.contains("flow") || e.contains("estimator"));
+                let has_vocoder = entries.iter().any(|e| e.contains("hift") || e.contains("vocoder"));
+                if !has_flow {
+                    return Err(anyhow!(
+                        "PackageContractException: CosyVoice model requires a flow decoder estimator graph (flow.decoder.estimator.onnx). Boot aborted."
+                    ));
+                }
+                if !has_vocoder {
+                    return Err(anyhow!(
+                        "PackageContractException: CosyVoice model requires a HiFT vocoder graph (hift.onnx or vocoder.onnx). Boot aborted."
                     ));
                 }
             }
@@ -120,7 +143,8 @@ impl FamilyAdapter {
                 "kokoro" | "kokoro-v1" => return TtsFamily::Kokoro,
                 "audio8" | "audio8-codec" => return TtsFamily::Audio8,
                 "supertonic" | "supertonic-v3" | "luxtts" => return TtsFamily::Supertonic,
-                "cosyvoice_matcha" | "cosyvoice" | "matcha" | "matcha-v1" => return TtsFamily::CosyVoiceMatcha,
+                "matcha" | "matcha-v1" => return TtsFamily::Matcha,
+                "cosyvoice" | "cosyvoice_matcha" | "cosyvoice-v2" | "cosyvoice-v3" => return TtsFamily::CosyVoice,
                 "vits_piper" | "vits" | "piper-vits" => return TtsFamily::VitsPiper,
                 "chatterbox" => return TtsFamily::Chatterbox,
                 "omnivoice" => return TtsFamily::OmniVoice,
@@ -140,8 +164,17 @@ impl FamilyAdapter {
                 return TtsFamily::Supertonic;
             }
 
+            // Distinguish CosyVoice from Matcha by checking for speech_llm/campplus presence
             if input_names.iter().any(|n| n == "mu" || n == "cond" || n == "spk_emb") && input_names.iter().any(|n| n == "estimator" || n == "flow") {
-                return TtsFamily::CosyVoiceMatcha;
+                // Check if model_dir contains speech_llm or campplus (CosyVoice signature)
+                let dir_entries: Vec<String> = std::fs::read_dir(model_dir)
+                    .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
+                    .unwrap_or_default();
+                let is_cosyvoice = dir_entries.iter().any(|e| e.contains("speech_llm") || e.contains("campplus") || e.contains("speech_tokenizer"));
+                if is_cosyvoice {
+                    return TtsFamily::CosyVoice;
+                }
+                return TtsFamily::Matcha;
             }
 
             if input_names.iter().any(|n| n == "input_lengths" || n == "scales" || n == "sid") {
@@ -156,6 +189,18 @@ impl FamilyAdapter {
         if dir_name.contains("audio8") {
             return TtsFamily::Audio8;
         }
+        if dir_name.contains("omnivoice") {
+            return TtsFamily::OmniVoice;
+        }
+        if dir_name.contains("chatterbox") {
+            return TtsFamily::Chatterbox;
+        }
+        if dir_name.contains("piper") || dir_name.contains("vits") {
+            return TtsFamily::VitsPiper;
+        }
+        if dir_name.contains("matcha") || dir_name.contains("lux") {
+            return TtsFamily::Matcha;
+        }
 
 
         let mut has_duration_predictor = false;
@@ -167,8 +212,21 @@ impl FamilyAdapter {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_lowercase();
                 if name.ends_with(".onnx") {
-                    if name.contains("cosyvoice") || name.contains("matcha") || name.contains("flow.decoder") {
-                        return TtsFamily::CosyVoiceMatcha;
+                    if name.contains("matcha") {
+                        return TtsFamily::Matcha;
+                    }
+                    if name.contains("cosyvoice") || name.contains("flow.decoder") {
+                        // Check for CosyVoice-specific files in same dir
+                        let has_cosyvoice_marker = std::fs::read_dir(model_dir)
+                            .map(|rd| rd.flatten().any(|e| {
+                                let n = e.file_name().to_string_lossy().to_lowercase();
+                                n.contains("campplus") || n.contains("speech_llm") || n.contains("speech_tokenizer")
+                            }))
+                            .unwrap_or(false);
+                        if has_cosyvoice_marker {
+                            return TtsFamily::CosyVoice;
+                        }
+                        return TtsFamily::Matcha;
                     }
                     if name.contains("duration_predictor") || name.contains("dp.onnx") {
                         has_duration_predictor = true;
@@ -191,7 +249,7 @@ impl FamilyAdapter {
         }
 
         if has_vocoder {
-            TtsFamily::CosyVoiceMatcha
+            TtsFamily::Matcha
         } else {
             TtsFamily::VitsPiper
         }

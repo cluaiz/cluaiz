@@ -75,15 +75,20 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         } else {
             let variants = engines::models::manager::hf_hub::HuggingFaceHub::list_variants(&repo_id).await
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
+
+            let is_noninteractive = std::env::var("CLUAIZ_NONINTERACTIVE").is_ok();
+            if is_noninteractive {
+                variants.first().ok_or_else(|| color_eyre::eyre::eyre!("No variants found"))?.clone()
+            } else {
+                let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
+                let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
+                    .with_page_size(12)
+                    .raw_prompt()
+                    .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
                 
-            let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
-            let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
-                .with_page_size(12)
-                .raw_prompt()
-                .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
-                
-            variants.into_iter().nth(selected_option.index)
-                .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?
+                variants.into_iter().nth(selected_option.index)
+                    .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?
+            }
         };
 
         let selected_filename = selected_variant.primary_file.clone();
@@ -198,7 +203,12 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             println!("    └─ 📁 File: {}", manifest.huggingface_filename.cyan());
         }
 
-        let confirm = inquire::Confirm::new("\nProceed with model download?").with_default(true).prompt()?;
+        let is_noninteractive = std::env::var("CLUAIZ_NONINTERACTIVE").is_ok();
+        let confirm = if is_noninteractive {
+            true
+        } else {
+            inquire::Confirm::new("\nProceed with model download?").with_default(true).prompt()?
+        };
         if !confirm {
             return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
         }

@@ -7,7 +7,9 @@ pub mod tts_router;
 pub mod vits_handler;
 pub mod vocoder;
 pub mod g2p;
+pub mod families;
 
 pub use family_adapter::{FamilyAdapter, TtsFamily};
 pub use tts_router::route_tts_inference;
 pub use vocoder::NativeVocoder;
+

@@ -64,16 +64,43 @@ pub fn route_tts_inference(
         super::family_adapter::TtsFamily::Kokoro => {
             handle_kokoro(engine, session, &text_chunks)
         }
-        super::family_adapter::TtsFamily::CosyVoiceMatcha => {
+        super::family_adapter::TtsFamily::Matcha => {
             handle_flow_estimator(engine, session, &text_chunks, tokenizer)
         }
-        super::family_adapter::TtsFamily::Supertonic => {
-            Err(anyhow!("Supertonic diffusion TTS is not yet fully implemented. Missing: duration predictor stage, diffusion denoising loop. Only text_encoder + vocoder stages exist."))
+        super::family_adapter::TtsFamily::CosyVoice => {
+            let pcm = super::families::cosyvoice::execute(engine, &raw_text_input)?;
+            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
+            let wav_bytes = super::vocoder::NativeVocoder::default().encode_wav_bytes(&sanitized_pcm);
+            use base64::Engine;
+            Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav_bytes)))
         }
-        super::family_adapter::TtsFamily::Audio8
-        | super::family_adapter::TtsFamily::Chatterbox
-        | super::family_adapter::TtsFamily::OmniVoice => {
-            Err(anyhow!("TTS family {:?} is not yet implemented. Please use a VitsPiper or Kokoro model.", detected_family))
+        super::family_adapter::TtsFamily::Supertonic => {
+            let pcm = super::families::supertonic::execute(engine, &raw_text_input)?;
+            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
+            let wav_bytes = super::vocoder::NativeVocoder::default().encode_wav_bytes(&sanitized_pcm);
+            use base64::Engine;
+            Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav_bytes)))
+        }
+        super::family_adapter::TtsFamily::Audio8 => {
+            let pcm = super::families::audio8::execute(engine, &raw_text_input)?;
+            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
+            let wav_bytes = super::vocoder::NativeVocoder::default().encode_wav_bytes(&sanitized_pcm);
+            use base64::Engine;
+            Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav_bytes)))
+        }
+        super::family_adapter::TtsFamily::Chatterbox => {
+            let pcm = super::families::chatterbox::execute(engine, &raw_text_input)?;
+            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
+            let wav_bytes = super::vocoder::NativeVocoder::default().encode_wav_bytes(&sanitized_pcm);
+            use base64::Engine;
+            Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav_bytes)))
+        }
+        super::family_adapter::TtsFamily::OmniVoice => {
+            let pcm = super::families::omnivoice::execute(engine, &raw_text_input)?;
+            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
+            let wav_bytes = super::vocoder::NativeVocoder::default().encode_wav_bytes(&sanitized_pcm);
+            use base64::Engine;
+            Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav_bytes)))
         }
         super::family_adapter::TtsFamily::GenericOnnx => {
             // Last resort: try VITS handler since most single-ONNX models are VITS-based
@@ -103,7 +130,7 @@ fn handle_flow_estimator(
                 break;
             }
         }
-        let processed_text = super::g2p::process_text_for_family(clean_chunk.trim(), &super::family_adapter::TtsFamily::CosyVoiceMatcha, model_dir);
+        let processed_text = super::g2p::process_text_for_family(clean_chunk.trim(), &super::family_adapter::TtsFamily::Matcha, model_dir);
         let seq_len = (processed_text.bytes().count() * 4).clamp(50, 200);
         match super::flow_matching::FlowMatchingSampler::sample_mel_features_with_text(session, engine, tokenizer, &processed_text, seq_len, 10) {
             Ok(mel_data) => {
