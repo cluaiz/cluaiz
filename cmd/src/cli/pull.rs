@@ -29,8 +29,16 @@ pub async fn execute(model_id: &str) -> Result<()> {
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
             
         let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.filename, v.size_gb)).collect();
-        let selection = inquire::Select::new("Select GGUF variant to download:", options).prompt()
-            .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
+        let selection = if std::env::var("CLUAIZ_NON_INTERACTIVE").is_ok() {
+            if options.is_empty() {
+                return Err(color_eyre::eyre::eyre!("No variants found to download."));
+            }
+            println!("  [Non-Interactive Mode] Auto-selecting first variant: {}", options[0]);
+            options[0].clone()
+        } else {
+            inquire::Select::new("Select GGUF variant to download:", options).prompt()
+                .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?
+        };
             
         // Extract filename and size
         let selected_filename = selection.split(" (").next().unwrap().to_string();
@@ -145,7 +153,12 @@ pub async fn execute(model_id: &str) -> Result<()> {
     if status == engines::models::manager::auditor::HealthStatus::Disabled {
         return Err(color_eyre::eyre::eyre!("❌ DENIED: Insufficient hardware resources for this model."));
     } else {
-        let confirm = inquire::Confirm::new("Audit passed. All metadata exposed. Proceed with model initialization?").with_default(true).prompt()?;
+        let confirm = if std::env::var("CLUAIZ_NON_INTERACTIVE").is_ok() {
+            println!("  [Non-Interactive Mode] Auto-confirming model initialization.");
+            true
+        } else {
+            inquire::Confirm::new("Audit passed. All metadata exposed. Proceed with model initialization?").with_default(true).prompt()?
+        };
         if !confirm {
             return Err(color_eyre::eyre::eyre!("Initialization aborted by user."));
         }

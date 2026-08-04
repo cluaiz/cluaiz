@@ -214,6 +214,7 @@ impl HuggingFaceHub {
                 let mut bundle_files = Vec::new();
                 let mut total_size = 0u64;
 
+                // Pass 1: Collect ONNX Graph files (.onnx only)
                 for onnx_item in &items {
                     let o_path = &onnx_item.path;
                     let o_lower = o_path.to_lowercase();
@@ -222,7 +223,7 @@ impl HuggingFaceHub {
 
                     let in_same_pipeline = o_parent == parent_dir || (!pipeline_base_dir.is_empty() && o_path.starts_with(pipeline_base_dir));
 
-                    if in_same_pipeline && (o_lower.ends_with(".onnx") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".onnx.data") || o_lower.ends_with(".data")) {
+                    if in_same_pipeline && o_lower.ends_with(".onnx") {
                         // Enforce Combined Graph vs Split Graph Mutual Exclusion
                         if is_combined_file && !o_combined && (o_lower.contains("flow") || o_lower.contains("hift") || o_lower.contains("vocoder")) {
                             continue; // Skip isolated split graphs if user target is combined graph
@@ -238,26 +239,59 @@ impl HuggingFaceHub {
 
                         // ANTI-REDUNDANCY: Skip files that are the same model graph but different quantizations
                         // e.g. model.onnx vs model_q4.onnx vs model_fp16.onnx should be SEPARATE variants
-                        if o_lower.ends_with(".onnx") && TtsAssetResolver::is_same_model_different_quant(path, o_path) {
+                        if TtsAssetResolver::is_same_model_different_quant(path, o_path) {
                             continue;
                         }
 
                         let o_quant = extract_quant_tag(o_path);
-                        // Always bundle matching quantization OR pipeline sub-components (denoisers, vocoders, tokenizers) OR companion .data files
                         let is_subcomp = TtsAssetResolver::is_subcomponent_file(o_path);
-                        let is_companion_data = o_lower.ends_with(".onnx.data") || o_lower.ends_with(".onnx_data") || o_lower.ends_with(".data");
                         
-                        if o_quant == quant_tag || is_subcomp || is_companion_data {
-                            let o_lower = o_path.to_lowercase();
-                            let is_voice = o_lower.contains("voices/") || o_lower.contains("voice_styles/") || o_lower.contains("espeak-ng-data/");
-                            let local_target_path = if is_voice {
-                                o_path.clone()
-                            } else {
-                                std::path::Path::new(o_path).file_name().and_then(|s| s.to_str()).unwrap_or(o_path).to_string()
-                            };
+                        let matches_quant = o_quant == quant_tag;
+                        let is_fallback_default = o_quant == "DEFAULT" && !items.iter().any(|i| {
+                            let i_quant = extract_quant_tag(&i.path);
+                            i_quant == quant_tag && TtsAssetResolver::is_same_model_different_quant(o_path, &i.path)
+                        });
+
+                        if matches_quant || is_subcomp || is_fallback_default {
                             bundle_files.push(o_path.clone());
                             total_size += onnx_item.size.unwrap_or(0);
                             processed_paths.insert(o_path.clone());
+                        }
+                    }
+                }
+
+                // Pass 2: Collect companion weights files (.onnx_data, .onnx.data, .data)
+                // only if their corresponding .onnx file is in bundle_files
+                let strip_onnx_extension_only = |p: &str| -> String {
+                    let p_lower = p.to_lowercase();
+                    let suffixes = [".onnx.data", ".onnx_data", ".onnx", ".data"];
+                    for suffix in &suffixes {
+                        if p_lower.ends_with(suffix) {
+                            return p[..p.len() - suffix.len()].to_string();
+                        }
+                    }
+                    p.to_string()
+                };
+
+                for data_item in &items {
+                    let d_path = &data_item.path;
+                    let d_lower = d_path.to_lowercase();
+                    let d_parent = std::path::Path::new(d_path).parent().and_then(|p| p.to_str()).unwrap_or("");
+                    
+                    let in_same_pipeline = d_parent == parent_dir || (!pipeline_base_dir.is_empty() && d_path.starts_with(pipeline_base_dir));
+                    let is_companion_data = d_lower.ends_with(".onnx.data") || d_lower.ends_with(".onnx_data") || d_lower.ends_with(".data");
+                    
+                    if in_same_pipeline && is_companion_data {
+                        // Resolve the corresponding model file path by matching base path
+                        let d_clean = strip_onnx_extension_only(d_path);
+                        let has_matching_graph = bundle_files.iter().any(|b_path| {
+                            b_path.ends_with(".onnx") && strip_onnx_extension_only(b_path) == d_clean
+                        });
+                        
+                        if has_matching_graph {
+                            bundle_files.push(d_path.clone());
+                            total_size += data_item.size.unwrap_or(0);
+                            processed_paths.insert(d_path.clone());
                         }
                     }
                 }
@@ -462,9 +496,7 @@ impl HuggingFaceHub {
             || file_lower.contains("chat")
             || file_lower.contains("-it");
 
-        let category = if is_chat {
-            "chat".to_string()
-        } else if is_embedding {
+        let category = if is_embedding {
             "embedding".to_string()
         } else if is_image_gen {
             "image_gen".to_string()
@@ -472,6 +504,8 @@ impl HuggingFaceHub {
             "vision".to_string()
         } else if is_audio {
             "audio".to_string()
+        } else if is_chat {
+            "chat".to_string()
         } else {
             "chat".to_string()
         };
