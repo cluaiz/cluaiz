@@ -5,6 +5,7 @@
 /// Working families delegate to existing handler implementations.
 /// Unimplemented families return descriptive errors with pipeline requirements.
 
+pub mod logger;
 pub mod vits_piper;
 pub mod kokoro;
 pub mod matcha;
