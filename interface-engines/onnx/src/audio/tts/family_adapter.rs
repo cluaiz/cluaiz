@@ -111,13 +111,50 @@ impl FamilyAdapter {
                     ));
                 }
             }
+            TtsFamily::Chatterbox => {
+                let entries: Vec<String> = std::fs::read_dir(model_dir)
+                    .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
+                    .unwrap_or_default();
+                let has_gen = entries.iter().any(|e| e.contains("chatterbox") || e.contains("generator") || e.contains("decoder") || e.contains("language_model"));
+                let has_codec = entries.iter().any(|e| e.contains("codec") || e.contains("speech_encoder") || e.contains("embed"));
+                if !has_gen || !has_codec {
+                    return Err(anyhow!(
+                        "PackageContractException: Chatterbox model requires semantic generator/decoder and audio codec ONNX graphs. Boot aborted."
+                    ));
+                }
+            }
+            TtsFamily::VitsPiper => {
+                let entries: Vec<String> = std::fs::read_dir(model_dir)
+                    .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
+                    .unwrap_or_default();
+                let has_onnx = entries.iter().any(|e| e.ends_with(".onnx"));
+                if !has_onnx {
+                    return Err(anyhow!(
+                        "PackageContractException: Piper/VITS model requires an ONNX model file in the model directory. Boot aborted."
+                    ));
+                }
+            }
             _ => {}
         }
         Ok(())
     }
 
-    /// Detect model family from manifest metadata, directory files, and ONNX session signatures
+    /// Detect model family from model_registry.json, manifest metadata, directory files, and ONNX session signatures
     pub fn detect_family(model_dir: &Path, sessions: &[(&str, &Session)]) -> TtsFamily {
+        // 🎯 Priority 0: Check global/local engine model_registry.json for registered model entry
+        if let Some(registry_family) = Self::detect_from_model_registry(model_dir) {
+            let entries: Vec<String> = std::fs::read_dir(model_dir)
+                .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_lowercase()).collect())
+                .unwrap_or_default();
+            let has_fm_decoder = entries.iter().any(|e| e.contains("fm_decoder") || e.contains("matcha"));
+            if registry_family == TtsFamily::Supertonic && has_fm_decoder {
+                eprintln!("📖 [FamilyAdapter] Model directory {:?} contains fm_decoder graph. Overriding registry to TtsFamily::Matcha.", model_dir);
+                return TtsFamily::Matcha;
+            }
+            eprintln!("📖 [FamilyAdapter] Resolved tts_family='{:?}' from model_registry.json for {:?}", registry_family, model_dir);
+            return registry_family;
+        }
+
         // 🎯 Priority 1: Check model_manifest.json or config.json for explicit tts_family tag
         let manifest_file = model_dir.join("model_manifest.json");
         let config_file = model_dir.join("config.json");
@@ -142,8 +179,8 @@ impl FamilyAdapter {
             match fam.as_str() {
                 "kokoro" | "kokoro-v1" => return TtsFamily::Kokoro,
                 "audio8" | "audio8-codec" => return TtsFamily::Audio8,
-                "supertonic" | "supertonic-v3" | "luxtts" => return TtsFamily::Supertonic,
-                "matcha" | "matcha-v1" => return TtsFamily::Matcha,
+                "supertonic" | "supertonic-v3" => return TtsFamily::Supertonic,
+                "luxtts" | "lux" | "matcha" | "matcha-v1" => return TtsFamily::Matcha,
                 "cosyvoice" | "cosyvoice_matcha" | "cosyvoice-v2" | "cosyvoice-v3" => return TtsFamily::CosyVoice,
                 "vits_piper" | "vits" | "piper-vits" => return TtsFamily::VitsPiper,
                 "chatterbox" => return TtsFamily::Chatterbox,
@@ -160,7 +197,7 @@ impl FamilyAdapter {
                 return TtsFamily::Kokoro;
             }
 
-            if input_names.iter().any(|n| n == "noisy_latent" || n == "current_step" || n == "style_ttl") {
+            if input_names.iter().any(|n| n == "noisy_latent" || n == "current_step") {
                 return TtsFamily::Supertonic;
             }
 
@@ -248,11 +285,43 @@ impl FamilyAdapter {
             return TtsFamily::Supertonic;
         }
 
-        if has_vocoder {
+        if has_text_encoder || has_vocoder {
             TtsFamily::Matcha
         } else {
             TtsFamily::VitsPiper
         }
+    }
+
+    /// Read model_registry.json config file via central ModelRegistry manager to resolve tts_family
+    fn detect_from_model_registry(model_dir: &Path) -> Option<TtsFamily> {
+        let registry = cluaiz_shared::utils::model_registry::ModelRegistry::load();
+        let target_dir_str = model_dir.to_string_lossy().to_lowercase().replace('\\', "/");
+
+        let target_name = model_dir.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+
+        for (model_id, entry) in &registry.installed_models {
+            let local_dir = entry.local_dir.to_lowercase().replace('\\', "/");
+            let local_path = Path::new(&local_dir);
+            let local_name = local_path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+
+            if (!local_dir.is_empty() && (local_name == target_name || local_dir == target_dir_str)) || model_id.to_lowercase() == target_name {
+                if let Some(ref family_str) = entry.metadata.tts_family {
+                    match family_str.to_lowercase().as_str() {
+                        "kokoro" | "kokoro-v1" => return Some(TtsFamily::Kokoro),
+                        "audio8" | "audio8-codec" => return Some(TtsFamily::Audio8),
+                        "supertonic" | "supertonic-v3" => return Some(TtsFamily::Supertonic),
+                        "luxtts" | "lux" | "matcha" | "matcha-v1" => return Some(TtsFamily::Matcha),
+                        "cosyvoice" | "cosyvoice_matcha" | "cosyvoice-v2" | "cosyvoice-v3" => return Some(TtsFamily::CosyVoice),
+                        "vits_piper" | "vits" | "piper-vits" => return Some(TtsFamily::VitsPiper),
+                        "chatterbox" => return Some(TtsFamily::Chatterbox),
+                        "omnivoice" => return Some(TtsFamily::OmniVoice),
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     /// Dynamically extract tensor input ranks and shapes from session.inputs()

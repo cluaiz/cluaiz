@@ -147,13 +147,19 @@
         input,
         select {
             width: 100%;
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(18, 24, 38, 0.95);
             border: 1px solid var(--card-border);
             border-radius: 0.6rem;
             padding: 0.75rem 1rem;
             color: var(--text-main);
             font-size: 0.9rem;
             outline: none;
+        }
+
+        select option {
+            background-color: #0d1322 !important;
+            color: #ffffff !important;
+            padding: 10px;
         }
 
         .btn-submit {
@@ -339,6 +345,23 @@
             </div>
 
             <div class="controls-row">
+                <div class="form-group" style="flex: 2;">
+                    <label for="audit-family-select" style="color: var(--accent-cyan); font-weight: 600;">📁 Pre-Tested TTS Family Output (From test_all_tts_families.json)</label>
+                    <select id="audit-family-select" onchange="playPretestedFamilyAudio()" style="border: 1px solid var(--accent-cyan); background: rgba(6, 182, 212, 0.1);">
+                        <option value="">-- Select Pre-Tested Family Audio --</option>
+                        <option value="test_1_kokoro_auto">Kokoro-82M (Auto-Route) - 270 KB WAV</option>
+                        <option value="test_2_kokoro_explicit">Kokoro-82M (Explicit ID) - 210 KB WAV</option>
+                        <option value="test_3_cosyvoice2">CosyVoice2-0.5B (Acoustic Flow) - 512 KB WAV</option>
+                        <option value="test_4_supertonic">supertonic-3 (3-Stage Vector) - 573 KB WAV</option>
+                        <option value="test_5_audio8">Audio8-TTS-Preview-0.6B (Neural Codec) - 1.01 MB WAV</option>
+                        <option value="test_6_omnivoice">OmniVoice-Onnx-CUDA - 29 KB WAV</option>
+                        <option value="test_8_chatterbox">chatterbox-turbo-ONNX-Q4 (Semantic Codec) - 275 KB WAV</option>
+                        <option value="test_9_vitspiper">piper-en_US-amy-medium (VITS/Piper) - 146 KB WAV</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="controls-row">
                 <div class="form-group">
                     <label for="speed-param">Speed</label>
                     <input type="number" id="speed-param" value="1.0" step="0.1" min="0.5" max="2.0">
@@ -360,7 +383,7 @@
 
             <button id="btn-synthesize" class="btn-submit" onclick="synthesizeSpeech()">
                 <div id="spinner" class="spinner"></div>
-                <span id="btn-text">Generate, Play & Inspect Audio Wave Data 🔊</span>
+                <span id="btn-text">Generate, Play & Inspect Live Server Audio 🔊</span>
             </button>
         </div>
 
@@ -654,6 +677,46 @@
                 btn.disabled = false;
                 spinner.style.display = 'none';
                 btnText.textContent = 'Generate, Play & Inspect Audio Wave Data 🔊';
+            }
+        }
+
+        async function playPretestedFamilyAudio() {
+            const familyKey = document.getElementById('audit-family-select').value;
+            if (!familyKey) return;
+
+            try {
+                const response = await fetch('test_all_tts_families.json');
+                const allData = await response.json();
+                const testObj = allData[familyKey];
+
+                if (!testObj || !testObj.output || !testObj.output.audio_data) {
+                    alert("Audio data not found for selected test key: " + familyKey);
+                    return;
+                }
+
+                const outputCard = document.getElementById('output-card');
+                outputCard.style.display = 'flex';
+
+                fullRawBase64 = testObj.output.audio_data;
+
+                const cleanDisplayObj = JSON.parse(JSON.stringify(testObj));
+                const rawLen = cleanDisplayObj.output.audio_data.length;
+                cleanDisplayObj.output.audio_data = cleanDisplayObj.output.audio_data.substring(0, 60) + ` ... [${rawLen.toLocaleString()} bytes base64 WAV payload]`;
+
+                document.getElementById('json-response').textContent = JSON.stringify(cleanDisplayObj, null, 2);
+                document.getElementById('metric-status').textContent = (testObj.status || 'SUCCESS').toUpperCase();
+                document.getElementById('metric-status').style.color = '#10b981';
+
+                const audioEl = document.getElementById('html5-audio-element');
+                audioEl.src = fullRawBase64;
+
+                const arrayBuffer = base64ToArrayBuffer(fullRawBase64);
+                await decodeAndRenderWaveform(arrayBuffer, audioEl);
+
+                audioEl.play().catch(e => console.log("Autoplay policy info:", e));
+            } catch (err) {
+                console.error("Error loading test_all_tts_families.json:", err);
+                alert("Could not load test_all_tts_families.json! Make sure the file is present in test/tts_repo_audit/.");
             }
         }
 

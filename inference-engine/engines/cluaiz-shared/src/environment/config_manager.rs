@@ -27,8 +27,19 @@ macro_rules! define_config {
                 let bin_path = base.join(format!("{}.bin", $file_stem));
                 let json_path = base.join(format!("{}.json", $file_stem));
 
+                let mut load_from_bin = bin_path.exists();
+                if load_from_bin && json_path.exists() {
+                    if let (Ok(meta_json), Ok(meta_bin)) = (std::fs::metadata(&json_path), std::fs::metadata(&bin_path)) {
+                        if let (Ok(mod_json), Ok(mod_bin)) = (meta_json.modified(), meta_bin.modified()) {
+                            if mod_json > mod_bin {
+                                load_from_bin = false;
+                            }
+                        }
+                    }
+                }
+
                 // 🚀 Priority 1: Binary Truth (Panic-Safe Rkyv Zero-Copy)
-                if bin_path.exists() {
+                if load_from_bin {
                     if let Ok(bytes_raw) = std::fs::read(&bin_path) {
                         let mut bytes = rkyv::AlignedVec::with_capacity(bytes_raw.len());
                         bytes.extend_from_slice(&bytes_raw);

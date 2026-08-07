@@ -154,7 +154,7 @@ def run_tests():
     # 8. Chatterbox
     print("\n[TEST 8] Chatterbox Semantic Codec Pipeline Verification")
     p8 = {
-        "model": "chatterbox-dummy",
+        "model": "chatterbox-turbo-ONNX-Q4",
         "task": "text_to_speech",
         "input_source": {
             "type": "text",
@@ -169,7 +169,7 @@ def run_tests():
     # 9. VitsPiper
     print("\n[TEST 9] VitsPiper End-to-End Pipeline Verification")
     p9 = {
-        "model": "piper-vits-dummy",
+        "model": "piper-en_US-amy-medium",
         "task": "text_to_speech",
         "input_source": {
             "type": "text",
@@ -181,8 +181,9 @@ def run_tests():
     print(f"  Result: {json.dumps(res9, indent=2)}")
     results["test_9_vitspiper"] = res9
 
-    output_json_path = "test/tts_repo_audit/test_all_tts_families.json"
+    output_json_path = r"c:\Users\Aryan\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\test\tts_repo_audit\test_all_tts_families.json"
     with open(output_json_path, "w", encoding="utf-8") as f:
+
         json.dump(results, f, indent=2)
     print(f"\n[OK] All test output responses saved to: {output_json_path}")
 

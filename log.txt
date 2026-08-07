@@ -1,0 +1,2 @@
+[04:06:01.605] [VitsPiper ] [0% START                 ] Executing VITS with 208 raw phoneme IDs
+[04:06:01.605] [VitsPiper ] [30% PADDING              ] Constructed 211 padded phoneme IDs sequence with scales=[0.667, 1, 0.8]

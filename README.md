@@ -127,7 +127,7 @@ $ cluaiz plugin install web-scraper
 
 ## 📚 **Deep Documentation Reference**
 
-<details>
+<details open>
 <summary><b>Click to expand full technical documentation</b></summary>
 
 ### 1. Terminal & CLI Core
@@ -162,7 +162,7 @@ $ cluaiz plugin install web-scraper
 
 ## 🌍 **The Cluaiz Ecosystem**
 
-<details>
+<details open>
 <summary><b>Click to explore the Cluaiz ecosystem</b></summary>
 
 ### 1. `cluaiz-app` (Official GUI)
@@ -188,7 +188,7 @@ $ cluaiz plugin install web-scraper
 
 ## 🧠 **Features & Capabilities**
 
-<details>
+<details open>
 <summary><b>Click to expand</b></summary>
 
 ### 1. Hardware Execution & Memory Management
@@ -228,7 +228,7 @@ $ cluaiz plugin install web-scraper
 
 ## 🧭 **Architecture & Under the Hood**
 
-<details>
+<details open>
 <summary><b>Click to expand</b></summary>
 
 ### Technical Specification
@@ -275,7 +275,7 @@ graph TD
 
 ## 📊 **Hardware, Benchmarks & Troubleshooting**
 
-<details>
+<details open>
 <summary><b>Click to expand</b></summary>
 
 ### Hardware Compatibility Matrix
@@ -323,7 +323,7 @@ cluaiz pushes hardware to its absolute mathematical limits. If you experience un
 
 ## 🛡️ **Security & Licensing**
 
-<details>
+<details open>
 <summary><b>Click to expand</b></summary>
 
 ### Security Architecture

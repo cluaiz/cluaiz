@@ -28,28 +28,52 @@ impl HuggingFaceHub {
     /// Fetch raw file tree items from HuggingFace repository
     pub async fn list_raw_tree(repo_id: &str) -> Result<Vec<HfTreeItem>, String> {
         let client = Client::new();
-        let url = format!("https://huggingface.co/api/models/{}/tree/main?recursive=true", repo_id);
-        
-        let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
-        if !response.status().is_success() {
-            return Err(format!("Failed to fetch repository '{}'. Does it exist?", repo_id));
-        }
+        let mut url = format!("https://huggingface.co/api/models/{}/tree/main?recursive=true", repo_id);
+        let mut items = Vec::new();
 
-        let items: Vec<HfTreeItem> = response.json().await.map_err(|e| e.to_string())?;
+        loop {
+            let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+            if !response.status().is_success() {
+                return Err(format!("Failed to fetch repository '{}'. Does it exist?", repo_id));
+            }
+
+            let link_header = response.headers()
+                .get(reqwest::header::LINK)
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+
+            let page_items: Vec<HfTreeItem> = response.json().await.map_err(|e| e.to_string())?;
+            items.extend(page_items);
+
+            let mut next_url = None;
+            if let Some(ref lh) = link_header {
+                for part in lh.split(',') {
+                    let part = part.trim();
+                    if part.contains("rel=\"next\"") {
+                        if let Some(start) = part.find('<') {
+                            if let Some(end) = part.find('>') {
+                                if start < end {
+                                    next_url = Some(part[start + 1..end].to_string());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(next) = next_url {
+                url = next;
+            } else {
+                break;
+            }
+        }
         Ok(items)
     }
 
     /// List all supported model variants (GGUF, ONNX, SafeTensors) in a repository grouped into cohesive bundles
     pub async fn list_variants(repo_id: &str) -> Result<Vec<HfVariant>, String> {
-        let client = Client::new();
-        let url = format!("https://huggingface.co/api/models/{}/tree/main?recursive=true", repo_id);
-        
-        let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
-        if !response.status().is_success() {
-            return Err(format!("Failed to fetch repository '{}'. Does it exist?", repo_id));
-        }
-
-        let items: Vec<HfTreeItem> = response.json().await.map_err(|e| e.to_string())?;
+        let items = Self::list_raw_tree(repo_id).await?;
         
         // Harvest all global and subfolder metadata config JSONs / auxiliary text files & binary style assets
         let metadata_files: Vec<String> = items.iter().filter_map(|item| {
@@ -371,7 +395,7 @@ impl HuggingFaceHub {
         let name = file_basename.to_lowercase().replace(".gguf", "").replace(".onnx", "").replace(".safetensors", "").replace(".bin", "").replace(".pt", "").replace(".awq", "");
         let fallback = repo_id.split('/').last().unwrap_or(&name).to_lowercase();
         
-        let name_to_process = if name == "model" || name == "pytorch_model" { fallback.clone() } else { name };
+        let name_to_process = if name == "model" || name == "pytorch_model" { fallback.clone() } else { name.clone() };
         
         let mut family_parts = Vec::new();
         let mut size = "unknown".to_string();
@@ -408,7 +432,13 @@ impl HuggingFaceHub {
         }
 
         let family = if family_parts.is_empty() { fallback.clone() } else { family_parts.join("_") };
-        let sovereign_id = repo_id.split('/').next_back().unwrap_or(repo_id).to_string();
+        let repo_basename = repo_id.split('/').next_back().unwrap_or(repo_id).to_lowercase();
+        let clean_file_stem = name.clone();
+        let sovereign_id = if clean_file_stem != "model" && clean_file_stem != "model_q4" && clean_file_stem != "pytorch_model" && clean_file_stem != repo_basename && !clean_file_stem.is_empty() {
+            format!("{}-{}", repo_basename, clean_file_stem)
+        } else {
+            repo_basename
+        };
 
         // 🧠 Intelligent Categorization via HuggingFace API
         let mut is_embedding = false;
@@ -496,14 +526,17 @@ impl HuggingFaceHub {
             || file_lower.contains("chat")
             || file_lower.contains("-it");
 
-        let category = if is_embedding {
+        let detected_tts_family = TtsAssetResolver::detect_tts_family(repo_id, filename);
+        let is_detected_tts = detected_tts_family != "generic-onnx-tts" && detected_tts_family != "whisper-gguf";
+
+        let category = if is_detected_tts || is_audio {
+            "audio".to_string()
+        } else if is_embedding {
             "embedding".to_string()
         } else if is_image_gen {
             "image_gen".to_string()
         } else if is_vision {
             "vision".to_string()
-        } else if is_audio {
-            "audio".to_string()
         } else if is_chat {
             "chat".to_string()
         } else {
