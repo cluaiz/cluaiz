@@ -124,12 +124,36 @@
     <div id="gguf-optimization" class="booster-tab-content" style="display: none;">
         <h3 class="settings-section-title">LLM Optimization (User Moved Flags)</h3>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Optimization Profile</span>
-                <span class="setting-desc" id="desc-booster-profile">Balances speed, memory, and CPU usage.</span>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">VRAM Safety Buffer</span>
+                    <span class="setting-desc" id="desc-vram-buffer">Reserved GPU memory margin to guarantee 0% OOM crashes.</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="val-vram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #60a5fa; background: rgba(96,165,250,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(96,165,250,0.2);">Auto (% Dynamic)</span>
+                    <button id="btn-toggle-vram-auto" class="booster-tab" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
+                </div>
             </div>
-            <div class="setting-control" id="container-booster-profile"></div>
+            <div class="setting-control" id="container-vram-buffer-slider" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+                <input type="range" id="slider-vram-buffer" min="0" max="16" step="0.1" value="0" style="flex: 1; accent-color: #60a5fa; cursor: pointer;">
+            </div>
+        </div>
+
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">CPU RAM Safety Buffer</span>
+                    <span class="setting-desc" id="desc-ram-buffer">Reserved System RAM headroom for OS and background apps.</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="val-ram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(168,85,247,0.2);">Auto (% Dynamic)</span>
+                    <button id="btn-toggle-ram-auto" class="booster-tab" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
+                </div>
+            </div>
+            <div class="setting-control" id="container-ram-buffer-slider" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+                <input type="range" id="slider-ram-buffer" min="0" max="32" step="0.5" value="0" style="flex: 1; accent-color: #c084fc; cursor: pointer;">
+            </div>
         </div>
 
         <div class="setting-item">

@@ -97,10 +97,11 @@ export async function mount(container) {
 
     // Fetch initial state
     try {
-        const [boosterRes, permRes, modelsRes] = await Promise.all([
+        const [boosterRes, permRes, modelsRes, sysControlRes] = await Promise.all([
             fetch(window.getApiBaseUrl() + '/v1/booster/status').catch(() => null),
             fetch(window.getApiBaseUrl() + '/v1/system/permission').catch(() => null),
-            fetch(window.getApiBaseUrl() + '/v1/models/installed').catch(() => null)
+            fetch(window.getApiBaseUrl() + '/v1/models/installed').catch(() => null),
+            fetch(window.getApiBaseUrl() + '/v1/system/control').catch(() => null)
         ]);
 
         if (boosterRes && boosterRes.ok) {
@@ -114,6 +115,16 @@ export async function mount(container) {
         if (modelsRes && modelsRes.ok) {
             const data = await modelsRes.json();
             installedModels = data.installed || [];
+        }
+        if (sysControlRes && sysControlRes.ok) {
+            const sysData = await sysControlRes.json();
+            const silicon = (sysData.control ? sysData.control.silicon_truth : null) || sysData.silicon_truth || {};
+            if (silicon.memory && silicon.memory.total_capacity_gb) {
+                permData.system_ram_gb = silicon.memory.total_capacity_gb;
+            }
+            if (silicon.accelerators && Array.isArray(silicon.accelerators.gpus) && silicon.accelerators.gpus.length > 0) {
+                permData.system_vram_gb = silicon.accelerators.gpus.reduce((acc, g) => acc + (g.vram_total_gb || 0), 0);
+            }
         }
     } catch (e) {
         console.error("Failed to load initial settings:", e);
@@ -236,12 +247,88 @@ export async function mount(container) {
     setupToggle('toggle-brain-mode', 'desc-brain-mode', DESCRIPTIONS.brainMode, 'brain_mode', true);
     setupToggle('toggle-lazy-load', 'desc-lazy-load', DESCRIPTIONS.lazyLoad, 'lazy_load_model', true);
 
-    // Booster Settings
-    setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Auto');
-    setupCustomDropdown('container-booster-profile', 'desc-booster-profile', DESCRIPTIONS.boosterProfile,
-        makeOptions(['edge', 'multitasking', 'balance', 'max_boost', 'ultra_max_boost', 'hyper_cluster'],
-            ['Edge (Low Power)', 'Multitasking', 'Balanced', 'Max Boost', 'Ultra Max Boost', 'Hyper Cluster']),
-        'mode_run', 'balance');
+    // Dual Safety Buffer Sliders Setup (VRAM & CPU RAM) - Pure Dynamic Sourcing from API
+    const systemVramGb = permData.system_vram_gb || 0;
+    const systemRamGb = permData.system_ram_gb || 0;
+
+    const vramSlider = container.querySelector('#slider-vram-buffer');
+    const vramValLabel = container.querySelector('#val-vram-buffer');
+    const vramAutoBtn = container.querySelector('#btn-toggle-vram-auto');
+
+    if (vramSlider && vramValLabel && vramAutoBtn) {
+        vramSlider.max = systemVramGb > 0 ? parseFloat(systemVramGb.toFixed(1)) : 1;
+        let curVramBuf = boosterConfig.custom_vram_buffer_gb;
+
+        const updateVramDisplay = (gbVal) => {
+            if (gbVal === null || gbVal === undefined) {
+                vramValLabel.textContent = 'Auto (% Dynamic)';
+                vramSlider.value = 0;
+            } else {
+                const pctStr = systemVramGb > 0 ? ` (${((gbVal / systemVramGb) * 100).toFixed(1)}%)` : '';
+                vramValLabel.textContent = `${parseFloat(gbVal).toFixed(1)} GB${pctStr}`;
+                vramSlider.value = gbVal;
+            }
+        };
+
+        updateVramDisplay(curVramBuf);
+
+        vramSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            updateVramDisplay(val);
+        });
+
+        vramSlider.addEventListener('change', async (e) => {
+            const val = parseFloat(e.target.value);
+            const saveVal = val > 0 ? val : null;
+            updateVramDisplay(saveVal);
+            await updateBoosterSetting('custom_vram_buffer_gb', saveVal);
+        });
+
+        vramAutoBtn.addEventListener('click', async () => {
+            updateVramDisplay(null);
+            await updateBoosterSetting('custom_vram_buffer_gb', null);
+        });
+    }
+
+    const ramSlider = container.querySelector('#slider-ram-buffer');
+    const ramValLabel = container.querySelector('#val-ram-buffer');
+    const ramAutoBtn = container.querySelector('#btn-toggle-ram-auto');
+
+    if (ramSlider && ramValLabel && ramAutoBtn) {
+        ramSlider.max = systemRamGb > 0 ? parseFloat(systemRamGb.toFixed(1)) : 1;
+        let curRamBuf = boosterConfig.custom_ram_buffer_gb;
+
+        const updateRamDisplay = (gbVal) => {
+            if (gbVal === null || gbVal === undefined) {
+                ramValLabel.textContent = 'Auto (% Dynamic)';
+                ramSlider.value = 0;
+            } else {
+                const pctStr = systemRamGb > 0 ? ` (${((gbVal / systemRamGb) * 100).toFixed(1)}%)` : '';
+                ramValLabel.textContent = `${parseFloat(gbVal).toFixed(1)} GB${pctStr}`;
+                ramSlider.value = gbVal;
+            }
+        };
+
+        updateRamDisplay(curRamBuf);
+
+        ramSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            updateRamDisplay(val);
+        });
+
+        ramSlider.addEventListener('change', async (e) => {
+            const val = parseFloat(e.target.value);
+            const saveVal = val > 0 ? val : null;
+            updateRamDisplay(saveVal);
+            await updateBoosterSetting('custom_ram_buffer_gb', saveVal);
+        });
+
+        ramAutoBtn.addEventListener('click', async () => {
+            updateRamDisplay(null);
+            await updateBoosterSetting('custom_ram_buffer_gb', null);
+        });
+    }
+
     setupCustomDropdown('container-flash-attn', 'desc-flash-attn', DESCRIPTIONS.flashAttn, autoOnOff, 'flash_attention', 'Auto');
     setupCustomDropdown('container-context', 'desc-context', DESCRIPTIONS.context, makeOptions(['Auto', 'Off', 'Minimal', 'Standard', 'Aggressive', 'Extreme']), 'context_shifting', 'Auto');
     setupCustomDropdown('container-kv-quant', 'desc-kv-quant', DESCRIPTIONS.kvQuant, makeOptions(['Auto', 'Kv16', 'Kv8', 'Kv4']), 'kv_cache_quantization', 'Auto');

@@ -20,6 +20,15 @@ Power your local AI and execute native inference with bare-metal hardware and re
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=for-the-badge" alt="PRs Welcome">
 </p>
 
+<p align="center">
+  <a href="https://cluaiz.com/docs"><b>Documentation</b></a> &nbsp;|&nbsp;
+  <a href="https://cluaiz.com"><b>Website</b></a> &nbsp;|&nbsp;
+  <a href="https://discord.gg/mab8kBURz"><b>Discord</b></a> &nbsp;|&nbsp;
+  <a href="https://reddit.com/u/cluaiz"><b>Reddit</b></a> &nbsp;|&nbsp;
+  <a href="https://linkedin.com/company/cluaiz"><b>LinkedIn</b></a>
+</p>
+
+
 ## About Cluaiz
 
 <h4>Cluaiz is a fast, easy-to-use, unified native runtime engine and orchestrator built in Rust. Optimized for edge devices, it powers local AI and agentic workflows with native CEL, WASM, and modular plugin support.</h4>
@@ -56,13 +65,13 @@ Start chatting instantly. No setup required. cluaiz handles all GGUF downloads a
 **Windows (PowerShell)**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.ps1 | iex"
+powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 ```
 
 **Linux & macOS (Shell)**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | bash
+curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
 ### 2. Launch the Interactive TUI Dashboard
