@@ -10,6 +10,7 @@ use std::sync::Mutex;
 
 use crate::hardware::schema::optimization::{OptimizationControl, FeatureState};
 use crate::hardware::governor::HardwareGovernor;
+use crate::hardware::expert_offloading::{detect_moe, MoeModelInfo};
 
 /// Global thread-safe Mutex lock to serialize CUDA and VRAM resource negotiation across parallel requests.
 pub static GLOBAL_HARDWARE_LOCK: Mutex<()> = Mutex::new(());
@@ -81,6 +82,10 @@ pub struct ResourceGrant {
     pub ram_budget_gb: f64,
     /// OS safety buffer reserved (GB)
     pub safety_buffer_gb: f64,
+    /// Expert LRU cache budget in GB (non-zero only in Tier 4 / MoE offloading mode)
+    pub expert_cache_budget_gb: f64,
+    /// MoE structural metadata (Some only when Tier 4 is active for a MoE model)
+    pub moe_info: Option<MoeModelInfo>,
 }
 
 // ─── Safety Margin Calculation ───────────────────────────────────────────────
@@ -201,11 +206,13 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         return Ok(ResourceGrant {
             tier: PlacementTier::CpuOnly,
             n_gpu_layers: 0,
-            max_context: 4096, // Conservative default; governor refines this later
+            max_context: 4096,
             thread_count: sysinfo::System::new().cpus().len().max(1),
             vram_budget_gb: 0.0,
-            ram_budget_gb: usable_ram.min(model_gb * 1.2), // Model + 20% headroom
+            ram_budget_gb: usable_ram.min(model_gb * 1.2),
             safety_buffer_gb: ram_safety,
+            expert_cache_budget_gb: 0.0,
+            moe_info: None,
         });
     }
 
@@ -247,23 +254,56 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         (PlacementTier::CpuOnly, 0, 0.0, model_gb)
 
     } else {
-        // Tier 4: SSD Streaming required (model exceeds all available memory)
-        tracing::warn!(
-            "⚖️ [Negotiator] 💾 Tier 4 (SSD Streaming). Model: {:.2}GB exceeds VRAM({:.2}) + RAM({:.2})",
-            model_gb, free_vram, usable_ram
-        );
-        // Placeholder: return error for now. MoE streaming will be implemented later.
-        (PlacementTier::SsdStreaming, 0, 0.0, usable_ram)
+        // Tier 4: Model exceeds VRAM + RAM — Expert Offloading required
+        // ─── MoE Detection ───
+        // Only MoE models can be served via expert offloading (dense models need full weight resident)
+        let moe_info = detect_moe(&request.model_path);
+
+        if moe_info.is_moe {
+            // ── MoE Expert Offloading: Dense backbone stays in RAM, experts stream from storage ──
+            let dense_gb = moe_info.dense_backbone_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            let cache_budget = moe_info.recommended_cache_budget_gb();
+            // Ensure dense backbone fits in available RAM (it must be resident)
+            let ram_for_dense = usable_ram.min(dense_gb * 1.1); // 10% headroom over dense
+
+            tracing::warn!(
+                "⚖️ [Negotiator] 💾 Tier 4 (Expert Offloading). MoE model: {:.2}GB total | \
+                 Dense backbone: {:.2}GB | Expert cache budget: {:.2}GB | {} experts/layer",
+                model_gb, dense_gb, cache_budget, moe_info.expert_count
+            );
+            return Ok(ResourceGrant {
+                tier: PlacementTier::SsdStreaming,
+                n_gpu_layers: 0,
+                max_context: 4096,
+                thread_count: sysinfo::System::new().cpus().len().max(1),
+                vram_budget_gb: 0.0,
+                ram_budget_gb: ram_for_dense,
+                safety_buffer_gb: vram_safety,
+                expert_cache_budget_gb: cache_budget,
+                moe_info: Some(moe_info),
+            });
+        } else {
+            // Non-MoE model exceeding all memory — cannot offload individual experts
+            tracing::warn!(
+                "⚖️ [Negotiator] 💾 Tier 4 requested for non-MoE model ({:.2}GB). \
+                 Expert offloading not applicable. Falling back to Tier 3 (CPU RAM).",
+                model_gb
+            );
+            // Fall back to CPU-only with full RAM; will be slow but won't crash
+            (PlacementTier::CpuOnly, 0, 0.0, usable_ram)
+        }
     };
 
     let grant = ResourceGrant {
         tier,
         n_gpu_layers,
-        max_context: 4096, // Conservative default; caller (governor) can refine with DNA
+        max_context: 4096,
         thread_count: sysinfo::System::new().cpus().len().max(1),
         vram_budget_gb: vram_budget,
         ram_budget_gb: ram_budget,
         safety_buffer_gb: vram_safety,
+        expert_cache_budget_gb: 0.0,
+        moe_info: None,
     };
 
     tracing::info!(

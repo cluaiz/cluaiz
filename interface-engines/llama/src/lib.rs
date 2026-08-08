@@ -15,6 +15,7 @@ pub mod ffi;
 pub mod ffi_exports;
 pub mod hybrid;
 pub mod loader;
+pub mod expert_offloading;
 pub mod native;
 pub mod pipeline;
 pub mod router;

@@ -1,10 +1,11 @@
 pub mod engine;
 pub use engine::OnnxEngine;
 
-pub mod text;
 pub mod audio;
-pub mod vision;
 pub mod chat;
+pub mod expert_offloading;
+pub mod text;
+pub mod vision;
 
 // ─── Sovereign FFI Gateway for ONNX ─────────────────────────────────────────
 
