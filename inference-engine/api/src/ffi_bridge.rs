@@ -488,27 +488,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
                                 let has_gpu = !control.silicon_truth.accelerators.gpus.is_empty();
 
-                                use cluaiz_shared::hardware::schema::booster::*;
-
-                                // Determine optimal n_gpu_layers based on VRAM
-                                let optimal_gpu_layers: i32 = if !has_gpu { 0 } else { -1 }; // -1 = auto
-
-                                // Determine optimal mode based on total resources
-                                let optimal_mode = if vram_gb >= 24.0 {
-                                    BoosterMode::MaxBoost
-                                } else if vram_gb >= 8.0 {
-                                    BoosterMode::Balance
-                                } else if vram_gb >= 2.0 {
-                                    BoosterMode::Multitasking
-                                } else {
-                                    BoosterMode::Edge
-                                };
+                                use cluaiz_shared::hardware::schema::optimization::*;
 
                                 // Speculative decoding only safe with 8GB+ VRAM
                                 let optimal_spec = if vram_gb >= 8.0 { FeatureState::Auto } else { FeatureState::Off };
 
-                                let optimal_booster = BoosterControl {
-                                    mode_run: optimal_mode,
+                                let optimal_optimization = OptimizationControl {
                                     turbo_quant: FeatureState::Auto,
                                     flash_attention: if has_gpu { FeatureState::On } else { FeatureState::Auto },
                                     speculative_decoding: optimal_spec,
@@ -519,16 +504,19 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     force_vram_reclaim: FeatureState::Off,
                                     enforce_json: false,
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
+                                    custom_vram_buffer_gb: None,
+                                    custom_ram_buffer_gb: None,
                                 };
 
-                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_booster);
+                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_optimization);
                                 
+                                let optimal_gpu_layers: i32 = if !has_gpu { 0 } else { -1 };
                                 let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                                 gguf_meta.hardware_and_execution.n_gpu_layers = optimal_gpu_layers;
                                 gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                                 let _ = gguf_meta.save();
 
-                                let response = serde_json::json!({"status": "success", "booster": optimal_booster});
+                                let response = serde_json::json!({"status": "success", "booster": optimal_optimization});
                                 let _ = pipe.write_all(response.to_string().as_bytes()).await;
                                 continue;
                             }

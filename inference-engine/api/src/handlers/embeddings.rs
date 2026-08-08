@@ -102,6 +102,7 @@ pub async fn generate_embeddings(
     }
 
     let dispatcher = state.embedding_dispatcher.clone();
+    let target_path = active_model_path.clone().unwrap();
 
     let result = tokio::task::spawn_blocking(move || {
         let mut data_list = Vec::new();
@@ -109,7 +110,7 @@ pub async fn generate_embeddings(
 
         for (idx, text) in inputs.into_iter().enumerate() {
             total_tokens += text.split_whitespace().count();
-            match dispatcher.dispatch_embedding(&text) {
+            match dispatcher.dispatch_embedding_with_model(&text, &target_path) {
                 Ok(vec) => {
                     data_list.push(EmbeddingData {
                         object: "embedding",

@@ -16,7 +16,7 @@ pub mod url_resolver;
 
 use colored::*;
 use dispatcher::NeuralDispatcher;
-use system_booster::SystemBooster;
+use system_optimization::SystemOptimization;
 use cluaiz_shared::backend::signature::KernelSignature;
 use std::env;
 use std::sync::Arc;
@@ -62,11 +62,11 @@ pub async fn run_daemon() {
         }
     }
 
-    // 🚀 Ignite the SystemBooster to optimize hardware before booting engines
+    // 🚀 Ignite the SystemOptimization to optimize hardware before booting engines
     let booster_state = if pure_brain {
         Default::default()
     } else {
-        SystemBooster::ignite().unwrap_or_default()
+        SystemOptimization::ignite().unwrap_or_default()
     };
     
     // Create the Dispatcher with the active booster state

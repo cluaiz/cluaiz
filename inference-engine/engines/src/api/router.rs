@@ -96,7 +96,7 @@ impl cluaiz_shared::cluaizInference for Backend {
         }
     }
 
-    fn apply_booster(&mut self, control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> anyhow::Result<()> {
+    fn apply_booster(&mut self, control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
         match self {
             Self::cluaiz(b) => b.apply_booster(control),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
@@ -582,14 +582,14 @@ impl CoreRouter {
                         let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
                         
                         cluaiz_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
-                        let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                         // n_gpu_layers is controlled via GgufMetadataHeaders
                         
-                        if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
+                        if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(
                             &path_clone.to_string_lossy(),
                             &backend_name_clone, 
                             ctx,
-                            Some(booster)
+                            Some(optimization)
                         ).await {
                             let prefill_prompt = if skill_content_clone.starts_with("<|begin_of_text|>") {
                                 skill_content_clone.clone()
@@ -1149,14 +1149,14 @@ pub fn agentic_pause_compile_cache(
                 let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
                 
                 cluaiz_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
-                let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                 // n_gpu_layers is now controlled via GgufMetadataHeaders
                 
-                if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_booster(
+                if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(
                     &path_clone.to_string_lossy(),
                     &backend_name, 
                     ctx,
-                    Some(booster)
+                    Some(optimization)
                 ).await {
                     let prefill_prompt = if skill_content_clone.starts_with("<|begin_of_text|>") {
                         skill_content_clone.clone()

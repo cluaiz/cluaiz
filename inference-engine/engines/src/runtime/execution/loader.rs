@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 use crate::runtime::execution::hub::HardwareOrchestrator as CoreHub;
 use cluaiz_shared::{ModelWeightsWrapper, cluaizContext, StructuralDNA, TemplateManager};
 use cluaiz_shared::utils::GGUFProber;
-use cluaiz_shared::hardware::schema::booster::FeatureState;
+use cluaiz_shared::hardware::schema::optimization::FeatureState;
 
 /// GGUFLoader: Lightweight orchestrator for quantized Core models.
 pub struct GGUFLoader;

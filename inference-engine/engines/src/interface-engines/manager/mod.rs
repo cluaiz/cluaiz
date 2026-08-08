@@ -171,21 +171,21 @@ impl EngineManager {
     }
 
     /// 🏛️ Core Instantiation: Invokes the kernel's factory method to create an active execution engine.
-    pub fn instantiate(&self, model_path: &str, booster: &cluaiz_shared::hardware::schema::booster::BoosterControl, max_context_length: Option<u32>) -> anyhow::Result<*mut std::ffi::c_void> {
+    pub fn instantiate(&self, model_path: &str, optimization: &cluaiz_shared::hardware::schema::optimization::OptimizationControl, max_context_length: Option<u32>) -> anyhow::Result<*mut std::ffi::c_void> {
         let lib = self.active_lib.as_ref()
             .ok_or_else(|| anyhow::anyhow!("Linker Error: No active kernel linked."))?;
         
         unsafe {
-            let instantiate_fn: Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const cluaiz_shared::hardware::schema::booster::cluaizBoosterContext) -> *mut std::ffi::c_void> = 
+            let instantiate_fn: Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext) -> *mut std::ffi::c_void> = 
                 lib.get(b"cluaiz_kernel_instantiate")
                 .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_instantiate' symbol missing."))?;
             
             let c_path = std::ffi::CString::new(model_path)?;
-            let mut booster_ctx: cluaiz_shared::hardware::schema::booster::cluaizBoosterContext = booster.into();
+            let mut optimization_ctx: cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext = optimization.into();
             if let Some(mcl) = max_context_length {
-                booster_ctx.max_context_length = mcl;
+                optimization_ctx.max_context_length = mcl;
             }
-            let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, &booster_ctx as *const _);
+            let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, &optimization_ctx as *const _);
             
             if engine_ptr.is_null() {
                 return Err(anyhow::anyhow!("Kernel Instantiation Failed: Pointer is null. Check kernel logs."));

@@ -13,14 +13,14 @@ impl HardwareOrchestrator {
         engine_type: &str,
         cluaiz_context: cluaizContext,
     ) -> Result<ModelWeightsWrapper> {
-        Self::instantiate_with_booster(model_load_path, engine_type, cluaiz_context, None).await
+        Self::instantiate_with_optimization(model_load_path, engine_type, cluaiz_context, None).await
     }
 
-    pub async fn instantiate_with_booster(
+    pub async fn instantiate_with_optimization(
         model_load_path: &str,
         engine_type: &str,
         cluaiz_context: cluaizContext,
-        booster_override: Option<cluaiz_shared::hardware::schema::booster::BoosterControl>,
+        optimization_override: Option<cluaiz_shared::hardware::schema::optimization::OptimizationControl>,
     ) -> Result<ModelWeightsWrapper> {
         tracing::info!("🔩 [Orchestrator] Initiating Dynamic Hardware Handshake for Engine: {}", engine_type);
 
@@ -74,8 +74,8 @@ impl HardwareOrchestrator {
         }
 
         // 🏛️ [Core Instantiation]: Create the active engine instance with User Truth
-        let mut booster_control = if let Some(booster) = booster_override {
-            booster
+        let mut optimization_control = if let Some(optimization) = optimization_override {
+            optimization
         } else {
             cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default()
         };
@@ -83,7 +83,7 @@ impl HardwareOrchestrator {
         // 🛡️ DNA-AWARE FLASH ATTENTION GUARD (Mathematical Resolution)
         // Flash Attention fundamentally requires the attention head dimension to be a specific size (usually 64, 128, or 256)
         // and does not apply to State Space Models (SSMs) or certain 1-bit architectures.
-        if booster_control.flash_attention == cluaiz_shared::hardware::schema::booster::FeatureState::On {
+        if optimization_control.flash_attention == cluaiz_shared::hardware::schema::optimization::FeatureState::On {
             let head_dim = cluaiz_context.dna.attention_head_dim.unwrap_or_else(|| {
                 if let (Some(h), Some(c)) = (cluaiz_context.dna.hidden_size, cluaiz_context.dna.attention_head_count) {
                     h / c
@@ -102,13 +102,13 @@ impl HardwareOrchestrator {
             let is_architecturally_broken = cluaiz_context.dna.signature.is_bitnet;
 
             if !math_supports_flash || is_architecturally_broken {
-                booster_control.flash_attention = cluaiz_shared::hardware::schema::booster::FeatureState::Off;
+                optimization_control.flash_attention = cluaiz_shared::hardware::schema::optimization::FeatureState::Off;
                 tracing::warn!("⚠️ [Arbiter] Flash Attention disabled: Math anomaly ({}) or Architecture lacks GGML CUDA FA support.", head_dim);
             }
         }
 
         let max_ctx = cluaiz_context.dna.max_context_length.map(|c| c as u32);
-        let engine_ptr = manager.instantiate(model_load_path, &booster_control, max_ctx)?;
+        let engine_ptr = manager.instantiate(model_load_path, &optimization_control, max_ctx)?;
 
         tracing::info!("🧬 [Orchestrator] Hardware Handshake SUCCESS. Neural Bridge Established.");
         
@@ -203,7 +203,7 @@ impl cluaizInference for SovereignEngine {
         Ok(())
     }
 
-    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> Result<()> {
+    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> {
         Ok(())
     }
 
@@ -304,6 +304,6 @@ impl cluaizInference for NativeOnnxWrapper {
     }
 
     fn inject_signals(&mut self, _signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> { Ok(()) }
-    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::booster::BoosterControl) -> Result<()> { Ok(()) }
+    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> { Ok(()) }
     fn set_liquid_mode(&mut self, _enabled: bool) -> Result<()> { Ok(()) }
 }

@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_shared::hardware::governor::HardwareGovernor;
-use cluaiz_shared::hardware::schema::booster::BoosterControl;
+use cluaiz_shared::hardware::schema::optimization::OptimizationControl;
 
 // ─── GET /v1/booster/status ───────────────────────────────────────────
 pub async fn status(State(_state): State<Arc<AppState>>) -> Json<Value> {
@@ -22,7 +22,7 @@ pub async fn status(State(_state): State<Arc<AppState>>) -> Json<Value> {
 // ─── POST /v1/booster/update ──────────────────────────────────────────
 pub async fn update(
     State(_state): State<Arc<AppState>>,
-    Json(payload): Json<BoosterControl>,
+    Json(payload): Json<OptimizationControl>,
 ) -> Json<Value> {
     match HardwareGovernor::save_booster_settings(&payload) {
         Ok(_) => Json(json!({
