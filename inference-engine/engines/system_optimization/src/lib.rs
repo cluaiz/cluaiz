@@ -9,9 +9,9 @@ pub mod os_tuning;
 
 
 pub mod telemetry;
-pub mod system_booster;
+pub mod system_optimization;
 
 // 🏛️ Reusing the Unified Architecture from archer-shared
 pub use cluaiz_shared::hardware::governor::HardwareGovernor;
-pub use cluaiz_shared::hardware::schema::booster::{BoosterControl, FeatureState};
-pub use system_booster::SystemBooster;
+pub use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
+pub use system_optimization::*;

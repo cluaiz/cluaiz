@@ -1,5 +1,5 @@
 [package]
-name = "system-booster"
+name = "system-optimization"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

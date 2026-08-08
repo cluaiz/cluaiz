@@ -1,14 +1,14 @@
 //! 🧪 Auto Tuner: Hardware-Aware Feature Scaling
 //! Calibrates "Auto" states based on real-time Silicon Truth.
 
-use cluaiz_shared::hardware::schema::booster::{BoosterControl, FeatureState};
+use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
 use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
 
 pub struct AutoTuner;
 
 impl AutoTuner {
     /// 🧪 Calibrates all 'Auto' states into definitive On/Off positions based on hardware profile.
-    pub fn tune(control: &mut BoosterControl, silicon: &SiliconTruth) {
+    pub fn tune(control: &mut OptimizationControl, silicon: &SiliconTruth) {
         // Example: Auto Flash Attention on RTX cards
         if control.flash_attention == FeatureState::Auto {
             let has_cuda = silicon.accelerators.gpus.iter().any(|g| g.vendor.to_lowercase().contains("nvidia"));

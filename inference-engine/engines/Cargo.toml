@@ -44,7 +44,7 @@ sha2 = "0.10"
 cluaiz-shared = { path = "cluaiz-shared" }
 inference-cel = { path = "../../inference-cel" }
 # Engines (Llama, Candle, BitNet) are now loaded dynamically via libloading from interface-engines
-system-booster = { path = "system-booster", optional = true }
+system-optimization = { path = "system_optimization", optional = true }
 neural_core = { package = "neural-core", path = "../../interface-engines/neural_core" }
 
 # ── Dynamic Neural Bridge (The Soul Linker) ──
@@ -79,6 +79,6 @@ safetensors = "0.8.0"
 cc = "1.2.59"
 
 [features]
-default = ["system-booster", "wasm-runtime"]
+default = ["system-optimization", "wasm-runtime"]
 wasm-runtime = ["dep:wasmtime", "dep:wasmtime-wasi"]
-system-booster = ["dep:system-booster"]
+system-optimization = ["dep:system-optimization"]

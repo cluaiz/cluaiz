@@ -1,7 +1,7 @@
 //! ⚖️ Conflict Resolver: Sovereign Decision Matrix
 //! Handles synergies and overlaps between incompatible booster features.
 
-use cluaiz_shared::hardware::schema::booster::{BoosterControl, FeatureState};
+use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
 use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
 use cluaiz_shared::backend::signature::KernelSignature;
 
@@ -9,8 +9,8 @@ pub struct ConflictResolver;
 
 impl ConflictResolver {
     /// 🧠 Resolves hardware and feature conflicts to prevent VRAM crashes or logic errors.
-    pub fn resolve(
-        control: &mut BoosterControl, 
+    pub fn resolve_and_apply(
+        control: &mut OptimizationControl, 
         silicon: &SiliconTruth, 
         signature: &KernelSignature
     ) {

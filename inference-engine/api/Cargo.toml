@@ -7,7 +7,7 @@ authors.workspace = true
 [dependencies]
 engines = { path = "../engines" }
 dispatcher = { path = "../../interface-engines/dispatcher", package = "dispatcher-crate" }
-system-booster = { path = "../engines/system-booster" }
+system-optimization = { path = "../engines/system_optimization" }
 cluaiz-shared = { path = "../engines/cluaiz-shared" }
 inference-cel = { path = "../../inference-cel" }
 cluaiz_devhub = { path = "../../developer_hub" }

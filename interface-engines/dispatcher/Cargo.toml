@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 neural-core = { path = "../neural_core" }
 llama = { path = "../llama" }
 
-system-booster = { path = "../../inference-engine/engines/system-booster" }
+system-optimization = { path = "../../inference-engine/engines/system_optimization" }
 libloading = "0.8"
 cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 anyhow = "1.0"
