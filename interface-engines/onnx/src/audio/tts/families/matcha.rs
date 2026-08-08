@@ -23,7 +23,11 @@ const NUM_MEL: usize = 100;
 const ODE_STEPS: usize = 10;
 
 /// Execute LuxTTS/Matcha full pipeline: text_encoder → fm_decoder → vocoder
-pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32>> {
+pub fn execute(
+    engine: &crate::engine::OnnxEngine,
+    session: &mut Session,
+    text: &str,
+) -> Result<Vec<f32>> {
     let model_dir = engine
         .model_dir
         .as_deref()
@@ -150,28 +154,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
     };
 
     // --- Step 3: FM decoder ODE loop ---
-    // Dynamically load flow decoder / acoustic graph
-    let mut fm_path_opt = None;
-    if let Ok(entries) = std::fs::read_dir(model_dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_lowercase();
-            if name.ends_with(".onnx")
-                && (name.contains("fm_decoder") || name.contains("matcha") || name.contains("flow"))
-                && !name.contains("text_encoder")
-            {
-                fm_path_opt = Some(entry.path());
-                break;
-            }
-        }
-    }
-
-    let fm_path = fm_path_opt.ok_or_else(|| {
-        anyhow!(
-            "LuxTTS: Flow decoder graph (matcha.onnx or fm_decoder.onnx) not found in {:?}",
-            model_dir
-        )
-    })?;
-    let mut fm_sess = engine.build_session(&fm_path)?;
+    let mut fm_sess = session;
 
     // Determine which inputs are scalars by name (known LuxTTS interface)
     let scalar_inputs: Vec<String> = fm_sess
@@ -381,27 +364,35 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
             min_val, max_val, mean_val
         );
 
-        match engine.build_session(&hift_path) {
-            Ok(mut voc_sess) => {
-                match crate::audio::tts::neural_vocoder::synthesize_mel_to_pcm(
+        let vocoder_run_result = if let Some(voc_arc) = &engine.vocoder_session {
+            if let Ok(mut voc_sess) = voc_arc.lock() {
+                crate::audio::tts::neural_vocoder::synthesize_mel_to_pcm(
                     &mut voc_sess,
                     &mel_80_resampled,
                     target_seq_len,
-                ) {
-                    Ok(pcm) => {
-                        eprintln!(
-                            "🎙️ [LuxTTS] Custom Sibling HiFT Vocoder Output PCM: {} samples",
-                            pcm.len()
-                        );
-                        return Ok(pcm);
-                    }
-                    Err(e) => eprintln!("❌ [LuxTTS] HiFT vocoder execution failed: {}", e),
-                }
+                ).map(|pcm| {
+                    eprintln!("🎙️ [LuxTTS] Pre-loaded Neural Vocoder Output PCM: {} samples", pcm.len());
+                    pcm
+                })
+            } else {
+                Err(anyhow!("Failed to lock pre-loaded vocoder session"))
             }
-            Err(e) => eprintln!("❌ [LuxTTS] Failed to commit HiFT session from file: {}", e),
+        } else {
+            match engine.build_session(&hift_path) {
+                Ok(mut voc_sess) => {
+                    crate::audio::tts::neural_vocoder::synthesize_mel_to_pcm(
+                        &mut voc_sess,
+                        &mel_80_resampled,
+                        target_seq_len,
+                    )
+                }
+                Err(e) => Err(anyhow!("Failed to load hift session from disk: {}", e)),
+            }
+        };
+
+        if let Ok(pcm) = vocoder_run_result {
+            return Ok(pcm);
         }
-    } else {
-        eprintln!("🔍 [LuxTTS] No sibling hift.onnx found on disk.");
     }
 
     // If no vocoder session loaded, try to find and load vocoder from subdir or root model_dir

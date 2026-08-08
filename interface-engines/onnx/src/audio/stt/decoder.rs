@@ -163,12 +163,23 @@ impl OnnxEngine {
             let probe_ids = vec![config.start_of_transcript];
             if let Ok(input_ids_val) = Value::from_array(([1usize, 1usize], probe_ids)) {
                 let input_ids_dyn: Value = input_ids_val.into();
+                
+                let use_cache_val: Value = Value::from_array(([1usize], vec![false])).unwrap().into();
+                let dummy_past_val: Value = Value::from_array(([1usize, 6usize, 0usize, 64usize], Vec::<f32>::new())).unwrap().into();
+
                 let mut probe_inputs = HashMap::with_capacity(decoder_input_names.len());
                 for (idx, name) in decoder_input_names.iter().enumerate() {
+                    let n_str = name.as_str();
                     if is_decoder_ids_name[idx] {
-                        probe_inputs.insert(name.as_str(), &input_ids_dyn);
+                        probe_inputs.insert(n_str, &input_ids_dyn);
+                    } else if n_str.contains("encoder_hidden_states") {
+                        probe_inputs.insert(n_str, &encoder_val);
+                    } else if n_str.contains("use_cache_branch") {
+                        probe_inputs.insert(n_str, &use_cache_val);
+                    } else if n_str.contains("past_key_values") {
+                        probe_inputs.insert(n_str, &dummy_past_val);
                     } else {
-                        probe_inputs.insert(name.as_str(), &encoder_val);
+                        probe_inputs.insert(n_str, &encoder_val);
                     }
                 }
 
@@ -251,13 +262,23 @@ impl OnnxEngine {
             };
             let input_ids_dyn: Value = input_ids_val.into();
 
+            let use_cache_val: Value = Value::from_array(([1usize], vec![false])).unwrap().into();
+            let dummy_past_val: Value = Value::from_array(([1usize, 6usize, 0usize, 64usize], Vec::<f32>::new())).unwrap().into();
+
             let mut step_inputs: HashMap<&str, &Value> = HashMap::with_capacity(decoder_input_names.len());
 
             for (idx, name) in decoder_input_names.iter().enumerate() {
+                let n_str = name.as_str();
                 if is_decoder_ids_name[idx] {
-                    step_inputs.insert(name.as_str(), &input_ids_dyn);
+                    step_inputs.insert(n_str, &input_ids_dyn);
+                } else if n_str.contains("encoder_hidden_states") {
+                    step_inputs.insert(n_str, &encoder_val);
+                } else if n_str.contains("use_cache_branch") {
+                    step_inputs.insert(n_str, &use_cache_val);
+                } else if n_str.contains("past_key_values") {
+                    step_inputs.insert(n_str, &dummy_past_val);
                 } else {
-                    step_inputs.insert(name.as_str(), &encoder_val);
+                    step_inputs.insert(n_str, &encoder_val);
                 }
             }
 

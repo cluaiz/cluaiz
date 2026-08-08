@@ -79,11 +79,20 @@ impl OnnxEngine {
         let use_gpu = onnx_meta.n_gpu_layers != 0;
 
         let mut builder = Session::builder()?;
-        let cpu_ep = ort::ep::CPU::default().with_arena_allocator(true).build();
+        let cpu_ep = ort::ep::CPU::default().with_arena_allocator(onnx_meta.enable_cpu_mem_arena).build();
         if use_gpu {
-            let cuda_ep = ort::ep::CUDA::default().build();
+            let mut cuda_ep = ort::ep::CUDA::default();
+            if onnx_meta.gpu_mem_limit_bytes > 0 {
+                cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
+            }
+            let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
+                "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
+                _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
+            };
+            cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
+
             builder = builder
-                .with_execution_providers([cuda_ep, cpu_ep])
+                .with_execution_providers([cuda_ep.build(), cpu_ep])
                 .map_err(|e| anyhow::anyhow!("GPU EP error: {:?}", e))?;
         } else {
             builder = builder
@@ -337,33 +346,14 @@ impl OnnxEngine {
 
         if let Some(vp) = vocoder_file {
             tracing::info!("🗣️ [ONNX Vocoder] Found Neural Vocoder: {:?}", vp);
-            let cpu_ep = ort::ep::CPU::default().with_arena_allocator(true).build();
-            let mut v_session_opt: Option<Session> = None;
-            if use_gpu {
-                let cuda_ep = ort::ep::CUDA::default().build();
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut opt_builder) =
-                        c_builder.with_execution_providers([cuda_ep, cpu_ep.clone()])
-                    {
-                        if let Ok(sess) = opt_builder.commit_from_file(&vp) {
-                            tracing::info!("🚀 [ONNX Vocoder] Committed on CUDA GPU");
-                            v_session_opt = Some(sess);
-                        }
-                    }
+            match self.build_session(&vp) {
+                Ok(sess) => {
+                    tracing::info!("🚀 [ONNX Vocoder] Committed successfully via build_session");
+                    self.vocoder_session = Some(Arc::new(std::sync::Mutex::new(sess)));
                 }
-            }
-            if v_session_opt.is_none() {
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut cpu_b) = c_builder.with_execution_providers([cpu_ep]) {
-                        if let Ok(sess) = cpu_b.commit_from_file(&vp) {
-                            tracing::info!("✅ [ONNX Vocoder] Committed on CPU");
-                            v_session_opt = Some(sess);
-                        }
-                    }
+                Err(e) => {
+                    tracing::warn!("⚠️ [ONNX Vocoder] Failed to load vocoder: {:?}", e);
                 }
-            }
-            if let Some(sess) = v_session_opt {
-                self.vocoder_session = Some(Arc::new(std::sync::Mutex::new(sess)));
             }
         }
 
@@ -386,33 +376,14 @@ impl OnnxEngine {
 
         if let Some(tp) = text_enc_file {
             tracing::info!("🔠 [ONNX Text Encoder] Found Text Encoder: {:?}", tp);
-            let cpu_ep = ort::ep::CPU::default().with_arena_allocator(true).build();
-            let mut te_session_opt: Option<Session> = None;
-            if use_gpu {
-                let cuda_ep = ort::ep::CUDA::default().build();
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut opt_builder) =
-                        c_builder.with_execution_providers([cuda_ep, cpu_ep.clone()])
-                    {
-                        if let Ok(sess) = opt_builder.commit_from_file(&tp) {
-                            tracing::info!("🚀 [ONNX Text Encoder] Committed on CUDA GPU");
-                            te_session_opt = Some(sess);
-                        }
-                    }
+            match self.build_session(&tp) {
+                Ok(sess) => {
+                    tracing::info!("🚀 [ONNX Text Encoder] Committed successfully via build_session");
+                    self.text_encoder_session = Some(Arc::new(std::sync::Mutex::new(sess)));
                 }
-            }
-            if te_session_opt.is_none() {
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut cpu_b) = c_builder.with_execution_providers([cpu_ep]) {
-                        if let Ok(sess) = cpu_b.commit_from_file(&tp) {
-                            tracing::info!("✅ [ONNX Text Encoder] Committed on CPU");
-                            te_session_opt = Some(sess);
-                        }
-                    }
+                Err(e) => {
+                    tracing::warn!("⚠️ [ONNX Text Encoder] Failed to load text encoder: {:?}", e);
                 }
-            }
-            if let Some(sess) = te_session_opt {
-                self.text_encoder_session = Some(Arc::new(std::sync::Mutex::new(sess)));
             }
         }
 
@@ -434,33 +405,14 @@ impl OnnxEngine {
                 "⏱️ [ONNX Duration Predictor] Found Duration Predictor: {:?}",
                 dp
             );
-            let cpu_ep = ort::ep::CPU::default().with_arena_allocator(true).build();
-            let mut dp_session_opt: Option<Session> = None;
-            if use_gpu {
-                let cuda_ep = ort::ep::CUDA::default().build();
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut opt_builder) =
-                        c_builder.with_execution_providers([cuda_ep, cpu_ep.clone()])
-                    {
-                        if let Ok(sess) = opt_builder.commit_from_file(&dp) {
-                            tracing::info!("🚀 [ONNX Duration Predictor] Committed on CUDA GPU");
-                            dp_session_opt = Some(sess);
-                        }
-                    }
+            match self.build_session(&dp) {
+                Ok(sess) => {
+                    tracing::info!("🚀 [ONNX Duration Predictor] Committed successfully via build_session");
+                    self.duration_predictor_session = Some(Arc::new(std::sync::Mutex::new(sess)));
                 }
-            }
-            if dp_session_opt.is_none() {
-                if let Ok(c_builder) = Session::builder() {
-                    if let Ok(mut cpu_b) = c_builder.with_execution_providers([cpu_ep]) {
-                        if let Ok(sess) = cpu_b.commit_from_file(&dp) {
-                            tracing::info!("✅ [ONNX Duration Predictor] Committed on CPU");
-                            dp_session_opt = Some(sess);
-                        }
-                    }
+                Err(e) => {
+                    tracing::warn!("⚠️ [ONNX Duration Predictor] Failed to load duration predictor: {:?}", e);
                 }
-            }
-            if let Some(sess) = dp_session_opt {
-                self.duration_predictor_session = Some(Arc::new(std::sync::Mutex::new(sess)));
             }
         }
 

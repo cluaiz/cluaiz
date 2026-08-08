@@ -94,7 +94,7 @@ pub fn route_tts_inference(
             handle_kokoro(engine, session, &text_chunks, sample_rate)
         }
         super::family_adapter::TtsFamily::Matcha => {
-            let pcm = super::families::matcha::execute(engine, &raw_text_input)?;
+            let pcm = super::families::matcha::execute(engine, session, &raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
