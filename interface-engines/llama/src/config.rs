@@ -1,17 +1,17 @@
-//! 🚀 Sovereign Booster: Dynamic Configuration System
+//! 🚀 Sovereign Optimization: Dynamic Configuration System
 //! This module translates Registry-level capabilities into low-level engine parameters.
 
 use crate::ffi::llama_cpp::{
     llama_context_default_params, llama_model_default_params, LlamaContextParams, LlamaModelParams,
 };
-use cluaiz_shared::hardware::schema::booster::{
-    BoosterControl, BoosterMode, FeatureState, SmartState,
+use cluaiz_shared::hardware::schema::optimization::{
+    OptimizationControl, FeatureState, SmartState, KvCacheQuantization, ContextShiftingMode,
 };
 use serde::{Deserialize, Serialize};
 use serde_json;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BoosterConfig {
+pub struct OptimizationConfig {
     #[serde(skip_serializing)]
     pub n_gpu_layers: i32,
     pub flash_attn: bool,
@@ -25,7 +25,6 @@ pub struct BoosterConfig {
     pub dflash: String, // 🏛️ Delta Flash (FlashKDA Support)
     pub speculative_decoding: String,
     pub auto_round: String,
-    pub mode_run: String,
     pub force_vram_reclaim: String,
     pub kv_cache_quantization: String,
     pub context_shifting: String,
@@ -33,7 +32,7 @@ pub struct BoosterConfig {
     pub force_memory_lock: String,
 }
 
-impl Default for BoosterConfig {
+impl Default for OptimizationConfig {
     fn default() -> Self {
         Self {
             n_gpu_layers: -1,
@@ -45,7 +44,6 @@ impl Default for BoosterConfig {
             dflash: "Auto".to_string(),
             speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
-            mode_run: "balance".to_string(),
             force_vram_reclaim: "Off".to_string(),
             kv_cache_quantization: "Auto".to_string(),
             context_shifting: "Auto".to_string(),
@@ -55,7 +53,7 @@ impl Default for BoosterConfig {
     }
 }
 
-impl BoosterConfig {
+impl OptimizationConfig {
     /// 🚀 Load the booster configuration from the sovereign system control.
     pub fn load_from_system() -> Self {
         // Default to Industrial Auto standards
@@ -69,7 +67,6 @@ impl BoosterConfig {
             dflash: "Auto".to_string(),
             speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
-            mode_run: "balance".to_string(),
             force_vram_reclaim: "Off".to_string(),
             kv_cache_quantization: "Auto".to_string(),
             context_shifting: "Auto".to_string(),
@@ -80,54 +77,46 @@ impl BoosterConfig {
         if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
             config.flash_attn = control.flash_attention.is_active();
             config.dflash = match control.dflash {
-                cluaiz_shared::hardware::schema::booster::SmartState::Static(s) => s,
+                SmartState::Static(s) => s,
                 _ => "Auto".to_string(),
             };
             config.speculative_decoding = match control.speculative_decoding {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
             config.auto_round = match control.auto_round {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
-            config.mode_run = match control.mode_run {
-                cluaiz_shared::hardware::schema::booster::BoosterMode::Edge => "edge".to_string(),
-                cluaiz_shared::hardware::schema::booster::BoosterMode::Multitasking => "multitasking".to_string(),
-                cluaiz_shared::hardware::schema::booster::BoosterMode::Balance => "balance".to_string(),
-                cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost => "max_boost".to_string(),
-                cluaiz_shared::hardware::schema::booster::BoosterMode::UltraMaxBoost => "ultra_max_boost".to_string(),
-                cluaiz_shared::hardware::schema::booster::BoosterMode::HyperCluster => "hyper_cluster".to_string(),
-            };
             config.force_vram_reclaim = match control.force_vram_reclaim {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
             config.kv_cache_quantization = match control.kv_cache_quantization {
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Auto => "Auto".to_string(),
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8 => "Kv8".to_string(),
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4 => "Kv4".to_string(),
-                cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv16 => "Kv16".to_string(),
+                KvCacheQuantization::Auto => "Auto".to_string(),
+                KvCacheQuantization::Kv8 => "Kv8".to_string(),
+                KvCacheQuantization::Kv4 => "Kv4".to_string(),
+                KvCacheQuantization::Kv16 => "Kv16".to_string(),
             };
             config.context_shifting = match control.context_shifting {
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off => "Off".to_string(),
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal => "Minimal".to_string(),
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard => "Standard".to_string(),
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive => "Aggressive".to_string(),
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme => "Extreme".to_string(),
-                cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto => "Auto".to_string(),
+                ContextShiftingMode::Off => "Off".to_string(),
+                ContextShiftingMode::Minimal => "Minimal".to_string(),
+                ContextShiftingMode::Standard => "Standard".to_string(),
+                ContextShiftingMode::Aggressive => "Aggressive".to_string(),
+                ContextShiftingMode::Extreme => "Extreme".to_string(),
+                ContextShiftingMode::Auto => "Auto".to_string(),
             };
             config.force_memory_lock = match control.force_memory_lock {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
             config.turbo_quant = match control.turbo_quant {
-                cluaiz_shared::hardware::schema::booster::FeatureState::On => "On".to_string(),
-                cluaiz_shared::hardware::schema::booster::FeatureState::Off => "Off".to_string(),
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
         }
@@ -165,15 +154,10 @@ impl BoosterConfig {
         // We MUST cap the threads to physical cores (roughly cores / 2).
         let physical_cores = if cores > 2 { cores / 2 } else { cores };
         
-        let optimal_threads = match self.mode_run.to_lowercase().as_str() {
-            "max_boost" | "ultra_max_boost" | "hyper_cluster" => physical_cores as i32,
-            _ => {
-                if physical_cores > 4 {
-                    (physical_cores - 1).max(4) as i32 // Leave 1 core for OS in Balance mode
-                } else {
-                    physical_cores as i32
-                }
-            }
+        let optimal_threads = if physical_cores > 4 {
+            (physical_cores - 1).max(4) as i32 // Leave 1 core for OS
+        } else {
+            physical_cores as i32
         };
 
         params.n_threads = if self.n_threads <= 0 {
@@ -230,17 +214,10 @@ impl BoosterConfig {
         params
     }
 
-    pub fn to_booster_control(&self) -> BoosterControl {
-        BoosterControl {
-            mode_run: match self.mode_run.to_lowercase().as_str() {
-                "edge" => BoosterMode::Edge,
-                "multitasking" => BoosterMode::Multitasking,
-                "balance" => BoosterMode::Balance,
-                "max_boost" => BoosterMode::MaxBoost,
-                "ultra_max_boost" => BoosterMode::UltraMaxBoost,
-                "hyper_cluster" => BoosterMode::HyperCluster,
-                _ => BoosterMode::Balance,
-            },
+    pub fn to_optimization_control(&self) -> OptimizationControl {
+        OptimizationControl {
+            custom_vram_buffer_gb: None,
+            custom_ram_buffer_gb: None,
             turbo_quant: if self.turbo_quant == "On" {
                 FeatureState::On
             } else if self.turbo_quant == "Off" {
@@ -269,26 +246,26 @@ impl BoosterConfig {
             },
             dflash: SmartState::Static(self.dflash.clone()),
             kv_cache_quantization: match self.kv_cache_quantization.to_lowercase().as_str() {
-                "kv16" => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv16,
-                "kv8" => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8,
-                "kv4" => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4,
-                _ => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Auto,
+                "kv16" => KvCacheQuantization::Kv16,
+                "kv8" => KvCacheQuantization::Kv8,
+                "kv4" => KvCacheQuantization::Kv4,
+                _ => KvCacheQuantization::Auto,
             },
             context_shifting: match self.context_shifting.to_lowercase().as_str() {
-                "off" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off,
+                "off" => ContextShiftingMode::Off,
                 "minimal" => {
-                    cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal
+                    ContextShiftingMode::Minimal
                 }
                 "standard" | "on" => {
-                    cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard
+                    ContextShiftingMode::Standard
                 }
                 "aggressive" => {
-                    cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive
+                    ContextShiftingMode::Aggressive
                 }
                 "extreme" => {
-                    cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme
+                    ContextShiftingMode::Extreme
                 }
-                _ => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto,
+                _ => ContextShiftingMode::Auto,
             },
             force_vram_reclaim: if self.force_vram_reclaim == "On" {
                 FeatureState::On

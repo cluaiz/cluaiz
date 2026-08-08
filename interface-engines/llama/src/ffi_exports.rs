@@ -55,7 +55,7 @@ static _FORCE_KEEP_INIT: extern "C" fn() -> *const std::os::raw::c_char = cluaiz
 #[no_mangle]
 pub extern "C" fn cluaiz_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
-    booster_ptr: *const cluaiz_shared::hardware::schema::booster::cluaizBoosterContext,
+    optimization_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
 ) -> *mut RuntimeB {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let path_str = unsafe { std::ffi::CStr::from_ptr(path_ptr) }
@@ -94,30 +94,30 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         let context = cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
         let mut engine = Box::new(RuntimeB::new(&path_str, context));
 
-        // Inject Booster Configuration from Caller
-        if !booster_ptr.is_null() {
-            let booster_ctx = unsafe { *booster_ptr };
+        // Inject Optimization Configuration from Caller
+        if !optimization_ptr.is_null() {
+            let optimization_ctx = unsafe { *optimization_ptr };
             cluaiz_shared::dev_info!(
-                "🚀 [Llama.cpp-Kernel] Received cluaizBoosterContext via FFI: {:?}",
-                booster_ctx
+                "🚀 [Llama.cpp-Kernel] Received cluaizOptimizationContext via FFI: {:?}",
+                optimization_ctx
             );
             tracing::info!(
-                "🚀 [Llama.cpp-Kernel] Received cluaizBoosterContext via FFI: {:?}",
-                booster_ctx
+                "🚀 [Llama.cpp-Kernel] Received cluaizOptimizationContext via FFI: {:?}",
+                optimization_ctx
             );
-            engine.booster.flash_attn = booster_ctx.flash_attention;
-            engine.booster.n_gpu_layers = booster_ctx.n_gpu_layers;
-            engine.booster.turbo_quant = if booster_ctx.turbo_quant {
+            engine.optimization.flash_attn = optimization_ctx.flash_attention;
+            engine.optimization.n_gpu_layers = optimization_ctx.n_gpu_layers;
+            engine.optimization.turbo_quant = if optimization_ctx.turbo_quant {
                 "active".to_string()
             } else {
                 "none".to_string()
             };
-            engine.booster.kv_cache_quantization = match booster_ctx.kv_cache_quantization_mode {
+            engine.optimization.kv_cache_quantization = match optimization_ctx.kv_cache_quantization_mode {
                 1 => "Kv8".to_string(),
                 2 => "Kv4".to_string(),
                 _ => "Auto".to_string(),
             };
-            engine.booster.context_shifting = match booster_ctx.context_shifting_mode {
+            engine.optimization.context_shifting = match optimization_ctx.context_shifting_mode {
                 0 => "Off".to_string(),
                 1 => "Minimal".to_string(),
                 2 => "Standard".to_string(),
@@ -125,17 +125,17 @@ pub extern "C" fn cluaiz_kernel_instantiate(
                 4 => "Extreme".to_string(),
                 _ => "Auto".to_string(),
             };
-            engine.booster.speculative_decoding = match booster_ctx.speculative_decoding_mode {
+            engine.optimization.speculative_decoding = match optimization_ctx.speculative_decoding_mode {
                 0 => "Off".to_string(),
                 1 => "On".to_string(),
                 2 => "Auto".to_string(),
                 _ => "Auto".to_string(),
             };
-            engine.booster.use_mmap = true;
+            engine.optimization.use_mmap = true;
 
-            if booster_ctx.max_context_length > 0 {
+            if optimization_ctx.max_context_length > 0 {
                 engine.context.dna.max_context_length =
-                    Some(booster_ctx.max_context_length as usize);
+                    Some(optimization_ctx.max_context_length as usize);
             }
         } else {
             // Self-load from Binary Booster Truth if FFI was blank
@@ -351,15 +351,100 @@ pub extern "C" fn cluaiz_kernel_load_kv_cache(
     }
 }
 
-// ─── Sovereign Embedding FFI Placeholder ──────────────────────────────────────
+// ─── Sovereign Native GGUF Embedding FFI ──────────────────────────────────────
 #[no_mangle]
 pub extern "C" fn cluaiz_kernel_generate_embedding(
-    _engine: *mut std::ffi::c_void,
-    _text: *const std::os::raw::c_char,
-    _out_buffer: *mut f32,
-    _max_dims: usize,
-    _out_len: *mut usize,
+    engine_ptr: *mut std::ffi::c_void,
+    text_ptr: *const std::os::raw::c_char,
+    out_buffer: *mut f32,
+    max_dims: usize,
+    out_len: *mut usize,
 ) -> i32 {
-    tracing::warn!("🧬 [Llama-Lib] cluaiz_kernel_generate_embedding invoked but GGUF embeddings are not yet natively implemented in this kernel!");
-    -1 // Return error code for now until natively implemented
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if engine_ptr.is_null() || text_ptr.is_null() || out_buffer.is_null() || out_len.is_null() {
+            return -1;
+        }
+
+        let engine = unsafe { &mut *(engine_ptr as *mut RuntimeB) };
+        let text = unsafe { std::ffi::CStr::from_ptr(text_ptr) }.to_string_lossy();
+
+        if let Some(ref native) = engine.native {
+            if native.model_ptr.is_null() || native.ctx_ptr.is_null() {
+                return -2;
+            }
+
+            unsafe {
+                let vocab = ffi::llama_cpp::llama_model_get_vocab(native.model_ptr);
+                let n_embd = ffi::llama_cpp::llama_model_n_embd(native.model_ptr);
+                if n_embd <= 0 {
+                    return -3;
+                }
+
+                let max_tokens = text.len() + 16;
+                let mut tokens = vec![0i32; max_tokens];
+                let c_text = match std::ffi::CString::new(text.as_bytes()) {
+                    Ok(c) => c,
+                    Err(_) => return -4,
+                };
+
+                let n_tokens = ffi::llama_cpp::llama_tokenize(
+                    vocab,
+                    c_text.as_ptr(),
+                    c_text.to_bytes().len() as i32,
+                    tokens.as_mut_ptr(),
+                    max_tokens as i32,
+                    true,  // add_special
+                    false, // parse_special
+                );
+
+                if n_tokens <= 0 {
+                    return -5;
+                }
+
+                // Prepare batch for embedding decode
+                let mut batch = ffi::llama_cpp::llama_batch_init(n_tokens, 0, 1);
+                batch.n_tokens = n_tokens;
+                for i in 0..n_tokens as usize {
+                    *batch.token.add(i) = tokens[i];
+                    *batch.pos.add(i) = i as i32;
+                    *batch.n_seq_id.add(i) = 1;
+                    *(*batch.seq_id.add(i)).add(0) = 0;
+                    *batch.logits.add(i) = if i == (n_tokens as usize - 1) { 1 } else { 0 };
+                }
+
+                let status = ffi::llama_cpp::llama_decode(native.ctx_ptr, batch);
+                ffi::llama_cpp::llama_batch_free(batch);
+
+                if status != 0 {
+                    return -6;
+                }
+
+                let embd_ptr = ffi::llama_cpp::llama_get_embeddings(native.ctx_ptr);
+                if embd_ptr.is_null() {
+                    return -7;
+                }
+
+                let dims = (n_embd as usize).min(max_dims);
+
+                // Compute L2 norm for normalization
+                let mut sum_sq = 0.0f32;
+                for i in 0..dims {
+                    let val = *embd_ptr.add(i);
+                    sum_sq += val * val;
+                }
+                let norm = if sum_sq > 0.0 { sum_sq.sqrt() } else { 1.0 };
+
+                for i in 0..dims {
+                    *out_buffer.add(i) = *embd_ptr.add(i) / norm;
+                }
+                *out_len = dims;
+
+                0
+            }
+        } else {
+            -8
+        }
+    }));
+
+    result.unwrap_or(-9)
 }

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use cluaiz_shared::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
-use system_booster::BoosterControl;
+use cluaiz_shared::hardware::schema::optimization::OptimizationControl;
 use std::path::PathBuf;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
@@ -21,7 +21,7 @@ unsafe impl Sync for SafeEnginePtr {}
 /// 🚦 NeuralDispatcher (The Master Router)
 /// The core router that owns hardware logic and dispatches prompts across Native IPC and HTTP.
 pub struct NeuralDispatcher {
-    pub booster_state: BoosterControl,
+    pub booster_state: OptimizationControl,
     pub current_signature: KernelSignature,
     pub cached_engine: std::sync::Arc<tokio::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
     /// 🔢 Limits concurrent LLM dispatches to prevent system overload (acts as an inference queue)
@@ -31,7 +31,7 @@ pub struct NeuralDispatcher {
 }
 
 impl NeuralDispatcher {
-    pub fn new(booster_state: BoosterControl, signature: KernelSignature) -> Self {
+    pub fn new(booster_state: OptimizationControl, signature: KernelSignature) -> Self {
         Self {
             booster_state,
             current_signature: signature,
@@ -404,129 +404,152 @@ impl NeuralDispatcher {
     }
 }
 
-/// 🚥 EmbeddingDispatcher
-/// Routes embedding requests to ONNX dynamically via libloading.
 pub struct EmbeddingDispatcher {
-    active_lib: std::sync::Arc<libloading::Library>,
-    engine_ptr: *mut std::ffi::c_void,
+    cached_engine: std::sync::Arc<tokio::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
 }
 
 unsafe impl Send for EmbeddingDispatcher {}
 unsafe impl Sync for EmbeddingDispatcher {}
 
-               impl EmbeddingDispatcher {
-    pub fn new(format_type: Option<String>) -> Result<Self> {
-        let target_os = std::env::consts::OS;
-        let ext = match target_os {
-            "windows" => "dll",
-            "macos" => "dylib",
-            _ => "so",
-        };
-        let prefix = if target_os == "windows" { "" } else { "lib" };
-        
-        let is_gguf = format_type.as_deref().unwrap_or("").eq_ignore_ascii_case("GGUF");
+impl EmbeddingDispatcher {
+    pub fn new(_format_type: Option<String>) -> Result<Self> {
+        Ok(Self {
+            cached_engine: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+        })
+    }
+
+    pub fn dispatch_embedding_with_model(&self, text: &str, model_path: &std::path::Path) -> Result<Vec<f32>> {
+        let mut engine_lock = self.cached_engine.blocking_lock();
+
+        let is_gguf = model_path.extension().map(|e| e.to_string_lossy().eq_ignore_ascii_case("gguf")).unwrap_or(false);
         let core_name = if is_gguf { "cluaiz-llama" } else { "cluaiz-onnx" };
-        
-        let binary_name = format!("{}{}.{}", prefix, core_name, ext);
-        
-        // Use persistence or fallback to target/debug
-        let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
-            .join(&binary_name);
-            
-        // 🛡️ Strict FFI Validation Boundary
-        let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
-            .join(format!("{}.ready", core_name));
-            
-        if !binary_path.exists() || !marker_path.exists() {
-            return Err(anyhow::anyhow!("FFI Validation Failed: Kernel binary or manifest missing at {:?}", binary_path));
+
+        let mut need_load = true;
+        if let Some((ref cached_path, ref safe_ptr, ref _lib)) = *engine_lock {
+            if cached_path == model_path && !safe_ptr.0.is_null() {
+                need_load = false;
+            }
         }
 
-        unsafe {
-            #[cfg(windows)]
-            let lib: libloading::Library = {
-                // LOAD_WITH_ALTERED_SEARCH_PATH (0x00000008) forces Windows to search for dependent DLLs
-                // (like onnxruntime_providers_cuda.dll) in the same directory as the kernel DLL being loaded.
-                // GAP A FIX: Inject engine/drivers/ into PATH so it can find onnxruntime.dll
-                let drivers_dir = cluaiz_shared::HardwareGovernor::resolve_interface_path().join("drivers");
-                if let Ok(path) = std::env::var("PATH") {
-                    std::env::set_var("PATH", format!("{};{}", drivers_dir.display(), path));
+        if need_load {
+            // Free old engine pointer if one was previously loaded
+            if let Some((_, ref safe_ptr, ref lib)) = *engine_lock {
+                if !safe_ptr.0.is_null() {
+                    unsafe {
+                        if let Ok(free_fn) = lib.get::<libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>>(b"cluaiz_kernel_free") {
+                            free_fn(safe_ptr.0);
+                        }
+                    }
                 }
-                
-                let flags = 0x00000008; 
-                let win_lib = libloading::os::windows::Library::load_with_flags(&binary_path, flags)
-                    .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
-                win_lib.into()
-            };
-
-            #[cfg(not(windows))]
-            let lib = libloading::Library::new(&binary_path)
-                .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
-
-            
-            let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaiz_kernel_init")
-                .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_init' missing"))?;
-            init();
-
-            let instantiate_fn: libloading::Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void> = 
-                lib.get(b"cluaiz_kernel_instantiate")
-                .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_instantiate' missing"))?;
-            
-            let c_path = std::ffi::CString::new("default")?;
-            let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
-            
-            if engine_ptr.is_null() {
-                return Err(anyhow::anyhow!("Kernel Instantiation Failed"));
             }
 
-            tracing::info!("✅ [Dispatcher] {} Kernel Dynamically Linked for Embeddings.", core_name);
-            Ok(Self {
-                active_lib: std::sync::Arc::new(lib),
-                engine_ptr,
-            })
+            let target_os = std::env::consts::OS;
+            let ext = match target_os {
+                "windows" => "dll",
+                "macos" => "dylib",
+                _ => "so",
+            };
+            let prefix = if target_os == "windows" { "" } else { "lib" };
+            let binary_name = format!("{}{}.{}", prefix, core_name, ext);
+
+            let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+                .join(&binary_name);
+            let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+                .join(format!("{}.ready", core_name));
+
+            if !binary_path.exists() || !marker_path.exists() {
+                return Err(anyhow::anyhow!("FFI Validation Failed: Kernel binary or manifest missing at {:?}", binary_path));
+            }
+
+            unsafe {
+                #[cfg(windows)]
+                let lib: libloading::Library = {
+                    let drivers_dir = cluaiz_shared::HardwareGovernor::resolve_interface_path().join("drivers");
+                    if let Ok(path) = std::env::var("PATH") {
+                        std::env::set_var("PATH", format!("{};{}", drivers_dir.display(), path));
+                    }
+                    let flags = 0x00000008;
+                    let win_lib = libloading::os::windows::Library::load_with_flags(&binary_path, flags)
+                        .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
+                    win_lib.into()
+                };
+
+                #[cfg(not(windows))]
+                let lib = libloading::Library::new(&binary_path)
+                    .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
+
+                let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaiz_kernel_init")
+                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_init' missing"))?;
+                init();
+
+                let instantiate_fn: libloading::Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void> = 
+                    lib.get(b"cluaiz_kernel_instantiate")
+                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_instantiate' missing"))?;
+
+                let c_path = std::ffi::CString::new(model_path.to_string_lossy().as_ref())?;
+                let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
+
+                if engine_ptr.is_null() {
+                    return Err(anyhow::anyhow!("Kernel Instantiation Failed for model {:?}", model_path));
+                }
+
+                tracing::info!("✅ [Dispatcher] {} Kernel Dynamically Linked for Model: {:?}", core_name, model_path);
+                let lib_arc = std::sync::Arc::new(lib);
+                *engine_lock = Some((model_path.to_path_buf(), SafeEnginePtr(engine_ptr), lib_arc));
+            }
         }
-    }
 
-    pub fn dispatch_embedding(&self, text: &str) -> Result<Vec<f32>> {
-        use neural_core::interfaces::router_contract::EmbeddingDriver;
-        tracing::info!("🚥 [Dispatcher] Routing embedding request dynamically to ONNX FFI...");
-        self.gen_embedding(text).map_err(|e| anyhow::anyhow!("Embedding Error: {:?}", e))
-    }
+        let (_path, safe_ptr, lib) = engine_lock.as_ref().unwrap();
+        let engine_ptr = safe_ptr.0;
 
-    pub fn dispatch_multimodal(&self, bytes: &[u8], modality: neural_core::interfaces::router_contract::Modality, instruction: Option<String>) -> Result<Vec<f32>> {
-        use neural_core::interfaces::router_contract::EmbeddingDriver;
-        self.gen_multimodal_embedding(bytes, modality, instruction).map_err(|e| anyhow::anyhow!("Multimodal Error: {:?}", e))
-    }
-}
-
-impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDispatcher {
-    fn gen_embedding(&self, text: &str) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
         unsafe {
             let gen_emb_fn: libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, *mut f32, usize, *mut usize) -> i32> = 
-                match self.active_lib.get(b"cluaiz_kernel_generate_embedding") {
-                    Ok(f) => f,
-                    Err(_) => return Err(neural_core::interfaces::router_contract::EngineError::EmbeddingFailed("Symbol missing".to_string()))
-                };
-            
-            let c_prompt = std::ffi::CString::new(text).map_err(|_| neural_core::interfaces::router_contract::EngineError::EmbeddingFailed("CString conversion failed".to_string()))?;
+                lib.get(b"cluaiz_kernel_generate_embedding")
+                    .map_err(|e| anyhow::anyhow!("Symbol 'cluaiz_kernel_generate_embedding' missing: {:?}", e))?;
+
+            let c_prompt = std::ffi::CString::new(text)
+                .map_err(|_| anyhow::anyhow!("CString conversion failed"))?;
             let max_dims = 8192;
             let mut out_buffer = vec![0.0f32; max_dims];
             let mut out_len: usize = 0;
 
             let status = gen_emb_fn(
-                self.engine_ptr, 
+                engine_ptr, 
                 c_prompt.as_ptr() as *const std::os::raw::c_char, 
                 out_buffer.as_mut_ptr(),
                 max_dims,
                 &mut out_len as *mut usize
             );
-            
+
             if status != 0 {
-                return Err(neural_core::interfaces::router_contract::EngineError::EmbeddingFailed(format!("Code: {}", status)));
+                return Err(anyhow::anyhow!("Embedding generation error code: {}", status));
             }
-            
+
             out_buffer.truncate(out_len);
             Ok(out_buffer)
         }
+    }
+
+    pub fn dispatch_embedding(&self, text: &str) -> Result<Vec<f32>> {
+        let engine_lock = self.cached_engine.blocking_lock();
+        if let Some((ref path, _, _)) = *engine_lock {
+            let path_clone = path.clone();
+            drop(engine_lock);
+            self.dispatch_embedding_with_model(text, &path_clone)
+        } else {
+            Err(anyhow::anyhow!("No active embedding model loaded. Please specify a model path in the request."))
+        }
+    }
+
+    pub fn dispatch_multimodal(&self, _bytes: &[u8], _modality: neural_core::interfaces::router_contract::Modality, _instruction: Option<String>) -> Result<Vec<f32>> {
+        Err(anyhow::anyhow!("Multimodal embedding FFI not implemented yet"))
+    }
+}
+
+impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDispatcher {
+    fn gen_embedding(&self, text: &str) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
+        self.dispatch_embedding(text)
+            .map_err(|e| neural_core::interfaces::router_contract::EngineError::EmbeddingFailed(e.to_string()))
     }
 
     fn gen_multimodal_embedding(&self, _bytes: &[u8], _modality: neural_core::interfaces::router_contract::Modality, _instruction: Option<String>) -> Result<Vec<f32>, neural_core::interfaces::router_contract::EngineError> {
@@ -536,10 +559,13 @@ impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDisp
 
 impl Drop for EmbeddingDispatcher {
     fn drop(&mut self) {
-        if !self.engine_ptr.is_null() {
-            unsafe {
-                if let Ok(free_fn) = self.active_lib.get::<unsafe extern "C" fn(*mut std::ffi::c_void)>(b"cluaiz_kernel_free") {
-                    free_fn(self.engine_ptr);
+        let mut lock = self.cached_engine.blocking_lock();
+        if let Some((_, safe_ptr, lib)) = lock.take() {
+            if !safe_ptr.0.is_null() {
+                unsafe {
+                    if let Ok(free_fn) = lib.get::<libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>>(b"cluaiz_kernel_free") {
+                        free_fn(safe_ptr.0);
+                    }
                 }
             }
         }

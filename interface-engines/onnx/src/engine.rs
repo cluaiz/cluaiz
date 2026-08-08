@@ -76,14 +76,34 @@ impl OnnxEngine {
 
     pub fn build_session(&self, path: &std::path::Path) -> Result<Session> {
         let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
-        let use_gpu = onnx_meta.n_gpu_layers != 0;
+        
+        let model_size_gb = std::fs::metadata(path)
+            .map(|m| (m.len() as f64) / (1024.0 * 1024.0 * 1024.0))
+            .unwrap_or(0.5);
+
+        let req = cluaiz_shared::hardware::ResourceRequest {
+            engine_type: cluaiz_shared::hardware::EngineType::ONNX,
+            inference_mode: cluaiz_shared::hardware::InferenceMode::Embedding,
+            model_size_gb,
+            model_path: path.to_path_buf(),
+        };
+
+        let grant = cluaiz_shared::hardware::negotiate_resource(&req).ok();
+        let use_gpu = grant
+            .as_ref()
+            .map(|g| g.tier != cluaiz_shared::hardware::PlacementTier::CpuOnly)
+            .unwrap_or(onnx_meta.n_gpu_layers != 0);
 
         let mut builder = Session::builder()?;
         let cpu_ep = ort::ep::CPU::default().with_arena_allocator(onnx_meta.enable_cpu_mem_arena).build();
         if use_gpu {
             let mut cuda_ep = ort::ep::CUDA::default();
-            if onnx_meta.gpu_mem_limit_bytes > 0 {
-                cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
+            let mem_limit = grant.as_ref()
+                .map(|g| (g.vram_budget_gb * 1024.0 * 1024.0 * 1024.0) as usize)
+                .filter(|&l| l > 0)
+                .unwrap_or(onnx_meta.gpu_mem_limit_bytes);
+            if mem_limit > 0 {
+                cuda_ep = cuda_ep.with_memory_limit(mem_limit);
             }
             let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
                 "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,

@@ -134,6 +134,10 @@ extern "C" {
     /// ⚡ Execute a decode pass.
     pub fn llama_decode(ctx: *mut std::ffi::c_void, batch: LlamaBatch) -> i32;
 
+    /// 📐 Extract Embeddings
+    pub fn llama_get_embeddings(ctx: *mut std::ffi::c_void) -> *mut c_float;
+    pub fn llama_model_n_embd(model: *const std::ffi::c_void) -> i32;
+
     /// 📊 Get Logits
     pub fn llama_get_logits_ith(ctx: *mut std::ffi::c_void, i: i32) -> *mut c_float;
 

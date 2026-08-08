@@ -22,7 +22,7 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
 #[no_mangle]
 pub extern "C" fn cluaiz_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
-    _booster_ptr: *const cluaiz_shared::hardware::schema::booster::cluaizBoosterContext,
+    _booster_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
 ) -> *mut OnnxEngine {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let path_str = unsafe { std::ffi::CStr::from_ptr(path_ptr) }

@@ -4,7 +4,7 @@ use cluaiz_shared::backend::signature::{BackendType, KernelSignature};
 use cluaiz_shared::backend::context::cluaizContext;
 use cluaiz_shared::backend::traits::ModelWeightsWrapper;
 use std::sync::Arc;
-use crate::config::BoosterConfig;
+use crate::config::OptimizationConfig;
 
 pub struct RuntimeBLoader;
 

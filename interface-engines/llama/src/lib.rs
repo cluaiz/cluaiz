@@ -20,7 +20,7 @@ pub mod pipeline;
 pub mod router;
 pub mod sampling;
 
-use crate::config::BoosterConfig;
+use crate::config::OptimizationConfig;
 use crate::native::NativeLlama;
 
 // ─── FFI Helpers ───────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ mod tests {
 pub struct RuntimeB {
     pub model_path: String,
     pub context: cluaizContext,
-    pub booster: BoosterConfig,
+    pub optimization: OptimizationConfig,
     pub native: Option<NativeLlama>,
     pub lucebox: Option<Arc<ffi::lucebox::LuceboxBridge>>,
     pub last_prefilled_tokens: Vec<i32>,
@@ -127,16 +127,16 @@ impl RuntimeB {
         Self {
             model_path: path.to_string(),
             context,
-            booster: BoosterConfig::default(),
+            optimization: OptimizationConfig::default(),
             native: None,
             lucebox: None,
             last_prefilled_tokens: Vec::new(),
         }
     }
 
-    /// 🧬 Load the model natively into memory using current booster settings.
+    /// 🧬 Load the model natively into memory using current optimization settings.
     pub fn load_native(&mut self) -> anyhow::Result<()> {
-        let mut model_params = self.booster.to_model_params();
+        let mut model_params = self.optimization.to_model_params();
 
         // 🧠 PROBE GGUF METADATA & ARCHITECTURE TRUTH
         let mut has_native_mtp = false;
@@ -217,10 +217,10 @@ impl RuntimeB {
         }
 
         // 🧬 DNA TRUTH SYNC: Ensure DNA context is applied to context params
-        let mut ctx_params = self.booster.to_context_params();
+        let mut ctx_params = self.optimization.to_context_params();
 
         if let Some(ctx) = self.context.dna.max_context_length {
-            if self.booster.n_ctx == 0 {
+            if self.optimization.n_ctx == 0 {
                 ctx_params.n_ctx = std::cmp::min(ctx as u32, 8192);
             } else {
                 ctx_params.n_ctx = ctx as u32;
@@ -233,10 +233,10 @@ impl RuntimeB {
             // Speculative decoding is incompatible with non-transformer architectures.
             cluaiz_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
             cluaiz_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
-            self.booster.speculative_decoding = "off".to_string();
+            self.optimization.speculative_decoding = "off".to_string();
         }
 
-        let speculative_mode = if self.booster.speculative_decoding.to_lowercase() != "off" {
+        let speculative_mode = if self.optimization.speculative_decoding.to_lowercase() != "off" {
             if has_native_mtp {
                 "native_mtp"
             } else {
@@ -246,9 +246,9 @@ impl RuntimeB {
             "off"
         };
         cluaiz_shared::dev_info!(
-            "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (booster: {})",
+            "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (optimization: {})",
             speculative_mode,
-            self.booster.speculative_decoding
+            self.optimization.speculative_decoding
         );
         self.context
             .dna
@@ -261,7 +261,7 @@ impl RuntimeB {
             ctx_params.n_ctx
         );
 
-        // 🚀 BATCH SYNC: Optimized for 4GB hardware by default, scalable via BoosterConfig.
+        // 🚀 BATCH SYNC: Optimized for 4GB hardware by default, scalable via OptimizationConfig.
         // If running in CPU-only mode (n_gpu_layers == 0), force batch size to 32 to prevent GGML graph allocation limits on large contexts.
         if model_params.n_gpu_layers == 0 {
             ctx_params.n_batch = 32;
@@ -284,12 +284,12 @@ impl RuntimeB {
             model_params,
             ctx_params,
             &mut self.context.dna,
-            match self.booster.kv_cache_quantization.to_lowercase().as_str() {
+            match self.optimization.kv_cache_quantization.to_lowercase().as_str() {
                 "kv8" => 1,
                 "kv4" => 2,
                 _ => 0,
             },
-            match self.booster.context_shifting.to_lowercase().as_str() {
+            match self.optimization.context_shifting.to_lowercase().as_str() {
                 "off" => 0,
                 "minimal" => 1,
                 "standard" | "auto" | "on" => 2,
@@ -297,7 +297,7 @@ impl RuntimeB {
                 "extreme" => 4,
                 _ => 2,
             },
-            match self.booster.speculative_decoding.to_lowercase().as_str() {
+            match self.optimization.speculative_decoding.to_lowercase().as_str() {
                 "off" => 0,
                 "on" => 1,
                 _ => 2,
@@ -479,26 +479,26 @@ impl cluaizInference for RuntimeB {
     /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
     fn apply_booster(
         &mut self,
-        control: &cluaiz_shared::hardware::schema::booster::BoosterControl,
+        control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl,
     ) -> Result<()> {
-        tracing::info!("🚀 [Llama-Engine] Applying Booster: Autonomous Performance Sync");
+        tracing::info!("🚀 [Llama-Engine] Applying Optimization: Autonomous Performance Sync");
 
-        // 🔄 Sync local booster state from system
-        self.booster = crate::config::BoosterConfig::load_from_system();
+        // 🔄 Sync local optimization state from system
+        self.optimization = crate::config::OptimizationConfig::load_from_system();
 
         // 🌊 Trigger Elastic Resize (VRAM Sovereignty)
         if let Some(native) = &mut self.native {
-            let mut ctx_params = self.booster.to_context_params();
+            let mut ctx_params = self.optimization.to_context_params();
 
             // Recalculate context window through Governor using the injected control truth
             let new_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_booster(&self.context.dna, control);
             ctx_params.n_ctx = new_ctx as u32;
 
             // Sync settings dynamically
-            let booster_ctx =
-                cluaiz_shared::hardware::schema::booster::cluaizBoosterContext::from(control);
-            native.kv_cache_quantization_mode = booster_ctx.kv_cache_quantization_mode;
-            native.context_shifting_mode = booster_ctx.context_shifting_mode;
+            let optimization_ctx =
+                cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext::from(control);
+            native.kv_cache_quantization_mode = optimization_ctx.kv_cache_quantization_mode;
+            native.context_shifting_mode = optimization_ctx.context_shifting_mode;
 
             native.resize_context(ctx_params)?;
             tracing::info!(
