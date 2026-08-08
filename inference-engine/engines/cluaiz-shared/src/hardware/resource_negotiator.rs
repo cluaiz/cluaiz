@@ -6,9 +6,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use crate::hardware::schema::optimization::{OptimizationControl, FeatureState};
 use crate::hardware::governor::HardwareGovernor;
+
+/// Global thread-safe Mutex lock to serialize CUDA and VRAM resource negotiation across parallel requests.
+pub static GLOBAL_HARDWARE_LOCK: Mutex<()> = Mutex::new(());
 
 // ─── Core Types ──────────────────────────────────────────────────────────────
 
@@ -135,6 +139,8 @@ pub fn calculate_ram_safety_buffer(booster: &OptimizationControl, total_ram_gb: 
 ///
 /// Returns a `ResourceGrant` with tier, GPU layers, and memory budgets.
 pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceGrant> {
+    let _lock = GLOBAL_HARDWARE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
     // ─── Step 1: Read Silicon Truth ───
     let control = HardwareGovernor::load_system_control()
         .unwrap_or_default();

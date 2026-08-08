@@ -1,0 +1,15 @@
+{
+  "turbo_quant": "On",
+  "flash_attention": "On",
+  "speculative_decoding": "Off",
+  "auto_round": "Auto",
+  "dflash": "Auto",
+  "kv_cache_quantization": "Auto",
+  "context_shifting": "Auto",
+  "force_vram_reclaim": "Off",
+  "enforce_json": false,
+  "force_memory_lock": "Off",
+  "custom_vram_buffer_gb": 0.8,
+  "custom_ram_buffer_gb": 5.0,
+  "extreme_moe_streaming": "Auto"
+}

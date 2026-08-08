@@ -218,6 +218,7 @@ impl OptimizationConfig {
         OptimizationControl {
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
+            extreme_moe_streaming: FeatureState::Auto,
             turbo_quant: if self.turbo_quant == "On" {
                 FeatureState::On
             } else if self.turbo_quant == "Off" {

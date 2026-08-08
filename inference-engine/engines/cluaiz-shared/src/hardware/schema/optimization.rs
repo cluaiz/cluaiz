@@ -167,6 +167,9 @@ pub struct OptimizationControl {
     /// Direct GB safety buffer override for CPU RAM. None = dynamic auto mode.
     #[serde(default)]
     pub custom_ram_buffer_gb: Option<f64>,
+    /// MoE Zero-RAM SSD Streaming mode ("Auto", "On", "Off").
+    #[serde(default)]
+    pub extreme_moe_streaming: FeatureState,
 }
 
 /// Type alias for backward compatibility during refactoring
@@ -222,6 +225,7 @@ impl Default for OptimizationControl {
             force_memory_lock: FeatureState::Off,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
+            extreme_moe_streaming: FeatureState::Auto,
         }
     }
 }

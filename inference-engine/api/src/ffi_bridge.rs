@@ -506,6 +506,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
                                     custom_vram_buffer_gb: None,
                                     custom_ram_buffer_gb: None,
+                                    extreme_moe_streaming: FeatureState::Auto,
                                 };
 
                                 let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_optimization);
