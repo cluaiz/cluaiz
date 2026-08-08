@@ -9,12 +9,15 @@ pub mod system_performance;
 pub mod governor;
 pub mod speed_checker;
 pub mod circuit_breaker;
+pub mod resource_negotiator;
+pub mod ssd_streaming;
 
 // ── Re-exports for clean API ──
 pub use system_control::HardwareOrchestrator;
 pub use system_performance::pulse_schema::LivePulse;
 pub use system_performance::get_pulse;
 pub use governor::HardwareGovernor;
+pub use resource_negotiator::{negotiate_resource, ResourceRequest, ResourceGrant, PlacementTier, EngineType, InferenceMode};
 
 /// 📡 Helper: Quick access to the Sovereign Silicon Truth.
 pub fn get_silicon_state() -> schema::profiles::SiliconTruth {

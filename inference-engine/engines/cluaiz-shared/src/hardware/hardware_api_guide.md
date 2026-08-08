@@ -52,3 +52,5 @@ Asali user kabhi command line se tests nahi chalayega. Humara final implementati
 
 1. **`cluaiz hardware`** -> CLI `system_control.rs` ko call karegi aur hardware ki poori kundli screen par print kar degi.
 2. **`cluaiz monitor`** -> CLI `system_performance_live.rs` ko call karegi aur ek **Live Hacker-Style TUI** (Progress bars, changing colors) khol degi jo seedha Atomic memory se data padhega.
+
+

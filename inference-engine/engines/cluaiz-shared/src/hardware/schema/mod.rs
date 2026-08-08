@@ -2,8 +2,8 @@ pub mod profiles;
 pub mod metrics;
 pub mod gguf_metadata;
 pub mod onnx_metadata;
-pub mod booster;
+pub mod optimization;
 
 pub use profiles::*;
 pub use metrics::*;
-pub use booster::*;
+pub use optimization::*;

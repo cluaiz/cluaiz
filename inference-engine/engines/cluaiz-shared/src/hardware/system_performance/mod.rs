@@ -162,7 +162,7 @@ impl SystemPerformanceLive {
         }
     }
 
-    pub fn apply_booster_profile(&self, _control: &super::schema::booster::BoosterControl) -> Result<()> {
+    pub fn apply_booster_profile(&self, _control: &super::schema::optimization::OptimizationControl) -> Result<()> {
         tracing::info!("🚀 [Kernel] Applying Autonomous Silicon Booster Profile: Maximum Performance");
 
         for drv in &self.gpu_drivers {

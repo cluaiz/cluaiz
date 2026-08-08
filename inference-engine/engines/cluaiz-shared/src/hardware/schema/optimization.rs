@@ -1,4 +1,4 @@
-//! 📦 Tier 7: Schema - Booster Control
+//! 📦 Tier 7: Schema - Optimization Control
 //! Centralized Tri-State configuration for all system optimizations.
 
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
@@ -132,26 +132,23 @@ pub enum ContextShiftingMode {
 #[archive(check_bytes)]
 pub enum BoosterMode {
     #[serde(rename = "edge")]
-    Edge, // 📱 Mobile/NPU/Pi (Extreme pruning)
+    Edge,
     #[default]
     #[serde(rename = "multitasking")]
-    Multitasking, // 💻 Standard Laptop (Respects OS/Apps)
+    Multitasking,
     #[serde(rename = "balance")]
-    Balance, // ⚖️ Standard Performance
+    Balance,
     #[serde(rename = "max_boost")]
-    MaxBoost, // 🚀 AI Priority (Workstation)
+    MaxBoost,
     #[serde(rename = "ultra_max_boost")]
-    UltraMaxBoost, // 🔥 Reclaims everything (Formerly Landlord)
+    UltraMaxBoost,
     #[serde(rename = "hyper_cluster")]
-    HyperCluster, // 🌌 Server/H100 Cluster (Zero-margin orchestration)
+    HyperCluster,
 }
-
-// Removed AiResponseFormat
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
-pub struct BoosterControl {
-    pub mode_run: BoosterMode,
+pub struct OptimizationControl {
     pub turbo_quant: FeatureState,
     pub flash_attention: FeatureState,
     pub speculative_decoding: FeatureState,
@@ -159,27 +156,33 @@ pub struct BoosterControl {
     pub dflash: SmartState<DFlashConfig>,
     pub kv_cache_quantization: KvCacheQuantization,
     pub context_shifting: ContextShiftingMode,
-    pub force_vram_reclaim: FeatureState, // 🏠 'Landlord' Mode Flag
+    pub force_vram_reclaim: FeatureState,
     #[serde(default)]
-    pub enforce_json: bool, // Strict Grammar Masking trigger
+    pub enforce_json: bool,
     #[serde(default)]
-    pub force_memory_lock: FeatureState, // OS VirtualLock / mlock
+    pub force_memory_lock: FeatureState,
+    /// Direct GB safety buffer override for VRAM. None = dynamic auto mode.
+    #[serde(default)]
+    pub custom_vram_buffer_gb: Option<f64>,
+    /// Direct GB safety buffer override for CPU RAM. None = dynamic auto mode.
+    #[serde(default)]
+    pub custom_ram_buffer_gb: Option<f64>,
 }
 
-impl BoosterControl {
+/// Type alias for backward compatibility during refactoring
+pub type BoosterControl = OptimizationControl;
+
+impl OptimizationControl {
     /// 🧠 The Conflict Resolution Manager
     pub fn resolve_conflicts(
         &mut self,
         silicon: &crate::hardware::schema::profiles::SiliconTruth,
         signature: &crate::backend::signature::KernelSignature,
     ) {
-        // 1. BitNet/SSM Constraints
         if signature.is_bitnet || signature.is_ssm {
-            // BitNet doesn't need DFlash/Speculative usually
             self.speculative_decoding = FeatureState::Off;
         }
 
-        // 2. VRAM Dependency
         let vram_available = silicon
             .accelerators
             .gpus
@@ -189,17 +192,13 @@ impl BoosterControl {
 
         if self.speculative_decoding == FeatureState::On {
             if vram_available < 12.0 {
-                // Force TurboQuant ON to fit draft model
                 self.turbo_quant = FeatureState::On;
                 println!("⚖️ [ConflictManager] Low VRAM ({:.1}GB) detected. Forcing TurboQuant = ON for Speculative Decoding.", vram_available);
             }
-            // Flash Attention synergy
             if self.flash_attention == FeatureState::Auto {
                 self.flash_attention = FeatureState::On;
             }
         }
-
-        // 3. Universal Memory Lock Trigger
 
         if vram_available <= 6.0 && self.force_memory_lock == FeatureState::Auto {
             self.force_memory_lock = FeatureState::On;
@@ -208,10 +207,9 @@ impl BoosterControl {
     }
 }
 
-impl Default for BoosterControl {
+impl Default for OptimizationControl {
     fn default() -> Self {
         Self {
-            mode_run: BoosterMode::Balance,
             turbo_quant: FeatureState::Auto,
             flash_attention: FeatureState::Auto,
             speculative_decoding: FeatureState::Off,
@@ -222,17 +220,18 @@ impl Default for BoosterControl {
             force_vram_reclaim: FeatureState::Off,
             enforce_json: false,
             force_memory_lock: FeatureState::Off,
+            custom_vram_buffer_gb: None,
+            custom_ram_buffer_gb: None,
         }
     }
 }
 
-/// 🚀 FFI-Compatible C-Struct for injecting Booster configurations into C++ Kernels (llama.cpp)
+/// 🚀 FFI-Compatible C-Struct for injecting Optimization configurations into C++ Kernels (llama.cpp)
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct cluaizBoosterContext {
+pub struct cluaizOptimizationContext {
     pub turbo_quant: bool,
     pub flash_attention: bool,
-    // Provide integer-based flags for C++ FFI compatibility
     pub speculative_decoding_mode: u8,  // 0 = Off, 1 = On, 2 = Auto
     pub kv_cache_quantization_mode: u8, // 0 = Auto/Kv16, 1 = Kv8, 2 = Kv4
     pub context_shifting_mode: u8,      // 0 = Off, 1 = Small, 2 = Balanced, 3 = Boost, 4 = Ultra
@@ -241,8 +240,10 @@ pub struct cluaizBoosterContext {
     pub max_context_length: u32,
 }
 
-impl From<&BoosterControl> for cluaizBoosterContext {
-    fn from(config: &BoosterControl) -> Self {
+pub type cluaizBoosterContext = cluaizOptimizationContext;
+
+impl From<&OptimizationControl> for cluaizOptimizationContext {
+    fn from(config: &OptimizationControl) -> Self {
         let kv_mode = match config.kv_cache_quantization {
             KvCacheQuantization::Auto | KvCacheQuantization::Kv16 => 0,
             KvCacheQuantization::Kv8 => 1,
@@ -269,12 +270,12 @@ impl From<&BoosterControl> for cluaizBoosterContext {
             speculative_decoding_mode: spec_mode,
             kv_cache_quantization_mode: kv_mode,
             context_shifting_mode: shift_mode,
-            n_gpu_layers: -1, // Sourced from GGUF metadata headers instead
+            n_gpu_layers: -1,
             force_memory_lock: config.force_memory_lock == FeatureState::On,
             max_context_length: 0,
         }
     }
 }
 
-// Generate the fast zero-copy load/save functions using the macro!
-crate::define_config!(BoosterControl, "llm_optimization");
+// Generate fast load/save functions
+crate::define_config!(OptimizationControl, "llm_optimization");

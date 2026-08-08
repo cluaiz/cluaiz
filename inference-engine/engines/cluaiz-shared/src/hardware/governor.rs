@@ -1,4 +1,4 @@
-use crate::hardware::schema::booster::BoosterControl;
+use crate::hardware::schema::optimization::OptimizationControl;
 use crate::hardware::schema::profiles::SystemControl;
 use crate::hardware::system_control::HardwareOrchestrator;
 use once_cell::sync::Lazy;
@@ -117,22 +117,14 @@ impl HardwareGovernor {
             }
         }
 
-        // 🛡️ Sovereign Limit: In Max Boost, we allow 98% utilization.
         let booster = Self::load_booster_settings().unwrap_or_default();
-        let safety_margin = match booster.mode_run {
-            crate::hardware::schema::booster::BoosterMode::UltraMaxBoost
-            | crate::hardware::schema::booster::BoosterMode::HyperCluster => 0.025, // 2.5% Margin for extreme modes (102MB on 4GB)
-            crate::hardware::schema::booster::BoosterMode::MaxBoost => 0.05, // 5% Margin
-            crate::hardware::schema::booster::BoosterMode::Balance => 0.07,  // 7% Margin
-            _ => 0.12,                                                       // 12% for multitasking
-        };
-
-        let available = arbiter.total_vram_gb * (1.0 - safety_margin) - arbiter.allocated_vram_gb;
+        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(&booster, arbiter.total_vram_gb);
+        let available = arbiter.total_vram_gb - safety_buffer_gb - arbiter.allocated_vram_gb;
 
         if required_gb > available {
             crate::dev_info!(
-                "❌ [VRAM Arbiter] Out of Memory! Requested: {:.2}GB, Available: {:.2}GB (Limit: {:.0}% Utilization)",
-                required_gb, available, (1.0 - safety_margin) * 100.0
+                "❌ [VRAM Arbiter] Out of Memory! Requested: {:.2}GB, Available: {:.2}GB (Safety Buffer: {:.2}GB)",
+                required_gb, available, safety_buffer_gb
             );
             return Err(anyhow::anyhow!(
                 "❌ [VRAM Arbiter] Out of Memory! Requested: {:.2}GB, Available: {:.2}GB",
@@ -170,7 +162,7 @@ impl HardwareGovernor {
 
     pub fn negotiate_vram_envelope_with_booster(
         dna: &crate::metadata::dna::StructuralDNA,
-        booster: &crate::hardware::schema::booster::BoosterControl,
+        booster: &crate::hardware::schema::optimization::OptimizationControl,
     ) -> usize {
         let mut arbiter = ARBITER.lock().unwrap();
 
@@ -189,50 +181,10 @@ impl HardwareGovernor {
             let _ = Self::auto_calibrate();
         }
 
-        // 🌊 ADAPTIVE MARGIN LOGIC: No more static percentages.
-        // We scale the margin based on total VRAM to prevent waste on H100s and starvation on 2GB cards.
+        // 🌊 ADAPTIVE MARGIN LOGIC: Delegated to unified resource_negotiator
         let total_gb = arbiter.total_vram_gb;
-        let mut margin = match booster.mode_run {
-            crate::hardware::schema::booster::BoosterMode::Edge => 0.05f64.min(0.2 / total_gb), // 📱 Max 5% or 200MB
-            crate::hardware::schema::booster::BoosterMode::Multitasking => {
-                0.30f64.min(1.5 / total_gb)
-            } // 💻 Max 30% or 1.5GB
-            crate::hardware::schema::booster::BoosterMode::Balance => 0.15f64.min(2.0 / total_gb), // ⚖️ Max 15% or 2GB
-            crate::hardware::schema::booster::BoosterMode::MaxBoost => 0.10f64.max(0.6 / total_gb), // 🚀 Safe Aggressive: 600MB Margin (Zero Spill)
-            crate::hardware::schema::booster::BoosterMode::UltraMaxBoost => {
-                0.01f64.max(0.25 / total_gb)
-            } // 🔥 Absolute Limit: 250MB Margin (Maximum Context, Risk of Spill)
-            crate::hardware::schema::booster::BoosterMode::HyperCluster => {
-                if total_gb < 40.0 {
-                    println!("⚠️ [Arbiter] VRAM GUARD: HyperCluster rejected (<40GB). Falling back to UltraMaxBoost.");
-                    0.01f64.max(0.25 / total_gb) // Fallback to UltraMaxBoost safety
-                } else {
-                    0.15 // 🌌 Server (True Zero-ish)
-                }
-            }
-        };
-
-        // 🛡️ FLOOR SAFETY: Ensure OS always has breathing room.
-        let floor_gb = if matches!(
-            booster.mode_run,
-            crate::hardware::schema::booster::BoosterMode::UltraMaxBoost
-                | crate::hardware::schema::booster::BoosterMode::HyperCluster
-        ) {
-            0.25 // 250MB Absolute Minimum
-        } else {
-            0.60 // 600MB Standard Safety Floor
-        };
-
-        // Apply floor unless we are on massive server hardware (>24GB)
-        if total_gb < 24.0 {
-            margin = margin.max(floor_gb / total_gb);
-        }
-
-        // 🔥 'UltraMax' Override: Extreme utilization but still respects our new floor
-        if booster.force_vram_reclaim == crate::hardware::schema::booster::FeatureState::On {
-            let tight_margin = 0.005f64; // 0.5%
-            margin = tight_margin.max(floor_gb / total_gb);
-        }
+        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(booster, total_gb);
+        let margin = if total_gb > 0.0 { (safety_buffer_gb / total_gb).min(0.95) } else { 0.15 };
 
         // We use static theoretical math for context negotiation.
         // Using live_vram_probe() here squashes the context window on subsequent prompts
@@ -331,7 +283,7 @@ impl HardwareGovernor {
 
         // Expansion logic for high-power modes (Only if architecture allows)
         // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
-        let is_hybrid_requested = booster.force_vram_reclaim == crate::hardware::schema::booster::FeatureState::On;
+        let is_hybrid_requested = booster.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
         let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
 
         if is_hybrid_requested || model_exceeds_vram {
@@ -441,9 +393,9 @@ impl HardwareGovernor {
                 let mut booster = Self::load_booster_settings().unwrap_or_default();
                 if let Some(b) = value.as_bool() {
                     booster.turbo_quant = if b {
-                        crate::hardware::schema::booster::FeatureState::On
+                        crate::hardware::schema::optimization::FeatureState::On
                     } else {
-                        crate::hardware::schema::booster::FeatureState::Off
+                        crate::hardware::schema::optimization::FeatureState::Off
                     };
                     Self::save_booster_settings(&booster)?;
                 }
@@ -452,9 +404,9 @@ impl HardwareGovernor {
                 let mut booster = Self::load_booster_settings().unwrap_or_default();
                 if let Some(b) = value.as_bool() {
                     booster.flash_attention = if b {
-                        crate::hardware::schema::booster::FeatureState::On
+                        crate::hardware::schema::optimization::FeatureState::On
                     } else {
-                        crate::hardware::schema::booster::FeatureState::Off
+                        crate::hardware::schema::optimization::FeatureState::Off
                     };
                     Self::save_booster_settings(&booster)?;
                 }
@@ -615,11 +567,11 @@ impl HardwareGovernor {
 
     // ─── 🚀 BOOSTER CONTROL (USER SETTINGS) ───
 
-    pub fn load_booster_settings() -> anyhow::Result<BoosterControl> {
-        Ok(BoosterControl::load())
+    pub fn load_booster_settings() -> anyhow::Result<OptimizationControl> {
+        Ok(OptimizationControl::load())
     }
 
-    pub fn save_booster_settings(config: &BoosterControl) -> anyhow::Result<()> {
+    pub fn save_booster_settings(config: &OptimizationControl) -> anyhow::Result<()> {
         config.save()
     }
 

@@ -365,11 +365,10 @@ impl StructuralDNA {
         );
 
         // 🚀 DYNAMIC QUOTA: Mode-aware allocation (No more 75% static wall)
-        let gen_headroom = match booster.mode_run {
-            crate::hardware::schema::booster::BoosterMode::UltraMaxBoost
-            | crate::hardware::schema::booster::BoosterMode::HyperCluster => 0.95, // 95% for Extreme modes
-            crate::hardware::schema::booster::BoosterMode::MaxBoost => 0.90, // 90%
-            _ => 0.80,                                                       // 80% Standard
+        let gen_headroom = if booster.custom_vram_buffer_gb.is_some() {
+            0.95
+        } else {
+            0.90
         };
 
         let max_gen_tokens = (final_ctx as f64 * gen_headroom) as usize;
@@ -379,8 +378,8 @@ impl StructuralDNA {
             .insert("context_length".to_string(), final_ctx.to_string());
 
         info!(
-            "✅ [DNA] Governor Discovery Complete: Mode {:?} | Window {}k",
-            booster.mode_run,
+            "✅ [DNA] Governor Discovery Complete: Buffer {:?} | Window {}k",
+            booster.custom_vram_buffer_gb,
             final_ctx / 1024
         );
 
