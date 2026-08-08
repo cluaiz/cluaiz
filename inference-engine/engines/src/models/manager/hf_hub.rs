@@ -109,7 +109,7 @@ impl HuggingFaceHub {
             let path = &item.path;
             let lower = path.to_lowercase();
 
-            if lower.ends_with(".gguf") {
+            if lower.ends_with(".gguf") && !crate::models::fetch::asset_resolver::AssetResolver::is_helper_gguf(&lower) {
                 // Check if this is a sharded GGUF file (e.g. 00001-of-00033.gguf)
                 let is_shard = path.contains("-00001-of-") || path.contains("_00001-of-");
                 let shard_match = if is_shard {
@@ -153,10 +153,13 @@ impl HuggingFaceHub {
                         }
                     }
 
-                    // GGUF + ONNX Hybrid: Always attach frontend models and configs if present anywhere in the repo
+                    // GGUF + ONNX Hybrid & Helper GGUFs: Always attach frontend models, configs, and helper GGUFs (like MTP or mmproj) if present anywhere in the repo
                     for any_item in &items {
                         let path_lower = any_item.path.to_lowercase();
-                        if path_lower.contains("frontend-onnx/") || path_lower.contains("voices/") || path_lower.contains("voice_styles/") || path_lower.contains("espeak-ng-data/") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml") {
+                        let is_frontend_asset = path_lower.contains("frontend-onnx/") || path_lower.contains("voices/") || path_lower.contains("voice_styles/") || path_lower.contains("espeak-ng-data/") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml");
+                        let is_helper_gguf = path_lower.ends_with(".gguf") && crate::models::fetch::asset_resolver::AssetResolver::is_helper_gguf(&path_lower);
+                        
+                        if is_frontend_asset || is_helper_gguf {
                             if !bundle_files.contains(&any_item.path) {
                                 bundle_files.push(any_item.path.clone());
                             }

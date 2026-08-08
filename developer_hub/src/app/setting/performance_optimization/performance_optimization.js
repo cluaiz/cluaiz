@@ -84,6 +84,11 @@ const DESCRIPTIONS = {
         'On': 'Optimizes VRAM strictly for Mixture-of-Experts models.',
         'Off': 'Standard routing.'
     },
+    extremeMoeStreaming: {
+        'Auto': 'System automatically streams MoE experts from NVMe SSD if RAM is constrained.',
+        'On': 'Forces Zero-RAM MoE SSD streaming directly from NVMe disk.',
+        'Off': 'Disables SSD streaming and uses standard RAM allocation.'
+    },
     outputStyle: {
         'separated': 'The reasoning process is parsed  and cleanly separated from the final answer.',
         'raw': 'The raw thinking stream including <think> tags is provided directly.'
@@ -340,6 +345,7 @@ export async function mount(container) {
     // Assuming UI maps to 'Auto' 'On' 'Off' properly, we will just pass it to the backend.
     // Wait, DFlashConfig is SmartState<DFlashConfig>. The UI sets it as string 'Auto', 'On', 'Off'. 
     setupCustomDropdown('container-dflash', 'desc-dflash', DESCRIPTIONS.dflash, autoOnOff, 'dflash', 'Auto');
+    setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, autoOnOff, 'extreme_moe_streaming', 'Auto');
     setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
     setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers,
         makeOptions(['-1', '0', '32'], ['GPU (Auto/Full)', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
