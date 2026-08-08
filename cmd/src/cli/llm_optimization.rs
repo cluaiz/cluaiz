@@ -1,8 +1,8 @@
 use color_eyre::Result;
 use colored::Colorize;
 use cluaiz_shared::hardware::governor::HardwareGovernor;
-use cluaiz_shared::hardware::schema::booster::{
-    BoosterMode, KvCacheQuantization, ContextShiftingMode, FeatureState
+use cluaiz_shared::hardware::schema::optimization::{
+    KvCacheQuantization, ContextShiftingMode, FeatureState
 };
 
 pub async fn execute(
@@ -19,18 +19,16 @@ pub async fn execute(
 
     if has_args {
         if let Some(m) = mode {
-            control.mode_run = match m.to_lowercase().as_str() {
-                "edge" => BoosterMode::Edge,
-                "multitasking" => BoosterMode::Multitasking,
-                "balance" => BoosterMode::Balance,
-                "max_boost" => BoosterMode::MaxBoost,
-                "ultra_max_boost" => BoosterMode::UltraMaxBoost,
-                "hyper_cluster" => BoosterMode::HyperCluster,
-                _ => {
-                    println!("⚠️  Invalid mode '{}'. Keeping current value.", m);
-                    control.mode_run
-                }
-            };
+            let m_clean = m.trim().trim_end_matches("GB").trim_end_matches("gb").trim();
+            if m_clean.eq_ignore_ascii_case("auto") {
+                control.custom_vram_buffer_gb = None;
+                println!("  {} VRAM Safety Buffer set to Auto (% Mode).", "✅".green());
+            } else if let Ok(gb) = m_clean.parse::<f64>() {
+                control.custom_vram_buffer_gb = Some(gb);
+                println!("  {} VRAM Safety Buffer set to {:.2} GB.", "✅".green(), gb);
+            } else {
+                println!("⚠️  Invalid VRAM safety buffer '{}'. Expected 'auto' or a numeric GB value (e.g. 1.5).", m);
+            }
             modified = true;
         }
 
@@ -83,7 +81,10 @@ pub async fn execute(
         loop {
             let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
             println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
-            println!("    ├─ Mode:             {:?}", control.mode_run);
+            println!("    ├─ VRAM Safety Buffer: {}", match control.custom_vram_buffer_gb {
+                Some(gb) => format!("{:.2} GB (Direct GB)", gb),
+                None => "Auto (% Mode)".to_string(),
+            });
             println!("    ├─ KV Cache Quant:   {:?}", control.kv_cache_quantization);
             println!("    ├─ Context Shifting: {:?}", control.context_shifting);
             println!("    ├─ Spec. Decoding:   {:?}", control.speculative_decoding);
@@ -98,7 +99,7 @@ pub async fn execute(
             println!("    └─ N GPU Layers:     {}", gguf_meta.hardware_and_execution.n_gpu_layers);
 
             let options = vec![
-                "Mode (Execution Profile)",
+                "VRAM Safety Buffer (Auto / Custom GB)",
                 "KV Cache Quantization",
                 "Context Shifting",
                 "Speculative Decoding",
@@ -118,18 +119,23 @@ pub async fn execute(
             let choice = inquire::Select::new("\nSelect setting to modify:", options).with_help_message("").prompt()?;
 
             match choice {
-                "Mode (Execution Profile)" => {
-                    let modes = vec!["balance", "multitasking", "edge", "max_boost", "ultra_max_boost", "hyper_cluster"];
-                    if let Ok(m) = inquire::Select::new("Mode:", modes).with_help_message("").prompt() {
-                        control.mode_run = match m {
-                            "edge" => BoosterMode::Edge,
-                            "multitasking" => BoosterMode::Multitasking,
-                            "balance" => BoosterMode::Balance,
-                            "max_boost" => BoosterMode::MaxBoost,
-                            "ultra_max_boost" => BoosterMode::UltraMaxBoost,
-                            "hyper_cluster" => BoosterMode::HyperCluster,
-                            _ => control.mode_run,
-                        };
+                "VRAM Safety Buffer (Auto / Custom GB)" => {
+                    let buf_opts = vec!["Auto (% Mode)", "Custom Direct GB (e.g. 1.5 GB)"];
+                    if let Ok(b) = inquire::Select::new("Select VRAM Buffer Mode:", buf_opts).with_help_message("").prompt() {
+                        if b == "Auto (% Mode)" {
+                            control.custom_vram_buffer_gb = None;
+                            println!("  {} VRAM Safety Buffer set to Auto (% Mode).", "✅".green());
+                        } else {
+                            if let Ok(val_str) = inquire::Text::new("Enter VRAM Safety Buffer in GB (e.g. 1.5):").with_help_message("").prompt() {
+                                let val_clean = val_str.trim().trim_end_matches("GB").trim_end_matches("gb").trim();
+                                if let Ok(gb) = val_clean.parse::<f64>() {
+                                    control.custom_vram_buffer_gb = Some(gb);
+                                    println!("  {} VRAM Safety Buffer set to {:.2} GB.", "✅".green(), gb);
+                                } else {
+                                    println!("  ⚠️ Invalid GB value '{}'. Keeping current value.", val_str);
+                                }
+                            }
+                        }
                         let _ = HardwareGovernor::save_booster_settings(&control);
                     }
                 }
@@ -164,7 +170,7 @@ pub async fn execute(
                 "DFlash" => {
                     let dflash_opts = vec!["Auto", "On", "Off"];
                     if let Ok(d) = inquire::Select::new("DFlash (FlashKDA):", dflash_opts).with_help_message("").prompt() {
-                        control.dflash = cluaiz_shared::hardware::schema::booster::SmartState::Static(d.to_string());
+                        control.dflash = cluaiz_shared::hardware::schema::optimization::SmartState::Static(d.to_string());
                         let _ = HardwareGovernor::save_booster_settings(&control);
                     }
                 }

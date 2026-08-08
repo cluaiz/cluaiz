@@ -1,6 +1,6 @@
 use cluaiz_shared::backend::traits::{cluaizInference, UnifiedBackend};
 use cluaiz_shared::hardware::governor::HardwareGovernor;
-use cluaiz_shared::hardware::schema::booster::FeatureState;
+use cluaiz_shared::hardware::schema::optimization::FeatureState;
 use cluaiz_shared::{cluaizContext, StructuralDNA, TemplateManager};
 use color_eyre::Result;
 use colored::Colorize;

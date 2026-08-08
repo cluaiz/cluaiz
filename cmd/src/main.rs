@@ -359,7 +359,7 @@ async fn main() -> Result<()> {
 
     // 🚀 SILICON IGNITION: Optimize hardware before execution
     if !pure_brain {
-        let _ = engines::system_booster::SystemBooster::ignite();
+        let _ = engines::system_optimization::SystemOptimization::ignite();
     }
 
     // -- Legacy Flag Handlers --

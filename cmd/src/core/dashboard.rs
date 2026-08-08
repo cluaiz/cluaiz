@@ -868,13 +868,10 @@ impl DashboardEngine {
                     let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
                     let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                     if mode_ans.contains("Flash Mode") {
-                        booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Edge;
                         gguf_meta.user_moved_flags.think_mode = "Off".to_string();
                     } else if mode_ans.contains("Think Mode") {
-                        booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost;
                         gguf_meta.user_moved_flags.think_mode = "On".to_string();
                     } else if mode_ans.contains("Boot Mode") {
-                        booster.mode_run = cluaiz_shared::hardware::schema::booster::BoosterMode::Balance;
                         gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                     }
                     
@@ -897,8 +894,12 @@ impl DashboardEngine {
                         };
 
                         let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        let vram_buf_str = match booster.custom_vram_buffer_gb {
+                            Some(gb) => format!("{:.2} GB (Direct)", gb),
+                            None => "Auto (% Dynamic)".to_string(),
+                        };
                         let mut options = vec![
-                            format!("Neural Mode (Current: {:?})", booster.mode_run),
+                            format!("VRAM Safety Buffer (Current: {})", vram_buf_str),
                             format!("Compute Device (Current: {})", compute_mode_str),
                             format!("Turbo Quant (Current: {:?})", booster.turbo_quant),
                             format!("Flash Attention (Current: {:?})", booster.flash_attention),
@@ -990,26 +991,14 @@ impl DashboardEngine {
                             continue;
                         }
 
-                        // Special sub-menus for modes
-                        if key_part.as_str() == "Neural Mode" {
-                            let mut modes = vec![
-                                "edge".to_string(), 
-                                "multitasking".to_string(), 
-                                "balance".to_string(), 
-                                "max_boost".to_string(), 
-                                "ultra_max_boost".to_string()
+                        // Special sub-menus for VRAM Safety Buffer
+                        if key_part.as_str() == "VRAM Safety Buffer" {
+                            let buf_modes = vec![
+                                "Auto (% Dynamic)".to_string(), 
+                                "Custom Direct GB (e.g. 1.5 GB)".to_string()
                             ];
 
-                            // 🌌 VRAM GUARD: Only show HyperCluster if VRAM >= 40GB
-                            let total_vram = {
-                                let pulse_lock = state.live_pulse.pulse.read().unwrap();
-                                pulse_lock.vram_total_gb
-                            };
-                            if total_vram >= 40.0 {
-                                modes.push("hyper_cluster".to_string());
-                            }
-
-                            let selected_mode = match Select::new("Select Neural Mode:", modes).with_help_message("")
+                            let selected_buf = match Select::new("Select VRAM Buffer Mode:", buf_modes).with_help_message("")
                                 .with_render_config(config.clone())
                                 .prompt() {
                                 Ok(ans) => ans,
@@ -1022,18 +1011,19 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            booster.mode_run = match selected_mode.as_str() {
-                                "edge" => cluaiz_shared::hardware::schema::booster::BoosterMode::Edge,
-                                "multitasking" => cluaiz_shared::hardware::schema::booster::BoosterMode::Multitasking,
-                                "balance" => cluaiz_shared::hardware::schema::booster::BoosterMode::Balance,
-                                "max_boost" => cluaiz_shared::hardware::schema::booster::BoosterMode::MaxBoost,
-                                "ultra_max_boost" => cluaiz_shared::hardware::schema::booster::BoosterMode::UltraMaxBoost,
-                                "hyper_cluster" => cluaiz_shared::hardware::schema::booster::BoosterMode::HyperCluster,
-                                _ => cluaiz_shared::hardware::schema::booster::BoosterMode::Balance,
-                            };
+                            if selected_buf == "Auto (% Dynamic)" {
+                                booster.custom_vram_buffer_gb = None;
+                            } else {
+                                if let Ok(gb) = inquire::CustomType::<f64>::new("Enter VRAM Safety Buffer in GB (e.g. 1.5):")
+                                    .with_default(1.5)
+                                    .with_render_config(config.clone())
+                                    .prompt() {
+                                    booster.custom_vram_buffer_gb = Some(gb);
+                                }
+                            }
 
                             if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
-                                println!("  {} System Booster updated: Neural Mode = {}", "✅".green(), selected_mode.bold());
+                                println!("  {} System Booster updated: VRAM Buffer = {:?}", "✅".green(), booster.custom_vram_buffer_gb);
                             } else {
                                 println!("  {} Failed to save system booster settings.", "❌".red());
                             }
@@ -1064,12 +1054,12 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             booster.context_shifting = match selected_shift.as_str() {
-                                "Off" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Off,
-                                "Minimal" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Minimal,
-                                "Standard" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Standard,
-                                "Aggressive" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Aggressive,
-                                "Extreme" => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Extreme,
-                                _ => cluaiz_shared::hardware::schema::booster::ContextShiftingMode::Auto,
+                                "Off" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Off,
+                                "Minimal" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Minimal,
+                                "Standard" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Standard,
+                                "Aggressive" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Aggressive,
+                                "Extreme" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Extreme,
+                                _ => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Auto,
                             };
 
                             if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
@@ -1101,10 +1091,10 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             booster.kv_cache_quantization = match selected_kv.as_str() {
-                                s if s.starts_with("16-bit") => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv16,
-                                s if s.starts_with("8-bit") => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv8,
-                                s if s.starts_with("4-bit") => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Kv4,
-                                _ => cluaiz_shared::hardware::schema::booster::KvCacheQuantization::Auto,
+                                s if s.starts_with("16-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv16,
+                                s if s.starts_with("8-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv8,
+                                s if s.starts_with("4-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4,
+                                _ => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto,
                             };
 
                             if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
@@ -1220,9 +1210,9 @@ impl DashboardEngine {
                         stdout().flush()?;
 
                         let feature_state = match val_ans.as_str() {
-                            "On" => cluaiz_shared::hardware::schema::booster::FeatureState::On,
-                            "Off" => cluaiz_shared::hardware::schema::booster::FeatureState::Off,
-                            _ => cluaiz_shared::hardware::schema::booster::FeatureState::Auto,
+                            "On" => cluaiz_shared::hardware::schema::optimization::FeatureState::On,
+                            "Off" => cluaiz_shared::hardware::schema::optimization::FeatureState::Off,
+                            _ => cluaiz_shared::hardware::schema::optimization::FeatureState::Auto,
                         };
 
                         match key_part.as_str() {
@@ -1232,9 +1222,9 @@ impl DashboardEngine {
                             "Auto Round" => booster.auto_round = feature_state,
                             "DFlash" => {
                                 booster.dflash = match val_ans.as_str() {
-                                    "On" => cluaiz_shared::hardware::schema::booster::SmartState::Static("On".to_string()),
-                                    "Off" => cluaiz_shared::hardware::schema::booster::SmartState::Static("Off".to_string()),
-                                    _ => cluaiz_shared::hardware::schema::booster::SmartState::Static("Auto".to_string()),
+                                    "On" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("On".to_string()),
+                                    "Off" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Off".to_string()),
+                                    _ => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Auto".to_string()),
                                 };
                             },
                             "Force VRAM Reclaim" => booster.force_vram_reclaim = feature_state,
