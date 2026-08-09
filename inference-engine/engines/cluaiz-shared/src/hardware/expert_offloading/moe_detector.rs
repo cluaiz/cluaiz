@@ -280,3 +280,52 @@ fn extract_layer_index(name: &str) -> Option<usize> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_onnx_moe_detector() {
+        let temp_dir = std::env::temp_dir().join("onnx_moe_test");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let config_path = temp_dir.join("config.json");
+
+        let config_json = r#"{
+            "num_experts": 64,
+            "num_experts_per_tok": 4,
+            "num_hidden_layers": 32
+        }"#;
+        std::fs::write(&config_path, config_json).unwrap();
+
+        let model_path = temp_dir.join("model.onnx");
+        let info = OnnxMoeDetector::detect(&model_path);
+
+        assert!(info.is_moe);
+        assert_eq!(info.expert_count, 64);
+        assert_eq!(info.active_experts_per_token, 4);
+        assert_eq!(info.moe_layer_count, 32);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_non_moe_detector() {
+        let temp_dir = std::env::temp_dir().join("onnx_non_moe_test");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let config_path = temp_dir.join("config.json");
+
+        let config_json = r#"{
+            "num_hidden_layers": 32
+        }"#;
+        std::fs::write(&config_path, config_json).unwrap();
+
+        let model_path = temp_dir.join("model.onnx");
+        let info = OnnxMoeDetector::detect(&model_path);
+
+        assert!(!info.is_moe);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+}
+

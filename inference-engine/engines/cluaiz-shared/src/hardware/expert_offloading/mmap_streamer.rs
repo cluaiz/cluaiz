@@ -109,7 +109,6 @@ impl SsdMmapStreamer {
 
     /// Issues `MADV_WILLNEED` hints for a list of expert tensor ranges.
     /// Tells the OS to prefetch these pages into the page cache before they are needed.
-    /// No-op on Windows (OS handles prefetch automatically via mmap read-ahead).
     pub fn prefetch_experts(&self, offsets: &[&ExpertTensorOffset]) {
         #[cfg(unix)]
         {
@@ -137,9 +136,49 @@ impl SsdMmapStreamer {
         }
         #[cfg(windows)]
         {
-            // Windows: PrefetchVirtualMemory could be used here but requires Win8.1+
-            // and the `windows` crate. For now, rely on OS read-ahead via mmap access pattern.
-            let _ = offsets; // suppress unused warning
+            use std::ffi::c_void;
+
+            #[repr(C)]
+            struct WIN32_MEMORY_RANGE_ENTRY {
+                virtual_address: *mut c_void,
+                number_of_bytes: usize,
+            }
+
+            extern "system" {
+                fn GetCurrentProcess() -> *mut c_void;
+                fn PrefetchVirtualMemory(
+                    h_process: *mut c_void,
+                    number_of_entries: usize,
+                    virtual_addresses: *const WIN32_MEMORY_RANGE_ENTRY,
+                    flags: u32,
+                ) -> i32;
+            }
+
+            let base = self.mmap.as_ptr();
+            let mmap_len = self.mmap.len();
+            let mut entries = Vec::with_capacity(offsets.len());
+
+            for entry in offsets {
+                let gate_start = entry.gate.file_offset as usize;
+                let total_len = (entry.gate.byte_length
+                    + entry.up.byte_length
+                    + entry.down.byte_length) as usize;
+
+                if gate_start + total_len <= mmap_len {
+                    let ptr = unsafe { base.add(gate_start) } as *mut c_void;
+                    entries.push(WIN32_MEMORY_RANGE_ENTRY {
+                        virtual_address: ptr,
+                        number_of_bytes: total_len,
+                    });
+                }
+            }
+
+            if !entries.is_empty() {
+                unsafe {
+                    let h_process = GetCurrentProcess();
+                    PrefetchVirtualMemory(h_process, entries.len(), entries.as_ptr(), 0);
+                }
+            }
         }
     }
 
@@ -167,7 +206,31 @@ impl SsdMmapStreamer {
         }
         #[cfg(windows)]
         {
-            let _ = offsets;
+            use std::ffi::c_void;
+
+            extern "system" {
+                fn DiscardVirtualMemory(
+                    virtual_address: *mut c_void,
+                    size: usize,
+                ) -> u32;
+            }
+
+            let base = self.mmap.as_ptr();
+            let mmap_len = self.mmap.len();
+
+            for entry in offsets {
+                let gate_start = entry.gate.file_offset as usize;
+                let total_len = (entry.gate.byte_length
+                    + entry.up.byte_length
+                    + entry.down.byte_length) as usize;
+
+                if gate_start + total_len <= mmap_len {
+                    let ptr = unsafe { base.add(gate_start) } as *mut c_void;
+                    unsafe {
+                        DiscardVirtualMemory(ptr, total_len);
+                    }
+                }
+            }
         }
     }
 
@@ -176,4 +239,72 @@ impl SsdMmapStreamer {
         (self.file_size_bytes as f64) / (1024.0 * 1024.0 * 1024.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hardware::expert_offloading::TensorRange;
+
+    #[test]
+    fn test_ssd_mmap_streamer() {
+        let temp_dir = std::env::temp_dir();
+        let file_path = temp_dir.join("test_data.bin");
+
+        let mut data = vec![0u8; 1000];
+        for i in 0..1000 {
+            data[i] = (i % 256) as u8;
+        }
+        std::fs::write(&file_path, &data).unwrap();
+
+        let streamer_res = SsdMmapStreamer::open(&file_path);
+        assert!(streamer_res.is_ok());
+        let streamer = streamer_res.unwrap();
+
+        assert_eq!(streamer.file_size_bytes, 1000);
+        assert!(streamer.size_gb() > 0.0);
+
+        let slice = streamer.pread_expert_slice(100, 50).unwrap();
+        assert_eq!(slice.len(), 50);
+        for i in 0..50 {
+            assert_eq!(slice[i], ((100 + i) % 256) as u8);
+        }
+
+        assert!(streamer.pread_expert_slice(950, 100).is_err());
+
+        let mock_offset = ExpertTensorOffset {
+            layer: 0,
+            expert_id: 0,
+            gate: TensorRange { file_offset: 10, byte_length: 20 },
+            up: TensorRange { file_offset: 40, byte_length: 30 },
+            down: TensorRange { file_offset: 80, byte_length: 40 },
+        };
+
+        let index = ExpertOffsetIndex {
+            offsets: vec![Some(mock_offset)],
+            n_layers: 1,
+            n_experts: 1,
+        };
+
+        let block = streamer.read_expert(&index, 0, 0).unwrap();
+        assert_eq!(block.expert_id, 0);
+        assert_eq!(block.layer_index, 0);
+        assert_eq!(block.size_bytes, 90);
+        assert_eq!(block.weights_data.len(), 90);
+
+        let expected_gate = &data[10..30];
+        let expected_up = &data[40..70];
+        let expected_down = &data[80..120];
+
+        assert_eq!(&block.weights_data[0..20], expected_gate);
+        assert_eq!(&block.weights_data[20..50], expected_up);
+        assert_eq!(&block.weights_data[50..90], expected_down);
+
+        let index_entry = index.lookup(0, 0).unwrap();
+        streamer.prefetch_experts(&[index_entry]);
+        streamer.release_experts(&[index_entry]);
+
+        let _ = std::fs::remove_file(&file_path);
+    }
+}
+
 

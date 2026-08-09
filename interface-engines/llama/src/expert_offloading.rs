@@ -54,12 +54,8 @@ pub struct GgufMoeStreamingController {
     heat_tracker: Arc<Mutex<RoutingHeatTracker>>,
     /// LRU expert cache — tracks which experts are currently "warm" in OS page cache.
     cache: SharedExpertCache,
-    /// mmap base address (Linux/macOS only). None on Windows.
-    #[allow(dead_code)]
-    mmap_base: Option<*mut u8>,
-    /// Total file size in bytes (needed for mmap).
-    #[allow(dead_code)]
-    mmap_len: usize,
+    /// Cross-platform memory mapping for advisory calls.
+    mmap: Option<memmap2::Mmap>,
     /// MoE structural info.
     pub moe_info: MoeModelInfo,
     /// Records the expert IDs activated in the most recent routing step (for cold hints).
@@ -105,16 +101,15 @@ impl GgufMoeStreamingController {
         // Step 3: Set up LRU cache
         let cache = SharedExpertCache::new(cache_budget_gb);
 
-        // Step 4: mmap the model file (Linux/macOS only — advisory only, no data copying)
-        let (mmap_base, mmap_len) = Self::try_mmap(model_path);
+        // Step 4: mmap the model file for advisory virtual memory calls
+        let mmap = Self::try_mmap(model_path);
 
         let mut controller = Self {
             model_path: model_path.to_path_buf(),
             expert_index,
             heat_tracker,
             cache,
-            mmap_base,
-            mmap_len,
+            mmap,
             moe_info,
             last_active_experts: Vec::new(),
         };
@@ -176,10 +171,12 @@ impl GgufMoeStreamingController {
     fn advise_willneed(&self, layer: usize, expert_id: usize) {
         #[cfg(unix)]
         {
-            if let (Some(base), Some(entry)) = (self.mmap_base, self.expert_index.lookup(layer, expert_id)) {
+            if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
+                let base = mmap.as_ptr();
+                let mmap_len = mmap.len();
                 let gate_offset = entry.gate.file_offset as usize;
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
-                if gate_offset + total_len <= self.mmap_len {
+                if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut libc::c_void;
                     unsafe {
                         libc::madvise(ptr, total_len, libc::MADV_WILLNEED);
@@ -189,19 +186,53 @@ impl GgufMoeStreamingController {
         }
         #[cfg(windows)]
         {
-            // On Windows: best-effort — VirtualAlloc advisory not available for mmap.
-            // Rely on OS prefetcher; expert scheduling still recorded in heat tracker.
-            let _ = (layer, expert_id);
+            use std::ffi::c_void;
+
+            #[repr(C)]
+            struct WIN32_MEMORY_RANGE_ENTRY {
+                virtual_address: *mut c_void,
+                number_of_bytes: usize,
+            }
+
+            extern "system" {
+                fn GetCurrentProcess() -> *mut c_void;
+                fn PrefetchVirtualMemory(
+                    h_process: *mut c_void,
+                    number_of_entries: usize,
+                    virtual_addresses: *const WIN32_MEMORY_RANGE_ENTRY,
+                    flags: u32,
+                ) -> i32;
+            }
+
+            if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
+                let base = mmap.as_ptr();
+                let mmap_len = mmap.len();
+                let gate_offset = entry.gate.file_offset as usize;
+                let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
+                if gate_offset + total_len <= mmap_len {
+                    let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
+                    let mem_range = WIN32_MEMORY_RANGE_ENTRY {
+                        virtual_address: ptr,
+                        number_of_bytes: total_len,
+                    };
+                    unsafe {
+                        let h_process = GetCurrentProcess();
+                        PrefetchVirtualMemory(h_process, 1, &mem_range, 0);
+                    }
+                }
+            }
         }
     }
 
     fn advise_dontneed(&self, layer: usize, expert_id: usize) {
         #[cfg(unix)]
         {
-            if let (Some(base), Some(entry)) = (self.mmap_base, self.expert_index.lookup(layer, expert_id)) {
+            if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
+                let base = mmap.as_ptr();
+                let mmap_len = mmap.len();
                 let gate_offset = entry.gate.file_offset as usize;
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
-                if gate_offset + total_len <= self.mmap_len {
+                if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut libc::c_void;
                     unsafe {
                         libc::madvise(ptr, total_len, libc::MADV_DONTNEED);
@@ -211,7 +242,27 @@ impl GgufMoeStreamingController {
         }
         #[cfg(windows)]
         {
-            let _ = (layer, expert_id);
+            use std::ffi::c_void;
+
+            extern "system" {
+                fn DiscardVirtualMemory(
+                    virtual_address: *mut c_void,
+                    size: usize,
+                ) -> u32;
+            }
+
+            if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
+                let base = mmap.as_ptr();
+                let mmap_len = mmap.len();
+                let gate_offset = entry.gate.file_offset as usize;
+                let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
+                if gate_offset + total_len <= mmap_len {
+                    let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
+                    unsafe {
+                        DiscardVirtualMemory(ptr, total_len);
+                    }
+                }
+            }
         }
     }
 
@@ -242,74 +293,125 @@ impl GgufMoeStreamingController {
 
     /// Try to memory-map the model file for advisory calls.
     /// Returns (Some(base_ptr), file_len) on success, (None, 0) on failure/Windows.
-    #[allow(unused_variables)]
-    fn try_mmap(model_path: &Path) -> (Option<*mut u8>, usize) {
-        #[cfg(unix)]
-        {
-            use std::fs::File;
-            use std::os::unix::io::AsRawFd;
-
-            let file = match File::open(model_path) {
-                Ok(f) => f,
-                Err(e) => {
-                    warn!("🧠 [GgufMoeStreaming] Cannot open model file for mmap: {}", e);
-                    return (None, 0);
-                }
-            };
-            let file_len = match file.metadata() {
-                Ok(m) => m.len() as usize,
-                Err(_) => return (None, 0),
-            };
-            if file_len == 0 {
-                return (None, 0);
+    fn try_mmap(model_path: &Path) -> Option<memmap2::Mmap> {
+        use std::fs::File;
+        let file = match File::open(model_path) {
+            Ok(f) => f,
+            Err(e) => {
+                warn!("🧠 [GgufMoeStreaming] Cannot open model file for mmap: {}", e);
+                return None;
             }
-            let ptr = unsafe {
-                libc::mmap(
-                    std::ptr::null_mut(),
-                    file_len,
-                    libc::PROT_READ,
-                    libc::MAP_SHARED | libc::MAP_NORESERVE,
-                    file.as_raw_fd(),
-                    0,
-                )
-            };
-            if ptr == libc::MAP_FAILED {
-                warn!("🧠 [GgufMoeStreaming] mmap failed — advisory hints disabled.");
-                return (None, 0);
+        };
+        match unsafe { memmap2::Mmap::map(&file) } {
+            Ok(mmap) => {
+                info!(
+                    "🧠 [GgufMoeStreaming] mmap established: {:.2} GB advisory window.",
+                    mmap.len() as f64 / (1024.0 * 1024.0 * 1024.0)
+                );
+                Some(mmap)
             }
-            info!(
-                "🧠 [GgufMoeStreaming] mmap established: {:.2} GB advisory window.",
-                file_len as f64 / (1024.0 * 1024.0 * 1024.0)
-            );
-            return (Some(ptr as *mut u8), file_len);
-        }
-        #[cfg(windows)]
-        {
-            // Windows: mmap advisory not needed — rely on OS page cache
-            info!("🧠 [GgufMoeStreaming] Windows: mmap advisory skipped (OS handles page cache).");
-            (None, 0)
-        }
-        #[cfg(not(any(unix, windows)))]
-        {
-            (None, 0)
+            Err(e) => {
+                warn!("🧠 [GgufMoeStreaming] mmap failed — advisory hints disabled: {}", e);
+                None
+            }
         }
     }
 }
 
 impl Drop for GgufMoeStreamingController {
     fn drop(&mut self) {
-        // Unmap the advisory mmap on Linux/macOS
-        #[cfg(unix)]
-        {
-            if let Some(base) = self.mmap_base {
-                if self.mmap_len > 0 {
-                    unsafe {
-                        libc::munmap(base as *mut libc::c_void, self.mmap_len);
-                    }
-                }
-            }
-        }
         // Heat tracker auto-saves on drop via its own Drop impl
         info!("🧠 [GgufMoeStreaming] Controller dropped — heat data auto-saved.");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn write_dummy_gguf(
+        path: &std::path::Path,
+        metadata_kvs: &[(&str, u32, &[u8])],
+        tensors: &[(&str, &[u64])],
+    ) {
+        let mut file = std::fs::File::create(path).unwrap();
+        file.write_all(b"GGUF").unwrap();
+        file.write_all(&3u32.to_le_bytes()).unwrap();
+        file.write_all(&(tensors.len() as u64).to_le_bytes()).unwrap();
+        file.write_all(&(metadata_kvs.len() as u64).to_le_bytes()).unwrap();
+
+        for (key, val_type, val_bytes) in metadata_kvs {
+            file.write_all(&(key.len() as u64).to_le_bytes()).unwrap();
+            file.write_all(key.as_bytes()).unwrap();
+            file.write_all(&val_type.to_le_bytes()).unwrap();
+            file.write_all(val_bytes).unwrap();
+        }
+
+        for (name, dims) in tensors {
+            file.write_all(&(name.len() as u64).to_le_bytes()).unwrap();
+            file.write_all(name.as_bytes()).unwrap();
+            file.write_all(&(dims.len() as u32).to_le_bytes()).unwrap();
+            for &dim in *dims {
+                file.write_all(&dim.to_le_bytes()).unwrap();
+            }
+            file.write_all(&0u32.to_le_bytes()).unwrap();
+            file.write_all(&0u64.to_le_bytes()).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_gguf_moe_streaming_controller() {
+        let temp_dir = std::env::temp_dir().join("gguf_moe_controller_test");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let model_path = temp_dir.join("model.gguf");
+
+        let expert_count_bytes = 8u32.to_le_bytes();
+        let metadata = vec![
+            ("llm.expert_count", 4u32, &expert_count_bytes[..]),
+        ];
+
+        let tensors = vec![
+            ("blk.0.ffn_gate_exps.weight", &[2048u64][..]),
+            ("blk.0.ffn_up_exps.weight", &[2048u64][..]),
+            ("blk.0.ffn_down_exps.weight", &[4096u64][..]),
+            ("blk.1.ffn_gate_exps.weight", &[2048u64][..]),
+            ("blk.1.ffn_up_exps.weight", &[2048u64][..]),
+            ("blk.1.ffn_down_exps.weight", &[4096u64][..]),
+        ];
+
+        write_dummy_gguf(&model_path, &metadata, &tensors);
+
+        let moe_info = MoeModelInfo {
+            is_moe: true,
+            expert_count: 8,
+            moe_layer_count: 2,
+            active_experts_per_token: 2,
+            total_expert_bytes: 32768,
+            expert_size_bytes: 2048,
+            dense_backbone_bytes: 1024,
+        };
+
+        // 1. Initialize controller
+        let controller_res = GgufMoeStreamingController::new(&model_path, moe_info, 0.001);
+        assert!(controller_res.is_ok());
+        let mut controller = controller_res.unwrap();
+
+        // 2. Perform routing decision
+        // Token routing: layer 0, active experts: 2, 5. Prefetch for next step: layer 1, expert 3
+        controller.on_routing_decision(0, &[2, 5], Some(&[(1, 3)]));
+
+        // 3. Verify routing is recorded in heat tracker
+        {
+            let tracker = controller.heat_tracker.lock().unwrap();
+            assert_eq!(tracker.get_count(0, 2), 1);
+            assert_eq!(tracker.get_count(0, 5), 1);
+            assert_eq!(tracker.get_count(0, 3), 0);
+            assert_eq!(tracker.total_records(), 2);
+        }
+
+        // Clean up
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+}
+

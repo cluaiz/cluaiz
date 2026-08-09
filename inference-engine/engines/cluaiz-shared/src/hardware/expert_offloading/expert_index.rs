@@ -39,7 +39,7 @@ pub struct ExpertTensorOffset {
 /// Flat lookup index: (layer, expert_id) → ExpertTensorOffset.
 pub struct ExpertOffsetIndex {
     /// Flat index: [layer_index * n_experts + expert_id] → offset entry
-    offsets: Vec<Option<ExpertTensorOffset>>,
+    pub offsets: Vec<Option<ExpertTensorOffset>>,
     pub n_layers: usize,
     pub n_experts: usize,
 }
@@ -173,3 +173,87 @@ fn extract_layer_from_name(name: &str) -> Option<usize> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn write_dummy_gguf(
+        path: &std::path::Path,
+        metadata_kvs: &[(&str, u32, &[u8])],
+        tensors: &[(&str, &[u64])],
+    ) {
+        let mut file = std::fs::File::create(path).unwrap();
+        file.write_all(b"GGUF").unwrap();
+        file.write_all(&3u32.to_le_bytes()).unwrap();
+        file.write_all(&(tensors.len() as u64).to_le_bytes()).unwrap();
+        file.write_all(&(metadata_kvs.len() as u64).to_le_bytes()).unwrap();
+
+        for (key, val_type, val_bytes) in metadata_kvs {
+            file.write_all(&(key.len() as u64).to_le_bytes()).unwrap();
+            file.write_all(key.as_bytes()).unwrap();
+            file.write_all(&val_type.to_le_bytes()).unwrap();
+            file.write_all(val_bytes).unwrap();
+        }
+
+        for (name, dims) in tensors {
+            file.write_all(&(name.len() as u64).to_le_bytes()).unwrap();
+            file.write_all(name.as_bytes()).unwrap();
+            file.write_all(&(dims.len() as u32).to_le_bytes()).unwrap();
+            for &dim in *dims {
+                file.write_all(&dim.to_le_bytes()).unwrap();
+            }
+            file.write_all(&0u32.to_le_bytes()).unwrap();
+            file.write_all(&0u64.to_le_bytes()).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_expert_offset_index_gguf() {
+        let temp_dir = std::env::temp_dir();
+        let gguf_path = temp_dir.join("test_model.gguf");
+
+        let expert_count_bytes = 8u32.to_le_bytes();
+        let metadata = vec![
+            ("llm.expert_count", 4u32, &expert_count_bytes[..]),
+        ];
+
+        let tensors = vec![
+            ("blk.0.ffn_gate_exps.weight", &[2048u64][..]),
+            ("blk.0.ffn_up_exps.weight", &[2048u64][..]),
+            ("blk.0.ffn_down_exps.weight", &[4096u64][..]),
+            ("blk.1.ffn_gate_exps.weight", &[2048u64][..]),
+            ("blk.1.ffn_up_exps.weight", &[2048u64][..]),
+            ("blk.1.ffn_down_exps.weight", &[4096u64][..]),
+        ];
+
+        write_dummy_gguf(&gguf_path, &metadata, &tensors);
+
+        let index_res = ExpertOffsetIndex::from_gguf(&gguf_path, 8);
+        assert!(index_res.is_ok());
+        let index = index_res.unwrap();
+
+        assert_eq!(index.n_layers, 2);
+        assert_eq!(index.n_experts, 8);
+        assert_eq!(index.indexed_count(), 16);
+
+        let entry_l0e3 = index.lookup(0, 3);
+        assert!(entry_l0e3.is_some());
+        let entry = entry_l0e3.unwrap();
+        assert_eq!(entry.layer, 0);
+        assert_eq!(entry.expert_id, 3);
+
+        assert_eq!(entry.gate.file_offset, 768);
+        assert_eq!(entry.gate.byte_length, 256);
+
+        assert_eq!(entry.down.file_offset, 1536);
+        assert_eq!(entry.down.byte_length, 512);
+
+        assert!(index.lookup(2, 0).is_none());
+        assert!(index.lookup(0, 8).is_none());
+
+        let _ = std::fs::remove_file(&gguf_path);
+    }
+}
+

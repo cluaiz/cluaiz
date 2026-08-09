@@ -238,3 +238,55 @@ impl Drop for RoutingHeatTracker {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_routing_heat_tracker() {
+        let temp_dir = std::env::temp_dir();
+        let tracker_path = temp_dir.join(".cluaiz_routing_heat");
+        if tracker_path.exists() {
+            let _ = std::fs::remove_file(&tracker_path);
+        }
+
+        // 1. Create a fresh tracker with 4 layers and 8 experts
+        let mut tracker = RoutingHeatTracker::new(4, 8, &temp_dir);
+        assert_eq!(tracker.n_layers, 4);
+        assert_eq!(tracker.n_experts, 8);
+        assert_eq!(tracker.total_records(), 0);
+
+        // 2. Record routing decisions
+        tracker.record_routing(0, &[2, 5]);
+        tracker.record_routing(0, &[2]);
+        tracker.record_routing(1, &[7]);
+
+        assert_eq!(tracker.get_count(0, 2), 2);
+        assert_eq!(tracker.get_count(0, 5), 1);
+        assert_eq!(tracker.get_count(1, 7), 1);
+        assert_eq!(tracker.get_count(2, 0), 0);
+        assert_eq!(tracker.total_records(), 4);
+
+        // 3. Recommended hot experts
+        let hot = tracker.get_hottest_experts(250, 100);
+        assert_eq!(hot.len(), 2);
+        assert_eq!(hot[0], (0, 2));
+        assert!(hot[1] == (0, 5) || hot[1] == (1, 7));
+
+        // 4. Save to disk
+        tracker.save().unwrap();
+        assert!(tracker_path.exists());
+
+        // 5. Load in a new tracker
+        let new_tracker = RoutingHeatTracker::new(4, 8, &temp_dir);
+        assert_eq!(new_tracker.get_count(0, 2), 2);
+        assert_eq!(new_tracker.get_count(0, 5), 1);
+        assert_eq!(new_tracker.get_count(1, 7), 1);
+        assert_eq!(new_tracker.total_records(), 4);
+
+        // Cleanup
+        let _ = std::fs::remove_file(&tracker_path);
+    }
+}
+

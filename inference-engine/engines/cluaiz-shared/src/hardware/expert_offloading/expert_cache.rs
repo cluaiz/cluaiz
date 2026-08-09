@@ -135,3 +135,62 @@ impl SharedExpertCache {
         Self(Arc::new(Mutex::new(ExpertCacheManager::new(max_ram_gb))))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expert_cache_lru_eviction() {
+        let gb_multiplier = 1024.0 * 1024.0 * 1024.0;
+        let mut manager = ExpertCacheManager::new(300.0 / gb_multiplier);
+
+        assert_eq!(manager.max_ram_bytes, 300);
+        assert_eq!(manager.current_ram_bytes, 0);
+
+        let block1 = LoadedExpertBlock {
+            expert_id: 1,
+            layer_index: 0,
+            size_bytes: 100,
+            weights_data: Arc::new(vec![0u8; 100]),
+        };
+        let block2 = LoadedExpertBlock {
+            expert_id: 2,
+            layer_index: 0,
+            size_bytes: 100,
+            weights_data: Arc::new(vec![0u8; 100]),
+        };
+        let block3 = LoadedExpertBlock {
+            expert_id: 3,
+            layer_index: 0,
+            size_bytes: 100,
+            weights_data: Arc::new(vec![0u8; 100]),
+        };
+
+        manager.insert(block1.clone());
+        manager.insert(block2.clone());
+        manager.insert(block3.clone());
+
+        assert_eq!(manager.len(), 3);
+        assert_eq!(manager.current_ram_bytes, 300);
+
+        assert!(manager.get(0, 1).is_some());
+
+        let block4 = LoadedExpertBlock {
+            expert_id: 4,
+            layer_index: 0,
+            size_bytes: 100,
+            weights_data: Arc::new(vec![0u8; 100]),
+        };
+        manager.insert(block4);
+
+        assert_eq!(manager.len(), 3);
+        assert_eq!(manager.current_ram_bytes, 300);
+
+        assert!(manager.get(0, 2).is_none());
+        assert!(manager.get(0, 1).is_some());
+        assert!(manager.get(0, 3).is_some());
+        assert!(manager.get(0, 4).is_some());
+    }
+}
+
