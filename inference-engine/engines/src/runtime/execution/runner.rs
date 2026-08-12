@@ -39,9 +39,9 @@ impl cluaizRunner {
         max_tokens: usize,
         mut callback: impl FnMut(String) + Send + 'static,
     ) -> Result<cluaizMetrics> {
-        // 🛰️ cluaiz OPTIMIZATION SYNC: Load truth from Governor before generation
-        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-        self.model.apply_booster(&optimization)?;
+        // cluaiz OPTIMIZATION SYNC: Load truth from Governor before generation
+        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        self.model.apply_optimization(&optimization)?;
         
         // 🌊 Liquid Mode Linkage
         if optimization.turbo_quant == cluaiz_shared::hardware::schema::optimization::FeatureState::On {

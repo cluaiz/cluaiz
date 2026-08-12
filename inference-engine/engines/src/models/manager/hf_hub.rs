@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use crate::models::registry::ModelManifest;
 use crate::models::fetch::tts_resolver::TtsAssetResolver;
+use crate::models::fetch::AssetResolver;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HfTreeItem {
@@ -153,23 +154,71 @@ impl HuggingFaceHub {
                         }
                     }
 
-                    // GGUF + ONNX Hybrid & Helper GGUFs: Always attach frontend models, configs, and helper GGUFs (like MTP or mmproj) if present anywhere in the repo
-                    for any_item in &items {
-                        let path_lower = any_item.path.to_lowercase();
-                        let is_frontend_asset = path_lower.contains("frontend-onnx/") || path_lower.contains("voices/") || path_lower.contains("voice_styles/") || path_lower.contains("espeak-ng-data/") || path_lower.ends_with(".yaml") || path_lower.ends_with(".yml");
-                        let is_helper_gguf = path_lower.ends_with(".gguf") && crate::models::fetch::asset_resolver::AssetResolver::is_helper_gguf(&path_lower);
-                        
-                        if is_frontend_asset || is_helper_gguf {
-                            if !bundle_files.contains(&any_item.path) {
-                                bundle_files.push(any_item.path.clone());
-                            }
+                    // ── Smart Helper GGUF Bundling ────────────────────────────────────────
+                    // All detection + selection logic lives in AssetResolver (Single Source of Truth).
+                    // hf_hub.rs only orchestrates — it never duplicates string-matching patterns.
+                    use crate::models::fetch::asset_resolver::AssetResolver;
+
+                    let main_quant = AssetResolver::extract_quant_tag(&primary_file);
+
+                    // Collect all repo helper GGUFs, split by type via AssetResolver
+                    let all_helpers: Vec<&HfTreeItem> = items.iter()
+                        .filter(|i| i.path.to_lowercase().ends_with(".gguf")
+                            && AssetResolver::is_helper_gguf(&i.path))
+                        .collect();
+
+                    // MTP: select single best match for main model's quant
+                    let mtp_paths: Vec<&str> = all_helpers.iter()
+                        .filter(|i| AssetResolver::is_mtp_gguf(&i.path))
+                        .map(|i| i.path.as_str())
+                        .collect();
+                    if let Some(best_mtp) = AssetResolver::select_best_mtp(&mtp_paths, &main_quant) {
+                        if !bundle_files.contains(&best_mtp.to_string()) {
+                            bundle_files.push(best_mtp.to_string());
                         }
                     }
+
+                    // mmproj: select single best quality (F16 > BF16 > F32)
+                    let mmproj_paths: Vec<&str> = all_helpers.iter()
+                        .filter(|i| AssetResolver::is_mmproj_gguf(&i.path))
+                        .map(|i| i.path.as_str())
+                        .collect();
+                    if let Some(best_mmproj) = AssetResolver::select_best_mmproj(&mmproj_paths) {
+                        if !bundle_files.contains(&best_mmproj.to_string()) {
+                            bundle_files.push(best_mmproj.to_string());
+                        }
+                    }
+
+                    // Other helpers (projector-*, adapter-*): bundle all — usually single file
+                    for helper in &all_helpers {
+                        if !AssetResolver::is_mtp_gguf(&helper.path)
+                            && !AssetResolver::is_mmproj_gguf(&helper.path)
+                            && !bundle_files.contains(&helper.path)
+                        {
+                            bundle_files.push(helper.path.clone());
+                        }
+                    }
+
+                    // Frontend assets (ONNX hybrid models, voice assets)
+                    for any_item in &items {
+                        let path_lower = any_item.path.to_lowercase();
+                        let is_frontend = path_lower.contains("frontend-onnx/")
+                            || path_lower.contains("voices/")
+                            || path_lower.contains("voice_styles/")
+                            || path_lower.contains("espeak-ng-data/")
+                            || path_lower.ends_with(".yaml")
+                            || path_lower.ends_with(".yml");
+                        if is_frontend && !bundle_files.contains(&any_item.path) {
+                            bundle_files.push(any_item.path.clone());
+                        }
+                    }
+
+
 
                     filter_duplicate_metadata_files(&mut bundle_files);
 
                     // Extract precision/quant tag from path
-                    let quant_tag = extract_quant_tag(&primary_file);
+                    let quant_tag = AssetResolver::extract_quant_tag(&primary_file);
                     let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
                     let shard_count = bundle_files.iter().filter(|f| f.ends_with(".gguf")).count();
                     
@@ -225,7 +274,7 @@ impl HuggingFaceHub {
                 }
 
                 // Group ONNX models by precision tag / sub-directory & attach FP16 companion vocoders
-                let quant_tag = extract_quant_tag(path);
+                let quant_tag = AssetResolver::extract_quant_tag(path);
                 let is_combined_file = lower.contains("combined");
                 
                 // If the folder is deep and contains split pipeline stages (flow/, llm/, hift/), we identify the base directory of the pipeline.
@@ -270,12 +319,12 @@ impl HuggingFaceHub {
                             continue;
                         }
 
-                        let o_quant = extract_quant_tag(o_path);
+                        let o_quant = AssetResolver::extract_quant_tag(o_path);
                         let is_subcomp = TtsAssetResolver::is_subcomponent_file(o_path);
                         
                         let matches_quant = o_quant == quant_tag;
                         let is_fallback_default = o_quant == "DEFAULT" && !items.iter().any(|i| {
-                            let i_quant = extract_quant_tag(&i.path);
+                            let i_quant = AssetResolver::extract_quant_tag(&i.path);
                             i_quant == quant_tag && TtsAssetResolver::is_same_model_different_quant(o_path, &i.path)
                         });
 
@@ -381,6 +430,12 @@ impl HuggingFaceHub {
     }
 
     pub async fn build_manifest(repo_id: &str, filename: &str, download_size_gb: f64) -> Result<ModelManifest, String> {
+        let repo_id = if repo_id.contains(':') {
+            repo_id.split(':').next().unwrap_or(repo_id)
+        } else {
+            repo_id
+        };
+
         let url = format!("https://huggingface.co/{}/resolve/main/{}", repo_id, filename);
         
         // Base Engine + Weights overhead (~0.5 GB). KV Cache will dynamically add more.
@@ -402,19 +457,20 @@ impl HuggingFaceHub {
         
         let mut family_parts = Vec::new();
         let mut size = "unknown".to_string();
-        let mut quant = "unknown".to_string();
         
-        if is_onnx {
-            quant = "fp32".to_string(); // Default assumption for ONNX unless specified
+        let mut quant = AssetResolver::extract_quant_tag(filename);
+        if quant == "DEFAULT" {
+            quant = if is_onnx { "fp32".to_string() } else { "unknown".to_string() };
         }
 
         let parts: Vec<&str> = name_to_process.split('-').collect();
         let mut found_size = false;
 
         for part in parts {
-            if (part.starts_with('q') && part.chars().nth(1).map_or(false, |c| c.is_digit(10))) 
+            let part_upper = part.to_uppercase();
+            if (!quant.is_empty() && quant != "unknown" && quant.contains(&part_upper))
+               || (part.starts_with('q') && part.chars().nth(1).map_or(false, |c| c.is_digit(10))) 
                || part == "f16" || part == "f32" || part == "int4" || part == "int8" || part == "fp32" {
-                quant = part.to_string();
                 continue;
             }
 
@@ -435,19 +491,11 @@ impl HuggingFaceHub {
         }
 
         let family = if family_parts.is_empty() { fallback.clone() } else { family_parts.join("_") };
-        let repo_basename = repo_id.split('/').next_back().unwrap_or(repo_id).to_lowercase();
-        let clean_file_stem = name.clone();
-        let sovereign_id = if clean_file_stem != "model" && clean_file_stem != "model_q4" && clean_file_stem != "pytorch_model" && clean_file_stem != repo_basename && !clean_file_stem.is_empty() {
-            format!("{}-{}", repo_basename, clean_file_stem)
-        } else {
-            repo_basename
-        };
+        let sovereign_id = AssetResolver::resolve_sovereign_id(repo_id, &name, filename, &quant);
 
         // 🧠 Intelligent Categorization via HuggingFace API
-        let mut is_embedding = false;
-        let mut is_vision = false;
-        let mut is_image_gen = false;
-        let mut is_audio = false;
+        let mut has_chat_tags = false;
+        let mut hf_pipeline_tag = None;
         let mut raw_architecture = String::new();
 
         let client = Client::new();
@@ -472,14 +520,19 @@ impl HuggingFaceHub {
                     }
                 }
 
-                if let Some(pipeline_tag) = json.get("pipeline_tag").and_then(|v| v.as_str()) {
-                    match pipeline_tag {
-                        "feature-extraction" | "sentence-similarity" => is_embedding = true,
-                        "image-classification" | "object-detection" | "image-to-text" | "zero-shot-image-classification" | "image-text-to-text" => is_vision = true,
-                        "text-to-image" | "image-to-image" => is_image_gen = true,
-                        "text-to-speech" | "automatic-speech-recognition" | "audio-classification" | "text-to-audio" | "voice-activity-detection" => is_audio = true,
-                        _ => {}
+                if let Some(tags_arr) = json.get("tags").and_then(|t| t.as_array()) {
+                    for tag in tags_arr {
+                        if let Some(t_str) = tag.as_str() {
+                            let t_lower = t_str.to_lowercase();
+                            if t_lower == "conversational" || t_lower == "text-generation" || t_lower == "text-generation-inference" || t_lower.contains("instruct") || t_lower.contains("chat") || t_lower == "it" {
+                                has_chat_tags = true;
+                            }
+                        }
                     }
+                }
+
+                if let Some(pipeline_tag) = json.get("pipeline_tag").and_then(|v| v.as_str()) {
+                    hf_pipeline_tag = Some(pipeline_tag.to_string());
                 }
             }
         }
@@ -520,31 +573,14 @@ impl HuggingFaceHub {
             "GGUF Graph".to_string()
         };
         
-        let repo_lower = repo_id.to_lowercase();
-        let file_lower = filename.to_lowercase();
-        let is_chat = repo_lower.contains("instruct")
-            || repo_lower.contains("chat")
-            || repo_lower.contains("-it")
-            || file_lower.contains("instruct")
-            || file_lower.contains("chat")
-            || file_lower.contains("-it");
-
-        let detected_tts_family = TtsAssetResolver::detect_tts_family(repo_id, filename);
-        let is_detected_tts = detected_tts_family != "generic-onnx-tts" && detected_tts_family != "whisper-gguf";
-
-        let category = if is_detected_tts || is_audio {
-            "audio".to_string()
-        } else if is_embedding {
-            "embedding".to_string()
-        } else if is_image_gen {
-            "image_gen".to_string()
-        } else if is_vision {
-            "vision".to_string()
-        } else if is_chat {
-            "chat".to_string()
+        let category = AssetResolver::resolve_category(repo_id, filename, hf_pipeline_tag.as_deref(), has_chat_tags);
+        let is_vision = if let Some(ref tag) = hf_pipeline_tag {
+            let t = tag.to_lowercase();
+            t.contains("image") || t.contains("vision")
         } else {
-            "chat".to_string()
+            false
         };
+
 
         Ok(ModelManifest {
             id: sovereign_id.clone(),
@@ -620,84 +656,39 @@ impl HuggingFaceHub {
     }
 }
 
-fn extract_quant_tag(path: &str) -> String {
-    let path_obj = std::path::Path::new(path);
-    
-    // 1. Check parent folder name first if path is inside a subfolder (excluding generic directory names)
-    if let Some(parent) = path_obj.parent().and_then(|p| p.to_str()) {
-        if !parent.is_empty() && parent != "." {
-            let p_lower = parent.to_lowercase();
-            if p_lower != "onnx" && p_lower != "models" && p_lower != "weights" {
-                if p_lower.contains('q') || p_lower.contains("bf16") || p_lower.contains("fp16") || p_lower.contains("int") || p_lower.contains("ud") {
-                    return parent.to_string().to_uppercase();
-                }
-            }
-        }
-    }
 
-    // Get filename and clean extensions and shard suffixes
-    let file_name = path_obj.file_name().and_then(|n| n.to_str()).unwrap_or(path);
-    let mut clean_name = file_name.to_string();
-    for ext in &[".gguf", ".onnx", ".onnx_data", ".onnx.data"] {
-        if clean_name.to_lowercase().ends_with(ext) {
-            clean_name = clean_name[..clean_name.len() - ext.len()].to_string();
-        }
-    }
-    if let Some(idx) = clean_name.to_lowercase().find("-00001-of-").or_else(|| clean_name.to_lowercase().find("_00001-of-")) {
-        clean_name = clean_name[..idx].to_string();
-    }
+fn basename_lower(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path)
+        .to_lowercase()
+}
 
-    let lower = clean_name.to_lowercase();
-
-    // 2. Try compound/suffix matching first for full names (e.g. UD-Q4_K_M)
-    let candidates = [
-        "ud-q",
-        "ud-iq",
-        "iq1_", "iq2_", "iq3_", "iq4_",
-        "q1_", "q2_", "q3_", "q4_", "q5_", "q6_", "q8_",
-        "bf16", "fp16", "fp32", "int8", "uint8", "int4",
-        "_f16", "_f32"  // Detect GGUF F16/F32 precision (e.g. CosyVoice3_F16.gguf)
-    ];
-    
-    let mut best_idx = None;
-    for &cand in &candidates {
-        if let Some(idx) = lower.find(cand) {
-            match best_idx {
-                None => best_idx = Some(idx),
-                Some(current) => {
-                    if idx < current {
-                        best_idx = Some(idx);
-                    }
-                }
-            }
-        }
-    }
-    
-    if let Some(idx) = best_idx {
-        return clean_name[idx..].to_string().to_uppercase();
-    }
-
-    // 3. Fallback to old token scanning behavior for general model name formatting
-    let parts: Vec<&str> = lower.split(&['/', '\\', '.', ' '][..]).collect();
-    for part in parts.iter().rev() {
-        if part.starts_with("ud-q") || part.starts_with("q4_") || part.starts_with("q5_") || part.starts_with("q8_") || part.starts_with("q2_") || part.starts_with("q3_") || part.starts_with("q6_") {
-            return part.to_uppercase();
-        }
-    }
-
-    let sub_parts: Vec<&str> = lower.split(&['/', '\\', '-', '_', '.'][..]).collect();
-    for part in sub_parts.iter().rev() {
-        if (part.starts_with('q') || part.starts_with("iq")) && part.len() >= 2 && part.chars().nth(1).map_or(false, |c| c.is_digit(10)) {
-            return part.to_uppercase();
-        }
-        if *part == "bf16" || *part == "fp16" || *part == "fp32" || *part == "int8" || *part == "uint8" || *part == "int4" || *part == "q4f16"
-            || *part == "f16" || *part == "f32"  // GGUF F16/F32 precision tags
-        {
-            return part.to_uppercase();
-        }
-    }
-
-    "DEFAULT".to_string()
+/// Returns an integer tier for a quant tag (higher = higher quality / larger size).
+/// Used to find the MTP file closest in quality to the selected main model quant.
+///
+/// Tier mapping (approximate, from smallest to largest):
+///   0  = unknown/default
+///   1  = Q2_K / IQ1 / IQ2
+///   2  = Q3_K / IQ3
+///   3  = Q4_0 / Q4_K / IQ4
+///   4  = Q5_K / Q5_0
+///   5  = Q6_K / Q6_0
+///   6  = Q8_0 / Q8_K
+///   7  = F16 / BF16
+///   8  = F32
+fn quant_tier_of(quant: &str) -> usize {
+    let q = quant.to_lowercase();
+    if q.contains("f32") || q.contains("fp32") { return 8; }
+    if q.contains("f16") || q.contains("bf16") || q.contains("fp16") { return 7; }
+    if q.contains("q8") { return 6; }
+    if q.contains("q6") { return 5; }
+    if q.contains("q5") { return 4; }
+    if q.contains("q4") || q.contains("iq4") || q.contains("ud-q4") { return 3; }
+    if q.contains("q3") || q.contains("iq3") { return 2; }
+    if q.contains("q2") || q.contains("iq2") || q.contains("iq1") { return 1; }
+    0
 }
 
 fn is_directory_prefix(meta_path: &str, primary_path: &str) -> bool {

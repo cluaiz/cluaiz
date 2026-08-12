@@ -35,8 +35,8 @@ impl GGUFLoader {
         };
 
         // 🧠 Stage 1/2/3: Arbiter Routing Logic (Speculative Decoding)
-        let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-        if booster.speculative_decoding != FeatureState::Off {
+        let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        if opt_control.speculative_decoding != FeatureState::Off {
             let has_native_mtp = GGUFProber::check_native_mtp(&tensor_infos);
             if has_native_mtp {
                 cluaiz_shared::dev_info!("🔥 [Arbiter] Native MTP detected in binary headers. Engaging High-Fidelity MTP Loop.");

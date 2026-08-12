@@ -6,7 +6,7 @@ pub struct SafetyChecker;
 
 impl SafetyChecker {
     /// 🛡️ The 4-Step Audit: Verifies any plugin/extension before it can be registered or executed by the Engine.
-    pub fn audit_plugin(manifest_path: &Path, binary_path: &Path, manifest: &serde_json::Value) -> Result<()> {
+    pub fn audit_plugin(_manifest_path: &Path, binary_path: &Path, manifest: &serde_json::Value) -> Result<()> {
         tracing::info!("🛡️ [SafetyChecker] Starting 4-Step Audit for plugin at {:?}", binary_path);
         
         Self::step1_structural_analysis(manifest, binary_path)?;

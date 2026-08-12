@@ -115,7 +115,11 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         if let (Some(ref mut m), Some(ref bundle)) = (&mut manifest, &selected_variant_bundle) {
             let qt = bundle.quant_tag.clone();
             if !qt.is_empty() && qt != "DEFAULT" {
-                m.id = format!("{}-{}", m.id, qt);
+                let qt_upper = qt.to_uppercase();
+                let id_upper = m.id.to_uppercase();
+                if !id_upper.contains(&qt_upper) {
+                    m.id = format!("{}-{}", m.id, qt);
+                }
             }
             // Set huggingface_filename to the flat basename of the primary file
             let flat_name = bundle.primary_file.rsplit('/').next().unwrap_or(&bundle.primary_file).to_string();

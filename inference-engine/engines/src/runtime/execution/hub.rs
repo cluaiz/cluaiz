@@ -77,7 +77,7 @@ impl HardwareOrchestrator {
         let mut optimization_control = if let Some(optimization) = optimization_override {
             optimization
         } else {
-            cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default()
+            cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default()
         };
 
         // 🛡️ DNA-AWARE FLASH ATTENTION GUARD (Mathematical Resolution)
@@ -203,7 +203,7 @@ impl cluaizInference for SovereignEngine {
         Ok(())
     }
 
-    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> {
+    fn apply_optimization(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> {
         Ok(())
     }
 
@@ -304,6 +304,6 @@ impl cluaizInference for NativeOnnxWrapper {
     }
 
     fn inject_signals(&mut self, _signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> { Ok(()) }
-    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> { Ok(()) }
+    fn apply_optimization(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> { Ok(()) }
     fn set_liquid_mode(&mut self, _enabled: bool) -> Result<()> { Ok(()) }
 }

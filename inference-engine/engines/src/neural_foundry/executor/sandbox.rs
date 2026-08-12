@@ -156,10 +156,10 @@ impl UnifiedExecutor {
                 // INJECT SYSTEM BINDINGS
                 if let Some(bindings) = &manifest.system_bindings {
                     for binding in bindings {
-                        if binding.starts_with("system_booster") {
-                            if let Ok(booster) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
-                                if let Ok(booster_val) = serde_json::to_value(&booster) {
-                                    obj.insert("system_booster".to_string(), booster_val);
+                        if binding.starts_with("system_optimization") {
+                            if let Ok(opt_control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings() {
+                                if let Ok(opt_val) = serde_json::to_value(&opt_control) {
+                                    obj.insert("system_optimization".to_string(), opt_val);
                                 }
                             }
                         } else if binding.starts_with("permission") {

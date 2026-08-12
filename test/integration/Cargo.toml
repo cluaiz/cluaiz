@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "integration-tests"
 version = "0.1.0"
@@ -15,3 +13,4 @@ anyhow = "1.0"
 cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
 engines = { path = "../../inference-engine/engines" }
 dirs = "5.0"
+sysinfo = "0.30"

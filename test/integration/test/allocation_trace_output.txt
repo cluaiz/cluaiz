@@ -1,0 +1,14 @@
+=============================================================
+🧬 CLUAIZ RESOURCE ALLOCATION & HARDWARE PLACEMENT DIAGNOSTIC
+=============================================================
+
+DEBUG - Config Path: "C:\\Users\\Aryan\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\test\\integration\\.cluaiz\\engine\\config"
+--- [NEGOTIATOR PRODUCTION DECISION] ---
+Assigned Placement Tier: CpuOnly
+GPU Layers to Offload:   0
+VRAM Budget Allocated:   0.00 GB
+System RAM Allocated:    10.55 GB
+Safety Buffer Reserved:  0.50 GB
+Expert Cache Budget:     0.00 GB
+
+Status: Model limits exceeded standard bounds or safety floor active.
