@@ -231,6 +231,21 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             crate::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load().n_gpu_layers
         }
     };
+    let user_n_ctx = match request.engine_type {
+        EngineType::GGUF => {
+            crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load()
+                .hardware_and_execution
+                .n_ctx
+        }
+        EngineType::ONNX => {
+            crate::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load().n_ctx
+        },
+    };
+    let ctx_setting_str = match user_n_ctx {
+        -1 | i32::MAX => "Max Full".to_string(),
+        0 => "Auto".to_string(),
+        n => format!("{}", n),
+    };
     let model_gb = request.model_size_gb;
     // ─── Step 4: Calculate Usable Memory from Real-Time Free Memory ───
     let vram_safety = calculate_safety_buffer(&opt_control, total_vram_gb, live_free_vram_gb);
@@ -268,10 +283,11 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         total_vram_gb, live_free_vram_gb, total_ram_gb, available_ram_gb
     );
     eprintln!(
-        "🎰 [Negotiator] User Settings: custom_vram_buffer = {} | custom_ram_buffer = {} | extreme_moe_streaming = {:?} | n_ctx = Auto",
+        "🎰 [Negotiator] User Settings: custom_vram_buffer = {} | custom_ram_buffer = {} | extreme_moe_streaming = {:?} | n_ctx = {}",
         vram_setting_str,
         ram_setting_str,
-        opt_control.extreme_moe_streaming
+        opt_control.extreme_moe_streaming,
+        ctx_setting_str
     );
     if moe_info.is_moe {
         let dense_gb = moe_info.dense_backbone_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
@@ -344,21 +360,18 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 0
             };
 
-            let user_n_ctx = match request.engine_type {
-                EngineType::GGUF => {
-                    crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load()
-                        .hardware_and_execution
-                        .n_ctx
-                }
-                EngineType::ONNX => 0,
-            };
+            // user_n_ctx is now fetched globally in Step 3
             let native_max_ctx = 32768usize;
             let min_2k_tokens = 2048usize;
             let kv_bytes_per_token = 128.0 * 1024.0;
 
             // Step 1: Base Reserves & Initial Allocations
             let ram_dense_reserve = (moe_info.dense_backbone_bytes as f64) / (1024.0 * 1024.0 * 1024.0);
-            let ggml_workspace_reserve = 1.50f64;
+            
+            // GGML Compute Graph Workspace Reserve (Dynamic)
+            // Scales dynamically with model size (proxy for hidden dim size). Base overhead is ~250MB.
+            // Adds ~40MB per 1GB of model weights. Bounded between 500MB and 3GB.
+            let ggml_workspace_reserve = (0.25 + (model_gb * 0.04)).clamp(0.50, 3.00);
             
             // ─── User Rule: In Hybrid/Streaming (Tier 4), Context Window ALWAYS goes to System RAM! ───
             let ctx_in_vram = false;
