@@ -1,21 +1,21 @@
 <div class="settings-module" id="performance_optimization">
 
     <!-- 4 Tabs for GGUF Metadata Headers -->
-    <div class="booster-tabs"
+    <div class="opt-tabs"
         style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; padding-bottom: 10px;">
-        <button class="booster-tab active" data-target="gguf-models"
+        <button class="opt-tab active" data-target="gguf-models"
             style="background: rgba(255,255,255,0.1); border: none; padding: 8px 16px; color: white; border-radius: 4px; cursor: pointer;">Models
             & Paths</button>
-        <button class="booster-tab" data-target="gguf-hardware"
+        <button class="opt-tab" data-target="gguf-hardware"
             style="background: transparent; border: none; padding: 8px 16px; color: #8b949e; border-radius: 4px; cursor: pointer;">Hardware
             & Execution</button>
-        <button class="booster-tab" data-target="gguf-optimization"
+        <button class="opt-tab" data-target="gguf-optimization"
             style="background: transparent; border: none; padding: 8px 16px; color: #8b949e; border-radius: 4px; cursor: pointer;">LLM
             Optimization</button>
     </div>
 
     <!-- Models & Paths -->
-    <div id="gguf-models" class="booster-tab-content" style="display: block;">
+    <div id="gguf-models" class="opt-tab-content" style="display: block;">
         <h3 class="settings-section-title">Engine Lifecycle & Models</h3>
 
         <div class="setting-item">
@@ -90,7 +90,7 @@
     </div>
 
     <!-- Hardware & Execution -->
-    <div id="gguf-hardware" class="booster-tab-content" style="display: none;">
+    <div id="gguf-hardware" class="opt-tab-content" style="display: none;">
         <h3 class="settings-section-title">Hardware & Execution</h3>
 
         <div class="setting-item">
@@ -103,25 +103,24 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <span class="setting-label">GPU Processing Mode (n_gpu_layers)</span>
-                <span class="setting-desc" id="desc-gpu-layers">System automatically balances workload. Runs as much on
-                    the GPU as possible for optimal speed.</span>
-            </div>
-            <div class="setting-control" id="container-gpu-layers"></div>
-        </div>
-
-        <div class="setting-item">
-            <div class="setting-info">
                 <span class="setting-label">Memory Cleaning (Force VRAM Reclaim)</span>
                 <span class="setting-desc" id="desc-vram-reclaim">System intelligently decides when to free memory based
                     on your current hardware load.</span>
             </div>
             <div class="setting-control" id="container-vram-reclaim"></div>
         </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Extreme MoE SSD Streaming</span>
+                <span class="setting-desc" id="desc-moe-streaming">Zero-RAM out-of-core streaming for MoE models directly from NVMe SSD.</span>
+            </div>
+            <div class="setting-control" id="container-moe-streaming"></div>
+        </div>
     </div>
 
     <!-- LLM Optimization -->
-    <div id="gguf-optimization" class="booster-tab-content" style="display: none;">
+    <div id="gguf-optimization" class="opt-tab-content" style="display: none;">
         <h3 class="settings-section-title">LLM Optimization (User Moved Flags)</h3>
 
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
@@ -132,7 +131,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span id="val-vram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #60a5fa; background: rgba(96,165,250,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(96,165,250,0.2);">Auto (% Dynamic)</span>
-                    <button id="btn-toggle-vram-auto" class="booster-tab" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
+                    <button id="btn-toggle-vram-auto" class="auto-buffer-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
                 </div>
             </div>
             <div class="setting-control" id="container-vram-buffer-slider" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 4px;">
@@ -148,7 +147,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span id="val-ram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(168,85,247,0.2);">Auto (% Dynamic)</span>
-                    <button id="btn-toggle-ram-auto" class="booster-tab" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
+                    <button id="btn-toggle-ram-auto" class="auto-buffer-btn" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); padding: 4px 10px; color: #e5e7eb; border-radius: 4px; font-size: 11px; cursor: pointer;">Auto</button>
                 </div>
             </div>
             <div class="setting-control" id="container-ram-buffer-slider" style="width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 4px;">
@@ -214,14 +213,6 @@
             <div class="setting-control" id="container-dflash"></div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Extreme MoE SSD Streaming</span>
-                <span class="setting-desc" id="desc-moe-streaming">Zero-RAM out-of-core streaming for MoE models directly from NVMe SSD.</span>
-            </div>
-            <div class="setting-control" id="container-moe-streaming"></div>
-        </div>
-
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="setting-info">
@@ -233,13 +224,7 @@
             </div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">MoE VRAM Routing</span>
-                <span class="setting-desc" id="desc-moe">System decides MoE expert routing.</span>
-            </div>
-            <div class="setting-control" id="container-moe"></div>
-        </div>
+         
     </div>
 
 </div>

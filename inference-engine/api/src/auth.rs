@@ -32,12 +32,12 @@ pub async fn auth_middleware(
 
     // 2. Whitelist specific API routes that the DevHub needs internally to function
     // For example, if we lock out /v1/system/permission, the user can never turn OFF auth.
-    // The UI also uses /api/components, /v1/booster, and /v1/models/installed.
+    // The UI also uses /api/components, /v1/optimization, and /v1/models/installed.
     let is_whitelisted = path.starts_with("/v1/system/permission")
         || path.starts_with("/info")
         || path.starts_with("/health")
         || path.starts_with("/api/components/")
-        || path.starts_with("/v1/booster/")
+        || path.starts_with("/v1/optimization/")
         || path.starts_with("/v1/models/installed")
         || path.starts_with("/v1/skills/remove")
         || path.starts_with("/v1/extensions/remove")

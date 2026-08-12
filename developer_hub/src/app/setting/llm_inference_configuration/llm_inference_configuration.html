@@ -26,6 +26,14 @@
 
         <div class="setting-item">
             <div class="setting-info">
+                <span class="setting-label">Context Window Size (n_ctx)</span>
+                <span class="setting-desc">Token context window size. Use -1 for maximum native model limit, 0 for dynamic auto sizing based on leftover memory.</span>
+            </div>
+            <div class="setting-control" id="container-gguf-n-ctx"></div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
                 <span class="setting-label">No MMAP (no_mmap)</span>
                 <span class="setting-desc">Bypasses mmap() file I/O calls. Reads tensor weights directly into physical host RAM.</span>
             </div>
@@ -173,6 +181,14 @@
                 <span class="setting-desc">Target Execution Provider backend driver (CUDA, ROCm, DirectML, CPU).</span>
             </div>
             <div class="setting-control" id="container-onnx-hardware-offload"></div>
+        </div>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Context Window Size (n_ctx)</span>
+                <span class="setting-desc">Token context window size. Use -1 for maximum native model limit, 0 for dynamic auto sizing based on leftover memory.</span>
+            </div>
+            <div class="setting-control" id="container-onnx-n-ctx"></div>
         </div>
 
         <div class="setting-item">

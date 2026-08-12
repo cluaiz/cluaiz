@@ -225,7 +225,7 @@ impl Default for OptimizationControl {
             force_memory_lock: FeatureState::Off,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
-            extreme_moe_streaming: FeatureState::Auto,
+            extreme_moe_streaming: FeatureState::On,
         }
     }
 }

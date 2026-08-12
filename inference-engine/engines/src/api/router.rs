@@ -96,9 +96,9 @@ impl cluaiz_shared::cluaizInference for Backend {
         }
     }
 
-    fn apply_booster(&mut self, control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
+    fn apply_optimization(&mut self, control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.apply_booster(control),
+            Self::cluaiz(b) => b.apply_optimization(control),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
@@ -582,7 +582,7 @@ impl CoreRouter {
                         let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
                         
                         cluaiz_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
-                        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                         // n_gpu_layers is controlled via GgufMetadataHeaders
                         
                         if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(
@@ -1149,7 +1149,7 @@ pub fn agentic_pause_compile_cache(
                 let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
                 
                 cluaiz_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
-                let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                 // n_gpu_layers is now controlled via GgufMetadataHeaders
                 
                 if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(

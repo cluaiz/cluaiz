@@ -38,9 +38,9 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/models/{model_id}/inspect_raw_header", get(models::inspect_raw_header))
 
         
-        // ── Booster & Hardware Tuning API ──
-        .route("/v1/booster/status", get(crate::handlers::booster::status))
-        .route("/v1/booster/update", post(crate::handlers::booster::update))
+        // ── Optimization & Hardware Tuning API ──
+        .route("/v1/optimization/status", get(crate::handlers::booster::status))
+        .route("/v1/optimization/update", post(crate::handlers::booster::update))
 
 
         // ── WASM Skills & Agents API ──

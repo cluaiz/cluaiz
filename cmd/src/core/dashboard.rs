@@ -142,20 +142,20 @@ impl DashboardEngine {
         let watcher_engine = state.Core_engine.clone();
         tokio::spawn(async move {
             let env = cluaiz_shared::environment::EnvironmentManager::current();
-            let booster_path = env.engine_dir().join("llm_optimization.json");
-            let perm_path = env.engine_dir().join("permission.json");
+            let opt_path = env.config_dir().join("llm_optimization.json");
+            let perm_path = env.config_dir().join("permission.json");
             
-            let mut last_booster_modified = std::fs::metadata(&booster_path).and_then(|m| m.modified()).ok();
+            let mut last_opt_modified = std::fs::metadata(&opt_path).and_then(|m| m.modified()).ok();
             let mut last_perm_modified = std::fs::metadata(&perm_path).and_then(|m| m.modified()).ok();
             
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                 let mut needs_reload = false;
                 
-                if let Ok(meta) = std::fs::metadata(&booster_path) {
+                if let Ok(meta) = std::fs::metadata(&opt_path) {
                     if let Ok(modified) = meta.modified() {
-                        if Some(modified) > last_booster_modified {
-                            last_booster_modified = Some(modified);
+                        if Some(modified) > last_opt_modified {
+                            last_opt_modified = Some(modified);
                             needs_reload = true;
                         }
                     }
@@ -397,7 +397,7 @@ impl DashboardEngine {
                                 }
                             }
                             
-                            let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                            let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                             let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                             let suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
                             
@@ -865,7 +865,7 @@ impl DashboardEngine {
                     print!("\x1B[1A\x1B[2K\r");
                     stdout().flush()?;
                     
-                    let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                    let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                     let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                     if mode_ans.contains("Flash Mode") {
                         gguf_meta.user_moved_flags.think_mode = "Off".to_string();
@@ -875,16 +875,16 @@ impl DashboardEngine {
                         gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                     }
                     
-                    let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
+                    let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
                     let _ = gguf_meta.save();
                     
                     println!("  {} {} activated and saved to llm_optimization.json.", "✅".green(), mode_ans.bold());
                     return Ok(());
-                } else if master_ans.contains("System Booster") {
-                    let booster_path = cluaiz_shared::environment::EnvironmentManager::current().engine_dir().join("llm_optimization.json");
+                } else if master_ans.contains("System Optimization") {
+                    let _opt_config_path = cluaiz_shared::environment::EnvironmentManager::current().config_dir().join("llm_optimization.json");
 
                     loop {
-                        let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                        let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         
                         let compute_mode_str = match gguf_meta.hardware_and_execution.n_gpu_layers {
@@ -894,24 +894,24 @@ impl DashboardEngine {
                         };
 
                         let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-                        let vram_buf_str = match booster.custom_vram_buffer_gb {
+                        let vram_buf_str = match opt_control.custom_vram_buffer_gb {
                             Some(gb) => format!("{:.2} GB (Direct)", gb),
                             None => "Auto (% Dynamic)".to_string(),
                         };
                         let mut options = vec![
                             format!("VRAM Safety Buffer (Current: {})", vram_buf_str),
                             format!("Compute Device (Current: {})", compute_mode_str),
-                            format!("Turbo Quant (Current: {:?})", booster.turbo_quant),
-                            format!("Flash Attention (Current: {:?})", booster.flash_attention),
-                            format!("Speculative Decoding (Current: {:?})", booster.speculative_decoding),
-                            format!("Auto Round (Current: {:?})", booster.auto_round),
-                            format!("DFlash (FlashKDA) (Current: {:?})", booster.dflash),
-                            format!("Context Shifting (Current: {:?})", booster.context_shifting),
-                            format!("Force VRAM Reclaim (Current: {:?})", booster.force_vram_reclaim),
-                            format!("KV Cache Quantization (Current: {:?})", booster.kv_cache_quantization),
+                            format!("Turbo Quant (Current: {:?})", opt_control.turbo_quant),
+                            format!("Flash Attention (Current: {:?})", opt_control.flash_attention),
+                            format!("Speculative Decoding (Current: {:?})", opt_control.speculative_decoding),
+                            format!("Auto Round (Current: {:?})", opt_control.auto_round),
+                            format!("DFlash (Current: {:?})", opt_control.dflash),
+                            format!("Context Shifting (Current: {:?})", opt_control.context_shifting),
+                            format!("Force VRAM Reclaim (Current: {:?})", opt_control.force_vram_reclaim),
+                            format!("KV Cache Quantization (Current: {:?})", opt_control.kv_cache_quantization),
                             format!("Think Mode (Current: {:?})", gguf_meta.user_moved_flags.think_mode),
                             format!("Response Length Constraints: {} defined", gguf_meta.user_moved_flags.response_length.len()),
-                            format!("Force Memory Lock (Current: {:?})", booster.force_memory_lock),
+                            format!("Force Memory Lock (Current: {:?})", opt_control.force_memory_lock),
                         ];
                         options.push("🔙 Back to Menu".to_string());
                         
@@ -982,11 +982,11 @@ impl DashboardEngine {
                                 _ => {}
                             }
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
+                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 let _ = gguf_meta.save();
-                                println!("  {} System Booster updated: Compute Device = {}", "✅".green(), selected_device.bold());
+                                println!("  {} Optimization updated: Compute Device = {}", "✅".green(), selected_device.bold());
                             } else {
-                                println!("  {} Failed to save system booster settings.", "❌".red());
+                                println!("  {} Failed to save optimization settings.", "❌".red());
                             }
                             continue;
                         }
@@ -1012,20 +1012,20 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             if selected_buf == "Auto (% Dynamic)" {
-                                booster.custom_vram_buffer_gb = None;
+                                opt_control.custom_vram_buffer_gb = None;
                             } else {
                                 if let Ok(gb) = inquire::CustomType::<f64>::new("Enter VRAM Safety Buffer in GB (e.g. 1.5):")
                                     .with_default(1.5)
                                     .with_render_config(config.clone())
                                     .prompt() {
-                                    booster.custom_vram_buffer_gb = Some(gb);
+                                    opt_control.custom_vram_buffer_gb = Some(gb);
                                 }
                             }
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
-                                println!("  {} System Booster updated: VRAM Buffer = {:?}", "✅".green(), booster.custom_vram_buffer_gb);
+                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                                println!("  {} Optimization updated: VRAM Buffer = {:?}", "✅".green(), opt_control.custom_vram_buffer_gb);
                             } else {
-                                println!("  {} Failed to save system booster settings.", "❌".red());
+                                println!("  {} Failed to save optimization settings.", "❌".red());
                             }
                             continue;
                         }
@@ -1053,7 +1053,7 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            booster.context_shifting = match selected_shift.as_str() {
+                            opt_control.context_shifting = match selected_shift.as_str() {
                                 "Off" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Off,
                                 "Minimal" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Minimal,
                                 "Standard" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Standard,
@@ -1062,10 +1062,10 @@ impl DashboardEngine {
                                 _ => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Auto,
                             };
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
-                                println!("  {} System Booster updated: Context Shifting = {}", "✅".green(), selected_shift.bold());
+                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                                println!("  {} Optimization updated: Context Shifting = {}", "✅".green(), selected_shift.bold());
                             } else {
-                                println!("  {} Failed to save system booster settings.", "❌".red());
+                                println!("  {} Failed to save optimization settings.", "❌".red());
                             }
                             continue;
                         }
@@ -1090,17 +1090,17 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            booster.kv_cache_quantization = match selected_kv.as_str() {
+                            opt_control.kv_cache_quantization = match selected_kv.as_str() {
                                 s if s.starts_with("16-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv16,
                                 s if s.starts_with("8-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv8,
                                 s if s.starts_with("4-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4,
                                 _ => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto,
                             };
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
-                                println!("  {} System Booster updated: KV Cache Quantization = {}", "✅".green(), selected_kv.bold());
+                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                                println!("  {} Optimization updated: KV Cache Quantization = {}", "✅".green(), selected_kv.bold());
                             } else {
-                                println!("  {} Failed to save system booster settings.", "❌".red());
+                                println!("  {} Failed to save optimization settings.", "❌".red());
                             }
                             continue;
                         }
@@ -1203,7 +1203,7 @@ impl DashboardEngine {
                             Err(_) => {
                                 print!("\x1B[1A\x1B[2K\r"); // Erase <canceled>
                                 stdout().flush()?;
-                                continue; // One step back (stays in System Booster list)
+                                continue; // One step back (stays in System Optimization list)
                             }
                         };
                         print!("\x1B[1A\x1B[2K\r");
@@ -1216,33 +1216,33 @@ impl DashboardEngine {
                         };
 
                         match key_part.as_str() {
-                            "Turbo Quant" => booster.turbo_quant = feature_state,
-                            "Flash Attention" => booster.flash_attention = feature_state,
-                            "Speculative Decoding" => booster.speculative_decoding = feature_state,
-                            "Auto Round" => booster.auto_round = feature_state,
+                            "Turbo Quant" => opt_control.turbo_quant = feature_state,
+                            "Flash Attention" => opt_control.flash_attention = feature_state,
+                            "Speculative Decoding" => opt_control.speculative_decoding = feature_state,
+                            "Auto Round" => opt_control.auto_round = feature_state,
                             "DFlash" => {
-                                booster.dflash = match val_ans.as_str() {
+                                opt_control.dflash = match val_ans.as_str() {
                                     "On" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("On".to_string()),
                                     "Off" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Off".to_string()),
                                     _ => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Auto".to_string()),
                                 };
                             },
-                            "Force VRAM Reclaim" => booster.force_vram_reclaim = feature_state,
+                            "Force VRAM Reclaim" => opt_control.force_vram_reclaim = feature_state,
                             "Think Mode" => {
                                 gguf_meta.user_moved_flags.think_mode = val_ans.clone();
                             },
-                            "Force Memory Lock" => booster.force_memory_lock = feature_state,
+                            "Force Memory Lock" => opt_control.force_memory_lock = feature_state,
                             _ => {}
                         }
                         
-                        if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster) {
+                        if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                             let _ = gguf_meta.save();
-                            println!("  {} System Booster updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
+                            println!("  {} Optimization updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
                         } else {
-                            println!("  {} Failed to save system booster settings.", "❌".red());
+                            println!("  {} Failed to save optimization settings.", "❌".red());
                         }
                     }
-                    continue; // Go back to Master Menu after exiting System Booster
+                    continue; // Go back to Master Menu after exiting System Optimization
                 }
 
                 let is_vector = master_ans.contains("Vector");

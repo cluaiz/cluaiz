@@ -11,7 +11,7 @@ pub async fn execute(
     mode: Option<String>,
     spec_decode: Option<String>,
 ) -> Result<()> {
-    let mut control = HardwareGovernor::load_booster_settings().unwrap_or_default();
+    let mut control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
     let mut modified = false;
 
     // Check if any arguments were provided
@@ -136,7 +136,7 @@ pub async fn execute(
                                 }
                             }
                         }
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
                     }
                 }
                 "KV Cache Quantization" => {
@@ -149,7 +149,7 @@ pub async fn execute(
                             "Kv4" => KvCacheQuantization::Kv4,
                             _ => control.kv_cache_quantization,
                         };
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
                     }
                 }
                 "Context Shifting" => {
@@ -164,14 +164,14 @@ pub async fn execute(
                             "Extreme" => ContextShiftingMode::Extreme,
                             _ => control.context_shifting,
                         };
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
                     }
                 }
                 "DFlash" => {
                     let dflash_opts = vec!["Auto", "On", "Off"];
-                    if let Ok(d) = inquire::Select::new("DFlash (FlashKDA):", dflash_opts).with_help_message("").prompt() {
+                    if let Ok(d) = inquire::Select::new("DFlash:", dflash_opts).with_help_message("").prompt() {
                         control.dflash = cluaiz_shared::hardware::schema::optimization::SmartState::Static(d.to_string());
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
                     }
                 }
                 "Response Length" => {
@@ -236,7 +236,7 @@ pub async fn execute(
                             },
                             _ => {}
                         }
-                        let _ = HardwareGovernor::save_booster_settings(&control);
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
                     }
                 }
             }

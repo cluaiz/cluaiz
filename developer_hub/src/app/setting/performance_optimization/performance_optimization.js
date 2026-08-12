@@ -17,7 +17,7 @@ const DESCRIPTIONS = {
         'On': 'Forces the OS to lock the model in RAM. Prevents swapping and stuttering.',
         'Off': 'Allows the OS to swap memory if needed.'
     },
-    boosterProfile: {
+    optimizationProfile: {
         'balance': 'Balances speed, memory, and CPU usage.',
         'multitasking': 'Leaves room for background apps.',
         'max_boost': 'High performance, uses more resources.',
@@ -85,9 +85,8 @@ const DESCRIPTIONS = {
         'Off': 'Standard routing.'
     },
     extremeMoeStreaming: {
-        'Auto': 'System automatically streams MoE experts from NVMe SSD if RAM is constrained.',
-        'On': 'Forces Zero-RAM MoE SSD streaming directly from NVMe disk.',
-        'Off': 'Disables SSD streaming and uses standard RAM allocation.'
+        'On': 'Enables Zero-RAM MoE SSD streaming fallback when RAM is constrained.',
+        'Off': 'Disables SSD streaming fallback and uses standard RAM allocation.'
     },
     outputStyle: {
         'separated': 'The reasoning process is parsed  and cleanly separated from the final answer.',
@@ -96,22 +95,22 @@ const DESCRIPTIONS = {
 };
 
 export async function mount(container) {
-    let boosterConfig = {};
+    let optConfig = {};
     let permData = {};
     let installedModels = [];
 
     // Fetch initial state
     try {
-        const [boosterRes, permRes, modelsRes, sysControlRes] = await Promise.all([
-            fetch(window.getApiBaseUrl() + '/v1/booster/status').catch(() => null),
+        const [optRes, permRes, modelsRes, sysControlRes] = await Promise.all([
+            fetch(window.getApiBaseUrl() + '/v1/optimization/status').catch(() => null),
             fetch(window.getApiBaseUrl() + '/v1/system/permission').catch(() => null),
             fetch(window.getApiBaseUrl() + '/v1/models/installed').catch(() => null),
             fetch(window.getApiBaseUrl() + '/v1/system/control').catch(() => null)
         ]);
 
-        if (boosterRes && boosterRes.ok) {
-            const data = await boosterRes.json();
-            boosterConfig = data.booster || {};
+        if (optRes && optRes.ok) {
+            const data = await optRes.json();
+            optConfig = data.optimization || {};
         }
         if (permRes && permRes.ok) {
             const data = await permRes.json();
@@ -135,22 +134,22 @@ export async function mount(container) {
         console.error("Failed to load initial settings:", e);
     }
 
-    const updateBoosterSetting = async (key, value) => {
+    const updateOptimizationSetting = async (key, value) => {
         try {
             if (key.includes('.')) {
                 const parts = key.split('.');
-                if (!boosterConfig[parts[0]]) boosterConfig[parts[0]] = {};
-                boosterConfig[parts[0]][parts[1]] = value;
+                if (!optConfig[parts[0]]) optConfig[parts[0]] = {};
+                optConfig[parts[0]][parts[1]] = value;
             } else {
-                boosterConfig[key] = value;
+                optConfig[key] = value;
             }
-            await fetch(window.getApiBaseUrl() + '/v1/booster/update', {
+            await fetch(window.getApiBaseUrl() + '/v1/optimization/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(boosterConfig)
+                body: JSON.stringify(optConfig)
             });
         } catch (e) {
-            console.error("Failed to update booster setting:", e);
+            console.error("Failed to update optimization setting:", e);
         }
     };
 
@@ -184,8 +183,8 @@ export async function mount(container) {
             let isActive = false;
             if (isSystemState) {
                 isActive = permData[key] === true;
-            } else if (boosterConfig[key] !== undefined) {
-                isActive = boosterConfig[key] === 'On' || boosterConfig[key] === true;
+            } else if (optConfig[key] !== undefined) {
+                isActive = optConfig[key] === 'On' || optConfig[key] === true;
             }
 
             if (isActive) toggle.classList.add('active');
@@ -201,7 +200,7 @@ export async function mount(container) {
                 if (isSystemState) {
                     await updatePermissionSetting(key, newState);
                 } else {
-                    await updateBoosterSetting(key, newState ? 'On' : 'Off');
+                    await updateOptimizationSetting(key, newState ? 'On' : 'Off');
                 }
             });
         }
@@ -215,9 +214,9 @@ export async function mount(container) {
             let configVal;
             if (key.includes('.')) {
                 const parts = key.split('.');
-                configVal = boosterConfig[parts[0]] ? boosterConfig[parts[0]][parts[1]] : undefined;
+                configVal = optConfig[parts[0]] ? optConfig[parts[0]][parts[1]] : undefined;
             } else {
-                configVal = boosterConfig[key];
+                configVal = optConfig[key];
             }
             let initialValue = configVal !== undefined ? String(configVal) : defaultValue;
             if (configVal === true) initialValue = 'On';
@@ -236,7 +235,7 @@ export async function mount(container) {
                     if (val === 'Auto') finalVal = 'Auto';
                     if (key === 'n_gpu_layers') finalVal = parseInt(val, 10);
 
-                    await updateBoosterSetting(key, finalVal);
+                    await updateOptimizationSetting(key, finalVal);
                     if (onValueChange) onValueChange(finalVal);
                 }
             });
@@ -247,6 +246,7 @@ export async function mount(container) {
 
     const makeOptions = (values, labels) => values.map((v, i) => ({ value: String(v), label: labels ? labels[i] : String(v) }));
     const autoOnOff = makeOptions(['Auto', 'On', 'Off']);
+    const onOffOptions = makeOptions(['On', 'Off']);
 
     // Initialize Toggles (System state)
     setupToggle('toggle-brain-mode', 'desc-brain-mode', DESCRIPTIONS.brainMode, 'brain_mode', true);
@@ -262,7 +262,7 @@ export async function mount(container) {
 
     if (vramSlider && vramValLabel && vramAutoBtn) {
         vramSlider.max = systemVramGb > 0 ? parseFloat(systemVramGb.toFixed(1)) : 1;
-        let curVramBuf = boosterConfig.custom_vram_buffer_gb;
+        let curVramBuf = optConfig.custom_vram_buffer_gb;
 
         const updateVramDisplay = (gbVal) => {
             if (gbVal === null || gbVal === undefined) {
@@ -286,12 +286,14 @@ export async function mount(container) {
             const val = parseFloat(e.target.value);
             const saveVal = val > 0 ? val : null;
             updateVramDisplay(saveVal);
-            await updateBoosterSetting('custom_vram_buffer_gb', saveVal);
+            await updateOptimizationSetting('custom_vram_buffer_gb', saveVal);
         });
 
-        vramAutoBtn.addEventListener('click', async () => {
+        vramAutoBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
             updateVramDisplay(null);
-            await updateBoosterSetting('custom_vram_buffer_gb', null);
+            await updateOptimizationSetting('custom_vram_buffer_gb', null);
         });
     }
 
@@ -301,7 +303,7 @@ export async function mount(container) {
 
     if (ramSlider && ramValLabel && ramAutoBtn) {
         ramSlider.max = systemRamGb > 0 ? parseFloat(systemRamGb.toFixed(1)) : 1;
-        let curRamBuf = boosterConfig.custom_ram_buffer_gb;
+        let curRamBuf = optConfig.custom_ram_buffer_gb;
 
         const updateRamDisplay = (gbVal) => {
             if (gbVal === null || gbVal === undefined) {
@@ -325,12 +327,14 @@ export async function mount(container) {
             const val = parseFloat(e.target.value);
             const saveVal = val > 0 ? val : null;
             updateRamDisplay(saveVal);
-            await updateBoosterSetting('custom_ram_buffer_gb', saveVal);
+            await updateOptimizationSetting('custom_ram_buffer_gb', saveVal);
         });
 
-        ramAutoBtn.addEventListener('click', async () => {
+        ramAutoBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
             updateRamDisplay(null);
-            await updateBoosterSetting('custom_ram_buffer_gb', null);
+            await updateOptimizationSetting('custom_ram_buffer_gb', null);
         });
     }
 
@@ -345,12 +349,9 @@ export async function mount(container) {
     // Assuming UI maps to 'Auto' 'On' 'Off' properly, we will just pass it to the backend.
     // Wait, DFlashConfig is SmartState<DFlashConfig>. The UI sets it as string 'Auto', 'On', 'Off'. 
     setupCustomDropdown('container-dflash', 'desc-dflash', DESCRIPTIONS.dflash, autoOnOff, 'dflash', 'Auto');
-    setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, autoOnOff, 'extreme_moe_streaming', 'Auto');
     setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
-    setupCustomDropdown('container-gpu-layers', 'desc-gpu-layers', DESCRIPTIONS.gpuLayers,
-        makeOptions(['-1', '0', '32'], ['GPU (Auto/Full)', 'Only CPU', 'Hybrid']), 'n_gpu_layers', '-1');
     setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
-    setupCustomDropdown('container-moe', 'desc-moe', DESCRIPTIONS.moe, autoOnOff, 'moe_routing', 'Auto');
+    setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, onOffOptions, 'extreme_moe_streaming', 'On');
 
     // Chat, Vector, Vision, and Audio Models Selection & Rich Card Rendering
     try {
@@ -1180,8 +1181,8 @@ export async function mount(container) {
     }
 
     // Tab switching logic for GGUF Metadata Headers
-    const tabs = container.querySelectorAll('.booster-tab');
-    const contents = container.querySelectorAll('.booster-tab-content');
+    const tabs = container.querySelectorAll('.opt-tab');
+    const contents = container.querySelectorAll('.opt-tab-content');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => {

@@ -531,6 +531,16 @@ export async function mount(container) {
         customDropdownOptions,
         ggufConfig, 'hardware_and_execution', 'n_gpu_layers', saveGguf);
 
+    const nCtxOptions = [
+        { value: '0', label: 'Dynamic Auto' },
+        { value: '-1', label: 'Max Native' },
+        { isInput: true, placeholder: 'Context Size (e.g. 4096)', suffix: 'Tokens', inputType: 'number' }
+    ];
+
+    setupCustomDropdown('container-gguf-n-ctx', undefined, undefined,
+        nCtxOptions,
+        ggufConfig, 'hardware_and_execution', 'n_ctx', saveGguf);
+
     setupToggle('toggle-gguf-no-mmap', ggufConfig, 'hardware_and_execution', 'no_mmap', saveGguf);
 
     const overrideTensorOptions = [
@@ -610,6 +620,10 @@ export async function mount(container) {
     setupCustomDropdown('container-onnx-hardware-offload', undefined, undefined,
         onnxHardwareOptions,
         onnxConfig, null, 'n_gpu_layers', saveOnnx);
+
+    setupCustomDropdown('container-onnx-n-ctx', undefined, undefined,
+        nCtxOptions,
+        onnxConfig, null, 'n_ctx', saveOnnx);
 
     setupCustomDropdown('container-onnx-intra-threads', undefined, undefined,
         makeOptions(['0', '1', '2', '4', '8', '16'], ['Auto (0)', '1', '2', '4', '8', '16']).concat([{ isInput: true, placeholder: 'Custom', inputType: 'number' }]),
