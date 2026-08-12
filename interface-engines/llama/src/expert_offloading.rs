@@ -264,6 +264,10 @@ impl GgufMoeStreamingController {
                     virtual_address: *mut c_void,
                     size: usize,
                 ) -> u32;
+                fn VirtualUnlock(
+                    lpAddress: *mut c_void,
+                    dwSize: usize,
+                ) -> i32;
             }
 
             if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
@@ -275,6 +279,7 @@ impl GgufMoeStreamingController {
                     let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
                     unsafe {
                         DiscardVirtualMemory(ptr, total_len);
+                        VirtualUnlock(ptr, total_len);
                     }
                 }
             }
@@ -296,6 +301,21 @@ impl GgufMoeStreamingController {
             }
             for expert_id in 0..total_experts {
                 self.advise_dontneed(layer, expert_id);
+            }
+        }
+        #[cfg(windows)]
+        {
+            extern "system" {
+                fn GetCurrentProcess() -> *mut std::ffi::c_void;
+                fn SetProcessWorkingSetSize(
+                    hProcess: *mut std::ffi::c_void,
+                    dwMinimumWorkingSetSize: usize,
+                    dwMaximumWorkingSetSize: usize,
+                ) -> i32;
+            }
+            unsafe {
+                // Trim process working set to immediately return discardable expert pages to Windows free RAM
+                SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
             }
         }
         info!("🌊 [GgufMoeStreaming] Post-load memory purge complete.");

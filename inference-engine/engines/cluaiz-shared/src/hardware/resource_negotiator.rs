@@ -97,66 +97,46 @@ pub fn calculate_safety_buffer(
     total_vram_gb: f64,
     live_free_vram_gb: f64,
 ) -> f64 {
-    let max_allowed_buffer = (total_vram_gb - 0.5).max(0.20);
-    let live_used_vram_gb = (total_vram_gb - live_free_vram_gb).max(0.0);
+    let min_vram_guard = 0.25f64; // Minimum 250MB safe floor
 
-    // Dynamic Rule Matrix: Max Safety Envelope capped at 500MB (0.50 GB)
+    // 1. User Explicit Custom VRAM Buffer
     if let Some(direct_gb) = opt_control.custom_vram_buffer_gb {
         if direct_gb > 0.0 {
-            let target_buffer = direct_gb.min(0.50);
-            if live_used_vram_gb >= 0.50 {
-                return 0.0f64; // OS/Apps already consuming > 500MB -> Buffer = 0 MB
-            } else if live_used_vram_gb >= 0.30 {
-                return (target_buffer - 0.20).max(0.10); // Scale down to 100MB
-            } else {
-                return target_buffer.min(max_allowed_buffer);
-            }
+            // Respect user buffer, but enforce 250MB minimum safe floor if specified too low
+            let max_allowed = (total_vram_gb - 0.25).max(0.0);
+            return direct_gb.max(min_vram_guard).min(max_allowed);
         }
     }
 
-    // Auto Mode: Dynamic calculation bounded between 200MB (0.20GB) and 500MB (0.50GB) max
+    // 2. Auto Mode: Dynamic calculation (5% of Total VRAM, bounded between 0.25GB and 1.00GB max)
+    let live_used_vram_gb = (total_vram_gb - live_free_vram_gb).max(0.0);
     if live_used_vram_gb >= 0.50 {
         0.0f64 // OS/Apps already using > 500MB -> Add ZERO extra safety
     } else if live_used_vram_gb >= 0.30 {
         0.10f64 // Minimal 100MB safety
     } else {
-        0.20f64 // Standard 200MB safety floor (Max 500MB ceiling)
+        (total_vram_gb * 0.05).clamp(min_vram_guard, 1.00)
     }
 }
 
 /// Calculates the OS safety buffer for CPU RAM in GB based on user settings.
-/// Rules:
-///   1. User custom_ram_buffer_gb >= 1.0 GB -> return 0.0 GB (extra safety redundant since user reserved 1GB+)
-///   2. User custom_ram_buffer_gb > 0.0 GB -> return custom_ram_buffer_gb
-///   3. Auto Mode / null -> 0.60 GB (600MB) flexible RAM safety buffer
 pub fn calculate_ram_safety_buffer(
     opt_control: &OptimizationControl,
-    required_ram_gb: f64,
+    total_ram_gb: f64,
     available_ram_gb: f64,
 ) -> f64 {
-    // Hard minimum OS guard rail: 1.50 GB to prevent SSD pagefile thrashing!
-    let min_os_guard = 1.50f64;
+    let min_ram_guard = 1.00f64; // Minimum 1.00 GB safe floor to prevent OS crash
 
-    // 1. User Explicit Custom Setting Priority
+    // 1. User Explicit Custom RAM Setting (Zero Double-Buffering)
     if let Some(direct_gb) = opt_control.custom_ram_buffer_gb {
-        if direct_gb >= min_os_guard {
-            return direct_gb;
+        if direct_gb > 0.0 {
+            // Respect user buffer, but enforce 1.00 GB minimum safe floor if specified too low
+            return direct_gb.max(min_ram_guard);
         }
-        // If user set something too low, we still enforce a minimum safe floor
-        return direct_gb.max(min_os_guard);
     }
 
-    // 2. Real-Time Memory Fitting Demand Test
-    if required_ram_gb > available_ram_gb {
-        // Tight memory pressure: Must still enforce minimum OS guard
-        min_os_guard
-    } else if (available_ram_gb - required_ram_gb) < 1.50 {
-        // Marginal RAM headroom
-        1.50f64
-    } else {
-        // Comfortable fitting headroom: 2.0 GB standard safety buffer
-        2.00f64
-    }
+    // 2. Auto Mode: Dynamic RAM Buffer bounded between Min 1.50 GB and Max 3.50 GB
+    (total_ram_gb * 0.15).clamp(1.50, 3.50)
 }
 
 // ─── Core Negotiation Logic ──────────────────────────────────────────────────
@@ -249,10 +229,23 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
     let model_gb = request.model_size_gb;
     // ─── Step 4: Calculate Usable Memory from Real-Time Free Memory ───
     let vram_safety = calculate_safety_buffer(&opt_control, total_vram_gb, live_free_vram_gb);
-    let ram_safety = calculate_ram_safety_buffer(&opt_control, model_gb, available_ram_gb);
-    // Calculate Usable VRAM from REAL-TIME FREE VRAM (not static total VRAM!)
+    let ram_safety = calculate_ram_safety_buffer(&opt_control, total_ram_gb, available_ram_gb);
+    
+    // Calculate Usable VRAM from REAL-TIME FREE VRAM
     let usable_vram = (live_free_vram_gb - vram_safety).max(0.0);
-    let usable_ram = (available_ram_gb - ram_safety).max(0.0);
+    
+    // Usable RAM calculation:
+    // If User provided custom_ram_buffer_gb, follow it 100% with NO extra double-buffering.
+    // In Auto Mode, enforce system ceiling (total RAM minus auto_safety buffer).
+    let usable_ram = if opt_control.custom_ram_buffer_gb.is_some() {
+        (available_ram_gb - ram_safety).max(0.0)
+    } else {
+        let max_allowed_system_ram = (total_ram_gb - ram_safety).max(0.0);
+        let pre_existing_used_ram = (total_ram_gb - available_ram_gb).max(0.0);
+        let system_cap_usable_ram = (max_allowed_system_ram - pre_existing_used_ram).max(0.0);
+        let raw_usable_ram = (available_ram_gb - ram_safety).max(0.0);
+        raw_usable_ram.min(system_cap_usable_ram).max(0.0)
+    };
 
     // ─── Step 5: Check Existing ARBITER Allocations ───
     let existing_allocs: f64 = HardwareGovernor::get_active_allocations()
@@ -495,6 +488,9 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 format!("Native Max = {} Tokens | Granted = {} Tokens ({:.2} GB) -> Placed in System RAM", native_max_ctx, target_ctx_tokens, required_ctx_gb)
             };
 
+            let leftover_vram_headroom = (usable_vram - allocated_vram).max(0.0);
+            let leftover_ram_headroom = post_context_ram_buffer;
+
             eprintln!("🧠 [Negotiator] Resource Placement & Tier Breakdown:");
             eprintln!("   ├── 🟢 VRAM Allocation (Usable: {:.2} GB):", usable_vram);
             eprintln!("   │    ├── Base VRAM Reserve (Embeddings/Head): {:.2} GB", vram_base_reserve);
@@ -506,13 +502,12 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             if remaining_layers > 0 {
                 eprintln!("   │    ├── Remaining Layers: {} Attention Layers ({} Experts, Offloaded)", remaining_layers, offloaded_layer_experts);
             }
-            eprintln!("   │    ├── Pre-Context VRAM Headroom: {:.2} GB", pre_context_vram_headroom);
             if ctx_in_vram {
                 eprintln!("   │    ├── Context Window ({}): {}", ctx_mode_str, ctx_placement_str);
             } else {
                 eprintln!("   │    ├── Context Window: Skipped (Offloaded to System RAM)");
             }
-            eprintln!("   │    └── Final VRAM Buffer (Post-Context): {:.2} GB", post_context_vram_buffer);
+            eprintln!("   │    └── Reserved VRAM Buffer: {:.2} GB", vram_safety);
             
             eprintln!("   ├── 🔵 System RAM Allocation (Usable: {:.2} GB):", usable_ram);
             if ram_dense_reserve > 0.0 {
@@ -534,7 +529,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             if overflow_layers > 0 {
                 eprintln!("   │    ├── Overflow Layers: {} Attention Layers ({} Experts, Offloaded)", overflow_layers, overflow_experts);
             }
-            eprintln!("   │    └── Final RAM Buffer: {:.2} GB", post_context_ram_buffer);
+            eprintln!("   │    └── Reserved RAM Buffer: {:.2} GB", ram_safety);
             
             eprintln!("   └── 🟠 Dynamic Swapping:");
             if overflow_layers > 0 {
@@ -625,7 +620,13 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                     cache_budget,
                 )
             } else {
-                (PlacementTier::CpuOnly, 0, 0.0, usable_ram, None, 0.0)
+                anyhow::bail!(
+                    "❌ Insufficient Hardware: Dense model requires {:.2} GB, but only {:.2} GB usable memory is available (VRAM: {:.2} GB, RAM: {:.2} GB after user buffer and 85% system ceiling). Dense models cannot be streamed via SSD.",
+                    model_gb,
+                    (free_vram + usable_ram),
+                    free_vram,
+                    usable_ram
+                );
             }
         };
 
