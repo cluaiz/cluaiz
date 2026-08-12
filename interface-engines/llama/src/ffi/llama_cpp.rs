@@ -221,6 +221,8 @@ extern "C" {
         n_token_capacity: usize,
         n_token_count_out: *mut usize,
     ) -> usize;
+
+    pub fn ggml_get_name(tensor: *const std::ffi::c_void) -> *const c_char;
 }
 
 pub type LlamaLogCallback = extern "C" fn(level: i32, text: *const c_char, user_data: *mut std::ffi::c_void);

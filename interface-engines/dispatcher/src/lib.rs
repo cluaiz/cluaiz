@@ -18,22 +18,22 @@ pub struct SafeEnginePtr(pub *mut std::ffi::c_void);
 unsafe impl Send for SafeEnginePtr {}
 unsafe impl Sync for SafeEnginePtr {}
 
-/// 🚦 NeuralDispatcher (The Master Router)
+/// NeuralDispatcher (The Master Router)
 /// The core router that owns hardware logic and dispatches prompts across Native IPC and HTTP.
 pub struct NeuralDispatcher {
-    pub booster_state: OptimizationControl,
+    pub opt_state: OptimizationControl,
     pub current_signature: KernelSignature,
     pub cached_engine: std::sync::Arc<tokio::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
-    /// 🔢 Limits concurrent LLM dispatches to prevent system overload (acts as an inference queue)
+    /// Limits concurrent LLM dispatches to prevent system overload (acts as an inference queue)
     pub inference_semaphore: Arc<tokio::sync::Semaphore>,
-    /// 🛑 Per-instance cancellation flag — set to true to stop the active generation
+    /// Per-instance cancellation flag — set to true to stop the active generation
     pub cancel_flag: Arc<AtomicBool>,
 }
 
 impl NeuralDispatcher {
-    pub fn new(booster_state: OptimizationControl, signature: KernelSignature) -> Self {
+    pub fn new(opt_state: OptimizationControl, signature: KernelSignature) -> Self {
         Self {
-            booster_state,
+            opt_state,
             current_signature: signature,
             cached_engine: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
             // Max 4 concurrent LLM generations — extras wait in queue
@@ -405,7 +405,7 @@ impl NeuralDispatcher {
 }
 
 pub struct EmbeddingDispatcher {
-    cached_engine: std::sync::Arc<tokio::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
+    cached_engine: std::sync::Arc<std::sync::Mutex<Option<(PathBuf, SafeEnginePtr, std::sync::Arc<libloading::Library>)>>>,
 }
 
 unsafe impl Send for EmbeddingDispatcher {}
@@ -414,12 +414,12 @@ unsafe impl Sync for EmbeddingDispatcher {}
 impl EmbeddingDispatcher {
     pub fn new(_format_type: Option<String>) -> Result<Self> {
         Ok(Self {
-            cached_engine: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            cached_engine: std::sync::Arc::new(std::sync::Mutex::new(None)),
         })
     }
 
     pub fn dispatch_embedding_with_model(&self, text: &str, model_path: &std::path::Path) -> Result<Vec<f32>> {
-        let mut engine_lock = self.cached_engine.blocking_lock();
+        let mut engine_lock = self.cached_engine.lock().unwrap();
 
         let is_gguf = model_path.extension().map(|e| e.to_string_lossy().eq_ignore_ascii_case("gguf")).unwrap_or(false);
         let core_name = if is_gguf { "cluaiz-llama" } else { "cluaiz-onnx" };
@@ -531,7 +531,7 @@ impl EmbeddingDispatcher {
     }
 
     pub fn dispatch_embedding(&self, text: &str) -> Result<Vec<f32>> {
-        let engine_lock = self.cached_engine.blocking_lock();
+        let engine_lock = self.cached_engine.lock().unwrap();
         if let Some((ref path, _, _)) = *engine_lock {
             let path_clone = path.clone();
             drop(engine_lock);
@@ -559,7 +559,7 @@ impl neural_core::interfaces::router_contract::EmbeddingDriver for EmbeddingDisp
 
 impl Drop for EmbeddingDispatcher {
     fn drop(&mut self) {
-        let mut lock = self.cached_engine.blocking_lock();
+        let mut lock = self.cached_engine.lock().unwrap();
         if let Some((_, safe_ptr, lib)) = lock.take() {
             if !safe_ptr.0.is_null() {
                 unsafe {

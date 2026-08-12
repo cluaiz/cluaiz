@@ -162,8 +162,8 @@ impl SystemPerformanceLive {
         }
     }
 
-    pub fn apply_booster_profile(&self, _control: &super::schema::optimization::OptimizationControl) -> Result<()> {
-        tracing::info!("🚀 [Kernel] Applying Autonomous Silicon Booster Profile: Maximum Performance");
+    pub fn apply_optimization_profile(&self, _control: &super::schema::optimization::OptimizationControl) -> Result<()> {
+        tracing::info!("[Kernel] Applying Optimization Profile: Maximum Performance");
 
         for drv in &self.gpu_drivers {
             // In Autonomous mode, we let the drivers handle the hardware limits natively

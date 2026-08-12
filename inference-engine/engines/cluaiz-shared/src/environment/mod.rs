@@ -47,7 +47,22 @@ impl EnvironmentManager {
         // We detect if we're running via cargo
         if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
             let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-            let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+            let mut current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+            // 🛡️ WORKSPACE ROOT RESOLUTION: Traverse up from test subfolders
+            // to find the master directory containing the `.cluaiz` configuration folder.
+            let mut check_dir = current_dir.clone();
+            while !check_dir.join(".cluaiz").exists() {
+                if let Some(parent) = check_dir.parent() {
+                    check_dir = parent.to_path_buf();
+                } else {
+                    break;
+                }
+            }
+            if check_dir.join(".cluaiz").exists() {
+                current_dir = check_dir;
+            }
+
             return Self {
                 mode: EnvironmentMode::Development,
                 local_dir: current_dir.join(".cluaiz"),

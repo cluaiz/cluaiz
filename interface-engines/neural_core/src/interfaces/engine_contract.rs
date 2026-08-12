@@ -17,7 +17,7 @@ pub trait SovereignEngine: Send + Sync {
     fn unload(&mut self) -> anyhow::Result<()>;
 
     /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
-    fn apply_booster(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
+    fn apply_optimization(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
         Ok(())
     }
 

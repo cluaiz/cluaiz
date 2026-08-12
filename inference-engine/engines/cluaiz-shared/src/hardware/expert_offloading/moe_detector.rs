@@ -47,13 +47,10 @@ impl MoeModelInfo {
     /// Returns the recommended expert LRU cache RAM budget in GB.
     /// Allocates enough RAM to hold at least 2 full MoE layers worth of experts concurrently.
     pub fn recommended_cache_budget_gb(&self) -> f64 {
-        if !self.is_moe || self.expert_size_bytes == 0 {
+        if !self.is_moe || self.expert_size_bytes == 0 || self.moe_layer_count == 0 {
             return 0.0;
         }
-        // Hold 2 layers × active_experts_per_token × 2 (read-ahead buffer) in cache
-        let hot_experts = (self.active_experts_per_token * 2).max(16);
-        let cache_bytes = hot_experts as u64 * self.expert_size_bytes;
-        cache_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
+        self.total_expert_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
     }
 }
 
@@ -63,28 +60,23 @@ impl MoeModelInfo {
 pub struct GgufMoeDetector;
 
 impl GgufMoeDetector {
-    /// Detect MoE metadata from a GGUF file path.
-    /// Returns `MoeModelInfo` (is_moe=false if no MoE keys found or parse fails).
     pub fn detect(model_path: &Path) -> MoeModelInfo {
-        // Delegate to the existing GGUFProber which already parses the metadata KV block
         let probe_result = crate::utils::GGUFProber::probe(model_path);
         let (metadata, tensor_infos, _) = match probe_result {
             Ok(r) => r,
-            Err(e) => {
-                tracing::warn!("🔍 [MoeDetector] GGUF probe failed for {:?}: {}", model_path, e);
-                return MoeModelInfo::default();
-            }
+            Err(_) => return MoeModelInfo::default(),
         };
 
-        // ── Extract MoE KV metadata ──
         let expert_count = metadata
-            .get("llm.expert_count")
-            .and_then(|v| v.parse::<usize>().ok())
+            .iter()
+            .find(|(k, _)| k.ends_with(".expert_count"))
+            .and_then(|(_, v)| v.parse::<usize>().ok())
             .unwrap_or(0);
 
         let active_experts = metadata
-            .get("llm.expert_used_count")
-            .and_then(|v| v.parse::<usize>().ok())
+            .iter()
+            .find(|(k, _)| k.ends_with(".expert_used_count"))
+            .and_then(|(_, v)| v.parse::<usize>().ok())
             .unwrap_or(if expert_count > 0 { (expert_count / 8).max(1) } else { 0 });
 
         let block_count = metadata
@@ -97,6 +89,19 @@ impl GgufMoeDetector {
             return MoeModelInfo::default();
         }
 
+        // ── Calculate total parameters to determine average bytes per element ──
+        let mut total_elements: u64 = 0;
+        for size_list in tensor_infos.values() {
+            total_elements += size_list.iter().map(|&s| s as u64).product::<u64>();
+        }
+
+        let file_size = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
+        let bytes_per_element = if total_elements > 0 {
+            file_size as f64 / total_elements as f64
+        } else {
+            0.5 // Default to 4-bit (0.5 bytes/element)
+        };
+
         // ── Count MoE layers by scanning tensor names for expert patterns ──
         // Expert tensors are named: blk.{N}.ffn_gate_exps.weight or blk.{N}.ffn_moe_gate.weight
         let mut moe_layer_indices = std::collections::HashSet::new();
@@ -106,7 +111,8 @@ impl GgufMoeDetector {
 
         for (tensor_name, size_list) in &tensor_infos {
             let name_lower = tensor_name.to_lowercase();
-            let tensor_bytes: u64 = size_list.iter().map(|&s| s as u64).sum();
+            let element_count: u64 = size_list.iter().map(|&s| s as u64).product();
+            let tensor_bytes = (element_count as f64 * bytes_per_element) as u64;
 
             let is_expert_tensor = name_lower.contains("ffn_gate_exps")
                 || name_lower.contains("ffn_up_exps")
@@ -151,14 +157,7 @@ impl GgufMoeDetector {
             0
         };
 
-        info!(
-            "🔍 [MoeDetector] GGUF MoE detected: {} experts/layer, top-k={}, {} MoE layers | expert_size={:.1}MB | total_experts={:.1}GB",
-            expert_count,
-            active_experts,
-            moe_layer_count,
-            expert_size_bytes as f64 / (1024.0 * 1024.0),
-            total_expert_bytes as f64 / (1024.0 * 1024.0 * 1024.0),
-        );
+        // Silent metadata probe — summary rendered by Negotiator tree log
 
         MoeModelInfo {
             is_moe: true,

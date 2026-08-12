@@ -15,6 +15,91 @@ pub struct NativeLlama {
     pub kv_cache_quantization_mode: u8,
     pub context_shifting_mode: u8,
     pub speculative_decoding_mode: u8,
+    pub moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
+}
+
+fn extract_layer_from_name(name: &str) -> Option<usize> {
+    let parts: Vec<&str> = name.split('.').collect();
+    for (i, part) in parts.iter().enumerate() {
+        if (*part == "blk" || *part == "layers" || *part == "layer") && i + 1 < parts.len() {
+            if let Ok(idx) = parts[i + 1].parse::<usize>() {
+                return Some(idx);
+            }
+        }
+    }
+    None
+}
+
+std::thread_local! {
+    static LAST_LOGGED_LAYER: std::cell::Cell<Option<usize>> = std::cell::Cell::new(None);
+}
+
+unsafe extern "C" fn ggml_sched_eval_callback(
+    t: *mut std::ffi::c_void,
+    ask: bool,
+    user_data: *mut std::ffi::c_void,
+) -> bool {
+    if !ask && !user_data.is_null() {
+        let name_ptr = crate::ffi::llama_cpp::ggml_get_name(t);
+        if !name_ptr.is_null() {
+            let name_cstr = std::ffi::CStr::from_ptr(name_ptr);
+            let name_str = name_cstr.to_string_lossy();
+            let name_lower = name_str.to_lowercase();
+            
+            // Dynamic check matching all expert tensor patterns
+            let is_expert_tensor = name_lower.contains("ffn_gate_exps")
+                || name_lower.contains("ffn_up_exps")
+                || name_lower.contains("ffn_down_exps")
+                || name_lower.contains("ffn_experts")
+                || (name_lower.contains("ffn_") && name_lower.contains("exp"));
+
+            if is_expert_tensor {
+                if let Some(layer_idx) = extract_layer_from_name(&name_str) {
+                    let mutex_ptr = user_data as *const std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>;
+                    if let Ok(mut controller) = (*mutex_ptr).lock() {
+                        let mut should_log = false;
+                        LAST_LOGGED_LAYER.with(|cell| {
+                            if cell.get() != Some(layer_idx) {
+                                cell.set(Some(layer_idx));
+                                should_log = true;
+                            }
+                        });
+
+                        if should_log {
+                            let prefetch_status = if layer_idx + 1 < controller.moe_info.moe_layer_count {
+                                format!("Prefetching Layer {}", layer_idx + 1)
+                            } else {
+                                "End of Model".to_string()
+                            };
+                            let discard_status = if layer_idx > 0 {
+                                format!("Discarding Layer {}", layer_idx - 1)
+                            } else {
+                                "None".to_string()
+                            };
+                            eprintln!(
+                                "🌊 [MoeStreaming] Active CPU Layer: {} | {} | {}",
+                                layer_idx, prefetch_status, discard_status
+                            );
+                        }
+
+                        let prefetch_layer = layer_idx + 1;
+                        if prefetch_layer < controller.moe_info.moe_layer_count {
+                            for expert_id in 0..controller.moe_info.expert_count {
+                                controller.advise_willneed(prefetch_layer, expert_id);
+                            }
+                        }
+                        if layer_idx > 0 {
+                            let discard_layer = layer_idx - 1;
+                            for expert_id in 0..controller.moe_info.expert_count {
+                                controller.advise_dontneed(discard_layer, expert_id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    true
 }
 
 /// 🤫 Sovereign Silence: Mute verbose native logs to prevent TUI visual noise.
@@ -53,6 +138,7 @@ impl NativeLlama {
         kv_cache_quantization_mode: u8,
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
+        moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
     ) -> anyhow::Result<Self> {
         // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
         unsafe {
@@ -114,6 +200,28 @@ impl NativeLlama {
         // 🚨 Ultimate Mmap Fallback
         // If it STILL fails on CPU, it might be an mmap mapping limitation (e.g. Windows file locking or unsupported tensor alignment).
         if model_ptr.is_null() && model_params.use_mmap {
+            // Check available system RAM first to prevent disk thrashing OOM
+            let model_size_bytes = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
+            let model_size_gb = model_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+
+            let mut sys = sysinfo::System::new();
+            sys.refresh_memory();
+            let available_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+
+            if model_size_gb > available_ram_gb {
+                tracing::error!(
+                    "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
+                     Refusing to fall back to use_mmap = false to prevent SSD pagefile thrashing and lockup.",
+                    model_size_gb,
+                    available_ram_gb
+                );
+                return Err(anyhow::anyhow!(
+                    "Insufficient RAM to load model. Model: {:.2} GB, Available RAM: {:.2} GB. SSD thrashing prevented.",
+                    model_size_gb,
+                    available_ram_gb
+                ));
+            }
+
             cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
@@ -125,6 +233,13 @@ impl NativeLlama {
 
         if model_ptr.is_null() {
             return Err(anyhow::anyhow!("Model Load Failure: {}", model_path));
+        }
+
+        // 🌊 POST-LOAD MEMORY PURGE: Release cold expert pages from physical RAM immediately
+        if let Some(ref controller) = moe_controller {
+            if let Ok(ctrl) = controller.lock() {
+                ctrl.purge_all_experts_except(0);
+            }
         }
 
         let model_dir = std::path::Path::new(model_path)
@@ -175,6 +290,12 @@ impl NativeLlama {
             }
         }
 
+        if let Some(ref controller) = moe_controller {
+            let raw_ptr = Arc::as_ptr(controller) as *mut std::ffi::c_void;
+            ctx_params.cb_eval = ggml_sched_eval_callback as *mut std::ffi::c_void;
+            ctx_params.cb_eval_user_data = raw_ptr;
+        }
+
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
 
         // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
@@ -202,10 +323,11 @@ impl NativeLlama {
             ctx_ptr,
             interrupt_signal: Arc::new(AtomicBool::new(false)),
             n_ctx: ctx_params.n_ctx,
-            n_batch: std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch),
+            n_batch: if ctx_params.n_ctx == 0 { ctx_params.n_batch } else { std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch) },
             kv_cache_quantization_mode,
             context_shifting_mode,
             speculative_decoding_mode,
+            moe_controller,
         })
     }
 
@@ -222,7 +344,7 @@ impl NativeLlama {
                 return Err(anyhow::anyhow!("Context Resize Failure"));
             }
             self.n_ctx = ctx_params.n_ctx;
-            self.n_batch = std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch);
+            self.n_batch = if ctx_params.n_ctx == 0 { ctx_params.n_batch } else { std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch) };
         }
         Ok(())
     }

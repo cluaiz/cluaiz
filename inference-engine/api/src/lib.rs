@@ -62,16 +62,16 @@ pub async fn run_daemon() {
         }
     }
 
-    // 🚀 Ignite the SystemOptimization to optimize hardware before booting engines
-    let booster_state = if pure_brain {
+    // Ignite the SystemOptimization to optimize hardware before booting engines
+    let optimization_state = if pure_brain {
         Default::default()
     } else {
         SystemOptimization::ignite().unwrap_or_default()
     };
     
-    // Create the Dispatcher with the active booster state
+    // Create the Dispatcher with the active optimization state
     let dispatcher = NeuralDispatcher::new(
-        booster_state, 
+        optimization_state, 
         KernelSignature::default() // Default to CPU fallback; dynamically updated during /models/load
     );
 

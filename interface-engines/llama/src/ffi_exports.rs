@@ -140,9 +140,9 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         } else {
             // Self-load from Binary Booster Truth if FFI was blank
             if let Ok(booster) =
-                cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings()
+                cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings()
             {
-                let _ = engine.apply_booster(&booster);
+                let _ = engine.apply_optimization(&booster);
             }
         }
 

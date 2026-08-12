@@ -60,6 +60,10 @@ pub struct GgufMoeStreamingController {
     pub moe_info: MoeModelInfo,
     /// Records the expert IDs activated in the most recent routing step (for cold hints).
     last_active_experts: Vec<(usize, usize)>,
+    /// Number of layers offloaded to GPU (VRAM) that should not be managed by the CPU streaming advisor.
+    pub n_gpu_layers: usize,
+    /// Authorized LRU Cache budget for dynamic eviction
+    pub cache_budget_gb: f64,
 }
 
 // SAFETY: The mmap_base pointer is only used for madvise calls from a single thread at a time.
@@ -73,12 +77,14 @@ impl GgufMoeStreamingController {
         model_path: &Path,
         moe_info: MoeModelInfo,
         cache_budget_gb: f64,
+        n_gpu_layers: usize,
     ) -> anyhow::Result<Self> {
         info!(
-            "🧠 [GgufMoeStreaming] Initializing for: {:?} | {} experts/layer | cache: {:.2}GB",
+            "🧠 [GgufMoeStreaming] Initializing for: {:?} | {} experts/layer | cache: {:.2}GB | GPU layers: {}",
             model_path.file_name().unwrap_or_default(),
             moe_info.expert_count,
-            cache_budget_gb
+            cache_budget_gb,
+            n_gpu_layers
         );
 
         // Step 1: Build expert offset index
@@ -112,6 +118,8 @@ impl GgufMoeStreamingController {
             mmap,
             moe_info,
             last_active_experts: Vec::new(),
+            n_gpu_layers,
+            cache_budget_gb,
         };
 
         // Step 5: Pre-warm OS page cache for hot experts from previous sessions
@@ -137,8 +145,12 @@ impl GgufMoeStreamingController {
 
         // 2. Issue WILLNEED hints for currently active experts (ensure they stay in cache)
         for &expert_id in active_expert_ids {
+            let key = (layer, expert_id);
+            if let Some(pos) = self.last_active_experts.iter().position(|x| *x == key) {
+                self.last_active_experts.remove(pos);
+            }
             self.advise_willneed(layer, expert_id);
-            self.last_active_experts.push((layer, expert_id));
+            self.last_active_experts.push(key);
         }
 
         // 3. Prefetch predicted next-step experts (read-ahead)
@@ -148,27 +160,27 @@ impl GgufMoeStreamingController {
             }
         }
 
-        // 4. Release cold experts from page cache to make room
-        // Simple heuristic: release experts that were active 2+ steps ago
-        // and are not in the current active set
-        let current: std::collections::HashSet<(usize, usize)> = active_expert_ids
-            .iter()
-            .map(|&e| (layer, e))
-            .collect();
-        let cold: Vec<(usize, usize)> = self
-            .last_active_experts
-            .iter()
-            .filter(|k| !current.contains(k))
-            .copied()
-            .collect();
-        for (cold_layer, cold_expert) in cold {
+        // 4. Dynamic LRU pool eviction bounded by Negotiator's RAM Budget
+        let max_experts_in_ram = if self.moe_info.expert_size_bytes > 0 {
+            let max_bytes = self.cache_budget_gb * 1024.0 * 1024.0 * 1024.0;
+            (max_bytes / self.moe_info.expert_size_bytes as f64) as usize
+        } else {
+            16
+        };
+
+        // Evict oldest experts if we exceed our calculated RAM budget
+        while self.last_active_experts.len() > max_experts_in_ram {
+            let (cold_layer, cold_expert) = self.last_active_experts.remove(0);
             self.advise_dontneed(cold_layer, cold_expert);
         }
     }
 
     // ── Private: OS advisory calls ────────────────────────────────────────────
 
-    fn advise_willneed(&self, layer: usize, expert_id: usize) {
+    pub fn advise_willneed(&self, layer: usize, expert_id: usize) {
+        if layer < self.n_gpu_layers {
+            return;
+        }
         #[cfg(unix)]
         {
             if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
@@ -224,7 +236,10 @@ impl GgufMoeStreamingController {
         }
     }
 
-    fn advise_dontneed(&self, layer: usize, expert_id: usize) {
+    pub fn advise_dontneed(&self, layer: usize, expert_id: usize) {
+        if layer < self.n_gpu_layers {
+            return;
+        }
         #[cfg(unix)]
         {
             if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
@@ -266,28 +281,61 @@ impl GgufMoeStreamingController {
         }
     }
 
-    /// Pre-warm hot experts from heat tracker on startup.
-    fn warm_hot_experts(&mut self) {
-        let budget = self.moe_info.recommended_cache_budget_gb() * 1024.0 * 1024.0 * 1024.0;
-        let expert_size = self.moe_info.expert_size_bytes;
+    /// 🌊 Immediately release memory for all experts across all layers EXCEPT `keep_layer`.
+    /// Called right after model load to purge cold expert weight pages from physical RAM.
+    pub fn purge_all_experts_except(&self, keep_layer: usize) {
+        let total_layers = self.moe_info.moe_layer_count;
+        let total_experts = self.moe_info.expert_count;
+        info!(
+            "🌊 [GgufMoeStreaming] Executing post-load memory purge across {} MoE layers (keeping layer {})...",
+            total_layers, keep_layer
+        );
+        for layer in 0..total_layers {
+            if layer == keep_layer {
+                continue;
+            }
+            for expert_id in 0..total_experts {
+                self.advise_dontneed(layer, expert_id);
+            }
+        }
+        info!("🌊 [GgufMoeStreaming] Post-load memory purge complete.");
+    }
 
-        let hot = if let Ok(tracker) = self.heat_tracker.lock() {
-            tracker.get_hottest_experts(budget as u64, expert_size)
-        } else {
-            Vec::new()
-        };
-
-        if hot.is_empty() {
-            info!("🌡️ [GgufMoeStreaming] No prior routing heat data — cold start.");
+    /// Pre-warm top hot experts from heat tracker on startup.
+    /// Bounded to max 16 hot experts to prevent NVMe SSD 100% Disk Queue choke on startup.
+    pub fn warm_hot_experts(&mut self) {
+        let first_cpu_layer = self.n_gpu_layers;
+        if first_cpu_layer >= self.moe_info.moe_layer_count {
             return;
         }
 
-        info!(
-            "🌡️ [GgufMoeStreaming] Pre-warming {} hot experts from previous session heat data.",
-            hot.len()
-        );
-        for (layer, expert_id) in hot {
-            self.advise_willneed(layer, expert_id);
+        // Dynamically compute pre-warm limit based on model structure (Top-K activated experts per token)
+        let max_prewarm_experts = (self.moe_info.active_experts_per_token * 2).max(8);
+        let mut prewarm_count = 0;
+
+        if let Ok(tracker) = self.heat_tracker.lock() {
+            let mut layer_experts = Vec::new();
+            for expert_id in 0..self.moe_info.expert_count {
+                let frequency = tracker.get_expert_frequency(first_cpu_layer, expert_id);
+                if frequency > 0 {
+                    layer_experts.push((expert_id, frequency));
+                }
+            } 
+            layer_experts.sort_by(|a, b| b.1.cmp(&a.1));
+            
+            info!(
+                "🌡️ [GgufMoeStreaming] Pre-warming up to {} hot experts of first CPU layer (layer {}).",
+                max_prewarm_experts, first_cpu_layer
+            );
+
+            for (expert_id, _) in layer_experts.into_iter().take(max_prewarm_experts) {
+                self.advise_willneed(first_cpu_layer, expert_id);
+                prewarm_count += 1;
+            }
+        }
+
+        if prewarm_count == 0 {
+            info!("🌡️ [GgufMoeStreaming] No prior routing heat data for layer {} — cold start.", first_cpu_layer);
         }
     }
 
@@ -393,7 +441,7 @@ mod tests {
         };
 
         // 1. Initialize controller
-        let controller_res = GgufMoeStreamingController::new(&model_path, moe_info, 0.001);
+        let controller_res = GgufMoeStreamingController::new(&model_path, moe_info, 0.001, 0);
         assert!(controller_res.is_ok());
         let mut controller = controller_res.unwrap();
 

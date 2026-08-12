@@ -65,7 +65,7 @@ pub fn stream_tokens(
             }
         }
 
-        let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+        let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
 
         let templater = cluaiz_shared::prompting::templater::TemplateManager::default();

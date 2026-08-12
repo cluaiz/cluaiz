@@ -61,7 +61,7 @@ impl HardwareGovernor {
     /// 🔬 Deep surgical scan and persistence of silicon state.
     pub fn auto_calibrate() -> anyhow::Result<()> {
         let control = HardwareOrchestrator::start()?;
-        Self::save_booster_settings(&Self::load_booster_settings().unwrap_or_default())?;
+        Self::save_optimization_settings(&Self::load_optimization_settings().unwrap_or_default())?;
 
         // 🧠 Mission 12: Chronicle Foundry State
         let _ = crate::neural::graph::NeuralGraph::chronicle_pulse(
@@ -117,8 +117,9 @@ impl HardwareGovernor {
             }
         }
 
-        let booster = Self::load_booster_settings().unwrap_or_default();
-        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(&booster, arbiter.total_vram_gb);
+        let opt_control = Self::load_optimization_settings().unwrap_or_default();
+        let live_free_vram_gb = arbiter.total_vram_gb - arbiter.allocated_vram_gb;
+        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(&opt_control, arbiter.total_vram_gb, live_free_vram_gb);
         let available = arbiter.total_vram_gb - safety_buffer_gb - arbiter.allocated_vram_gb;
 
         if required_gb > available {
@@ -154,15 +155,15 @@ impl HardwareGovernor {
 
     /// ⚖️ Negotiate VRAM Envelope: Performs an iterative fitting loop
     /// to find the maximum safe context window for the current silicon state.
-    /// This is NO LONGER static; it recalculates based on live architecture and booster state.
+    /// This is NO LONGER static; it recalculates based on live architecture and optimization state.
     pub fn negotiate_vram_envelope(dna: &crate::metadata::dna::StructuralDNA) -> usize {
-        let booster = Self::load_booster_settings().unwrap_or_default();
-        Self::negotiate_vram_envelope_with_booster(dna, &booster)
+        let opt_control = Self::load_optimization_settings().unwrap_or_default();
+        Self::negotiate_vram_envelope_with_optimization(dna, &opt_control)
     }
 
-    pub fn negotiate_vram_envelope_with_booster(
+    pub fn negotiate_vram_envelope_with_optimization(
         dna: &crate::metadata::dna::StructuralDNA,
-        booster: &crate::hardware::schema::optimization::OptimizationControl,
+        opt_control: &crate::hardware::schema::optimization::OptimizationControl,
     ) -> usize {
         let mut arbiter = ARBITER.lock().unwrap();
 
@@ -183,7 +184,8 @@ impl HardwareGovernor {
 
         // 🌊 ADAPTIVE MARGIN LOGIC: Delegated to unified resource_negotiator
         let total_gb = arbiter.total_vram_gb;
-        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(booster, total_gb);
+        let live_free_gb = (total_gb - arbiter.allocated_vram_gb).max(0.0);
+        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(opt_control, total_gb, live_free_gb);
         let margin = if total_gb > 0.0 { (safety_buffer_gb / total_gb).min(0.95) } else { 0.15 };
 
         // We use static theoretical math for context negotiation.
@@ -283,7 +285,7 @@ impl HardwareGovernor {
 
         // Expansion logic for high-power modes (Only if architecture allows)
         // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
-        let is_hybrid_requested = booster.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
+        let is_hybrid_requested = opt_control.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
         let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
 
         if is_hybrid_requested || model_exceeds_vram {
@@ -390,25 +392,25 @@ impl HardwareGovernor {
                 }
             }
             "runtime_engine.booster_flags.TurboQuant_Enable" => {
-                let mut booster = Self::load_booster_settings().unwrap_or_default();
+                let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
                 if let Some(b) = value.as_bool() {
-                    booster.turbo_quant = if b {
+                    opt_control.turbo_quant = if b {
                         crate::hardware::schema::optimization::FeatureState::On
                     } else {
                         crate::hardware::schema::optimization::FeatureState::Off
                     };
-                    Self::save_booster_settings(&booster)?;
+                    Self::save_optimization_settings(&opt_control)?;
                 }
             }
             "runtime_engine.booster_flags.FlashAttention_v2" => {
-                let mut booster = Self::load_booster_settings().unwrap_or_default();
+                let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
                 if let Some(b) = value.as_bool() {
-                    booster.flash_attention = if b {
+                    opt_control.flash_attention = if b {
                         crate::hardware::schema::optimization::FeatureState::On
                     } else {
                         crate::hardware::schema::optimization::FeatureState::Off
                     };
-                    Self::save_booster_settings(&booster)?;
+                    Self::save_optimization_settings(&opt_control)?;
                 }
             }
             _ => println!("⚠️ [Governor] Field update NOT implemented: {}", field),
@@ -456,8 +458,8 @@ impl HardwareGovernor {
         path
     }
 
-    pub fn resolve_booster_path() -> PathBuf {
-        let path = Self::resolve_engine_path().join("booster");
+    pub fn resolve_optimization_path() -> PathBuf {
+        let path = Self::resolve_engine_path().join("optimization");
         let _ = std::fs::create_dir_all(&path);
         path
     }
@@ -565,13 +567,13 @@ impl HardwareGovernor {
         Ok(())
     }
 
-    // ─── 🚀 BOOSTER CONTROL (USER SETTINGS) ───
+    // ─── OPTIMIZATION CONTROL (USER SETTINGS) ───
 
-    pub fn load_booster_settings() -> anyhow::Result<OptimizationControl> {
+    pub fn load_optimization_settings() -> anyhow::Result<OptimizationControl> {
         Ok(OptimizationControl::load())
     }
 
-    pub fn save_booster_settings(config: &OptimizationControl) -> anyhow::Result<()> {
+    pub fn save_optimization_settings(config: &OptimizationControl) -> anyhow::Result<()> {
         config.save()
     }
 

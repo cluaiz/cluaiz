@@ -86,12 +86,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let mut payload = json_cmd.get("payload").and_then(|p| p.as_str()).unwrap_or("{}").to_string();
                                 
                                 // INJECT SYSTEM BINDINGS (READ-ONLY)
-                                let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                                 let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                                 
                                 if let Ok(mut payload_json) = serde_json::from_str::<serde_json::Value>(&payload) {
                                     if let Some(obj) = payload_json.as_object_mut() {
-                                        obj.insert("system_booster".to_string(), serde_json::json!(booster));
+                                        obj.insert("system_optimization".to_string(), serde_json::json!(opt_control));
                                         obj.insert("permission".to_string(), serde_json::json!(perms));
                                         
                                         // Also inject system_control / silicon_truth
@@ -227,8 +227,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
                                 let brain_mode = "plugin";
                                 
-                                // Load real booster from disk — NOT hardcoded
-                                let booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
+                                // Load real optimization settings from disk
+                                let opt_settings = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                                 
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut available_chat_models: Vec<String> = Vec::new();
@@ -325,7 +325,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         "available_audio_models": available_audio_models,
                                         "available_devices": ["auto", "gpu", "cpu"]
                                     },
-                                    "booster": booster,
+                                    "optimization": opt_settings,
                                     "brainMode": brain_mode,
                                     "active_chat_manifest": active_chat_manifest,
                                     "active_vector_manifest": active_vector_manifest,
@@ -442,20 +442,20 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 if let Some(payload) = json_cmd.get("payload") {
                                     // Handle single key-value update: {key: "flash_attention", value: "On"}
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
-                                        let mut booster = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings().unwrap_or_default();
-                                        if let Ok(mut booster_json) = serde_json::to_value(&booster) {
-                                            booster_json[key] = value.clone();
-                                            if let Ok(updated) = serde_json::from_value(booster_json) {
-                                                booster = updated;
-                                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster);
+                                        let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                                        if let Ok(mut opt_json) = serde_json::to_value(&opt_control) {
+                                            opt_json[key] = value.clone();
+                                            if let Ok(updated) = serde_json::from_value(opt_json) {
+                                                opt_control = updated;
+                                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
                                                 let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                             } else {
-                                                let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid booster format\"}").await;
-                                            }
+                                        let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid optimization format\"}").await;
                                         }
-                                    // Handle full booster object update (legacy BOOSTER_UPDATE format)
-                                    } else if let Ok(booster_ctrl) = serde_json::from_value(payload.clone()) {
-                                        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&booster_ctrl);
+                                    }
+                                    // Handle full optimization object update
+                                    } else if let Ok(opt_ctrl) = serde_json::from_value(payload.clone()) {
+                                        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_ctrl);
                                         let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                     } else {
                                         let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid payload\"}").await;
@@ -509,7 +509,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     extreme_moe_streaming: FeatureState::Auto,
                                 };
 
-                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_booster_settings(&optimal_optimization);
+                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&optimal_optimization);
                                 
                                 let optimal_gpu_layers: i32 = if !has_gpu { 0 } else { -1 };
                                 let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
@@ -517,7 +517,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                                 let _ = gguf_meta.save();
 
-                                let response = serde_json::json!({"status": "success", "booster": optimal_optimization});
+                                let response = serde_json::json!({"status": "success", "optimization": optimal_optimization});
                                 let _ = pipe.write_all(response.to_string().as_bytes()).await;
                                 continue;
                             }

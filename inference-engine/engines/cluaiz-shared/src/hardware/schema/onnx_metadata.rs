@@ -6,6 +6,8 @@ use crate::define_config;
 pub struct OnnxMetadataHeaders {
     #[serde(default = "default_n_gpu_layers")]
     pub n_gpu_layers: i32,
+    #[serde(default = "default_n_ctx")]
+    pub n_ctx: i32,
     pub intra_op_num_threads: usize,
     pub graph_optimization_level: String,
     pub enable_profiling: bool,
@@ -26,6 +28,10 @@ pub struct OnnxMetadataHeaders {
     pub user_moved_flags: crate::hardware::schema::gguf_metadata::UserMovedFlags,
 }
 
+fn default_n_ctx() -> i32 {
+    0
+}
+
 fn default_n_gpu_layers() -> i32 {
     -1
 }
@@ -34,6 +40,7 @@ impl Default for OnnxMetadataHeaders {
     fn default() -> Self {
         Self {
             n_gpu_layers: -1,
+            n_ctx: 0,
             intra_op_num_threads: 0,
             graph_optimization_level: "ORT_ENABLE_ALL".to_string(),
             enable_profiling: false,

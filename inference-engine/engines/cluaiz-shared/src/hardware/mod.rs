@@ -10,7 +10,7 @@ pub mod governor;
 pub mod speed_checker;
 pub mod circuit_breaker;
 pub mod resource_negotiator;
-pub mod ssd_streaming;
+pub mod expert_offloading;
 
 // ── Re-exports for clean API ──
 pub use system_control::HardwareOrchestrator;

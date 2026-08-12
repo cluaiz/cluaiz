@@ -120,6 +120,15 @@ impl RoutingHeatTracker {
         pinned
     }
 
+    /// Returns the activation frequency of a specific expert in a layer.
+    pub fn get_expert_frequency(&self, layer: usize, expert_id: usize) -> u32 {
+        if layer < self.n_layers && expert_id < self.n_experts {
+            self.counts[layer][expert_id]
+        } else {
+            0
+        }
+    }
+
     /// Persist routing heat to `.cluaiz_routing_heat` in the model directory.
     /// Mirrors Colibri's `.coli_usage` file format for future cross-tool compatibility.
     pub fn save(&self) -> anyhow::Result<()> {

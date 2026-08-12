@@ -121,6 +121,7 @@ pub struct RuntimeB {
     pub native: Option<NativeLlama>,
     pub lucebox: Option<Arc<ffi::lucebox::LuceboxBridge>>,
     pub last_prefilled_tokens: Vec<i32>,
+    pub moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
 }
 
 impl RuntimeB {
@@ -132,6 +133,7 @@ impl RuntimeB {
             native: None,
             lucebox: None,
             last_prefilled_tokens: Vec::new(),
+            moe_controller: None,
         }
     }
 
@@ -162,57 +164,62 @@ impl RuntimeB {
             }
         }
 
-        // 🛡️ CERD DOCTRINE: Dynamic VRAM Layer Offload (Prevent OOM Crashes)
-        if model_params.n_gpu_layers == -1 {
-            let mut weights_gb = self.context.dna.weights_size_gb;
-            if weights_gb <= 0.0 {
-                weights_gb = std::fs::metadata(&self.model_path)
-                    .map(|m| m.len() as f64 / (1024.0 * 1024.0 * 1024.0))
-                    .unwrap_or(0.0) as f32;
-            }
+        let layers = self.context.dna.layer_count.or(probed_layers).unwrap_or(32);
 
-            let mut vram_gb = self.context.dna.vram_headroom_gb;
-            if vram_gb <= 0.0 {
-                if let Ok(control) =
-                    cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control()
-                {
-                    vram_gb = control
-                        .silicon_truth
-                        .accelerators
-                        .gpus
-                        .iter()
-                        .map(|g| g.vram_available_gb)
-                        .sum::<f64>() as f32;
-                }
-            }
+        let mut weights_gb = self.context.dna.weights_size_gb;
+        if weights_gb <= 0.0 {
+            weights_gb = std::fs::metadata(&self.model_path)
+                .map(|m| m.len() as f64 / (1024.0 * 1024.0 * 1024.0))
+                .unwrap_or(0.0) as f32;
+        }
 
-            let layers = self.context.dna.layer_count.or(probed_layers).unwrap_or(32);
+        let request = cluaiz_shared::hardware::ResourceRequest {
+            engine_type: cluaiz_shared::hardware::EngineType::GGUF,
+            inference_mode: cluaiz_shared::hardware::InferenceMode::Chat,
+            model_size_gb: weights_gb as f64,
+            model_path: std::path::PathBuf::from(&self.model_path),
+        };
 
-            // Only protect if we actually know there's limited VRAM (vram_gb > 0)
-            if weights_gb > 0.0 && vram_gb > 0.0 {
-                // 🛡️ CERD DOCTRINE: Safe VRAM allocation
-                // A 15B model triggers clamping because weights_gb > 3.4GB, leaving room for KV cache.
-                // A 7B model (weights ~2.9GB) bypasses a flat 15% clamp (2.9 < 3.4) and fully offloads.
-                // BUT KV cache adds ~1.0GB - 1.5GB, pushing 2.9GB to 4.4GB (OOM Thrashing).
-                // FIX: Strictly reserve max(20% VRAM, 1.2 GB) for KV Cache and OS on lower VRAM GPUs.
-                let reserved_vram = (vram_gb * 0.20).max(1.2);
-                let usable_vram = (vram_gb - reserved_vram).max(0.0);
-                
-                // Compare weights against usable_vram WITH the KV Cache margin accounted for
-                if weights_gb > usable_vram {
-                    if layers > 0 {
-                        let ratio = usable_vram / weights_gb;
-                        let safe_layers = (layers as f32 * ratio) as i32;
-                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) + KV Cache exceeds safe VRAM limit ({:.2}GB / {:.2}GB). Clamping n_gpu_layers to {}/{} to prevent OOM.", weights_gb, usable_vram, vram_gb, safe_layers, layers);
-                        model_params.n_gpu_layers = safe_layers;
-                    } else {
-                        let safe_layers = 10;
-                        cluaiz_shared::dev_info!("⚠️ [Arbiter] Model ({:.2}GB) + KV Cache exceeds safe VRAM limit ({:.2}GB). Unknown layers. Clamping n_gpu_layers to {} to prevent OOM.", weights_gb, vram_gb, safe_layers);
-                        model_params.n_gpu_layers = safe_layers;
+        let grant = cluaiz_shared::hardware::negotiate_resource(&request)?;
+
+        // Apply resource negotiator results
+        eprintln!(
+            "⚖️ [Negotiator] GGUF resource grant: tier = {:?}, GPU layers = {}, VRAM budget = {:.2} GB, RAM budget = {:.2} GB",
+            grant.tier,
+            grant.n_gpu_layers,
+            grant.vram_budget_gb,
+            grant.ram_budget_gb
+        );
+
+        if model_params.n_gpu_layers == -1 || (grant.n_gpu_layers >= 0 && model_params.n_gpu_layers > grant.n_gpu_layers) {
+            let original = model_params.n_gpu_layers;
+            model_params.n_gpu_layers = if grant.n_gpu_layers == -1 {
+                layers as i32
+            } else {
+                grant.n_gpu_layers
+            };
+            eprintln!("🧬 [Native-Llama] Configured n_gpu_layers: {} (negotiated limit applied, original was {})", model_params.n_gpu_layers, original);
+        }
+
+        // Hook MoE controller if the negotiator verified it is a MoE model
+        if let Some(ref moe_info) = grant.moe_info {
+            eprintln!("🧠 [Native-Llama] Grant contains MoE info. checking is_moe = {}", moe_info.is_moe);
+            if moe_info.is_moe {
+                eprintln!("🧠 [Native-Llama] Loading MoE Streaming Controller. Cache budget: {:.2} GB | GPU offloaded layers: {}", grant.expert_cache_budget_gb, model_params.n_gpu_layers);
+                let offloaded_layers = model_params.n_gpu_layers.max(0) as usize;
+                match crate::expert_offloading::GgufMoeStreamingController::new(
+                    std::path::Path::new(&self.model_path),
+                    moe_info.clone(),
+                    grant.expert_cache_budget_gb,
+                    offloaded_layers,
+                ) {
+                    Ok(controller) => {
+                        self.moe_controller = Some(Arc::new(std::sync::Mutex::new(controller)));
+                        eprintln!("🧠 [Native-Llama] ✅ MoE Streaming Controller initialized and pre-warmed.");
                     }
-                } else {
-                    cluaiz_shared::dev_info!("✅ [Arbiter] Model ({:.2}GB) + KV Cache fits within usable VRAM ({:.2}GB / {:.2}GB). Full GPU Offload enabled ({} layers).", weights_gb, usable_vram, vram_gb, layers);
-                    model_params.n_gpu_layers = layers as i32; // Full GPU offload using exact layer count
+                    Err(e) => {
+                        eprintln!("🧠 [Native-Llama] ❌ Failed to initialize MoE controller: {}", e);
+                    }
                 }
             }
         }
@@ -220,13 +227,73 @@ impl RuntimeB {
         // 🧬 DNA TRUTH SYNC: Ensure DNA context is applied to context params
         let mut ctx_params = self.optimization.to_context_params();
 
-        if let Some(ctx) = self.context.dna.max_context_length {
-            if self.optimization.n_ctx == 0 {
-                ctx_params.n_ctx = std::cmp::min(ctx as u32, 8192);
+        // 🧠 Dynamic & Clamped Context Sizing from live leftover RAM/VRAM
+        let mut dedicated_vram = 0.0;
+        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
+            dedicated_vram = control
+                .silicon_truth
+                .accelerators
+                .gpus
+                .iter()
+                .map(|g| g.vram_available_gb)
+                .sum::<f64>();
+        }
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let available_ram = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
+
+        let weights_gb = if let Some(ref controller) = self.moe_controller {
+            if let Ok(guard) = controller.lock() {
+                let dense_gb = guard.moe_info.dense_backbone_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+                let cache_gb = guard.moe_info.recommended_cache_budget_gb();
+                let active_ram_footprint = dense_gb + cache_gb;
+                cluaiz_shared::dev_info!(
+                    "🧠 [Arbiter] MoE Active Weight RAM Footprint: {:.2} GB (Dense: {:.2} GB, Cache: {:.2} GB) vs Total Model: {:.2} GB",
+                    active_ram_footprint, dense_gb, cache_gb, self.context.dna.weights_size_gb
+                );
+                active_ram_footprint
             } else {
-                ctx_params.n_ctx = ctx as u32;
+                self.context.dna.weights_size_gb as f64
+            }
+        } else {
+            self.context.dna.weights_size_gb as f64
+        };
+
+        let opt_ctrl = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let vram_safety = cluaiz_shared::hardware::resource_negotiator::calculate_safety_buffer(&opt_ctrl, dedicated_vram, dedicated_vram);
+        let ram_safety = cluaiz_shared::hardware::resource_negotiator::calculate_ram_safety_buffer(&opt_ctrl, weights_gb, available_ram);
+
+        let usable_dedicated_vram = (dedicated_vram - vram_safety).max(0.0);
+        let usable_ram = (available_ram - ram_safety).max(0.0);
+
+        let leftover_gb = if model_params.n_gpu_layers == layers as i32 {
+            (usable_dedicated_vram - weights_gb).max(0.0)
+        } else {
+            (usable_dedicated_vram + usable_ram - weights_gb).max(0.0)
+        };
+
+        let leftover_bytes = (leftover_gb * 1024.0 * 1024.0 * 1024.0) as i64;
+        let kv_bytes_per_token = 128 * 1024;
+        let max_safe_ctx = ((leftover_bytes / kv_bytes_per_token).max(1024) as u32)
+            .min(self.context.dna.max_context_length.unwrap_or(32768) as u32);
+
+        if self.optimization.n_ctx == 0 {
+            ctx_params.n_ctx = max_safe_ctx;
+            cluaiz_shared::dev_info!("🧠 [Arbiter] Dynamic Context Window (n_ctx=0) scaled to: {} tokens (Leftover Memory: {:.2} GB)", ctx_params.n_ctx, leftover_gb);
+        } else if self.optimization.n_ctx == u32::MAX {
+            ctx_params.n_ctx = std::cmp::min(self.context.dna.max_context_length.unwrap_or(8192) as u32, max_safe_ctx);
+            cluaiz_shared::dev_info!("🧠 [Arbiter] Context window locked to Max Native Limit (clamped to available memory): {} tokens", ctx_params.n_ctx);
+        } else {
+            let requested = self.optimization.n_ctx;
+            if requested <= max_safe_ctx {
+                ctx_params.n_ctx = requested;
+                cluaiz_shared::dev_info!("🧠 [Arbiter] Explicit user n_ctx={} tokens honored (Memory available)", ctx_params.n_ctx);
+            } else {
+                ctx_params.n_ctx = max_safe_ctx;
+                cluaiz_shared::dev_info!("⚠️ [Arbiter] Explicit user n_ctx={} tokens exceeds live free RAM! Overriding and clamping down to {} tokens to prevent OOM crash.", requested, max_safe_ctx);
             }
         }
+
 
         // 🧠 RESOLVE SPECULATIVE MODE & SYNC DNA
         if is_ssm_model {
@@ -280,6 +347,15 @@ impl RuntimeB {
             };
         }
 
+        // 🚀 High Memory Pressure Guard: Disable mlock if system memory usage is >= 90% to prevent swap thrashing
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let mem_pct = (sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0;
+        if mem_pct >= 90.0 && model_params.use_mlock {
+            cluaiz_shared::dev_info!("⚠️ [Arbiter] High Memory Pressure Detected ({:.1}%). Disabling use_mlock to prevent OS paging freeze.", mem_pct);
+            model_params.use_mlock = false;
+        }
+
         let native = NativeLlama::load(
             &self.model_path,
             model_params,
@@ -303,6 +379,7 @@ impl RuntimeB {
                 "on" => 1,
                 _ => 2,
             },
+            self.moe_controller.clone(),
         )?;
         self.native = Some(native);
         tracing::info!("✅ [Llama-Engine] Native Model Loaded & Optimized.");
@@ -477,12 +554,12 @@ impl cluaizInference for RuntimeB {
         }
     }
 
-    /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
-    fn apply_booster(
+    /// Optimization Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
+    fn apply_optimization(
         &mut self,
         control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl,
     ) -> Result<()> {
-        tracing::info!("🚀 [Llama-Engine] Applying Optimization: Autonomous Performance Sync");
+        tracing::info!("[Llama-Engine] Applying Optimization: Autonomous Performance Sync");
 
         // 🔄 Sync local optimization state from system
         self.optimization = crate::config::OptimizationConfig::load_from_system();
@@ -492,7 +569,7 @@ impl cluaizInference for RuntimeB {
             let mut ctx_params = self.optimization.to_context_params();
 
             // Recalculate context window through Governor using the injected control truth
-            let new_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_booster(&self.context.dna, control);
+            let new_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&self.context.dna, control);
             ctx_params.n_ctx = new_ctx as u32;
 
             // Sync settings dynamically

@@ -113,7 +113,7 @@ impl StructuralDNA {
         // 🛡️ 0. Hardware Awareness (The Physical Constraints)
         use crate::hardware::governor::HardwareGovernor;
 
-        let booster = HardwareGovernor::load_booster_settings().unwrap_or_default();
+        let opt_control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let control = HardwareGovernor::load_system_control()?;
 
         // 🛡️ Truth Protocol: Prioritize Binary Silicon Truth
@@ -364,8 +364,10 @@ impl StructuralDNA {
             format!("{}k", final_ctx / 1024),
         );
 
+        let opt_control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
+
         // 🚀 DYNAMIC QUOTA: Mode-aware allocation (No more 75% static wall)
-        let gen_headroom = if booster.custom_vram_buffer_gb.is_some() {
+        let gen_headroom = if opt_control.custom_vram_buffer_gb.is_some() {
             0.95
         } else {
             0.90
@@ -379,7 +381,7 @@ impl StructuralDNA {
 
         info!(
             "✅ [DNA] Governor Discovery Complete: Buffer {:?} | Window {}k",
-            booster.custom_vram_buffer_gb,
+            opt_control.custom_vram_buffer_gb,
             final_ctx / 1024
         );
 

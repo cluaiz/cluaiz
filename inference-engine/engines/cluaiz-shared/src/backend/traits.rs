@@ -35,7 +35,7 @@ pub trait cluaizInference: Send + Sync + UnifiedBackend {
     }
 
     /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
-    fn apply_booster(&mut self, _control: &crate::hardware::schema::optimization::OptimizationControl) -> Result<()> {
+    fn apply_optimization(&mut self, _control: &crate::hardware::schema::optimization::OptimizationControl) -> Result<()> {
         Ok(())
     }
 

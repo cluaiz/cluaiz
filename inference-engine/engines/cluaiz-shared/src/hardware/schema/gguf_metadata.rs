@@ -61,6 +61,7 @@ impl DynamicConfigValue {
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
 pub struct GgufHardwareExecution {
     pub n_gpu_layers: i32,
+    pub n_ctx: i32,
     pub no_mmap: bool,
     pub override_tensor: String,
     pub batch_size: usize,
@@ -75,6 +76,7 @@ impl Default for GgufHardwareExecution {
     fn default() -> Self {
         Self {
             n_gpu_layers: 0,
+            n_ctx: 0,
             no_mmap: false,
             override_tensor: String::new(),
             batch_size: 512,

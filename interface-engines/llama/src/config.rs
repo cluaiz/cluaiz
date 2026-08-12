@@ -74,7 +74,7 @@ impl OptimizationConfig {
             force_memory_lock: "Auto".to_string(),
         };
 
-        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_booster_settings() {
+        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings() {
             config.flash_attn = control.flash_attention.is_active();
             config.dflash = match control.dflash {
                 SmartState::Static(s) => s,
@@ -122,6 +122,11 @@ impl OptimizationConfig {
         }
         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         config.n_gpu_layers = gguf_meta.hardware_and_execution.n_gpu_layers;
+        config.n_ctx = if gguf_meta.hardware_and_execution.n_ctx == -1 {
+            u32::MAX // Marker for Max Native
+        } else {
+            gguf_meta.hardware_and_execution.n_ctx.max(0) as u32
+        };
         config.think_mode = gguf_meta.user_moved_flags.think_mode;
         config.use_mmap = true;
         config
