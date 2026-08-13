@@ -122,8 +122,8 @@ extern "C" fn llama_log_callback(
         let s = c_str.to_string_lossy();
         let msg = s.trim();
         if !msg.is_empty() {
-            // Force print via tracing to ensure it shows up!
-            tracing::error!("📢 [llama.cpp] {}", msg);
+            // Force print to stderr to ensure it shows up in console
+            eprintln!("📢 [llama.cpp] {}", msg);
         }
     }
 }
@@ -155,7 +155,13 @@ impl NativeLlama {
 
         let c_path = CString::new(model_path)?;
 
-        cluaiz_shared::dev_info!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, ctx_params.n_threads, ctx_params.n_threads_batch);
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let free_ram_gb = sys.free_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+        let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+
+        eprintln!("🖥️ [Native-Llama] [Memory-Diagnostics] Before model load: Free System RAM = {:.2} GB / Total System RAM = {:.2} GB", free_ram_gb, total_ram_gb);
+        eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, use_mlock = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, model_params.use_mlock, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
@@ -189,7 +195,7 @@ impl NativeLlama {
         // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
+            eprintln!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
             cpu_params.no_host = false;  // CRITICAL: Must allow host memory allocation for CPU inference!
@@ -209,7 +215,7 @@ impl NativeLlama {
             let available_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
 
             if model_size_gb > available_ram_gb {
-                tracing::error!(
+                eprintln!(
                     "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
                      Refusing to fall back to use_mmap = false to prevent SSD pagefile thrashing and lockup.",
                     model_size_gb,
@@ -222,7 +228,7 @@ impl NativeLlama {
                 ));
             }
 
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
+            eprintln!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
             ram_params.no_host = false;

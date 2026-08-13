@@ -11,12 +11,14 @@ pub mod speed_checker;
 pub mod circuit_breaker;
 pub mod resource_negotiator;
 pub mod expert_offloading;
+pub mod memory_governor;
 
 // ── Re-exports for clean API ──
 pub use system_control::HardwareOrchestrator;
 pub use system_performance::pulse_schema::LivePulse;
 pub use system_performance::get_pulse;
 pub use governor::HardwareGovernor;
+pub use memory_governor::{calculate_safety_buffer, calculate_ram_safety_buffer, calculate_usable_vram, calculate_usable_ram};
 pub use resource_negotiator::{negotiate_resource, ResourceRequest, ResourceGrant, PlacementTier, EngineType, InferenceMode};
 
 /// 📡 Helper: Quick access to the Sovereign Silicon Truth.

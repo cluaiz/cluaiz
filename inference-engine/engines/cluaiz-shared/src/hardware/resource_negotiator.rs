@@ -86,68 +86,11 @@ pub struct ResourceGrant {
     pub moe_info: Option<MoeModelInfo>,
 }
 
-// ─── Safety Margin Calculation ───────────────────────────────────────────────
-
-/// Calculates the OS safety buffer in GB based on user settings.
-/// Supports two modes:
-///   1. Direct GB mode: `custom_vram_buffer_gb` is set (e.g., 1.5 GB fixed)
-///   2. Percentage mode: Calculated from `BoosterMode` profile
-pub fn calculate_safety_buffer(
-    opt_control: &OptimizationControl,
-    total_vram_gb: f64,
-    live_free_vram_gb: f64,
-) -> f64 {
-    let min_vram_guard = 0.25f64; // Minimum 250MB safe floor
-
-    // 1. User Explicit Custom VRAM Buffer
-    if let Some(direct_gb) = opt_control.custom_vram_buffer_gb {
-        if direct_gb > 0.0 {
-            // Respect user buffer, but enforce 250MB minimum safe floor if specified too low
-            let max_allowed = (total_vram_gb - 0.25).max(0.0);
-            return direct_gb.max(min_vram_guard).min(max_allowed);
-        }
-    }
-
-    // 2. Auto Mode: Dynamic calculation (5% of Total VRAM, bounded between 0.25GB and 1.00GB max)
-    let live_used_vram_gb = (total_vram_gb - live_free_vram_gb).max(0.0);
-    if live_used_vram_gb >= 0.50 {
-        0.0f64 // OS/Apps already using > 500MB -> Add ZERO extra safety
-    } else if live_used_vram_gb >= 0.30 {
-        0.10f64 // Minimal 100MB safety
-    } else {
-        (total_vram_gb * 0.05).clamp(min_vram_guard, 1.00)
-    }
-}
-
-/// Calculates the OS safety buffer for CPU RAM in GB based on user settings.
-pub fn calculate_ram_safety_buffer(
-    opt_control: &OptimizationControl,
-    total_ram_gb: f64,
-    available_ram_gb: f64,
-) -> f64 {
-    let min_ram_guard = 1.00f64; // Minimum 1.00 GB safe floor to prevent OS crash
-
-    // 1. User Explicit Custom RAM Setting (Zero Double-Buffering)
-    if let Some(direct_gb) = opt_control.custom_ram_buffer_gb {
-        if direct_gb > 0.0 {
-            // Respect user buffer, but enforce 1.00 GB minimum safe floor if specified too low
-            return direct_gb.max(min_ram_guard);
-        }
-    }
-
-    // 2. Auto Mode: Dynamic RAM Buffer bounded between Min 1.50 GB and Max 3.50 GB
-    (total_ram_gb * 0.15).clamp(1.50, 3.50)
-}
 
 // ─── Core Negotiation Logic ──────────────────────────────────────────────────
 
 /// The unified resource negotiation function.
 /// Called by ALL engines (GGUF/ONNX) and ALL modes (Chat/Embedding/Audio/TTS).
-///
-/// Reads:
-///   - `system_control.json` → total VRAM, total RAM
-///   - `llm_optimization.json` → BoosterMode, custom buffer
-///   - Engine-specific metadata (gguf/onnx headers) → user `n_gpu_layers` setting
 ///
 /// Returns a `ResourceGrant` with tier, GPU layers, and memory budgets.
 pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceGrant> {
@@ -227,25 +170,22 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         n => format!("{}", n),
     };
     let model_gb = request.model_size_gb;
+
     // ─── Step 4: Calculate Usable Memory from Real-Time Free Memory ───
-    let vram_safety = calculate_safety_buffer(&opt_control, total_vram_gb, live_free_vram_gb);
-    let ram_safety = calculate_ram_safety_buffer(&opt_control, total_ram_gb, available_ram_gb);
-    
-    // Calculate Usable VRAM from REAL-TIME FREE VRAM
-    let usable_vram = (live_free_vram_gb - vram_safety).max(0.0);
-    
-    // Usable RAM calculation:
-    // If User provided custom_ram_buffer_gb, follow it 100% with NO extra double-buffering.
-    // In Auto Mode, enforce system ceiling (total RAM minus auto_safety buffer).
-    let usable_ram = if opt_control.custom_ram_buffer_gb.is_some() {
-        (available_ram_gb - ram_safety).max(0.0)
-    } else {
-        let max_allowed_system_ram = (total_ram_gb - ram_safety).max(0.0);
-        let pre_existing_used_ram = (total_ram_gb - available_ram_gb).max(0.0);
-        let system_cap_usable_ram = (max_allowed_system_ram - pre_existing_used_ram).max(0.0);
-        let raw_usable_ram = (available_ram_gb - ram_safety).max(0.0);
-        raw_usable_ram.min(system_cap_usable_ram).max(0.0)
-    };
+    let decision = crate::hardware::memory_governor::get_memory_decision(
+        &opt_control,
+        total_vram_gb,
+        live_free_vram_gb,
+        total_ram_gb,
+        available_ram_gb,
+    );
+    let usable_vram = decision.usable_vram_gb;
+    let usable_ram = decision.usable_ram_gb;
+    let vram_safety = decision.vram_safety_gb;
+    let ram_safety = decision.ram_safety_gb;
+
+
+
 
     // ─── Step 5: Check Existing ARBITER Allocations ───
     let existing_allocs: f64 = HardwareGovernor::get_active_allocations()

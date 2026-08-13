@@ -119,7 +119,7 @@ impl HardwareGovernor {
 
         let opt_control = Self::load_optimization_settings().unwrap_or_default();
         let live_free_vram_gb = arbiter.total_vram_gb - arbiter.allocated_vram_gb;
-        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(&opt_control, arbiter.total_vram_gb, live_free_vram_gb);
+        let safety_buffer_gb = crate::hardware::memory_governor::calculate_safety_buffer(&opt_control, arbiter.total_vram_gb, live_free_vram_gb);
         let available = arbiter.total_vram_gb - safety_buffer_gb - arbiter.allocated_vram_gb;
 
         if required_gb > available {
@@ -185,7 +185,7 @@ impl HardwareGovernor {
         // 🌊 ADAPTIVE MARGIN LOGIC: Delegated to unified resource_negotiator
         let total_gb = arbiter.total_vram_gb;
         let live_free_gb = (total_gb - arbiter.allocated_vram_gb).max(0.0);
-        let safety_buffer_gb = crate::hardware::resource_negotiator::calculate_safety_buffer(opt_control, total_gb, live_free_gb);
+        let safety_buffer_gb = crate::hardware::memory_governor::calculate_safety_buffer(opt_control, total_gb, live_free_gb);
         let margin = if total_gb > 0.0 { (safety_buffer_gb / total_gb).min(0.95) } else { 0.15 };
 
         // We use static theoretical math for context negotiation.

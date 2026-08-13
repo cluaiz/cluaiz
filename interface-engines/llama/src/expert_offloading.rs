@@ -190,6 +190,7 @@ impl GgufMoeStreamingController {
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
                 if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut libc::c_void;
+                    eprintln!("🧠 [GgufMoeStreaming] WILLNEED: Layer {}, Expert {} | Virtual Addr: {:p} | Size: {} bytes", layer, expert_id, ptr, total_len);
                     unsafe {
                         libc::madvise(ptr, total_len, libc::MADV_WILLNEED);
                     }
@@ -223,6 +224,7 @@ impl GgufMoeStreamingController {
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
                 if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
+                    eprintln!("🧠 [GgufMoeStreaming] WILLNEED: Layer {}, Expert {} | Virtual Addr: {:p} | Size: {} bytes", layer, expert_id, ptr, total_len);
                     let mem_range = WIN32_MEMORY_RANGE_ENTRY {
                         virtual_address: ptr,
                         number_of_bytes: total_len,
@@ -249,6 +251,7 @@ impl GgufMoeStreamingController {
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
                 if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut libc::c_void;
+                    eprintln!("🧠 [GgufMoeStreaming] DONTNEED: Layer {}, Expert {} | Virtual Addr: {:p} | Size: {} bytes", layer, expert_id, ptr, total_len);
                     unsafe {
                         libc::madvise(ptr, total_len, libc::MADV_DONTNEED);
                     }
@@ -277,6 +280,7 @@ impl GgufMoeStreamingController {
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
                 if gate_offset + total_len <= mmap_len {
                     let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
+                    eprintln!("🧠 [GgufMoeStreaming] DONTNEED: Layer {}, Expert {} | Virtual Addr: {:p} | Size: {} bytes", layer, expert_id, ptr, total_len);
                     unsafe {
                         DiscardVirtualMemory(ptr, total_len);
                         VirtualUnlock(ptr, total_len);

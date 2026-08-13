@@ -191,15 +191,40 @@ impl RuntimeB {
             grant.ram_budget_gb
         );
 
-        if model_params.n_gpu_layers == -1 || (grant.n_gpu_layers >= 0 && model_params.n_gpu_layers > grant.n_gpu_layers) {
-            let original = model_params.n_gpu_layers;
-            model_params.n_gpu_layers = if grant.n_gpu_layers == -1 {
-                layers as i32
-            } else {
-                grant.n_gpu_layers
-            };
-            eprintln!("🧬 [Native-Llama] Configured n_gpu_layers: {} (negotiated limit applied, original was {})", model_params.n_gpu_layers, original);
+        // Extract metadata configuration settings
+        let gguf_hdr = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let user_no_mmap = gguf_hdr.hardware_and_execution.no_mmap;
+        let user_n_gpu_layers = self.optimization.n_gpu_layers;
+
+        // Apply use_mmap logic: respect config but force false under SsdStreaming/expert swapping
+        model_params.use_mmap = !user_no_mmap;
+        if grant.tier == cluaiz_shared::hardware::PlacementTier::SsdStreaming {
+            model_params.use_mmap = false;
+            eprintln!("🧠 [Native-Llama] SSD Streaming Active. Forcing use_mmap = false to prevent RAM over-allocation.");
         }
+        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: use_mmap = {}, n_gpu_layers = {}", model_params.use_mmap, model_params.n_gpu_layers);
+
+        // Clamp user custom layers setting to negotiator allocated safe GPU budget limit
+        let target_gpu_layers = if user_n_gpu_layers == 0 {
+            0
+        } else if user_n_gpu_layers == -1 {
+            if grant.n_gpu_layers == -1 { layers as i32 } else { grant.n_gpu_layers }
+        } else {
+            // Custom layers case: honor custom value but bound by negotiator safe allocation limit
+            if grant.n_gpu_layers >= 0 {
+                (user_n_gpu_layers).min(grant.n_gpu_layers)
+            } else {
+                user_n_gpu_layers
+            }
+        };
+
+        let original_layers = model_params.n_gpu_layers;
+        model_params.n_gpu_layers = target_gpu_layers;
+        eprintln!(
+            "🧬 [Native-Llama] Configured n_gpu_layers: {} (negotiated limit applied, original config was {})",
+            model_params.n_gpu_layers, original_layers
+        );
+
 
         // Hook MoE controller if the negotiator verified it is a MoE model
         if let Some(ref moe_info) = grant.moe_info {
@@ -240,6 +265,7 @@ impl RuntimeB {
         }
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
+        let total_ram = (sys.total_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
         let available_ram = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
 
         let weights_gb = if let Some(ref controller) = self.moe_controller {
@@ -260,11 +286,11 @@ impl RuntimeB {
         };
 
         let opt_ctrl = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-        let vram_safety = cluaiz_shared::hardware::resource_negotiator::calculate_safety_buffer(&opt_ctrl, dedicated_vram, dedicated_vram);
-        let ram_safety = cluaiz_shared::hardware::resource_negotiator::calculate_ram_safety_buffer(&opt_ctrl, weights_gb, available_ram);
+        let vram_safety = cluaiz_shared::hardware::calculate_safety_buffer(&opt_ctrl, dedicated_vram, dedicated_vram);
+        let ram_safety = cluaiz_shared::hardware::calculate_ram_safety_buffer(&opt_ctrl, total_ram, available_ram);
 
-        let usable_dedicated_vram = (dedicated_vram - vram_safety).max(0.0);
-        let usable_ram = (available_ram - ram_safety).max(0.0);
+        let usable_dedicated_vram = cluaiz_shared::hardware::calculate_usable_vram(&opt_ctrl, dedicated_vram, dedicated_vram);
+        let usable_ram = cluaiz_shared::hardware::calculate_usable_ram(&opt_ctrl, total_ram, available_ram);
 
         let leftover_gb = if model_params.n_gpu_layers == layers as i32 {
             (usable_dedicated_vram - weights_gb).max(0.0)
