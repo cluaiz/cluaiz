@@ -9,15 +9,22 @@
 //! - `expert_cache`  : LRU RAM pool for active expert weight blocks
 //! - `mmap_streamer` : OS-level memory-mapped reads for expert tensor loading
 
+pub mod async_prefetcher;
+pub mod direct_io;
 pub mod expert_cache;
 pub mod expert_index;
 pub mod mmap_streamer;
 pub mod moe_detector;
+pub mod ring_buffer;
 pub mod routing_heat;
 
+pub use async_prefetcher::{AsyncExpertPrefetcher, PrefetchCommand};
+pub use direct_io::{AlignedBuffer, DirectFileReader, DIRECT_IO_SECTOR_ALIGNMENT};
 pub use expert_cache::{ExpertCacheManager, ExpertKey, LoadedExpertBlock, SharedExpertCache};
 pub use expert_index::{ExpertOffsetIndex, ExpertTensorOffset, TensorRange};
 pub use mmap_streamer::SsdMmapStreamer;
 pub use moe_detector::{detect_moe, GgufMoeDetector, MoeModelInfo, OnnxMoeDetector};
+pub use ring_buffer::{SharedStagingBuffer, StaticExpertStagingBuffer, StagedExpertMeta};
 pub use routing_heat::RoutingHeatTracker;
+
 

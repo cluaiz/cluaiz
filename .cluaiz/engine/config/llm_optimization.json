@@ -10,6 +10,6 @@
   "enforce_json": false,
   "force_memory_lock": "Off",
   "custom_vram_buffer_gb": 0.1,
-  "custom_ram_buffer_gb": 0.5,
+  "custom_ram_buffer_gb": 1.5,
   "extreme_moe_streaming": "On"
 }

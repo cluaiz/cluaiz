@@ -196,13 +196,15 @@ impl RuntimeB {
         let user_no_mmap = gguf_hdr.hardware_and_execution.no_mmap;
         let user_n_gpu_layers = self.optimization.n_gpu_layers;
 
-        // Apply use_mmap logic: respect config but force false under SsdStreaming/expert swapping
+        // Apply use_mmap logic: respect config but force true under SsdStreaming/expert swapping
         model_params.use_mmap = !user_no_mmap;
         if grant.tier == cluaiz_shared::hardware::PlacementTier::SsdStreaming {
-            model_params.use_mmap = false;
-            eprintln!("🧠 [Native-Llama] SSD Streaming Active. Forcing use_mmap = false to prevent RAM over-allocation.");
+            model_params.use_mmap = true;
+            model_params.use_extra_bufts = false;
+            eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
+            eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent 11 GB duplicate RAM buffer.");
         }
-        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: use_mmap = {}, n_gpu_layers = {}", model_params.use_mmap, model_params.n_gpu_layers);
+        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: use_mmap = {}, n_gpu_layers = {}, tier = {:?}", model_params.use_mmap, model_params.n_gpu_layers, grant.tier);
 
         // Clamp user custom layers setting to negotiator allocated safe GPU budget limit
         let target_gpu_layers = if user_n_gpu_layers == 0 {
@@ -380,6 +382,9 @@ impl RuntimeB {
         if mem_pct >= 90.0 && model_params.use_mlock {
             cluaiz_shared::dev_info!("⚠️ [Arbiter] High Memory Pressure Detected ({:.1}%). Disabling use_mlock to prevent OS paging freeze.", mem_pct);
             model_params.use_mlock = false;
+        }
+        if model_params.use_mmap && self.moe_controller.is_some() {
+            cluaiz_shared::hardware::apply_windows_hard_memory_quota(usable_ram);
         }
 
         let native = NativeLlama::load(

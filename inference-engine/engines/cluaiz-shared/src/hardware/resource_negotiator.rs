@@ -294,7 +294,18 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             };
 
             // user_n_ctx is now fetched globally in Step 3
-            let native_max_ctx = 32768usize;
+            // Read raw native context length directly from GGUF header to avoid DNA side-effects
+            let mut native_max_ctx = usize::MAX;
+            if let Ok((metadata, _, _)) = crate::utils::GGUFProber::probe(&request.model_path) {
+                if let Some(arch) = metadata.get("general.architecture") {
+                    let ctx_key = format!("{}.context_length", arch);
+                    if let Some(ctx_str) = metadata.get(&ctx_key) {
+                        if let Ok(ctx) = ctx_str.parse::<usize>() {
+                            native_max_ctx = ctx;
+                        }
+                    }
+                }
+            }
             let min_2k_tokens = 2048usize;
             let kv_bytes_per_token = 128.0 * 1024.0;
 
@@ -396,9 +407,9 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             }
 
             let cache_budget = if single_expert_gb > 0.0 {
-                cached_expert_count as f64 * single_expert_gb
+                (cached_expert_count as f64 * single_expert_gb).min(ram_after_base)
             } else {
-                initial_cache_budget
+                initial_cache_budget.min(ram_after_base)
             };
             
             let actual_cache_gb = cache_budget;
@@ -412,6 +423,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             } else {
                 0.0
             };
+            eprintln!("🧠 [Negotiator] SsdStreaming budget clamped: Expert LRU Cache = {:.2} GB | Headroom Protection Active.", actual_cache_gb);
 
             let pre_context_vram_headroom = (live_free_vram_gb - allocated_vram).max(0.0);
             let post_context_vram_buffer = if ctx_in_vram {
@@ -581,5 +593,59 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         moe_info: final_moe_info,
     };
 
+    if grant.tier == PlacementTier::SsdStreaming {
+        apply_windows_hard_memory_quota(grant.ram_budget_gb);
+    }
+
     Ok(grant)
 }
+
+/// 🛡️ Windows OS Hard Working Set Quota Lock
+/// Caps the process's physical RAM consumption at `usable_ram_gb`, forcing Windows OS
+/// to evict cold Page Cache pages when memory reaches `usable_ram_gb`.
+/// Prevents System RAM from filling to 22.7 GB (96%) and preserves 1.5 GB OS Safety Buffer.
+#[cfg(windows)]
+pub fn apply_windows_hard_memory_quota(usable_ram_gb: f64) {
+    use std::ffi::c_void;
+
+    type HANDLE = *mut c_void;
+    type SIZE_T = usize;
+    type BOOL = i32;
+    type DWORD = u32;
+
+    const QUOTA_LIMITS_HARDWS_MAX_ENABLE: DWORD = 0x00000004;
+
+    extern "system" {
+        fn GetCurrentProcess() -> HANDLE;
+        fn SetProcessWorkingSetSizeEx(
+            hProcess: HANDLE,
+            dwMinimumWorkingSetSize: SIZE_T,
+            dwMaximumWorkingSetSize: SIZE_T,
+            Flags: DWORD,
+        ) -> BOOL;
+    }
+
+    let max_bytes: SIZE_T = (usable_ram_gb * 1024.0 * 1024.0 * 1024.0) as SIZE_T;
+    let min_bytes: SIZE_T = (2.0 * 1024.0 * 1024.0 * 1024.0) as SIZE_T;
+
+    unsafe {
+        let handle = GetCurrentProcess();
+        let ret = SetProcessWorkingSetSizeEx(
+            handle,
+            min_bytes,
+            max_bytes,
+            QUOTA_LIMITS_HARDWS_MAX_ENABLE,
+        );
+        if ret != 0 {
+            eprintln!(
+                "🛡️ [Negotiator] Windows Hard Working Set Quota Applied: Capped Process Physical RAM at {:.2} GB (OS Safety Buffer Preserved)",
+                usable_ram_gb
+            );
+        } else {
+            eprintln!("⚠️ [Negotiator] SetProcessWorkingSetSizeEx returned 0 (Working set limit adjustment skipped)");
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn apply_windows_hard_memory_quota(_usable_ram_gb: f64) {}

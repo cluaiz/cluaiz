@@ -136,6 +136,7 @@ pub extern "C" fn cluaiz_kernel_instantiate(
             if optimization_ctx.max_context_length > 0 {
                 engine.context.dna.max_context_length =
                     Some(optimization_ctx.max_context_length as usize);
+                engine.optimization.n_ctx = optimization_ctx.max_context_length;
             }
         } else {
             // Self-load from Binary Booster Truth if FFI was blank

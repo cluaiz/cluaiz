@@ -23,7 +23,8 @@ use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 use cluaiz_shared::hardware::expert_offloading::{
-    ExpertOffsetIndex, MoeModelInfo, RoutingHeatTracker, SharedExpertCache,
+    AsyncExpertPrefetcher, DirectFileReader, ExpertOffsetIndex, MoeModelInfo, RoutingHeatTracker,
+    SharedExpertCache, SharedStagingBuffer,
 };
 
 // ─── Platform-specific memory advisory imports ────────────────────────────────
@@ -33,33 +34,37 @@ use std::os::unix::io::AsRawFd;
 
 // ─── Controller ──────────────────────────────────────────────────────────────
 
-/// Controls OS-level memory advisory hints for MoE expert weight pages.
+/// Controls OS-level memory advisory hints and Direct I/O prefetch workers for MoE expert weight pages.
 ///
 /// Initialization steps (called once after model load):
 /// 1. Build the `ExpertOffsetIndex` from the GGUF tensor table.
 /// 2. Load `RoutingHeatTracker` to identify hot experts from previous sessions.
-/// 3. Issue `MADV_WILLNEED` for all hot experts to pre-warm the OS page cache.
+/// 3. Lock/Pin hottest experts in RAM pool (80/20 power law).
+/// 4. Spawn dedicated `AsyncExpertPrefetcher` background worker for Direct I/O streaming.
 ///
 /// Per-inference steps (called once per token generation step):
 /// 1. Receive the predicted active expert IDs from the routing decision.
-/// 2. Issue `MADV_WILLNEED` for the next predicted experts (prefetch).
-/// 3. Issue `MADV_DONTNEED` for the least-recently-used (cold) experts.
-/// 4. Record routing decision in the heat tracker.
+/// 2. Issue async Direct I/O prefetch request for upcoming layer $N+1$.
+/// 3. Issue OS `WILLNEED` hints and record routing decision in the heat tracker.
 pub struct GgufMoeStreamingController {
     /// Path to the GGUF model file on disk.
     model_path: std::path::PathBuf,
     /// Expert offset index for byte-precise memory advisory calls.
-    expert_index: ExpertOffsetIndex,
+    pub expert_index: Arc<ExpertOffsetIndex>,
     /// Routing heat tracker — persists hot expert statistics across sessions.
     heat_tracker: Arc<Mutex<RoutingHeatTracker>>,
     /// LRU expert cache — tracks which experts are currently "warm" in OS page cache.
-    cache: SharedExpertCache,
+    pub cache: SharedExpertCache,
+    /// Asynchronous background worker for Direct I/O streaming.
+    pub async_prefetcher: Option<Arc<AsyncExpertPrefetcher>>,
     /// Cross-platform memory mapping for advisory calls.
     mmap: Option<memmap2::Mmap>,
     /// MoE structural info.
     pub moe_info: MoeModelInfo,
     /// Records the expert IDs activated in the most recent routing step (for cold hints).
     last_active_experts: Vec<(usize, usize)>,
+    /// Permanently pinned hot experts across sessions.
+    pub pinned_hot_experts: Vec<(usize, usize)>,
     /// Number of layers offloaded to GPU (VRAM) that should not be managed by the CPU streaming advisor.
     pub n_gpu_layers: usize,
     /// Authorized LRU Cache budget for dynamic eviction
@@ -94,6 +99,7 @@ impl GgufMoeStreamingController {
             "📖 [GgufMoeStreaming] Expert index built: {} entries indexed.",
             expert_index.indexed_count()
         );
+        let expert_index_arc = Arc::new(expert_index);
 
         // Step 2: Load routing heat tracker
         let model_dir = model_path.parent().unwrap_or(Path::new("."));
@@ -102,27 +108,59 @@ impl GgufMoeStreamingController {
             moe_info.expert_count,
             model_dir,
         );
+
+        // Step 3: Identify hottest experts for permanent pinning (80/20 rule)
+        let pin_budget_bytes = ((cache_budget_gb * 0.30) * 1024.0 * 1024.0 * 1024.0) as u64;
+        let pinned_hot_experts = heat_tracker.get_hottest_experts(
+            pin_budget_bytes,
+            moe_info.expert_size_bytes as u64,
+        );
+        if !pinned_hot_experts.is_empty() {
+            info!(
+                "📌 [GgufMoeStreaming] Pinning {} hot experts in physical RAM cache.",
+                pinned_hot_experts.len()
+            );
+        }
         let heat_tracker = Arc::new(Mutex::new(heat_tracker));
 
-        // Step 3: Set up LRU cache
+        // Step 4: Set up LRU cache
         let cache = SharedExpertCache::new(cache_budget_gb);
 
-        // Step 4: mmap the model file for advisory virtual memory calls
+        // Step 5: Spawn dedicated Direct I/O Async Prefetcher Worker
+        let async_prefetcher = match AsyncExpertPrefetcher::spawn(
+            model_path,
+            Arc::clone(&expert_index_arc),
+            cache.clone(),
+            64 * 1024 * 1024,
+        ) {
+            Ok(prefetcher) => {
+                info!("⚡ [GgufMoeStreaming] Direct I/O Async Prefetcher spawned successfully.");
+                Some(Arc::new(prefetcher))
+            }
+            Err(e) => {
+                warn!("⚠️ [GgufMoeStreaming] Could not spawn Direct I/O worker (falling back to OS mmap): {}", e);
+                None
+            }
+        };
+
+        // Step 6: mmap the model file for advisory virtual memory calls
         let mmap = Self::try_mmap(model_path);
 
         let mut controller = Self {
             model_path: model_path.to_path_buf(),
-            expert_index,
+            expert_index: expert_index_arc,
             heat_tracker,
             cache,
+            async_prefetcher,
             mmap,
             moe_info,
             last_active_experts: Vec::new(),
+            pinned_hot_experts,
             n_gpu_layers,
             cache_budget_gb,
         };
 
-        // Step 5: Pre-warm OS page cache for hot experts from previous sessions
+        // Step 7: Pre-warm OS page cache for hot experts from previous sessions
         controller.warm_hot_experts();
 
         Ok(controller)
@@ -143,7 +181,23 @@ impl GgufMoeStreamingController {
             tracker.record_routing(layer, active_expert_ids);
         }
 
-        // 2. Issue WILLNEED hints for currently active experts (ensure they stay in cache)
+        // 2. Trigger Async Direct I/O Prefetch for Next Layer (Lookahead Overlap)
+        if let Some(ref prefetcher) = self.async_prefetcher {
+            if let Some(next_experts) = predicted_next_experts {
+                let mut layer_map: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+                for &(nl, ne) in next_experts {
+                    layer_map.entry(nl).or_default().push(ne);
+                }
+                for (nl, nes) in layer_map {
+                    prefetcher.request_layer_prefetch(nl, &nes);
+                }
+            } else if layer + 1 < self.moe_info.moe_layer_count {
+                // If router didn't pre-predict, prefetch the top hot experts of next layer
+                prefetcher.request_layer_prefetch(layer + 1, active_expert_ids);
+            }
+        }
+
+        // 3. Issue WILLNEED hints for currently active experts (ensure they stay in cache)
         for &expert_id in active_expert_ids {
             let key = (layer, expert_id);
             if let Some(pos) = self.last_active_experts.iter().position(|x| *x == key) {
@@ -153,14 +207,14 @@ impl GgufMoeStreamingController {
             self.last_active_experts.push(key);
         }
 
-        // 3. Prefetch predicted next-step experts (read-ahead)
+        // 4. Prefetch predicted next-step experts via OS advisory
         if let Some(next_experts) = predicted_next_experts {
             for &(next_layer, next_expert) in next_experts {
                 self.advise_willneed(next_layer, next_expert);
             }
         }
 
-        // 4. Dynamic LRU pool eviction bounded by Negotiator's RAM Budget
+        // 5. Dynamic LRU pool eviction bounded by Negotiator's RAM Budget
         let max_experts_in_ram = if self.moe_info.expert_size_bytes > 0 {
             let max_bytes = self.cache_budget_gb * 1024.0 * 1024.0 * 1024.0;
             (max_bytes / self.moe_info.expert_size_bytes as f64) as usize
@@ -168,10 +222,12 @@ impl GgufMoeStreamingController {
             16
         };
 
-        // Evict oldest experts if we exceed our calculated RAM budget
+        // Evict oldest experts if we exceed our calculated RAM budget (ignoring pinned experts)
         while self.last_active_experts.len() > max_experts_in_ram {
             let (cold_layer, cold_expert) = self.last_active_experts.remove(0);
-            self.advise_dontneed(cold_layer, cold_expert);
+            if !self.pinned_hot_experts.contains(&(cold_layer, cold_expert)) {
+                self.advise_dontneed(cold_layer, cold_expert);
+            }
         }
     }
 
@@ -260,31 +316,17 @@ impl GgufMoeStreamingController {
         }
         #[cfg(windows)]
         {
-            use std::ffi::c_void;
-
-            extern "system" {
-                fn DiscardVirtualMemory(
-                    virtual_address: *mut c_void,
-                    size: usize,
-                ) -> u32;
-                fn VirtualUnlock(
-                    lpAddress: *mut c_void,
-                    dwSize: usize,
-                ) -> i32;
-            }
-
+            // Note: On Windows file-backed mmaps (memmap2), VirtualUnlock is only valid on VirtualLock'd pages.
+            // Calling VirtualUnlock on un-locked mmap pages causes ERROR_NOT_LOCKED and forces Windows
+            // to invalidate active Standby Page Cache, leading to 100% NVMe SSD thrashing.
+            // Windows Cache Manager automatically pages out un-accessed mmap pages when memory pressure occurs.
             if let (Some(mmap), Some(entry)) = (self.mmap.as_ref(), self.expert_index.lookup(layer, expert_id)) {
                 let base = mmap.as_ptr();
                 let mmap_len = mmap.len();
                 let gate_offset = entry.gate.file_offset as usize;
                 let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
                 if gate_offset + total_len <= mmap_len {
-                    let ptr = unsafe { base.add(gate_offset) } as *mut c_void;
-                    eprintln!("🧠 [GgufMoeStreaming] DONTNEED: Layer {}, Expert {} | Virtual Addr: {:p} | Size: {} bytes", layer, expert_id, ptr, total_len);
-                    unsafe {
-                        DiscardVirtualMemory(ptr, total_len);
-                        VirtualUnlock(ptr, total_len);
-                    }
+                    // Soft advisory: avoid invalidating working set on Windows
                 }
             }
         }
@@ -305,21 +347,6 @@ impl GgufMoeStreamingController {
             }
             for expert_id in 0..total_experts {
                 self.advise_dontneed(layer, expert_id);
-            }
-        }
-        #[cfg(windows)]
-        {
-            extern "system" {
-                fn GetCurrentProcess() -> *mut std::ffi::c_void;
-                fn SetProcessWorkingSetSize(
-                    hProcess: *mut std::ffi::c_void,
-                    dwMinimumWorkingSetSize: usize,
-                    dwMaximumWorkingSetSize: usize,
-                ) -> i32;
-            }
-            unsafe {
-                // Trim process working set to immediately return discardable expert pages to Windows free RAM
-                SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
             }
         }
         info!("🌊 [GgufMoeStreaming] Post-load memory purge complete.");

@@ -236,7 +236,13 @@ impl HardwareGovernor {
         // Rule: Never exceed what the model architecture supports (DNA Truth).
         // If DNA is missing, we assume an infinite architecture limit (usize::MAX)
         // and let the Physical VRAM Arbiter determine the safe ceiling.
-        let arch_cap = dna.max_context_length.unwrap_or(usize::MAX);
+        let user_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let user_ctx_cap = if user_meta.hardware_and_execution.n_ctx > 0 {
+            user_meta.hardware_and_execution.n_ctx as usize
+        } else {
+            usize::MAX
+        };
+        let arch_cap = dna.max_context_length.unwrap_or(usize::MAX).min(user_ctx_cap);
 
         // If CPU-only Mode (n_gpu_layers = 0), calculate context based on System RAM instead of VRAM
         let gguf_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();

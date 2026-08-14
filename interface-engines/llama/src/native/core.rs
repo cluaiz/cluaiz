@@ -82,18 +82,8 @@ unsafe extern "C" fn ggml_sched_eval_callback(
                             );
                         }
 
-                        let prefetch_layer = layer_idx + 1;
-                        if prefetch_layer < controller.moe_info.moe_layer_count {
-                            for expert_id in 0..controller.moe_info.expert_count {
-                                controller.advise_willneed(prefetch_layer, expert_id);
-                            }
-                        }
-                        if layer_idx > 0 {
-                            let discard_layer = layer_idx - 1;
-                            for expert_id in 0..controller.moe_info.expert_count {
-                                controller.advise_dontneed(discard_layer, expert_id);
-                            }
-                        }
+                        // Advisory hints are issued on-demand via on_routing_decision per token.
+                        // Per-tensor blanket loops across all 128 experts are disabled to prevent page cache thrashing.
                     }
                 }
             }
@@ -265,18 +255,12 @@ impl NativeLlama {
             cluaiz_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
-        if model_params.n_gpu_layers == 0 {
-            // Restore requested context size for CPU-only mode to prevent GPU VRAM capping
-            dna.max_context_length = Some(requested_n_ctx as usize);
-        }
-
-        if let Some(ctx) = dna.max_context_length {
-            info!(
-                "🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Setting n_ctx = {} (DNA Truth)",
-                ctx
-            );
-            ctx_params.n_ctx = std::cmp::min(ctx as u32, requested_n_ctx);
-        }
+        // Ensure n_ctx is strictly bound by Negotiator's requested limit, preventing 256k token (14.4 GB) KV Cache allocations
+        ctx_params.n_ctx = requested_n_ctx;
+        info!(
+            "🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Context Window strictly locked to: {} tokens",
+            ctx_params.n_ctx
+        );
 
         let mut speculative_decoding_mode = speculative_decoding_mode;
         if dna.model_identity.to_lowercase().contains("gemma") {
@@ -296,11 +280,10 @@ impl NativeLlama {
             }
         }
 
-        if let Some(ref controller) = moe_controller {
-            let raw_ptr = Arc::as_ptr(controller) as *mut std::ffi::c_void;
-            ctx_params.cb_eval = ggml_sched_eval_callback as *mut std::ffi::c_void;
-            ctx_params.cb_eval_user_data = raw_ptr;
-        }
+        // 🛡️ Disable C-FFI per-tensor eval callback to eliminate CUDA Pointer Desynchronization
+        // and OS interrupt thrashing. Model stays fully resident in statically assigned VRAM/RAM.
+        ctx_params.cb_eval = std::ptr::null_mut();
+        ctx_params.cb_eval_user_data = std::ptr::null_mut();
 
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
 

@@ -19,7 +19,7 @@ pub use system_performance::pulse_schema::LivePulse;
 pub use system_performance::get_pulse;
 pub use governor::HardwareGovernor;
 pub use memory_governor::{calculate_safety_buffer, calculate_ram_safety_buffer, calculate_usable_vram, calculate_usable_ram};
-pub use resource_negotiator::{negotiate_resource, ResourceRequest, ResourceGrant, PlacementTier, EngineType, InferenceMode};
+pub use resource_negotiator::{negotiate_resource, ResourceRequest, ResourceGrant, PlacementTier, EngineType, InferenceMode, apply_windows_hard_memory_quota};
 
 /// 📡 Helper: Quick access to the Sovereign Silicon Truth.
 pub fn get_silicon_state() -> schema::profiles::SiliconTruth {
