@@ -198,12 +198,21 @@ void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const vo
 
         if content.contains(target_buft) {
             content = content.replace(target_buft, patch_buft);
-            std::fs::write(&cuda_cu_path, content).unwrap();
+            std::fs::write(&cuda_cu_path, &content).unwrap();
             println!("cargo:warning=✅ Safe Cached Device Context Patch Applied!");
         } else if content.contains("valid_dev") {
             println!("cargo:warning=⚠️ Safe Cached Device Context Patch already active.");
-        } else {
-            println!("cargo:warning=⚠️ Target supports_buft pattern not found in ggml-cuda.cu.");
+        }
+
+        let target_min_batch = "const int min_batch_size = getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\") ? atoi(getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\")) : 32;";
+        let patch_min_batch  = "const int min_batch_size = getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\") ? atoi(getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\")) : 1;";
+
+        if content.contains(target_min_batch) {
+            content = content.replace(target_min_batch, patch_min_batch);
+            std::fs::write(&cuda_cu_path, &content).unwrap();
+            println!("cargo:warning=✅ Single-Token GPU Operator Offloading Enabled (min_batch_size = 1)!");
+        } else if content.contains("min_batch_size = getenv") {
+            println!("cargo:warning=⚠️ Single-Token GPU Operator Offloading Patch already active.");
         }
     }
 

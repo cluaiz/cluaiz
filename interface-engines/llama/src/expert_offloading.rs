@@ -69,6 +69,8 @@ pub struct GgufMoeStreamingController {
     pub n_gpu_layers: usize,
     /// Authorized LRU Cache budget for dynamic eviction
     pub cache_budget_gb: f64,
+    /// True CUDA Host PCIe DMA Streamer for streaming active experts into GPU VRAM
+    pub dma_streamer: Option<Arc<crate::cuda_dma_streamer::CudaDmaStreamer>>,
 }
 
 // SAFETY: The mmap_base pointer is only used for madvise calls from a single thread at a time.
@@ -146,6 +148,16 @@ impl GgufMoeStreamingController {
         // Step 6: mmap the model file for advisory virtual memory calls
         let mmap = Self::try_mmap(model_path);
 
+        // Step 6.5: Initialize True CUDA Host PCIe DMA Streamer
+        let max_expert_chunk = (moe_info.expert_size_bytes * (moe_info.active_experts_per_token as u64))
+            .try_into()
+            .unwrap_or(64 * 1024 * 1024);
+
+        let dma_streamer = crate::cuda_dma_streamer::CudaDmaStreamer::initialize(
+            n_gpu_layers as i32,
+            max_expert_chunk,
+        );
+
         let mut controller = Self {
             model_path: model_path.to_path_buf(),
             expert_index: expert_index_arc,
@@ -158,6 +170,7 @@ impl GgufMoeStreamingController {
             pinned_hot_experts,
             n_gpu_layers,
             cache_budget_gb,
+            dma_streamer,
         };
 
         // Step 7: Pre-warm OS page cache for hot experts from previous sessions
@@ -181,7 +194,22 @@ impl GgufMoeStreamingController {
             tracker.record_routing(layer, active_expert_ids);
         }
 
-        // 2. Trigger Async Direct I/O Prefetch for Next Layer (Lookahead Overlap)
+        // 2. Stream Active Layer Experts into GPU VRAM over PCIe DMA Highway
+        if let (Some(streamer), Some(mmap)) = (&self.dma_streamer, &self.mmap) {
+            let mmap_bytes: &[u8] = mmap.as_ref();
+            for &expert_id in active_expert_ids {
+                if let Some(entry) = self.expert_index.lookup(layer, expert_id) {
+                    let gate_offset = entry.gate.file_offset as usize;
+                    let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
+                    if gate_offset + total_len <= mmap_bytes.len() {
+                        let slice = &mmap_bytes[gate_offset..gate_offset + total_len];
+                        let _ = streamer.stream_expert_weights_async(slice);
+                    }
+                }
+            }
+        }
+
+        // 3. Trigger Async Direct I/O Prefetch for Next Layer (Lookahead Overlap)
         if let Some(ref prefetcher) = self.async_prefetcher {
             if let Some(next_experts) = predicted_next_experts {
                 let mut layer_map: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
@@ -197,7 +225,7 @@ impl GgufMoeStreamingController {
             }
         }
 
-        // 3. Issue WILLNEED hints for currently active experts (ensure they stay in cache)
+        // 4. Issue WILLNEED hints for currently active experts (ensure they stay in cache)
         for &expert_id in active_expert_ids {
             let key = (layer, expert_id);
             if let Some(pos) = self.last_active_experts.iter().position(|x| *x == key) {
@@ -207,14 +235,14 @@ impl GgufMoeStreamingController {
             self.last_active_experts.push(key);
         }
 
-        // 4. Prefetch predicted next-step experts via OS advisory
+        // 5. Prefetch predicted next-step experts via OS advisory
         if let Some(next_experts) = predicted_next_experts {
             for &(next_layer, next_expert) in next_experts {
                 self.advise_willneed(next_layer, next_expert);
             }
         }
 
-        // 5. Dynamic LRU pool eviction bounded by Negotiator's RAM Budget
+        // 6. Dynamic LRU pool eviction bounded by Negotiator's RAM Budget
         let max_experts_in_ram = if self.moe_info.expert_size_bytes > 0 {
             let max_bytes = self.cache_budget_gb * 1024.0 * 1024.0 * 1024.0;
             (max_bytes / self.moe_info.expert_size_bytes as f64) as usize

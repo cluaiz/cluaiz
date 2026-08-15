@@ -20,6 +20,7 @@ pub mod native;
 pub mod pipeline;
 pub mod router;
 pub mod sampling;
+pub mod cuda_dma_streamer;
 
 use crate::config::OptimizationConfig;
 use crate::native::NativeLlama;
