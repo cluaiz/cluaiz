@@ -613,7 +613,8 @@ pub fn apply_windows_hard_memory_quota(usable_ram_gb: f64) {
     type BOOL = i32;
     type DWORD = u32;
 
-    const QUOTA_LIMITS_HARDWS_MAX_ENABLE: DWORD = 0x00000004;
+    // 0 = Soft Working Set (Advisory quota - allows OS to keep active pages in RAM without aggressive page-fault storms)
+    const QUOTA_LIMITS_SOFTWS: DWORD = 0;
 
     extern "system" {
         fn GetCurrentProcess() -> HANDLE;
@@ -634,11 +635,11 @@ pub fn apply_windows_hard_memory_quota(usable_ram_gb: f64) {
             handle,
             min_bytes,
             max_bytes,
-            QUOTA_LIMITS_HARDWS_MAX_ENABLE,
+            QUOTA_LIMITS_SOFTWS,
         );
         if ret != 0 {
             eprintln!(
-                "🛡️ [Negotiator] Windows Hard Working Set Quota Applied: Capped Process Physical RAM at {:.2} GB (OS Safety Buffer Preserved)",
+                "🛡️ [Negotiator] Windows Working Set Quota Applied: Target Process Physical RAM at {:.2} GB (Zero-Thrash Soft Quota)",
                 usable_ram_gb
             );
         } else {
