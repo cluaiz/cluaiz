@@ -128,7 +128,7 @@ impl OptimizationConfig {
             gguf_meta.hardware_and_execution.n_ctx.max(0) as u32
         };
         config.think_mode = gguf_meta.user_moved_flags.think_mode;
-        config.use_mmap = true;
+        config.use_mmap = false; // 🚀 100% FALSE: Prevents 23.7 GB RAM overflow and SSD 100% pagefile thrashing
         config
     }
     /// 🛠️ Transform high-level config into raw model parameters.
@@ -137,9 +137,10 @@ impl OptimizationConfig {
         params.n_gpu_layers = self.n_gpu_layers;
         params.use_mmap = self.use_mmap;
         params.use_mlock = self.force_memory_lock == "On";
-        params.no_host = self.n_gpu_layers != 0; // Avoid pinned host memory allocation if offloading layers to GPU
+        params.no_host = false; // 🚀 Must be false to enable CUDA_Host pinned buffers for host-tensor GPU offloading
+        params.use_extra_bufts = true; // 🚀 Enable extra host backend buffer types (CUDA host pinned buffers)
         params
-    }
+    } 
 
     /// 🛠️ Transform high-level config into raw context parameters.
     pub fn to_context_params(&self) -> LlamaContextParams {
@@ -215,6 +216,7 @@ impl OptimizationConfig {
         
         params.flash_attn_type = if (self.flash_attn || is_quantized_kv) && !force_disable_fa_for_cpu { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
         params.offload_kqv = if self.n_gpu_layers == 0 { 0 } else { 1 }; // Force KV cache offload to VRAM only if GPU is enabled
+        params.op_offload = if self.n_gpu_layers == 0 { 0 } else { 1 }; // GPU offload for batch operations
 
         params
     }

@@ -185,6 +185,29 @@ void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const vo
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // PHASE 1.9: SAFE CACHED DEVICE CONTEXT CUDA HOST BUFFER UNLOCK
+    // ═══════════════════════════════════════════════════════════════
+    let cuda_cu_path = llama_path.join("ggml/src/ggml-cuda/ggml-cuda.cu");
+    if cuda_cu_path.exists() {
+        println!("cargo:warning=💉 Patching ggml-cuda.cu with Safe Cached Device Context...");
+        let mut content = std::fs::read_to_string(&cuda_cu_path).unwrap();
+        content = content.replace("\r\n", "\n");
+
+        let target_buft = "const bool integrated = ggml_cuda_info().devices[dev_ctx->device].integrated;\n    return (((ggml_backend_buft_is_cuda(buft) || ggml_backend_buft_is_cuda_split(buft)) && buft->device == dev) || (integrated && ggml_backend_buft_is_cuda_host(buft)));";
+        let patch_buft = "const bool valid_dev = dev_ctx != NULL && dev_ctx->device >= 0;\n    return (((ggml_backend_buft_is_cuda(buft) || ggml_backend_buft_is_cuda_split(buft)) && buft->device == dev) || (valid_dev && ggml_backend_buft_is_cuda_host(buft)));";
+
+        if content.contains(target_buft) {
+            content = content.replace(target_buft, patch_buft);
+            std::fs::write(&cuda_cu_path, content).unwrap();
+            println!("cargo:warning=✅ Safe Cached Device Context Patch Applied!");
+        } else if content.contains("valid_dev") {
+            println!("cargo:warning=⚠️ Safe Cached Device Context Patch already active.");
+        } else {
+            println!("cargo:warning=⚠️ Target supports_buft pattern not found in ggml-cuda.cu.");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // PHASE 2: INDUSTRIAL CMAKE BUILD
     // ═══════════════════════════════════════════════════════════════
     let target_os   = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
