@@ -269,6 +269,11 @@ impl NativeLlama {
         }
 
         unsafe {
+            // 🚀 Force GGML CUDA to offload RAM tensor operations to GPU even for single-token stream decoding
+            if model_params.n_gpu_layers != 0 {
+                std::env::set_var("GGML_OP_OFFLOAD_MIN_BATCH", "1");
+            }
+
             let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
             let target_graphs = if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
                 "0"
@@ -278,6 +283,12 @@ impl NativeLlama {
             if current_graphs != target_graphs {
                 std::env::set_var("GGML_CUDA_USE_GRAPHS", target_graphs);
             }
+        }
+
+        // 🚀 Ensure dynamic host-tensor op offloading to CUDA device
+        if model_params.n_gpu_layers != 0 {
+            ctx_params.op_offload = 1;
+            ctx_params.offload_kqv = 1;
         }
 
         // 🛡️ Disable C-FFI per-tensor eval callback to eliminate CUDA Pointer Desynchronization

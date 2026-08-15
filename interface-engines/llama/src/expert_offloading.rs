@@ -461,7 +461,8 @@ mod tests {
 
     #[test]
     fn test_gguf_moe_streaming_controller() {
-        let temp_dir = std::env::temp_dir().join("gguf_moe_controller_test");
+        let temp_dir = std::env::temp_dir().join(format!("gguf_moe_controller_test_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
         std::fs::create_dir_all(&temp_dir).unwrap();
         let model_path = temp_dir.join("model.gguf");
 

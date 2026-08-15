@@ -200,7 +200,7 @@ impl RuntimeB {
         model_params.use_mmap = !user_no_mmap;
         if grant.tier == cluaiz_shared::hardware::PlacementTier::SsdStreaming {
             model_params.use_mmap = true;
-            model_params.use_extra_bufts = false;
+            model_params.use_extra_bufts = true;
             eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
             eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent 11 GB duplicate RAM buffer.");
         }
