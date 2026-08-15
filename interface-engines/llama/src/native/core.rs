@@ -112,7 +112,11 @@ extern "C" fn llama_log_callback(
         let s = c_str.to_string_lossy();
         let msg = s.trim();
         if !msg.is_empty() {
-            // Force print to stderr to ensure it shows up in console
+            // 🛡️ Filter high-frequency per-token spam logs that freeze the console
+            if msg.contains("CUDA Graph id") && msg.contains("reused") {
+                return;
+            }
+            // Force print to stderr to ensure meaningful info shows up in console
             eprintln!("📢 [llama.cpp] {}", msg);
         }
     }
@@ -272,6 +276,7 @@ impl NativeLlama {
             // 🚀 Force GGML CUDA to offload RAM tensor operations to GPU even for single-token stream decoding
             if model_params.n_gpu_layers != 0 {
                 std::env::set_var("GGML_OP_OFFLOAD_MIN_BATCH", "1");
+                std::env::set_var("GGML_CUDA_FORCE_MMQ", "1");
             }
 
             let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
@@ -299,17 +304,12 @@ impl NativeLlama {
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
 
         // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
-        // If Context Init fails, it is 99% due to Flash Attention or KV Quantization incompatibility 
-        // with the specific model architecture (e.g. DeepSeek V2, Qwen, Phi-3).
+        // If Context Init fails, gracefully retry without Flash Attention while PRESERVING quantized KV cache (no F16 explosion)
         if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Architecture might be incompatible (e.g. DeepSeek/Qwen). Initiating Graceful Fallback...");
+            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Initiating Safe Fallback (keeping quantized KV cache)...");
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
-            // Also downgrade KV Cache as it requires FA
-            if fallback_ctx_params.type_k == 8 || fallback_ctx_params.type_k == 2 {
-                fallback_ctx_params.type_k = 1; // F16
-                fallback_ctx_params.type_v = 1;
-            }
+            // Preserve original type_k and type_v so RAM doesn't blow up to 47GB!
             ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, fallback_ctx_params) };
         }
 

@@ -194,9 +194,11 @@ impl GgufMoeStreamingController {
             tracker.record_routing(layer, active_expert_ids);
         }
 
-        // 2. Stream Active Layer Experts into GPU VRAM over PCIe DMA Highway
+        // 2. Stream Active Layer Experts & Lookahead Prefetch into GPU VRAM over PCIe DMA Highway
         if let (Some(streamer), Some(mmap)) = (&self.dma_streamer, &self.mmap) {
             let mmap_bytes: &[u8] = mmap.as_ref();
+            
+            // A. Stream current layer active weights
             for &expert_id in active_expert_ids {
                 if let Some(entry) = self.expert_index.lookup(layer, expert_id) {
                     let gate_offset = entry.gate.file_offset as usize;
@@ -204,6 +206,21 @@ impl GgufMoeStreamingController {
                     if gate_offset + total_len <= mmap_bytes.len() {
                         let slice = &mmap_bytes[gate_offset..gate_offset + total_len];
                         let _ = streamer.stream_expert_weights_async(slice);
+                    }
+                }
+            }
+
+            // B. Lookahead: Asynchronously prefetch Next Layer (N+1) into Ping-Pong Staging Slot
+            let next_layer = layer + 1;
+            if next_layer < self.moe_info.moe_layer_count {
+                for &next_expert_id in active_expert_ids {
+                    if let Some(next_entry) = self.expert_index.lookup(next_layer, next_expert_id) {
+                        let gate_offset = next_entry.gate.file_offset as usize;
+                        let total_len = (next_entry.gate.byte_length + next_entry.up.byte_length + next_entry.down.byte_length) as usize;
+                        if gate_offset + total_len <= mmap_bytes.len() {
+                            let next_slice = &mmap_bytes[gate_offset..gate_offset + total_len];
+                            let _ = streamer.prefetch_next_layer_async(next_slice);
+                        }
                     }
                 }
             }
@@ -538,7 +555,8 @@ mod tests {
             assert_eq!(tracker.total_records(), 2);
         }
 
-        // Clean up
+        // Clean up: drop controller first to release open mmap and file handles
+        drop(controller);
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

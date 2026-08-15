@@ -323,6 +323,8 @@ impl RuntimeB {
             }
         }
 
+        ctx_params.swa_full = 0; // Enforce safe SWA cache sizing
+
 
         // 🧠 RESOLVE SPECULATIVE MODE & SYNC DNA
         if is_ssm_model {

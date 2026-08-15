@@ -23,9 +23,14 @@ const CUDA_HOST_ALLOC_PORTABLE: u32 = 0x01;
 const CUDA_STREAM_NON_BLOCKING: u32 = 0x01;
 const CUDA_MEMCPY_HOST_TO_DEVICE: i32 = 1;
 
+type CudaEvent = *mut c_void;
+
+const CUDA_EVENT_DISABLE_TIMING: u32 = 0x02;
+
 extern "C" {
     fn cudaGetDeviceCount(count: *mut i32) -> CudaError;
     fn cudaSetDevice(device: i32) -> CudaError;
+    fn cudaMemGetInfo(free: *mut usize, total: *mut usize) -> CudaError;
     fn cudaHostAlloc(p_host: *mut *mut c_void, bytes: usize, flags: u32) -> CudaError;
     fn cudaFreeHost(p_host: *mut c_void) -> CudaError;
     fn cudaMalloc(dev_ptr: *mut *mut c_void, size: usize) -> CudaError;
@@ -40,6 +45,10 @@ extern "C" {
     fn cudaStreamCreateWithFlags(p_stream: *mut CudaStream, flags: u32) -> CudaError;
     fn cudaStreamSynchronize(stream: CudaStream) -> CudaError;
     fn cudaStreamDestroy(stream: CudaStream) -> CudaError;
+    fn cudaEventCreateWithFlags(ph_event: *mut CudaEvent, flags: u32) -> CudaError;
+    fn cudaEventRecord(h_event: CudaEvent, h_stream: CudaStream) -> CudaError;
+    fn cudaEventSynchronize(h_event: CudaEvent) -> CudaError;
+    fn cudaEventDestroy(h_event: CudaEvent) -> CudaError;
 }
 
 /// 🛡️ Safe wrapper around a `cudaHostAlloc` Pinned Host RAM Buffer.
@@ -137,6 +146,7 @@ pub struct CudaDmaStreamer {
     dev_scratch_a: CudaDeviceScratchBuffer,
     dev_scratch_b: CudaDeviceScratchBuffer,
     dma_stream: CudaStream,
+    dma_ready_event: CudaEvent,
     is_ping: AtomicBool,
     is_active: bool,
     buffer_size: usize,
@@ -146,6 +156,19 @@ unsafe impl Send for CudaDmaStreamer {}
 unsafe impl Sync for CudaDmaStreamer {}
 
 impl CudaDmaStreamer {
+    /// Query real-time free VRAM directly from CUDA Runtime API and enforce safety headroom.
+    pub fn get_live_usable_vram_bytes() -> usize {
+        let mut free: usize = 0;
+        let mut total: usize = 0;
+        let res = unsafe { cudaMemGetInfo(&mut free, &mut total) };
+        if res != CUDA_SUCCESS {
+            return 0;
+        }
+
+        let safety_floor_bytes = 250 * 1024 * 1024;
+        free.saturating_sub(safety_floor_bytes)
+    }
+
     /// Probe hardware and initialize DMA Streamer if GPU is active and requested.
     pub fn initialize(n_gpu_layers: i32, max_expert_chunk_bytes: usize) -> Option<Arc<Self>> {
         if n_gpu_layers == 0 {
@@ -165,12 +188,24 @@ impl CudaDmaStreamer {
             cudaSetDevice(0);
         }
 
-        // Safe bounded chunk size: 32MB to 128MB (strictly fits in GPU VRAM alongside model layers)
-        let chunk_size = max_expert_chunk_bytes.clamp(32 * 1024 * 1024, 128 * 1024 * 1024);
+        let live_usable = Self::get_live_usable_vram_bytes();
+        if live_usable < 16 * 1024 * 1024 {
+            warn!(
+                "⚠️ [CudaDmaStreamer] Live usable VRAM too low ({:.2} MB). Skipping DMA streamer allocation to preserve memory.",
+                live_usable as f64 / (1024.0 * 1024.0)
+            );
+            return None;
+        }
+
+        // Dynamically scale chunk size bounded by live usable VRAM and model expert requirements
+        let chunk_size = max_expert_chunk_bytes
+            .clamp(16 * 1024 * 1024, 64 * 1024 * 1024)
+            .min(live_usable / 2);
 
         info!(
-            "🚀 [CudaDmaStreamer] Initializing Double-Buffered PCIe DMA Pipeline ({:.2} MB per ping-pong buffer)...",
-            chunk_size as f64 / (1024.0 * 1024.0)
+            "🚀 [CudaDmaStreamer] Initializing Double-Buffered PCIe DMA Pipeline ({:.2} MB per ping-pong buffer | Usable VRAM: {:.2} MB)...",
+            chunk_size as f64 / (1024.0 * 1024.0),
+            live_usable as f64 / (1024.0 * 1024.0)
         );
 
         let pinned_ping = match CudaPinnedHostBuffer::allocate(chunk_size) {
@@ -212,6 +247,13 @@ impl CudaDmaStreamer {
             return None;
         }
 
+        let mut ready_event: CudaEvent = std::ptr::null_mut();
+        let event_res = unsafe { cudaEventCreateWithFlags(&mut ready_event, CUDA_EVENT_DISABLE_TIMING) };
+        if event_res != CUDA_SUCCESS || ready_event.is_null() {
+            warn!("⚠️ [CudaDmaStreamer] Could not create CUDA synchronization event.");
+            return None;
+        }
+
         info!("✅ [CudaDmaStreamer] True CUDA Host DMA Streamer Online & Pinned (Zero-Copy Ready).");
 
         Some(Arc::new(Self {
@@ -220,10 +262,72 @@ impl CudaDmaStreamer {
             dev_scratch_a,
             dev_scratch_b,
             dma_stream: stream,
+            dma_ready_event: ready_event,
             is_ping: AtomicBool::new(true),
             is_active: true,
             buffer_size: chunk_size,
         }))
+    }
+
+    /// Asynchronously prefetch the next layer's weights into the alternate staging slot over PCIe DMA.
+    pub fn prefetch_next_layer_async(&self, next_layer_bytes: &[u8]) -> Result<(), String> {
+        if !self.is_active || next_layer_bytes.is_empty() {
+            return Ok(());
+        }
+
+        let copy_len = next_layer_bytes.len().min(self.buffer_size);
+        let ping_active = self.is_ping.load(Ordering::Relaxed);
+
+        // Target the ALTERNATE staging buffer while current buffer computes
+        let (pinned_host, dev_dst) = if ping_active {
+            (self.pinned_pong.as_mut_ptr(), self.dev_scratch_b.as_dev_ptr())
+        } else {
+            (self.pinned_ping.as_mut_ptr(), self.dev_scratch_a.as_dev_ptr())
+        };
+
+        // 1. CPU fast copy to pinned host memory
+        unsafe {
+            std::ptr::copy_nonoverlapping(next_layer_bytes.as_ptr(), pinned_host, copy_len);
+        }
+
+        // 2. Launch non-blocking PCIe DMA transfer on dedicated DMA stream
+        let res = unsafe {
+            cudaMemcpyAsync(
+                dev_dst,
+                pinned_host as *const c_void,
+                copy_len,
+                CUDA_MEMCPY_HOST_TO_DEVICE,
+                self.dma_stream,
+            )
+        };
+
+        if res != CUDA_SUCCESS {
+            return Err(format!("cudaMemcpyAsync failed with code {}", res));
+        }
+
+        // 3. Record hardware event indicating DMA completion
+        unsafe {
+            let _ = cudaEventRecord(self.dma_ready_event, self.dma_stream);
+        }
+
+        Ok(())
+    }
+
+    /// Swap staging and compute roles, synchronizing compute stream to wait on the DMA event.
+    pub fn swap_and_sync_for_compute(&self) {
+        if !self.is_active {
+            return;
+        }
+
+        // Flip ping-pong state
+        self.is_ping.fetch_xor(true, Ordering::SeqCst);
+
+        // Hardware synchronization: Wait on the DMA ready event
+        if !self.dma_ready_event.is_null() {
+            unsafe {
+                let _ = cudaEventSynchronize(self.dma_ready_event);
+            }
+        }
     }
 
     /// Asynchronously stream expert weights from Pinned Host Memory into Device VRAM over PCIe DMA.
@@ -264,6 +368,11 @@ impl CudaDmaStreamer {
             return Err(format!("cudaMemcpyAsync failed with code {}", res));
         }
 
+        // 3. Record completion event
+        unsafe {
+            let _ = cudaEventRecord(self.dma_ready_event, self.dma_stream);
+        }
+
         Ok(dev_dst)
     }
 
@@ -279,6 +388,13 @@ impl CudaDmaStreamer {
 
 impl Drop for CudaDmaStreamer {
     fn drop(&mut self) {
+        if !self.dma_ready_event.is_null() {
+            unsafe {
+                let _ = cudaEventDestroy(self.dma_ready_event);
+            }
+            self.dma_ready_event = std::ptr::null_mut();
+        }
+
         if !self.dma_stream.is_null() {
             unsafe {
                 let _ = cudaStreamSynchronize(self.dma_stream);
