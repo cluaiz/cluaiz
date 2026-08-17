@@ -417,6 +417,16 @@ impl RuntimeB {
         )?;
         self.native = Some(native);
         tracing::info!("✅ [Llama-Engine] Native Model Loaded & Optimized.");
+
+        // 🚀 DEFERRED DMA INIT: Now that model is loaded and VRAM is occupied,
+        // CudaDmaStreamer will see real post-load free VRAM (~250 MB) and allocate
+        // appropriately sized pinned host buffers (~204 MB instead of ~2.70 GB).
+        if let Some(ref controller) = self.moe_controller {
+            if let Ok(mut guard) = controller.lock() {
+                guard.init_dma_streamer();
+            }
+        }
+
         Ok(())
     }
 

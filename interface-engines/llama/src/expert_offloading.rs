@@ -148,15 +148,10 @@ impl GgufMoeStreamingController {
         // Step 6: mmap the model file for advisory virtual memory calls
         let mmap = Self::try_mmap(model_path);
 
-        // Step 6.5: Initialize True CUDA Host PCIe DMA Streamer
-        let max_expert_chunk = (moe_info.expert_size_bytes * (moe_info.active_experts_per_token as u64))
-            .try_into()
-            .unwrap_or(64 * 1024 * 1024);
-
-        let dma_streamer = crate::cuda_dma_streamer::CudaDmaStreamer::initialize(
-            n_gpu_layers as i32,
-            max_expert_chunk,
-        );
+        // Step 6.5: CudaDmaStreamer is DEFERRED — initialized after model load
+        // so it sees real post-load free VRAM (~250 MB) instead of pre-load (~2676 MB).
+        // This prevents locking ~2.70 GB of pinned host RAM before model even loads.
+        let dma_streamer = None;
 
         let mut controller = Self {
             model_path: model_path.to_path_buf(),
@@ -179,6 +174,29 @@ impl GgufMoeStreamingController {
         Ok(controller)
     }
 
+    /// 🚀 Deferred DMA Streamer Initialization — MUST be called AFTER model load.
+    /// This ensures CudaDmaStreamer sees real post-load free VRAM and allocates
+    /// appropriately sized pinned host buffers (~204 MB instead of ~2.70 GB).
+    pub fn init_dma_streamer(&mut self) {
+        let single_layer_expert_chunk = (self.moe_info.expert_size_bytes * (self.moe_info.active_experts_per_token as u64))
+            .try_into()
+            .unwrap_or(32 * 1024 * 1024);
+
+        let single_layer_vram_bytes = self.moe_info.dense_backbone_bytes as usize / self.moe_info.moe_layer_count.max(1);
+
+        self.dma_streamer = crate::cuda_dma_streamer::CudaDmaStreamer::initialize(
+            self.n_gpu_layers as i32,
+            single_layer_expert_chunk,
+            single_layer_vram_bytes,
+        );
+
+        if self.dma_streamer.is_some() {
+            eprintln!("🚀 [GgufMoeStreaming] Deferred DMA Streamer initialized with post-load VRAM headroom.");
+        } else {
+            eprintln!("⚠️ [GgufMoeStreaming] DMA Streamer not available (insufficient post-load VRAM).");
+        }
+    }
+
     /// Called once per inference step after the MoE router has selected experts.
     /// `layer`: current transformer layer index.
     /// `active_expert_ids`: the top-K expert IDs selected by the router for this token.
@@ -194,34 +212,62 @@ impl GgufMoeStreamingController {
             tracker.record_routing(layer, active_expert_ids);
         }
 
-        // 2. Stream Active Layer Experts & Lookahead Prefetch into GPU VRAM over PCIe DMA Highway
+        // 2. Stream Multi-Layer Active Experts & Lookahead Prefetch into GPU VRAM over PCIe DMA Highway
         if let (Some(streamer), Some(mmap)) = (&self.dma_streamer, &self.mmap) {
             let mmap_bytes: &[u8] = mmap.as_ref();
+            let batch_capacity = streamer.layers_per_batch();
             
-            // A. Stream current layer active weights
-            for &expert_id in active_expert_ids {
-                if let Some(entry) = self.expert_index.lookup(layer, expert_id) {
-                    let gate_offset = entry.gate.file_offset as usize;
-                    let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
-                    if gate_offset + total_len <= mmap_bytes.len() {
-                        let slice = &mmap_bytes[gate_offset..gate_offset + total_len];
-                        let _ = streamer.stream_expert_weights_async(slice);
+            // A. Dynamic Multi-Layer Batch Stream (current layer + ahead layers within batch capacity)
+            let mut current_batch_slices: Vec<&[u8]> = Vec::new();
+            for l_offset in 0..batch_capacity {
+                let target_l = layer + l_offset;
+                if target_l >= self.moe_info.moe_layer_count {
+                    break;
+                }
+                for &expert_id in active_expert_ids {
+                    if let Some(entry) = self.expert_index.lookup(target_l, expert_id) {
+                        let gate_offset = entry.gate.file_offset as usize;
+                        let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
+                        if gate_offset + total_len <= mmap_bytes.len() {
+                            current_batch_slices.push(&mmap_bytes[gate_offset..gate_offset + total_len]);
+                        }
                     }
                 }
             }
+            if !current_batch_slices.is_empty() {
+                let total_batch_bytes: usize = current_batch_slices.iter().map(|s| s.len()).sum();
+                let staged_layers = batch_capacity.min(self.moe_info.moe_layer_count.saturating_sub(layer));
+                info!(
+                    "⚡ [GgufMoeOffloading] Layer {} Batch Decision: Assembled {} expert slices ({:.2} MB) across {} layers bulk for PCIe DMA streaming",
+                    layer,
+                    current_batch_slices.len(),
+                    total_batch_bytes as f64 / (1024.0 * 1024.0),
+                    staged_layers
+                );
+                let _ = streamer.stream_batch_async(&current_batch_slices);
+            }
 
-            // B. Lookahead: Asynchronously prefetch Next Layer (N+1) into Ping-Pong Staging Slot
-            let next_layer = layer + 1;
-            if next_layer < self.moe_info.moe_layer_count {
-                for &next_expert_id in active_expert_ids {
-                    if let Some(next_entry) = self.expert_index.lookup(next_layer, next_expert_id) {
-                        let gate_offset = next_entry.gate.file_offset as usize;
-                        let total_len = (next_entry.gate.byte_length + next_entry.up.byte_length + next_entry.down.byte_length) as usize;
-                        if gate_offset + total_len <= mmap_bytes.len() {
-                            let next_slice = &mmap_bytes[gate_offset..gate_offset + total_len];
-                            let _ = streamer.prefetch_next_layer_async(next_slice);
+            // B. Lookahead: Asynchronously prefetch Next Multi-Layer Batch into Ping-Pong Staging Slot
+            let next_batch_start = layer + batch_capacity;
+            if next_batch_start < self.moe_info.moe_layer_count {
+                let mut prefetch_batch_slices: Vec<&[u8]> = Vec::new();
+                for l_offset in 0..batch_capacity {
+                    let target_l = next_batch_start + l_offset;
+                    if target_l >= self.moe_info.moe_layer_count {
+                        break;
+                    }
+                    for &next_expert_id in active_expert_ids {
+                        if let Some(next_entry) = self.expert_index.lookup(target_l, next_expert_id) {
+                            let gate_offset = next_entry.gate.file_offset as usize;
+                            let total_len = (next_entry.gate.byte_length + next_entry.up.byte_length + next_entry.down.byte_length) as usize;
+                            if gate_offset + total_len <= mmap_bytes.len() {
+                                prefetch_batch_slices.push(&mmap_bytes[gate_offset..gate_offset + total_len]);
+                            }
                         }
                     }
+                }
+                if !prefetch_batch_slices.is_empty() {
+                    let _ = streamer.prefetch_batch_async(&prefetch_batch_slices);
                 }
             }
         }

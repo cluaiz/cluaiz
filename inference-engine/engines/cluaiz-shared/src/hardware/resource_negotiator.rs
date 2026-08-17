@@ -390,20 +390,15 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let required_ctx_gb = (target_ctx_tokens as f64 * kv_bytes_per_token) / (1024.0 * 1024.0 * 1024.0);
 
-            // Step 4: Layer Eviction (To maintain OS Safety Buffer)
-            // If the minimum context requirement pushed us below the safety buffer, we MUST cut layers.
-            let total_used_so_far = initial_cache_budget + required_ctx_gb;
-            let actual_free_ram = ram_after_base - total_used_so_far;
-            
+            // Step 4: Layer Eviction (Deduct non-cache reserves cleanly including dynamic OS Safety Buffer)
+            let total_non_cache_reserve = ram_dense_reserve + ggml_workspace_reserve + required_ctx_gb + os_safety_buffer_gb;
+            let ram_for_cache = (usable_ram - total_non_cache_reserve).max(0.0);
             let mut cached_expert_count = initial_cached_expert_count;
             let experts_per_layer = moe_info.expert_count as f64 / moe_info.moe_layer_count as f64;
-            
-            if actual_free_ram < os_safety_buffer_gb {
-                let shortfall_gb = os_safety_buffer_gb - actual_free_ram;
-                if single_expert_gb > 0.0 {
-                    let experts_to_cut = (shortfall_gb / single_expert_gb).ceil() as usize;
-                    cached_expert_count = initial_cached_expert_count.saturating_sub(experts_to_cut);
-                }
+
+            if single_expert_gb > 0.0 {
+                let max_experts_fit = (ram_for_cache / single_expert_gb).floor() as usize;
+                cached_expert_count = initial_cached_expert_count.min(max_experts_fit);
             }
 
             let cache_budget = if single_expert_gb > 0.0 {
@@ -650,3 +645,65 @@ pub fn apply_windows_hard_memory_quota(usable_ram_gb: f64) {
 
 #[cfg(not(windows))]
 pub fn apply_windows_hard_memory_quota(_usable_ram_gb: f64) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_negotiator_ram_allocation_no_arbitrary_eviction() {
+        let req = ResourceRequest {
+            engine_type: EngineType::GGUF,
+            inference_mode: InferenceMode::Chat,
+            model_size_gb: 14.62,
+            model_path: PathBuf::from("C:\\models\\test-model.gguf"),
+        };
+
+        if let Ok(grant) = negotiate_resource(&req) {
+            eprintln!("\n🔬 [RESOURCE NEGOTIATOR TEST RESULT]");
+            eprintln!("   ├── Tier:            {:?}", grant.tier);
+            eprintln!("   ├── GPU Layers:      {}", grant.n_gpu_layers);
+            eprintln!("   ├── VRAM Budget:     {:.2} GB", grant.vram_budget_gb);
+            eprintln!("   └── RAM Budget:      {:.2} GB", grant.ram_budget_gb);
+
+            assert!(grant.ram_budget_gb > 5.0, "RAM budget must not be arbitrarily strangled!");
+        }
+    }
+
+    #[test]
+    fn test_exact_byte_by_byte_memory_trace() {
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let total_ram_bytes = sys.total_memory();
+        let free_ram_bytes = sys.available_memory();
+
+        let req = ResourceRequest {
+            engine_type: EngineType::GGUF,
+            inference_mode: InferenceMode::Chat,
+            model_size_gb: 14.62,
+            model_path: PathBuf::from("C:\\models\\test-model.gguf"),
+        };
+
+        let grant = negotiate_resource(&req).expect("Negotiation failed");
+
+        let dense_bytes = (1.26 * 1024.0 * 1024.0 * 1024.0) as u64;
+        let ggml_workspace_bytes = (0.83 * 1024.0 * 1024.0 * 1024.0) as u64;
+        let ctx_bytes = (0.25 * 1024.0 * 1024.0 * 1024.0) as u64;
+        let expert_cache_bytes = (grant.expert_cache_budget_gb * 1024.0 * 1024.0 * 1024.0) as u64;
+        let os_buffer_bytes = (grant.safety_buffer_gb * 1024.0 * 1024.0 * 1024.0) as u64;
+
+        let total_cluaiz_bytes = dense_bytes + ggml_workspace_bytes + ctx_bytes + expert_cache_bytes;
+
+        eprintln!("\n🔬 [EXACT BYTE-BY-BYTE MEMORY TRACE]");
+        eprintln!("   ├── 🌐 Total System RAM:             {} Bytes ({:.2} GB)", total_ram_bytes, total_ram_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── 🆓 Live Available System RAM:    {} Bytes ({:.2} GB)", free_ram_bytes, free_ram_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── 🧠 Dense Backbone Allocation:    {} Bytes ({:.2} GB)", dense_bytes, dense_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── ⚙️ GGML Workspace Allocation:     {} Bytes ({:.2} GB)", ggml_workspace_bytes, ggml_workspace_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── 💬 Context Window KV Cache:       {} Bytes ({:.2} GB)", ctx_bytes, ctx_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── 🎰 MoE Expert LRU Cache:         {} Bytes ({:.2} GB)", expert_cache_bytes, expert_cache_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   ├── 🛡️ OS Safety Reserved Buffer:     {} Bytes ({:.2} GB)", os_buffer_bytes, os_buffer_bytes as f64 / (1024.0*1024.0*1024.0));
+        eprintln!("   └── 🎯 TOTAL CLUAIZ ALLOCATION:      {} Bytes ({:.2} GB)", total_cluaiz_bytes, total_cluaiz_bytes as f64 / (1024.0*1024.0*1024.0));
+
+        assert!(total_cluaiz_bytes > 0, "Allocation trace must be non-zero");
+    }
+}

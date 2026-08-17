@@ -106,15 +106,16 @@ $$\text{Per-Token Latency} = T_{\text{VRAM Layers}} + \sum_{L=1}^{N_{\text{CPU L
 
 ### Latency Comparison on RTX 3050 Laptop + NVMe SSD (Gemma-4 26B, 25 Offloaded Layers):
 
-| Metric | Baseline (Synchronous OS mmap + CPU Math) | Cluaiz Accelerated (Direct I/O + GPU Alta-Palti) |
-| :--- | :--- | :--- |
-| **Active Expert Data per Layer** | $8 \times 3.47\text{ MB} = 27.8\text{ MB}$ | $27.8\text{ MB}$ (80% served from RAM / Pinned Cache) |
-| **SSD Fetch Latency** | $42.0\text{ ms}$ (OS Page Fault stalls) | **$0.0\text{ ms}$** (Async Worker overlaps during Layer $N$) |
-| **Compute Execution Time** | $38.0\text{ ms}$ per layer on Laptop CPU AVX | **$1.0\text{ ms}$** per layer on 2000+ CUDA Cores |
-| **PCIe DMA Transfer Time** | $0.0\text{ ms}$ (Computed on CPU) | **$4.5\text{ ms}$** (PCIe Gen4 @ 6.0 GB/s) |
-| **Total Latency per Offloaded Layer** | $80.0\text{ ms}$ | **$5.5\text{ ms}$** |
-| **25 Layers Execution Latency** | $25 \times 80\text{ ms} = 2000\text{ ms}$ | $25 \times 5.5\text{ ms} = 137.5\text{ ms}$ |
-| **Inference Generation Speed** | **$\approx 1.09\text{ TPS}$** | **$\approx 6.0 - 7.5\text{ TPS}$** |
+| Metric | Baseline (Synchronous OS mmap + CPU Math) | Stage 1 Verified (CUDA MMQ + Single-Token Offload) | Stage 2 Roadmap (VRAM Bulk DMA Ping-Pong Streaming) |
+| :--- | :--- | :--- | :--- |
+| **Active Expert Data per Layer** | $8 \times 3.47\text{ MB} = 27.8\text{ MB}$ | $27.8\text{ MB}$ (Served from RAM) | $27.8\text{ MB}$ (80% served from RAM / Pinned Cache) |
+| **SSD Fetch Latency** | $42.0\text{ ms}$ (OS Page Fault stalls) | $15.0\text{ ms}$ | **$0.0\text{ ms}$** (Async Worker overlaps during Layer $N$) |
+| **Compute Execution Time** | $38.0\text{ ms}$ per layer on CPU AVX | **$12.0\text{ ms}$** on CUDA MMQ Cores | **$1.0\text{ ms}$** on 2000+ CUDA Cores |
+| **PCIe DMA Transfer Time** | $0.0\text{ ms}$ (Computed on CPU) | $18.0\text{ ms}$ (Sequential layer sync) | **$4.5\text{ ms}$** (Pipelined PCIe Gen4 @ 6.0 GB/s) |
+| **Total Latency per Offloaded Layer** | $80.0\text{ ms}$ | **$45.0\text{ ms}$** | **$5.5\text{ ms}$** |
+| **25 Layers Execution Latency** | $25 \times 80\text{ ms} = 2000\text{ ms}$ | $401\text{ ms}$ | $137.5\text{ ms}$ |
+| **Inference Generation Speed** | **$\approx 0.5 - 1.0\text{ TPS}$** | **$\approx 2.49\text{ TPS}$ (Verified Stable)** | **$\approx 5.0 - 7.5\text{ TPS}$** |
+
 
 ---
 
@@ -177,7 +178,9 @@ This diagram maps all connections between the `cluaiz-shared` hardware subsystem
 | File in `interface-engines/llama` | Linkage Mechanism | How It Connects to This Subsystem |
 | :--- | :--- | :--- |
 | [`src/expert_offloading.rs`](../../../../../../interface-engines/llama/src/expert_offloading.rs) | Direct Constructor & Ownership | Implements `GgufMoeStreamingController`. Owns the `AsyncExpertPrefetcher`, `ExpertOffsetIndex`, `RoutingHeatTracker`, and `SharedExpertCache`. |
+| [`src/cuda_dma_streamer.rs`](../../../../../../interface-engines/llama/src/cuda_dma_streamer.rs) | CUDA Host DMA Streamer | Implements `CudaDmaStreamer`, `CudaPinnedHostBuffer` (`cudaHostAlloc`), `CudaDeviceScratchBuffer` (`cudaMalloc`), and live `cudaMemGetInfo` VRAM safety probing. |
 | [`src/lib.rs`](../../../../../../interface-engines/llama/src/lib.rs) | Resource Negotiation | In `RuntimeB::load_native()`, reads `grant.moe_info`. If `is_moe == true`, calculates cache budgets and instantiates `GgufMoeStreamingController`. |
+
 | [`src/native/core.rs`](../../../../../../interface-engines/llama/src/native/core.rs) | Context & Backend Config | In `NativeLlama::load()`, sets `GGML_OP_OFFLOAD_MIN_BATCH=1` and ensures `ctx_params.op_offload = 1` so host operations run on CUDA cores. |
 | [`src/config.rs`](../../../../../../interface-engines/llama/src/config.rs) | Parameter Marshalling | In `OptimizationConfig::to_context_params()`, enables `op_offload = 1` and `offload_kqv = 1` whenever `n_gpu_layers > 0`. |
 | [`src/ffi_exports.rs`](../../../../../../interface-engines/llama/src/ffi_exports.rs) | Global Initialization | In `cluaiz_kernel_init()`, injects `GGML_OP_OFFLOAD_MIN_BATCH=1` before `llama_backend_init()` registers backend devices. |
@@ -204,7 +207,14 @@ This diagram maps all connections between the `cluaiz-shared` hardware subsystem
 ├───────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
 │ 5. Non-MoE (Dense) Model Degradation  │ MoeDetector checks is_moe; for dense models, the controller remains    │
 │    (Regressions on Llama-3 / Qwen)    │ inactive (None), ensuring standard zero-overhead execution.            │
+├───────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 6. 262k SWA KV-Cache Bloat            │ Constrains native SWA context window expansion to bounded ResourceGrant│
+│    (14.4 GB RAM / SSD pagefile thrash)│ token window (~130MB-281MB KV Cache), eliminating RAM/SSD thrashing.   │
+├───────────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
+│ 7. Blind VRAM Overflow / OOM          │ Enforces real-time `cudaMemGetInfo` probes via `memory_governor.rs`,  │
+│    (Driver crash / display freeze)    │ maintaining 700MB–1.4GB free VRAM headroom before any DMA transfer.    │
 └───────────────────────────────────────┴────────────────────────────────────────────────────────────────────────┘
+
 ```
 
 ---

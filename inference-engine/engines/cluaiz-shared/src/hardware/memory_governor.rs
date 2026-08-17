@@ -53,7 +53,7 @@ pub fn calculate_usable_ram(
 pub fn calculate_safety_buffer(
     opt_control: &OptimizationControl,
     total_vram_gb: f64,
-    live_free_vram_gb: f64,
+    _live_free_vram_gb: f64,
 ) -> f64 {
     let min_vram_guard = 0.25f64; // Minimum 250MB safe floor
 
@@ -64,14 +64,7 @@ pub fn calculate_safety_buffer(
         }
     }
 
-    let live_used_vram_gb = (total_vram_gb - live_free_vram_gb).max(0.0);
-    if live_used_vram_gb >= 0.50 {
-        0.0f64
-    } else if live_used_vram_gb >= 0.30 {
-        0.10f64
-    } else {
-        (total_vram_gb * 0.05).clamp(min_vram_guard, 1.00)
-    }
+    (total_vram_gb * 0.05).clamp(min_vram_guard, 1.00)
 }
 
 /// Calculates the OS safety buffer for CPU RAM in GB based on user settings.
@@ -88,7 +81,8 @@ pub fn calculate_ram_safety_buffer(
         }
     }
 
-    (total_ram_gb * 0.15).clamp(1.50, 3.50)
+    let auto_buffer = (total_ram_gb * 0.05).clamp(1.00, 1.50);
+    auto_buffer
 }
 
 /// Computes the final unified `MemoryDecision` based on system hardware stats and user configurations.

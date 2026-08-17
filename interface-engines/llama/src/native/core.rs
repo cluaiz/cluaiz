@@ -101,6 +101,15 @@ extern "C" fn silent_llama_log(
 ) {
 }
 
+const NOISE_PATTERNS: &[&str] = &[
+    "load_tensors:",
+    "create_tensor:",
+    "CUDA Graph",
+    "ggml_backend_cuda_graph_compute",
+    "llama_kv_cache",
+    ".",
+];
+
 extern "C" fn llama_log_callback(
     _level: std::ffi::c_int,
     text: *const std::ffi::c_char,
@@ -110,16 +119,27 @@ extern "C" fn llama_log_callback(
         if text.is_null() { return; }
         let c_str = std::ffi::CStr::from_ptr(text);
         let s = c_str.to_string_lossy();
-        let msg = s.trim();
-        if !msg.is_empty() {
-            // 🛡️ Filter high-frequency per-token spam logs that freeze the console
-            if msg.contains("CUDA Graph id") && msg.contains("reused") {
-                return;
-            }
-            // Force print to stderr to ensure meaningful info shows up in console
-            eprintln!("📢 [llama.cpp] {}", msg);
+        let trimmed = s.trim();
+        if !trimmed.is_empty() && trimmed != "." && !NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p)) {
+            eprintln!("📢 [llama.cpp] {}", trimmed);
         }
     }
+}
+
+pub fn print_memory_trace(step: &str) {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    let free_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+    let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+
+    let (free_vram_bytes, total_vram_bytes) = crate::cuda_dma_streamer::CudaDmaStreamer::get_live_vram_info();
+    let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+
+    eprintln!(
+        "🆘 [MEMORY TRACE: {}] Free RAM: {:.2} GB / {:.2} GB | Free VRAM: {:.2} GB / {:.2} GB",
+        step, free_ram_gb, total_ram_gb, free_vram_gb, total_vram_gb
+    );
 }
 
 impl NativeLlama {
@@ -149,12 +169,7 @@ impl NativeLlama {
 
         let c_path = CString::new(model_path)?;
 
-        let mut sys = sysinfo::System::new();
-        sys.refresh_memory();
-        let free_ram_gb = sys.free_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
-        let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
-
-        eprintln!("🖥️ [Native-Llama] [Memory-Diagnostics] Before model load: Free System RAM = {:.2} GB / Total System RAM = {:.2} GB", free_ram_gb, total_ram_gb);
+        print_memory_trace("1. BEFORE MODEL LOAD");
         eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, use_mlock = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, model_params.use_mlock, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
@@ -162,6 +177,8 @@ impl NativeLlama {
         );
         let mut model_ptr =
             unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), model_params) };
+
+        print_memory_trace("2. AFTER MODEL LOAD");
 
         // 🔒 Mlock Graceful Fallback
         if model_ptr.is_null() && model_params.use_mlock {
@@ -301,7 +318,9 @@ impl NativeLlama {
         ctx_params.cb_eval = std::ptr::null_mut();
         ctx_params.cb_eval_user_data = std::ptr::null_mut();
 
+        print_memory_trace("3. BEFORE CONTEXT CREATION");
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
+        print_memory_trace("4. AFTER CONTEXT CREATION");
 
         // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
         // If Context Init fails, gracefully retry without Flash Attention while PRESERVING quantized KV cache (no F16 explosion)
