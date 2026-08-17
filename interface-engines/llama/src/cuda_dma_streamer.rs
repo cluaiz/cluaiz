@@ -210,16 +210,11 @@ impl CudaDmaStreamer {
             cudaSetDevice(0);
         }
 
+        let (free_vram_bytes, total_vram_bytes) = Self::get_live_vram_info();
         let total_usable_vram_bytes = Self::get_live_usable_vram_bytes();
         
-        // 🛡️ Deduct VRAM occupied by locked GPU layers dynamically derived from model metadata
-        let locked_gpu_layers_bytes = (n_gpu_layers.max(0) as usize) * single_layer_vram_bytes;
-        let base_reserve_bytes = (102.4 * 1024.0 * 1024.0) as usize; // 0.10 GB Base Reserve
-
-        let net_staging_vram_bytes = total_usable_vram_bytes
-            .saturating_sub(locked_gpu_layers_bytes)
-            .saturating_sub(base_reserve_bytes)
-            .max(layer_active_bytes * 2);
+        // 🛡️ Live VRAM is probed post-load, so total_usable_vram_bytes is already the actual free VRAM headroom
+        let net_staging_vram_bytes = total_usable_vram_bytes.max(layer_active_bytes * 2);
 
         if net_staging_vram_bytes < layer_active_bytes || layer_active_bytes == 0 {
             warn!(
@@ -231,8 +226,14 @@ impl CudaDmaStreamer {
         }
 
         // 🌟 PURE DYNAMIC MEMORY-GOVERNOR SIZING (Zero Hardcoded Constants) 🌟
-        // Double-buffering requires 2 ping-pong slots in VRAM derived strictly from Net Free Staging VRAM.
-        let per_slot_budget = net_staging_vram_bytes / 2;
+        // Double-buffering requires 2 ping-pong slots (50% Ping / 50% Pong) derived strictly from
+        // the Negotiator's staging budget (10% of total VRAM, matching resource negotiation).
+        let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        let max_staging_budget_bytes = ((total_vram_gb * 0.10).clamp(0.25, 1.0) * 1024.0 * 1024.0 * 1024.0) as usize;
+        let effective_staging_bytes = net_staging_vram_bytes.min(max_staging_budget_bytes);
+
+        // 50% Ping Slot + 50% Pong Slot
+        let per_slot_budget = effective_staging_bytes / 2;
         let mut layers_fit = per_slot_budget / layer_active_bytes;
         if layers_fit == 0 {
             warn!(
@@ -261,7 +262,7 @@ impl CudaDmaStreamer {
                     pinned_pong = Some(p2);
                     dev_scratch_a = Some(d1);
                     dev_scratch_b = Some(d2);
-                    crate::native::core::print_memory_trace("5. AFTER CUDA DMA PINNED ALLOCATION");
+                    crate::native::core::print_memory_trace("3. AFTER CUDA DMA PINNED ALLOCATION (PRE-LOCKED)");
                     break;
                 }
                 _ => {
@@ -270,7 +271,7 @@ impl CudaDmaStreamer {
                         chunk_size as f64 / (1024.0 * 1024.0),
                         layers_fit
                     );
-                    layers_fit /= 2;
+                    layers_fit = layers_fit.saturating_sub(1);
                 }
             }
         }
@@ -335,7 +336,7 @@ impl CudaDmaStreamer {
     }
 
     /// Asynchronously stream a batch of contiguous slices (e.g. multi-layer experts) over PCIe DMA in a single launch.
-    pub fn stream_batch_async(&self, slices: &[&[u8]]) -> Result<*mut c_void, String> {
+    pub fn stream_batch_async(&self, slices: &[&[u8]], desc: &str) -> Result<*mut c_void, String> {
         if !self.is_active || slices.is_empty() {
             return Err("Streamer inactive or empty slices".to_string());
         }
@@ -367,7 +368,8 @@ impl CudaDmaStreamer {
             return Err("No data copied".to_string());
         }
 
-        // Single bulk non-blocking PCIe DMA transfer on dedicated hardware stream
+        let start_time = std::time::Instant::now();
+        // Single bulk non-blocking PCIe Direct DMA transfer on dedicated hardware stream (Bypasses CPU)
         let res = unsafe {
             cudaMemcpyAsync(
                 dev_dst,
@@ -382,10 +384,25 @@ impl CudaDmaStreamer {
             return Err(format!("cudaMemcpyAsync batch failed with code {}", res));
         }
 
+        let elapsed_us = start_time.elapsed().as_micros().max(1) as f64;
+        let elapsed_ms = elapsed_us / 1000.0;
+        let mb = offset as f64 / (1024.0 * 1024.0);
+        let speed_gbps = (mb / 1024.0) / (elapsed_us / 1_000_000.0);
+
+        eprintln!(
+            "🏃‍♂️➡️ [RAM->VRAM Direct DMA] {} | Transferred {:.2} MB in {:.2} ms | Speed: {:.2} GB/s -> VRAM Scratch Slot ({})",
+            desc,
+            mb,
+            elapsed_ms,
+            speed_gbps,
+            if ping { "PING" } else { "PONG" }
+        );
         info!(
-            "🚀 [CudaDmaStreamer] PCIe DMA Bulk Launch: {:.2} MB across {} expert slices -> VRAM Scratch Slot ({})",
-            offset as f64 / (1024.0 * 1024.0),
-            slices.len(),
+            "🏃‍♂️➡️ [RAM->VRAM Direct DMA] {} | Transferred {:.2} MB in {:.2} ms | Speed: {:.2} GB/s -> VRAM Scratch Slot ({})",
+            desc,
+            mb,
+            elapsed_ms,
+            speed_gbps,
             if ping { "PING" } else { "PONG" }
         );
 
@@ -397,7 +414,7 @@ impl CudaDmaStreamer {
     }
 
     /// Asynchronously prefetch a batch of contiguous slices into the alternate staging slot over PCIe DMA.
-    pub fn prefetch_batch_async(&self, slices: &[&[u8]]) -> Result<(), String> {
+    pub fn prefetch_batch_async(&self, slices: &[&[u8]], desc: &str) -> Result<(), String> {
         if !self.is_active || slices.is_empty() {
             return Ok(());
         }
@@ -429,6 +446,7 @@ impl CudaDmaStreamer {
             return Ok(());
         }
 
+        let start_time = std::time::Instant::now();
         let res = unsafe {
             cudaMemcpyAsync(
                 dev_dst,
@@ -442,6 +460,20 @@ impl CudaDmaStreamer {
         if res != CUDA_SUCCESS {
             return Err(format!("cudaMemcpyAsync prefetch batch failed with code {}", res));
         }
+
+        let elapsed_us = start_time.elapsed().as_micros().max(1) as f64;
+        let elapsed_ms = elapsed_us / 1000.0;
+        let mb = offset as f64 / (1024.0 * 1024.0);
+        let speed_gbps = (mb / 1024.0) / (elapsed_us / 1_000_000.0);
+
+        eprintln!(
+            "🏃‍♂️➡️ [RAM->VRAM Direct DMA Prefetch] {} | Transferred {:.2} MB in {:.2} ms | Speed: {:.2} GB/s -> Staging Slot ({})",
+            desc,
+            mb,
+            elapsed_ms,
+            speed_gbps,
+            if ping_active { "PONG" } else { "PING" }
+        );
 
         unsafe {
             let _ = cudaEventRecord(self.dma_ready_event, self.dma_stream);
@@ -605,7 +637,7 @@ mod tests {
             let slices: Vec<&[u8]> = vec![&sample_data];
 
             // Real PCIe DMA Async Launch (calls cudaMemcpyAsync + cudaEventRecord)
-            let dma_res = streamer.stream_batch_async(&slices);
+            let dma_res = streamer.stream_batch_async(&slices, "Test Chunk 1/1");
             eprintln!("🚀 [REAL CUDA PCIe DMA LAUNCH RESULT]: {:?}", dma_res.is_ok());
             assert!(dma_res.is_ok());
         } else {

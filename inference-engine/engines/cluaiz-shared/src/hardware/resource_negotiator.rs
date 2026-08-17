@@ -281,19 +281,22 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             let dense_per_layer_gb = dense_gb / layer_count;
             let expert_per_layer_gb = expert_total_gb / layer_count;
             let layer_size = dense_per_layer_gb + expert_per_layer_gb;
-            
-            let vram_base_reserve = dense_per_layer_gb.max(0.10);
 
-            // Step 1: Layer Offloading Calculation (GPU VRAM First)
-            let mut is_forced_safety = false;
-            let mut approx_layers = if free_vram > vram_base_reserve {
-                (((free_vram - vram_base_reserve) / layer_size) as i32)
-                    .min(moe_info.moe_layer_count as i32)
+            // Single expert size in GB
+            let single_expert_gb = if moe_info.total_expert_bytes > 0 && moe_info.expert_count > 0 {
+                (moe_info.total_expert_bytes as f64 / moe_info.expert_count as f64)
+                    / (1024.0 * 1024.0 * 1024.0)
             } else {
-                0
+                0.0
             };
 
-            // user_n_ctx is now fetched globally in Step 3
+            // Calculate Universal DMA Staging Buffer Reserve (Ping-Pong 4-layer bulk)
+            let active_per_layer_gb = single_expert_gb * moe_info.active_experts_per_token as f64;
+            // 4 Layers per slot for Double Buffer (Ping + Pong)
+            let dma_staging_headroom_gb = (2.0 * 4.0 * active_per_layer_gb).clamp(0.20, (total_vram_gb * 0.10).max(0.25));
+
+            let vram_base_reserve = dense_per_layer_gb.max(0.10);
+
             // Read raw native context length directly from GGUF header to avoid DNA side-effects
             let mut native_max_ctx = usize::MAX;
             if let Ok((metadata, _, _)) = crate::utils::GGUFProber::probe(&request.model_path) {
@@ -319,7 +322,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             
             // ─── User Rule: In Hybrid/Streaming (Tier 4), Context Window ALWAYS goes to System RAM! ───
             let ctx_in_vram = false;
-            let vram_for_layers = free_vram;
+            let vram_for_layers = (free_vram - dma_staging_headroom_gb).max(0.0);
 
             let mut is_forced_safety = false;
             let mut approx_layers = if vram_for_layers > vram_base_reserve {
@@ -331,8 +334,8 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let mut allocated_vram = vram_base_reserve + (approx_layers.max(0) as f64 * layer_size);
 
-            // Layer Yielding Loop: Ensure integer headroom > 0.15 GB to prevent VRAM OOM
-            while (live_free_vram_gb - allocated_vram) < 0.15 && approx_layers > 0 {
+            // Layer Yielding Loop: Ensure integer headroom > (dma_staging_headroom_gb + 0.10) to prevent VRAM OOM
+            while (live_free_vram_gb - allocated_vram) < (dma_staging_headroom_gb + 0.10) && approx_layers > 0 {
                 approx_layers -= 1;
                 allocated_vram = vram_base_reserve + (approx_layers.max(0) as f64 * layer_size);
                 is_forced_safety = true;
@@ -345,13 +348,6 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 0
             };
             let offloaded_layer_experts = moe_info.expert_count.saturating_sub(gpu_experts);
-
-            let single_expert_gb = if moe_info.total_expert_bytes > 0 && moe_info.expert_count > 0 {
-                (moe_info.total_expert_bytes as f64 / moe_info.expert_count as f64)
-                    / (1024.0 * 1024.0 * 1024.0)
-            } else {
-                0.0
-            };
             
             let offloaded_experts_gb = offloaded_layer_experts as f64 * single_expert_gb;
 
@@ -360,7 +356,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             let initial_cached_expert_count = offloaded_layer_experts;
             let initial_cached_layers = remaining_layers;
             
-            let ram_after_base = (usable_ram - ram_dense_reserve - ggml_workspace_reserve).max(0.0);
+            let ram_after_base = (usable_ram - ram_dense_reserve - ggml_workspace_reserve - dma_staging_headroom_gb).max(0.0);
             
             // Step 3: Context Window Calculation
             // We MUST protect the OS Safety Buffer from being eaten by the Context Window!
@@ -390,8 +386,8 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let required_ctx_gb = (target_ctx_tokens as f64 * kv_bytes_per_token) / (1024.0 * 1024.0 * 1024.0);
 
-            // Step 4: Layer Eviction (Deduct non-cache reserves cleanly including dynamic OS Safety Buffer)
-            let total_non_cache_reserve = ram_dense_reserve + ggml_workspace_reserve + required_ctx_gb + os_safety_buffer_gb;
+            // Step 4: Layer Eviction (Deduct non-cache reserves cleanly including dynamic OS Safety Buffer and DMA Staging)
+            let total_non_cache_reserve = ram_dense_reserve + ggml_workspace_reserve + dma_staging_headroom_gb + required_ctx_gb + os_safety_buffer_gb;
             let ram_for_cache = (usable_ram - total_non_cache_reserve).max(0.0);
             let mut cached_expert_count = initial_cached_expert_count;
             let experts_per_layer = moe_info.expert_count as f64 / moe_info.moe_layer_count as f64;
@@ -441,6 +437,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             eprintln!("🧠 [Negotiator] Resource Placement & Tier Breakdown:");
             eprintln!("   ├── 🟢 VRAM Allocation (Usable: {:.2} GB):", usable_vram);
             eprintln!("   │    ├── Base VRAM Reserve (Embeddings/Head): {:.2} GB", vram_base_reserve);
+            eprintln!("   │    ├── DMA Staging Buffer Reserve (Ping/Pong 4-Layer Bulk): {:.2} GB ({:.2} MB)", dma_staging_headroom_gb, dma_staging_headroom_gb * 1024.0);
             if approx_layers.max(0) > 0 {
                 eprintln!("   │    ├── Locked GPU Layers: {} Attention Layers ({} Experts, {:.2} GB)", approx_layers.max(0), gpu_experts, (approx_layers.max(0) as f64 * layer_size));
             } else {
@@ -461,6 +458,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 eprintln!("   │    ├── Dense Backbone & Base Model Reserve: {:.2} GB", ram_dense_reserve);
             }
             eprintln!("   │    ├── GGML Compute Graph Workspace Reserve: {:.2} GB", ggml_workspace_reserve);
+            eprintln!("   │    ├── DMA Pinned Host Buffer Reserve (Ping/Pong): {:.2} GB ({:.2} MB)", dma_staging_headroom_gb, dma_staging_headroom_gb * 1024.0);
             
             eprintln!("   │    ├── 1. Initial Requested Experts: {} Attention Layers ({} Experts, {:.2} GB)", initial_cached_layers, initial_cached_expert_count, initial_cache_budget);
             if !ctx_in_vram {

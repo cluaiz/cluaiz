@@ -252,10 +252,13 @@ impl NativeLlama {
             return Err(anyhow::anyhow!("Model Load Failure: {}", model_path));
         }
 
-        // 🌊 POST-LOAD MEMORY PURGE: Release cold expert pages from physical RAM immediately
+        // 🌊 POST-LOAD MEMORY PURGE & PRE-CONTEXT DMA STREAMER LOCK:
+        // Initialize DMA Streamer immediately post-load when Free VRAM is high (~1.07 GB)
+        // so that the 4-Layer Bulk double-buffer (204.96 MB) is locked before context allocation.
         if let Some(ref controller) = moe_controller {
-            if let Ok(ctrl) = controller.lock() {
+            if let Ok(mut ctrl) = controller.lock() {
                 ctrl.purge_all_experts_except(0);
+                ctrl.init_dma_streamer();
             }
         }
 
@@ -310,7 +313,20 @@ impl NativeLlama {
         // 🚀 Ensure dynamic host-tensor op offloading to CUDA device
         if model_params.n_gpu_layers != 0 {
             ctx_params.op_offload = 1;
-            ctx_params.offload_kqv = 1;
+            // 🛡️ Dynamic KV Placement: If running MoE Streaming on <=4GB VRAM,
+            // keep KV Cache in System RAM to protect CUDA compute graph workspace from OOM
+            if moe_controller.is_some() {
+                let (free_vram_bytes, _) = crate::cuda_dma_streamer::CudaDmaStreamer::get_live_vram_info();
+                let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+                if free_vram_gb < 1.2 {
+                    ctx_params.offload_kqv = 0;
+                    info!("🧠 [Native-Llama] KV Cache kept in System RAM to guarantee CUDA compute graph workspace.");
+                } else {
+                    ctx_params.offload_kqv = 1;
+                }
+            } else {
+                ctx_params.offload_kqv = 1;
+            }
         }
 
         // 🛡️ Disable C-FFI per-tensor eval callback to eliminate CUDA Pointer Desynchronization
@@ -318,9 +334,9 @@ impl NativeLlama {
         ctx_params.cb_eval = std::ptr::null_mut();
         ctx_params.cb_eval_user_data = std::ptr::null_mut();
 
-        print_memory_trace("3. BEFORE CONTEXT CREATION");
+        print_memory_trace("4. BEFORE CONTEXT CREATION");
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
-        print_memory_trace("4. AFTER CONTEXT CREATION");
+        print_memory_trace("5. AFTER CONTEXT CREATION");
 
         // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
         // If Context Init fails, gracefully retry without Flash Attention while PRESERVING quantized KV cache (no F16 explosion)

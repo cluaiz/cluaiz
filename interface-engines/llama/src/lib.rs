@@ -365,6 +365,12 @@ impl RuntimeB {
         if model_params.n_gpu_layers == 0 {
             ctx_params.n_batch = 32;
             ctx_params.n_ubatch = 32;
+        } else if self.moe_controller.is_some() || dedicated_vram <= 6.0 {
+            // 🛡️ MoE / 4GB-6GB VRAM Stream Decoding: Cap batch to 512 / ubatch to 128
+            // This cuts GGML compute graph workspace from ~880 MB to ~150 MB,
+            // preventing CUDA OOM and graph split allocation failures.
+            ctx_params.n_batch = 512;
+            ctx_params.n_ubatch = 128;
         } else {
             ctx_params.n_batch = if ctx_params.n_batch == 0 {
                 512

@@ -246,6 +246,15 @@ pub fn stream_tokens(
                 }
                 safe_batch.batch.n_tokens = chunk.len() as i32;
 
+                // 🌊 PCIe Direct DMA MoE Highway Hook (Prefill)
+                if let Some(ref controller_arc) = llama.moe_controller {
+                    if let Ok(mut ctrl) = controller_arc.lock() {
+                        let token_val = *chunk.first().unwrap_or(&0);
+                        let pos_val = start_pos + (chunk_idx * chunk_size as usize) as i32;
+                        ctrl.pipeline_all_offloaded_chunks(token_val, pos_val);
+                    }
+                }
+
                 if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
                     decode_failed = true;
                     break;
@@ -459,6 +468,13 @@ pub fn stream_tokens(
 
             if n_gen == 0 {
                 cluaiz_shared::dev_info!("🔍 [KV-Debug] n_cur = {}, next_token_id = {}", n_cur, next_token_id);
+            }
+
+            // 🌊 PCIe Direct DMA MoE Highway Hook
+            if let Some(ref controller_arc) = llama.moe_controller {
+                if let Ok(mut ctrl) = controller_arc.lock() {
+                    ctrl.pipeline_all_offloaded_chunks(next_token_id, n_cur);
+                }
             }
 
             let mut decode_ret = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);

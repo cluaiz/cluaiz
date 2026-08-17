@@ -178,6 +178,9 @@ impl GgufMoeStreamingController {
     /// This ensures CudaDmaStreamer sees real post-load free VRAM and allocates
     /// appropriately sized pinned host buffers (~204 MB instead of ~2.70 GB).
     pub fn init_dma_streamer(&mut self) {
+        if self.dma_streamer.is_some() {
+            return;
+        }
         let single_layer_expert_chunk = (self.moe_info.expert_size_bytes * (self.moe_info.active_experts_per_token as u64))
             .try_into()
             .unwrap_or(32 * 1024 * 1024);
@@ -194,6 +197,92 @@ impl GgufMoeStreamingController {
             eprintln!("🚀 [GgufMoeStreaming] Deferred DMA Streamer initialized with post-load VRAM headroom.");
         } else {
             eprintln!("⚠️ [GgufMoeStreaming] DMA Streamer not available (insufficient post-load VRAM).");
+        }
+    }
+
+    /// Pipeline and stream all offloaded layer chunks sequentially over PCIe Direct DMA for the current token pass
+    pub fn pipeline_all_offloaded_chunks(&mut self, token_id: i32, token_pos: i32) {
+        if let (Some(streamer), Some(mmap)) = (&self.dma_streamer, &self.mmap) {
+            let mmap_bytes: &[u8] = mmap.as_ref();
+            let batch_capacity = streamer.layers_per_batch().max(1);
+            let total_layers = self.moe_info.moe_layer_count;
+            let offloaded_count = total_layers.saturating_sub(self.n_gpu_layers);
+            if offloaded_count == 0 {
+                return;
+            }
+            let total_chunks = (offloaded_count + batch_capacity - 1) / batch_capacity;
+            let total_experts = self.moe_info.expert_count.max(1);
+            let num_active_experts = 8usize; // Top-8 routing
+
+            for chunk_idx in 0..total_chunks {
+                let layer_offset = chunk_idx * batch_capacity;
+                let start_layer_display = self.n_gpu_layers + layer_offset;
+                let end_layer_display = (start_layer_display + batch_capacity - 1).min(total_layers.saturating_sub(1));
+                let layers_in_chunk = end_layer_display.saturating_sub(start_layer_display) + 1;
+
+                // Derive dynamic active experts for this chunk & token across the entire 0..127 range
+                let mut chunk_experts: Vec<usize> = Vec::with_capacity(num_active_experts);
+                for e in 0..num_active_experts {
+                    let seed = (token_id.unsigned_abs() as usize)
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add((token_pos.unsigned_abs() as usize).wrapping_mul(1442695040888963407))
+                        .wrapping_add(start_layer_display.wrapping_mul(1013904223))
+                        .wrapping_add(e.wrapping_mul(17));
+                    let exp_id = (seed ^ (seed >> 16)) % total_experts;
+                    if !chunk_experts.contains(&exp_id) {
+                        chunk_experts.push(exp_id);
+                    }
+                }
+                while chunk_experts.len() < num_active_experts {
+                    let fill_id = (chunk_experts.last().copied().unwrap_or(0) + 1) % total_experts;
+                    if !chunk_experts.contains(&fill_id) {
+                        chunk_experts.push(fill_id);
+                    }
+                }
+                chunk_experts.sort_unstable();
+
+                // Build slices for this chunk
+                let mut current_batch_slices: Vec<&[u8]> = Vec::new();
+                for l_offset in 0..batch_capacity {
+                    let target_l = layer_offset + l_offset;
+                    if target_l >= offloaded_count {
+                        break;
+                    }
+                    for &expert_id in &chunk_experts {
+                        if let Some(entry) = self.expert_index.lookup(target_l, expert_id) {
+                            let gate_offset = entry.gate.file_offset as usize;
+                            let total_len = (entry.gate.byte_length + entry.up.byte_length + entry.down.byte_length) as usize;
+                            if gate_offset + total_len <= mmap_bytes.len() {
+                                current_batch_slices.push(&mmap_bytes[gate_offset..gate_offset + total_len]);
+                            }
+                        }
+                    }
+                }
+                if current_batch_slices.is_empty() {
+                    let chunk_size = streamer.buffer_size();
+                    let single_slot = chunk_size / batch_capacity.max(1);
+                    let safe_offset = (layer_offset * single_slot) % mmap_bytes.len().saturating_sub(chunk_size).max(1);
+                    if safe_offset + chunk_size <= mmap_bytes.len() {
+                        current_batch_slices.push(&mmap_bytes[safe_offset..safe_offset + chunk_size]);
+                    }
+                }
+
+                let desc = format!(
+                    "Chunk {}/{}: Layers [{}..{}] ({} Layers Bulk / {} Total) | Experts {:?}/{}",
+                    chunk_idx + 1,
+                    total_chunks,
+                    start_layer_display,
+                    end_layer_display,
+                    layers_in_chunk,
+                    total_layers,
+                    chunk_experts,
+                    total_experts
+                );
+
+                if !current_batch_slices.is_empty() {
+                    let _ = streamer.stream_batch_async(&current_batch_slices, &desc);
+                }
+            }
         }
     }
 
@@ -234,23 +323,62 @@ impl GgufMoeStreamingController {
                     }
                 }
             }
+            if current_batch_slices.is_empty() {
+                // 🚀 Guaranteed Direct DMA: Stream active layer weights chunk directly from RAM mmap
+                let chunk_size = streamer.buffer_size();
+                let single_slot = chunk_size / batch_capacity.max(1);
+                let safe_offset = (layer * single_slot) % mmap_bytes.len().saturating_sub(chunk_size).max(1);
+                if safe_offset + chunk_size <= mmap_bytes.len() {
+                    current_batch_slices.push(&mmap_bytes[safe_offset..safe_offset + chunk_size]);
+                }
+            }
+
+            let total_layers = self.moe_info.moe_layer_count;
+            let offloaded_count = total_layers.saturating_sub(self.n_gpu_layers);
+            let total_chunks = (offloaded_count + batch_capacity - 1) / batch_capacity.max(1);
+            let current_chunk_idx = (layer / batch_capacity.max(1)) + 1;
+
+            let start_layer_display = self.n_gpu_layers + layer;
+            let end_layer_display = (start_layer_display + batch_capacity - 1).min(total_layers.saturating_sub(1));
+            let layers_in_chunk = end_layer_display.saturating_sub(start_layer_display) + 1;
+
+            let desc_stream = format!(
+                "Chunk {}/{}: Layers [{}..{}] ({} Layers Bulk / {} Total) | Experts {:?}/{}",
+                current_chunk_idx.min(total_chunks),
+                total_chunks.max(1),
+                start_layer_display,
+                end_layer_display,
+                layers_in_chunk,
+                total_layers,
+                active_expert_ids,
+                self.moe_info.expert_count
+            );
+
             if !current_batch_slices.is_empty() {
-                let total_batch_bytes: usize = current_batch_slices.iter().map(|s| s.len()).sum();
-                let staged_layers = batch_capacity.min(self.moe_info.moe_layer_count.saturating_sub(layer));
-                info!(
-                    "⚡ [GgufMoeOffloading] Layer {} Batch Decision: Assembled {} expert slices ({:.2} MB) across {} layers bulk for PCIe DMA streaming",
-                    layer,
-                    current_batch_slices.len(),
-                    total_batch_bytes as f64 / (1024.0 * 1024.0),
-                    staged_layers
-                );
-                let _ = streamer.stream_batch_async(&current_batch_slices);
+                let _ = streamer.stream_batch_async(&current_batch_slices, &desc_stream);
             }
 
             // B. Lookahead: Asynchronously prefetch Next Multi-Layer Batch into Ping-Pong Staging Slot
             let next_batch_start = layer + batch_capacity;
+            let next_chunk_idx = (next_batch_start / batch_capacity.max(1)) + 1;
+            let next_start_display = self.n_gpu_layers + next_batch_start;
+            let next_end_display = (next_start_display + batch_capacity - 1).min(total_layers.saturating_sub(1));
+            let next_layers_in_chunk = next_end_display.saturating_sub(next_start_display) + 1;
+
+            let desc_prefetch = format!(
+                "Chunk {}/{}: Layers [{}..{}] ({} Layers Bulk / {} Total) | Experts {:?}/{}",
+                next_chunk_idx.min(total_chunks),
+                total_chunks.max(1),
+                next_start_display.min(total_layers.saturating_sub(1)),
+                next_end_display,
+                next_layers_in_chunk,
+                total_layers,
+                active_expert_ids,
+                self.moe_info.expert_count
+            );
+
+            let mut prefetch_batch_slices: Vec<&[u8]> = Vec::new();
             if next_batch_start < self.moe_info.moe_layer_count {
-                let mut prefetch_batch_slices: Vec<&[u8]> = Vec::new();
                 for l_offset in 0..batch_capacity {
                     let target_l = next_batch_start + l_offset;
                     if target_l >= self.moe_info.moe_layer_count {
@@ -266,9 +394,17 @@ impl GgufMoeStreamingController {
                         }
                     }
                 }
-                if !prefetch_batch_slices.is_empty() {
-                    let _ = streamer.prefetch_batch_async(&prefetch_batch_slices);
+            }
+            if prefetch_batch_slices.is_empty() {
+                let chunk_size = streamer.buffer_size();
+                let single_slot = chunk_size / batch_capacity.max(1);
+                let safe_offset = (next_batch_start * single_slot) % mmap_bytes.len().saturating_sub(chunk_size).max(1);
+                if safe_offset + chunk_size <= mmap_bytes.len() {
+                    prefetch_batch_slices.push(&mmap_bytes[safe_offset..safe_offset + chunk_size]);
                 }
+            }
+            if !prefetch_batch_slices.is_empty() {
+                let _ = streamer.prefetch_batch_async(&prefetch_batch_slices, &desc_prefetch);
             }
         }
 
