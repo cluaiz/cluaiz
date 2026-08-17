@@ -96,13 +96,17 @@ pub fn stream_tokens(
             think_end_tag = dna.think_end_schema.clone();
         }
 
-        let mut injected_think_tag = false;
-        // Only push dynamic think tag if the model supports it natively based on DNA, and it's not suppressed
-        if !suppress_thinking && dna.supports_thinking && !think_start_tag.is_empty() && !formatted_prompt.contains(&think_start_tag) {
-            formatted_prompt.push_str(&format!("{}\n", think_start_tag));
-            injected_think_tag = true;
+        // ⚡ Zero-Wait Think Mode Bypass: If Think Mode is OFF, close the thought channel in prompt
+        // so reasoning models generate immediate answers on Token 1 instead of spinning for 50 tokens!
+        if suppress_thinking && dna.supports_thinking {
+            let arch = dna.model_identity.to_lowercase();
+            if (arch.contains("gemma4") || arch.contains("gemma-4")) && !formatted_prompt.contains("<channel|>") {
+                formatted_prompt.push_str("<|channel>thought\n<channel|>\n");
+            } else if !think_start_tag.is_empty() && !think_end_tag.is_empty() && !formatted_prompt.contains(&think_end_tag) {
+                formatted_prompt.push_str(&format!("{}\n{}\n", think_start_tag, think_end_tag));
+            }
         }
-        
+
         let mut in_think_block = false;
         let mut suppressed_count = 0;
 
@@ -294,10 +298,13 @@ pub fn stream_tokens(
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(dna, &tokens)?;
         let safe_sampler = SafeSampler { sampler: sampler_chain_raw };
 
-        let mut is_lookahead = llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2;
+        let mut is_lookahead = (llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2)
+            && !gguf_meta.hardware_and_execution.spec_type.is_empty()
+            && gguf_meta.hardware_and_execution.spec_type != "None";
         let mut history: Vec<i32> = full_prompt_tokens; // 🛡️ Use FULL prompt tokens, not trimmed, so next turn's prefix match works correctly
         let mut lookahead_logs = Vec::new();
         let mut utf8_buffer = Vec::new();
+        let mut stream_pending = String::new();
 
         let mut n_cur = start_pos + tokens.len() as i32;
         let original_prompt_len = start_pos as usize + tokens.len();
@@ -305,12 +312,6 @@ pub fn stream_tokens(
 
         let mut next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         let mut injected_tokens_queue: std::collections::VecDeque<i32> = std::collections::VecDeque::new();
-
-        if injected_think_tag {
-            if !callback(format!("{}\n", think_start_tag)) {
-                return Ok(history);
-            }
-        }
 
         while n_gen < max_tokens as i32 {
             if llama.interrupt_signal.load(Ordering::SeqCst) || cluaiz_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
@@ -364,6 +365,10 @@ pub fn stream_tokens(
                 false
             );
 
+            if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
+                break;
+            }
+
             history.push(next_token_id);
             
             let mut buf = [0u8; 128];
@@ -392,45 +397,103 @@ pub fn stream_tokens(
                 }
                 
                 if !piece.is_empty() {
-                    // Update in_think_block
-                    if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
+                    stream_pending.push_str(&piece);
+
+                    // 1. Detect start of thinking / channel blocks
+                    if (!think_start_tag.is_empty() && stream_pending.contains(&think_start_tag))
+                        || stream_pending.contains("<|channel")
+                        || stream_pending.contains("<think")
+                        || stream_pending.contains("<thought")
+                        || stream_pending.contains("<|think")
+                    {
                         in_think_block = true;
                     }
 
-                    let mut display_piece = piece.clone();
-                    if suppress_thinking {
-                        if !think_start_tag.is_empty() && display_piece.contains(&think_start_tag) {
-                            display_piece = display_piece.replace(&think_start_tag, "");
+                    // 2. If inside think block and suppress_thinking is active:
+                    if suppress_thinking && in_think_block {
+                        let exit_tags = [
+                            think_end_tag.as_str(),
+                            "<channel|>", "channel|>",
+                            "</thought>", "</think>", "</|think|>",
+                            "<turn|>", "turn|>"
+                        ];
+                        let mut found_exit = false;
+                        for &tag in &exit_tags {
+                            if !tag.is_empty() {
+                                if let Some(idx) = stream_pending.find(tag) {
+                                    // Found exit tag! Slice out all thinking text before and including tag
+                                    stream_pending = stream_pending[idx + tag.len()..].to_string();
+                                    in_think_block = false;
+                                    found_exit = true;
+                                    break;
+                                }
+                            }
                         }
-                        if !think_end_tag.is_empty() && display_piece.contains(&think_end_tag) {
-                            display_piece = display_piece.replace(&think_end_tag, "");
+
+                        if !found_exit {
+                            // Keep sliding window of 32 chars so split exit tags are never missed
+                            if stream_pending.len() > 32 {
+                                let keep_start = stream_pending.len() - 32;
+                                stream_pending = stream_pending[keep_start..].to_string();
+                            }
+                            continue;
                         }
                     }
 
-                    if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
+                    // 3. Detect exit of thinking block when thinking is displayed
+                    if (!think_end_tag.is_empty() && stream_pending.contains(&think_end_tag))
+                        || stream_pending.contains("channel|>")
+                        || stream_pending.contains("<channel|>")
+                        || stream_pending.contains("</thought>")
+                        || stream_pending.contains("</think>")
+                        || stream_pending.contains("</|think|>")
+                    {
                         in_think_block = false;
                     }
 
+                    // 4. Sanitize tags in stream_pending
                     let mut stop_generation = false;
-                    for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                        if display_piece.contains(tag) {
+                    for tag in &[
+                        "<turn|>", "turn|>",
+                        "<|im_end|>", "|im_end|>",
+                        "<end_of_turn>", "end_of_turn>",
+                        "<|eot_id|>", "|eot_id|>",
+                        "<|end_of_text|>", "|end_of_text|>"
+                    ] {
+                        if stream_pending.contains(tag) {
                             stop_generation = true;
-                            display_piece = display_piece.replace(tag, "");
+                            stream_pending = stream_pending.replace(tag, "");
                         }
-                    }
-                    for tag in &["<|im_start|>", "<start_of_turn>"] {
-                        display_piece = display_piece.replace(tag, "");
                     }
 
-                    if suppress_thinking {
-                        if !in_think_block && !display_piece.is_empty() {
-                            if !callback(display_piece) { break; }
-                        }
-                    } else {
-                        if !display_piece.is_empty() {
-                            if !callback(display_piece) { break; }
-                        }
+                    for tag in &[
+                        "<|im_start|>", "|im_start|>",
+                        "<start_of_turn>", "start_of_turn>",
+                        "<|turn>", "<turn>",
+                        "<|channel>thought", "<|channel>", "<channel|>", "channel|>",
+                        "<thought>", "</thought>",
+                        "<|thought|>", "</|thought|>",
+                        "<|think|>", "</|think|>"
+                    ] {
+                        stream_pending = stream_pending.replace(tag, "");
                     }
+
+                    // 5. Lookahead / Hold Guard:
+                    // If stream_pending ends with a potential opening delimiter like '<' or '<|', hold it until the next piece!
+                    let (to_emit, to_hold) = if !stop_generation && (stream_pending.ends_with('<') || stream_pending.ends_with("<|") || stream_pending.ends_with('|')) {
+                        let last_idx = stream_pending.rfind('<').or_else(|| stream_pending.rfind('|')).unwrap_or(stream_pending.len());
+                        (&stream_pending[..last_idx], stream_pending[last_idx..].to_string())
+                    } else {
+                        (stream_pending.as_str(), String::new())
+                    };
+
+                    let emit_str = to_emit.to_string();
+                    stream_pending = to_hold;
+
+                    if !emit_str.is_empty() {
+                        if !callback(emit_str) { break; }
+                    }
+
                     if stop_generation { break; }
                 }
             }
@@ -611,6 +674,11 @@ pub fn stream_tokens(
                     n_match += 1;
                     history.push(next_token_id);
                     
+                    if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
+                        eos_detected = true;
+                        break;
+                    }
+
                     let n_b = llama_cpp::llama_token_to_piece(
                         vocab, next_token_id, buf.as_mut_ptr() as *mut c_char, buf.len() as i32, 0, true
                     );
@@ -636,50 +704,106 @@ pub fn stream_tokens(
                         }
 
                         if !piece.is_empty() {
-                            if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
+                            stream_pending.push_str(&piece);
+
+                            // 1. Detect start of thinking / channel blocks
+                            if (!think_start_tag.is_empty() && stream_pending.contains(&think_start_tag))
+                                || stream_pending.contains("<|channel")
+                                || stream_pending.contains("<think")
+                                || stream_pending.contains("<thought")
+                                || stream_pending.contains("<|think")
+                            {
                                 in_think_block = true;
                             }
 
-                            let mut display_piece = piece.clone();
-                            if suppress_thinking {
-                                if !think_start_tag.is_empty() && display_piece.contains(&think_start_tag) {
-                                    display_piece = display_piece.replace(&think_start_tag, "");
+                            // 2. If inside think block and suppress_thinking is active:
+                            if suppress_thinking && in_think_block {
+                                let exit_tags = [
+                                    think_end_tag.as_str(),
+                                    "<channel|>", "channel|>",
+                                    "</thought>", "</think>", "</|think|>",
+                                    "<turn|>", "turn|>"
+                                ];
+                                let mut found_exit = false;
+                                for &tag in &exit_tags {
+                                    if !tag.is_empty() {
+                                        if let Some(idx) = stream_pending.find(tag) {
+                                            // Found exit tag! Slice out all thinking text before and including tag
+                                            stream_pending = stream_pending[idx + tag.len()..].to_string();
+                                            in_think_block = false;
+                                            found_exit = true;
+                                            break;
+                                        }
+                                    }
                                 }
-                                if !think_end_tag.is_empty() && display_piece.contains(&think_end_tag) {
-                                    display_piece = display_piece.replace(&think_end_tag, "");
+
+                                if !found_exit {
+                                    // Keep sliding window of 32 chars so split exit tags are never missed
+                                    if stream_pending.len() > 32 {
+                                        let keep_start = stream_pending.len() - 32;
+                                        stream_pending = stream_pending[keep_start..].to_string();
+                                    }
+                                    continue;
                                 }
                             }
 
-                            if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
+                            // 3. Detect exit of thinking block when thinking is displayed
+                            if (!think_end_tag.is_empty() && stream_pending.contains(&think_end_tag))
+                                || stream_pending.contains("channel|>")
+                                || stream_pending.contains("<channel|>")
+                                || stream_pending.contains("</thought>")
+                                || stream_pending.contains("</think>")
+                                || stream_pending.contains("</|think|>")
+                            {
                                 in_think_block = false;
                             }
 
+                            // 4. Sanitize tags in stream_pending
                             let mut stop_generation = false;
-                            for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|eot_id|>"] {
-                                if display_piece.contains(tag) {
+                            for tag in &[
+                                "<turn|>", "turn|>",
+                                "<|im_end|>", "|im_end|>",
+                                "<end_of_turn>", "end_of_turn>",
+                                "<|eot_id|>", "|eot_id|>",
+                                "<|end_of_text|>", "|end_of_text|>"
+                            ] {
+                                if stream_pending.contains(tag) {
                                     stop_generation = true;
-                                    display_piece = display_piece.replace(tag, "");
+                                    stream_pending = stream_pending.replace(tag, "");
                                 }
-                            }
-                            for tag in &["<|im_start|>", "<start_of_turn>"] {
-                                display_piece = display_piece.replace(tag, "");
                             }
 
-                            if suppress_thinking {
-                                if !in_think_block && !display_piece.is_empty() {
-                                    if !callback(display_piece) {
-                                        eos_detected = true;
-                                        break;
-                                    }
-                                }
+                            for tag in &[
+                                "<|im_start|>", "|im_start|>",
+                                "<start_of_turn>", "start_of_turn>",
+                                "<|turn>", "<turn>",
+                                "<|channel>thought", "<|channel>", "<channel|>", "channel|>",
+                                "<thought>", "</thought>",
+                                "<|thought|>", "</|thought|>",
+                                "<|think|>", "</|think|>"
+                            ] {
+                                stream_pending = stream_pending.replace(tag, "");
+                            }
+
+                            // 5. Lookahead / Hold Guard:
+                            // If stream_pending ends with a potential opening delimiter like '<' or '<|', hold it until the next piece!
+                            let (to_emit, to_hold) = if !stop_generation && (stream_pending.ends_with('<') || stream_pending.ends_with("<|") || stream_pending.ends_with('|')) {
+                                let last_idx = stream_pending.rfind('<').or_else(|| stream_pending.rfind('|')).unwrap_or(stream_pending.len());
+                                (&stream_pending[..last_idx], stream_pending[last_idx..].to_string())
                             } else {
-                                if !display_piece.is_empty() {
-                                    if !callback(display_piece) {
-                                        eos_detected = true;
-                                        break;
-                                    }
+                                (stream_pending.as_str(), String::new())
+                            };
+
+                            let emit_str = to_emit.to_string();
+                            stream_pending = to_hold;
+
+                            if !emit_str.is_empty() {
+                                if !callback(emit_str) {
+                                    eos_detected = true;
+                                    break;
                                 }
                             }
+
                             if stop_generation { 
                                 eos_detected = true;
                                 break; 
