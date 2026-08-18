@@ -217,6 +217,7 @@ impl OptimizationConfig {
         params.flash_attn_type = if (self.flash_attn || is_quantized_kv) && !force_disable_fa_for_cpu { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
         params.offload_kqv = if self.n_gpu_layers == 0 { 0 } else { 1 }; // Force KV cache offload to VRAM only if GPU is enabled
         params.op_offload = if self.n_gpu_layers == 0 { 0 } else { 1 }; // GPU offload for batch operations
+        params.embeddings = 1; // 📐 Enable native embedding extraction buffer (llama_get_embeddings)
 
         params
     }

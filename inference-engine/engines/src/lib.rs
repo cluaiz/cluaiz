@@ -36,7 +36,7 @@ pub use runtime::execution::loader::GGUFLoader;
 // 4. Intelligence & Registry
 pub use models::entities::{ChatMessage, ChatRequest, ChatResponse, ChatSession, MessageRole};
 pub use models::registry::{CoreRoster, ModelManifest, ModelRecommendation, ModelAsset};
-pub use models::fetch::{DownloadEvent, ModelDownloader};
+pub use models::fetcher::{DownloadEvent, ModelDownloader};
 
 // 5. Routing
 pub use api::router::CoreRouter;
