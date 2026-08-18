@@ -69,8 +69,8 @@ pub struct GgufMoeStreamingController {
     pub n_gpu_layers: usize,
     /// Authorized LRU Cache budget for dynamic eviction
     pub cache_budget_gb: f64,
-    /// True CUDA Host PCIe DMA Streamer for streaming active experts into GPU VRAM
-    pub dma_streamer: Option<Arc<crate::cuda_dma_streamer::CudaDmaStreamer>>,
+    /// Universal Silicon PCIe / UMA DMA Streamer for streaming active experts into GPU VRAM
+    pub dma_streamer: Option<Arc<crate::dma_streamer::DmaStreamer>>,
 }
 
 // SAFETY: The mmap_base pointer is only used for madvise calls from a single thread at a time.
@@ -187,7 +187,7 @@ impl GgufMoeStreamingController {
 
         let single_layer_vram_bytes = self.moe_info.dense_backbone_bytes as usize / self.moe_info.moe_layer_count.max(1);
 
-        self.dma_streamer = crate::cuda_dma_streamer::CudaDmaStreamer::initialize(
+        self.dma_streamer = crate::dma_streamer::DmaStreamer::initialize(
             self.n_gpu_layers as i32,
             single_layer_expert_chunk,
             single_layer_vram_bytes,

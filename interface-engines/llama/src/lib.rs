@@ -20,7 +20,12 @@ pub mod native;
 pub mod pipeline;
 pub mod router;
 pub mod sampling;
-pub mod cuda_dma_streamer;
+pub mod dma_streamer;
+pub use dma_streamer::{
+    CudaDmaStreamer, CudaPinnedHostBuffer, CudaDeviceScratchBuffer,
+    SiliconDmaStreamer, SiliconPinnedHostBuffer, SiliconDeviceScratchBuffer,
+    DmaStreamer, PinnedHostBuffer, DeviceScratchBuffer,
+};
 
 use crate::config::OptimizationConfig;
 use crate::native::NativeLlama;

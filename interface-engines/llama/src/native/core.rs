@@ -132,7 +132,7 @@ pub fn print_memory_trace(step: &str) {
     let free_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
 
-    let (free_vram_bytes, total_vram_bytes) = crate::cuda_dma_streamer::CudaDmaStreamer::get_live_vram_info();
+    let (free_vram_bytes, total_vram_bytes) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
     let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
@@ -316,7 +316,7 @@ impl NativeLlama {
             // 🛡️ Dynamic KV Placement: If running MoE Streaming on <=4GB VRAM,
             // keep KV Cache in System RAM to protect CUDA compute graph workspace from OOM
             if moe_controller.is_some() {
-                let (free_vram_bytes, _) = crate::cuda_dma_streamer::CudaDmaStreamer::get_live_vram_info();
+                let (free_vram_bytes, _) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
                 let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
                 if free_vram_gb < 1.2 {
                     ctx_params.offload_kqv = 0;
