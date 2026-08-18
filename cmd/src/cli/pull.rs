@@ -50,12 +50,11 @@ pub async fn execute(model_id: &str) -> Result<()> {
             return Ok(());
         }
 
-        let selected_size_str = selection.split(" (").nth(1).unwrap().replace(" GB)", "");
-        let selected_size_gb: f64 = selected_size_str.parse().unwrap_or(0.0);
+        let selected_variant = variants.iter().find(|v| v.filename == selected_filename)
+            .ok_or_else(|| color_eyre::eyre::eyre!("Variant not found"))?;
         
         println!("  {} Fetching precise metadata...", "📡".cyan());
-        let hf_manifest = engines::models::manager::hf_hub::HuggingFaceHub::build_manifest(&repo_id, &selected_filename, selected_size_gb).await
-            .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        let hf_manifest = engines::models::HuggingFaceHub::build_manifest(&repo_id, selected_variant, None);
             
         manifest = Some(hf_manifest);
     } else {
@@ -85,58 +84,12 @@ pub async fn execute(model_id: &str) -> Result<()> {
         .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
     
-    println!("  {} Fetching Deep Metadata (GGUF Binary Probe)...", "📡".cyan());
-    
-    if let Ok((metadata, _tensor_infos, tensor_count)) = engines::models::manager::hf_hub::HuggingFaceHub::fetch_partial_gguf_metadata(&manifest.download_url).await {
-        let arch = metadata.get("general.architecture").unwrap_or(&"Unknown".to_string()).to_string();
-        let ctx = metadata.get(&format!("{}.context_length", arch)).or(metadata.get("llama.context_length")).unwrap_or(&"Unknown".to_string()).to_string();
-        
-        let ctx_display = if let Ok(ctx_val) = ctx.parse::<u32>() {
-            if ctx_val >= 1024 {
-                format!("{} ({}K)", ctx_val, ctx_val / 1024)
-            } else {
-                ctx.clone()
-            }
-        } else {
-            ctx.clone()
-        };
-
-        let params = metadata.get("general.parameter_count").unwrap_or(&"Unknown".to_string()).to_string();
-        let file_type = metadata.get("general.file_type").unwrap_or(&"Unknown".to_string()).to_string();
-        let blocks = metadata.get(&format!("{}.block_count", arch)).unwrap_or(&"Unknown".to_string()).to_string();
-        
-        let num_layers = blocks.parse::<u64>().unwrap_or(32);
-        let num_heads = metadata.get(&format!("{}.attention.head_count", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(32);
-        let num_kv_heads = metadata.get(&format!("{}.attention.head_count_kv", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(num_heads);
-        let hidden_size = metadata.get(&format!("{}.embedding_length", arch)).and_then(|s| s.parse::<u64>().ok()).unwrap_or(4096);
-        
-        let head_dim = hidden_size / num_heads.max(1);
-        let standard_context_tokens = 8192;
-        // 2 bytes per float16, 2 for K and V tensors
-        let kv_cache_bytes = 2 * 2 * num_layers * num_kv_heads * head_dim * standard_context_tokens;
-        let kv_cache_gb = kv_cache_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-        let base_engine_overhead_gb = 0.30;
-        
-        // Dynamically override manifest RAM based on exact architectural math
-        manifest.ram_required_gb = manifest.download_size_gb + base_engine_overhead_gb + kv_cache_gb;
-
-        println!("    ├─ 🧠 Architecture: {}", arch.yellow());
-        if manifest.category == "audio" || manifest.id.to_lowercase().contains("whisper") {
-            println!("    ├─ 📻 Task Modality: Audio Processing");
-            println!("    ├─ ⚡ Speed Projection: Real-Time Factor (RTF) Optimized");
-        } else {
-            println!("    ├─ 📏 Context Window: {} tokens", ctx_display.green());
-            println!("    ├─ 🧮 KV Cache (8K tokens): {:.2} GB", kv_cache_gb);
-        }
-        println!("    ├─ 🧩 Parameters: {} B", params.green());
-        println!("    ├─ 📦 Quantization / File Type: {}", file_type.cyan());
-        println!("    ├─ 📚 Network Layers (Blocks): {}", blocks.magenta());
-        println!("    ├─ ⚡ Tensor Count: {}", tensor_count.to_string().cyan());
-        println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-    } else if let Err(e) = engines::models::manager::hf_hub::HuggingFaceHub::fetch_partial_gguf_metadata(&manifest.download_url).await {
-        println!("    ├─ ⚠️ Could not probe remote GGUF header: {}", e);
-        println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
-    }
+    println!("  {} Silicon Pre-flight Architecture:", "📡".cyan());
+    println!("    ├─ 🧠 Family / Name: {}", manifest.name.yellow());
+    println!("    ├─ 📁 Sovereign Category: {}", manifest.category.green());
+    println!("    ├─ 📏 Context Window: {} tokens", manifest.context_window.cyan());
+    println!("    ├─ 🧮 RAM Projected: {:.2} GB", manifest.ram_required_gb);
+    println!("    ├─ 💾 Download Size: {:.2} GB", manifest.download_size_gb);
 
     // Perform system health audit silently in the background
     let total_required = manifest.ram_required_gb;

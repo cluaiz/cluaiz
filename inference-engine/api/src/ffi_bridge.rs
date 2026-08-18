@@ -233,43 +233,47 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut available_chat_models: Vec<String> = Vec::new();
                                 let mut available_vector_models: Vec<String> = Vec::new();
+                                let mut available_vision_models: Vec<String> = Vec::new();
                                 let mut available_audio_models: Vec<String> = Vec::new();
                                 let mut all_models: Vec<String> = Vec::new();
 
                                 for model in &roster {
                                     all_models.push(model.id.clone());
 
-                                    // PRIMARY: Classify by the actual folder path on disk
-                                    // ~/.cluaiz/models/chat/     → chat models
-                                    // ~/.cluaiz/models/embedding/ → vector models (text embeddings)
-                                    // ~/.cluaiz/models/vision/    → vector models (image embeddings / CLIP)
-                                    // ~/.cluaiz/models/audio/     → audio models
+                                    // PRIMARY: Classify strictly by the 6 Sovereign Vault directories
                                     let folder_category = model.local_path.as_deref()
                                         .and_then(|p| {
-                                            let p_lower = p.replace('\\', "/").to_lowercase();
-                                            if p_lower.contains("/models/chat/") {
-                                                Some("chat")
-                                            } else if p_lower.contains("/models/embedding/") {
-                                                Some("embedding")
-                                            } else if p_lower.contains("/models/vision/") {
-                                                Some("vision")
-                                            } else if p_lower.contains("/models/audio/") {
-                                                Some("audio")
-                                            } else {
-                                                None
-                                            }
+                                             let p_lower = p.replace('\\', "/").to_lowercase();
+                                             if p_lower.contains("/models/chat/") {
+                                                 Some("chat")
+                                             } else if p_lower.contains("/models/text-embedding/") {
+                                                 Some("text-embedding")
+                                             } else if p_lower.contains("/models/vision-embedding/") {
+                                                 Some("vision-embedding")
+                                             } else if p_lower.contains("/models/vision-ingest/") {
+                                                 Some("vision-ingest")
+                                             } else if p_lower.contains("/models/tts/") {
+                                                 Some("tts")
+                                             } else if p_lower.contains("/models/stt/") {
+                                                 Some("stt")
+                                             } else {
+                                                 None
+                                             }
                                         });
 
-                                    // FALLBACK: Use the `category` field from model_manifest.json
+                                    // FALLBACK: Sovereign Manifest Category
                                     let cat = folder_category
                                         .unwrap_or_else(|| model.category.as_str())
                                         .to_lowercase();
 
                                     match cat.as_str() {
-                                        "embedding" | "vision" | "multimodal" => {
+                                        "text-embedding" | "vision-embedding" => {
                                             available_vector_models.push(model.id.clone());
                                         }
-                                        "audio" => {
+                                        "vision-ingest" => {
+                                            available_vision_models.push(model.id.clone());
+                                        }
+                                        "tts" | "stt" => {
                                             available_audio_models.push(model.id.clone());
                                         }
                                         _ => {
@@ -297,6 +301,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         available_audio_models.push(t.clone());
                                     }
                                 }
+                                let active_vision_id = perms.get_active_vision_model();
+                                if let Some(ref t) = active_vision_id {
+                                    if !t.is_empty() && !available_vision_models.contains(t) {
+                                        available_vision_models.push(t.clone());
+                                    }
+                                }
 
                                 // Fetch manifests for the currently active models so frontend can do deep combined validation
                                 let active_chat_manifest = active_text_id.clone().and_then(|id| roster.iter().find(|m| m.id == id || m.huggingface_filename == id || m.name == id || m.id.replace(":", "-") == id).cloned());
@@ -322,6 +332,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         "available_models": all_models,
                                         "available_chat_models": available_chat_models,
                                         "available_vector_models": available_vector_models,
+                                        "available_vision_models": available_vision_models,
                                         "available_audio_models": available_audio_models,
                                         "available_devices": ["auto", "gpu", "cpu"]
                                     },

@@ -103,8 +103,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         }
 
         println!("  {} Fetching precise metadata...", "📡".cyan());
-        let hf_manifest = engines::models::manager::hf_hub::HuggingFaceHub::build_manifest(&repo_id, &selected_filename, selected_size_gb).await
-            .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        let hf_manifest = engines::models::HuggingFaceHub::build_manifest(&repo_id, &selected_variant, None);
             
         manifest = Some(hf_manifest);
         selected_variant_bundle = Some(selected_variant);

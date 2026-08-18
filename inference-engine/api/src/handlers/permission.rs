@@ -32,16 +32,38 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
     let mut available_vector_models: Vec<String> = Vec::new();
     let mut available_vision_models: Vec<String> = Vec::new();
     let mut available_audio_models: Vec<String> = Vec::new();
+    let mut available_text_embedding_models: Vec<String> = Vec::new();
+    let mut available_vision_embedding_models: Vec<String> = Vec::new();
+    let mut available_vision_ingest_models: Vec<String> = Vec::new();
+    let mut available_tts_models: Vec<String> = Vec::new();
+    let mut available_stt_models: Vec<String> = Vec::new();
     let mut all_models: Vec<String> = Vec::new();
 
-    // Dynamically categorize from model_registry database
+    // Dynamically categorize strictly from 6 Sovereign Vault categories
     for (id, entry) in &registry.installed_models {
         all_models.push(id.clone());
         match entry.category.as_str() {
             "chat" => available_chat_models.push(id.clone()),
-            "embedding" => available_vector_models.push(id.clone()),
-            "vision" => available_vision_models.push(id.clone()),
-            "audio" => available_audio_models.push(id.clone()),
+            "text-embedding" => {
+                available_text_embedding_models.push(id.clone());
+                available_vector_models.push(id.clone());
+            }
+            "vision-embedding" => {
+                available_vision_embedding_models.push(id.clone());
+                available_vector_models.push(id.clone());
+            }
+            "vision-ingest" => {
+                available_vision_ingest_models.push(id.clone());
+                available_vision_models.push(id.clone());
+            }
+            "tts" => {
+                available_tts_models.push(id.clone());
+                available_audio_models.push(id.clone());
+            }
+            "stt" => {
+                available_stt_models.push(id.clone());
+                available_audio_models.push(id.clone());
+            }
             _ => available_chat_models.push(id.clone()), // fallback
         }
     }
@@ -78,6 +100,11 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
         obj.insert("available_vector_models".to_string(), json!(available_vector_models));
         obj.insert("available_vision_models".to_string(), json!(available_vision_models));
         obj.insert("available_audio_models".to_string(), json!(available_audio_models));
+        obj.insert("available_text_embedding_models".to_string(), json!(available_text_embedding_models));
+        obj.insert("available_vision_embedding_models".to_string(), json!(available_vision_embedding_models));
+        obj.insert("available_vision_ingest_models".to_string(), json!(available_vision_ingest_models));
+        obj.insert("available_tts_models".to_string(), json!(available_tts_models));
+        obj.insert("available_stt_models".to_string(), json!(available_stt_models));
     }
 
     Json(json!({
