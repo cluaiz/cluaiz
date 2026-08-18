@@ -61,22 +61,18 @@ impl CapabilityResolver {
         // Level 2: Secondary Fallback JSON Ingestion
         let extra_fallback = enrich_from_fallback_jsons(model_dir, &mut caps);
 
-        let slot = match category_folder {
-            "chat" => SlotType::Chat,
-            "audio" => SlotType::Audio,
-            "vision" => SlotType::Vision,
-            "embedding" => SlotType::Embedding,
-            _ => {
-                if caps.is_embedding {
-                    SlotType::Embedding
-                } else if caps.is_asr || caps.is_tts || caps.is_audio_to_audio {
-                    SlotType::Audio
-                } else if caps.has_vision || caps.is_vision_chat || caps.is_image_to_text {
-                    SlotType::Vision
-                } else {
-                    SlotType::Chat
-                }
-            }
+        let slot = if !category_folder.is_empty() {
+            SlotType::from_category(category_folder)
+        } else if caps.is_tts {
+            SlotType::Tts
+        } else if caps.is_asr {
+            SlotType::Stt
+        } else if caps.is_embedding || caps.is_feature_extraction {
+            SlotType::TextEmbedding
+        } else if caps.has_vision || caps.is_vision_chat || caps.is_image_to_text {
+            SlotType::VisionIngest
+        } else {
+            SlotType::Chat
         };
 
         let mut chat_template = probe.chat_template;
@@ -103,9 +99,9 @@ impl CapabilityResolver {
         if (context_window == "Unknown" || context_window.is_empty()) {
             if let Some(ctx) = extra_fallback.context_window {
                 context_window = ctx;
-            } else if slot == SlotType::Audio {
+            } else if slot == SlotType::Tts || slot == SlotType::Stt {
                 context_window = "30s (3000 frames)".to_string();
-            } else if slot == SlotType::Vision {
+            } else if slot == SlotType::VisionIngest || slot == SlotType::VisionEmbedding {
                 context_window = "224x224 (Images)".to_string();
             }
         }
@@ -124,6 +120,7 @@ impl CapabilityResolver {
             quantization: probe.quantization,
             bit_depth: probe.bit_depth,
             tts_family: caps.tts_family.clone(),
+            stt_family: caps.stt_family.clone(),
             backend_type: Some(format_type.to_string()),
             think_start_tag,
             think_end_tag,

@@ -20,8 +20,8 @@ impl EmbeddingGenerator {
         
         let formatted_model_id = model_id.replace(":", "-");
         let model_dir = cluaiz_shared::environment::EnvironmentManager::current()
-            .ensure_embedding_models_dir()
-            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().embedding_models_dir())
+            .ensure_text_embedding_models_dir()
+            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().text_embedding_models_dir())
             .join(&formatted_model_id);
         
         let model_path = model_dir.join("model.onnx");

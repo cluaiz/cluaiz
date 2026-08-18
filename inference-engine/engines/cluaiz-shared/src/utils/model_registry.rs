@@ -19,6 +19,8 @@ pub struct RegistryModelMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tts_family: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stt_family: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backend_type: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub think_start_tag: Option<String>,
@@ -27,26 +29,43 @@ pub struct RegistryModelMetadata {
     pub chat_template: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SlotType {
     Chat,
-    Embedding,
-    Vision,
-    Audio,
+    VisionIngest,
+    VisionEmbedding,
+    TextEmbedding,
+    Tts,
+    Stt,
 }
 
 impl SlotType {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Chat => "chat",
-            Self::Embedding => "embedding",
-            Self::Vision => "vision",
-            Self::Audio => "audio",
+            Self::VisionIngest => "vision-ingest",
+            Self::VisionEmbedding => "vision-embedding",
+            Self::TextEmbedding => "text-embedding",
+            Self::Tts => "tts",
+            Self::Stt => "stt",
+        }
+    }
+
+    pub fn from_category(cat: &str) -> Self {
+        let cat_lower = cat.to_lowercase().replace('_', "-");
+        match cat_lower.as_str() {
+            "chat" | "conversational" | "text-generation" => Self::Chat,
+            "vision-ingest" | "vlm" | "vision-chat" | "ocr" | "vision" => Self::VisionIngest,
+            "vision-embedding" | "vision-embed" | "clip" | "siglip" => Self::VisionEmbedding,
+            "text-embedding" | "embedding" | "embeddings" => Self::TextEmbedding,
+            "tts" | "text-to-speech" | "audio" => Self::Tts,
+            "stt" | "automatic-speech-recognition" | "asr" => Self::Stt,
+            _ => Self::Chat,
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModelCapabilities {
     pub has_vision: bool,
     pub has_audio: bool,
@@ -65,7 +84,9 @@ pub struct ModelCapabilities {
     pub is_tts: bool,
     pub is_audio_to_audio: bool,
     pub is_audio_class: bool,
+    pub chat_completion: bool,
     pub tts_family: Option<String>,
+    pub stt_family: Option<String>,
     pub explicit_tasks: Vec<String>,
 }
 
@@ -89,7 +110,9 @@ impl ModelCapabilities {
             is_tts: true,
             is_audio_to_audio: true,
             is_audio_class: true,
+            chat_completion: true,
             tts_family: None,
+            stt_family: None,
             explicit_tasks: vec![],
         }
     }
@@ -98,23 +121,32 @@ impl ModelCapabilities {
 impl SlotType {
     pub fn supported_tasks(&self, caps: &ModelCapabilities) -> Vec<String> {
         match self {
-            Self::Chat => crate::utils::model_discovery::rules::chat::get_chat_tasks(caps),
-            Self::Embedding => {
-                crate::utils::model_discovery::rules::embedding::get_embedding_tasks(caps)
+            Self::Chat => {
+                let mut tasks = vec!["chat-completion".to_string()];
+                if caps.has_vision || caps.is_vision_chat {
+                    tasks.push("vision-chat".to_string());
+                }
+                tasks
             }
-            Self::Vision => crate::utils::model_discovery::rules::vision::get_vision_tasks(caps),
-            Self::Audio => crate::utils::model_discovery::rules::audio::get_audio_tasks(caps),
+            Self::TextEmbedding | Self::VisionEmbedding => {
+                vec!["embedding".to_string(), "feature-extraction".to_string()]
+            }
+            Self::VisionIngest => {
+                vec!["image-to-text".to_string(), "document-ingestion".to_string(), "visual-qa".to_string()]
+            }
+            Self::Tts => {
+                vec!["text-to-speech".to_string()]
+            }
+            Self::Stt => {
+                vec!["automatic-speech-recognition".to_string()]
+            }
         }
     }
 
     pub fn get_tasks_for_category(category: &str) -> Vec<String> {
         let caps = ModelCapabilities::all_true();
-        match category {
-            "audio" => SlotType::Audio.supported_tasks(&caps),
-            "vision" => SlotType::Vision.supported_tasks(&caps),
-            "embedding" => SlotType::Embedding.supported_tasks(&caps),
-            _ => SlotType::Chat.supported_tasks(&caps),
-        }
+        let slot = Self::from_category(category);
+        slot.supported_tasks(&caps)
     }
 }
 
@@ -154,13 +186,7 @@ impl ModelRegistry {
     }
 
     pub fn get_tasks_for_category(category: &str) -> Vec<String> {
-        let caps = ModelCapabilities::all_true();
-        match category {
-            "audio" => SlotType::Audio.supported_tasks(&caps),
-            "vision" => SlotType::Vision.supported_tasks(&caps),
-            "embedding" => SlotType::Embedding.supported_tasks(&caps),
-            _ => SlotType::Chat.supported_tasks(&caps),
-        }
+        SlotType::get_tasks_for_category(category)
     }
 
     pub fn load() -> Self {
@@ -369,7 +395,7 @@ impl ModelRegistry {
 
                             let registry_entry = ModelRegistryEntry {
                                 id: id.clone(),
-                                category: cat.to_string(),
+                                category: slot_type.as_str().to_string(),
                                 format_type: format_type.to_string(),
                                 huggingface_repo: hf_repo,
                                 local_dir: entry.path().to_string_lossy().to_string(),

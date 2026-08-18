@@ -10,14 +10,18 @@ pub fn evaluate_embedding_rules(
         caps.is_embedding = true;
         caps.is_feature_extraction = true;
     } else {
-        // Fallback for old cases where tasks aren't known
+        // Fallback for cases where explicit tasks aren't known or decoder-based embeddings are used
         let is_embedding_arch = has_pooling 
+            || arch_lower.contains("embed")
+            || arch_lower.contains("embedding")
             || arch_lower.contains("bert")
             || arch_lower.contains("nomic")
             || arch_lower.contains("bge")
             || arch_lower.contains("gte")
             || arch_lower.contains("e5")
-            || arch_lower.contains("minilm");
+            || arch_lower.contains("minilm")
+            || arch_lower.contains("sentence-similarity")
+            || arch_lower.contains("feature-extraction");
 
         if is_embedding_arch {
             caps.is_embedding = true;

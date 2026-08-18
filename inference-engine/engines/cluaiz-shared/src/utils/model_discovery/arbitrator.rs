@@ -84,11 +84,20 @@ impl VotingArbitrator {
             *scores.entry(Self::normalize_task("voice_conversion")).or_insert(0) += 25;
         }
 
-        if combined_ident.contains("bert") || combined_ident.contains("embedding") || combined_ident.contains("bge") || combined_ident.contains("nomic") {
-            *scores.entry(Self::normalize_task("embedding")).or_insert(0) += 25;
+        let is_embed = combined_ident.contains("bert") 
+            || combined_ident.contains("embed") 
+            || combined_ident.contains("embedding") 
+            || combined_ident.contains("bge") 
+            || combined_ident.contains("nomic")
+            || combined_ident.contains("gte")
+            || combined_ident.contains("minilm")
+            || combined_ident.contains("e5");
+
+        if is_embed {
+            *scores.entry(Self::normalize_task("embedding")).or_insert(0) += 40;
         }
 
-        if combined_ident.contains("instruct") || combined_ident.contains("chat") || combined_ident.contains("-it") {
+        if (combined_ident.contains("instruct") || combined_ident.contains("chat") || combined_ident.contains("-it")) && !is_embed {
             *scores.entry(Self::normalize_task("chat_completion")).or_insert(0) += 25;
         }
 

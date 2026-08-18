@@ -99,14 +99,20 @@ impl EnvironmentManager {
     pub fn chat_models_dir(&self) -> PathBuf {
         self.models_dir().join("chat")
     }
-    pub fn embedding_models_dir(&self) -> PathBuf {
-        self.models_dir().join("embedding")
+    pub fn vision_ingest_models_dir(&self) -> PathBuf {
+        self.models_dir().join("vision-ingest")
     }
-    pub fn vision_models_dir(&self) -> PathBuf {
-        self.models_dir().join("vision")
+    pub fn vision_embedding_models_dir(&self) -> PathBuf {
+        self.models_dir().join("vision-embedding")
     }
-    pub fn audio_models_dir(&self) -> PathBuf {
-        self.models_dir().join("audio")
+    pub fn text_embedding_models_dir(&self) -> PathBuf {
+        self.models_dir().join("text-embedding")
+    }
+    pub fn tts_models_dir(&self) -> PathBuf {
+        self.models_dir().join("tts")
+    }
+    pub fn stt_models_dir(&self) -> PathBuf {
+        self.models_dir().join("stt")
     }
     pub fn kv_cache_dir(&self) -> PathBuf {
         self.local_dir.join("kv_cache")
@@ -211,24 +217,40 @@ impl EnvironmentManager {
         Ok(dir)
     }
 
-    pub fn ensure_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.embedding_models_dir();
+    pub fn ensure_vision_ingest_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.vision_ingest_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
         Ok(dir)
     }
 
-    pub fn ensure_vision_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.vision_models_dir();
+    pub fn ensure_vision_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.vision_embedding_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
         Ok(dir)
     }
 
-    pub fn ensure_audio_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.audio_models_dir();
+    pub fn ensure_text_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.text_embedding_models_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_tts_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.tts_models_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_stt_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.stt_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
