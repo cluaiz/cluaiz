@@ -104,7 +104,8 @@ impl ModelManager {
                         let download_url = format!("{}/resolve/main/{}", repo, rel_path);
                         println!("   ├─ [{}/{}] Fetching {}...", idx + 1, all_files.len(), rel_path.yellow());
                         if let Err(e) = FileDownloader::download_single_file(&client, &download_url, &dest_file, tx.clone(), abort.clone()).await {
-                            println!("   ❌ Failed to download {}: {}", rel_path, e);
+                            let _ = tokio::fs::remove_dir_all(&model_path).await;
+                            return Err(format!("{}: {}", rel_path, e));
                         } else {
                             println!("   ✅ Weights acquired: {}", local_file_name.green());
                         }
@@ -113,6 +114,13 @@ impl ModelManager {
                     }
                 }
             }
+        }
+
+        // Verify primary weight file exists before auto-healing and registering
+        let primary_file = model_path.join(&manifest.huggingface_filename);
+        if !primary_file.exists() {
+            let _ = tokio::fs::remove_dir_all(&model_path).await;
+            return Err(format!("Model weights '{}' missing. Registration aborted.", manifest.huggingface_filename));
         }
 
         // Auto-heal missing tokenizer or config if needed
