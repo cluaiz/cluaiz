@@ -1,23 +1,23 @@
 {
-    "id": "qwen",
-    "name": "Qwen",
-    "provider": "Alibaba Cloud",
-    "logo": "/assets/models/ai-logo/qwen.webp",
-    "architecture_type": "Transformer",
-    "architecture": "Qwen",
-    "latest_version": "3.6",
-    "capabilities": [
-        "Chat",
-        "Reasoning",
-        "Coding",
-        "Multilingual",
-        "Vision"
-    ],
-    "versions": {
-        "2.5": "2.5.json",
-        "3.0": "3.0.json",
-        "3.5": "3.5.json",
-        "3.6": "3.6.json"
-    },
-    "description": "A family of highly capable, open-weights models developed by Alibaba Cloud, known for exceptional multilingual support, coding prowess, and edge optimization."
+  "id": "qwen",
+  "name": "Qwen",
+  "provider": "Alibaba Cloud",
+  "logo": "/assets/models/ai-logo/qwen.webp",
+  "architecture_type": "Transformer",
+  "architecture": "Qwen",
+  "latest_version": "3.6",
+  "capabilities": [
+    "Chat",
+    "Reasoning",
+    "Coding",
+    "Multilingual",
+    "Vision"
+  ],
+  "versions": {
+    "2.5": "2.5.json",
+    "3.0": "3.0.json",
+    "3.5": "3.5.json",
+    "3.6": "3.6.json"
+  },
+  "description": "A family of highly capable, open-weights models developed by Alibaba Cloud, known for exceptional multilingual support, coding prowess, and edge optimization."
 }
