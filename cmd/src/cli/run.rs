@@ -25,10 +25,54 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
     let roster = CoreRoster::load_roster();
     let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current().models_dir();
 
-    if model_id.contains('/') {
-        // 🚀 EXPLICIT HUGGINGFACE REQUEST
+    // Extract optional explicit quantization/variant tag if specified with colon (e.g. 'repo/model:IQ3_XXS' or 'model:Q4_K_M')
+    let (base_input, explicit_tag) = if let Some((base, tag)) = model_id.rsplit_once(':') {
+        if !tag.is_empty() && !base.ends_with("http") && !base.ends_with("https") && !base.ends_with("hf") {
+            (base, Some(tag.to_string()))
+        } else {
+            (model_id, None)
+        }
+    } else {
+        (model_id, None)
+    };
+
+    let mut target_hf_repo: Option<String> = None;
+    if !base_input.contains('/') && !base_input.starts_with("hf://") && !base_input.starts_with("https://") {
+        // Check if model already exists locally
+        let safe_id = model_id.replace(':', "-");
+        let safe_base_id = base_input.replace(':', "-");
+        let local_exists = roster.iter().any(|m| {
+            if m.id.to_lowercase() == model_id.to_lowercase() || m.id.to_lowercase() == base_input.to_lowercase() {
+                let model_path = cluaiz_root.join(&m.category).join(&safe_id);
+                let base_path = cluaiz_root.join(&m.category).join(&safe_base_id);
+                model_path.join(&m.huggingface_filename).exists() || base_path.join(&m.huggingface_filename).exists()
+            } else {
+                false
+            }
+        });
+
+        if !local_exists {
+            // Short ID given and not present locally -> Resolve upstream Hugging Face repo from Cluaiz Registry
+            print!("  {} Resolving model ID '{}' via Cluaiz Registry...", "🔍".cyan(), base_input.bold());
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+            let resolved_res = match engines::models::fetch::resolve_model_repo(model_id).await {
+                Ok(Some(repo)) => Ok(Some(repo)),
+                _ => engines::models::fetch::resolve_model_repo(base_input).await,
+            };
+
+            if let Ok(Some(hf_repo)) = resolved_res {
+                println!(" -> Found HuggingFace Repo: '{}'", hf_repo.yellow().bold());
+                target_hf_repo = Some(hf_repo);
+            } else {
+                println!(" (using local/external catalog)");
+            }
+        }
+    }
+
+    if base_input.contains('/') || target_hf_repo.is_some() {
+        // 🚀 HUGGINGFACE REQUEST (EXPLICIT OR RESOLVED)
         is_hf = true;
-        resolved_id = model_id.to_string();
+        resolved_id = target_hf_repo.unwrap_or_else(|| base_input.to_string());
         if !resolved_id.starts_with("hf://") && !resolved_id.starts_with("https://") {
             resolved_id = format!("hf://{}", resolved_id);
         }
@@ -76,18 +120,58 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             let variants = engines::models::manager::hf_hub::HuggingFaceHub::list_variants(&repo_id).await
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
 
-            let is_noninteractive = std::env::var("CLUAIZ_NONINTERACTIVE").is_ok();
-            if is_noninteractive {
-                variants.first().ok_or_else(|| color_eyre::eyre::eyre!("No variants found"))?.clone()
-            } else {
-                let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
-                let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
-                    .with_page_size(12)
-                    .raw_prompt()
-                    .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
+            if variants.is_empty() {
+                return Err(color_eyre::eyre::eyre!("No variants found in repository '{}'", repo_id));
+            }
+
+            // ⚡ If an explicit quantization tag was given (e.g. :IQ3_XXS or :Q4_K_M), auto-select it directly!
+            let matched_from_tag = if let Some(ref tag) = explicit_tag {
+                let tag_upper = tag.to_uppercase();
+                let clean_tag = tag_upper.replace(['-', '_'], "");
                 
-                variants.into_iter().nth(selected_option.index)
-                    .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?
+                variants.iter().find(|v| {
+                    v.quant_tag.to_uppercase() == tag_upper
+                        || v.variant_id.to_uppercase().contains(&tag_upper)
+                        || v.filename.to_uppercase().contains(&tag_upper)
+                        || v.quant_tag.to_uppercase().replace(['-', '_'], "") == clean_tag
+                        || v.filename.to_uppercase().replace(['-', '_'], "").contains(&clean_tag)
+                }).cloned()
+            } else {
+                None
+            };
+
+            if let Some(matched) = matched_from_tag {
+                println!(
+                    "  {} Direct Quantization Tag Matched: ':{}' -> {} ({:.2} GB)",
+                    "⚡".green().bold(),
+                    explicit_tag.as_ref().unwrap().yellow().bold(),
+                    matched.variant_id.cyan().bold(),
+                    matched.size_gb
+                );
+                matched
+            } else {
+                if let Some(ref tag) = explicit_tag {
+                    println!(
+                        "  {} Quantization tag ':{}' not found in '{}'. Available variants listed below:",
+                        "⚠️".yellow(),
+                        tag.bold(),
+                        repo_id.cyan()
+                    );
+                }
+
+                let is_noninteractive = std::env::var("CLUAIZ_NONINTERACTIVE").is_ok();
+                if is_noninteractive {
+                    variants.first().ok_or_else(|| color_eyre::eyre::eyre!("No variants found"))?.clone()
+                } else {
+                    let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
+                    let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
+                        .with_page_size(12)
+                        .raw_prompt()
+                        .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
+                    
+                    variants.into_iter().nth(selected_option.index)
+                        .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?
+                }
             }
         };
 
