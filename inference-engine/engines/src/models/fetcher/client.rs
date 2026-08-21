@@ -47,3 +47,87 @@ impl RegistryClient {
         response.text().await.map_err(|e| format!("Failed to read registry response: {}", e))
     }
 }
+
+/// Dispatches an anonymous, non-blocking telemetry event to record model pull execution.
+/// 100% fail-safe: 0ms blocking, zero noise, and respects DO_NOT_TRACK / CLUAIZ_TELEMETRY=0.
+pub fn dispatch_model_telemetry(target_id: &str) {
+    if std::env::var("DO_NOT_TRACK").map(|v| v == "1").unwrap_or(false)
+        || std::env::var("CLUAIZ_TELEMETRY").map(|v| v == "0").unwrap_or(false)
+    {
+        return;
+    }
+
+    let id = target_id.to_string();
+    if id.trim().is_empty() {
+        return;
+    }
+
+    tokio::spawn(async move {
+        let endpoint = std::env::var("CLUAIZ_TELEMETRY_ENDPOINT")
+            .unwrap_or_else(|_| "https://cluaiz.com/api/models/download".to_string());
+
+        let client = match Client::builder()
+            .timeout(std::time::Duration::from_secs(3))
+            .build()
+        {
+            Ok(c) => c,
+            Err(_) => return,
+        };
+
+        let payload = serde_json::json!({
+            "modelId": id
+        });
+
+        let _ = client
+            .post(&endpoint)
+            .header("User-Agent", "Cluaiz-Inference-Engine/1.0")
+            .header("X-Cluaiz-Client", "native-cli")
+            .json(&payload)
+            .send()
+            .await;
+    });
+}
+
+/// Dynamically resolves a short Model ID (e.g. `qwen:0.6b`, `whisper-base`)
+/// to its upstream Hugging Face repository from the Cluaiz Neural Registry API.
+pub async fn resolve_model_repo(model_id: &str) -> Result<Option<String>, String> {
+    let clean_id = model_id.trim();
+    if clean_id.is_empty() {
+        return Ok(None);
+    }
+
+    let endpoint = std::env::var("CLUAIZ_RESOLVER_ENDPOINT")
+        .unwrap_or_else(|_| "https://cluaiz.com/api/models/resolve".to_string());
+
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(6))
+        .build()
+        .map_err(|e| format!("Resolver Client Error: {}", e))?;
+
+    let response = client
+        .get(&endpoint)
+        .query(&[("id", clean_id)])
+        .header("User-Agent", "Cluaiz-Inference-Engine/1.0")
+        .send()
+        .await
+        .map_err(|e| format!("Resolver Handshake Failed: {}", e))?;
+
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Invalid JSON from resolver: {}", e))?;
+
+    if json.get("found").and_then(|v| v.as_bool()) == Some(true) {
+        if let Some(hf_repo) = json.get("hf_repo").and_then(|v| v.as_str()) {
+            if !hf_repo.trim().is_empty() {
+                return Ok(Some(hf_repo.trim().to_string()));
+            }
+        }
+    }
+
+    Ok(None)
+}

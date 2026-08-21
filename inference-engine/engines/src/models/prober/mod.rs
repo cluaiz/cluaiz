@@ -250,7 +250,7 @@ impl ModelProber {
         if context_window == "Unknown" {
             match slot {
                 SlotType::Tts | SlotType::Stt => context_window = "30s (3000 frames)".to_string(),
-                SlotType::VisionIngest | SlotType::VisionEmbedding => context_window = "224x224 (Images)".to_string(),
+                SlotType::Ingest | SlotType::Embedding => context_window = "224x224 (Images)".to_string(),
                 _ => context_window = "8k".to_string(),
             }
         }

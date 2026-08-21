@@ -43,15 +43,14 @@ impl UniversalModelClassifier {
 
         // ── 1. Check Audio (TTS vs STT) ──
         let is_hf_tts = HF_TAGS_TTS.iter().any(|&t| tag_clean == t);
-        let is_hf_asr = HF_TAGS_ASR.iter().any(|&t| tag_clean == t);
-        let is_hf_audio_gen = HF_TAGS_AUDIO_GENERAL.iter().any(|&t| tag_clean == t);
+        let is_hf_stt = HF_TAGS_STT.iter().any(|&t| tag_clean == t);
         let is_tts_kw = is_tts_ident(&combined_text);
         let is_asr_kw = is_asr_ident(&combined_text);
 
         if is_hf_tts || is_tts_kw {
             let mut caps = ModelCapabilities::default();
             caps.is_tts = true;
-            let tasks = vec!["text-to-speech".to_string()];
+            let tasks = vec!["text-to-speech".to_string(), "voice-synthesis".to_string()];
             let mut tts_fam = None;
             let fam = TtsTaxonomy::detect_family(&ident_lower, &files_joined);
             if fam != TtsFamily::Unknown {
@@ -66,10 +65,10 @@ impl UniversalModelClassifier {
                 capabilities: caps,
                 tts_family: tts_fam,
             };
-        } else if is_hf_asr || is_asr_kw || is_hf_audio_gen || matches_any(&combined_text, AUDIO_CONVERSION_KEYWORDS) {
+        } else if is_hf_stt || is_asr_kw || matches_any(&combined_text, AUDIO_CONVERSION_KEYWORDS) {
             let mut caps = ModelCapabilities::default();
             caps.is_asr = true;
-            let tasks = vec!["automatic-speech-recognition".to_string()];
+            let tasks = vec!["automatic-speech-recognition".to_string(), "audio-classification".to_string()];
 
             return ClassificationResult {
                 slot: SlotType::Stt,
@@ -80,73 +79,67 @@ impl UniversalModelClassifier {
             };
         }
 
-        // ── 2. Check Text Embedding ──
+        // ── 2. Check Embedding (Unified Text & Vision) ──
         let is_hf_embedding = HF_TAGS_EMBEDDING.iter().any(|&t| tag_clean == t)
             || additional_tags.iter().any(|t| {
                 let tl = t.to_lowercase();
-                tl == "sentence-similarity" || tl == "feature-extraction" || tl == "embeddings"
+                tl == "sentence-similarity" || tl == "feature-extraction" || tl == "embeddings" || tl == "embedding"
             });
-        let is_embed_kw = is_embedding_ident(&ident_lower) || is_embedding_ident(&arch_lower);
+        let is_embed_kw = is_embedding_ident(&combined_text);
 
         if is_hf_embedding || is_embed_kw {
             let mut caps = ModelCapabilities::default();
             caps.is_embedding = true;
             caps.is_feature_extraction = true;
-            let tasks = vec!["embedding".to_string(), "feature-extraction".to_string()];
+            let tasks = vec![
+                "sentence-similarity".to_string(),
+                "feature-extraction".to_string(),
+                "visual-document-retrieval".to_string(),
+            ];
 
             return ClassificationResult {
-                slot: SlotType::TextEmbedding,
-                category: "text-embedding".to_string(),
+                slot: SlotType::Embedding,
+                category: "embedding".to_string(),
                 supported_tasks: tasks,
                 capabilities: caps,
                 tts_family: None,
             };
         }
 
-        // ── 3. Check Vision: Vision-Embedding (CLIP/SigLIP) vs Vision-Ingest (OCR/VLM) ──
-        let is_hf_vision = HF_TAGS_VISION.iter().any(|&t| tag_clean == t);
-        let is_vision_kw = is_vision_ident(&combined_text);
+        // ── 3. Check Ingest (Document AI / OCR / SAM) ──
+        let is_hf_ingest = HF_TAGS_INGEST.iter().any(|&t| tag_clean == t);
+        let is_ingest_kw = is_ingest_ident(&combined_text);
 
-        if is_hf_vision || is_vision_kw {
-            let is_vision_embed = combined_text.contains("clip") 
-                || combined_text.contains("siglip") 
-                || combined_text.contains("colpali") 
-                || combined_text.contains("image-text-similarity");
+        if is_hf_ingest || is_ingest_kw {
+            let mut caps = ModelCapabilities::default();
+            caps.has_vision = true;
+            let tasks = vec![
+                "document-ocr".to_string(),
+                "table-extraction".to_string(),
+                "object-detection".to_string(),
+            ];
 
-            if is_vision_embed {
-                let mut caps = ModelCapabilities::default();
-                caps.has_vision = true;
-                caps.is_embedding = true;
-                let tasks = vec!["vision-embedding".to_string(), "feature-extraction".to_string()];
-
-                return ClassificationResult {
-                    slot: SlotType::VisionEmbedding,
-                    category: "vision-embedding".to_string(),
-                    supported_tasks: tasks,
-                    capabilities: caps,
-                    tts_family: None,
-                };
-            } else {
-                let mut caps = ModelCapabilities::default();
-                caps.has_vision = true;
-                caps.is_vision_chat = true;
-                caps.is_image_to_text = true;
-                let tasks = vec!["image-to-text".to_string(), "document-ingestion".to_string(), "visual-qa".to_string()];
-
-                return ClassificationResult {
-                    slot: SlotType::VisionIngest,
-                    category: "vision-ingest".to_string(),
-                    supported_tasks: tasks,
-                    capabilities: caps,
-                    tts_family: None,
-                };
-            }
+            return ClassificationResult {
+                slot: SlotType::Ingest,
+                category: "ingest".to_string(),
+                supported_tasks: tasks,
+                capabilities: caps,
+                tts_family: None,
+            };
         }
 
-        // ── 4. Default: Chat / Conversational LLM ──
+        // ── 4. Multimodal VLM Chat vs Standard Text Chat ──
+        let is_vlm = is_vlm_chat_ident(&combined_text) || tag_clean == "image-text-to-text" || tag_clean == "image-to-text";
         let mut caps = ModelCapabilities::default();
         caps.chat_completion = true;
-        let tasks = vec!["chat-completion".to_string()];
+        let mut tasks = vec!["chat-completion".to_string(), "text-generation".to_string()];
+        if is_vlm {
+            caps.has_vision = true;
+            caps.is_vision_chat = true;
+            tasks.push("image-text-to-text".to_string());
+            tasks.push("image-to-text".to_string());
+            tasks.push("visual-question-answering".to_string());
+        }
 
         ClassificationResult {
             slot: SlotType::Chat,

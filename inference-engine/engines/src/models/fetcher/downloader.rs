@@ -73,12 +73,29 @@ impl FileDownloader {
             .await
             .map_err(|e| e.to_string())?;
 
+        let pb = if total_size > 0 {
+            let p = indicatif::ProgressBar::new(total_size);
+            p.set_style(
+                indicatif::ProgressStyle::default_bar()
+                    .template("   [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, ETA: {eta})")
+                    .unwrap_or_else(|_| indicatif::ProgressStyle::default_bar())
+                    .progress_chars("━╾─"),
+            );
+            Some(p)
+        } else {
+            None
+        };
+
         let mut stream = response.bytes_stream();
         let mut downloaded: u64 = 0;
         let start_time = std::time::Instant::now();
+        let mut last_flush = std::time::Instant::now();
 
         while let Some(item) = stream.next().await {
             if abort.load(Ordering::Relaxed) {
+                if let Some(ref p) = pb {
+                    p.abandon();
+                }
                 let _ = tokio::fs::remove_file(&part_path).await;
                 return Err("Download aborted by user.".to_string());
             }
@@ -86,6 +103,16 @@ impl FileDownloader {
             let chunk = item.map_err(|e| e.to_string())?;
             file.write_all(&chunk).await.map_err(|e| e.to_string())?;
             downloaded += chunk.len() as u64;
+
+            // Periodically flush buffer to disk every 1s so Windows Explorer shows live size updates
+            if last_flush.elapsed().as_secs_f32() >= 1.0 {
+                let _ = file.flush().await;
+                last_flush = std::time::Instant::now();
+            }
+
+            if let Some(ref p) = pb {
+                p.set_position(downloaded);
+            }
 
             let elapsed = start_time.elapsed().as_secs_f64();
             let speed = if elapsed > 0.0 {
@@ -100,7 +127,11 @@ impl FileDownloader {
                 0.0
             };
 
-            let _ = tx.send(DownloadEvent::Progress(percent, downloaded, total_size, speed, 0)).await;
+            let _ = tx.try_send(DownloadEvent::Progress(percent, downloaded, total_size, speed, 0));
+        }
+
+        if let Some(ref p) = pb {
+            p.finish_and_clear();
         }
 
         file.flush().await.map_err(|e| e.to_string())?;
@@ -110,7 +141,7 @@ impl FileDownloader {
             .await
             .map_err(|e| format!("Failed to finalize downloaded file: {}", e))?;
 
-        let _ = tx.send(DownloadEvent::Complete(dest_path.to_string_lossy().to_string())).await;
+        let _ = tx.try_send(DownloadEvent::Complete(dest_path.to_string_lossy().to_string()));
         Ok(())
     }
 }

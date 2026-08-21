@@ -32,9 +32,8 @@ pub struct RegistryModelMetadata {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SlotType {
     Chat,
-    VisionIngest,
-    VisionEmbedding,
-    TextEmbedding,
+    Ingest,
+    Embedding,
     Tts,
     Stt,
 }
@@ -43,9 +42,8 @@ impl SlotType {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Chat => "chat",
-            Self::VisionIngest => "vision-ingest",
-            Self::VisionEmbedding => "vision-embedding",
-            Self::TextEmbedding => "text-embedding",
+            Self::Ingest => "ingest",
+            Self::Embedding => "embedding",
             Self::Tts => "tts",
             Self::Stt => "stt",
         }
@@ -55,9 +53,8 @@ impl SlotType {
         let cat_lower = cat.to_lowercase().replace('_', "-");
         match cat_lower.as_str() {
             "chat" | "conversational" | "text-generation" => Self::Chat,
-            "vision-ingest" | "vlm" | "vision-chat" | "ocr" | "vision" => Self::VisionIngest,
-            "vision-embedding" | "vision-embed" | "clip" | "siglip" => Self::VisionEmbedding,
-            "text-embedding" | "embedding" | "embeddings" => Self::TextEmbedding,
+            "ingest" | "vision-ingest" | "ocr" | "doc-ai" => Self::Ingest,
+            "embedding" | "embeddings" | "text-embedding" | "vision-embedding" => Self::Embedding,
             "tts" | "text-to-speech" | "audio" => Self::Tts,
             "stt" | "automatic-speech-recognition" | "asr" => Self::Stt,
             _ => Self::Chat,
@@ -124,21 +121,48 @@ impl SlotType {
             Self::Chat => {
                 let mut tasks = vec!["chat-completion".to_string()];
                 if caps.has_vision || caps.is_vision_chat {
-                    tasks.push("vision-chat".to_string());
+                    tasks.push("image-text-to-text".to_string());
+                    tasks.push("image-to-text".to_string());
+                    tasks.push("visual-question-answering".to_string());
+                }
+                if caps.has_video {
+                    tasks.push("video-text-to-text".to_string());
+                }
+                if caps.has_audio {
+                    tasks.push("audio-text-to-text".to_string());
                 }
                 tasks
             }
-            Self::TextEmbedding | Self::VisionEmbedding => {
-                vec!["embedding".to_string(), "feature-extraction".to_string()]
+            Self::Embedding => {
+                vec![
+                    "sentence-similarity".to_string(),
+                    "feature-extraction".to_string(),
+                    "text-classification".to_string(),
+                    "zero-shot-image-classification".to_string(),
+                    "image-feature-extraction".to_string(),
+                    "visual-document-retrieval".to_string(),
+                ]
             }
-            Self::VisionIngest => {
-                vec!["image-to-text".to_string(), "document-ingestion".to_string(), "visual-qa".to_string()]
+            Self::Ingest => {
+                vec![
+                    "document-ocr".to_string(),
+                    "document-question-answering".to_string(),
+                    "table-extraction".to_string(),
+                    "object-detection".to_string(),
+                    "mask-generation".to_string(),
+                ]
             }
             Self::Tts => {
-                vec!["text-to-speech".to_string()]
+                vec![
+                    "text-to-speech".to_string(),
+                    "voice-synthesis".to_string(),
+                ]
             }
             Self::Stt => {
-                vec!["automatic-speech-recognition".to_string()]
+                vec![
+                    "automatic-speech-recognition".to_string(),
+                    "audio-classification".to_string(),
+                ]
             }
         }
     }

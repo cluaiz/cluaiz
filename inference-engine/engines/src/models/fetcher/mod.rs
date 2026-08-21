@@ -6,7 +6,7 @@ pub mod hf_hub;
 
 pub use asset_bundler::AssetBundler;
 pub use auto_heal::AutoHeal;
-pub use client::RegistryClient;
+pub use client::{dispatch_model_telemetry, resolve_model_repo, RegistryClient};
 pub use downloader::{DownloadEvent, FileDownloader};
 pub use hf_hub::{HfTreeItem, HfVariant, HuggingFaceHub};
 
@@ -101,6 +101,9 @@ impl ModelDownloader {
             .map_err(|e| e.to_string())?;
 
         let dest_file = dest_dir.join(file_basename);
+        if !dest_file.exists() {
+            dispatch_model_telemetry(repo_id);
+        }
         FileDownloader::download_single_file(&client, download_url, &dest_file, tx, abort).await?;
 
         // Save manifest if present

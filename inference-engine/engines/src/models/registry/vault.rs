@@ -31,34 +31,25 @@ impl ModelVault {
         "/v1/chat/completions"
     }
 
-    // ─── 2. Vision Ingest Category ──────────────────────────────────────
-    pub fn vision_ingest_dir() -> PathBuf {
-        Self::root_dir().join("vision-ingest")
+    // ─── 2. Ingest Category ─────────────────────────────────────────────
+    pub fn ingest_dir() -> PathBuf {
+        Self::root_dir().join("ingest")
     }
 
-    pub fn vision_ingest_endpoint() -> &'static str {
-        "/v1/ingest/file"
+    pub fn ingest_endpoint() -> &'static str {
+        "/v1/ingest"
     }
 
-    // ─── 3. Vision Embedding Category ───────────────────────────────────
-    pub fn vision_embedding_dir() -> PathBuf {
-        Self::root_dir().join("vision-embedding")
+    // ─── 3. Embedding Category (Unified Text & Vision) ───────────────────
+    pub fn embedding_dir() -> PathBuf {
+        Self::root_dir().join("embedding")
     }
 
-    pub fn vision_embedding_endpoint() -> &'static str {
-        "/v1/embeddings/vision"
-    }
-
-    // ─── 4. Text Embedding Category ─────────────────────────────────────
-    pub fn text_embedding_dir() -> PathBuf {
-        Self::root_dir().join("text-embedding")
-    }
-
-    pub fn text_embedding_endpoint() -> &'static str {
+    pub fn embedding_endpoint() -> &'static str {
         "/v1/embeddings"
     }
 
-    // ─── 5. Text-To-Speech Category ─────────────────────────────────────
+    // ─── 4. Text-To-Speech Category ─────────────────────────────────────
     pub fn tts_dir() -> PathBuf {
         Self::root_dir().join("tts")
     }
@@ -67,7 +58,7 @@ impl ModelVault {
         "/v1/audio/speech"
     }
 
-    // ─── 6. Speech-To-Text Category ─────────────────────────────────────
+    // ─── 5. Speech-To-Text Category ─────────────────────────────────────
     pub fn stt_dir() -> PathBuf {
         Self::root_dir().join("stt")
     }
@@ -76,32 +67,26 @@ impl ModelVault {
         "/v1/audio/transcriptions"
     }
 
-    /// Returns all 6 sovereign category descriptors with their folders and API endpoints
+    /// Returns all 5 sovereign category descriptors with their folders and API endpoints
     pub fn category_descriptors() -> Vec<CategoryDescriptor> {
         vec![
             CategoryDescriptor {
                 category: "chat",
                 path: Self::chat_dir(),
                 endpoint: Self::chat_endpoint(),
-                description: "Pure Text & Multi-Turn Dialogue LLMs",
+                description: "Multi-Turn Dialogue LLMs & Multimodal Chat VLMs (Qwen2.5, Qwen2-VL, Llama 3.3)",
             },
             CategoryDescriptor {
-                category: "vision-ingest",
-                path: Self::vision_ingest_dir(),
-                endpoint: Self::vision_ingest_endpoint(),
-                description: "Document OCR & VLM Image-to-Text Parsers",
+                category: "ingest",
+                path: Self::ingest_dir(),
+                endpoint: Self::ingest_endpoint(),
+                description: "Document OCR, Tables, SAM & Spatial Vision (GOT-OCR, Nougat, Florence-2)",
             },
             CategoryDescriptor {
-                category: "vision-embedding",
-                path: Self::vision_embedding_dir(),
-                endpoint: Self::vision_embedding_endpoint(),
-                description: "Vision Vector Embeddings (CLIP, SigLIP, ColPali)",
-            },
-            CategoryDescriptor {
-                category: "text-embedding",
-                path: Self::text_embedding_dir(),
-                endpoint: Self::text_embedding_endpoint(),
-                description: "Text Vector Embeddings & Rerankers (BGE, Nomic)",
+                category: "embedding",
+                path: Self::embedding_dir(),
+                endpoint: Self::embedding_endpoint(),
+                description: "Unified Multimodal Vector Embeddings (BGE, Nomic, CLIP, SigLIP, ColPali)",
             },
             CategoryDescriptor {
                 category: "tts",
@@ -113,7 +98,7 @@ impl ModelVault {
                 category: "stt",
                 path: Self::stt_dir(),
                 endpoint: Self::stt_endpoint(),
-                description: "Speech-to-Text Audio Transcription (Whisper, SenseVoice)",
+                description: "Speech-to-Text Audio Transcription (Whisper, Moonshine, SenseVoice)",
             },
         ]
     }
@@ -122,9 +107,8 @@ impl ModelVault {
     pub fn category_dirs() -> Vec<(&'static str, PathBuf)> {
         vec![
             ("chat", Self::chat_dir()),
-            ("vision-ingest", Self::vision_ingest_dir()),
-            ("vision-embedding", Self::vision_embedding_dir()),
-            ("text-embedding", Self::text_embedding_dir()),
+            ("ingest", Self::ingest_dir()),
+            ("embedding", Self::embedding_dir()),
             ("tts", Self::tts_dir()),
             ("stt", Self::stt_dir()),
         ]
@@ -135,12 +119,11 @@ impl ModelVault {
         let cat_lower = category.to_lowercase().replace('_', "-");
         match cat_lower.as_str() {
             "chat" => Self::chat_dir(),
-            "vision-ingest" => Self::vision_ingest_dir(),
-            "vision-embedding" => Self::vision_embedding_dir(),
-            "text-embedding" => Self::text_embedding_dir(),
+            "ingest" => Self::ingest_dir(),
+            "embedding" => Self::embedding_dir(),
             "tts" => Self::tts_dir(),
             "stt" => Self::stt_dir(),
-            _ => Self::root_dir().join(cat_lower),
+            _ => Self::chat_dir(),
         }
     }
 
@@ -149,12 +132,11 @@ impl ModelVault {
         let cat_lower = category.to_lowercase().replace('_', "-");
         match cat_lower.as_str() {
             "chat" => Self::chat_endpoint(),
-            "vision-ingest" => Self::vision_ingest_endpoint(),
-            "vision-embedding" => Self::vision_embedding_endpoint(),
-            "text-embedding" => Self::text_embedding_endpoint(),
+            "ingest" => Self::ingest_endpoint(),
+            "embedding" => Self::embedding_endpoint(),
             "tts" => Self::tts_endpoint(),
             "stt" => Self::stt_endpoint(),
-            _ => "/v1/chat/completions",
+            _ => Self::chat_endpoint(),
         }
     }
 }

@@ -8,7 +8,6 @@ pub mod prober;
 pub mod fetcher;
 pub mod registry;
 pub mod manager;
-pub mod entities;
 
 pub use fetcher as fetch;
 

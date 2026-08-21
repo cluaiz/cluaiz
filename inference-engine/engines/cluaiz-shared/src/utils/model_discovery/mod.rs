@@ -68,9 +68,9 @@ impl CapabilityResolver {
         } else if caps.is_asr {
             SlotType::Stt
         } else if caps.is_embedding || caps.is_feature_extraction {
-            SlotType::TextEmbedding
-        } else if caps.has_vision || caps.is_vision_chat || caps.is_image_to_text {
-            SlotType::VisionIngest
+            SlotType::Embedding
+        } else if caps.has_vision && !caps.is_instruct && !caps.chat_completion {
+            SlotType::Ingest
         } else {
             SlotType::Chat
         };
@@ -101,7 +101,7 @@ impl CapabilityResolver {
                 context_window = ctx;
             } else if slot == SlotType::Tts || slot == SlotType::Stt {
                 context_window = "30s (3000 frames)".to_string();
-            } else if slot == SlotType::VisionIngest || slot == SlotType::VisionEmbedding {
+            } else if slot == SlotType::Ingest || slot == SlotType::Embedding {
                 context_window = "224x224 (Images)".to_string();
             }
         }

@@ -101,6 +101,7 @@ impl ModelManager {
                         let _ = tokio::fs::create_dir_all(parent).await;
                     }
                     if !dest_file.exists() {
+                        crate::models::fetcher::client::dispatch_model_telemetry(&manifest.id);
                         let download_url = format!("{}/resolve/main/{}", repo, rel_path);
                         println!("   ├─ [{}/{}] Fetching {}...", idx + 1, all_files.len(), rel_path.yellow());
                         if let Err(e) = FileDownloader::download_single_file(&client, &download_url, &dest_file, tx.clone(), abort.clone()).await {
