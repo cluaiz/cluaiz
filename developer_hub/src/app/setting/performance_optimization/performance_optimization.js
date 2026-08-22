@@ -375,72 +375,101 @@ export async function mount(container) {
 
         let chatOptions = [];
         let vectorOptions = [];
-        let visionOptions = [];
-        let audioOptions = [];
+        let ingestOptions = [];
+        let ttsOptions = [];
+        let sttOptions = [];
 
         let activeChat = permData.active_slots?.chat_slot?.model_id || permData.chat_models?.text || '';
         let activeVector = permData.active_slots?.embed_slot?.model_id || permData.vector_models?.text || '';
-        let activeVision = permData.active_slots?.vision_slot?.model_id || permData.vector_models?.vision || '';
-        let activeAudio = permData.active_slots?.audio_slot?.model_id || permData.vector_models?.audio || '';
+        let activeIngest = permData.active_slots?.ingest_slot?.model_id || permData.active_slots?.vision_slot?.model_id || permData.vector_models?.vision || '';
+        let activeTts = permData.active_slots?.tts_slot?.model_id || '';
+        let activeStt = permData.active_slots?.stt_slot?.model_id || permData.active_slots?.audio_slot?.model_id || permData.vector_models?.audio || '';
 
-        // Extract models strictly by registry category if available
-        let chatModels = permData.available_chat_models || [];
-        let vectorModels = permData.available_vector_models || [];
-        let visionModels = permData.available_vision_models || [];
-        let audioModels = permData.available_audio_models || [];
+        // Extract models strictly by registry category & taxonomy heuristics
+        let chatModels = [];
+        let vectorModels = [];
+        let ingestModels = [];
+        let ttsModels = [];
+        let sttModels = [];
 
         if (Object.keys(registryMap).length > 0) {
-            chatModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'chat');
-            vectorModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'embedding');
-            visionModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'vision');
-            audioModels = Object.keys(registryMap).filter(id => registryMap[id].category === 'audio');
+            chatModels = Object.keys(registryMap).filter(id => {
+                const m = registryMap[id];
+                return m.category === 'chat' || (!m.category && !id.includes('embed') && !id.includes('whisper') && !id.includes('tts') && !id.includes('ocr'));
+            });
+            vectorModels = Object.keys(registryMap).filter(id => {
+                const m = registryMap[id];
+                return m.category === 'embedding' || id.includes('embed') || id.includes('bge') || id.includes('nomic') || id.includes('minilm');
+            });
+            ingestModels = Object.keys(registryMap).filter(id => {
+                const m = registryMap[id];
+                return m.category === 'ingest' || m.category === 'vision' || id.includes('ocr') || id.includes('nougat') || id.includes('florence') || id.includes('table');
+            });
+            ttsModels = Object.keys(registryMap).filter(id => {
+                const m = registryMap[id];
+                return m.category === 'tts' || id.includes('kokoro') || id.includes('piper') || id.includes('melotts') || id.includes('tts');
+            });
+            sttModels = Object.keys(registryMap).filter(id => {
+                const m = registryMap[id];
+                return m.category === 'stt' || m.category === 'audio' || id.includes('whisper') || id.includes('moonshine') || id.includes('sensevoice');
+            });
         }
 
         if (chatModels.length > 0) chatOptions = makeOptions(chatModels);
         if (activeChat && !chatOptions.find(o => o.value === activeChat)) {
-            if (!registryMap[activeChat] || registryMap[activeChat].category === 'chat') {
-                chatOptions.unshift({ value: activeChat, label: activeChat });
-            }
+            chatOptions.unshift({ value: activeChat, label: activeChat });
         }
 
         if (vectorModels.length > 0) vectorOptions = makeOptions(vectorModels);
         if (activeVector && !vectorOptions.find(o => o.value === activeVector)) {
-            if (!registryMap[activeVector] || registryMap[activeVector].category === 'embedding') {
-                vectorOptions.unshift({ value: activeVector, label: activeVector });
-            }
+            vectorOptions.unshift({ value: activeVector, label: activeVector });
         }
 
-        if (visionModels.length > 0) visionOptions = makeOptions(visionModels);
-        if (activeVision && !visionOptions.find(o => o.value === activeVision)) {
-            if (!registryMap[activeVision] || registryMap[activeVision].category === 'vision') {
-                visionOptions.unshift({ value: activeVision, label: activeVision });
-            }
+        if (ingestModels.length > 0) ingestOptions = makeOptions(ingestModels);
+        if (activeIngest && !ingestOptions.find(o => o.value === activeIngest)) {
+            ingestOptions.unshift({ value: activeIngest, label: activeIngest });
         }
 
-        if (audioModels.length > 0) audioOptions = makeOptions(audioModels);
-        if (activeAudio && !audioOptions.find(o => o.value === activeAudio)) {
-            if (!registryMap[activeAudio] || registryMap[activeAudio].category === 'audio') {
-                audioOptions.unshift({ value: activeAudio, label: activeAudio });
-            }
+        if (ttsModels.length > 0) ttsOptions = makeOptions(ttsModels);
+        if (activeTts && !ttsOptions.find(o => o.value === activeTts)) {
+            ttsOptions.unshift({ value: activeTts, label: activeTts });
+        }
+
+        if (sttModels.length > 0) sttOptions = makeOptions(sttModels);
+        if (activeStt && !sttOptions.find(o => o.value === activeStt)) {
+            sttOptions.unshift({ value: activeStt, label: activeStt });
         }
 
         chatOptions.unshift({ value: '', label: 'Select Chat Model...' });
         vectorOptions.unshift({ value: '', label: 'Select Vector Model...' });
-        visionOptions.unshift({ value: '', label: 'Select Vision Model...' });
-        audioOptions.unshift({ value: '', label: 'Select Audio Model...' });
+        ingestOptions.unshift({ value: '', label: 'Select Document & Ingest Model...' });
+        ttsOptions.unshift({ value: '', label: 'Select Text-to-Speech (TTS) Model...' });
+        sttOptions.unshift({ value: '', label: 'Select Speech-to-Text (STT) Model...' });
 
         // Helper function to render Rich Model Card
         const renderModelCard = (cardElementId, selectedModelId) => {
             const cardEl = container.querySelector('#' + cardElementId);
             if (!cardEl) return;
 
-            if (!selectedModelId || !registryMap[selectedModelId]) {
+            if (!selectedModelId) {
                 cardEl.style.display = 'none';
                 cardEl.innerHTML = '';
                 return;
             }
 
-            const modelData = registryMap[selectedModelId];
+            const modelData = registryMap[selectedModelId] ||
+                Object.values(registryMap).find(m =>
+                    (m && m.id && m.id.toLowerCase() === selectedModelId.toLowerCase()) ||
+                    (m && m.name && m.name.toLowerCase() === selectedModelId.toLowerCase()) ||
+                    (m && m.id && selectedModelId.toLowerCase().includes(m.id.toLowerCase())) ||
+                    (m && m.name && selectedModelId.toLowerCase().includes(m.name.toLowerCase()))
+                );
+
+            if (!modelData) {
+                cardEl.style.display = 'none';
+                cardEl.innerHTML = '';
+                return;
+            }
             const meta = modelData.metadata || {};
             const format = (modelData.format_type || 'gguf').toUpperCase();
             const bitDepth = meta.bit_depth || 'N/A';
@@ -1076,6 +1105,7 @@ export async function mount(container) {
             }
         };
 
+        // 1. Chat Model Dropdown
         const chatContainer = container.querySelector('#container-chat-model');
         if (chatContainer) {
             const chatDropdown = new Dropdown({
@@ -1094,6 +1124,7 @@ export async function mount(container) {
             renderModelCard('card-chat-model', activeChat);
         }
 
+        // 2. Embedding & Vector Model Dropdown
         const vectorContainer = container.querySelector('#container-vector-model');
         if (vectorContainer) {
             const vectorDropdown = new Dropdown({
@@ -1112,40 +1143,67 @@ export async function mount(container) {
             renderModelCard('card-vector-model', activeVector);
         }
 
-        const visionContainer = container.querySelector('#container-vision-model');
-        if (visionContainer) {
-            const visionDropdown = new Dropdown({
-                options: visionOptions,
-                defaultValue: activeVision,
+        // 3. Document & Ingest Model Dropdown
+        const ingestContainer = container.querySelector('#container-ingest-model');
+        if (ingestContainer) {
+            const ingestDropdown = new Dropdown({
+                options: ingestOptions,
+                defaultValue: activeIngest,
                 onChange: async (val) => {
-                    console.log('Vision Model changed to:', val);
+                    console.log('Ingest Model changed to:', val);
                     if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.ingest_slot) permData.active_slots.ingest_slot = {};
+                    permData.active_slots.ingest_slot.model_id = val !== '' ? val : null;
+                    // Legacy alias
                     if (!permData.active_slots.vision_slot) permData.active_slots.vision_slot = {};
                     permData.active_slots.vision_slot.model_id = val !== '' ? val : null;
                     await updatePermissionSetting('active_slots', permData.active_slots);
-                    renderModelCard('card-vision-model', val);
+                    renderModelCard('card-ingest-model', val);
                 }
             });
-            visionContainer.appendChild(visionDropdown.render());
-            renderModelCard('card-vision-model', activeVision);
+            ingestContainer.appendChild(ingestDropdown.render());
+            renderModelCard('card-ingest-model', activeIngest);
         }
 
-        const audioContainer = container.querySelector('#container-audio-model');
-        if (audioContainer) {
-            const audioDropdown = new Dropdown({
-                options: audioOptions,
-                defaultValue: activeAudio,
+        // 4. Text-To-Speech (TTS) Model Dropdown
+        const ttsContainer = container.querySelector('#container-tts-model');
+        if (ttsContainer) {
+            const ttsDropdown = new Dropdown({
+                options: ttsOptions,
+                defaultValue: activeTts,
                 onChange: async (val) => {
-                    console.log('Audio Model changed to:', val);
+                    console.log('TTS Model changed to:', val);
                     if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.tts_slot) permData.active_slots.tts_slot = {};
+                    permData.active_slots.tts_slot.model_id = val !== '' ? val : null;
+                    await updatePermissionSetting('active_slots', permData.active_slots);
+                    renderModelCard('card-tts-model', val);
+                }
+            });
+            ttsContainer.appendChild(ttsDropdown.render());
+            renderModelCard('card-tts-model', activeTts);
+        }
+
+        // 5. Speech-To-Text (STT) Model Dropdown
+        const sttContainer = container.querySelector('#container-stt-model');
+        if (sttContainer) {
+            const sttDropdown = new Dropdown({
+                options: sttOptions,
+                defaultValue: activeStt,
+                onChange: async (val) => {
+                    console.log('STT Model changed to:', val);
+                    if (!permData.active_slots) permData.active_slots = {};
+                    if (!permData.active_slots.stt_slot) permData.active_slots.stt_slot = {};
+                    permData.active_slots.stt_slot.model_id = val !== '' ? val : null;
+                    // Legacy alias
                     if (!permData.active_slots.audio_slot) permData.active_slots.audio_slot = {};
                     permData.active_slots.audio_slot.model_id = val !== '' ? val : null;
                     await updatePermissionSetting('active_slots', permData.active_slots);
-                    renderModelCard('card-audio-model', val);
+                    renderModelCard('card-stt-model', val);
                 }
             });
-            audioContainer.appendChild(audioDropdown.render());
-            renderModelCard('card-audio-model', activeAudio);
+            sttContainer.appendChild(sttDropdown.render());
+            renderModelCard('card-stt-model', activeStt);
         }
     } catch (e) {
         console.error('Failed to setup models:', e);

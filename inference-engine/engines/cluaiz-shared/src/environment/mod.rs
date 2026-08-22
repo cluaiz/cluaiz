@@ -99,14 +99,14 @@ impl EnvironmentManager {
     pub fn chat_models_dir(&self) -> PathBuf {
         self.models_dir().join("chat")
     }
-    pub fn vision_ingest_models_dir(&self) -> PathBuf {
-        self.models_dir().join("vision-ingest")
+    pub fn ingest_models_dir(&self) -> PathBuf {
+        self.models_dir().join("ingest")
     }
-    pub fn vision_embedding_models_dir(&self) -> PathBuf {
-        self.models_dir().join("vision-embedding")
+    pub fn embedding_models_dir(&self) -> PathBuf {
+        self.models_dir().join("embedding")
     }
     pub fn text_embedding_models_dir(&self) -> PathBuf {
-        self.models_dir().join("text-embedding")
+        self.embedding_models_dir()
     }
     pub fn tts_models_dir(&self) -> PathBuf {
         self.models_dir().join("tts")
@@ -217,16 +217,16 @@ impl EnvironmentManager {
         Ok(dir)
     }
 
-    pub fn ensure_vision_ingest_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.vision_ingest_models_dir();
+    pub fn ensure_ingest_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.ingest_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
         Ok(dir)
     }
 
-    pub fn ensure_vision_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.vision_embedding_models_dir();
+    pub fn ensure_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.embedding_models_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
@@ -234,11 +234,7 @@ impl EnvironmentManager {
     }
 
     pub fn ensure_text_embedding_models_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.text_embedding_models_dir();
-        if !dir.exists() {
-            std::fs::create_dir_all(&dir)?;
-        }
-        Ok(dir)
+        self.ensure_embedding_models_dir()
     }
 
     pub fn ensure_tts_models_dir(&self) -> std::io::Result<PathBuf> {

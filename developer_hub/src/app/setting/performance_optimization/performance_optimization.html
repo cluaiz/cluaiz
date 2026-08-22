@@ -44,48 +44,64 @@
 
 
 
+        <!-- 1. Chat Model Slot -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
                     <span class="setting-label">Chat Model</span>
-                    <span class="setting-desc">The primary generative AI model loaded into memory for conversation.</span>
+                    <span class="setting-desc">Primary conversational LLM & Multimodal Chat VLM loaded into memory.</span>
                 </div>
                 <div class="setting-control" id="container-chat-model"></div>
             </div>
             <div id="card-chat-model" class="model-info-card" style="display: none;"></div>
         </div>
 
+        <!-- 2. Embedding & Vector Model Slot -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
-                    <span class="setting-label">Text Vector Model</span>
-                    <span class="setting-desc">The text embedding model used for semantic graph memory and search.</span>
+                    <span class="setting-label">Embedding & Vector Model</span>
+                    <span class="setting-desc">Unified multimodal dense vector embedding model for semantic retrieval and search.</span>
                 </div>
                 <div class="setting-control" id="container-vector-model"></div>
             </div>
             <div id="card-vector-model" class="model-info-card" style="display: none;"></div>
         </div>
 
+        <!-- 3. Document & Ingest Model Slot -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
-                    <span class="setting-label">Vision & Vector Model</span>
-                    <span class="setting-desc">The multimodal and visual embedding model used for image and visual processing tasks.</span>
+                    <span class="setting-label">Document & Ingest Model</span>
+                    <span class="setting-desc">Specialized document OCR, table extraction, and spatial vision model.</span>
                 </div>
-                <div class="setting-control" id="container-vision-model"></div>
+                <div class="setting-control" id="container-ingest-model"></div>
             </div>
-            <div id="card-vision-model" class="model-info-card" style="display: none;"></div>
+            <div id="card-ingest-model" class="model-info-card" style="display: none;"></div>
         </div>
 
+        <!-- 4. Text-To-Speech (TTS) Model Slot -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
-                    <span class="setting-label">Audio Model</span>
-                    <span class="setting-desc">The automatic speech recognition (ASR) and audio processing model.</span>
+                    <span class="setting-label">Text-To-Speech (TTS) Model</span>
+                    <span class="setting-desc">Neural voice synthesis and speech generation model.</span>
                 </div>
-                <div class="setting-control" id="container-audio-model"></div>
+                <div class="setting-control" id="container-tts-model"></div>
             </div>
-            <div id="card-audio-model" class="model-info-card" style="display: none;"></div>
+            <div id="card-tts-model" class="model-info-card" style="display: none;"></div>
+        </div>
+
+        <!-- 5. Speech-To-Text (STT) Model Slot -->
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="setting-info">
+                    <span class="setting-label">Speech-To-Text (STT) Model</span>
+                    <span class="setting-desc">Automatic speech recognition (ASR) and audio transcription model.</span>
+                </div>
+                <div class="setting-control" id="container-stt-model"></div>
+            </div>
+            <div id="card-stt-model" class="model-info-card" style="display: none;"></div>
         </div>
     </div>
 

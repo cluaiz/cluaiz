@@ -20,9 +20,11 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/engine/skip_think", post(system::skip_think))
         .route("/v1/system/cmd", post(system::execute_cmd))
         
-        // ── External Compatible Streaming & Embeddings API ──
+        // ── External Compatible Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
         .route("/v1/embeddings", post(embeddings::generate_embeddings))
+        .route("/v1/audio/speech", post(audio::speech))
+        .route("/v1/audio/transcriptions", post(audio::transcriptions))
         .route("/v1/audio/execute", post(audio::execute_audio))
         
         // ── External Compatible Models API ──
@@ -82,6 +84,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/execute/{component_name}/{function_name}", post(crate::handlers::cel_handler::execute_dynamic))
 
         // ── Vector Ingest API ──
+        .route("/v1/ingest", post(crate::handlers::ingest::file_ingest))
         .route("/v1/ingest/file", post(crate::handlers::ingest::file_ingest))
 
         // ── Hardware Benchmark Suite ──

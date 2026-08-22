@@ -313,16 +313,27 @@ impl PermissionSchema {
                 }
             }
 
-            // Assign tasks based on dynamic architecture categories (e.g. whisper, bert)
+            // Assign tasks based on dynamic architecture categories (e.g. whisper, piper, kokoro, bert)
             let mut tasks = Vec::new();
-            if detected_arch == "whisper" || has_audio {
+            if detected_arch == "whisper" || clean_id.contains("whisper") || clean_id.contains("moonshine") || clean_id.contains("sensevoice") {
                 tasks.push("speech_to_text".to_string());
+                tasks.push("automatic-speech-recognition".to_string());
+            } else if clean_id.contains("kokoro") || clean_id.contains("piper") || clean_id.contains("melotts") || clean_id.contains("tts") {
                 tasks.push("text_to_speech".to_string());
-            } else if detected_arch == "bert" || format == "safetensors" || clean_id.contains("embedding") {
+                tasks.push("voice-synthesis".to_string());
+            } else if has_audio {
+                tasks.push("speech_to_text".to_string());
+            } else if detected_arch == "bert" || format == "safetensors" || clean_id.contains("embedding") || clean_id.contains("embed") {
+                tasks.push("sentence-similarity".to_string());
+                tasks.push("feature-extraction".to_string());
                 tasks.push("embedding".to_string());
                 if has_vision {
                     tasks.push("vision-embedding".to_string());
                 }
+            } else if clean_id.contains("got-ocr") || clean_id.contains("nougat") || clean_id.contains("florence") || clean_id.contains("table") {
+                tasks.push("document-ocr".to_string());
+                tasks.push("table-extraction".to_string());
+                tasks.push("spatial-vision".to_string());
             } else {
                 tasks.push("text-generation".to_string());
                 tasks.push("chat-completion".to_string());
@@ -349,14 +360,21 @@ impl PermissionSchema {
                 }
             }
         }
-        if let Some(slot) = self.active_slots.get("vision_slot") {
+        if let Some(slot) = self.active_slots.get("ingest_slot").or_else(|| self.active_slots.get("vision_slot")) {
             if let Some(ref mid) = slot.model_id {
                 if !mid.trim().is_empty() {
                     self.vector_models.vision = Some(mid.clone());
                 }
             }
         }
-        if let Some(slot) = self.active_slots.get("audio_slot") {
+        if let Some(slot) = self.active_slots.get("tts_slot") {
+            if let Some(ref mid) = slot.model_id {
+                if !mid.trim().is_empty() {
+                    self.vector_models.audio = Some(mid.clone());
+                }
+            }
+        }
+        if let Some(slot) = self.active_slots.get("stt_slot").or_else(|| self.active_slots.get("audio_slot")) {
             if let Some(ref mid) = slot.model_id {
                 if !mid.trim().is_empty() {
                     self.vector_models.audio = Some(mid.clone());
@@ -384,23 +402,48 @@ impl PermissionSchema {
             });
         }
 
-        // 3. Process Vision Model
-        if let Some(ref vision_id) = self.vector_models.vision {
-            let (format, _, _, _) = get_model_props(vision_id);
+        // 3. Process Ingest / Document AI Model
+        if let Some(ref ingest_id) = self.vector_models.vision {
+            let (format, tasks, _, _) = get_model_props(ingest_id);
+            let mut final_tasks = tasks;
+            if final_tasks.is_empty() {
+                final_tasks = vec!["document-ocr".to_string(), "image-to-text".to_string(), "spatial-vision".to_string()];
+            }
+            new_slots.insert("ingest_slot".to_string(), SlotConfig {
+                model_id: Some(ingest_id.clone()),
+                format_type: Some(format.clone()),
+                supported_tasks: final_tasks.clone(),
+            });
+            // Legacy alias
             new_slots.insert("vision_slot".to_string(), SlotConfig {
-                model_id: Some(vision_id.clone()),
+                model_id: Some(ingest_id.clone()),
                 format_type: Some(format),
-                supported_tasks: vec!["vision-chat".to_string(), "image-to-text".to_string(), "visual-question-answering".to_string()],
+                supported_tasks: final_tasks,
             });
         }
 
-        // 4. Process Audio Model
+        // 4. Process Audio Slots (TTS & STT)
         if let Some(ref audio_id) = self.vector_models.audio {
-            let (format, _, _, _) = get_model_props(audio_id);
+            let (format, tasks, _, _) = get_model_props(audio_id);
+            let clean = audio_id.to_lowercase();
+            if clean.contains("kokoro") || clean.contains("piper") || clean.contains("tts") {
+                new_slots.insert("tts_slot".to_string(), SlotConfig {
+                    model_id: Some(audio_id.clone()),
+                    format_type: Some(format.clone()),
+                    supported_tasks: vec!["text_to_speech".to_string(), "voice-synthesis".to_string()],
+                });
+            } else {
+                new_slots.insert("stt_slot".to_string(), SlotConfig {
+                    model_id: Some(audio_id.clone()),
+                    format_type: Some(format.clone()),
+                    supported_tasks: vec!["speech_to_text".to_string(), "automatic-speech-recognition".to_string()],
+                });
+            }
+            // Legacy alias
             new_slots.insert("audio_slot".to_string(), SlotConfig {
                 model_id: Some(audio_id.clone()),
                 format_type: Some(format),
-                supported_tasks: vec!["speech_to_text".to_string(), "text_to_speech".to_string()],
+                supported_tasks: tasks,
             });
         }
 

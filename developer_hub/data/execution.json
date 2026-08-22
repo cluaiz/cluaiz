@@ -1,0 +1,95 @@
+{
+  "group": "Dynamic Execution & CEL",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/v1/cel/execute",
+      "desc": "Executes raw CEL (cluaiz Execution Language) scripts natively for dynamic agentic logic and algorithmic workflows.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/cel_execute.md",
+      "params": [
+        {
+          "name": "script",
+          "type": "string",
+          "req": true,
+          "desc": "The raw CEL script payload.",
+          "default": "agent = Agent::new(\"researcher\");\nagent.run();"
+        },
+        {
+          "name": "context",
+          "type": "object",
+          "req": false,
+          "desc": "Execution context variables and timeout settings.",
+          "default": {
+            "timeout_ms": 5000
+          }
+        }
+      ],
+      "request_payload": "{\n  \"script\": \"let data = fetch('https://api.example.com/data');\\nreturn process(data);\",\n  \"context\": {\n    \"timeout_ms\": 5000\n  }\n}",
+      "response": "{\n  \"success\": true,\n  \"result\": {\n    \"processed_items\": 42,\n    \"status\": \"completed\"\n  },\n  \"execution_time_ms\": 124,\n  \"error\": null\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/cel/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"script\": \"return 42;\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\"script\": \"return 42;\"}\nres = requests.post('http://localhost:8000/v1/cel/execute', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/cel/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ script: 'return 42;' })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/cel/execute\")\n    .json(&serde_json::json!({ \"script\": \"return 42;\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/execute/{component}/{function}",
+      "desc": "Dynamic ecosystem execution. Directly calls an exposed FFI function inside a component (e.g. extension, plugin).",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/execute_dynamic.md",
+      "params": [
+        {
+          "name": "args",
+          "type": "array",
+          "req": true,
+          "desc": "Array of arguments to pass to the function.",
+          "default": [
+            "arg1",
+            100
+          ]
+        }
+      ],
+      "request_payload": "{\n  \"args\": [\n    \"search_query\",\n    {\"limit\": 10}\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"result\": {\n    \"items\": [\"Result 1\", \"Result 2\"]\n  },\n  \"execution_time_ms\": 45\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/execute/plugin_name/function_name \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"args\": [\"query\", 10]}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\npayload = {\"args\": [\"query\", 10]}\nres = requests.post('http://localhost:8000/v1/execute/plugin_name/function_name', json=payload)\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/v1/execute/plugin_name/function_name', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ args: ['query', 10] })\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/execute/plugin_name/function_name\")\n    .json(&serde_json::json!({ \"args\": [\"query\", 10] }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
+    }
+  ]
+}

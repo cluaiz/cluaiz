@@ -627,6 +627,82 @@ fn generate_tts_audio_base64(text: &str) -> String {
     format!("data:audio/wav;base64,{}", encoded)
 }
 
+// ─── POST /v1/audio/speech ──────────────────────────────────────────
+pub async fn speech(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let model = payload.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let input_text = payload.get("input").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let voice = payload.get("voice").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let speed = payload.get("speed").and_then(|v| v.as_f64()).map(|s| s as f32);
+
+    let exec_req = AudioExecuteRequest {
+        model,
+        task: Some("text_to_speech".to_string()),
+        instruction: None,
+        input_source: InputSource {
+            source_type: "text".to_string(),
+            data: input_text,
+        },
+        parameters: Some(AudioParameters {
+            speed,
+            voice_id: voice,
+            ..Default::default()
+        }),
+        stream: Some(false),
+        keep_alive: None,
+    };
+
+    execute_audio(State(state), Json(exec_req)).await
+}
+
+// ─── POST /v1/audio/transcriptions ──────────────────────────────────
+pub async fn transcriptions(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let model = payload.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let language = payload.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let temp = payload.get("temperature").and_then(|v| v.as_f64()).map(|s| s as f32);
+    let timestamps = payload.get("timestamps").and_then(|v| v.as_bool());
+
+    let input_source = if let Some(is) = payload.get("input_source") {
+        serde_json::from_value::<InputSource>(is.clone()).unwrap_or_else(|_| InputSource {
+            source_type: "url".to_string(),
+            data: "".to_string(),
+        })
+    } else if let Some(file_str) = payload.get("file").and_then(|v| v.as_str()) {
+        InputSource {
+            source_type: "file".to_string(),
+            data: file_str.to_string(),
+        }
+    } else {
+        InputSource {
+            source_type: "url".to_string(),
+            data: "".to_string(),
+        }
+    };
+
+    let exec_req = AudioExecuteRequest {
+        model,
+        task: Some("speech_to_text".to_string()),
+        instruction: payload.get("prompt").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        input_source,
+        parameters: Some(AudioParameters {
+            temperature: temp,
+            language,
+            timestamps,
+            ..Default::default()
+        }),
+        stream: payload.get("stream").and_then(|v| v.as_bool()),
+        keep_alive: None,
+    };
+
+    execute_audio(State(state), Json(exec_req)).await
+}
+
+
 
 
 

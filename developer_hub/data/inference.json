@@ -4,14 +4,14 @@
     {
       "method": "POST",
       "path": "/v1/chat/completions",
-      "desc": "OpenAI-compatible chat completions endpoint. Fully supports streaming and JSON mode.",
+      "desc": "OpenAI-compatible conversational dialogue and multimodal VLM endpoint. Supports streaming, system prompts, JSON mode, and image/video inputs.",
       "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_completions.md",
       "params": [
         {
           "name": "messages",
           "type": "array",
           "req": true,
-          "desc": "Array of message objects (role, content).",
+          "desc": "Array of message objects (role, content). Content supports text strings or multimodal arrays (text + image_url).",
           "default": [
             {
               "role": "system",
@@ -35,89 +35,39 @@
           ]
         },
         {
-          "name": "stream",
-          "type": "boolean",
-          "req": false,
-          "desc": "Whether to stream tokens via SSE.",
-          "default": true
-        },
-        {
-          "name": "think_mode",
-          "type": "string",
-          "req": false,
-          "desc": "Enable or disable think mode (On/Off).",
-          "default": "On"
-        },
-        {
-          "name": "response_length",
-          "type": "object",
-          "req": false,
-          "desc": "Configuration object for response length.",
-          "default": {
-            "think_on": {
-              "Think_Lite": [
-                "Think_Deep",
-                "Think_Lite",
-                "Auto"
-              ]
-            },
-            "think_off": {
-              "Long_Answer": [
-                "Long_Answer",
-                "Short_Answer",
-                "Auto"
-              ]
-            }
-          }
-        },
-        {
           "name": "model",
           "type": "string",
           "req": false,
-          "desc": "Model ID to use.",
-          "default": "bonsai:8b"
+          "desc": "Model ID to use for generation.",
+          "default": "qwen2.5-7b-instruct"
+        },
+        {
+          "name": "stream",
+          "type": "boolean",
+          "req": false,
+          "desc": "Whether to stream tokens in real-time via Server-Sent Events (SSE).",
+          "default": true
         },
         {
           "name": "temperature",
           "type": "number",
           "req": false,
-          "desc": "Sampling temperature (0.0 to 2.0). Overrides the response_length mapping.",
-          "default": null
-        },
-        {
-          "name": "top_p",
-          "type": "number",
-          "req": false,
-          "desc": "Nucleus sampling probability.",
-          "default": null
-        },
-        {
-          "name": "top_k",
-          "type": "integer",
-          "req": false,
-          "desc": "Top-K sampling limit.",
-          "default": null
-        },
-        {
-          "name": "min_p",
-          "type": "number",
-          "req": false,
-          "desc": "Minimum P sampling limit.",
-          "default": null
-        },
-        {
-          "name": "repetition_penalty",
-          "type": "number",
-          "req": false,
-          "desc": "Penalty for token repetition.",
-          "default": null
+          "desc": "Sampling temperature (0.0 to 2.0).",
+          "default": 0.7
         },
         {
           "name": "max_tokens",
           "type": "integer",
           "req": false,
           "desc": "Maximum number of tokens to generate.",
-          "default": null
+          "default": 2048
+        },
+        {
+          "name": "top_p",
+          "type": "number",
+          "req": false,
+          "desc": "Nucleus sampling probability threshold.",
+          "default": 0.95
         },
         {
           "name": "keep_alive",
@@ -127,133 +77,157 @@
           "default": null
         }
       ],
-      "request_payload": "{\n  \"model\": \"qwen2-vl\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"Describe this image in detail.\"\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg\"\n          }\n        }\n      ]\n    }\n  ],\n  \"think_mode\": \"Auto\",\n  \"stream\": true\n}",
-      "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"llama-3-8b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly-emerging technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
+      "request_payload": "{\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! Explain quantum computing in simple terms.\"\n    }\n  ],\n  \"stream\": true,\n  \"temperature\": 0.7,\n  \"max_tokens\": 2048\n}",
+      "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly evolving technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"llama-3-8b-instruct\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n  }'"
+          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"qwen2.5-7b-instruct\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n  }'"
         },
         {
           "language": "python",
           "title": "Python (OpenAI Client)",
-          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.chat.completions.create(\n    model=\"llama-3-8b-instruct\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Explain gravity.\"}\n    ]\n)\nprint(response.choices[0].message.content)"
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.chat.completions.create(\n    model=\"qwen2.5-7b-instruct\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Explain gravity.\"}\n    ]\n)\nprint(response.choices[0].message.content)"
         },
         {
           "language": "javascript",
           "title": "Node.js (OpenAI Client)",
-          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: 'user', content: 'Explain gravity.' }],\n    model: 'llama-3-8b-instruct',\n  });\n  console.log(completion.choices[0].message.content);\n}\nmain();"
+          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: 'user', content: 'Explain gravity.' }],\n    model: 'qwen2.5-7b-instruct',\n  });\n  console.log(completion.choices[0].message.content);\n}\nmain();"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/v1/cel/execute",
-      "desc": "Executes raw CEL (cluaiz Execution Language) scripts natively. Used for dynamic agentic logic.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/cel_execute.md",
+      "path": "/v1/embeddings",
+      "desc": "OpenAI-compatible multimodal dense vector embedding endpoint. Encodes text chunks, search queries, or visual assets into normalized float vectors.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/embeddings.md",
       "params": [
         {
-          "name": "script",
+          "name": "input",
+          "type": "string / array",
+          "req": true,
+          "desc": "Input text, array of strings, or image base64 data to embed.",
+          "default": [
+            "The quick brown fox jumps over the lazy dog",
+            "Dense vector embeddings for semantic search"
+          ]
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "Embedding model name (e.g. bge-m3, nomic-embed-text).",
+          "default": "bge-m3"
+        },
+        {
+          "name": "encoding_format",
+          "type": "string",
+          "req": false,
+          "desc": "Format for returning the embeddings ('float' or 'base64').",
+          "default": "float"
+        }
+      ],
+      "request_payload": "{\n  \"model\": \"bge-m3\",\n  \"input\": [\n    \"The quick brown fox jumps over the lazy dog\",\n    \"Dense vector embeddings for semantic search\"\n  ],\n  \"encoding_format\": \"float\"\n}",
+      "response": "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"object\": \"embedding\",\n      \"embedding\": [\n        0.0123,\n        -0.0456,\n        0.0789\n      ],\n      \"index\": 0\n    },\n    {\n      \"object\": \"embedding\",\n      \"embedding\": [\n        -0.0987,\n        0.0654,\n        0.0321\n      ],\n      \"index\": 1\n    }\n  ],\n  \"model\": \"bge-m3\",\n  \"usage\": {\n    \"prompt_tokens\": 15,\n    \"total_tokens\": 15\n  }\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/embeddings \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"bge-m3\",\n    \"input\": [\"Semantic retrieval in Rust\", \"AI inference\"]\n  }'"
+        },
+        {
+          "language": "python",
+          "title": "Python (OpenAI Client)",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.embeddings.create(\n    model=\"bge-m3\",\n    input=[\"Semantic retrieval in Rust\", \"AI inference\"]\n)\nprint(f\"Embedding dimension: {len(response.data[0].embedding)}\")"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js (OpenAI Client)",
+          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const response = await openai.embeddings.create({\n    model: 'bge-m3',\n    input: ['Semantic retrieval in Rust', 'AI inference']\n  });\n  console.log(`Generated ${response.data.length} embeddings!`);\n}\nmain();"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/rerank",
+      "desc": "Cross-Encoder document scoring and semantic search re-ranking endpoint. Scores query-document pairs with full bidirectional cross-attention.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/rerank.md",
+      "params": [
+        {
+          "name": "query",
           "type": "string",
           "req": true,
-          "desc": "The raw CEL script payload.",
-          "default": "agent = Agent::new(\"researcher\");\nagent.run();"
-        }
-      ],
-      "request_payload": "{\n  \"script\": \"let data = fetch('https://api.example.com/data');\\nreturn process(data);\",\n  \"context\": {\n    \"timeout_ms\": 5000\n  }\n}",
-      "response": "{\n  \"success\": true,\n  \"result\": {\n    \"processed_items\": 42,\n    \"status\": \"completed\"\n  },\n  \"execution_time_ms\": 124,\n  \"error\": null\n}",
-      "examples": [
-        {
-          "language": "curl",
-          "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/cel/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"script\": \"return 42;\"}'"
+          "desc": "The search query string to rank candidate documents against.",
+          "default": "What is the capital of France?"
         },
         {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\npayload = {\"script\": \"return 42;\"}\nres = requests.post('http://localhost:8000/v1/cel/execute', json=payload)\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/cel/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ script: 'return 42;' })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/cel/execute\")\n    .json(&serde_json::json!({ \"script\": \"return 42;\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
-        }
-      ]
-    },
-    {
-      "method": "POST",
-      "path": "/v1/execute/{component}/{function}",
-      "desc": "Dynamic ecosystem execution. Directly calls an exposed FFI function inside a component (e.g. extension, plugin).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/execute_dynamic.md",
-      "params": [
-        {
-          "name": "args",
+          "name": "documents",
           "type": "array",
           "req": true,
-          "desc": "Array of arguments to pass to the function.",
+          "desc": "List of candidate text documents to score and rank.",
           "default": [
-            "arg1",
-            100
+            "Paris is the capital and most populous city of France.",
+            "London is the capital of the United Kingdom.",
+            "Lyon is a major city in south-eastern France."
           ]
+        },
+        {
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "Cross-encoder reranker model ID (e.g. bge-reranker-v2-m3).",
+          "default": "bge-reranker-v2-m3"
+        },
+        {
+          "name": "top_n",
+          "type": "integer",
+          "req": false,
+          "desc": "Number of top ranked results to return.",
+          "default": 3
         }
       ],
-      "request_payload": "{\n  \"args\": [\n    \"search_query\",\n    {\"limit\": 10}\n  ]\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"result\": {\n    \"items\": [\"Result 1\", \"Result 2\"]\n  },\n  \"execution_time_ms\": 45\n}",
+      "request_payload": "{\n  \"model\": \"bge-reranker-v2-m3\",\n  \"query\": \"What is the capital of France?\",\n  \"documents\": [\n    \"Paris is the capital and most populous city of France.\",\n    \"London is the capital of the United Kingdom.\",\n    \"Lyon is a major city in south-eastern France.\"\n  ],\n  \"top_n\": 3\n}",
+      "response": "{\n  \"model\": \"bge-reranker-v2-m3\",\n  \"results\": [\n    {\n      \"index\": 0,\n      \"relevance_score\": 0.9982,\n      \"document\": \"Paris is the capital and most populous city of France.\"\n    },\n    {\n      \"index\": 2,\n      \"relevance_score\": 0.4512,\n      \"document\": \"Lyon is a major city in south-eastern France.\"\n    },\n    {\n      \"index\": 1,\n      \"relevance_score\": 0.0121,\n      \"document\": \"London is the capital of the United Kingdom.\"\n    }\n  ]\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/execute/plugin_name/function_name \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"args\": [\"query\", 10]}'"
+          "code": "curl -X POST http://localhost:8000/v1/rerank \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"query\": \"How does transformer attention work?\",\n    \"documents\": [\"Attention is all you need paper introduced self-attention\", \"Convolutional networks for vision\"],\n    \"top_n\": 1\n  }'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\npayload = {\"args\": [\"query\", 10]}\nres = requests.post('http://localhost:8000/v1/execute/plugin_name/function_name', json=payload)\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/execute/plugin_name/function_name', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ args: ['query', 10] })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/execute/plugin_name/function_name\")\n    .json(&serde_json::json!({ \"args\": [\"query\", 10] }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "import requests\n\npayload = {\n    \"query\": \"How does transformer attention work?\",\n    \"documents\": [\"Attention is all you need paper introduced self-attention\", \"Convolutional networks for vision\"],\n    \"top_n\": 1\n}\nres = requests.post('http://localhost:8000/v1/rerank', json=payload)\nprint(res.json())"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/v1/ingest/file",
-      "desc": "Directly chunks, embeds, and ingests a file into the local vector namespace (LMDB).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/ingest_file.md",
+      "path": "/v1/ingest",
+      "desc": "Specialized Document AI & Spatial Vision OCR extraction endpoint. Ingests, parses, and vectorizes documents, PDFs, tables, and images.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/ingest.md",
       "params": [
         {
           "name": "source",
           "type": "string / array",
           "req": true,
-          "desc": "Absolute file path, Web URL, Base64 Data URI, or an array of these.",
-          "default": "https://example.com/document.pdf"
+          "desc": "File path, URL, Base64 Data URI, or array of sources.",
+          "default": "/docs/architecture.pdf"
         },
         {
           "name": "namespace",
           "type": "string",
-          "req": true,
-          "desc": "Vector database namespace.",
+          "req": false,
+          "desc": "Vector database namespace for storage.",
           "default": "research_docs"
         },
         {
           "name": "model",
-          "type": "string (optional)",
+          "type": "string",
           "req": false,
-          "desc": "Exact model override, otherwise uses default System Model.",
-          "default": "phi-3-vision"
+          "desc": "Specialized OCR / Document model override.",
+          "default": "got-ocr-2.0"
         },
         {
           "name": "output_controls",
@@ -264,184 +238,137 @@
             "return_text": true,
             "return_embeddings": true
           }
-        },
-        {
-          "name": "vision_settings",
-          "type": "object",
-          "req": false,
-          "desc": "Settings for multimodal model extraction (e.g. OCR fallback).",
-          "default": {
-            "use_vision": true,
-            "system_instruction": "Extract charts as Markdown tables"
-          }
-        },
-        {
-          "name": "chunking_strategy",
-          "type": "object",
-          "req": false,
-          "desc": "Strategy for chunking the document.",
-          "default": {
-            "type": "static",
-            "max_chunk_size": 512,
-            "overlap": 50
-          }
         }
       ],
-      "request_payload": "{\n  \"source\": [\n    \"https://example.com/doc1.pdf\",\n    \"https://example.com/image.png\"\n  ],\n  \"namespace\": \"research_docs\",\n  \"model\": \"phi-3-vision\",\n  \"output_controls\": {\n    \"return_text\": true,\n    \"return_embeddings\": true\n  },\n  \"vision_settings\": {\n    \"use_vision\": true,\n    \"detail_level\": \"high\",\n    \"system_instruction\": \"You are an expert document OCR engine. Extract text without losing structural formatting like markdown tables.\"\n  },\n  \"chunking_strategy\": {\n    \"type\": \"static\",\n    \"max_chunk_size\": 512,\n    \"overlap\": 50\n  }\n}",
-      "response": "{\n  \"object\": \"list\",\n  \"namespace\": \"research_docs\",\n  \"data\": [\n    {\n      \"source_url\": \"https://example.com/doc1.pdf\",\n      \"total_file_chunks\": 2,\n      \"chunks\": [\n        {\n          \"index\": 0,\n          \"text\": \"This is the first paragraph...\",\n          \"embedding\": [0.012, -0.034, 0.089]\n        }\n      ]\n    }\n  ],\n  \"usage\": {\n    \"total_files_processed\": 1,\n    \"total_chunks\": 1,\n    \"prompt_tokens\": 0\n  },\n  \"errors\": null\n}",
+      "request_payload": "{\n  \"source\": \"/docs/architecture.pdf\",\n  \"namespace\": \"research_docs\",\n  \"output_controls\": {\n    \"return_text\": true,\n    \"return_embeddings\": true\n  }\n}",
+      "response": "{\n  \"object\": \"list\",\n  \"namespace\": \"research_docs\",\n  \"data\": [\n    {\n      \"source_url\": \"/docs/architecture.pdf\",\n      \"total_file_chunks\": 2,\n      \"chunks\": [\n        {\n          \"index\": 0,\n          \"text\": \"Document heading and content...\",\n          \"embedding\": [0.012, -0.034, 0.089]\n        }\n      ]\n    }\n  ],\n  \"usage\": {\n    \"total_files_processed\": 1,\n    \"total_chunks\": 2\n  }\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/ingest/file \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"source\": \"/docs/architecture.pdf\", \"namespace\": \"core\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/ingest \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"source\": \"/docs/architecture.pdf\", \"namespace\": \"core\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\npayload = {\n    \"source\": \"/docs/architecture.pdf\",\n    \"namespace\": \"core\"\n}\nres = requests.post('http://localhost:8000/v1/ingest/file', json=payload)\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/ingest/file', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    source: '/docs/architecture.pdf',\n    namespace: 'core'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/ingest/file\")\n    .json(&serde_json::json!({\n        \"source\": \"/docs/architecture.pdf\",\n        \"namespace\": \"core\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "import requests\n\npayload = {\"source\": \"/docs/architecture.pdf\", \"namespace\": \"core\"}\nres = requests.post('http://localhost:8000/v1/ingest', json=payload)\nprint(res.json())"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/v1/embeddings",
-      "desc": "OpenAI-compatible text vector embedding endpoint. Generates dense mathematical vector embeddings using the local ONNX engine.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/embeddings.md",
+      "path": "/v1/audio/transcriptions",
+      "desc": "OpenAI-compatible Speech-to-Text (STT / ASR) transcription endpoint. Transcribes audio files, voice recordings, and live speech to text with timestamps.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/audio_transcriptions.md",
       "params": [
-        {
-          "name": "input",
-          "type": "string / array",
-          "req": true,
-          "desc": "Input text or array of text strings to embed. Providing an array performs bulk embedding natively on the engine.",
-          "default": [
-            "The quick brown fox jumps over the lazy dog",
-            "Artificial intelligence is transforming software"
-          ]
-        },
-        {
-          "name": "model",
-          "type": "string",
-          "req": false,
-          "desc": "Embedding model name or ID.",
-          "default": "onnx-embedding"
-        },
-        {
-          "name": "encoding_format",
-          "type": "string",
-          "req": false,
-          "desc": "Format to return the embeddings in (float or base64).",
-          "default": "float"
-        }
-      ],
-      "request_payload": "{\n  \"model\": \"bge-m3-onnx\",\n  \"input\": [\n    \"The quick brown fox jumps over the lazy dog\",\n    \"Artificial intelligence is transforming software\"\n  ],\n  \"encoding_format\": \"float\"\n}",
-      "response": "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"object\": \"embedding\",\n      \"embedding\": [\n        0.0123,\n        -0.0456,\n        0.0789\n      ],\n      \"index\": 0\n    },\n    {\n      \"object\": \"embedding\",\n      \"embedding\": [\n        -0.0987,\n        0.0654,\n        0.0321\n      ],\n      \"index\": 1\n    }\n  ],\n  \"model\": \"bge-m3-onnx\",\n  \"usage\": {\n    \"prompt_tokens\": 15,\n    \"total_tokens\": 15\n  }\n}",
-      "examples": [
-        {
-          "language": "curl",
-          "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/embeddings \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"bge-m3-onnx\",\n    \"input\": [\"The quick brown fox jumps over the lazy dog\", \"Artificial intelligence is transforming software\"]\n  }'"
-        },
-        {
-          "language": "python",
-          "title": "Python (OpenAI Client)",
-          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.embeddings.create(\n    model=\"bge-m3-onnx\",\n    input=[\"The quick brown fox jumps over the lazy dog\", \"Artificial intelligence is transforming software\"]\n)\n\nprint(f\"Generated {len(response.data)} embeddings!\")\nprint(f\"Dimension: {len(response.data[0].embedding)}\")"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js (OpenAI Client)",
-          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const response = await openai.embeddings.create({\n    model: 'bge-m3-onnx',\n    input: ['The quick brown fox jumps over the lazy dog', 'Artificial intelligence is transforming software']\n  });\n  console.log(`Generated ${response.data.length} embeddings!`);\n  console.log(`Dimension: ${response.data[0].embedding.length}`);\n}\nmain();"
-        }
-      ]
-    },
-    {
-      "method": "POST",
-      "path": "/v1/audio/execute",
-      "desc": "Unified Audio API endpoint for speech-to-text, text-to-speech, voice conversion, speaker diarization, and multimodal audio execution.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/audio_execute.md",
-      "params": [
-        {
-          "name": "model",
-          "type": "string",
-          "req": false,
-          "desc": "Audio model ID or 'auto' to auto-detect active audio model.",
-          "default": "auto"
-        },
-        {
-          "name": "task",
-          "type": "string",
-          "req": false,
-          "desc": "Exact task Enum (e.g. 'speech_to_text', 'text_to_speech', 'voice_conversion', 'speaker_diarization') or 'auto'.",
-          "default": "auto"
-        },
-        {
-          "name": "instruction",
-          "type": "string",
-          "req": false,
-          "desc": "Optional prompt instruction for the audio model.",
-          "default": "Transcribe this audio cleanly."
-        },
         {
           "name": "input_source",
           "type": "object",
           "req": true,
-          "desc": "Source data object specifying type ('url', 'base64', 'file', 'text') and data payload.",
+          "desc": "Audio input source object (type: 'url', 'base64', or 'file').",
           "default": {
             "type": "url",
-            "data": "https://example.com/audio.mp3"
+            "data": "https://audio-samples.github.io/samples/mp3/blizzard_tts_unbiased/sample-3/real.mp3"
           }
         },
         {
-          "name": "stream",
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "ASR Speech-to-Text model (e.g. whisper-large-v3-turbo, moonshine, sensevoice).",
+          "default": "whisper-large-v3-turbo"
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "req": false,
+          "desc": "Spoken language code (e.g. 'en', 'hi', 'auto').",
+          "default": "auto"
+        },
+        {
+          "name": "timestamps",
           "type": "boolean",
           "req": false,
-          "desc": "Enable real-time Server-Sent Events (SSE) token streaming (true) or return single full JSON payload (false).",
-          "default": false
+          "desc": "Whether to return segment-level start and end timestamps.",
+          "default": true
         },
         {
-          "name": "parameters",
-          "type": "object",
+          "name": "temperature",
+          "type": "number",
           "req": false,
-          "desc": "Task-Specific Hyperparameters Object:\n• temperature (All): Randomness (0.0 = exact)\n• language (STT/Translation): Source language ('hi', 'en', 'auto')\n• speed (TTS): Voice playback rate (1.0 = normal)\n• voice_id (TTS): Voice speaker persona ('alloy', 'echo')\n• translate_to (Translation): Target language ('en', 'hi')\n• timestamps (STT): Enable segment timestamps\n• beam_size (STT): Decoding beam width (1-10)\n• vad_filter (STT): Voice Activity Detection silence filter\n• speaker_labels (Diarization): Enable speaker tagging",
-          "default": {
-            "temperature": 0.0,
-            "language": "",
-            "speed": 1.0,
-            "voice_id": "alloy",
-            "translate_to": "",
-            "timestamps": false,
-            "beam_size": 5,
-            "vad_filter": true,
-            "speaker_labels": false
-          }
+          "desc": "Decoding temperature.",
+          "default": 0.0
         }
       ],
-      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"auto\",\n  \"instruction\": \"Transcribe this audio cleanly.\",\n  \"stream\": true,\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://example.com/audio.mp3\"\n  },\n  \"keep_alive\": null,\n  \"parameters\": {\n    \"temperature\": 0.0,\n    \"language\": \"\",\n    \"speed\": 1.0,\n    \"voice_id\": \"alloy\",\n    \"translate_to\": \"\",\n    \"timestamps\": false,\n    \"beam_size\": 5,\n    \"vad_filter\": true,\n    \"speaker_labels\": false\n  }\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"task\": \"speech_to_text\",\n  \"model\": \"whisper-large-v3-turbo\",\n  \"info\": null,\n  \"output\": {\n    \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n    \"audio_data\": null,\n    \"segments\": [\n      {\n        \"start\": 0.0,\n        \"end\": 4.2,\n        \"text\": \"Namaste dosto, yeh Cluaiz Engine ka real-time audio transcription test hai.\",\n        \"speaker\": \"Speaker 1\"\n      }\n    ]\n  }\n}",
+      "request_payload": "{\n  \"model\": \"whisper-large-v3-turbo\",\n  \"input_source\": {\n    \"type\": \"url\",\n    \"data\": \"https://audio-samples.github.io/samples/mp3/blizzard_tts_unbiased/sample-3/real.mp3\"\n  },\n  \"language\": \"auto\",\n  \"timestamps\": true\n}",
+      "response": "{\n  \"text\": \"Hello, this is a transcription test using Cluaiz Engine.\",\n  \"segments\": [\n    {\n      \"start\": 0.0,\n      \"end\": 3.5,\n      \"text\": \"Hello, this is a transcription test using Cluaiz Engine.\"\n    }\n  ],\n  \"language\": \"en\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/audio/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"auto\",\n    \"task\": \"auto\",\n    \"keep_alive\": null,\n    \"input_source\": {\n      \"type\": \"url\",\n      \"data\": \"https://example.com/audio.mp3\"\n    },\n    \"parameters\": {\n      \"temperature\": 0.0,\n      \"language\": \"\",\n      \"speed\": 1.0,\n      \"voice_id\": \"alloy\",\n      \"translate_to\": \"\",\n      \"timestamps\": false,\n      \"beam_size\": 5,\n      \"vad_filter\": true,\n      \"speaker_labels\": false\n    }\n  }'"
+          "code": "curl -X POST http://localhost:8000/v1/audio/transcriptions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"whisper-large-v3-turbo\",\n    \"input_source\": {\"type\": \"url\", \"data\": \"https://example.com/audio.mp3\"}\n  }'"
         },
         {
           "language": "python",
           "title": "Python (requests)",
-          "code": "import requests\n\nresponse = requests.post(\n    'http://localhost:8000/v1/audio/execute',\n    json={\n        'model': 'auto',\n        'task': 'auto',\n        'keep_alive': None,\n        'input_source': {\n            'type': 'url',\n            'data': 'https://example.com/audio.mp3'\n        },\n        'parameters': {\n            'temperature': 0.0,\n            'language': '',\n            'speed': 1.0,\n            'voice_id': 'alloy',\n            'translate_to': '',\n            'timestamps': False,\n            'beam_size': 5,\n            'vad_filter': True,\n            'speaker_labels': False\n        }\n    }\n)\nprint(response.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/audio/transcriptions', json={\n    'model': 'whisper-large-v3-turbo',\n    'input_source': {'type': 'url', 'data': 'https://example.com/audio.mp3'}\n})\nprint(res.json()['text'])"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/audio/speech",
+      "desc": "OpenAI-compatible Text-to-Speech (TTS) neural voice synthesis endpoint. Converts text into high-fidelity speech audio.",
+      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/audio_speech.md",
+      "params": [
+        {
+          "name": "input",
+          "type": "string",
+          "req": true,
+          "desc": "The text string to synthesize into speech audio.",
+          "default": "Hello, welcome to Cluaiz Sovereign Engine."
         },
         {
-          "language": "javascript",
-          "title": "JavaScript (fetch)",
-          "code": "const res = await fetch('http://localhost:8000/v1/audio/execute', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: 'auto',\n    task: 'auto',\n    keep_alive: null,\n    input_source: { type: 'url', data: 'https://example.com/audio.mp3' },\n    parameters: {\n      temperature: 0.0,\n      language: '',\n      speed: 1.0,\n      voice_id: 'alloy',\n      translate_to: '',\n      timestamps: false,\n      beam_size: 5,\n      vad_filter: true,\n      speaker_labels: false\n    }\n  })\n});\nconst data = await res.json();\nconsole.log(data);"
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "Neural voice TTS model (e.g. kokoro-82m, piper).",
+          "default": "kokoro-82m"
+        },
+        {
+          "name": "voice",
+          "type": "string",
+          "req": false,
+          "desc": "Voice persona (e.g. 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer').",
+          "default": "alloy"
+        },
+        {
+          "name": "speed",
+          "type": "number",
+          "req": false,
+          "desc": "Voice playback speed multiplier (0.25 to 4.0).",
+          "default": 1.0
+        },
+        {
+          "name": "response_format",
+          "type": "string",
+          "req": false,
+          "desc": "Audio encoding format ('mp3', 'wav', 'opus', 'base64').",
+          "default": "mp3"
+        }
+      ],
+      "request_payload": "{\n  \"model\": \"kokoro-82m\",\n  \"input\": \"Hello, welcome to Cluaiz Sovereign Engine.\",\n  \"voice\": \"alloy\",\n  \"speed\": 1.0,\n  \"response_format\": \"mp3\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"model\": \"kokoro-82m\",\n  \"output\": {\n    \"audio_data\": \"UklGRiQAAABXQVZFZm10IBAAAAABAAEA...\"\n  }\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/audio/speech \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"kokoro-82m\",\n    \"input\": \"Hello world!\",\n    \"voice\": \"alloy\"\n  }'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/audio/speech', json={\n    'model': 'kokoro-82m',\n    'input': 'Hello world!',\n    'voice': 'alloy'\n})\nprint(res.json())"
         }
       ]
     }

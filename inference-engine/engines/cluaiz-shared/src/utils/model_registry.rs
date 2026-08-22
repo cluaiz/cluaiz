@@ -54,9 +54,9 @@ impl SlotType {
         match cat_lower.as_str() {
             "chat" | "conversational" | "text-generation" => Self::Chat,
             "ingest" | "vision-ingest" | "ocr" | "doc-ai" => Self::Ingest,
-            "embedding" | "embeddings" | "text-embedding" | "vision-embedding" => Self::Embedding,
-            "tts" | "text-to-speech" | "audio" => Self::Tts,
-            "stt" | "automatic-speech-recognition" | "asr" => Self::Stt,
+            "embedding" | "embeddings" => Self::Embedding,
+            "tts" | "text-to-speech" => Self::Tts,
+            "stt" | "automatic-speech-recognition" | "asr" | "speech-to-text" => Self::Stt,
             _ => Self::Chat,
         }
     }
@@ -290,7 +290,7 @@ impl ModelRegistry {
         let mut reg = Self::load();
         let mut changes_made = false;
 
-        let categories = ["chat", "audio", "vision", "embedding"];
+        let categories = ["chat", "ingest", "embedding", "tts", "stt"];
         for cat in &categories {
             let cat_dir = base_models_dir.join(cat);
             if !cat_dir.exists() {
@@ -334,7 +334,7 @@ impl ModelRegistry {
                             }
                             let extra_files = serde_json::Value::Array(extra_files_list);
 
-                            if cat == &"audio" && all_weight_files.len() > 1 {
+                            if (cat == &"tts" || cat == &"stt") && all_weight_files.len() > 1 {
                                 all_weight_files.sort_by(|a, b| {
                                     let name_a = a.1.to_lowercase();
                                     let name_b = b.1.to_lowercase();
@@ -371,12 +371,24 @@ impl ModelRegistry {
                             };
 
                             // Delegate Capability Discovery & Metadata probing cleanly to model_discovery module
-                            let (slot_type, final_caps, mut metadata, requires_gpu) =
+                            let (mut slot_type, final_caps, mut metadata, requires_gpu) =
                                 crate::utils::model_discovery::CapabilityResolver::discover(
                                     &p_path_clone,
                                     &entry.path(),
                                     cat,
                                 );
+
+                            // Sovereign Category Taxonomy Disambiguation (STT vs TTS vs Ingest vs Embed)
+                            let clean_id = id.to_lowercase();
+                            if clean_id.contains("whisper") || clean_id.contains("moonshine") || clean_id.contains("sensevoice") || clean_id.contains("asr") {
+                                slot_type = SlotType::Stt;
+                            } else if clean_id.contains("kokoro") || clean_id.contains("piper") || clean_id.contains("melotts") || clean_id.contains("tts") {
+                                slot_type = SlotType::Tts;
+                            } else if clean_id.contains("got-ocr") || clean_id.contains("nougat") || clean_id.contains("florence") || clean_id.contains("table") {
+                                slot_type = SlotType::Ingest;
+                            } else if clean_id.contains("embed") || clean_id.contains("bge") || clean_id.contains("nomic") || clean_id.contains("minilm") {
+                                slot_type = SlotType::Embedding;
+                            }
 
                             // Also check local model_manifest.json if present for human parameters override
                             let manifest_file = entry.path().join("model_manifest.json");
