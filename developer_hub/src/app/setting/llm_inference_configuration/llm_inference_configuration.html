@@ -140,7 +140,7 @@
             <!-- Rendered via JS -->
         </div>
 
-        <h3 class="settings-section-title" style="margin-top: 30px;">User Moved Flags</h3>
+        <h3 class="settings-section-title" style="margin-top: 30px;">Reasoning & Style Defaults</h3>
 
         <div class="setting-item">
             <div class="setting-info">
@@ -150,23 +150,16 @@
             <div class="setting-control" id="container-gguf-think-mode"></div>
         </div>
 
-        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));">
-                <div class="setting-info" style="margin-bottom: 0;">
-                    <span class="setting-label">Response Length Map (Temperature Based)</span>
-                    <span class="setting-desc">JSON map mapping temperature ranges (0.0 - 2.0) to system token budget constraints.</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Enable Predefined Modes</span>
-                    <div class="setting-control">
-                        <div class="setting-toggle" id="toggle-gguf-mode-enabled">
-                            <div class="setting-toggle-thumb"></div>
-                        </div>
-                    </div>
-                </div>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div class="setting-info" style="margin-bottom: 0;">
+                <span class="setting-label">Quick Preset Shortcuts</span>
+                <span class="setting-desc">Click any preset to auto-configure optimal temperature and reasoning defaults.</span>
             </div>
-            <div id="container-gguf-response-length" style="display: flex; flex-direction: column; gap: 10px;">
-                <!-- Rendered via JS -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="preset-btn" data-target="gguf" data-preset="think_deep" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Deep (0.0)</button>
+                <button type="button" class="preset-btn" data-target="gguf" data-preset="think_lite" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Lite (0.5)</button>
+                <button type="button" class="preset-btn" data-target="gguf" data-preset="long_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Long Answer (0.7)</button>
+                <button type="button" class="preset-btn" data-target="gguf" data-preset="short_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Short Answer (0.7)</button>
             </div>
         </div>
     </div>
@@ -311,7 +304,7 @@
             </div>
         </div>
 
-        <h3 class="settings-section-title" style="margin-top: 30px;">User Moved Flags</h3>
+        <h3 class="settings-section-title" style="margin-top: 30px;">Reasoning & Style Defaults</h3>
 
         <div class="setting-item">
             <div class="setting-info">
@@ -321,23 +314,16 @@
             <div class="setting-control" id="container-onnx-think-mode"></div>
         </div>
 
-        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid var(--border, rgba(255,255,255,0.05));">
-                <div class="setting-info" style="margin-bottom: 0;">
-                    <span class="setting-label">Response Length Map (Temperature Based)</span>
-                    <span class="setting-desc">JSON map mapping temperature ranges (0.0 - 2.0) to system token budget constraints.</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Enable Predefined Modes</span>
-                    <div class="setting-control">
-                        <div class="setting-toggle" id="toggle-onnx-mode-enabled">
-                            <div class="setting-toggle-thumb"></div>
-                        </div>
-                    </div>
-                </div>
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
+            <div class="setting-info" style="margin-bottom: 0;">
+                <span class="setting-label">Quick Preset Shortcuts</span>
+                <span class="setting-desc">Click any preset to auto-configure optimal temperature and reasoning defaults.</span>
             </div>
-            <div id="container-onnx-response-length" style="display: flex; flex-direction: column; gap: 10px;">
-                <!-- Rendered via JS -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="preset-btn" data-target="onnx" data-preset="think_deep" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Deep (0.0)</button>
+                <button type="button" class="preset-btn" data-target="onnx" data-preset="think_lite" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Lite (0.5)</button>
+                <button type="button" class="preset-btn" data-target="onnx" data-preset="long_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Long Answer (0.7)</button>
+                <button type="button" class="preset-btn" data-target="onnx" data-preset="short_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Short Answer (0.7)</button>
             </div>
         </div>
     </div>

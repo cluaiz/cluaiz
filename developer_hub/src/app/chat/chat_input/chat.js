@@ -270,39 +270,39 @@ function setupChatLogic() {
         if (content.length > 0 || window.canContinue) {
             isStopped = false;
 
-            let responseLengthPayload = null;
-            let thinkModePayload = isThinkModeOn ? "On" : "Off";
+            let thinkModePayload = isThinkModeOn ? "on" : "off";
+            let overrideTemp = null;
+            let systemConstraint = null;
 
             let selectedPredefined = null;
             ['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].forEach(s => {
-                if (selectedSkills.has(s)) selectedPredefined = s.replace(' ', '_');
+                if (selectedSkills.has(s)) selectedPredefined = s;
             });
 
-            let overrideTemp = null;
-            if (selectedPredefined === "Think_Deep") overrideTemp = 0.0;
-            if (selectedPredefined === "Think_Lite") overrideTemp = 0.5;
-            if (selectedPredefined === "Long_Answer") overrideTemp = 0.8;
-            if (selectedPredefined === "Short_Answer") overrideTemp = 1.0;
-
-            if (!selectedPredefined && typeof isResponseLengthMapEnabled !== 'undefined' && !isResponseLengthMapEnabled) {
-                const customEnabled = document.getElementById('enable-custom-constraint')?.checked;
-                if (customEnabled) {
-                    const customTemp = document.getElementById('custom-temp-input')?.value;
-                    const customPrompt = document.getElementById('custom-prompt-input')?.value;
-                    if (customTemp && customPrompt) {
-                        responseLengthPayload = {};
-                        responseLengthPayload[customTemp] = customPrompt;
-                        overrideTemp = parseFloat(customTemp);
-                    }
-                }
+            if (selectedPredefined === "Think Deep") {
+                thinkModePayload = "on";
+                overrideTemp = 0.0;
+                systemConstraint = "Analyze the request deeply step-by-step. Provide a highly detailed, comprehensive response.";
+            } else if (selectedPredefined === "Think Lite") {
+                thinkModePayload = "on";
+                overrideTemp = 0.5;
+                systemConstraint = "Think carefully but provide a balanced, concise response.";
+            } else if (selectedPredefined === "Long Answer") {
+                thinkModePayload = "off";
+                overrideTemp = 0.7;
+                systemConstraint = "Provide a detailed, thorough, and to-the-point answer.";
+            } else if (selectedPredefined === "Short Answer") {
+                thinkModePayload = "off";
+                overrideTemp = 0.7;
+                systemConstraint = "Provide a very concise, direct, and to-the-point answer.";
             }
 
             window.dispatchEvent(new CustomEvent('chat:send', {
                 detail: {
                     message: content,
                     think_mode: thinkModePayload,
-                    response_length: responseLengthPayload,
-                    temperature: overrideTemp
+                    temperature: overrideTemp,
+                    system_prompt: systemConstraint
                 }
             }));
             textarea.value = '';

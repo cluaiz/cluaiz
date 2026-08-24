@@ -137,8 +137,9 @@ function setupChatStream() {
 
             // Send to AI endpoint
             const think_mode = e.detail?.think_mode;
-            const response_length = e.detail?.response_length;
-            sendToAI(content, think_mode, response_length);
+            const temperature = e.detail?.temperature;
+            const system_prompt = e.detail?.system_prompt;
+            sendToAI(content, think_mode, temperature, system_prompt);
         };
         window.addEventListener('chat:send', window.chatSendHandler);
     }
@@ -397,7 +398,7 @@ function setupChatStream() {
         }
 }
 
-async function sendToAI(userMessage, think_mode, response_length) {
+async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
     const container = document.getElementById('chat-stream-container');
     const model = getSelectedModel();
 
@@ -472,13 +473,24 @@ async function sendToAI(userMessage, think_mode, response_length) {
             headers['Authorization'] = 'Bearer ' + authToken;
         }
 
+        if (system_prompt) {
+            const hasSystem = conversationHistory.some(m => m.role === 'system');
+            if (hasSystem) {
+                conversationHistory.forEach(m => {
+                    if (m.role === 'system') m.content = system_prompt;
+                });
+            } else {
+                conversationHistory.unshift({ role: 'system', content: system_prompt });
+            }
+        }
+
         const payload = {
             model: model,
             messages: conversationHistory,
             stream: true
         };
         if (think_mode) payload.think_mode = think_mode;
-        if (response_length) payload.response_length = response_length;
+        if (temperature !== null && temperature !== undefined) payload.temperature = temperature;
 
         const response = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
             method: 'POST',

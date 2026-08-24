@@ -21,7 +21,7 @@ function injectApiCSS() {
         const link = document.createElement('link');
         link.id = 'sidebar-css';
         link.rel = 'stylesheet';
-        link.href = './src/app/api/sidebar/sidebar.css';
+        link.href = '/src/app/api/sidebar/sidebar.css';
         document.head.appendChild(link);
     }
     if (!document.getElementById('dropdown-css')) {
@@ -105,7 +105,7 @@ async function initApp() {
         ];
 
         const responses = await Promise.all(
-            endpoints.map(file => fetch(`./data/${file}`).then(res => res.json()).catch(err => {
+            endpoints.map(file => fetch(`/data/${file}`).then(res => res.json()).catch(err => {
                 console.error(`Failed to load ${file}:`, err);
                 return null;
             }))
@@ -326,41 +326,15 @@ function openEndpoint(ep, forceDefault = false) {
                 });
 
                 if (ep.path === '/v1/chat/completions') {
-                    // Fetch real gguf config to set dynamic response_length in the API docs payload
                     fetch(window.getApiBaseUrl() + '/v1/system/gguf_config')
                         .then(res => res.json())
                         .then(config => {
-                            let modeEnabled = true;
-                            if (config.user_moved_flags && config.user_moved_flags.response_length) {
-                                if (config.user_moved_flags.response_length['type'] === 'custom') {
-                                    modeEnabled = false;
-                                }
-                            }
-                            const thinkMode = config.user_moved_flags?.think_mode || "On";
-                            obj["think_mode"] = thinkMode;
+                            const thinkMode = config.user_moved_flags?.think_mode || "auto";
+                            obj["think_mode"] = thinkMode.toLowerCase();
+                            obj["temperature"] = (config.samplers && config.samplers.temp !== undefined) ? config.samplers.temp : 0.7;
+                            obj["max_tokens"] = 2048;
+                            delete obj["response_length"];
 
-                            if (modeEnabled) {
-                                obj["response_length"] = {
-                                    "think_on": {
-                                        "Think_Lite": [
-                                            "Think_Deep",
-                                            "Think_Lite",
-                                            "Auto"
-                                        ]
-                                    },
-                                    "think_off": {
-                                        "Long_Answer": [
-                                            "Long_Answer",
-                                            "Short_Answer",
-                                            "Auto"
-                                        ]
-                                    }
-                                };
-                            } else {
-                                obj["response_length"] = {
-                                    "0.7": "[SYSTEM CONSTRAINT: Provide a clear explanation.]"
-                                };
-                            }
                             if (state.editor) state.editor.setValue(JSON.stringify(obj, null, 2));
                         }).catch(e => {
                             console.error(e);
@@ -1308,4 +1282,16 @@ function drawWaveformFrame() {
         ctx.stroke();
     }
 }
+
+window.addEventListener('config:response_length_changed', () => {
+    if (state.activeEndpoint && state.activeEndpoint.path === '/v1/chat/completions') {
+        openEndpoint(state.activeEndpoint, true);
+    }
+});
+
+document.addEventListener('ggufConfigChanged', () => {
+    if (state.activeEndpoint && state.activeEndpoint.path === '/v1/chat/completions') {
+        openEndpoint(state.activeEndpoint, true);
+    }
+});
 

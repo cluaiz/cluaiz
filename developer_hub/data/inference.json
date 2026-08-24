@@ -5,7 +5,7 @@
       "method": "POST",
       "path": "/v1/chat/completions",
       "desc": "OpenAI-compatible conversational dialogue and multimodal VLM endpoint. Supports streaming, system prompts, JSON mode, and image/video inputs.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/chat_completions.md",
+      "docs_url": "/docs/api/inference/chat_completions.md",
       "params": [
         {
           "name": "messages",
@@ -101,7 +101,7 @@
       "method": "POST",
       "path": "/v1/embeddings",
       "desc": "OpenAI-compatible multimodal dense vector embedding endpoint. Encodes text chunks, search queries, or visual assets into normalized float vectors.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/embeddings.md",
+      "docs_url": "/docs/api/inference/embeddings.md",
       "params": [
         {
           "name": "input",
@@ -152,7 +152,7 @@
       "method": "POST",
       "path": "/v1/rerank",
       "desc": "Cross-Encoder document scoring and semantic search re-ranking endpoint. Scores query-document pairs with full bidirectional cross-attention.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/rerank.md",
+      "docs_url": "/docs/api/inference/rerank.md",
       "params": [
         {
           "name": "query",
@@ -206,7 +206,7 @@
       "method": "POST",
       "path": "/v1/ingest",
       "desc": "Specialized Document AI & Spatial Vision OCR extraction endpoint. Ingests, parses, and vectorizes documents, PDFs, tables, and images.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/ingest.md",
+      "docs_url": "/docs/api/inference/ingest.md",
       "params": [
         {
           "name": "source",
@@ -259,7 +259,7 @@
       "method": "POST",
       "path": "/v1/audio/transcriptions",
       "desc": "OpenAI-compatible Speech-to-Text (STT / ASR) transcription endpoint. Transcribes audio files, voice recordings, and live speech to text with timestamps.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/audio_transcriptions.md",
+      "docs_url": "/docs/api/inference/audio_transcriptions.md",
       "params": [
         {
           "name": "input_source",
@@ -319,7 +319,7 @@
       "method": "POST",
       "path": "/v1/audio/speech",
       "desc": "OpenAI-compatible Text-to-Speech (TTS) neural voice synthesis endpoint. Converts text into high-fidelity speech audio.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/audio_speech.md",
+      "docs_url": "/docs/api/inference/audio_speech.md",
       "params": [
         {
           "name": "input",

@@ -474,6 +474,7 @@ export async function mount(container) {
                     tempInput.value = newTempStr;
                     mapObj[newTempStr] = promptInput.value;
                     await onSave();
+                    window.dispatchEvent(new CustomEvent('config:response_length_changed'));
                 };
 
                 tempInput.onchange = updateEntry;
@@ -497,6 +498,7 @@ export async function mount(container) {
             }
             renderMap();
             await onSave();
+            window.dispatchEvent(new CustomEvent('config:response_length_changed'));
         });
 
         renderMap();
@@ -594,7 +596,6 @@ export async function mount(container) {
     setupCustomDropdown('container-gguf-think-mode', undefined, undefined,
         makeOptions(['Auto', 'On', 'Off']),
         ggufConfig, 'user_moved_flags', 'think_mode', saveGguf);
-    setupKeyValueMap('container-gguf-response-length', 'toggle-gguf-mode-enabled', ggufConfig, 'user_moved_flags', 'response_length', saveGguf);
 
 
     // ----- ONNX INITIALIZATION -----
@@ -666,7 +667,35 @@ export async function mount(container) {
         makeOptions(['Auto', 'On', 'Off']),
         onnxConfig, 'user_moved_flags', 'think_mode', saveOnnx);
 
-    setupKeyValueMap('container-onnx-response-length', 'toggle-onnx-mode-enabled', onnxConfig, 'user_moved_flags', 'response_length', saveOnnx);
+    // Preset button shortcuts
+    container.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const target = btn.dataset.target;
+            const preset = btn.dataset.preset;
+            const config = (target === 'gguf') ? ggufConfig : onnxConfig;
+            const onSave = (target === 'gguf') ? saveGguf : saveOnnx;
+
+            if (!config.samplers) config.samplers = {};
+            if (!config.user_moved_flags) config.user_moved_flags = {};
+
+            if (preset === 'think_deep') {
+                config.user_moved_flags.think_mode = 'On';
+                config.samplers.temp = 0.0;
+            } else if (preset === 'think_lite') {
+                config.user_moved_flags.think_mode = 'On';
+                config.samplers.temp = 0.5;
+            } else if (preset === 'long_answer') {
+                config.user_moved_flags.think_mode = 'Off';
+                config.samplers.temp = 0.7;
+            } else if (preset === 'short_answer') {
+                config.user_moved_flags.think_mode = 'Off';
+                config.samplers.temp = 0.7;
+            }
+
+            await onSave();
+            window.dispatchEvent(new CustomEvent(target + 'ConfigChanged', { detail: { key: 'think_mode', value: config.user_moved_flags.think_mode } }));
+        });
+    });
 
 
     // Tab switching logic (using tools_setting design)
