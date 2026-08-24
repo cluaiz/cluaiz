@@ -145,7 +145,9 @@ extern "C" {
     pub fn llama_sampler_chain_init(params: LlamaSamplerChainParams) -> *mut std::ffi::c_void;
     pub fn llama_sampler_chain_add(chain: *mut std::ffi::c_void, sampler: *mut std::ffi::c_void);
     pub fn llama_sampler_init_greedy() -> *mut std::ffi::c_void;
+    pub fn llama_sampler_init_top_k(k: i32) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_top_p(p: f32, min_keep: usize) -> *mut std::ffi::c_void;
+    pub fn llama_sampler_init_min_p(p: f32, min_keep: usize) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_temp(t: f32) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_dist(seed: u32) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_penalties(

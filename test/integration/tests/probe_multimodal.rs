@@ -1,4 +1,4 @@
-use cluaiz_shared::utils::GGUFProber;
+use engines::models::GgufProber;
 use std::path::PathBuf;
 
 #[test]

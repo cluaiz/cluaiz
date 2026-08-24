@@ -21,7 +21,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
                     println!("  {} [Probe] Directly analyzing GGUF binary from: {:?}", "🔍".cyan(), model_file);
                     
                     // Directly use cluaiz_shared::utils::GGUFProber
-                    if let Ok((metadata, tensor_infos, tensor_count)) = cluaiz_shared::utils::GGUFProber::probe(&model_file) {
+                    if let Ok((metadata, tensor_infos, tensor_count)) = engines::models::GgufProber::probe(&model_file) {
                         println!("\n  {} === GGUF HEADER RAW DATA ===", "📄".cyan());
                         println!("  - Tensor Count: {}", tensor_count);
                         println!("\n  [Metadata KVs]");

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use serde_json::{Value, json};
 use std::fs;
-use cluaiz_shared::utils::GGUFProber;
+use engines::models::GgufProber;
 
 #[tokio::test]
 async fn scan_and_register_local_models() {

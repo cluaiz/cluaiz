@@ -646,7 +646,7 @@ impl HuggingFaceHub {
             let mut file = std::fs::File::create(&temp_file_path).map_err(|e| e.to_string())?;
             file.write_all(&bytes).map_err(|e| e.to_string())?;
             
-            let result = cluaiz_shared::utils::gguf_prober::GGUFProber::probe(&temp_file_path);
+            let result = crate::models::GgufProber::probe(&temp_file_path);
             let _ = std::fs::remove_file(&temp_file_path);
             
             return result.map_err(|e| e.to_string());
