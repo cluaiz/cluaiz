@@ -13,6 +13,10 @@ use rust_embed::RustEmbed;
 #[exclude = "Cargo.toml"]
 struct Asset;
 
+#[derive(RustEmbed)]
+#[folder = "../docs/"]
+struct DocsAsset;
+
 pub fn devhub_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
     Router::new()
         .route("/", get(index_handler))
@@ -30,6 +34,19 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         path = "index.html";
     }
 
+    // 1. If path points to documentation (/docs/...), serve from DocsAsset
+    if path.starts_with("docs/") {
+        let doc_subpath = path.trim_start_matches("docs/").trim_start_matches('/');
+        if let Some(content) = DocsAsset::get(doc_subpath) {
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+            return Response::builder()
+                .header(header::CONTENT_TYPE, mime.as_ref())
+                .body(Body::from(content.data))
+                .unwrap();
+        }
+    }
+
+    // 2. Check main Developer Hub assets
     match Asset::get(path) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
@@ -39,7 +56,16 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
                 .unwrap()
         }
         None => {
-            // SPA Fallback: serve index.html for any unknown route
+            // 3. Check DocsAsset as fallback
+            if let Some(content) = DocsAsset::get(path) {
+                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                return Response::builder()
+                    .header(header::CONTENT_TYPE, mime.as_ref())
+                    .body(Body::from(content.data))
+                    .unwrap();
+            }
+
+            // 4. SPA Fallback: serve index.html for any unknown UI route
             if let Some(content) = Asset::get("index.html") {
                 let mime = mime_guess::from_path("index.html").first_or_octet_stream();
                 Response::builder()
