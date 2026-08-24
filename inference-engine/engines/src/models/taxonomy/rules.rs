@@ -8,7 +8,48 @@ use crate::models::taxonomy::tags::{
 };
 use crate::models::types::entities::SlotType;
 
-pub use cluaiz_shared::utils::ModelCapabilities;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ModelCapabilities {
+    pub is_instruct: bool,
+    pub is_base: bool,
+    pub is_embedding: bool,
+    pub is_feature_extraction: bool,
+    pub is_reranker: bool,
+    pub is_tts: bool,
+    pub is_asr: bool,
+    pub is_audio_to_audio: bool,
+    pub has_vision: bool,
+    pub is_vision_chat: bool,
+    pub has_file: bool,
+    pub chat_completion: bool,
+    pub tts_family: Option<String>,
+    pub stt_family: Option<String>,
+    pub explicit_tasks: Vec<String>,
+}
+
+impl ModelCapabilities {
+    pub fn all_true() -> Self {
+        Self {
+            is_instruct: true,
+            is_base: true,
+            is_embedding: true,
+            is_feature_extraction: true,
+            is_reranker: true,
+            is_tts: true,
+            is_asr: true,
+            is_audio_to_audio: true,
+            has_vision: true,
+            is_vision_chat: true,
+            has_file: true,
+            chat_completion: true,
+            tts_family: None,
+            stt_family: None,
+            explicit_tasks: Vec::new(),
+        }
+    }
+}
 
 pub struct UniversalTaskRules;
 

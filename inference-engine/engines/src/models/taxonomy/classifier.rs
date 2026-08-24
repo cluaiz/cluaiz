@@ -2,7 +2,8 @@
 //!   Taxonomy: Universal Model Classifier (Single Source of Truth)
 //! ═══════════════════════════════════════════════════════════════════════
 
-use cluaiz_shared::utils::model_registry::{ModelCapabilities, SlotType};
+use crate::models::types::entities::SlotType;
+use crate::models::taxonomy::rules::ModelCapabilities;
 use crate::models::taxonomy::tags::*;
 use crate::models::taxonomy::heuristics::*;
 use crate::models::taxonomy::tts_families::{TtsFamily, TtsTaxonomy};

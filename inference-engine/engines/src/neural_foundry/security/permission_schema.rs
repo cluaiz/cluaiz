@@ -285,7 +285,7 @@ impl PermissionSchema {
 
                 if let Some(gp) = gguf_file {
                     format = "gguf".to_string();
-                    if let Ok((metadata, tensor_infos, _count)) = cluaiz_shared::utils::GGUFProber::probe(&gp) {
+                    if let Ok((metadata, tensor_infos, _count)) = crate::models::GgufProber::probe(&gp) {
                         if let Some(arch) = metadata.get("general.architecture") {
                             detected_arch = arch.to_lowercase();
                             if detected_arch == "whisper" {
@@ -313,33 +313,20 @@ impl PermissionSchema {
                 }
             }
 
-            // Assign tasks based on dynamic architecture categories (e.g. whisper, piper, kokoro, bert)
-            let mut tasks = Vec::new();
-            if detected_arch == "whisper" || clean_id.contains("whisper") || clean_id.contains("moonshine") || clean_id.contains("sensevoice") {
-                tasks.push("speech_to_text".to_string());
-                tasks.push("automatic-speech-recognition".to_string());
-            } else if clean_id.contains("kokoro") || clean_id.contains("piper") || clean_id.contains("melotts") || clean_id.contains("tts") {
-                tasks.push("text_to_speech".to_string());
-                tasks.push("voice-synthesis".to_string());
-            } else if has_audio {
-                tasks.push("speech_to_text".to_string());
-            } else if detected_arch == "bert" || format == "safetensors" || clean_id.contains("embedding") || clean_id.contains("embed") {
-                tasks.push("sentence-similarity".to_string());
-                tasks.push("feature-extraction".to_string());
-                tasks.push("embedding".to_string());
-                if has_vision {
-                    tasks.push("vision-embedding".to_string());
-                }
-            } else if clean_id.contains("got-ocr") || clean_id.contains("nougat") || clean_id.contains("florence") || clean_id.contains("table") {
-                tasks.push("document-ocr".to_string());
-                tasks.push("table-extraction".to_string());
-                tasks.push("spatial-vision".to_string());
-            } else {
-                tasks.push("text-generation".to_string());
-                tasks.push("chat-completion".to_string());
-                if has_vision {
-                    tasks.push("multimodal-vision".to_string());
-                }
+            // Assign tasks dynamically via UniversalModelClassifier (Single Source of Truth)
+            let classification = crate::models::UniversalModelClassifier::classify(
+                &clean_id,
+                None,
+                &[],
+                &[],
+                if detected_arch.is_empty() { None } else { Some(&detected_arch) },
+            );
+            let tasks = classification.supported_tasks;
+            if classification.capabilities.has_vision {
+                has_vision = true;
+            }
+            if classification.capabilities.is_tts || classification.capabilities.is_asr {
+                has_audio = true;
             }
 
             (format, tasks, has_vision, has_audio)

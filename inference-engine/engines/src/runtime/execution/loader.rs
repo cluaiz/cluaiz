@@ -2,7 +2,7 @@ use std::path::Path;
 use anyhow::{Result, anyhow};
 use crate::runtime::execution::hub::HardwareOrchestrator as CoreHub;
 use cluaiz_shared::{ModelWeightsWrapper, cluaizContext, StructuralDNA, TemplateManager};
-use cluaiz_shared::utils::GGUFProber;
+use crate::models::GgufProber;
 use cluaiz_shared::hardware::schema::optimization::FeatureState;
 
 /// GGUFLoader: Lightweight orchestrator for quantized Core models.
@@ -11,7 +11,7 @@ pub struct GGUFLoader;
 impl GGUFLoader {
     pub async fn load_model(path: &Path, _hf_repo: &str) -> Result<(ModelWeightsWrapper, Option<u32>)> {
         // 1. Detect Architecture via Native Prober (Zero Framework Bloat)
-        let (metadata, tensor_infos, _tensor_count) = GGUFProber::probe(path)
+        let (metadata, tensor_infos, _tensor_count) = GgufProber::probe(path)
             .map_err(|e| anyhow!("Native Probe Failure: {}", e))?;
         
         let arch = metadata.get("general.architecture")
@@ -37,7 +37,7 @@ impl GGUFLoader {
         // 🧠 Stage 1/2/3: Arbiter Routing Logic (Speculative Decoding)
         let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         if opt_control.speculative_decoding != FeatureState::Off {
-            let has_native_mtp = GGUFProber::check_native_mtp(&tensor_infos);
+            let has_native_mtp = GgufProber::check_native_mtp(&tensor_infos);
             if has_native_mtp {
                 cluaiz_shared::dev_info!("🔥 [Arbiter] Native MTP detected in binary headers. Engaging High-Fidelity MTP Loop.");
                 architectural_dna.dynamic_attributes.insert("speculative_mode".to_string(), "native_mtp".to_string());
