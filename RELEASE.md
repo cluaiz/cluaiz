@@ -19,7 +19,7 @@ graph TD
 
 | Category / Modality | GGUF Support | ONNX Support | Target Engines & Frameworks |
 | :--- | :---: | :---: | :--- |
-| **Chat (Instruct / Base)** | ✅ Yes | ✅ Yes | Llama.cpp (GGUF), ONNX Runtime (ONNX) |
+| **Chat (Instruct / Base)** | ✅ Yes | ❌ No (Roadmap) | Llama.cpp (GGUF) |
 | **Embedding (Text Vectors)** | ✅ Yes | ✅ Yes | Llama.cpp (GGUF), ONNX Runtime (ONNX) |
 | **Vision (Multimodal Chat)** | ❌ No | ✅ Yes | ONNX Runtime |
 | **Audio STT (Speech-to-Text)**| ❌ No | ✅ Yes | ONNX Runtime (Whisper-ONNX) |

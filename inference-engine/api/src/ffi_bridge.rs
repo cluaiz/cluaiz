@@ -572,7 +572,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                     let active_model_path = crate::utils::slots::resolve_model_path(&perms, "chat_slot");
                     
                     // Dispatch natural language inference via Master Router
-                    match state.dispatcher.dispatch_stream(command, false, active_model_path).await {
+                    match state.dispatcher.dispatch_stream(command, false, active_model_path, None).await {
                         EngineResponse::TokenStream(mut rx) => {
                             let mut in_think_block = false;
 

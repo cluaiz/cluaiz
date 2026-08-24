@@ -357,7 +357,7 @@ pub async fn execute_audio(
     // Attempt execution on primary ONNX file, falling back to secondary candidates if graph loading/rank errors occur
     let mut execution_res = state
         .dispatcher
-        .dispatch_stream(&prompt, true, Some(model_path.clone()))
+        .dispatch_stream(&prompt, true, Some(model_path.clone()), None)
         .await;
 
     if let EngineResponse::Error(ref err_msg) = execution_res {
@@ -366,7 +366,7 @@ pub async fn execute_audio(
                 tracing::warn!("⚠️ [Audio Handler] ONNX execution failed on {:?}. Attempting fallback probe to {:?}", model_path, candidate);
                 let fallback_res = state
                     .dispatcher
-                    .dispatch_stream(&prompt, true, Some(candidate.clone()))
+                    .dispatch_stream(&prompt, true, Some(candidate.clone()), None)
                     .await;
                 if !matches!(fallback_res, EngineResponse::Error(_)) {
                     execution_res = fallback_res;

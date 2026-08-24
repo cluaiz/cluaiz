@@ -232,6 +232,8 @@ pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ExternalChatRequest>,
 ) -> axum::response::Response {
+    let request_id = format!("chatcmpl-{}", uuid::Uuid::new_v4().simple());
+    let max_tokens = request.max_tokens;
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
     
     // Check if empty content should be prevented
@@ -239,7 +241,7 @@ pub async fn chat_completions(
         tracing::info!("♻️ [Memory] Instant model unload requested via keep_alive: 0");
         let _ = state.dispatcher.unload_model().await;
         let empty_res = json!({
-            "id": "chatcmpl-123",
+            "id": request_id.clone(),
             "object": "chat.completion",
             "created": chrono::Utc::now().timestamp(),
             "model": request.model.clone().unwrap_or_else(|| "default-model".to_string()),
@@ -494,7 +496,7 @@ pub async fn chat_completions(
     }
     let json_prompt = serde_json::to_string(&serialized_messages).unwrap_or_else(|_| "[]".to_string());
     // Initial dispatch to see if it's a stream or an error
-    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain, active_model_path.clone()).await;
+    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain, active_model_path.clone(), max_tokens).await;
 
     if request.stream {
 
@@ -503,6 +505,7 @@ pub async fn chat_completions(
                 let state_clone = state.clone();
                 let temp_mode = request.temporary_chat.clone();
                 let req_session_id = request.session_id.clone();
+                let req_id_stream = request_id.clone();
                 
                 let stream = async_stream::stream! {
                      let mut current_prompt = json_prompt.clone();
@@ -517,7 +520,7 @@ pub async fn chat_completions(
                      if send_telemetry && permission.model_header_info {
                          let loaded_models = generate_model_header_info();
                          let early_header_chunk = json!({
-                             "id": "chatcmpl-123",
+                             "id": req_id_stream.clone(),
                              "object": "chat.completion.chunk",
                              "created": Utc::now().timestamp(),
                              "model": resolved_model_name.clone(),
@@ -598,7 +601,7 @@ pub async fn chat_completions(
 
                                 // Yield standard OpenAI tool_calls chunk before execution blocks
                                 let tool_calls_chunk = json!({
-                                    "id": "chatcmpl-123",
+                                    "id": req_id_stream.clone(),
                                     "object": "chat.completion.chunk",
                                     "created": Utc::now().timestamp(),
                                     "model": request.model.clone(),
@@ -623,7 +626,7 @@ pub async fn chat_completions(
                                 // Note: In strict OpenAI this isn't streamed to the user (it's added to history and the model continues),
                                 // but for our interactive UI, we emit a special Cluaiz internal status block that the UI can catch.
                                 let result_chunk = json!({
-                                    "id": "chatcmpl-123",
+                                    "id": req_id_stream.clone(),
                                     "object": "chat.completion.chunk",
                                     "created": Utc::now().timestamp(),
                                     "model": request.model.clone(),
@@ -660,7 +663,7 @@ pub async fn chat_completions(
                             }
                             
                             let chunk = json!({
-                                "id": "chatcmpl-123",
+                                "id": req_id_stream.clone(),
                                 "object": "chat.completion.chunk",
                                 "created": Utc::now().timestamp(),
                                 "model": resolved_model_name.clone(),
@@ -671,7 +674,7 @@ pub async fn chat_completions(
                         
                         if tool_executed {
                             tracing::info!("🔄 [API] Resuming generation with tool result (Single-Pass)...");
-                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain, active_model_path.clone()).await;
+                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain, active_model_path.clone(), max_tokens).await;
                             if let EngineResponse::TokenStream(new_rx) = new_dispatch {
                                 rx = new_rx;
                                 continue;
@@ -710,7 +713,7 @@ pub async fn chat_completions(
                         }
 
                         let telemetry_chunk = json!({
-                            "id": "chatcmpl-123",
+                            "id": req_id_stream.clone(),
                             "object": "chat.completion.chunk",
                             "created": Utc::now().timestamp(),
                             "model": resolved_model_name.clone(),
@@ -751,7 +754,7 @@ pub async fn chat_completions(
             }
             EngineResponse::FinalResult(res) => {
                 let chunk = json!({
-                    "id": "chatcmpl-123",
+                    "id": request_id.clone(),
                     "choices": [{"delta": {"content": res}}]
                 });
                 let stream = async_stream::stream! {
@@ -779,7 +782,7 @@ pub async fn chat_completions(
         };
 
         let mut response = json!({
-            "id": "chatcmpl-123",
+            "id": request_id.clone(),
             "object": "chat.completion",
             "created": Utc::now().timestamp(),
             "model": resolved_model_name.clone(),

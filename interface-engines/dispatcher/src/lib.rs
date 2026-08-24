@@ -44,7 +44,7 @@ impl NeuralDispatcher {
 
     /// Primary entry point for real-time token streaming.
     /// Used by both the FFI Named Pipes (Native Desktop) and HTTP SSE (External).
-    pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool, model_path_opt: Option<PathBuf>) -> EngineResponse {
+    pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool, model_path_opt: Option<PathBuf>, max_tokens: Option<usize>) -> EngineResponse {
         // 🚀 Real-time Silicon Probe
         let hardware = cluaiz_shared::hardware::HardwareOrchestrator::probe().silicon_truth;
         let backend = GlobalFeatureRegistry::select_runtime(&self.current_signature, &hardware);
@@ -308,11 +308,12 @@ impl NeuralDispatcher {
                                     let _owned_prompt = c_prompt;
                                     let prompt_raw_ptr = _owned_prompt.as_ptr();
                                     
+                                    let limit_tokens = max_tokens.unwrap_or(2048);
                                     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                         let callback_fn: extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool = unsafe { std::mem::transmute(cb_raw) };
                                         let gen_fn: unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, usize, extern "C" fn(*const std::os::raw::c_char, *mut std::ffi::c_void) -> bool, *mut std::ffi::c_void) = unsafe { std::mem::transmute(gen_raw) };
                                         unsafe {
-                                            gen_fn(engine_raw as *mut _, prompt_raw_ptr as *const _, 4096, callback_fn, tx_raw as *mut _);
+                                            gen_fn(engine_raw as *mut _, prompt_raw_ptr as *const _, limit_tokens, callback_fn, tx_raw as *mut _);
                                         }
                                     }))
                                 }).await.unwrap_or_else(|_| Err(Box::new("Thread join error")));
@@ -372,7 +373,7 @@ impl NeuralDispatcher {
 
     /// Legacy blocking call, to be deprecated once all clients shift to `dispatch_stream`.
     pub async fn dispatch_prompt(&self, prompt: &str, model_path_opt: Option<PathBuf>) -> Result<String> {
-        let mut stream = match self.dispatch_stream(prompt, false, model_path_opt).await {
+        let mut stream = match self.dispatch_stream(prompt, false, model_path_opt, None).await {
             EngineResponse::TokenStream(rx) => rx,
             EngineResponse::Error(e) => return Err(anyhow::anyhow!(e)),
             EngineResponse::FinalResult(r) => return Ok(r),
