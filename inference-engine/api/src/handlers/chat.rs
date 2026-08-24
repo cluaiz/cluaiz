@@ -49,6 +49,8 @@ pub struct ExternalChatRequest {
     pub seed: Option<i64>,
     pub response_format: Option<serde_json::Value>,
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
+    pub tools: Option<Vec<serde_json::Value>>,
+    pub tool_choice: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -96,6 +98,17 @@ impl MessageContent {
                             };
                             combined.push_str(&format!("<cluaiz_media type=\"audio\" url=\"{}\" />\n", local_path));
                         }
+                        ContentPart::InputAudio { input_audio } => {
+                            let data_uri = format!("data:audio/{};base64,{}", input_audio.format, input_audio.data);
+                            let local_path = match crate::url_resolver::resolve_to_local_file(&data_uri).await {
+                                Ok(p) => p,
+                                Err(e) => {
+                                    tracing::error!("Failed to resolve input_audio: {}", e);
+                                    data_uri
+                                }
+                            };
+                            combined.push_str(&format!("<cluaiz_media type=\"audio\" url=\"{}\" />\n", local_path));
+                        }
                     }
                 }
                 combined.trim_end().to_string()
@@ -113,6 +126,19 @@ pub enum ContentPart {
     ImageUrl { image_url: MediaUrlContent },
     #[serde(rename = "audio_url")]
     AudioUrl { audio_url: MediaUrlContent },
+    #[serde(rename = "input_audio")]
+    InputAudio { input_audio: InputAudioContent },
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct InputAudioContent {
+    pub data: String,
+    #[serde(default = "default_audio_format")]
+    pub format: String,
+}
+
+fn default_audio_format() -> String {
+    "wav".to_string()
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -413,46 +439,31 @@ pub async fn chat_completions(
         }
     }
 
-    // Temporarily save the override so the engine picks it up during inference
-    let mut needs_save = false;
-
     // Apply strict payload overrides (Phase 3)
     if let Some(t) = request.temperature {
         gguf_meta.samplers.temp = t as f64;
-        needs_save = true;
     } else if let Some(temp) = applied_temp {
         gguf_meta.samplers.temp = temp;
-        needs_save = true;
     }
 
     if let Some(p) = request.top_p {
         gguf_meta.samplers.top_p = p as f64;
-        needs_save = true;
     }
     if let Some(k) = request.top_k {
         gguf_meta.samplers.top_k = k as usize;
-        needs_save = true;
     }
     if let Some(mp) = request.min_p {
         gguf_meta.samplers.min_p = mp as f64;
-        needs_save = true;
     }
     if let Some(pp) = request.presence_penalty {
         gguf_meta.samplers.presence_penalty = pp as f64;
-        needs_save = true;
     }
     if let Some(rp) = request.repetition_penalty {
         gguf_meta.samplers.repeat_penalty = rp as f64;
-        needs_save = true;
     }
 
     if let Some(think_mode) = &request.think_mode {
         gguf_meta.user_moved_flags.think_mode = think_mode.clone();
-        needs_save = true;
-    }
-    
-    if needs_save {
-        let _ = gguf_meta.save();
     }
 
     if let Some(constraint) = applied_constraint {
