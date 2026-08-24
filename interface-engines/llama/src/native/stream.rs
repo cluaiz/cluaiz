@@ -52,6 +52,20 @@ pub fn stream_tokens(
         } else {
             prompt.to_string()
         };
+
+        // 🧬 Dynamic In-Memory Request Overrides (Zero Disk I/O & Thread-Safe)
+        let (prompt_to_format, req_samplers, req_think_mode) = if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
+            if envelope.is_object() && envelope.get("messages").is_some() {
+                let msgs_str = serde_json::to_string(envelope.get("messages").unwrap()).unwrap_or_else(|_| actual_prompt.clone());
+                let samplers = envelope.get("samplers").cloned();
+                let think_mode = envelope.get("think_mode").and_then(|t| t.as_str()).map(|s| s.to_string());
+                (msgs_str, samplers, think_mode)
+            } else {
+                (actual_prompt.clone(), None, None)
+            }
+        } else {
+            (actual_prompt.clone(), None, None)
+        };
         
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
         let has_loaded_cache = !last_prefilled_tokens.is_empty();
@@ -73,17 +87,21 @@ pub fn stream_tokens(
             // 🛑 ROOT FIX: If we interrupted mid-generation, the model might have been thinking.
             // Appending a new turn without closing </think> corrupts the attention map of 1-bit models.
             // We forcefully close the thought block before starting the new turn.
-            format!("\n</think>\n{}", templater.format_turn(dna, &actual_prompt))
+            format!("\n</think>\n{}", templater.format_turn(dna, &prompt_to_format))
         } else {
             // Avoid double formatting if the prompt was already manually formatted by the router or API
-            if actual_prompt.contains("<|start_header_id|>") || actual_prompt.contains("<|im_start|>") {
-                actual_prompt
+            if prompt_to_format.contains("<|start_header_id|>") || prompt_to_format.contains("<|im_start|>") {
+                prompt_to_format
             } else {
-                templater.format(dna, &actual_prompt)
+                templater.format(dna, &prompt_to_format)
             }
         };
 
-        let mut suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
+        let mut suppress_thinking = if let Some(ref tm) = req_think_mode {
+            tm.to_lowercase() == "off"
+        } else {
+            gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off"
+        };
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
             suppress_thinking = true;
@@ -295,7 +313,7 @@ pub fn stream_tokens(
             }
         }
 
-        let sampler_chain_raw = crate::native::sampler::build_sampler_chain(dna, &tokens)?;
+        let sampler_chain_raw = crate::native::sampler::build_sampler_chain(dna, &tokens, req_samplers.as_ref())?;
         let safe_sampler = SafeSampler { sampler: sampler_chain_raw };
 
         let mut is_lookahead = (llama.speculative_decoding_mode == 1 || llama.speculative_decoding_mode == 2)

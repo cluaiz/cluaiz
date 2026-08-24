@@ -183,7 +183,7 @@ fn generate_model_header_info() -> Vec<Value> {
                                 let p = f.path();
                                 let fname = p.file_name().unwrap_or_default().to_string_lossy();
                                 if fname == info.model_id && p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                                    if let Ok((meta, _tensors, _count)) = cluaiz_shared::utils::GGUFProber::probe(&p) {
+                                    if let Ok((meta, _tensors, _count)) = engines::models::GgufProber::probe(&p) {
                                         let mut meta_map = serde_json::Map::new();
                                         for (k, v) in meta {
                                             meta_map.insert(k.clone(), Value::String(v.clone()));
@@ -233,7 +233,24 @@ pub async fn chat_completions(
     Json(request): Json<ExternalChatRequest>,
 ) -> axum::response::Response {
     let request_id = format!("chatcmpl-{}", uuid::Uuid::new_v4().simple());
-    let max_tokens = request.max_tokens;
+    
+    // 🛡️ API Boundary Input Validation: max_tokens must be >= 1 if provided
+    if let Some(tokens) = request.max_tokens {
+        if tokens == 0 {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                axum::Json(json!({
+                    "error": {
+                        "message": "max_tokens must be greater than or equal to 1",
+                        "type": "invalid_request_error",
+                        "param": "max_tokens",
+                        "code": "parameter_out_of_range"
+                    }
+                })),
+            ).into_response();
+        }
+    }
+    let validated_max_tokens = Some(request.max_tokens.map(|t| t.min(32768)).unwrap_or(2048));
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
     
     // Check if empty content should be prevented
@@ -402,10 +419,10 @@ pub async fn chat_completions(
             let active_think_mode = request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str());
             
             // If Auto, we DO NOT inject any default constraints. The AI handles it automatically.
-            if active_think_mode != "Auto" {
+            if !active_think_mode.eq_ignore_ascii_case("auto") {
                 if let Some(t) = map_obj.get("type").and_then(|v| v.as_str()) {
                     if t == "predefined" {
-                        let branch_key = if active_think_mode == "On" { "think_on" } else { "think_off" };
+                        let branch_key = if active_think_mode.eq_ignore_ascii_case("on") { "think_on" } else { "think_off" };
                         if let Some(branch) = map_obj.get(branch_key).and_then(|v| v.as_object()) {
                             for (_, temp_obj) in branch {
                                 if let Some(temp_map) = temp_obj.as_object() {
@@ -484,8 +501,7 @@ pub async fn chat_completions(
     }
 
     // Serialize the entire message array to JSON to preserve full chat history.
-    // We flatten the content asynchronously so that all media URLs are resolved to local paths
-    // and injected into the prompt as <cluaiz_media> tags.
+    // Packaging in-memory samplers into the prompt envelope eliminates disk race conditions and threads parameters directly into generation.
     let mut serialized_messages = Vec::new();
     for msg in &augmented_messages {
         let content_str = msg.content.flatten_to_string().await;
@@ -494,9 +510,21 @@ pub async fn chat_completions(
             "content": content_str
         }));
     }
-    let json_prompt = serde_json::to_string(&serialized_messages).unwrap_or_else(|_| "[]".to_string());
+    let payload_envelope = json!({
+        "messages": serialized_messages,
+        "samplers": {
+            "temp": gguf_meta.samplers.temp,
+            "top_p": gguf_meta.samplers.top_p,
+            "top_k": gguf_meta.samplers.top_k,
+            "min_p": gguf_meta.samplers.min_p,
+            "presence_penalty": gguf_meta.samplers.presence_penalty,
+            "repeat_penalty": gguf_meta.samplers.repeat_penalty
+        },
+        "think_mode": request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+    });
+    let json_prompt = serde_json::to_string(&payload_envelope).unwrap_or_else(|_| "{}".to_string());
     // Initial dispatch to see if it's a stream or an error
-    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain, active_model_path.clone(), max_tokens).await;
+    let dispatch_result = state.dispatcher.dispatch_stream(&json_prompt, skip_brain, active_model_path.clone(), validated_max_tokens).await;
 
     if request.stream {
 
@@ -674,7 +702,7 @@ pub async fn chat_completions(
                         
                         if tool_executed {
                             tracing::info!("🔄 [API] Resuming generation with tool result (Single-Pass)...");
-                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain, active_model_path.clone(), max_tokens).await;
+                            let new_dispatch = state_clone.dispatcher.dispatch_stream(&current_prompt, skip_brain, active_model_path.clone(), validated_max_tokens).await;
                             if let EngineResponse::TokenStream(new_rx) = new_dispatch {
                                 rx = new_rx;
                                 continue;
