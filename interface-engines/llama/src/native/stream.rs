@@ -55,8 +55,12 @@ pub fn stream_tokens(
 
         // 🧬 Dynamic In-Memory Request Overrides (Zero Disk I/O & Thread-Safe)
         let (prompt_to_format, req_samplers, req_think_mode) = if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
-            if envelope.is_object() && envelope.get("messages").is_some() {
-                let msgs_str = serde_json::to_string(envelope.get("messages").unwrap()).unwrap_or_else(|_| actual_prompt.clone());
+            if envelope.is_object() && (envelope.get("messages").is_some() || envelope.get("pivot_prompt").is_some()) {
+                let msgs_str = if let Some(pivot) = envelope.get("pivot_prompt").and_then(|p| p.as_str()) {
+                    pivot.to_string()
+                } else {
+                    serde_json::to_string(envelope.get("messages").unwrap()).unwrap_or_else(|_| actual_prompt.clone())
+                };
                 let samplers = envelope.get("samplers").cloned();
                 let think_mode = envelope.get("think_mode").and_then(|t| t.as_str()).map(|s| s.to_string());
                 (msgs_str, samplers, think_mode)
@@ -169,7 +173,7 @@ pub fn stream_tokens(
 
         let mut is_pivot = is_pivot;
         let mut has_loaded_cache = has_loaded_cache;
-        let gen_reserve = (max_tokens as i32).min(256);
+        let gen_reserve = (max_tokens as i32).min((llama.n_ctx as i32 / 4).clamp(256, 2048));
         let max_prompt_tokens = (llama.n_ctx as i32 - gen_reserve).max(1) as usize;
 
         // 🛑 ROOT FIX: If the full conversation exceeds the KV cache capacity, we CANNOT just append!

@@ -250,7 +250,15 @@ pub async fn chat_completions(
             ).into_response();
         }
     }
-    let validated_max_tokens = Some(request.max_tokens.map(|t| t.min(32768)).unwrap_or(2048));
+    // 🛡️ Model Registry & Dynamic Context Limit (Min 2k Floor)
+    let dynamic_context_limit = engines::models::InstalledStateRegistry::load()
+        .installed_models
+        .get(request.model.as_deref().unwrap_or("default"))
+        .and_then(|m| m.metadata.context_window.parse::<usize>().ok())
+        .unwrap_or(2048)
+        .max(2048);
+
+    let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
     
     // Check if empty content should be prevented
@@ -671,10 +679,22 @@ pub async fn chat_completions(
                                 yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
                                 
                                 // 🚀 SOVEREIGN KV-CACHE RESUME 
-                                current_prompt = format!(
-                                    "{}\n\n[PIVOT_CONTINUE]\n<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the tool result above. Do NOT use any tools. Just answer the user directly.\n",
-                                    current_prompt, comp_type, comp_name, execution_result
-                                );
+                                let pivot_envelope = json!({
+                                    "pivot_prompt": format!(
+                                        "<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the tool result above. Do NOT use any tools. Just answer the user directly.\n",
+                                        comp_type, comp_name, execution_result
+                                    ),
+                                    "samplers": {
+                                        "temp": gguf_meta.samplers.temp,
+                                        "top_p": gguf_meta.samplers.top_p,
+                                        "top_k": gguf_meta.samplers.top_k,
+                                        "min_p": gguf_meta.samplers.min_p,
+                                        "presence_penalty": gguf_meta.samplers.presence_penalty,
+                                        "repeat_penalty": gguf_meta.samplers.repeat_penalty
+                                    },
+                                    "think_mode": request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+                                });
+                                current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
 
 
                                 tool_executed = true;
