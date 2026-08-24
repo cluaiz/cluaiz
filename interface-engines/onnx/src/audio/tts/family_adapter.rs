@@ -292,20 +292,23 @@ impl FamilyAdapter {
         }
     }
 
-    /// Read model_registry.json config file via central ModelRegistry manager to resolve tts_family
+    /// Read model_registry.json config file to resolve tts_family
     fn detect_from_model_registry(model_dir: &Path) -> Option<TtsFamily> {
-        let registry = cluaiz_shared::utils::model_registry::ModelRegistry::load();
-        let target_dir_str = model_dir.to_string_lossy().to_lowercase().replace('\\', "/");
+        let reg_path = cluaiz_shared::environment::EnvironmentManager::current().config_dir().join("model_registry.json");
+        let content = std::fs::read_to_string(&reg_path).ok()?;
+        let val = serde_json::from_str::<serde_json::Value>(&content).ok()?;
+        let installed = val.get("installed_models")?.as_object()?;
 
+        let target_dir_str = model_dir.to_string_lossy().to_lowercase().replace('\\', "/");
         let target_name = model_dir.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
 
-        for (model_id, entry) in &registry.installed_models {
-            let local_dir = entry.local_dir.to_lowercase().replace('\\', "/");
+        for (model_id, entry) in installed {
+            let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
             let local_path = Path::new(&local_dir);
             let local_name = local_path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
 
             if (!local_dir.is_empty() && (local_name == target_name || local_dir == target_dir_str)) || model_id.to_lowercase() == target_name {
-                if let Some(ref family_str) = entry.metadata.tts_family {
+                if let Some(family_str) = entry.get("metadata").and_then(|m| m.get("tts_family")).and_then(|f| f.as_str()) {
                     match family_str.to_lowercase().as_str() {
                         "kokoro" | "kokoro-v1" => return Some(TtsFamily::Kokoro),
                         "audio8" | "audio8-codec" => return Some(TtsFamily::Audio8),

@@ -26,7 +26,7 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
         .ensure_models_dir()
         .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
 
-    let registry = cluaiz_shared::utils::ModelRegistry::load();
+    let registry = engines::models::InstalledStateRegistry::load();
 
     let mut available_chat_models: Vec<String> = Vec::new();
     let mut available_vector_models: Vec<String> = Vec::new();
@@ -39,12 +39,12 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
     let mut available_stt_models: Vec<String> = Vec::new();
     let mut all_models: Vec<String> = Vec::new();
 
-    // Dynamically categorize strictly from 6 Sovereign Vault categories
+    // Dynamically categorize strictly from 5 Sovereign Vault categories
     for (id, entry) in &registry.installed_models {
         all_models.push(id.clone());
         match entry.category.as_str() {
             "chat" => available_chat_models.push(id.clone()),
-            "text-embedding" => {
+            "embedding" | "text-embedding" => {
                 available_text_embedding_models.push(id.clone());
                 available_vector_models.push(id.clone());
             }
@@ -52,7 +52,7 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
                 available_vision_embedding_models.push(id.clone());
                 available_vector_models.push(id.clone());
             }
-            "vision-ingest" => {
+            "ingest" | "vision-ingest" | "vision" => {
                 available_vision_ingest_models.push(id.clone());
                 available_vision_models.push(id.clone());
             }

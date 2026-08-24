@@ -71,7 +71,7 @@ pub async fn execute_audio(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AudioExecuteRequest>,
 ) -> impl IntoResponse {
-    let registry = cluaiz_shared::utils::model_registry::ModelRegistry::load();
+    let registry = engines::models::InstalledStateRegistry::load();
 
     let input_type = payload.input_source.source_type.to_lowercase();
     let raw_data = payload.input_source.data.trim();
@@ -634,6 +634,21 @@ pub async fn speech(
 ) -> impl IntoResponse {
     let model = payload.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
     let input_text = payload.get("input").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    
+    if input_text.trim().is_empty() {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            axum::Json(json!({
+                "error": {
+                    "message": "Missing or empty 'input' parameter",
+                    "type": "invalid_request_error",
+                    "param": "input",
+                    "code": "missing_required_parameter"
+                }
+            })),
+        ).into_response();
+    }
+
     let voice = payload.get("voice").and_then(|v| v.as_str()).map(|s| s.to_string());
     let speed = payload.get("speed").and_then(|v| v.as_f64()).map(|s| s as f32);
 
@@ -654,7 +669,7 @@ pub async fn speech(
         keep_alive: None,
     };
 
-    execute_audio(State(state), Json(exec_req)).await
+    execute_audio(State(state), Json(exec_req)).await.into_response()
 }
 
 // ─── POST /v1/audio/transcriptions ──────────────────────────────────

@@ -69,9 +69,9 @@ pub async fn tags(State(_state): State<Arc<AppState>>) -> Json<Value> {
 // ─── GET /v1/models/installed ────────────────────────────────────────
 // Returns full synchronized ModelRegistry database entries including probed metadata
 pub async fn list_installed_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let registry = cluaiz_shared::utils::ModelRegistry::load();
+    let registry = engines::models::InstalledStateRegistry::load();
     let installed_map = registry.installed_models.clone();
-    let installed_vec: Vec<cluaiz_shared::utils::ModelRegistryEntry> = installed_map.values().cloned().collect();
+    let installed_vec: Vec<engines::models::ModelRegistryEntry> = installed_map.values().cloned().collect();
 
     Json(json!({
         "status": "success",
@@ -210,7 +210,7 @@ pub async fn inspect_raw_header(
         is_onnx = manifest.huggingface_filename.ends_with(".onnx");
     } else {
         println!("Manifest not found in roster for model_id={}", model_id);
-        let reg = cluaiz_shared::utils::ModelRegistry::load();
+        let reg = engines::models::InstalledStateRegistry::load();
         if let Some(entry) = reg.installed_models.get(&model_id).or_else(|| 
             reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase())
         ) {
@@ -231,9 +231,9 @@ pub async fn inspect_raw_header(
     if let Some(model_file) = model_file_opt {
         if model_file.exists() {
             if is_gguf {
-                match cluaiz_shared::utils::GGUFProber::probe(&model_file) {
+                match engines::models::GgufProber::probe(&model_file) {
                     Ok((metadata, tensor_infos, tensor_count)) => {
-                        let reg = cluaiz_shared::utils::ModelRegistry::load();
+                        let reg = engines::models::InstalledStateRegistry::load();
                         let supported_tasks = reg.installed_models.get(&model_id)
                             .or_else(|| reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase()))
                             .map(|e| e.supported_tasks.clone())
@@ -284,7 +284,7 @@ pub async fn inspect_raw_header(
                     .and_then(|s| serde_json::from_str(&s).ok())
                     .unwrap_or(Value::Null);
 
-                let reg = cluaiz_shared::utils::ModelRegistry::load();
+                let reg = engines::models::InstalledStateRegistry::load();
                 let supported_tasks = reg.installed_models.get(&model_id)
                     .or_else(|| reg.installed_models.values().find(|e| e.id.to_lowercase() == model_id.to_lowercase()))
                     .map(|e| e.supported_tasks.clone())

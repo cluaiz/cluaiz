@@ -240,18 +240,16 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 for model in &roster {
                                     all_models.push(model.id.clone());
 
-                                    // PRIMARY: Classify strictly by the 6 Sovereign Vault directories
+                                    // PRIMARY: Classify strictly by the 5 Sovereign Vault directories
                                     let folder_category = model.local_path.as_deref()
                                         .and_then(|p| {
                                              let p_lower = p.replace('\\', "/").to_lowercase();
                                              if p_lower.contains("/models/chat/") {
                                                  Some("chat")
-                                             } else if p_lower.contains("/models/text-embedding/") {
-                                                 Some("text-embedding")
-                                             } else if p_lower.contains("/models/vision-embedding/") {
-                                                 Some("vision-embedding")
-                                             } else if p_lower.contains("/models/vision-ingest/") {
-                                                 Some("vision-ingest")
+                                             } else if p_lower.contains("/models/embedding/") || p_lower.contains("/models/text-embedding/") || p_lower.contains("/models/vision-embedding/") {
+                                                 Some("embedding")
+                                             } else if p_lower.contains("/models/ingest/") || p_lower.contains("/models/vision-ingest/") || p_lower.contains("/models/vision/") {
+                                                 Some("ingest")
                                              } else if p_lower.contains("/models/tts/") {
                                                  Some("tts")
                                              } else if p_lower.contains("/models/stt/") {
@@ -267,13 +265,13 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         .to_lowercase();
 
                                     match cat.as_str() {
-                                        "text-embedding" | "vision-embedding" => {
+                                        "embedding" | "text-embedding" | "vision-embedding" => {
                                             available_vector_models.push(model.id.clone());
                                         }
-                                        "vision-ingest" => {
+                                        "ingest" | "vision-ingest" | "vision" => {
                                             available_vision_models.push(model.id.clone());
                                         }
-                                        "tts" | "stt" => {
+                                        "tts" | "stt" | "audio" => {
                                             available_audio_models.push(model.id.clone());
                                         }
                                         _ => {

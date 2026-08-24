@@ -14,7 +14,7 @@ use rust_embed::RustEmbed;
 struct Asset;
 
 #[derive(RustEmbed)]
-#[folder = "../docs/"]
+#[folder = "../docs/api/"]
 struct DocsAsset;
 
 pub fn devhub_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
@@ -39,8 +39,13 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         let doc_subpath = path.trim_start_matches("docs/").trim_start_matches('/');
         if let Some(content) = DocsAsset::get(doc_subpath) {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
+            let content_type = if path.ends_with(".md") {
+                "text/plain; charset=utf-8"
+            } else {
+                mime.as_ref()
+            };
             return Response::builder()
-                .header(header::CONTENT_TYPE, mime.as_ref())
+                .header(header::CONTENT_TYPE, content_type)
                 .body(Body::from(content.data))
                 .unwrap();
         }

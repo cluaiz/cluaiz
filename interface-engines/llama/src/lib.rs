@@ -152,20 +152,20 @@ impl RuntimeB {
         let mut is_ssm_model = false;
         let mut probed_layers = None;
 
-        if let Ok((metadata, tensor_infos, _)) =
-            cluaiz_shared::utils::GGUFProber::probe(std::path::Path::new(&self.model_path))
-        {
-            has_native_mtp = cluaiz_shared::utils::GGUFProber::check_native_mtp(&tensor_infos);
-            is_ssm_model =
-                cluaiz_shared::utils::GGUFProber::check_recurrent_ssm(&metadata, &tensor_infos);
+        let model_p = std::path::Path::new(&self.model_path);
+        let parent_dir = if model_p.is_file() {
+            model_p.parent().unwrap_or(model_p)
+        } else {
+            model_p
+        };
 
-            // Extract actual block count/layers dynamically from keys (e.g. llama.block_count)
-            for (k, v) in &metadata {
-                if k.ends_with(".block_count") {
-                    if let Ok(count) = v.parse::<usize>() {
-                        probed_layers = Some(count);
-                        break;
-                    }
+        let manifest_path = parent_dir.join("model_manifest.json");
+        if manifest_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    has_native_mtp = val.get("has_native_mtp").and_then(|v| v.as_bool()).unwrap_or(false);
+                    is_ssm_model = val.get("is_ssm_model").and_then(|v| v.as_bool()).unwrap_or(false);
+                    probed_layers = val.get("layer_count").and_then(|v| v.as_u64()).map(|c| c as usize);
                 }
             }
         }

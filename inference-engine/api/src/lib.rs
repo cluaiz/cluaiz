@@ -51,7 +51,7 @@ pub async fn run_daemon() {
         .ensure_models_dir()
         .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
     
-    cluaiz_shared::utils::ModelRegistry::sync_from_disk(&cluaiz_root);
+    engines::models::InstalledStateRegistry::sync_from_disk(&cluaiz_root);
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
