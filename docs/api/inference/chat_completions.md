@@ -23,7 +23,7 @@ Generates conversational completions, structured outputs, tool / function callin
 | **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat slot. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase creativity. |
-| **`max_tokens`** | Integer | No | `4096` | $\ge 1$ | Maximum number of completion tokens to generate. |
+| **`max_tokens`** | Integer | No | `2048` | $\ge 1$ | Maximum number of completion tokens to generate. |
 | **`think_mode`** | String | No | `"auto"` | `"auto"`, `"on"`, `"off"`, `"low"`, `"medium"`, `"high"` | Controls Chain-of-Thought reasoning token emission. |
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling). |
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"`, `"required"` | Controls which tool the model must call. |

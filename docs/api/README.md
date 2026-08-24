@@ -49,7 +49,7 @@ Authorization: Bearer YOUR_API_KEY
 
 ## ⚡ OpenAI Client Quickstart (Python)
 
-Cluaiz Engine is 100% compatible with the official OpenAI Python SDK:
+Cluaiz Engine provides drop-in OpenAI Python and TypeScript SDK compatibility for `/v1/chat/completions`, `/v1/embeddings`, and `/v1/models`:
 
 ```python
 from openai import OpenAI
