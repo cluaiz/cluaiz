@@ -206,6 +206,39 @@ impl EnvironmentManager {
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
+
+        // 🔄 Automatic Vault Directory Migration (Legacy 6-slot/naming to Sovereign 5-slot taxonomy)
+        let legacy_mappings = [
+            ("text-embedding", "embedding"),
+            ("vision-embedding", "embedding"),
+            ("vision-ingest", "ingest"),
+            ("vision", "ingest"),
+            ("audio", "tts"),
+        ];
+
+        for (old_slot, new_slot) in legacy_mappings {
+            let old_dir = dir.join(old_slot);
+            let new_dir = dir.join(new_slot);
+            if old_dir.exists() {
+                if !new_dir.exists() {
+                    if let Err(e) = std::fs::rename(&old_dir, &new_dir) {
+                        tracing::warn!("⚠️ Failed to rename legacy model vault {:?} -> {:?}: {}", old_dir, new_dir, e);
+                    } else {
+                        tracing::info!("✅ Migrated legacy model vault {:?} -> {:?}", old_dir, new_dir);
+                    }
+                } else if let Ok(entries) = std::fs::read_dir(&old_dir) {
+                    // Move contents if new_dir already exists
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let target = new_dir.join(entry.file_name());
+                        if !target.exists() {
+                            let _ = std::fs::rename(entry.path(), target);
+                        }
+                    }
+                    let _ = std::fs::remove_dir_all(&old_dir);
+                }
+            }
+        }
+
         Ok(dir)
     }
 

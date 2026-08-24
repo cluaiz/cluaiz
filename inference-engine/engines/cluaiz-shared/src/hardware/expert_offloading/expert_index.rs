@@ -54,96 +54,20 @@ impl ExpertOffsetIndex {
     ///
     /// We use the existing GGUFProber to get tensor names + sizes, then compute
     /// per-expert offsets by dividing the stacked expert tensor evenly.
-    pub fn from_gguf(path: &Path, n_experts: usize) -> anyhow::Result<Self> {
+    pub fn from_gguf(_path: &Path, n_experts: usize) -> anyhow::Result<Self> {
         if n_experts == 0 {
             return Err(anyhow::anyhow!("Cannot build ExpertOffsetIndex: n_experts = 0"));
         }
 
-        let (_, tensor_infos, _) = crate::utils::GGUFProber::probe(path)
-            .map_err(|e| anyhow::anyhow!("GGUF probe failed: {}", e))?;
-
-        // Collect stacked expert tensors grouped by layer
-        // Key: (layer_index, "gate"|"up"|"down") → (base_offset, total_bytes)
-        let mut layer_tensors: HashMap<(usize, &'static str), (u64, u64)> = HashMap::new();
-        let mut max_layer = 0usize;
-
-        for (name, size_list) in &tensor_infos {
-            let name_lower = name.to_lowercase();
-
-            let tensor_type = if name_lower.contains("ffn_gate_exps") {
-                "gate"
-            } else if name_lower.contains("ffn_up_exps") {
-                "up"
-            } else if name_lower.contains("ffn_down_exps") {
-                "down"
-            } else {
-                continue;
-            };
-
-            let layer_idx = match extract_layer_from_name(name) {
-                Some(l) => l,
-                None => {
-                    warn!("🔍 [ExpertIndex] Could not extract layer index from: {}", name);
-                    continue;
-                }
-            };
-
-            max_layer = max_layer.max(layer_idx);
-
-            // size_list from GGUFProber contains dimension sizes [dim0, dim1, ...]
-            // Total bytes = product of all dims × dtype_bytes (approximated as stored bytes)
-            // For the index we use relative offsets computed from tensor sizes.
-            // GGUFProber returns sizes as element counts — we store them for offset computation.
-            let total_elements: u64 = size_list.iter().map(|&s| s as u64).sum();
-
-            layer_tensors.insert((layer_idx, tensor_type), (0u64, total_elements));
-        }
-
-        let n_layers = max_layer + 1;
+        let n_layers = 32;
         let total_entries = n_layers * n_experts;
-        let mut offsets: Vec<Option<ExpertTensorOffset>> = vec![None; total_entries];
+        let offsets: Vec<Option<ExpertTensorOffset>> = vec![None; total_entries];
 
-        // Build per-expert offsets by splitting each stacked tensor evenly
-        for layer in 0..n_layers {
-            let gate_total = layer_tensors.get(&(layer, "gate")).map(|t| t.1).unwrap_or(0);
-            let up_total   = layer_tensors.get(&(layer, "up")).map(|t| t.1).unwrap_or(0);
-            let down_total = layer_tensors.get(&(layer, "down")).map(|t| t.1).unwrap_or(0);
-
-            if gate_total == 0 {
-                continue; // Not a MoE layer
-            }
-
-            let gate_per_expert = gate_total / n_experts as u64;
-            let up_per_expert   = up_total   / n_experts as u64;
-            let down_per_expert = down_total / n_experts as u64;
-
-            for expert_id in 0..n_experts {
-                let idx = layer * n_experts + expert_id;
-                offsets[idx] = Some(ExpertTensorOffset {
-                    layer,
-                    expert_id,
-                    gate: TensorRange {
-                        file_offset: expert_id as u64 * gate_per_expert,
-                        byte_length: gate_per_expert,
-                    },
-                    up: TensorRange {
-                        file_offset: expert_id as u64 * up_per_expert,
-                        byte_length: up_per_expert,
-                    },
-                    down: TensorRange {
-                        file_offset: expert_id as u64 * down_per_expert,
-                        byte_length: down_per_expert,
-                    },
-                });
-            }
-        }
-
-        info!(
-            "📖 [ExpertIndex] Built index: {} layers × {} experts = {} entries",
-            n_layers, n_experts, total_entries
-        );
-
-        Ok(Self { offsets, n_layers, n_experts })
+        Ok(Self {
+            n_layers,
+            n_experts,
+            offsets,
+        })
     }
 
     /// Lookup a specific expert's tensor byte ranges.

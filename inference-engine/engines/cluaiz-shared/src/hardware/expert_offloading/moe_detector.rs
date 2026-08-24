@@ -61,113 +61,38 @@ pub struct GgufMoeDetector;
 
 impl GgufMoeDetector {
     pub fn detect(model_path: &Path) -> MoeModelInfo {
-        let probe_result = crate::utils::GGUFProber::probe(model_path);
-        let (metadata, tensor_infos, _) = match probe_result {
-            Ok(r) => r,
-            Err(_) => return MoeModelInfo::default(),
-        };
-
-        let expert_count = metadata
-            .iter()
-            .find(|(k, _)| k.ends_with(".expert_count"))
-            .and_then(|(_, v)| v.parse::<usize>().ok())
-            .unwrap_or(0);
-
-        let active_experts = metadata
-            .iter()
-            .find(|(k, _)| k.ends_with(".expert_used_count"))
-            .and_then(|(_, v)| v.parse::<usize>().ok())
-            .unwrap_or(if expert_count > 0 { (expert_count / 8).max(1) } else { 0 });
-
-        let block_count = metadata
-            .iter()
-            .find(|(k, _)| k.ends_with(".block_count"))
-            .and_then(|(_, v)| v.parse::<usize>().ok())
-            .unwrap_or(0);
-
-        if expert_count == 0 {
-            return MoeModelInfo::default();
-        }
-
-        // ── Calculate total parameters to determine average bytes per element ──
-        let mut total_elements: u64 = 0;
-        for size_list in tensor_infos.values() {
-            total_elements += size_list.iter().map(|&s| s as u64).product::<u64>();
-        }
-
-        let file_size = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
-        let bytes_per_element = if total_elements > 0 {
-            file_size as f64 / total_elements as f64
+        let parent_dir = if model_path.is_file() {
+            model_path.parent().unwrap_or(model_path)
         } else {
-            0.5 // Default to 4-bit (0.5 bytes/element)
+            model_path
         };
 
-        // ── Count MoE layers by scanning tensor names for expert patterns ──
-        // Expert tensors are named: blk.{N}.ffn_gate_exps.weight or blk.{N}.ffn_moe_gate.weight
-        let mut moe_layer_indices = std::collections::HashSet::new();
-        let mut total_expert_bytes: u64 = 0;
-        let mut per_expert_bytes_samples: Vec<u64> = Vec::new();
-        let mut dense_bytes: u64 = 0;
-
-        for (tensor_name, size_list) in &tensor_infos {
-            let name_lower = tensor_name.to_lowercase();
-            let element_count: u64 = size_list.iter().map(|&s| s as u64).product();
-            let tensor_bytes = (element_count as f64 * bytes_per_element) as u64;
-
-            let is_expert_tensor = name_lower.contains("ffn_gate_exps")
-                || name_lower.contains("ffn_up_exps")
-                || name_lower.contains("ffn_down_exps")
-                || name_lower.contains("ffn_experts")
-                || (name_lower.contains("ffn_") && name_lower.contains("exp"));
-
-            if is_expert_tensor {
-                total_expert_bytes += tensor_bytes;
-                // Extract layer index from name like "blk.42.ffn_gate_exps.weight"
-                if let Some(layer_idx) = extract_layer_index(tensor_name) {
-                    moe_layer_indices.insert(layer_idx);
-                }
-                // Collect per-expert size samples from gate tensors to estimate single expert size
-                if name_lower.contains("ffn_gate_exps") {
-                    // Each gate_exps tensor contains expert_count matrices stacked
-                    // Single expert gate size ≈ tensor_bytes / expert_count
-                    if expert_count > 0 {
-                        per_expert_bytes_samples.push(tensor_bytes / expert_count as u64);
+        let manifest_path = parent_dir.join("model_manifest.json");
+        if manifest_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let is_moe = val.get("is_moe").and_then(|v| v.as_bool()).unwrap_or(false);
+                    if is_moe {
+                        let expert_count = val.get("expert_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                        let active_experts = val.get("active_experts").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                        let file_size = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
+                        let expert_bytes = (file_size as f64 * 0.8) as u64;
+                        let dense_bytes = file_size.saturating_sub(expert_bytes);
+                        return MoeModelInfo {
+                            is_moe: true,
+                            expert_count,
+                            moe_layer_count: val.get("layer_count").and_then(|v| v.as_u64()).unwrap_or(32) as usize,
+                            active_experts_per_token: if active_experts > 0 { active_experts } else { (expert_count / 8).max(1) },
+                            total_expert_bytes: expert_bytes,
+                            expert_size_bytes: if expert_count > 0 { expert_bytes / expert_count as u64 } else { 0 },
+                            dense_backbone_bytes: dense_bytes,
+                        };
                     }
                 }
-            } else {
-                dense_bytes += tensor_bytes;
             }
         }
 
-        let moe_layer_count = if moe_layer_indices.is_empty() {
-            // Fallback: assume all layers with block_count are MoE layers
-            block_count
-        } else {
-            moe_layer_indices.len()
-        };
-
-        // Estimate single expert size = (gate + up + down) ≈ 3 × gate weight
-        let expert_size_bytes = if !per_expert_bytes_samples.is_empty() {
-            let avg_gate: u64 = per_expert_bytes_samples.iter().sum::<u64>()
-                / per_expert_bytes_samples.len() as u64;
-            avg_gate * 3 // gate + up + down weights
-        } else if expert_count > 0 && moe_layer_count > 0 {
-            total_expert_bytes / (expert_count as u64 * moe_layer_count as u64).max(1)
-        } else {
-            0
-        };
-
-        // Silent metadata probe — summary rendered by Negotiator tree log
-
-        MoeModelInfo {
-            is_moe: true,
-            expert_count,
-            moe_layer_count,
-            active_experts_per_token: active_experts,
-            total_expert_bytes,
-            expert_size_bytes,
-            dense_backbone_bytes: dense_bytes,
-        }
+        MoeModelInfo::default()
     }
 }
 

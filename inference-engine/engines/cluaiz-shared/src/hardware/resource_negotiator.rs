@@ -297,14 +297,19 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let vram_base_reserve = dense_per_layer_gb.max(0.10);
 
-            // Read raw native context length directly from GGUF header to avoid DNA side-effects
+            // Read raw native context length from manifest or default
             let mut native_max_ctx = usize::MAX;
-            if let Ok((metadata, _, _)) = crate::utils::GGUFProber::probe(&request.model_path) {
-                if let Some(arch) = metadata.get("general.architecture") {
-                    let ctx_key = format!("{}.context_length", arch);
-                    if let Some(ctx_str) = metadata.get(&ctx_key) {
-                        if let Ok(ctx) = ctx_str.parse::<usize>() {
-                            native_max_ctx = ctx;
+            let parent_dir = if request.model_path.is_file() {
+                request.model_path.parent().unwrap_or(&request.model_path)
+            } else {
+                &request.model_path
+            };
+            let manifest_path = parent_dir.join("model_manifest.json");
+            if manifest_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(ctx) = val.get("context_window").and_then(|v| v.as_u64()) {
+                            native_max_ctx = ctx as usize;
                         }
                     }
                 }

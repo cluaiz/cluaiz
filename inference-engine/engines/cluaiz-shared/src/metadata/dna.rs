@@ -149,139 +149,118 @@ impl StructuralDNA {
 
         let mut did_probe = false;
         if self.layer_count.is_none() || !self.dynamic_attributes.contains_key("has_native_mtp") {
-            // 1. Native GGUF Probe (The REAL Truth - No external JSONs needed)
-            let mut gguf_path = None;
-            if let Ok(entries) = std::fs::read_dir(model_dir) {
-                for entry in entries.flatten() {
-                    if let Ok(file_type) = entry.file_type() {
-                        if file_type.is_file() {
-                            let p = entry.path();
-                            if p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                                gguf_path = Some(p);
-                                break;
-                            }
+            let manifest_path = model_dir.join("model_manifest.json");
+            let mut template_opt = None;
+
+            if manifest_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(arch) = val.get("architecture").and_then(|v| v.as_str()) {
+                            self.model_identity = arch.to_string();
                         }
+                        if let Some(ctx) = val.get("context_window").and_then(|v| v.as_u64()) {
+                            arch_limit = Some(ctx as usize);
+                        }
+                        if let Some(tmpl) = val.get("chat_template").and_then(|v| v.as_str()) {
+                            template_opt = Some(tmpl.to_string());
+                        }
+                        did_probe = true;
                     }
                 }
             }
 
-            if let Some(path) = gguf_path {
-                if let Ok((metadata, tensor_infos, _count)) = crate::utils::GGUFProber::probe(&path) {
-                    let has_native_mtp = crate::utils::GGUFProber::check_native_mtp(&tensor_infos);
-                    self.dynamic_attributes.insert("has_native_mtp".to_string(), has_native_mtp.to_string());
-
-                    if let Some(arch) = metadata.get("general.architecture") {
-                        self.model_identity = arch.clone();
-
-                        let ctx_key = format!("{}.context_length", arch);
-                        if let Some(ctx_str) = metadata.get(&ctx_key) {
-                            if let Ok(ctx) = ctx_str.parse::<usize>() {
-                                arch_limit = Some(ctx);
-                            }
-                        }
-
-                        if let Some(val) = metadata
-                            .get(&format!("{}.block_count", arch))
-                            .and_then(|v| v.parse::<usize>().ok())
-                        {
-                            self.layer_count = Some(val);
-                        }
-                        if let Some(val) = metadata
-                            .get(&format!("{}.attention.head_count", arch))
-                            .and_then(|v| v.parse::<usize>().ok())
-                        {
-                            self.attention_head_count = Some(val);
-                        }
-                        if let Some(val) = metadata
-                            .get(&format!("{}.attention.head_count_kv", arch))
-                            .and_then(|v| v.parse::<usize>().ok())
-                        {
-                            self.attention_head_count_kv = Some(val);
-                        }
-                        if let Some(val) = metadata
-                            .get(&format!("{}.feed_forward_length", arch))
-                            .and_then(|v| v.parse::<usize>().ok())
-                        {
-                            self.intermediate_size = Some(val);
-                        }
-                        if let Some(val) = metadata
-                            .get(&format!("{}.embedding_length", arch))
-                            .and_then(|v| v.parse::<usize>().ok())
-                        {
-                            self.hidden_size = Some(val);
-                        }
-                    }
-
-                    // 2. Read tokenizer.chat_template to detect reasoning natively
-                    if let Some(template) = metadata.get("tokenizer.chat_template") {
-                        self.chat_template = Some(template.clone());
-
-                        let template_lower = template.to_lowercase();
-                        let mut detected_start = None;
-                        let mut detected_end = None;
-
-                        let keywords = [
-                            "think",
-                            "thought",
-                            "reasoning",
-                            "reason",
-                            "brainstorm",
-                            "logic",
-                        ];
-                        for kw in keywords.iter() {
-                            let formats = [
-                                (format!("<{}>", kw), format!("</{}>", kw)),
-                                (format!("<|{}_start|>", kw), format!("<|{}_end|>", kw)),
-                                (format!("<|{}|>", kw), format!("</|{}|>", kw)),
-                                (format!("<|channel>{}", kw), format!("<channel|>")),
-                            ];
-
-                            for (start, end) in formats.iter() {
-                                if template_lower.contains(start) {
-                                    detected_start = Some(start.clone());
-                                    if template_lower.contains(end) {
-                                        detected_end = Some(end.clone());
+            if !did_probe {
+                let reg_path = crate::environment::EnvironmentManager::current().config_dir().join("model_registry.json");
+                if let Ok(content) = std::fs::read_to_string(&reg_path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
+                            let target_dir_str = model_dir.to_string_lossy().to_lowercase().replace('\\', "/");
+                            for (_id, entry) in installed {
+                                let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
+                                if !local_dir.is_empty() && (local_dir == target_dir_str || target_dir_str.contains(&local_dir)) {
+                                    if let Some(meta) = entry.get("metadata") {
+                                        if let Some(arch) = meta.get("architecture").and_then(|v| v.as_str()) {
+                                            self.model_identity = arch.to_string();
+                                        }
+                                        if let Some(ctx_str) = meta.get("context_length").and_then(|v| v.as_str()) {
+                                            if let Ok(ctx) = ctx_str.parse::<usize>() {
+                                                arch_limit = Some(ctx);
+                                            }
+                                        }
+                                        if let Some(tmpl) = meta.get("chat_template").and_then(|v| v.as_str()) {
+                                            template_opt = Some(tmpl.to_string());
+                                        }
                                     }
+                                    did_probe = true;
                                     break;
                                 }
                             }
-                            if detected_start.is_some() {
-                                break;
-                            }
-                        }
-
-                        if let Some(start_tag) = detected_start {
-                            self.supports_thinking = true;
-                            self.think_tag_schema = start_tag.clone();
-                            
-                            if let Some(end_tag) = detected_end.clone() {
-                                self.think_end_schema = end_tag;
-                                self.reliable_think_close = true;
-                            } else {
-                                if start_tag.contains("_start") {
-                                    self.think_end_schema = start_tag.replace("_start", "_end");
-                                } else if start_tag.contains("<|") {
-                                    self.think_end_schema = start_tag.replace("<|", "</|");
-                                } else {
-                                    self.think_end_schema = start_tag.replace("<", "</");
-                                }
-                                self.reliable_think_close = false;
-                            }
-                            
-                            crate::dev_info!(
-                                "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
-                                self.think_tag_schema,
-                                self.think_end_schema
-                            );
                         }
                     }
-                } else {
-                    eprintln!("⚠️ [DNA] GGUF probe failed on: {:?}", path);
                 }
-            } else {
-                eprintln!("⚠️ [DNA] No .gguf file found in model directory for probe.");
             }
-            did_probe = true;
+
+            if let Some(template) = template_opt {
+                self.chat_template = Some(template.clone());
+                let template_lower = template.to_lowercase();
+                let mut detected_start = None;
+                let mut detected_end = None;
+
+                let keywords = [
+                    "think",
+                    "thought",
+                    "reasoning",
+                    "reason",
+                    "brainstorm",
+                    "logic",
+                ];
+                for kw in keywords.iter() {
+                    let formats = [
+                        (format!("<{}>", kw), format!("</{}>", kw)),
+                        (format!("<|{}_start|>", kw), format!("<|{}_end|>", kw)),
+                        (format!("<|{}|>", kw), format!("</|{}|>", kw)),
+                        (format!("<|channel>{}", kw), format!("<channel|>")),
+                    ];
+
+                    for (start, end) in formats.iter() {
+                        if template_lower.contains(start) {
+                            detected_start = Some(start.clone());
+                            if template_lower.contains(end) {
+                                detected_end = Some(end.clone());
+                            }
+                            break;
+                        }
+                    }
+                    if detected_start.is_some() {
+                        break;
+                    }
+                }
+
+                if let Some(start_tag) = detected_start {
+                    self.supports_thinking = true;
+                    self.think_tag_schema = start_tag.clone();
+                    
+                    if let Some(end_tag) = detected_end.clone() {
+                        self.think_end_schema = end_tag;
+                        self.reliable_think_close = true;
+                    } else {
+                        if start_tag.contains("_start") {
+                            self.think_end_schema = start_tag.replace("_start", "_end");
+                        } else if start_tag.contains("<|") {
+                            self.think_end_schema = start_tag.replace("<|", "</|");
+                        } else {
+                            self.think_end_schema = start_tag.replace("<", "</");
+                        }
+                        self.reliable_think_close = false;
+                    }
+
+                    crate::dev_info!(
+                        "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
+                        self.think_tag_schema,
+                        self.think_end_schema
+                    );
+                }
+            }
         }
 
         // 🛠️ DEEP TRUTH RESOLUTION

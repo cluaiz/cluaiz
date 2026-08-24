@@ -57,30 +57,38 @@ impl TemplateManager {
         }
 
         // Fallback: Model Registry (model_registry.json) & companion files
-        let registry = crate::utils::model_registry::ModelRegistry::load();
-        for (_, entry) in &registry.installed_models {
-            if entry.id.eq_ignore_ascii_case(&dna.model_identity) || dna.model_identity.contains(&entry.id) {
-                if let Some(ref tmpl) = entry.metadata.chat_template {
-                    if !tmpl.trim().is_empty() {
-                        return Some(tmpl.clone());
-                    }
-                }
+        let reg_path = crate::environment::EnvironmentManager::current().config_dir().join("model_registry.json");
+        if let Ok(content) = std::fs::read_to_string(&reg_path) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
+                    for (_id, entry) in installed {
+                        let entry_id = entry.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                        if entry_id.eq_ignore_ascii_case(&dna.model_identity) || dna.model_identity.contains(entry_id) {
+                            if let Some(tmpl) = entry.get("metadata").and_then(|m| m.get("chat_template")).and_then(|t| t.as_str()) {
+                                if !tmpl.trim().is_empty() {
+                                    return Some(tmpl.to_string());
+                                }
+                            }
 
-                // Check companion tokenizer files in local_dir
-                let parent_dir = std::path::Path::new(&entry.local_dir);
-                let possible_files = ["chat_template.json", "tokenizer_config.json", "template.jinja"];
-                for fname in possible_files {
-                    let p = parent_dir.join(fname);
-                    if p.exists() {
-                        if let Ok(content) = std::fs::read_to_string(&p) {
-                            if fname.ends_with(".json") {
-                                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                                    if let Some(t) = val.get("chat_template").and_then(|v| v.as_str()) {
-                                        return Some(t.to_string());
+                            if let Some(local_dir) = entry.get("local_dir").and_then(|d| d.as_str()) {
+                                let parent_dir = std::path::Path::new(local_dir);
+                                let possible_files = ["chat_template.json", "tokenizer_config.json", "template.jinja"];
+                                for fname in possible_files {
+                                    let p = parent_dir.join(fname);
+                                    if p.exists() {
+                                        if let Ok(content) = std::fs::read_to_string(&p) {
+                                            if fname.ends_with(".json") {
+                                                if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(&content) {
+                                                    if let Some(t) = json_val.get("chat_template").and_then(|v| v.as_str()) {
+                                                        return Some(t.to_string());
+                                                    }
+                                                }
+                                            } else {
+                                                return Some(content);
+                                            }
+                                        }
                                     }
                                 }
-                            } else {
-                                return Some(content);
                             }
                         }
                     }
