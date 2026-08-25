@@ -250,15 +250,7 @@ pub async fn chat_completions(
             ).into_response();
         }
     }
-    // 🛡️ Model Registry & Dynamic Context Limit (Min 2k Floor)
-    let dynamic_context_limit = engines::models::InstalledStateRegistry::load()
-        .installed_models
-        .get(request.model.as_deref().unwrap_or("default"))
-        .and_then(|m| m.metadata.context_window.parse::<usize>().ok())
-        .unwrap_or(2048)
-        .max(2048);
 
-    let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
     let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
     
     // Check if empty content should be prevented
@@ -336,6 +328,26 @@ pub async fn chat_completions(
         });
         return axum::response::Json(err_res).into_response();
     }
+
+    // 🛡️ Dynamic Context Limit: Resolved from InstalledStateRegistry or active slot (Min 2k Floor)
+    let installed_registry = engines::models::InstalledStateRegistry::load();
+    let dynamic_context_limit = installed_registry
+        .installed_models
+        .get(&resolved_model_name)
+        .or_else(|| {
+            schema.active_slots.get(target_slot)
+                .and_then(|slot| slot.model_id.as_deref())
+                .and_then(|id| installed_registry.installed_models.get(id))
+        })
+        .or_else(|| {
+            let clean = resolved_model_name.trim_end_matches(".gguf");
+            installed_registry.installed_models.get(clean)
+        })
+        .and_then(|m| m.metadata.context_window.parse::<usize>().ok())
+        .unwrap_or(2048)
+        .max(2048);
+
+    let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
 
     let skip_brain = match &request.temporary_chat {
         Some(TemporaryChatMode::Strict) => true,
@@ -678,11 +690,12 @@ pub async fn chat_completions(
                                 });
                                 yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
                                 
-                                // 🚀 SOVEREIGN KV-CACHE RESUME 
+                                // 🔄 Dynamic KV-Cache & Tool Result Resume (Preserving User Context)
+                                let user_query = last_message.flatten_to_string().await;
                                 let pivot_envelope = json!({
                                     "pivot_prompt": format!(
-                                        "<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the tool result above. Do NOT use any tools. Just answer the user directly.\n",
-                                        comp_type, comp_name, execution_result
+                                        "<user_query>\n{}\n</user_query>\n<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the user query and tool result above. Do NOT use any tools. Just answer the user directly.\n",
+                                        user_query, comp_type, comp_name, execution_result
                                     ),
                                     "samplers": {
                                         "temp": gguf_meta.samplers.temp,

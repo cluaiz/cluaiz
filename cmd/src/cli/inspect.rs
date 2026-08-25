@@ -20,7 +20,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
                 if manifest.huggingface_filename.ends_with(".gguf") {
                     println!("  {} [Probe] Directly analyzing GGUF binary from: {:?}", "🔍".cyan(), model_file);
                     
-                    // Directly use cluaiz_shared::utils::GGUFProber
+                    // Directly use engines::models::GgufProber
                     if let Ok((metadata, tensor_infos, tensor_count)) = engines::models::GgufProber::probe(&model_file) {
                         println!("\n  {} === GGUF HEADER RAW DATA ===", "📄".cyan());
                         println!("  - Tensor Count: {}", tensor_count);

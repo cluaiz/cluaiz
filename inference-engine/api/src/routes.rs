@@ -28,6 +28,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/audio/execute", post(audio::execute_audio))
         
         // ── External Compatible Models API ──
+        .route("/v1/models", get(models::v1_models))
         .route("/api/tags", get(models::tags))
         .route("/api/pull", post(models::pull_model))
         

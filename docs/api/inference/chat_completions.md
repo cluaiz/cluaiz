@@ -33,6 +33,10 @@ Generates conversational completions, structured outputs, tool / function callin
 | **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops. |
 | **`keep_alive`** | Integer | No | `null` | Seconds (e.g. `300`) | Inactivity timeout in seconds before unloading model from VRAM. |
 
+> [!NOTE]
+> **BitNet (1-bit / 1.58-bit) Models**:
+> 1-bit and ternary quantized architectures operate natively with greedy argmax decoding for deterministic mathematical stability. For BitNet models, `temperature`, `top_p`, `top_k`, and `min_p` overrides are safely bypassed while penalty samplers remain active.
+
 ---
 
 ## 🔒 Security Notice: Local File Paths
