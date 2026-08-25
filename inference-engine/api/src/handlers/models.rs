@@ -85,16 +85,19 @@ pub async fn list_installed_models(State(_state): State<Arc<AppState>>) -> Json<
 // ─── GET /v1/models (OpenAI Standard Format) ─────────────────────────
 pub async fn v1_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let registry = engines::models::InstalledStateRegistry::load();
+    let now = chrono::Utc::now().timestamp();
     let mut data = Vec::new();
-    for (id, _entry) in registry.installed_models {
+    for (id, entry) in registry.installed_models {
         data.push(json!({
             "id": id,
             "object": "model",
-            "created": 1700000000,
+            "created": now,
             "owned_by": "cluaiz",
             "permission": [],
             "root": id,
-            "parent": null
+            "parent": null,
+            "category": entry.category,
+            "context_window": entry.metadata.context_window
         }));
     }
     Json(json!({
