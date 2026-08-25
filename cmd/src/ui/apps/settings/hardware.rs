@@ -21,9 +21,9 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             let ram = v["memory"]["total_ram_gb"].as_f64().unwrap_or(0.0);
 
             let mode = "cluaiz Native";
-            let flash = v["runtime_engine"]["booster_flags"]["FlashAttention_v2"].as_bool().unwrap_or(false);
-            let turbo = v["runtime_engine"]["booster_flags"]["TurboQuant_Enable"].as_bool().unwrap_or(false);
-
+            let opt = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+            let flash = opt.flash_attention.is_active();
+            let moe = opt.extreme_moe_streaming.is_active();
 
             let ctx = v["system_context"].clone();
             let node_id = ctx["machine_id"].as_str().unwrap_or("UNKNOWN");
@@ -41,7 +41,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
                 RAM:          {:.1} GB\n\n\
                 ── ENGINE DNA ───────────────────\n\
                 RUN MODE:     {}\n\
-                BOOST:        FlashAttn: {} | TurboQuant: {}\n\n\
+                OPTIMIZATION: FlashAttn: {} | MoE Streaming: {}\n\n\
                 ── CONTROLS ─────────────────────\n\
                 [ R ] RE-DETECT HARDWARE\n\
                 [ ESC ] BACK TO MENU",
@@ -50,7 +50,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
                 gpu_model, vram, ram,
                 mode.to_uppercase(),
                 if flash { "ON ⚡" } else { "OFF" },
-                if turbo { "ON ⚡" } else { "OFF" }
+                if moe { "ON ⚡" } else { "OFF" }
             )
         } else {
             "❌ system_control.json parse error".to_string()

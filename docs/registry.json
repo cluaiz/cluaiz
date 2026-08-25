@@ -79,7 +79,7 @@
       {
         "group": "Core Engine",
         "pages": [
-          { "slug": "system-booster-deep", "title": "🚀 System Booster Guide", "file_path": "docs/engine/booster.md" },
+          { "slug": "llm-optimization-deep", "title": "🚀 LLM Optimization Guide", "file_path": "docs/engine/llm_optimization.md" },
           { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" },
           { "slug": "dual-engine-architecture", "title": "⚙️ Dual Engine Arch", "file_path": "docs/engine/dual_engine_architecture.md" },
           { "slug": "jit-architecture", "title": "⚡ JIT Architecture", "file_path": "docs/engine/jit_architecture.md" },

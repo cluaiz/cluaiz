@@ -13,80 +13,42 @@ const DESCRIPTIONS = {
     },
 
     mlock: {
-        'Auto': 'System decides based on RAM availability.',
-        'On': 'Forces the OS to lock the model in RAM. Prevents swapping and stuttering.',
-        'Off': 'Allows the OS to swap memory if needed.'
-    },
-    optimizationProfile: {
-        'balance': 'Balances speed, memory, and CPU usage.',
-        'multitasking': 'Leaves room for background apps.',
-        'max_boost': 'High performance, uses more resources.',
-        'ultra_max_boost': 'Extreme performance, will lag background apps.',
-        'hyper_cluster': 'For multi-GPU setups only.',
-        'edge': 'Optimized for low-power devices and laptops.'
+        'Auto': 'System decides memory locking based on RAM availability.',
+        'On': 'Locks model weights in RAM/VRAM to prevent OS pagefile swapping and latency spikes.',
+        'Off': 'Allows standard OS memory paging.'
     },
     flashAttn: {
-        'Auto': 'System uses Flash Attention if supported by your hardware.',
-        'On': 'Forces Flash Attention. Very fast for long contexts.',
-        'Off': 'Disables Flash Attention. Useful if the model hallucinates.'
+        'Auto': 'Enables Flash Attention if supported by hardware.',
+        'On': 'Forces Flash Attention kernel for faster sequence processing.',
+        'Off': 'Disables Flash Attention.'
     },
     context: {
-        'Auto': 'System dynamically balances memory consumption and chat history retention.',
-        'Off': 'Disables dynamic memory compression. The engine may crash if the conversation becomes excessively long.',
-        'Minimal': 'Only retains the current topic and flushes older context (Saves maximum RAM).',
-        'Standard': 'Best balance for everyday chats. Retains important older messages while freeing up unused memory.',
-        'Aggressive': 'Attempts to compress and retain the entire conversation history. Requires higher CPU processing power.',
-        'Extreme': 'Retains absolute context without forgetting. Demands maximum CPU and memory resources.'
+        'Auto': 'Balanced sliding window context shifting (10% oldest token eviction).',
+        'Off': 'Disables context shifting. Long conversations may reach max context limit.',
+        'Minimal': '5% sliding window eviction when context fills.',
+        'Standard': '10% sliding window eviction for balanced chat history.',
+        'Aggressive': '25% sliding window eviction for large context compression.',
+        'Extreme': '50% sliding window eviction for heavy multi-turn sessions.'
     },
     kvQuant: {
-        'Auto': 'System decides the best quantization level.',
-        'Kv16': 'Highest quality, uses more RAM.',
-        'Kv8': 'Good balance of quality and RAM usage.',
-        'Kv4': 'Maximum compression. Saves massive RAM but may reduce long-context quality slightly.'
-    },
-    turbo: {
-        'Auto': 'System decides based on available memory bandwidth.',
-        'On': 'Compresses tensors dynamically for faster processing.',
-        'Off': 'Processes at standard precision.'
+        'Auto': 'Automatic selection (Q4_0 with F16 fallback).',
+        'Kv16': 'F16 full precision KV cache.',
+        'Kv8': 'Q8_0 balanced precision KV cache.',
+        'Kv4': 'Q4_0 maximum memory compression.'
     },
     specDec: {
-        'Auto': 'System decides whether to use a draft model.',
-        'On': 'Generates tokens faster by guessing ahead using a tiny model.',
-        'Off': 'Generates token-by-token normally.'
+        'Auto': 'Auto-enables speculative decoding if draft model is configured.',
+        'On': 'Enables speculative decoding for accelerated token generation.',
+        'Off': 'Standard single-token generation.'
     },
-    autoRound: {
-        'Auto': 'System decides when to round weights.',
-        'On': 'Aggressively compresses the model to save VRAM.',
-        'Off': 'Maintains original model weight precision.'
-    },
-    dflash: {
-        'Auto': 'System dynamically allocates flash attention buffers.',
-        'On': 'Forces dynamic allocation, saving VRAM at the cost of slight CPU overhead.',
-        'Off': 'Pre-allocates buffers. Faster but uses more VRAM.'
-    },
-    vramReclaim: {
-        'Auto': 'System intelligently decides when to free memory based on your current hardware load.',
-        'On': 'Instantly flushes GPU memory the moment a reply is finished. Keeps your PC completely smooth.',
-        'Off': 'Keeps the AI loaded in memory for instant subsequent replies. Background apps may experience slight lag.'
-    },
-    gpuLayers: {
-        '-1': 'System automatically balances workload. Runs as much on the GPU as possible for optimal speed.',
-        '0': 'Restricts the AI to use only the CPU and System RAM. Slower generation, but highly stable and safe.',
-        '32': 'Splits the workload evenly between the GPU and CPU. Recommended for systems with limited VRAM.'
-    },
-    thinkMode: {
-        'Auto': 'Engages reasoning processes exclusively for complex mathematical or coding queries.',
-        'On': 'Forces the AI to narrate its internal step-by-step reasoning before providing the final answer.',
-        'Off': 'Delivers direct answers immediately without displaying its internal thought process.'
-    },
-    moe: {
-        'Auto': 'System decides MoE expert routing.',
-        'On': 'Optimizes VRAM strictly for Mixture-of-Experts models.',
-        'Off': 'Standard routing.'
+    hybridMemory: {
+        'Auto': 'Automatically combines VRAM + RAM when model exceeds GPU capacity.',
+        'On': 'Forces combined VRAM and System RAM hybrid mode for large context.',
+        'Off': 'Strictly bounds model allocation to GPU VRAM.'
     },
     extremeMoeStreaming: {
-        'On': 'Enables Zero-RAM MoE SSD streaming fallback when RAM is constrained.',
-        'Off': 'Disables SSD streaming fallback and uses standard RAM allocation.'
+        'On': 'Enables Zero-RAM MoE SSD expert streaming via DMA ping-pong buffers.',
+        'Off': 'Disables SSD streaming fallback and requires full RAM allocation.'
     },
     outputStyle: {
         'separated': 'The reasoning process is parsed  and cleanly separated from the final answer.',
@@ -339,19 +301,12 @@ export async function mount(container) {
     }
 
     setupCustomDropdown('container-flash-attn', 'desc-flash-attn', DESCRIPTIONS.flashAttn, autoOnOff, 'flash_attention', 'Auto');
-    setupCustomDropdown('container-context', 'desc-context', DESCRIPTIONS.context, makeOptions(['Auto', 'Off', 'Minimal', 'Standard', 'Aggressive', 'Extreme']), 'context_shifting', 'Auto');
     setupCustomDropdown('container-kv-quant', 'desc-kv-quant', DESCRIPTIONS.kvQuant, makeOptions(['Auto', 'Kv16', 'Kv8', 'Kv4']), 'kv_cache_quantization', 'Auto');
-    setupCustomDropdown('container-turbo', 'desc-turbo', DESCRIPTIONS.turbo, autoOnOff, 'turbo_quant', 'Auto');
-    setupCustomDropdown('container-spec-dec', 'desc-spec-dec', DESCRIPTIONS.specDec, autoOnOff, 'speculative_decoding', 'Auto');
-    setupCustomDropdown('container-auto-round', 'desc-auto-round', DESCRIPTIONS.autoRound, autoOnOff, 'auto_round', 'Auto');
-
-    // dflash is an object in rust, let's treat it as string Auto/On/Off if the API accepts it, or just ignore for now if it breaks.
-    // Assuming UI maps to 'Auto' 'On' 'Off' properly, we will just pass it to the backend.
-    // Wait, DFlashConfig is SmartState<DFlashConfig>. The UI sets it as string 'Auto', 'On', 'Off'. 
-    setupCustomDropdown('container-dflash', 'desc-dflash', DESCRIPTIONS.dflash, autoOnOff, 'dflash', 'Auto');
-    setupCustomDropdown('container-vram-reclaim', 'desc-vram-reclaim', DESCRIPTIONS.vramReclaim, autoOnOff, 'force_vram_reclaim', 'Auto');
-    setupCustomDropdown('container-think-mode', 'desc-think-mode', DESCRIPTIONS.thinkMode, autoOnOff, 'think_mode', 'Auto');
+    setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Off');
     setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, onOffOptions, 'extreme_moe_streaming', 'On');
+    setupCustomDropdown('container-hybrid-memory', 'desc-hybrid-memory', DESCRIPTIONS.hybridMemory, autoOnOff, 'hybrid_memory', 'Off');
+    setupCustomDropdown('container-context', 'desc-context', DESCRIPTIONS.context, makeOptions(['Auto', 'Off', 'Minimal', 'Standard', 'Aggressive', 'Extreme']), 'context_shifting', 'Auto');
+    setupCustomDropdown('container-spec-dec', 'desc-spec-dec', DESCRIPTIONS.specDec, autoOnOff, 'speculative_decoding', 'Off');
 
     // Chat, Vector, Vision, and Audio Models Selection & Rich Card Rendering
     try {

@@ -81,36 +81,33 @@ pub async fn execute(
         loop {
             let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
             println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
+            println!("    ├─ Flash Attention:   {:?}", control.flash_attention);
+            println!("    ├─ KV Cache Quant:    {:?}", control.kv_cache_quantization);
+            println!("    ├─ MoE SSD Streaming: {:?}", control.extreme_moe_streaming);
+            println!("    ├─ Hybrid Memory:     {:?}", control.hybrid_memory);
+            println!("    ├─ Context Shifting:  {:?}", control.context_shifting);
+            println!("    ├─ Memory Lock:       {:?}", control.force_memory_lock);
+            println!("    ├─ Spec. Decoding:    {:?}", control.speculative_decoding);
             println!("    ├─ VRAM Safety Buffer: {}", match control.custom_vram_buffer_gb {
                 Some(gb) => format!("{:.2} GB (Direct GB)", gb),
                 None => "Auto (% Mode)".to_string(),
             });
-            println!("    ├─ KV Cache Quant:   {:?}", control.kv_cache_quantization);
-            println!("    ├─ Context Shifting: {:?}", control.context_shifting);
-            println!("    ├─ Spec. Decoding:   {:?}", control.speculative_decoding);
-            println!("    ├─ Turbo Quant:      {:?}", control.turbo_quant);
-            println!("    ├─ Flash Attention:  {:?}", control.flash_attention);
-            println!("    ├─ Auto Round:       {:?}", control.auto_round);
-            println!("    ├─ VRAM Reclaim:     {:?}", control.force_vram_reclaim);
-            println!("    ├─ Memory Lock:      {:?}", control.force_memory_lock);
-            println!("    ├─ DFlash:           {:?}", control.dflash);
-            println!("    ├─ Think Mode:       {:?}", gguf_meta.user_moved_flags.think_mode);
-            println!("    ├─ Response Length:  {} defined", gguf_meta.user_moved_flags.response_length.len());
-            println!("    └─ N GPU Layers:     {}", gguf_meta.hardware_and_execution.n_gpu_layers);
+            println!("    ├─ RAM Safety Buffer:  {}", match control.custom_ram_buffer_gb {
+                Some(gb) => format!("{:.2} GB (Direct GB)", gb),
+                None => "Auto (% Mode)".to_string(),
+            });
+            println!("    └─ N GPU Layers:      {}", gguf_meta.hardware_and_execution.n_gpu_layers);
 
             let options = vec![
-                "VRAM Safety Buffer (Auto / Custom GB)",
-                "KV Cache Quantization",
-                "Context Shifting",
-                "Speculative Decoding",
-                "Turbo Quantization",
                 "Flash Attention",
-                "Auto Round",
-                "DFlash",
-                "Force VRAM Reclaim",
+                "KV Cache Quantization",
+                "Extreme MoE SSD Streaming",
+                "Hybrid Memory Mode",
+                "Context Shifting",
                 "Force Memory Lock",
-                "Think Mode",
-                "Response Length",
+                "Speculative Decoding",
+                "VRAM Safety Buffer (Auto / Custom GB)",
+                "CPU RAM Safety Buffer (Auto / Custom GB)",
                 "N GPU Layers",
                 "💾 Save & Exit",
                 "❌ Cancel"
@@ -131,6 +128,26 @@ pub async fn execute(
                                 if let Ok(gb) = val_clean.parse::<f64>() {
                                     control.custom_vram_buffer_gb = Some(gb);
                                     println!("  {} VRAM Safety Buffer set to {:.2} GB.", "✅".green(), gb);
+                                } else {
+                                    println!("  ⚠️ Invalid GB value '{}'. Keeping current value.", val_str);
+                                }
+                            }
+                        }
+                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                    }
+                }
+                "CPU RAM Safety Buffer (Auto / Custom GB)" => {
+                    let buf_opts = vec!["Auto (% Mode)", "Custom Direct GB (e.g. 2.0 GB)"];
+                    if let Ok(b) = inquire::Select::new("Select CPU RAM Buffer Mode:", buf_opts).with_help_message("").prompt() {
+                        if b == "Auto (% Mode)" {
+                            control.custom_ram_buffer_gb = None;
+                            println!("  {} CPU RAM Safety Buffer set to Auto (% Mode).", "✅".green());
+                        } else {
+                            if let Ok(val_str) = inquire::Text::new("Enter CPU RAM Safety Buffer in GB (e.g. 2.0):").with_help_message("").prompt() {
+                                let val_clean = val_str.trim().trim_end_matches("GB").trim_end_matches("gb").trim();
+                                if let Ok(gb) = val_clean.parse::<f64>() {
+                                    control.custom_ram_buffer_gb = Some(gb);
+                                    println!("  {} CPU RAM Safety Buffer set to {:.2} GB.", "✅".green(), gb);
                                 } else {
                                     println!("  ⚠️ Invalid GB value '{}'. Keeping current value.", val_str);
                                 }
@@ -165,21 +182,6 @@ pub async fn execute(
                             _ => control.context_shifting,
                         };
                         let _ = HardwareGovernor::save_optimization_settings(&control);
-                    }
-                }
-                "DFlash" => {
-                    let dflash_opts = vec!["Auto", "On", "Off"];
-                    if let Ok(d) = inquire::Select::new("DFlash:", dflash_opts).with_help_message("").prompt() {
-                        control.dflash = cluaiz_shared::hardware::schema::optimization::SmartState::Static(d.to_string());
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
-                    }
-                }
-                "Response Length" => {
-                    let rl_opts = vec!["Long", "Short", "Auto"];
-                    if let Ok(rl) = inquire::Select::new("Response Length:", rl_opts).with_help_message("").prompt() {
-                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-                        gguf_meta.user_moved_flags.response_length.insert("default".to_string(), rl.to_lowercase());
-                        let _ = gguf_meta.save();
                     }
                 }
                 "N GPU Layers" => {
@@ -219,21 +221,14 @@ pub async fn execute(
                             _ => FeatureState::Auto,
                         };
                         match other {
-                            "Speculative Decoding" => control.speculative_decoding = state,
-                            "Turbo Quantization" => control.turbo_quant = state,
                             "Flash Attention" => control.flash_attention = state,
-                            "Auto Round" => control.auto_round = state,
-                            "Force VRAM Reclaim" => control.force_vram_reclaim = state,
-                            "Force Memory Lock" => control.force_memory_lock = state,
-                            "Think Mode" => {
-                                let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-                                gguf_meta.user_moved_flags.think_mode = match state {
-                                    FeatureState::On => "On".to_string(),
-                                    FeatureState::Off => "Off".to_string(),
-                                    _ => "Auto".to_string(),
-                                };
-                                let _ = gguf_meta.save();
+                            "Extreme MoE SSD Streaming" => control.extreme_moe_streaming = state,
+                            "Hybrid Memory Mode" => {
+                                control.hybrid_memory = state;
+                                control.force_vram_reclaim = state;
                             },
+                            "Force Memory Lock" => control.force_memory_lock = state,
+                            "Speculative Decoding" => control.speculative_decoding = state,
                             _ => {}
                         }
                         let _ = HardwareGovernor::save_optimization_settings(&control);

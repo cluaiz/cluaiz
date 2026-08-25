@@ -98,7 +98,35 @@ try {
         Assert-Test "POST /v1/chat/completions (max_tokens: 0) returns 400" ($statusCode -eq 400) "Got Status $statusCode"
     }
 
-    # 4. Determine if an active model exists for inference tests
+    # 4. Test Optimization API endpoints
+    try {
+        $optRes = Invoke-RestMethod -Uri "$BaseUrl/v1/optimization/status" -Method Get -ErrorAction Stop
+        $hasOpt = ($optRes.status -eq "success") -and ($null -ne $optRes.optimization)
+        Assert-Test "GET /v1/optimization/status returns 200 with optimization object" $hasOpt
+    } catch {
+        Assert-Test "GET /v1/optimization/status returns 200" $false $_.Exception.Message
+    }
+
+    try {
+        $updateBody = @{
+            flash_attention = "Auto"
+            extreme_moe_streaming = "On"
+            hybrid_memory = "Off"
+            context_shifting = "Auto"
+            kv_cache_quantization = "Auto"
+            speculative_decoding = "Off"
+            force_memory_lock = "Off"
+            force_vram_reclaim = "Off"
+            turbo_quant = "Auto"
+            auto_round = "Auto"
+        } | ConvertTo-Json -Compress
+        $optUpdateRes = Invoke-RestMethod -Uri "$BaseUrl/v1/optimization/update" -Method Post -Body $updateBody -ContentType "application/json" -ErrorAction Stop
+        Assert-Test "POST /v1/optimization/update returns success" ($optUpdateRes.status -eq "success")
+    } catch {
+        Assert-Test "POST /v1/optimization/update returns success" $false $_.Exception.Message
+    }
+
+    # 5. Determine if an active model exists for inference tests
     $HasActiveModel = $false
     try {
         $testProbe = @{
@@ -114,7 +142,7 @@ try {
     if (-not $HasActiveModel) {
         Skip-Test "POST /v1/chat/completions (inference & samplers)" "No active model loaded in chat_slot (Install/load a model to run live generation tests)"
     } else {
-        # 5. Live Inference: Temperature 0.0 Determinism Test
+        # 6. Live Inference: Temperature 0.0 Determinism Test
         try {
             $body0 = @{
                 messages = @(@{ role = "user"; content = "Say the word 'Cluaiz' and nothing else." })
@@ -128,7 +156,22 @@ try {
             Assert-Test "Temperature 0.0 produces deterministic output" $false $_.Exception.Message
         }
 
-        # 6. Live Inference: think_mode case variations
+        # 7. Live Inference: Seed Reproducibility Test (temperature: 0.8)
+        try {
+            $seedBody42 = @{
+                messages = @(@{ role = "user"; content = "Write a creative opening sentence for a sci-fi story." })
+                temperature = 0.8
+                seed = 42
+                max_tokens = 25
+            } | ConvertTo-Json -Compress
+            $seedRun1 = (Invoke-RestMethod -Uri "$BaseUrl/v1/chat/completions" -Method Post -Body $seedBody42 -ContentType "application/json").choices[0].message.content
+            $seedRun2 = (Invoke-RestMethod -Uri "$BaseUrl/v1/chat/completions" -Method Post -Body $seedBody42 -ContentType "application/json").choices[0].message.content
+            Assert-Test "Seed 42 with temp 0.8 produces reproducible output" ($seedRun1 -eq $seedRun2) "Run1: '$seedRun1' vs Run2: '$seedRun2'"
+        } catch {
+            Assert-Test "Seed 42 reproducibility test" $false $_.Exception.Message
+        }
+
+        # 8. Live Inference: think_mode case variations
         foreach ($mode in @("on", "On", "auto", "Auto")) {
             try {
                 $bodyMode = @{

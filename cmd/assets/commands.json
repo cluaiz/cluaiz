@@ -86,11 +86,11 @@
       "example": "cluaiz benchmark bonsai:8b --runs 3"
     },
     {
-      "name": "booster",
-      "usage": "cluaiz booster [--kv-quant <level>] [--context-shift <mode>] [--mode <perf>] [--spec-decode <on|off|auto>]",
-      "description": "View or configure system performance booster settings. Run without flags for interactive TUI mode.",
+      "name": "optimization",
+      "usage": "cluaiz optimization [--flash-attn <on|off|auto>] [--kv-quant <level>] [--context-shift <mode>] [--spec-decode <on|off|auto>]",
+      "description": "View or configure LLM optimization settings. Run without flags for interactive TUI mode.",
       "category": "system",
-      "example": "cluaiz booster --mode max_boost --kv-quant kv8"
+      "example": "cluaiz optimization --flash-attn on --kv-quant kv8"
     },
     {
       "name": "permission firewall",

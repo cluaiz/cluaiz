@@ -827,7 +827,7 @@ impl DashboardEngine {
                     "🧠 Switch Chat Model".to_string(),
                     "⚙️ Switch Vector Model".to_string(),
                     "⚡ Engine Modes".to_string(),
-                    "🚀 System Booster".to_string(),
+                    "🚀 LLM Optimization".to_string(),
                 ];
                 let master_ans = match Select::new("Action:", master_options).with_help_message("")
                     .with_render_config(config.clone())
@@ -880,12 +880,12 @@ impl DashboardEngine {
                     
                     println!("  {} {} activated and saved to llm_optimization.json.", "✅".green(), mode_ans.bold());
                     return Ok(());
-                } else if master_ans.contains("System Optimization") {
+                } else if master_ans.contains("Optimization") || master_ans.contains("Booster") {
                     let _opt_config_path = cluaiz_shared::environment::EnvironmentManager::current().config_dir().join("llm_optimization.json");
 
                     loop {
                         let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         
                         let compute_mode_str = match gguf_meta.hardware_and_execution.n_gpu_layers {
                             0 => "CPU Only".to_string(),
@@ -893,25 +893,26 @@ impl DashboardEngine {
                             n => format!("Hybrid ({} Layers)", n),
                         };
 
-                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         let vram_buf_str = match opt_control.custom_vram_buffer_gb {
+                            Some(gb) => format!("{:.2} GB (Direct)", gb),
+                            None => "Auto (% Dynamic)".to_string(),
+                        };
+                        let ram_buf_str = match opt_control.custom_ram_buffer_gb {
                             Some(gb) => format!("{:.2} GB (Direct)", gb),
                             None => "Auto (% Dynamic)".to_string(),
                         };
                         let mut options = vec![
                             format!("VRAM Safety Buffer (Current: {})", vram_buf_str),
+                            format!("CPU RAM Safety Buffer (Current: {})", ram_buf_str),
                             format!("Compute Device (Current: {})", compute_mode_str),
-                            format!("Turbo Quant (Current: {:?})", opt_control.turbo_quant),
                             format!("Flash Attention (Current: {:?})", opt_control.flash_attention),
-                            format!("Speculative Decoding (Current: {:?})", opt_control.speculative_decoding),
-                            format!("Auto Round (Current: {:?})", opt_control.auto_round),
-                            format!("DFlash (Current: {:?})", opt_control.dflash),
-                            format!("Context Shifting (Current: {:?})", opt_control.context_shifting),
-                            format!("Force VRAM Reclaim (Current: {:?})", opt_control.force_vram_reclaim),
                             format!("KV Cache Quantization (Current: {:?})", opt_control.kv_cache_quantization),
-                            format!("Think Mode (Current: {:?})", gguf_meta.user_moved_flags.think_mode),
-                            format!("Response Length Constraints: {} defined", gguf_meta.user_moved_flags.response_length.len()),
+                            format!("Extreme MoE SSD Streaming (Current: {:?})", opt_control.extreme_moe_streaming),
+                            format!("Hybrid Memory Mode (Current: {:?})", opt_control.hybrid_memory),
+                            format!("Context Shifting (Current: {:?})", opt_control.context_shifting),
                             format!("Force Memory Lock (Current: {:?})", opt_control.force_memory_lock),
+                            format!("Speculative Decoding (Current: {:?})", opt_control.speculative_decoding),
+                            format!("Think Mode (Current: {:?})", gguf_meta.user_moved_flags.think_mode),
                         ];
                         options.push("🔙 Back to Menu".to_string());
                         
@@ -1030,6 +1031,45 @@ impl DashboardEngine {
                             continue;
                         }
 
+                        // Special sub-menus for CPU RAM Safety Buffer
+                        if key_part.as_str() == "CPU RAM Safety Buffer" {
+                            let buf_modes = vec![
+                                "Auto (% Dynamic)".to_string(), 
+                                "Custom Direct GB (e.g. 2.0 GB)".to_string()
+                            ];
+
+                            let selected_buf = match Select::new("Select CPU RAM Buffer Mode:", buf_modes).with_help_message("")
+                                .with_render_config(config.clone())
+                                .prompt() {
+                                Ok(ans) => ans,
+                                Err(_) => {
+                                    print!("\x1B[1A\x1B[2K\r");
+                                    stdout().flush()?;
+                                    continue;
+                                }
+                            };
+                            print!("\x1B[1A\x1B[2K\r");
+                            stdout().flush()?;
+
+                            if selected_buf == "Auto (% Dynamic)" {
+                                opt_control.custom_ram_buffer_gb = None;
+                            } else {
+                                if let Ok(gb) = inquire::CustomType::<f64>::new("Enter CPU RAM Safety Buffer in GB (e.g. 2.0):")
+                                    .with_default(2.0)
+                                    .with_render_config(config.clone())
+                                    .prompt() {
+                                    opt_control.custom_ram_buffer_gb = Some(gb);
+                                }
+                            }
+
+                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                                println!("  {} Optimization updated: RAM Buffer = {:?}", "✅".green(), opt_control.custom_ram_buffer_gb);
+                            } else {
+                                println!("  {} Failed to save optimization settings.", "❌".red());
+                            }
+                            continue;
+                        }
+
                         // Special sub-menus for context shifting & reclaim
                         if key_part.as_str() == "Context Shifting" {
                             let shift_modes = vec![
@@ -1137,63 +1177,6 @@ impl DashboardEngine {
                             continue;
                         }
 
-                        // Special sub-menu for Response Length
-                        if key_part.as_str() == "Response Length Constraints:" {
-                            let mode_options = vec![
-                                "Predefined (Managed via UI)".to_string(),
-                                "Custom Length Map".to_string(),
-                            ];
-                            let selected_mode = match Select::new("Select Response Length Architecture:", mode_options).with_help_message("")
-                                .with_render_config(config.clone())
-                                .prompt() {
-                                Ok(ans) => ans,
-                                Err(_) => {
-                                    print!("\x1B[1A\x1B[2K\r");
-                                    stdout().flush()?;
-                                    continue;
-                                }
-                            };
-                            print!("\x1B[1A\x1B[2K\r");
-                            stdout().flush()?;
-
-                            let new_type = if selected_mode.starts_with("Predefined") {
-                                "predefined"
-                            } else {
-                                "custom"
-                            };
-
-                            // Create JSON value to update the type
-                            let mut map_val = gguf_meta.user_moved_flags.response_length.to_value();
-                            if let Some(map_obj) = map_val.as_object_mut() {
-                                map_obj.insert("type".to_string(), serde_json::json!(new_type));
-                            } else {
-                                map_val = serde_json::json!({
-                                    "type": new_type,
-                                    "think_on": {
-                                        "Think_Deep": { "0.0": "System Constraint Prompt" },
-                                        "Think_Lite": { "0.5": "[SYSTEM CONSTRAINT: Provide a balanced and informative response.]" }
-                                    },
-                                    "think_off": {
-                                        "Long_Answer": { "0.8": "[SYSTEM CONSTRAINT: Provide a detailed and comprehensive response.]" },
-                                        "Short_Answer": { "1.0": "[SYSTEM CONSTRAINT: Provide a concise and direct response.]" }
-                                    }
-                                });
-                            }
-
-                            let dyn_val = cluaiz_shared::hardware::schema::gguf_metadata::DynamicConfigValue(map_val.to_string());
-                            gguf_meta.user_moved_flags.response_length = dyn_val.clone();
-                            let mut onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
-                            onnx_meta.user_moved_flags.response_length = dyn_val;
-                            let _ = onnx_meta.save();
-
-                            if let Ok(_) = gguf_meta.save() {
-                                println!("  {} Settings updated: Response Architecture = {}", "✅".green(), selected_mode.bold());
-                            } else {
-                                println!("  {} Failed to save settings.", "❌".red());
-                            }
-                            continue;
-                        }
-
                         let values = vec!["On".to_string(), "Off".to_string(), "Auto".to_string()];
                         
                         let val_ans = match Select::new(&format!("Set {}:", key_part), values).with_help_message("")
@@ -1216,22 +1199,17 @@ impl DashboardEngine {
                         };
 
                         match key_part.as_str() {
-                            "Turbo Quant" => opt_control.turbo_quant = feature_state,
                             "Flash Attention" => opt_control.flash_attention = feature_state,
-                            "Speculative Decoding" => opt_control.speculative_decoding = feature_state,
-                            "Auto Round" => opt_control.auto_round = feature_state,
-                            "DFlash" => {
-                                opt_control.dflash = match val_ans.as_str() {
-                                    "On" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("On".to_string()),
-                                    "Off" => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Off".to_string()),
-                                    _ => cluaiz_shared::hardware::schema::optimization::SmartState::Static("Auto".to_string()),
-                                };
+                            "Extreme MoE SSD Streaming" => opt_control.extreme_moe_streaming = feature_state,
+                            "Hybrid Memory Mode" => {
+                                opt_control.hybrid_memory = feature_state;
+                                opt_control.force_vram_reclaim = feature_state;
                             },
-                            "Force VRAM Reclaim" => opt_control.force_vram_reclaim = feature_state,
+                            "Speculative Decoding" => opt_control.speculative_decoding = feature_state,
+                            "Force Memory Lock" => opt_control.force_memory_lock = feature_state,
                             "Think Mode" => {
                                 gguf_meta.user_moved_flags.think_mode = val_ans.clone();
                             },
-                            "Force Memory Lock" => opt_control.force_memory_lock = feature_state,
                             _ => {}
                         }
                         
