@@ -54,7 +54,7 @@ impl Default for OptimizationConfig {
 }
 
 impl OptimizationConfig {
-    /// 🚀 Load the booster configuration from the sovereign system control.
+    /// 🚀 Load the optimization configuration from the sovereign system control.
     pub fn load_from_system() -> Self {
         // Default to Industrial Auto standards
         let mut config = Self {
@@ -208,7 +208,7 @@ impl OptimizationConfig {
         // We must instead gracefully fallback the KV Cache to F16.
         let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
         if is_quantized_kv && (!self.flash_attn || force_disable_fa_for_cpu) {
-            cluaiz_shared::dev_info!("⚠️ [Booster] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
+            cluaiz_shared::dev_info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
             params.type_k = 1; // GGML_TYPE_F16
             params.type_v = 1;
             is_quantized_kv = false;
@@ -227,13 +227,6 @@ impl OptimizationConfig {
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
             extreme_moe_streaming: FeatureState::Auto,
-            turbo_quant: if self.turbo_quant == "On" {
-                FeatureState::On
-            } else if self.turbo_quant == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
-            },
             flash_attention: if self.flash_attn {
                 FeatureState::On
             } else {
@@ -246,13 +239,7 @@ impl OptimizationConfig {
             } else {
                 FeatureState::Auto
             },
-            auto_round: if self.auto_round == "On" {
-                FeatureState::On
-            } else if self.auto_round == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
-            },
+            draft_model_path: None,
             dflash: SmartState::Static(self.dflash.clone()),
             kv_cache_quantization: match self.kv_cache_quantization.to_lowercase().as_str() {
                 "kv16" => KvCacheQuantization::Kv16,
@@ -262,31 +249,42 @@ impl OptimizationConfig {
             },
             context_shifting: match self.context_shifting.to_lowercase().as_str() {
                 "off" => ContextShiftingMode::Off,
-                "minimal" => {
-                    ContextShiftingMode::Minimal
-                }
-                "standard" | "on" => {
-                    ContextShiftingMode::Standard
-                }
-                "aggressive" => {
-                    ContextShiftingMode::Aggressive
-                }
-                "extreme" => {
-                    ContextShiftingMode::Extreme
-                }
+                "minimal" => ContextShiftingMode::Minimal,
+                "standard" | "on" => ContextShiftingMode::Standard,
+                "aggressive" => ContextShiftingMode::Aggressive,
+                "extreme" => ContextShiftingMode::Extreme,
                 _ => ContextShiftingMode::Auto,
+            },
+            hybrid_memory: if self.force_vram_reclaim == "On" {
+                FeatureState::On
+            } else {
+                FeatureState::Off
             },
             force_vram_reclaim: if self.force_vram_reclaim == "On" {
                 FeatureState::On
             } else {
                 FeatureState::Off
             },
-            enforce_json: false,
             force_memory_lock: if self.force_memory_lock == "On" {
                 FeatureState::On
             } else {
                 FeatureState::Off
             },
+            turbo_quant: if self.turbo_quant == "On" {
+                FeatureState::On
+            } else if self.turbo_quant == "Off" {
+                FeatureState::Off
+            } else {
+                FeatureState::Auto
+            },
+            auto_round: if self.auto_round == "On" {
+                FeatureState::On
+            } else if self.auto_round == "Off" {
+                FeatureState::Off
+            } else {
+                FeatureState::Auto
+            },
+            enforce_json: false,
         }
     }
 }

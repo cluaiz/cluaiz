@@ -149,27 +149,38 @@ pub enum BoosterMode {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
 pub struct OptimizationControl {
-    pub turbo_quant: FeatureState,
+    #[serde(default)]
     pub flash_attention: FeatureState,
-    pub speculative_decoding: FeatureState,
-    pub auto_round: FeatureState,
-    pub dflash: SmartState<DFlashConfig>,
+    #[serde(default)]
     pub kv_cache_quantization: KvCacheQuantization,
-    pub context_shifting: ContextShiftingMode,
+    #[serde(default, alias = "force_vram_reclaim")]
+    pub hybrid_memory: FeatureState,
+    #[serde(default)]
     pub force_vram_reclaim: FeatureState,
     #[serde(default)]
-    pub enforce_json: bool,
-    #[serde(default)]
     pub force_memory_lock: FeatureState,
+    #[serde(default)]
+    pub context_shifting: ContextShiftingMode,
+    #[serde(default)]
+    pub speculative_decoding: FeatureState,
+    #[serde(default)]
+    pub draft_model_path: Option<String>,
+    #[serde(default)]
+    pub dflash: SmartState<DFlashConfig>,
+    #[serde(default)]
+    pub extreme_moe_streaming: FeatureState,
     /// Direct GB safety buffer override for VRAM. None = dynamic auto mode.
     #[serde(default)]
     pub custom_vram_buffer_gb: Option<f64>,
     /// Direct GB safety buffer override for CPU RAM. None = dynamic auto mode.
     #[serde(default)]
     pub custom_ram_buffer_gb: Option<f64>,
-    /// MoE Zero-RAM SSD Streaming mode ("Auto", "On", "Off").
     #[serde(default)]
-    pub extreme_moe_streaming: FeatureState,
+    pub turbo_quant: FeatureState,
+    #[serde(default)]
+    pub auto_round: FeatureState,
+    #[serde(default)]
+    pub enforce_json: bool,
 }
 
 /// Type alias for backward compatibility during refactoring
@@ -194,10 +205,6 @@ impl OptimizationControl {
             .sum::<f64>();
 
         if self.speculative_decoding == FeatureState::On {
-            if vram_available < 12.0 {
-                self.turbo_quant = FeatureState::On;
-                println!("⚖️ [ConflictManager] Low VRAM ({:.1}GB) detected. Forcing TurboQuant = ON for Speculative Decoding.", vram_available);
-            }
             if self.flash_attention == FeatureState::Auto {
                 self.flash_attention = FeatureState::On;
             }
@@ -213,19 +220,21 @@ impl OptimizationControl {
 impl Default for OptimizationControl {
     fn default() -> Self {
         Self {
-            turbo_quant: FeatureState::Auto,
-            flash_attention: FeatureState::Auto,
-            speculative_decoding: FeatureState::Off,
-            auto_round: FeatureState::Auto,
-            dflash: SmartState::Static("Auto".into()),
+            flash_attention: FeatureState::On,
             kv_cache_quantization: KvCacheQuantization::Auto,
-            context_shifting: ContextShiftingMode::Auto,
+            hybrid_memory: FeatureState::Off,
             force_vram_reclaim: FeatureState::Off,
-            enforce_json: false,
             force_memory_lock: FeatureState::Off,
+            context_shifting: ContextShiftingMode::Auto,
+            speculative_decoding: FeatureState::Off,
+            draft_model_path: None,
+            dflash: SmartState::Static("Auto".into()),
+            extreme_moe_streaming: FeatureState::On,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
-            extreme_moe_streaming: FeatureState::On,
+            turbo_quant: FeatureState::Auto,
+            auto_round: FeatureState::Auto,
+            enforce_json: false,
         }
     }
 }

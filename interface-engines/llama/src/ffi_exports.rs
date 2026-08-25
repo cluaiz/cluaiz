@@ -140,11 +140,11 @@ pub extern "C" fn cluaiz_kernel_instantiate(
                 engine.optimization.n_ctx = optimization_ctx.max_context_length;
             }
         } else {
-            // Self-load from Binary Booster Truth if FFI was blank
-            if let Ok(booster) =
+            // Self-load from Binary Optimization Truth if FFI was blank
+            if let Ok(opt) =
                 cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings()
             {
-                let _ = engine.apply_optimization(&booster);
+                let _ = engine.apply_optimization(&opt);
             }
         }
 

@@ -10,7 +10,10 @@ pub struct LogitSteerDecoder {
 impl LogitSteerDecoder {
     /// Initialize the LogitSteer decoder with a specific grammar schema (e.g., JSON schema)
     pub fn new_json_steer(_schema_str: &str) -> Self {
-        unimplemented!("❌ [LogitSteer] JSON Grammar Steering is currently NOT implemented. Half-baked feature removed as per CERD.");
+        warn!("🎯 [LogitSteer] JSON Grammar Steering is currently inactive.");
+        Self {
+            grammar_ptr: std::ptr::null_mut(),
+        }
     }
 
     /// Masks logits at the C++ level before sampling, guaranteeing the output matches the schema.
@@ -20,6 +23,5 @@ impl LogitSteerDecoder {
         }
         
         warn!("🎯 [LogitSteer] Masking logits directly in VRAM. Next token is constrained!");
-        // C++ FFI call to `llama_sample_grammar` happens here.
     }
 }

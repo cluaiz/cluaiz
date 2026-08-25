@@ -446,8 +446,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
                                 continue;
                             }
-                            // UPDATE_BOOSTER — sent by Tauri store (matches store action name)
-                            "UPDATE_BOOSTER" | "BOOSTER_UPDATE" => {
+                            // UPDATE_OPTIMIZATION — sent by UI / client (with backward-compatible aliases)
+                            "UPDATE_OPTIMIZATION" | "OPTIMIZATION_UPDATE" | "UPDATE_BOOSTER" | "BOOSTER_UPDATE" => {
                                 if let Some(payload) = json_cmd.get("payload") {
                                     // Handle single key-value update: {key: "flash_attention", value: "On"}
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
@@ -490,8 +490,8 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 }
                                 continue;
                             }
-                            "RESET_BOOSTER" => {
-                                tracing::info!("🔄 [IPC] Resetting Booster to hardware-optimal defaults...");
+                            "RESET_OPTIMIZATION" | "RESET_BOOSTER" => {
+                                tracing::info!("🔄 [IPC] Resetting LLM Optimization to hardware-optimal defaults...");
                                 let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
@@ -503,20 +503,22 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let optimal_spec = if vram_gb >= 8.0 { FeatureState::Auto } else { FeatureState::Off };
 
                                 let optimal_optimization = OptimizationControl {
-                                    turbo_quant: FeatureState::Auto,
-                                    flash_attention: if has_gpu { FeatureState::On } else { FeatureState::Auto },
-                                    speculative_decoding: optimal_spec,
-                                    auto_round: FeatureState::Auto,
-                                    dflash: SmartState::Static("Auto".into()),
-                                    kv_cache_quantization: if vram_gb < 4.0 { KvCacheQuantization::Kv8 } else { KvCacheQuantization::Auto },
-                                    context_shifting: ContextShiftingMode::Auto,
-                                    force_vram_reclaim: FeatureState::Off,
-                                    enforce_json: false,
-                                    force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
-                                    custom_vram_buffer_gb: None,
-                                    custom_ram_buffer_gb: None,
-                                    extreme_moe_streaming: FeatureState::Auto,
-                                };
+                                     flash_attention: if has_gpu { FeatureState::On } else { FeatureState::Auto },
+                                     kv_cache_quantization: if vram_gb < 4.0 { KvCacheQuantization::Kv8 } else { KvCacheQuantization::Auto },
+                                     hybrid_memory: FeatureState::Off,
+                                     force_vram_reclaim: FeatureState::Off,
+                                     force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
+                                     context_shifting: ContextShiftingMode::Auto,
+                                     speculative_decoding: optimal_spec,
+                                     draft_model_path: None,
+                                     dflash: SmartState::Static("Auto".into()),
+                                     extreme_moe_streaming: FeatureState::Auto,
+                                     custom_vram_buffer_gb: None,
+                                     custom_ram_buffer_gb: None,
+                                     turbo_quant: FeatureState::Auto,
+                                     auto_round: FeatureState::Auto,
+                                     enforce_json: false,
+                                 };
 
                                 let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&optimal_optimization);
                                 

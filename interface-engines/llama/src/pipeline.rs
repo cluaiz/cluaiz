@@ -133,17 +133,19 @@ impl RuntimeBPipeline {
         }
 
         // 🧠 Dynamically inject Speculative Decoding Flags
-        let booster = cluaiz_shared::hardware::schema::optimization::OptimizationControl::load();
-        if booster.speculative_decoding.is_active() {
+        let opt = cluaiz_shared::hardware::schema::optimization::OptimizationControl::load();
+        if opt.speculative_decoding.is_active() {
             let spec_type = metadata.hardware_and_execution.spec_type.as_str();
             let draft_max = metadata.hardware_and_execution.spec_draft_n_max.to_string();
             
             match spec_type {
                 "draft-mtp" => {
-                    let draft_path = match &booster.dflash {
-                        cluaiz_shared::hardware::schema::optimization::SmartState::Custom(cfg) => cfg.draft_model_path.clone(),
-                        _ => None,
-                    };
+                    let draft_path = opt.draft_model_path.clone().or_else(|| {
+                        match &opt.dflash {
+                            cluaiz_shared::hardware::schema::optimization::SmartState::Custom(cfg) => cfg.draft_model_path.clone(),
+                            _ => None,
+                        }
+                    });
                     if let Some(path) = draft_path {
                         base_args.push("-md".to_string());
                         base_args.push(path);
@@ -151,7 +153,7 @@ impl RuntimeBPipeline {
                         base_args.push(draft_max.clone());
                         info!("🔥 [Binary Driver] Injected Speculative Decoding (draft-mtp) with max: {}", draft_max);
                     } else {
-                        tracing::warn!("⚠️ [Binary Driver] Speculative Decoding is 'draft-mtp' but no draft model path found in Optimization dflash config!");
+                        tracing::warn!("⚠️ [Binary Driver] Speculative Decoding is 'draft-mtp' but no draft model path found in Optimization config!");
                     }
                 }
                 "ngram-mod" => {

@@ -291,7 +291,8 @@ impl HardwareGovernor {
 
         // Expansion logic for high-power modes (Only if architecture allows)
         // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
-        let is_hybrid_requested = opt_control.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
+        let is_hybrid_requested = opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::On
+            || opt_control.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
         let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
 
         if is_hybrid_requested || model_exceeds_vram {
@@ -397,18 +398,7 @@ impl HardwareGovernor {
                     control.identity.machine_name = s.to_string();
                 }
             }
-            "runtime_engine.booster_flags.TurboQuant_Enable" => {
-                let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
-                if let Some(b) = value.as_bool() {
-                    opt_control.turbo_quant = if b {
-                        crate::hardware::schema::optimization::FeatureState::On
-                    } else {
-                        crate::hardware::schema::optimization::FeatureState::Off
-                    };
-                    Self::save_optimization_settings(&opt_control)?;
-                }
-            }
-            "runtime_engine.booster_flags.FlashAttention_v2" => {
+            "runtime_engine.optimization_flags.FlashAttention_v2" | "runtime_engine.booster_flags.FlashAttention_v2" => {
                 let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
                 if let Some(b) = value.as_bool() {
                     opt_control.flash_attention = if b {
@@ -416,6 +406,29 @@ impl HardwareGovernor {
                     } else {
                         crate::hardware::schema::optimization::FeatureState::Off
                     };
+                    Self::save_optimization_settings(&opt_control)?;
+                }
+            }
+            "runtime_engine.optimization_flags.MoE_Streaming" => {
+                let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
+                if let Some(b) = value.as_bool() {
+                    opt_control.extreme_moe_streaming = if b {
+                        crate::hardware::schema::optimization::FeatureState::On
+                    } else {
+                        crate::hardware::schema::optimization::FeatureState::Off
+                    };
+                    Self::save_optimization_settings(&opt_control)?;
+                }
+            }
+            "runtime_engine.optimization_flags.HybridMemory" => {
+                let mut opt_control = Self::load_optimization_settings().unwrap_or_default();
+                if let Some(b) = value.as_bool() {
+                    opt_control.hybrid_memory = if b {
+                        crate::hardware::schema::optimization::FeatureState::On
+                    } else {
+                        crate::hardware::schema::optimization::FeatureState::Off
+                    };
+                    opt_control.force_vram_reclaim = opt_control.hybrid_memory;
                     Self::save_optimization_settings(&opt_control)?;
                 }
             }

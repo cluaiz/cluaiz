@@ -114,7 +114,11 @@ pub struct GgufSamplers {
     pub top_k: usize,
     pub min_p: f64,
     pub presence_penalty: f64,
+    #[serde(default)]
+    pub frequency_penalty: f64,
     pub repeat_penalty: f64,
+    #[serde(default)]
+    pub seed: Option<u64>,
 }
 
 impl Default for GgufSamplers {
@@ -125,7 +129,9 @@ impl Default for GgufSamplers {
             top_k: 40,
             min_p: 0.05,
             presence_penalty: 0.0,
+            frequency_penalty: 0.0,
             repeat_penalty: 1.1,
+            seed: None,
         }
     }
 }

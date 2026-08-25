@@ -42,8 +42,8 @@ pub fn build(state: Arc<AppState>) -> Router {
 
         
         // ── Optimization & Hardware Tuning API ──
-        .route("/v1/optimization/status", get(crate::handlers::booster::status))
-        .route("/v1/optimization/update", post(crate::handlers::booster::update))
+        .route("/v1/optimization/status", get(crate::handlers::optimization::status))
+        .route("/v1/optimization/update", post(crate::handlers::optimization::update))
 
 
         // ── WASM Skills & Agents API ──

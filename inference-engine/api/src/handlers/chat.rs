@@ -497,8 +497,14 @@ pub async fn chat_completions(
     if let Some(pp) = request.presence_penalty {
         gguf_meta.samplers.presence_penalty = pp as f64;
     }
+    if let Some(fp) = request.frequency_penalty {
+        gguf_meta.samplers.frequency_penalty = fp as f64;
+    }
     if let Some(rp) = request.repetition_penalty {
         gguf_meta.samplers.repeat_penalty = rp as f64;
+    }
+    if let Some(s) = request.seed {
+        gguf_meta.samplers.seed = Some(s as u64);
     }
 
     if let Some(think_mode) = &request.think_mode {
@@ -538,7 +544,9 @@ pub async fn chat_completions(
             "top_k": gguf_meta.samplers.top_k,
             "min_p": gguf_meta.samplers.min_p,
             "presence_penalty": gguf_meta.samplers.presence_penalty,
-            "repeat_penalty": gguf_meta.samplers.repeat_penalty
+            "frequency_penalty": gguf_meta.samplers.frequency_penalty,
+            "repeat_penalty": gguf_meta.samplers.repeat_penalty,
+            "seed": request.seed.or(gguf_meta.samplers.seed.map(|s| s as i64))
         },
         "think_mode": request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
     });
