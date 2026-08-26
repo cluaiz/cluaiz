@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/health",
       "desc": "Checks the core engine health, memory status, and continuous uptime.",
-      "docs_url": "/docs/api/system/info_health.md",
+      "docs_url": "/docs/api/system/health.md",
       "params": [],
       "response": "{\n  \"status\": \"healthy\",\n  \"uptime_ms\": 145020,\n  \"components\": {\n    \"db\": \"healthy\",\n    \"gpu\": \"healthy\"\n  }\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "GET",
       "path": "/info",
       "desc": "Retrieves deep architectural information, versioning, and the foundational pillars of the cluaiz system.",
-      "docs_url": "/docs/api/system/info_health.md",
+      "docs_url": "/docs/api/system/info.md",
       "params": [],
       "response": "{\n  \"engine\": \"Cluaiz Inference Engine\",\n  \"version\": \"0.1.0\",\n  \"build_date\": \"2024-05-10\",\n  \"capabilities\": [\"vision\", \"vector_search\", \"cel\"]\n}",
       "examples": [
@@ -125,7 +125,7 @@
       "method": "GET",
       "path": "/v1/system/permission",
       "desc": "Fetch current engine security boundaries, wasm firewalls, and active slot limits.",
-      "docs_url": "/docs/reference/api.md",
+      "docs_url": "/docs/api/system/permission.md",
       "params": [],
       "response": "{\n  \"status\": \"success\",\n  \"permission\": {\n    \"wasm_firewall\": \"strict\",\n    \"vectorize_user_input\": true,\n    \"stream_telemetry\": false\n  }\n}",
       "examples": [
@@ -155,7 +155,7 @@
       "method": "POST",
       "path": "/v1/system/permission",
       "desc": "Update engine security boundaries and sandboxing flags.",
-      "docs_url": "/docs/reference/api.md",
+      "docs_url": "/docs/api/system/permission.md",
       "params": [
         {
           "name": "key",
@@ -201,7 +201,7 @@
       "method": "POST",
       "path": "/v1/chat/skip-reasoning",
       "desc": "Instructs the active chat stream to skip '<think>' reasoning block and stream the direct answer immediately.",
-      "docs_url": "/docs/api/system/stream_control.md",
+      "docs_url": "/docs/api/inference/chat_skip_reasoning.md",
       "params": [
         {
           "name": "stream_id",
@@ -240,7 +240,7 @@
       "method": "POST",
       "path": "/v1/chat/cancel",
       "desc": "Cancels an active chat stream mid-generation using its unique stream_id.",
-      "docs_url": "/docs/api/system/stream_control.md",
+      "docs_url": "/docs/api/inference/chat_cancel.md",
       "params": [
         {
           "name": "stream_id",
@@ -279,7 +279,7 @@
       "method": "POST",
       "path": "/v1/system/cmd",
       "desc": "Executes shell commands locally. STRICTLY bound to 127.0.0.1 (Localhost). Rejects any remote attempts to prevent RCE.",
-      "docs_url": "/docs/reference/api.md",
+      "docs_url": "/docs/api/system/cmd.md",
       "params": [
         {
           "name": "command",
@@ -310,7 +310,7 @@
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/system/cmd\")\n    .json(&serde_json::json!({ \"command\": \"echo Hello cluaiz\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/system/cmd\")\n    .json(&serde_json::json!({\n        \"command\": \"echo Hello cluaiz\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     }
