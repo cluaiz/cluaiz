@@ -2,17 +2,31 @@ use axum::{
     extract::{State},
     response::{Json, Sse, sse::Event, IntoResponse},
 };
-use futures::stream::Stream;
-use engines::models::entities::{ChatRequest, ChatResponse, ChatSession, ChatMessage, MessageRole};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::convert::Infallible;
-use std::sync::Arc;
-use engines::neural_foundry::registry::registry_index::MasterRegistry;
-use cluaiz_shared::environment::EnvironmentManager;
+use std::sync::{Arc, RwLock, LazyLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashMap;
 use crate::state::AppState;
 use chrono::Utc;
 use dispatcher::EngineResponse;
+
+/// Thread-safe multi-stream controller signals
+#[derive(Clone, Default)]
+pub struct StreamSignals {
+    pub cancel: Arc<AtomicBool>,
+    pub skip_reasoning: Arc<AtomicBool>,
+}
+
+/// Global active streaming sessions registry (Keyed by unique `chatcmpl-...` stream_id)
+pub static ACTIVE_STREAMS: LazyLock<RwLock<HashMap<String, StreamSignals>>> = LazyLock::new(|| RwLock::new(HashMap::new()));
+
+#[derive(Deserialize)]
+pub struct StreamControlRequest {
+    pub stream_id: String,
+    pub reason: Option<String>,
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -34,6 +48,7 @@ pub struct ExternalChatRequest {
     // Cluaiz Extension & OpenAI Reasoning Parameters
     pub think_mode: Option<serde_json::Value>,
     pub reasoning_effort: Option<String>,
+    pub skip_reasoning: Option<bool>,
     pub response_length: Option<serde_json::Value>,
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
@@ -501,6 +516,18 @@ pub async fn chat_completions(
                 let active_think_mode_stream = active_think_mode.clone();
                 let active_response_length_stream = active_response_length.clone();
                 
+                // 🛡️ Multi-Tenant Stream Registry Registration
+                let initial_skip_reasoning = request.skip_reasoning == Some(true) || active_think_mode == "off";
+                if let Ok(mut lock) = ACTIVE_STREAMS.write() {
+                    lock.insert(
+                        req_id_stream.clone(),
+                        StreamSignals {
+                            cancel: Arc::new(AtomicBool::new(false)),
+                            skip_reasoning: Arc::new(AtomicBool::new(initial_skip_reasoning)),
+                        }
+                    );
+                }
+
                 let stream = async_stream::stream! {
                      let mut current_prompt = json_prompt.clone();
                       let mut total_generated = String::new();
@@ -543,6 +570,34 @@ pub async fn chat_completions(
                          }
                          
                          while let Some(token) = rx.recv().await {
+                            // 🛑 Real-time Multi-Stream Signal Verification (Cancel & Skip-Reasoning)
+                            let (should_cancel, should_skip) = if let Ok(lock) = ACTIVE_STREAMS.read() {
+                                if let Some(signals) = lock.get(&req_id_stream) {
+                                    (signals.cancel.load(Ordering::Relaxed), signals.skip_reasoning.load(Ordering::Relaxed))
+                                } else {
+                                    (false, false)
+                                }
+                            } else {
+                                (false, false)
+                            };
+
+                            if should_cancel {
+                                tracing::info!("🛑 [StreamControl] Aborting stream '{}' on user cancel signal.", req_id_stream);
+                                break;
+                            }
+                            if should_skip && in_think_block {
+                                tracing::info!("⏩ [StreamControl] Skipping reasoning tokens for stream '{}'.", req_id_stream);
+                                in_think_block = false;
+                                let skip_chunk = json!({
+                                    "id": req_id_stream.clone(),
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": resolved_model_name.clone(),
+                                    "choices": [{"delta": {"content": "\n</think>\n\n"}}]
+                                });
+                                yield Ok::<_, Infallible>(Event::default().data(skip_chunk.to_string()));
+                            }
+
                             if token.trim() == "[DONE]" {
                                 break;
                             }
@@ -759,7 +814,10 @@ pub async fn chat_completions(
 
                     yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
                     
-                    // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
+                    // 🧹 Auto-Cleanup: Remove completed stream from active registry
+                    if let Ok(mut lock) = ACTIVE_STREAMS.write() {
+                        lock.remove(&req_id_stream);
+                    }
                     if keep_alive_val == Some(0) {
                         tracing::info!("♻️ [Memory] Unloading model post-generation due to keep_alive: 0");
                         let _ = state_clone.dispatcher.unload_model().await;
@@ -875,3 +933,74 @@ pub async fn chat_completions(
     }
 }
 
+// ─── POST /v1/chat/cancel (Cancel Active Stream) ──────────────────────
+pub async fn cancel_chat_stream(
+    Json(payload): Json<StreamControlRequest>,
+) -> axum::response::Response {
+    let signal_found = if let Ok(lock) = ACTIVE_STREAMS.read() {
+        if let Some(entry) = lock.get(&payload.stream_id) {
+            entry.cancel.store(true, Ordering::Relaxed);
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if signal_found {
+        tracing::info!("🛑 [StreamControl] Cancel signal dispatched for stream '{}'.", payload.stream_id);
+        axum::Json(json!({
+            "status": "cancelled",
+            "stream_id": payload.stream_id,
+            "message": "Stream cancellation signal dispatched successfully."
+        })).into_response()
+    } else {
+        (
+            axum::http::StatusCode::NOT_FOUND,
+            axum::Json(json!({
+                "error": {
+                    "message": format!("Active stream '{}' not found or already completed.", payload.stream_id),
+                    "type": "invalid_request_error",
+                    "code": "stream_not_found"
+                }
+            }))
+        ).into_response()
+    }
+}
+
+// ─── POST /v1/chat/skip-reasoning (Fast-Forward Thinking) ─────────────
+pub async fn skip_chat_reasoning(
+    Json(payload): Json<StreamControlRequest>,
+) -> axum::response::Response {
+    let signal_found = if let Ok(lock) = ACTIVE_STREAMS.read() {
+        if let Some(entry) = lock.get(&payload.stream_id) {
+            entry.skip_reasoning.store(true, Ordering::Relaxed);
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if signal_found {
+        tracing::info!("⏩ [StreamControl] Skip-reasoning signal dispatched for stream '{}'.", payload.stream_id);
+        axum::Json(json!({
+            "status": "skipped",
+            "stream_id": payload.stream_id,
+            "message": "Skip reasoning signal dispatched successfully."
+        })).into_response()
+    } else {
+        (
+            axum::http::StatusCode::NOT_FOUND,
+            axum::Json(json!({
+                "error": {
+                    "message": format!("Active stream '{}' not found or already completed.", payload.stream_id),
+                    "type": "invalid_request_error",
+                    "code": "stream_not_found"
+                }
+            }))
+        ).into_response()
+    }
+}

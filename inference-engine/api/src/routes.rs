@@ -17,12 +17,12 @@ pub fn build(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/health", get(system::health_check))
         .route("/info", get(system::system_info))
-        .route("/engine/skip_think", post(system::skip_think))
-        .route("/engine/cancel", post(system::cancel_generation))
         .route("/v1/system/cmd", post(system::execute_cmd))
         
         // ── External Compatible Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
+        .route("/v1/chat/cancel", post(chat::cancel_chat_stream))
+        .route("/v1/chat/skip-reasoning", post(chat::skip_chat_reasoning))
         .route("/v1/embeddings", post(embeddings::generate_embeddings))
         .route("/v1/audio/speech", post(audio::speech))
         .route("/v1/audio/transcriptions", post(audio::transcriptions))

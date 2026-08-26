@@ -199,63 +199,79 @@
     },
     {
       "method": "POST",
-      "path": "/engine/skip_think",
-      "desc": "Instructs the active engine to skip '<think>' reasoning block and stream the direct answer immediately.",
+      "path": "/v1/chat/skip-reasoning",
+      "desc": "Instructs the active chat stream to skip '<think>' reasoning block and stream the direct answer immediately.",
       "docs_url": "/docs/api/system/stream_control.md",
-      "params": [],
-      "request_payload": "{}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Brain skip signal injected. Neural graph will pivot.\"\n}",
+      "params": [
+        {
+          "name": "stream_id",
+          "type": "string",
+          "req": true,
+          "desc": "Unique stream identifier returned in first SSE chunk (e.g., chatcmpl-...).",
+          "default": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"
+        }
+      ],
+      "request_payload": "{\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n}",
+      "response": "{\n  \"status\": \"skipped\",\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\",\n  \"message\": \"Skip reasoning signal dispatched successfully.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/engine/skip_think"
+          "code": "curl -X POST http://localhost:8000/v1/chat/skip-reasoning \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/engine/skip_think')\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/chat/skip-reasoning', json={\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/engine/skip_think', {\n  method: 'POST'\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/chat/skip-reasoning', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ stream_id: 'chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/engine/skip_think\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/chat/skip-reasoning\")\n    .json(&serde_json::json!({\n        \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/engine/cancel",
-      "desc": "Triggers global cancellation signal to immediately abort active token generation mid-stream.",
+      "path": "/v1/chat/cancel",
+      "desc": "Cancels an active chat stream mid-generation using its unique stream_id.",
       "docs_url": "/docs/api/system/stream_control.md",
-      "params": [],
-      "request_payload": "{}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Global cancel signal triggered. Active inference stopped.\"\n}",
+      "params": [
+        {
+          "name": "stream_id",
+          "type": "string",
+          "req": true,
+          "desc": "Unique stream identifier returned in first SSE chunk (e.g., chatcmpl-...).",
+          "default": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"
+        }
+      ],
+      "request_payload": "{\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n}",
+      "response": "{\n  \"status\": \"cancelled\",\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\",\n  \"message\": \"Stream cancellation signal dispatched successfully.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/engine/cancel"
+          "code": "curl -X POST http://localhost:8000/v1/chat/cancel \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/engine/cancel')\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/chat/cancel', json={\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/engine/cancel', {\n  method: 'POST'\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/chat/cancel', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ stream_id: 'chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/engine/cancel\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/chat/cancel\")\n    .json(&serde_json::json!({\n        \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
