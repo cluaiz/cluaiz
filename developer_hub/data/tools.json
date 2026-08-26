@@ -1,0 +1,79 @@
+{
+  "group": "Unified Tools & Session Governance",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/v1/tools",
+      "desc": "Unified global discovery endpoint returning all installed Skills, Plugins, and MCP servers with execution modes and permissions.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "request_payload": "",
+      "response": "{\n  \"total\": 3,\n  \"tools\": [\n    {\n      \"id\": \"cluaiz-math\",\n      \"name\": \"Math Sandbox\",\n      \"category\": \"plugin\",\n      \"version\": \"1.0.0\",\n      \"description\": \"Evaluates arithmetic expressions in WASM sandbox\",\n      \"enabled\": true,\n      \"execution_mode\": \"auto\",\n      \"permissions\": [\"cpu:fuel\"]\n    },\n    {\n      \"id\": \"code-review\",\n      \"name\": \"Code Reviewer\",\n      \"category\": \"skill\",\n      \"version\": \"1.0.0\",\n      \"description\": \"Cognitive prompt instructions for deep code review\",\n      \"enabled\": true,\n      \"execution_mode\": \"auto\",\n      \"permissions\": []\n    },\n    {\n      \"id\": \"sqlite-mcp\",\n      \"name\": \"SQLite Bridge\",\n      \"category\": \"mcp\",\n      \"version\": \"1.0.0\",\n      \"description\": \"MCP server for local database querying\",\n      \"enabled\": true,\n      \"execution_mode\": \"manual\",\n      \"permissions\": [\"fs:read\", \"fs:write\"]\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/tools"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/tools')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const res = await fetch('http://localhost:8000/v1/tools');\nconst data = await res.json();\nconsole.log(data);"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/chat/{session_id}/tools",
+      "desc": "Returns all currently active tool bindings and their remaining turn limits for a specific chat session.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "req": true,
+          "desc": "Unique identifier of the chat session (e.g. session_101)",
+          "default": "session_101"
+        }
+      ],
+      "request_payload": "",
+      "response": "{\n  \"session_id\": \"session_101\",\n  \"active_tools\": [\n    {\n      \"id\": \"code-review\",\n      \"turns\": -1\n    },\n    {\n      \"id\": \"cluaiz-math\",\n      \"turns\": 0\n    }\n  ],\n  \"total_active\": 2\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/chat/session_101/tools"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat/{session_id}/tools",
+      "desc": "Attaches, updates, or detaches tools for a chat session with turn-based lifecycle duration (-1 = All-time active, 0 = Single-message, N = N-turns countdown).",
+      "docs_url": "/docs/reference/api.md",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "req": true,
+          "desc": "The target chat session ID.",
+          "default": "session_101"
+        }
+      ],
+      "request_payload": "{\n  \"tools\": [\n    {\n      \"id\": \"cluaiz-math\",\n      \"turns\": 0\n    },\n    {\n      \"id\": \"code-review\",\n      \"turns\": -1\n    },\n    {\n      \"id\": \"sqlite-mcp\",\n      \"turns\": 3\n    }\n  ],\n  \"detach\": []\n}",
+      "response": "{\n  \"session_id\": \"session_101\",\n  \"status\": \"success\",\n  \"message\": \"Session tools updated successfully\",\n  \"active_tools\": [\n    {\n      \"id\": \"cluaiz-math\",\n      \"turns\": 0\n    },\n    {\n      \"id\": \"code-review\",\n      \"turns\": -1\n    },\n    {\n      \"id\": \"sqlite-mcp\",\n      \"turns\": 3\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/chat/session_101/tools \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"tools\": [{\"id\": \"cluaiz-math\", \"turns\": 0}, {\"id\": \"code-review\", \"turns\": -1}]}'"
+        }
+      ]
+    }
+  ]
+}

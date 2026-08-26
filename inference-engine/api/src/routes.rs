@@ -47,6 +47,10 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/optimization/update", post(crate::handlers::optimization::update))
 
 
+        // ── Unified Tools & Session Governance API ──
+        .route("/v1/tools", get(crate::handlers::session_tools::get_all_tools))
+        .route("/v1/chat/{session_id}/tools", get(crate::handlers::session_tools::get_session_tools).post(crate::handlers::session_tools::update_session_tools))
+
         // ── WASM Skills & Agents API ──
         .route("/v1/skills/list", get(crate::handlers::skills::list_skills))
         .route("/v1/skills/install", post(crate::handlers::skills::install_skill))

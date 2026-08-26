@@ -15,3 +15,4 @@ pub mod components;
 pub mod embeddings;
 pub mod storage;
 pub mod audio;
+pub mod session_tools;

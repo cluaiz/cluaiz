@@ -28,6 +28,7 @@ pub mod backend;
 pub mod neural_core;
 pub mod utils;
 pub mod skills;
+pub mod telemetry;
 
 // ── Business Logic (Unified from shared) ──
 pub mod environment;

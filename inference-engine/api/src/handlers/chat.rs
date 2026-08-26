@@ -556,6 +556,42 @@ pub async fn chat_completions(
                          });
                          yield Ok::<_, Infallible>(Event::default().data(early_header_chunk.to_string()));
                      }
+
+                     // 📊 YIELD LIVE CONTEXT & HARDWARE TELEMETRY EARLY
+                     let active_tools_list = if let Some(ref sid) = req_session_id {
+                         crate::handlers::session_tools::get_active_tool_ids_for_session(sid)
+                     } else {
+                         Vec::new()
+                     };
+
+                     let context_snap = cluaiz_shared::telemetry::ContextTracker::build_snapshot(
+                         validated_max_tokens.unwrap_or(32768),
+                         &current_prompt,
+                         "System",
+                         &[],
+                         &[],
+                         &[],
+                         &std::collections::HashMap::new(),
+                         4096,
+                         32,
+                         32,
+                         128,
+                         2,
+                         450,
+                     );
+
+                     let early_context_chunk = json!({
+                         "id": req_id_stream.clone(),
+                         "object": "chat.completion.chunk",
+                         "created": Utc::now().timestamp(),
+                         "model": resolved_model_name.clone(),
+                         "choices": [],
+                         "usage": {
+                             "context_telemetry": context_snap,
+                             "active_session_tools": active_tools_list
+                         }
+                     });
+                     yield Ok::<_, Infallible>(Event::default().data(early_context_chunk.to_string()));
                      
                      let mut rx = initial_rx;
                      
@@ -813,6 +849,11 @@ pub async fn chat_completions(
                     }
 
                     yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
+
+                    // ⏳ Decrement session tool turns & purge expired ephemeral tools
+                    if let Some(ref sid) = req_session_id {
+                        crate::handlers::session_tools::decrement_session_turns(sid);
+                    }
                     
                     // 🧹 Auto-Cleanup: Remove completed stream from active registry
                     if let Ok(mut lock) = ACTIVE_STREAMS.write() {

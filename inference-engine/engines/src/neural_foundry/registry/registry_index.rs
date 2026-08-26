@@ -24,6 +24,20 @@ impl Default for LoadStrategy {
     }
 }
 
+/// Execution mode for installed tools and skills
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ExecutionMode {
+    Auto,
+    Manual,
+}
+
+impl Default for ExecutionMode {
+    fn default() -> Self {
+        ExecutionMode::Auto
+    }
+}
+
 /// A single entry in the registry representing an installed component.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct RegistryEntry {
@@ -82,6 +96,14 @@ pub struct RegistryEntry {
     /// Whether this component is enabled in the registry
     #[serde(default = "default_true")]
     pub enabled: bool,
+
+    /// Execution mode: Auto (runs on trigger) or Manual (requires approval)
+    #[serde(default)]
+    pub execution_mode: ExecutionMode,
+
+    /// Granular permissions e.g. ["fs:read", "net:fetch"]
+    #[serde(default)]
+    pub permissions: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -108,6 +130,10 @@ pub struct MasterRegistry {
     /// MCP servers (Protocol bridges, stored in ~/.cluaiz/mcp/)
     #[serde(default)]
     pub mcp: HashMap<String, RegistryEntry>,
+
+    /// Skills (Cognitive SKILL.md tools, stored in ~/.cluaiz/skills/)
+    #[serde(default)]
+    pub skills: HashMap<String, RegistryEntry>,
 }
 
 fn default_version() -> String { "1.0.0".to_string() }
@@ -214,6 +240,7 @@ impl MasterRegistry {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let plugins_dir = env.plugins_dir();
         let mcp_dir = env.mcp_dir();
+        let skills_dir = env.skills_dir();
         
         let mut changed = false;
         
@@ -234,6 +261,15 @@ impl MasterRegistry {
                 changed = true;
             }
         }
+
+        // skills
+        let skill_keys: Vec<String> = self.skills.keys().cloned().collect();
+        for key in skill_keys {
+            if !skills_dir.join(&key).exists() {
+                self.skills.remove(&key);
+                changed = true;
+            }
+        }
         
         if changed {
             let _ = self.save();
@@ -243,22 +279,24 @@ impl MasterRegistry {
     }
 
     /// Add/update a component entry and persist to disk.
-    /// Called after `cluaiz plugin install <name>`.
+    /// Called after `cluaiz plugin/skill install <name>`.
     pub fn register_component(&mut self, component_type: &str, name: &str, entry: RegistryEntry) -> Result<()> {
         match component_type {
             "plugin" | "plugins" => { self.plugins.insert(name.to_string(), entry); }
             "mcp"                => { self.mcp.insert(name.to_string(), entry); }
+            "skill" | "skills"   => { self.skills.insert(name.to_string(), entry); }
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         }
         self.save()
     }
 
     /// Remove a component entry and persist to disk.
-    /// Called after `cluaiz plugin remove <name>`.
+    /// Called after `cluaiz plugin/skill remove <name>`.
     pub fn deregister_component(&mut self, component_type: &str, name: &str) -> Result<()> {
         let removed = match component_type {
             "plugin" | "plugins" => self.plugins.remove(name).is_some(),
             "mcp"                => self.mcp.remove(name).is_some(),
+            "skill" | "skills"   => self.skills.remove(name).is_some(),
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         };
 
@@ -274,12 +312,31 @@ impl MasterRegistry {
         let entry = match component_type {
             "plugin" | "plugins" => self.plugins.get_mut(name),
             "mcp"                => self.mcp.get_mut(name),
+            "skill" | "skills"   => self.skills.get_mut(name),
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         };
 
         match entry {
             Some(e) => {
                 e.enabled = enabled;
+                self.save()
+            }
+            None => Err(anyhow::anyhow!("Component '{}' not found in registry", name)),
+        }
+    }
+
+    /// Set execution mode (Auto or Manual) for a component
+    pub fn set_execution_mode(&mut self, component_type: &str, name: &str, mode: ExecutionMode) -> Result<()> {
+        let entry = match component_type {
+            "plugin" | "plugins" => self.plugins.get_mut(name),
+            "mcp"                => self.mcp.get_mut(name),
+            "skill" | "skills"   => self.skills.get_mut(name),
+            other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
+        };
+
+        match entry {
+            Some(e) => {
+                e.execution_mode = mode;
                 self.save()
             }
             None => Err(anyhow::anyhow!("Component '{}' not found in registry", name)),

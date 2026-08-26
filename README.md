@@ -160,6 +160,13 @@ $ cluaiz plugin install web-scraper
 - **[Native Permission Schema](docs/engine/permission.md)**  
   A breakdown of the strict execution bounds. Explore how `Permission.json` acts as a bare-metal gatekeeper, controlling WASM Sandboxing strictness, active telemetry buffers, vectorization permissions, and native firewall rules to ensure absolute sovereign data security.
 
+### 5. Unified Tool Governance & Live Context Telemetry
+
+- **[Unified Tools API (`/v1/tools` & `/v1/chat/{session_id}/tools`)](developer_hub/data/tools.json)**  
+  Single-endpoint architecture unifying Skills, WASM Plugins, and MCP bridges. Supports granular turn-based duration lifecycles (`turns: -1` persistent, `turns: 0` ephemeral single-message, `turns: N` multi-turn countdown).
+- **[Live Context Window & KV-Cache Telemetry Engine](inference-engine/engines/cluaiz-shared/src/telemetry)**  
+  Real-time token breakdown tracking (Messages, System Prompt, Active Skills, WASM Plugins, MCP Tools, and Deferred Lazy Token Savings) with live mathematical KV-Cache VRAM and Process RSS RAM telemetry emitted over SSE.
+
 </details>
 
 ---

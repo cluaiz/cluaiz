@@ -117,14 +117,23 @@ impl EnvironmentManager {
     pub fn kv_cache_dir(&self) -> PathBuf {
         self.local_dir.join("kv_cache")
     }
+    pub fn tools_dir(&self) -> PathBuf {
+        self.global_dir.join("tools")
+    }
     pub fn skills_dir(&self) -> PathBuf {
-        self.global_dir.join("skills")
+        self.tools_dir().join("skills")
     }
     pub fn plugins_dir(&self) -> PathBuf {
-        self.global_dir.join("plugins")
+        self.tools_dir().join("plugins")
     }
     pub fn mcp_dir(&self) -> PathBuf {
-        self.global_dir.join("mcp")
+        self.tools_dir().join("mcp")
+    }
+    pub fn tools_registry_json_path(&self) -> PathBuf {
+        self.config_dir().join("tools_registry.json")
+    }
+    pub fn tools_registry_bin_path(&self) -> PathBuf {
+        self.config_dir().join("tools_registry.bin")
     }
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
@@ -285,7 +294,41 @@ impl EnvironmentManager {
 
 
 
+    pub fn ensure_tools_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.tools_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+
+        // 🔄 Automatic migration of legacy root directories into ~/.cluaiz/tools/
+        let legacy_categories = ["skills", "plugins", "mcp"];
+        for cat in legacy_categories {
+            let legacy_root = self.global_dir.join(cat);
+            let new_target = dir.join(cat);
+            if legacy_root.exists() {
+                if !new_target.exists() {
+                    if let Err(e) = std::fs::rename(&legacy_root, &new_target) {
+                        tracing::warn!("⚠️ Failed to move legacy {:?} to {:?}: {}", legacy_root, new_target, e);
+                    } else {
+                        tracing::info!("✅ Migrated legacy {:?} -> {:?}", legacy_root, new_target);
+                    }
+                } else if let Ok(entries) = std::fs::read_dir(&legacy_root) {
+                    for entry in entries.filter_map(|e| e.ok()) {
+                        let target = new_target.join(entry.file_name());
+                        if !target.exists() {
+                            let _ = std::fs::rename(entry.path(), target);
+                        }
+                    }
+                    let _ = std::fs::remove_dir_all(&legacy_root);
+                }
+            }
+        }
+
+        Ok(dir)
+    }
+
     pub fn ensure_skills_dir(&self) -> std::io::Result<PathBuf> {
+        self.ensure_tools_dir()?;
         let dir = self.skills_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
@@ -294,6 +337,7 @@ impl EnvironmentManager {
     }
 
     pub fn ensure_plugins_dir(&self) -> std::io::Result<PathBuf> {
+        self.ensure_tools_dir()?;
         let dir = self.plugins_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
@@ -302,6 +346,7 @@ impl EnvironmentManager {
     }
 
     pub fn ensure_mcp_dir(&self) -> std::io::Result<PathBuf> {
+        self.ensure_tools_dir()?;
         let dir = self.mcp_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;

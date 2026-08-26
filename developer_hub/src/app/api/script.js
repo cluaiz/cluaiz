@@ -94,6 +94,7 @@ async function initApp() {
         const endpoints = [
             'system.json',
             'inference.json',
+            'tools.json',
             'execution.json',
             'models.json',
             'plugins.json',

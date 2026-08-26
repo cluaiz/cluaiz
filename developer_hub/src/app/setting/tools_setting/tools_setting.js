@@ -42,7 +42,7 @@ export async function mount(container) {
                 item.style.display = 'none';
             }
         });
-        
+
         const existingEmpty = listContainer.querySelector('.empty-state-msg');
         if (existingEmpty) existingEmpty.remove();
 
@@ -74,7 +74,7 @@ export async function mount(container) {
             btn.classList.add('active');
             btn.style.background = 'var(--accent-color, #3b82f6)';
             btn.style.color = '#fff';
-            
+
             currentFilter = btn.dataset.filter;
             filterItems();
         });
@@ -104,7 +104,7 @@ export async function mount(container) {
         try {
             const res = await fetch('/api/components/list');
             const data = await res.json();
-            
+
             listContainer.innerHTML = '';
 
             for (const [type, names] of Object.entries(data)) {
@@ -123,7 +123,7 @@ export async function mount(container) {
                     item.style.alignItems = 'center';
                     item.style.cursor = 'pointer';
                     item.dataset.type = type;
-                    
+
                     let tagColor = type === 'skill' ? '#10b981' : (type === 'plugin' ? '#3b82f6' : '#f59e0b');
 
                     item.innerHTML = `
@@ -139,7 +139,7 @@ export async function mount(container) {
                             </div>
                         </div>
                     `;
-                    
+
                     // Card click opens modal
                     item.addEventListener('click', (e) => {
                         if (e.target.closest('.card-toggle')) return; // handled separately
@@ -155,7 +155,7 @@ export async function mount(container) {
                         const success = await syncToggle(type, name, newState, toggle);
                         if (!success) toggle.classList.toggle('active');
                     });
-                    
+
                     listContainer.appendChild(item);
                 }
             }
@@ -171,7 +171,7 @@ export async function mount(container) {
         title.textContent = `${name} (${type})`;
         modal.style.display = 'flex';
         currentEditingTool = { type, id: name, cardToggleEl };
-        
+
         if (isEnabled) modalToggle.classList.add('active');
         else modalToggle.classList.remove('active');
 
@@ -182,25 +182,25 @@ export async function mount(container) {
         try {
             const res = await fetch(`/api/components/files?component_type=${type}&component_id=${name}`);
             const data = await res.json();
-            if(data.status === 'success') {
+            if (data.status === 'success') {
                 renderFileTree(data.files);
                 btnClearTemp.innerHTML = `<i data-lucide="eraser" class="w-4 h-4"></i> Clear Temp Cache (${formatBytes(data.temp_cache_size)})`;
                 btnClearAll.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i> Clear All Cache (${formatBytes(data.all_cache_size)})`;
-                if(window.lucide) window.lucide.createIcons();
+                if (window.lucide) window.lucide.createIcons();
             } else {
                 fileTree.innerHTML = `<div style="color:var(--text-secondary); padding:10px;">Failed to load files: ${data.message}</div>`;
                 btnClearTemp.innerHTML = `<i data-lucide="eraser" class="w-4 h-4"></i> Clear Temp Cache`;
                 btnClearAll.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i> Clear All Cache`;
-                if(window.lucide) window.lucide.createIcons();
+                if (window.lucide) window.lucide.createIcons();
             }
-        } catch(e) {
+        } catch (e) {
             fileTree.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem;">Error loading files</div>`;
         }
     };
 
     const renderFileTree = (files) => {
         fileTree.innerHTML = '';
-        files.sort((a,b) => b.is_dir - a.is_dir || a.name.localeCompare(b.name)).forEach(f => {
+        files.sort((a, b) => b.is_dir - a.is_dir || a.name.localeCompare(b.name)).forEach(f => {
             const el = document.createElement('div');
             el.style.display = 'flex';
             el.style.alignItems = 'center';
@@ -210,13 +210,13 @@ export async function mount(container) {
             el.style.cursor = 'pointer';
             el.style.fontSize = '0.85rem';
             el.style.color = 'var(--text-primary)';
-            
+
             const icon = f.is_dir ? 'folder' : 'file-text';
             el.innerHTML = `<i data-lucide="${icon}" class="w-3 h-3 text-secondary"></i> ${f.name}`;
-            
+
             el.addEventListener('mouseover', () => el.style.background = 'rgba(255,255,255,0.05)');
             el.addEventListener('mouseout', () => el.style.background = 'transparent');
-            
+
             if (!f.is_dir) {
                 el.addEventListener('click', async () => {
                     fileViewerTitle.textContent = f.path;
@@ -225,7 +225,7 @@ export async function mount(container) {
                         const res = await fetch(`/api/components/file?component_type=${currentEditingTool.type}&component_id=${currentEditingTool.id}&file_path=${encodeURIComponent(f.path)}`);
                         const data = await res.json();
                         textarea.value = data.status === 'success' ? data.content : `Error: ${data.message}`;
-                    } catch(e) { textarea.value = `Error: ${e.message}`; }
+                    } catch (e) { textarea.value = `Error: ${e.message}`; }
                 });
             }
             fileTree.appendChild(el);
@@ -235,7 +235,7 @@ export async function mount(container) {
 
     // Modal Actions
     modalToggle.addEventListener('click', async () => {
-        if(!currentEditingTool) return;
+        if (!currentEditingTool) return;
         const newState = !modalToggle.classList.contains('active');
         modalToggle.classList.toggle('active');
         const success = await syncToggle(currentEditingTool.type, currentEditingTool.id, newState, modalToggle);
@@ -248,11 +248,11 @@ export async function mount(container) {
     });
 
     const clearCache = async (all) => {
-        if(!currentEditingTool) return;
-        
+        if (!currentEditingTool) return;
+
         const cacheType = all ? 'All Cache' : 'Temp Cache';
         const confirmed = await showDialog('Confirm Action', `Are you sure you want to clear <b>${cacheType}</b> for ${currentEditingTool.id}?`, true);
-        if(!confirmed) return;
+        if (!confirmed) return;
 
         try {
             const res = await fetch('/api/components/cache', {
@@ -266,7 +266,7 @@ export async function mount(container) {
             });
             const data = await res.json();
             await showDialog('Notice', data.message || (data.status === 'success' ? 'Cache cleared!' : 'Failed to clear cache'));
-            
+
             if (data.status === 'success') {
                 // Refresh files and cache sizes dynamically without closing modal
                 const fRes = await fetch(`/api/components/files?component_type=${currentEditingTool.type}&component_id=${currentEditingTool.id}`);
@@ -275,20 +275,20 @@ export async function mount(container) {
                     renderFileTree(fData.files);
                     btnClearTemp.innerHTML = `<i data-lucide="eraser" class="w-4 h-4"></i> Clear Temp Cache (${formatBytes(fData.temp_cache_size)})`;
                     btnClearAll.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i> Clear All Cache (${formatBytes(fData.all_cache_size)})`;
-                    if(window.lucide) window.lucide.createIcons();
+                    if (window.lucide) window.lucide.createIcons();
                 }
             }
-        } catch(e) { showDialog('Error', "Error clearing cache: " + e.message); }
+        } catch (e) { showDialog('Error', "Error clearing cache: " + e.message); }
     };
 
     btnClearTemp.addEventListener('click', () => clearCache(false));
     btnClearAll.addEventListener('click', () => clearCache(true));
 
     btnUninstall.addEventListener('click', async () => {
-        if(!currentEditingTool) return;
+        if (!currentEditingTool) return;
         const confirmed = await showDialog('Confirm Uninstall', `Are you sure you want to uninstall <b>${currentEditingTool.id}</b>?`, true);
-        if(!confirmed) return;
-        
+        if (!confirmed) return;
+
         let payloadField = `${currentEditingTool.type}_name`;
         try {
             const res = await fetch(`/v1/${currentEditingTool.type}s/remove`, {
@@ -297,18 +297,18 @@ export async function mount(container) {
                 body: JSON.stringify({ [payloadField]: currentEditingTool.id })
             });
             const data = await res.json();
-            if(data.status === 'success') {
+            if (data.status === 'success') {
                 await showDialog('Success', 'Successfully uninstalled');
                 modal.style.display = 'none';
                 loadTools();
             } else {
                 showDialog('Error', data.message);
             }
-        } catch(e) { showDialog('Error', "Error uninstalling: " + e.message); }
+        } catch (e) { showDialog('Error', "Error uninstalling: " + e.message); }
     });
 
     closeBtn.addEventListener('click', () => { modal.style.display = 'none'; currentEditingTool = null; });
-    
+
     // Init
     loadTools();
 }
