@@ -176,10 +176,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                     step2_matched = true;
                                                     
                                                     // Immediately trigger Step 3 spinner
-                                                    tracker.set_step("[Step 3] Dynamic JIT Layer rules compile & inject (Loading rules...)").await;
+                                                    tracker.set_step("[Step 3] Dynamic Context rules compile & inject (Loading rules...)").await;
                                                     tokio::time::sleep(Duration::from_millis(200)).await;
                                                 } else if token.starts_with("__STEP_3_INJECT_START__") {
-                                                    tracker.complete_step("[Step 3] Dynamic JIT Layer rules compile & inject successfully.").await;
+                                                    tracker.complete_step("[Step 3] Dynamic Context rules compile & inject successfully.").await;
                                                     step3_injected_done = true;
                                                     
                                                     // Immediately trigger Step 4 spinner
@@ -252,7 +252,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             "3_layer_rule_injection": {
                 "injected": step3_injected_done,
-                "rules": "JIT Engine-to-AI Instruction"
+                "rules": "Engine-to-AI Instruction"
             },
             "4_ai_reads_sms": step4_read_done,
             "5_ai_formulates_plan": {

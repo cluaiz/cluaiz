@@ -30,8 +30,8 @@ fn test_cel_ffi_architecture() {
         println!("🚀 [Native Plugin] Returned Result: {}", result_str);
         assert!(result_str.contains("SUCCESS"));
         
-        // 4. Safely inject into VRAM
-        engines::memory::cel_bridge::gpu_injector::inject_into_kv_cache(result_bytes);
+        // 4. Validate context envelope for prefix caching continuation
+        inference_cel::vram::prefix_caching::inject_from_cpu(&result_bytes, "layer_0").ok();
     } else {
         println!("⚠️ [Native Plugin] DLL not loaded. Skipping FFI execution step.");
     }

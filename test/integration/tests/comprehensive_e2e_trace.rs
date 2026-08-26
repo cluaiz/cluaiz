@@ -103,23 +103,7 @@ async fn test_multimodal_stream_api() -> Result<()> {
         }
       ],
       "stream": true,
-      "think_mode": "Off",
-      "response_length": {
-        "think_on": {
-          "Think_Lite": [
-            "Think_Deep",
-            "Think_Lite",
-            "Auto"
-          ]
-        },
-        "think_off": {
-          "Long_Answer": [
-            "Long_Answer",
-            "Short_Answer",
-            "Auto"
-          ]
-        }
-      },
+      "think_mode": "off",
       "model": "gemma-4-26b-a4b-it-qat-gguf-UD-Q4_K_XL",
       "temperature": null,
       "top_p": null,
