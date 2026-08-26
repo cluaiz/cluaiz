@@ -36,23 +36,7 @@ pub async fn system_info() -> Json<Value> {
     }))
 }
 
-// ─── Skip Thinking ───────────────────────────────────────────────────
-pub async fn skip_think() -> Json<Value> {
-    cluaiz_shared::GLOBAL_SKIP_THINKING_SIGNAL.store(true, std::sync::atomic::Ordering::SeqCst);
-    Json(json!({
-        "status": "success",
-        "message": "Brain skip signal injected. Neural graph will pivot."
-    }))
-}
 
-// ─── Cancel Generation ────────────────────────────────────────────────
-pub async fn cancel_generation() -> Json<Value> {
-    cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(true, std::sync::atomic::Ordering::SeqCst);
-    Json(json!({
-        "status": "success",
-        "message": "Global cancel signal triggered. Active inference stopped."
-    }))
-}
 
 // ─── GET /v1/system/control ───────────────────────────────────────────
 pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Value> {
