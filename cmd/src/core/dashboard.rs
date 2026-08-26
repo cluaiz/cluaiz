@@ -1147,9 +1147,11 @@ impl DashboardEngine {
 
                         if key_part.as_str() == "Think Mode" {
                             let think_options = vec![
-                                "On".to_string(),
-                                "Off".to_string(),
-                                "Auto".to_string(),
+                                "Auto (Dynamic Reasoning)".to_string(),
+                                "Off (Zero-Wait Bypass)".to_string(),
+                                "Low (512 Tokens)".to_string(),
+                                "Medium (1024 Tokens)".to_string(),
+                                "High (Deep Reasoning)".to_string(),
                             ];
                             let selected_think = match Select::new("Select Think Mode:", think_options).with_help_message("")
                                 .with_render_config(config.clone())
@@ -1164,9 +1166,21 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            gguf_meta.user_moved_flags.think_mode = selected_think.clone();
+                            let mode_val = if selected_think.starts_with("Low") {
+                                "Low".to_string()
+                            } else if selected_think.starts_with("Medium") {
+                                "Medium".to_string()
+                            } else if selected_think.starts_with("High") {
+                                "High".to_string()
+                            } else if selected_think.starts_with("Off") {
+                                "Off".to_string()
+                            } else {
+                                "Auto".to_string()
+                            };
+
+                            gguf_meta.user_moved_flags.think_mode = mode_val.clone();
                             let mut onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
-                            onnx_meta.user_moved_flags.think_mode = selected_think.clone();
+                            onnx_meta.user_moved_flags.think_mode = mode_val.clone();
 
                             if let Ok(_) = gguf_meta.save() {
                                 let _ = onnx_meta.save();
@@ -1203,7 +1217,6 @@ impl DashboardEngine {
                             "Extreme MoE SSD Streaming" => opt_control.extreme_moe_streaming = feature_state,
                             "Hybrid Memory Mode" => {
                                 opt_control.hybrid_memory = feature_state;
-                                opt_control.force_vram_reclaim = feature_state;
                             },
                             "Speculative Decoding" => opt_control.speculative_decoding = feature_state,
                             "Force Memory Lock" => opt_control.force_memory_lock = feature_state,

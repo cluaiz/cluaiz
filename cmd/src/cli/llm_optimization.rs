@@ -225,7 +225,6 @@ pub async fn execute(
                             "Extreme MoE SSD Streaming" => control.extreme_moe_streaming = state,
                             "Hybrid Memory Mode" => {
                                 control.hybrid_memory = state;
-                                control.force_vram_reclaim = state;
                             },
                             "Force Memory Lock" => control.force_memory_lock = state,
                             "Speculative Decoding" => control.speculative_decoding = state,

@@ -85,12 +85,7 @@ impl OptimizationConfig {
                 FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
-            config.auto_round = match control.auto_round {
-                FeatureState::On => "On".to_string(),
-                FeatureState::Off => "Off".to_string(),
-                _ => "Auto".to_string(),
-            };
-            config.force_vram_reclaim = match control.force_vram_reclaim {
+            config.force_vram_reclaim = match control.hybrid_memory {
                 FeatureState::On => "On".to_string(),
                 FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
@@ -114,11 +109,6 @@ impl OptimizationConfig {
                 FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
             };
-            config.turbo_quant = match control.turbo_quant {
-                FeatureState::On => "On".to_string(),
-                FeatureState::Off => "Off".to_string(),
-                _ => "Auto".to_string(),
-            };
         }
         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         config.n_gpu_layers = gguf_meta.hardware_and_execution.n_gpu_layers;
@@ -134,6 +124,7 @@ impl OptimizationConfig {
     /// 🛠️ Transform high-level config into raw model parameters.
     pub fn to_model_params(&self) -> LlamaModelParams {
         let mut params = unsafe { llama_model_default_params() };
+        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
         params.n_gpu_layers = self.n_gpu_layers;
         params.use_mmap = self.use_mmap;
         params.use_mlock = self.force_memory_lock == "On";
@@ -173,6 +164,8 @@ impl OptimizationConfig {
         };
         params.n_threads_batch = params.n_threads;
 
+        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
+
         // 🚀 KV-Cache Quantization Config:
         match self.kv_cache_quantization.to_lowercase().as_str() {
             "kv16" => {
@@ -188,8 +181,8 @@ impl OptimizationConfig {
                 params.type_v = 2;
             }
             _ => {
-                // "Auto" (or "turbo_quant" fallback)
-                if self.turbo_quant == "On" || self.turbo_quant == "Auto" {
+                // "Auto": Select Q4_0 when Flash Attention is enabled, fallback to F16 otherwise
+                if self.flash_attn && !force_disable_fa_for_cpu {
                     params.type_k = 2; // GGML_TYPE_Q4_0
                     params.type_v = 2;
                 } else {
@@ -198,8 +191,6 @@ impl OptimizationConfig {
                 }
             }
         }
-
-        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
         
         // 🛡️ Sovereign Safety Fallback:
         // Quantized KV cache requires flash attention enabled to load in VRAM and prevent init crashes.
@@ -260,31 +251,11 @@ impl OptimizationConfig {
             } else {
                 FeatureState::Off
             },
-            force_vram_reclaim: if self.force_vram_reclaim == "On" {
-                FeatureState::On
-            } else {
-                FeatureState::Off
-            },
             force_memory_lock: if self.force_memory_lock == "On" {
                 FeatureState::On
             } else {
                 FeatureState::Off
             },
-            turbo_quant: if self.turbo_quant == "On" {
-                FeatureState::On
-            } else if self.turbo_quant == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
-            },
-            auto_round: if self.auto_round == "On" {
-                FeatureState::On
-            } else if self.auto_round == "Off" {
-                FeatureState::Off
-            } else {
-                FeatureState::Auto
-            },
-            enforce_json: false,
         }
     }
 }

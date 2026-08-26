@@ -54,7 +54,7 @@ pub fn stream_tokens(
         };
 
         // 🧬 Dynamic In-Memory Request Overrides (Zero Disk I/O & Thread-Safe)
-        let (prompt_to_format, req_samplers, req_think_mode) = if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
+        let (prompt_to_format, req_samplers, req_think_mode, req_response_length) = if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
             if envelope.is_object() && (envelope.get("messages").is_some() || envelope.get("pivot_prompt").is_some()) {
                 let msgs_str = if let Some(pivot) = envelope.get("pivot_prompt").and_then(|p| p.as_str()) {
                     pivot.to_string()
@@ -63,12 +63,13 @@ pub fn stream_tokens(
                 };
                 let samplers = envelope.get("samplers").cloned();
                 let think_mode = envelope.get("think_mode").and_then(|t| t.as_str()).map(|s| s.to_string());
-                (msgs_str, samplers, think_mode)
+                let response_length = envelope.get("response_length").and_then(|r| r.as_str()).map(|s| s.to_string());
+                (msgs_str, samplers, think_mode, response_length)
             } else {
-                (actual_prompt.clone(), None, None)
+                (actual_prompt.clone(), None, None, None)
             }
         } else {
-            (actual_prompt.clone(), None, None)
+            (actual_prompt.clone(), None, None, None)
         };
         
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -86,6 +87,11 @@ pub fn stream_tokens(
         let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
 
+        let effective_response_length = req_response_length
+            .as_deref()
+            .unwrap_or(gguf_meta.user_moved_flags.response_length.as_str())
+            .to_lowercase();
+
         let templater = cluaiz_shared::prompting::templater::TemplateManager::default();
         let mut formatted_prompt = if is_pivot {
             // 🛑 ROOT FIX: If we interrupted mid-generation, the model might have been thinking.
@@ -101,10 +107,28 @@ pub fn stream_tokens(
             }
         };
 
-        let mut suppress_thinking = if let Some(ref tm) = req_think_mode {
-            tm.to_lowercase() == "off"
-        } else {
-            gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off"
+        let tm_str = req_think_mode
+            .as_deref()
+            .unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+            .to_lowercase();
+
+        let (mut suppress_thinking, max_think_tokens) = match tm_str.as_str() {
+            "off" | "false" | "0" => (true, 0),
+            "low" => (false, 512),
+            "medium" => (false, 1024),
+            "high" | "on" | "max" => (false, usize::MAX),
+            "auto" => (false, usize::MAX),
+            custom_num => {
+                if let Ok(budget) = custom_num.parse::<usize>() {
+                    if budget == 0 {
+                        (true, 0)
+                    } else {
+                        (false, budget)
+                    }
+                } else {
+                    (false, usize::MAX)
+                }
+            }
         };
         
         if formatted_prompt.contains("CRITICAL INSTRUCTION") || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\"")) {
@@ -130,6 +154,7 @@ pub fn stream_tokens(
         }
 
         let mut in_think_block = false;
+        let mut think_tokens_count = 0usize;
         let mut suppressed_count = 0;
 
         let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
@@ -431,6 +456,15 @@ pub fn stream_tokens(
                         in_think_block = true;
                     }
 
+                    // 1.1 Enforce thinking token budget limit (for Low / Medium tiers)
+                    if in_think_block {
+                        think_tokens_count += 1;
+                        if think_tokens_count >= max_think_tokens {
+                            in_think_block = false;
+                            suppress_thinking = true;
+                        }
+                    }
+
                     // 2. If inside think block and suppress_thinking is active:
                     if suppress_thinking && in_think_block {
                         let exit_tags = [
@@ -664,14 +698,29 @@ pub fn stream_tokens(
                     }
                 }
 
-                // 🧠 EOS Bias for "short" mode (runs every token — affects output length)
-                let is_short = gguf_meta.user_moved_flags.response_length.has_short_mode();
-                if is_short && n_gen > 30 {
-                    let eos_id = llama_cpp::llama_vocab_eos(vocab);
-                    if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
-                        let logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
-                        let bias_strength = ((n_gen - 30) as f32 * 0.15).min(5.0);
-                        logits_mut[eos_id as usize] += bias_strength;
+                // 🧠 Logit-level Graceful Progressive EOS Bias for Output Length
+                // Only active on answer tokens (!in_think_block) so reasoning tokens aren't penalized.
+                if !in_think_block {
+                    let (trigger_token, max_bias) = match effective_response_length.as_str() {
+                        "short" | "quick" => (30usize, 5.0f32),
+                        "medium" => (150usize, 5.0f32),
+                        "long" | "deep" => (500usize, 4.0f32),
+                        custom_str => {
+                            if let Ok(target) = custom_str.parse::<usize>() {
+                                (target.saturating_sub(target / 4).max(10), 6.0f32)
+                            } else {
+                                (usize::MAX, 0.0f32)
+                            }
+                        }
+                    };
+
+                    if (n_gen as usize) > trigger_token {
+                        let eos_id = llama_cpp::llama_vocab_eos(vocab);
+                        if eos_id >= 0 && (eos_id as usize) < n_vocab as usize {
+                            let logits_mut = std::slice::from_raw_parts_mut(logits_ptr, n_vocab as usize);
+                            let bias_strength = (((n_gen as usize - trigger_token) as f32 * 0.15)).min(max_bias);
+                            logits_mut[eos_id as usize] += bias_strength;
+                        }
                     }
                 }
             }

@@ -28,12 +28,9 @@ impl ConflictResolver {
         let vram_available = silicon.accelerators.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
         
         if control.speculative_decoding == FeatureState::On {
-            if vram_available < 12.0 {
-                // Dependency: Speculative path on low VRAM requires TurboQuant to compress the context.
-                if control.turbo_quant != FeatureState::On {
-                    control.turbo_quant = FeatureState::On;
-                    println!("⚖️ [Manager] Low VRAM ({:.1}GB) detected. Forcing TurboQuant=ON to support Speculative path.", vram_available);
-                }
+            if vram_available < 12.0 && control.kv_cache_quantization == cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto {
+                control.kv_cache_quantization = cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4;
+                println!("⚖️ [Manager] Low VRAM ({:.1}GB) detected. Calibrating KV Cache to Kv4 to support Speculative path.", vram_available);
             }
         }
 

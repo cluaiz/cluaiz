@@ -291,11 +291,10 @@ impl HardwareGovernor {
 
         // Expansion logic for high-power modes (Only if architecture allows)
         // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
-        let is_hybrid_requested = opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::On
-            || opt_control.force_vram_reclaim == crate::hardware::schema::optimization::FeatureState::On;
+        let is_hybrid_requested = opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::On;
         let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
 
-        if is_hybrid_requested || model_exceeds_vram {
+        if is_hybrid_requested || (opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::Auto && model_exceeds_vram) {
             // 🔄 HYBRID MODE (Explicitly requested OR auto-triggered because VRAM is too small)
             // Use VRAM + Shared System RAM to calculate absolute maximum possible context.
             let mut system_ram_gb = 0.0;
@@ -428,7 +427,6 @@ impl HardwareGovernor {
                     } else {
                         crate::hardware::schema::optimization::FeatureState::Off
                     };
-                    opt_control.force_vram_reclaim = opt_control.hybrid_memory;
                     Self::save_optimization_settings(&opt_control)?;
                 }
             }

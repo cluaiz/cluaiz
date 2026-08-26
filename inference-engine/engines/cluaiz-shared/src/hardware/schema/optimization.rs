@@ -156,8 +156,6 @@ pub struct OptimizationControl {
     #[serde(default, alias = "force_vram_reclaim")]
     pub hybrid_memory: FeatureState,
     #[serde(default)]
-    pub force_vram_reclaim: FeatureState,
-    #[serde(default)]
     pub force_memory_lock: FeatureState,
     #[serde(default)]
     pub context_shifting: ContextShiftingMode,
@@ -175,12 +173,6 @@ pub struct OptimizationControl {
     /// Direct GB safety buffer override for CPU RAM. None = dynamic auto mode.
     #[serde(default)]
     pub custom_ram_buffer_gb: Option<f64>,
-    #[serde(default)]
-    pub turbo_quant: FeatureState,
-    #[serde(default)]
-    pub auto_round: FeatureState,
-    #[serde(default)]
-    pub enforce_json: bool,
 }
 
 /// Type alias for backward compatibility during refactoring
@@ -191,12 +183,8 @@ impl OptimizationControl {
     pub fn resolve_conflicts(
         &mut self,
         silicon: &crate::hardware::schema::profiles::SiliconTruth,
-        signature: &crate::backend::signature::KernelSignature,
+        _signature: &crate::backend::signature::KernelSignature,
     ) {
-        if signature.is_bitnet || signature.is_ssm {
-            self.speculative_decoding = FeatureState::Off;
-        }
-
         let vram_available = silicon
             .accelerators
             .gpus
@@ -223,7 +211,6 @@ impl Default for OptimizationControl {
             flash_attention: FeatureState::On,
             kv_cache_quantization: KvCacheQuantization::Auto,
             hybrid_memory: FeatureState::Off,
-            force_vram_reclaim: FeatureState::Off,
             force_memory_lock: FeatureState::Off,
             context_shifting: ContextShiftingMode::Auto,
             speculative_decoding: FeatureState::Off,
@@ -232,9 +219,6 @@ impl Default for OptimizationControl {
             extreme_moe_streaming: FeatureState::On,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
-            turbo_quant: FeatureState::Auto,
-            auto_round: FeatureState::Auto,
-            enforce_json: false,
         }
     }
 }
@@ -278,7 +262,7 @@ impl From<&OptimizationControl> for cluaizOptimizationContext {
         };
 
         Self {
-            turbo_quant: config.turbo_quant == FeatureState::On,
+            turbo_quant: config.kv_cache_quantization != KvCacheQuantization::Kv16,
             flash_attention: config.flash_attention == FeatureState::On,
             speculative_decoding_mode: spec_mode,
             kv_cache_quantization_mode: kv_mode,

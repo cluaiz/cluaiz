@@ -16,11 +16,13 @@ impl AutoTuner {
             println!("🧪 [Manager] Auto-Tuner: Flash Attention calibrated to {:?}", control.flash_attention);
         }
 
-        // Example: Auto TurboQuant for low VRAM
-        if control.turbo_quant == FeatureState::Auto {
+        // Auto KV Cache Quantization for low VRAM
+        if control.kv_cache_quantization == cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto {
             let vram = silicon.accelerators.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
-            control.turbo_quant = if vram < 8.0 { FeatureState::On } else { FeatureState::Off };
-            println!("🧪 [Manager] Auto-Tuner: TurboQuant calibrated to {:?}", control.turbo_quant);
+            if vram < 8.0 {
+                control.kv_cache_quantization = cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4;
+                println!("🧪 [Manager] Auto-Tuner: KV Cache Quantization calibrated to Kv4 for low VRAM ({:.1}GB)", vram);
+            }
         }
     }
 }
