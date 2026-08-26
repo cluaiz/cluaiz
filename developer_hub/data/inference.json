@@ -75,9 +75,23 @@
           "req": false,
           "desc": "How long (in seconds) to keep the model loaded in VRAM after request.",
           "default": null
+        },
+        {
+          "name": "think_mode",
+          "type": "string",
+          "req": false,
+          "desc": "Reasoning mode ('auto', 'off', 'low', 'medium', 'high', or integer token budget).",
+          "default": "auto"
+        },
+        {
+          "name": "response_length",
+          "type": "string",
+          "req": false,
+          "desc": "Progressive EOS logit bias ('auto', 'short', 'medium', 'long', or integer target).",
+          "default": "auto"
         }
       ],
-      "request_payload": "{\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! Explain quantum computing in simple terms.\"\n    }\n  ],\n  \"stream\": true,\n  \"temperature\": 0.7,\n  \"max_tokens\": 2048\n}",
+      "request_payload": "{\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! Explain quantum computing in simple terms.\"\n    }\n  ],\n  \"stream\": true,\n  \"temperature\": 0.7,\n  \"max_tokens\": 2048,\n  \"think_mode\": \"auto\",\n  \"response_length\": \"auto\"\n}",
       "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly evolving technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
       "examples": [
         {

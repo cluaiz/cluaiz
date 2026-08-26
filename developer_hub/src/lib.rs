@@ -14,7 +14,7 @@ use rust_embed::RustEmbed;
 struct Asset;
 
 #[derive(RustEmbed)]
-#[folder = "../docs/api/"]
+#[folder = "../docs/"]
 struct DocsAsset;
 
 pub fn devhub_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
@@ -48,6 +48,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
                 .header(header::CONTENT_TYPE, content_type)
                 .body(Body::from(content.data))
                 .unwrap();
+        } else {
+            return Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("404 Documentation Not Found"))
+                .unwrap();
         }
     }
 
@@ -70,19 +75,21 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
                     .unwrap();
             }
 
-            // 4. SPA Fallback: serve index.html for any unknown UI route
-            if let Some(content) = Asset::get("index.html") {
-                let mime = mime_guess::from_path("index.html").first_or_octet_stream();
-                Response::builder()
-                    .header(header::CONTENT_TYPE, mime.as_ref())
-                    .body(Body::from(content.data))
-                    .unwrap()
-            } else {
-                Response::builder()
-                    .status(StatusCode::NOT_FOUND)
-                    .body(Body::from("404 Not Found"))
-                    .unwrap()
+            // 4. SPA Fallback: serve index.html for page routes only (never for static files like .md, .js, .css, .json)
+            if !path.contains('.') {
+                if let Some(content) = Asset::get("index.html") {
+                    let mime = mime_guess::from_path("index.html").first_or_octet_stream();
+                    return Response::builder()
+                        .header(header::CONTENT_TYPE, mime.as_ref())
+                        .body(Body::from(content.data))
+                        .unwrap();
+                }
             }
+
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("404 Not Found"))
+                .unwrap()
         }
     }
 }

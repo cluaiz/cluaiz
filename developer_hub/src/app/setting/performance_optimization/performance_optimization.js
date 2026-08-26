@@ -31,10 +31,10 @@ const DESCRIPTIONS = {
         'Extreme': '50% sliding window eviction for heavy multi-turn sessions.'
     },
     kvQuant: {
-        'Auto': 'Automatic selection (Q4_0 with F16 fallback).',
-        'Kv16': 'F16 full precision KV cache.',
-        'Kv8': 'Q8_0 balanced precision KV cache.',
-        'Kv4': 'Q4_0 maximum memory compression.'
+        'Auto': 'Automatic selection (Q4_0 on GPU with Flash Attention, F16 fallback on CPU).',
+        'Kv16': 'F16: Full 16-bit uncompressed precision (type_k = f16, type_v = f16).',
+        'Kv8': 'Q8_0: 8-bit quantized KV cache (~50% memory savings, type_k = q8_0, type_v = q8_0).',
+        'Kv4': 'Q4_0: 4-bit quantized KV cache (~75% memory savings, requires Flash Attention).'
     },
     specDec: {
         'Auto': 'Auto-enables speculative decoding if draft model is configured.',
@@ -47,6 +47,7 @@ const DESCRIPTIONS = {
         'Off': 'Strictly bounds model allocation to GPU VRAM.'
     },
     extremeMoeStreaming: {
+        'Auto': 'Dynamic fallback: Automatically streams expert layers from NVMe SSD if model exceeds host RAM.',
         'On': 'Enables Zero-RAM MoE SSD expert streaming via DMA ping-pong buffers.',
         'Off': 'Disables SSD streaming fallback and requires full RAM allocation.'
     },
@@ -301,12 +302,34 @@ export async function mount(container) {
     }
 
     setupCustomDropdown('container-flash-attn', 'desc-flash-attn', DESCRIPTIONS.flashAttn, autoOnOff, 'flash_attention', 'Auto');
-    setupCustomDropdown('container-kv-quant', 'desc-kv-quant', DESCRIPTIONS.kvQuant, makeOptions(['Auto', 'Kv16', 'Kv8', 'Kv4']), 'kv_cache_quantization', 'Auto');
-    setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Off');
-    setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, onOffOptions, 'extreme_moe_streaming', 'On');
-    setupCustomDropdown('container-hybrid-memory', 'desc-hybrid-memory', DESCRIPTIONS.hybridMemory, autoOnOff, 'hybrid_memory', 'Off');
+    setupCustomDropdown('container-kv-quant', 'desc-kv-quant', DESCRIPTIONS.kvQuant, makeOptions(['Auto', 'Kv16', 'Kv8', 'Kv4'], ['Auto', 'F16', 'Q8_0', 'Q4_0']), 'kv_cache_quantization', 'Auto');
     setupCustomDropdown('container-context', 'desc-context', DESCRIPTIONS.context, makeOptions(['Auto', 'Off', 'Minimal', 'Standard', 'Aggressive', 'Extreme']), 'context_shifting', 'Auto');
     setupCustomDropdown('container-spec-dec', 'desc-spec-dec', DESCRIPTIONS.specDec, autoOnOff, 'speculative_decoding', 'Off');
+    setupCustomDropdown('container-moe-streaming', 'desc-moe-streaming', DESCRIPTIONS.extremeMoeStreaming, autoOnOff, 'extreme_moe_streaming', 'On');
+    setupCustomDropdown('container-hybrid-memory', 'desc-hybrid-memory', DESCRIPTIONS.hybridMemory, autoOnOff, 'hybrid_memory', 'Off');
+    setupCustomDropdown('container-mlock', 'desc-mlock', DESCRIPTIONS.mlock, autoOnOff, 'force_memory_lock', 'Off');
+
+    // Tab Switching for Models & Paths vs LLM Optimization
+    const tabButtons = container.querySelectorAll('.opt-tab');
+    const tabContents = container.querySelectorAll('.opt-tab-content');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            tabButtons.forEach(b => {
+                b.classList.remove('active');
+                b.style.background = 'transparent';
+                b.style.color = '#8b949e';
+            });
+            tabContents.forEach(c => c.style.display = 'none');
+
+            btn.classList.add('active');
+            btn.style.background = 'rgba(255,255,255,0.1)';
+            btn.style.color = 'white';
+
+            const targetContent = container.querySelector('#' + targetId);
+            if (targetContent) targetContent.style.display = 'block';
+        });
+    });
 
     // Chat, Vector, Vision, and Audio Models Selection & Rich Card Rendering
     try {

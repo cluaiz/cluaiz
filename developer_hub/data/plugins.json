@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/plugins/list",
       "desc": "Returns a list of all active native plugins.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"plugins\": [\n    {\n      \"id\": \"plg_99a\",\n      \"name\": \"Web Scraper\",\n      \"version\": \"1.2.0\",\n      \"status\": \"active\",\n      \"author\": \"Cluaiz Core\"\n    }\n  ]\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "POST",
       "path": "/v1/plugins/install",
       "desc": "Installs a native plugin.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/install.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "plugin_uri", "type": "string", "req": true, "desc": "URI of the plugin.", "default": "https://registry.cluaiz.com/plugins/web-scraper-v1.zip" }
       ],
@@ -68,7 +68,7 @@
       "method": "DELETE",
       "path": "/v1/plugins/remove",
       "desc": "Removes a native plugin.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/remove.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "plugin_id", "type": "string", "req": true, "desc": "ID of the plugin to remove.", "default": "plg_99a" }
       ],
@@ -101,7 +101,7 @@
       "method": "GET",
       "path": "/v1/plugins/cache",
       "desc": "Lists the active caches for plugins.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/cache_list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"caches\": [\n    {\n      \"plugin_id\": \"plg_99a\",\n      \"plugin_name\": \"Web Scraper\",\n      \"cache_files\": [\"cache.bin\", \"temp_data.db\"],\n      \"total_size_mb\": 12.5\n    }\n  ]\n}",
       "examples": [
@@ -131,7 +131,7 @@
       "method": "DELETE",
       "path": "/v1/plugins/cache",
       "desc": "Clears plugin caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/plugins/cache_clear.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "plugin_id", "type": "string", "req": false, "desc": "Target specific plugin cache.", "default": "web-scraper" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

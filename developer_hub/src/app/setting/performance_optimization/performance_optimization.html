@@ -1,14 +1,11 @@
 <div class="settings-module" id="performance_optimization">
 
-    <!-- 4 Tabs for GGUF Metadata Headers -->
+    <!-- 2 Tabs for Engine & Optimization -->
     <div class="opt-tabs"
         style="display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; padding-bottom: 10px;">
         <button class="opt-tab active" data-target="gguf-models"
             style="background: rgba(255,255,255,0.1); border: none; padding: 8px 16px; color: white; border-radius: 4px; cursor: pointer;">Models
             & Paths</button>
-        <button class="opt-tab" data-target="gguf-hardware"
-            style="background: transparent; border: none; padding: 8px 16px; color: #8b949e; border-radius: 4px; cursor: pointer;">Hardware
-            & Execution</button>
         <button class="opt-tab" data-target="gguf-optimization"
             style="background: transparent; border: none; padding: 8px 16px; color: #8b949e; border-radius: 4px; cursor: pointer;">LLM
             Optimization</button>
@@ -41,8 +38,6 @@
                 </div>
             </div>
         </div>
-
-
 
         <!-- 1. Chat Model Slot -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
@@ -105,31 +100,16 @@
         </div>
     </div>
 
-    <!-- Hardware & Execution -->
-    <div id="gguf-hardware" class="opt-tab-content" style="display: none;">
-        <h3 class="settings-section-title">Core Hardware & Memory Buffers</h3>
+    <!-- LLM Optimization -->
+    <div id="gguf-optimization" class="opt-tab-content" style="display: none;">
+        <h3 class="settings-section-title">LLM Optimization & Hardware Governance</h3>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Flash Attention (flash_attn)</span>
-                <span class="setting-desc" id="desc-flash-attn">Enables high-performance Flash Attention kernel for faster sequence processing.</span>
-            </div>
-            <div class="setting-control" id="container-flash-attn"></div>
-        </div>
-
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">KV Cache Precision (type_k / type_v)</span>
-                <span class="setting-desc" id="desc-kv-quant">Configures Key-Value cache quantization depth (F16, Q8_0, Q4_0).</span>
-            </div>
-            <div class="setting-control" id="container-kv-quant"></div>
-        </div>
-
+        <!-- 1. VRAM Safety Buffer -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
                     <span class="setting-label">VRAM Safety Buffer</span>
-                    <span class="setting-desc" id="desc-vram-buffer">Reserved GPU memory headroom to prevent Out-Of-Memory (OOM) crashes.</span>
+                    <span class="setting-desc" id="desc-vram-buffer">Reserved GPU memory margin to guarantee 0% OOM crashes.</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span id="val-vram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #60a5fa; background: rgba(96,165,250,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(96,165,250,0.2);">Auto (% Dynamic)</span>
@@ -141,11 +121,12 @@
             </div>
         </div>
 
+        <!-- 2. CPU RAM Safety Buffer -->
         <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <div class="setting-info">
                     <span class="setting-label">CPU RAM Safety Buffer</span>
-                    <span class="setting-desc" id="desc-ram-buffer">Reserved System RAM headroom for OS and background applications.</span>
+                    <span class="setting-desc" id="desc-ram-buffer">Reserved System RAM headroom for OS and background apps.</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span id="val-ram-buffer" style="font-family: monospace; font-size: 13px; font-weight: bold; color: #a855f7; background: rgba(168,85,247,0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(168,85,247,0.2);">Auto (% Dynamic)</span>
@@ -156,12 +137,44 @@
                 <input type="range" id="slider-ram-buffer" min="0" max="32" step="0.5" value="0" style="flex: 1; accent-color: #c084fc; cursor: pointer;">
             </div>
         </div>
-    </div>
 
-    <!-- LLM Optimization -->
-    <div id="gguf-optimization" class="opt-tab-content" style="display: none;">
-        <h3 class="settings-section-title">Engine Optimization & Superpowers</h3>
+        <!-- 3. Flash Attention -->
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Flash Attention (flash_attn)</span>
+                <span class="setting-desc" id="desc-flash-attn">Forces Flash Attention. Very fast for long contexts.</span>
+            </div>
+            <div class="setting-control" id="container-flash-attn"></div>
+        </div>
 
+        <!-- 4. Context Shifting -->
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Smart Memory Management (Context Shifting)</span>
+                <span class="setting-desc" id="desc-context">System dynamically balances memory consumption and chat history retention.</span>
+            </div>
+            <div class="setting-control" id="container-context"></div>
+        </div>
+
+        <!-- 5. KV Cache Quantization -->
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">KV Cache Quantization (type_k / type_v)</span>
+                <span class="setting-desc" id="desc-kv-quant">System decides the best quantization level (F16, Q8_0, Q4_0).</span>
+            </div>
+            <div class="setting-control" id="container-kv-quant"></div>
+        </div>
+
+        <!-- 6. Speculative Decoding -->
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Speculative Decoding (--draft)</span>
+                <span class="setting-desc" id="desc-spec-dec">Accelerates inference using secondary draft models or lookup tables.</span>
+            </div>
+            <div class="setting-control" id="container-spec-dec"></div>
+        </div>
+
+        <!-- 7. Extreme MoE SSD Streaming -->
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Extreme MoE SSD Streaming</span>
@@ -170,6 +183,7 @@
             <div class="setting-control" id="container-moe-streaming"></div>
         </div>
 
+        <!-- 8. Hybrid Memory Mode -->
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Hybrid Memory Mode (VRAM + RAM)</span>
@@ -178,28 +192,13 @@
             <div class="setting-control" id="container-hybrid-memory"></div>
         </div>
 
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Context Shifting (Sliding Window)</span>
-                <span class="setting-desc" id="desc-context">Prunes oldest conversation history (5% to 50%) to prevent context overflow without resets.</span>
-            </div>
-            <div class="setting-control" id="container-context"></div>
-        </div>
-
+        <!-- 9. Memory Lock (use_mlock) -->
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Memory Lock (use_mlock)</span>
                 <span class="setting-desc" id="desc-mlock">Locks model weights in RAM/VRAM to prevent OS pagefile swapping and latency spikes.</span>
             </div>
             <div class="setting-control" id="container-mlock"></div>
-        </div>
-
-        <div class="setting-item">
-            <div class="setting-info">
-                <span class="setting-label">Speculative Decoding (--draft)</span>
-                <span class="setting-desc" id="desc-spec-dec">Accelerates inference using secondary draft models or lookup tables.</span>
-            </div>
-            <div class="setting-control" id="container-spec-dec"></div>
         </div>
     </div>
 

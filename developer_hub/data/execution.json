@@ -5,7 +5,7 @@
       "method": "POST",
       "path": "/v1/cel/execute",
       "desc": "Executes raw CEL (cluaiz Execution Language) scripts natively for dynamic agentic logic and algorithmic workflows.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/cel_execute.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         {
           "name": "script",
@@ -53,7 +53,7 @@
       "method": "POST",
       "path": "/v1/execute/{component}/{function}",
       "desc": "Dynamic ecosystem execution. Directly calls an exposed FFI function inside a component (e.g. extension, plugin).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/inference/execute_dynamic.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         {
           "name": "args",

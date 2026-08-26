@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/mcp/list",
       "desc": "Returns a list of Model Context Protocol (MCP) servers active.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"mcp_servers\": [\n    {\n      \"id\": \"mcp_gh\",\n      \"name\": \"GitHub MCP\",\n      \"url\": \"http://localhost:8080\",\n      \"status\": \"active\",\n      \"latency_ms\": 12\n    }\n  ]\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "POST",
       "path": "/v1/mcp/install",
       "desc": "Registers a new MCP server endpoint.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/install.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "mcp_config", "type": "string", "req": true, "desc": "MCP configuration.", "default": "{\"server\": \"github\", \"port\": 8080}" }
       ],
@@ -68,7 +68,7 @@
       "method": "DELETE",
       "path": "/v1/mcp/remove",
       "desc": "Unregisters an MCP server.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/remove.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "mcp_id", "type": "string", "req": true, "desc": "ID of the MCP server.", "default": "mcp_gh" }
       ],
@@ -101,7 +101,7 @@
       "method": "GET",
       "path": "/v1/mcp/cache",
       "desc": "Lists the active caches for MCP servers.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/cache_list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"caches\": [\n    {\n      \"mcp_id\": \"mcp_gh\",\n      \"cache_files\": [\"github_repo_cache.bin\"],\n      \"total_size_mb\": 5.1\n    }\n  ]\n}",
       "examples": [
@@ -131,7 +131,7 @@
       "method": "DELETE",
       "path": "/v1/mcp/cache",
       "desc": "Clears MCP caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/mcp/cache_clear.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "mcp_id", "type": "string", "req": false, "desc": "Target specific MCP cache.", "default": "github" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

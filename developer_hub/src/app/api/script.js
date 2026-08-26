@@ -329,11 +329,12 @@ function openEndpoint(ep, forceDefault = false) {
                     fetch(window.getApiBaseUrl() + '/v1/system/gguf_config')
                         .then(res => res.json())
                         .then(config => {
-                            const thinkMode = config.user_moved_flags?.think_mode || "auto";
-                            obj["think_mode"] = thinkMode.toLowerCase();
-                            obj["temperature"] = (config.samplers && config.samplers.temp !== undefined) ? config.samplers.temp : 0.7;
+                            const rawThink = config.user_moved_flags?.think_mode || "Auto";
+                            obj["think_mode"] = !isNaN(rawThink) ? parseInt(rawThink, 10) : rawThink.toLowerCase();
+                            const rawResp = config.user_moved_flags?.response_length || "auto";
+                            obj["response_length"] = !isNaN(rawResp) ? parseInt(rawResp, 10) : rawResp.toLowerCase();
+                            obj["temperature"] = (config.samplers && config.samplers.temp !== undefined && config.samplers.temp > 0) ? config.samplers.temp : 0.7;
                             obj["max_tokens"] = 2048;
-                            delete obj["response_length"];
 
                             if (state.editor) state.editor.setValue(JSON.stringify(obj, null, 2));
                         }).catch(e => {
@@ -367,9 +368,16 @@ function openEndpoint(ep, forceDefault = false) {
     // Load documentation asynchronously if available
     const docsContent = document.getElementById('docs-content');
     if (ep.docs_url) {
-        docsContent.innerHTML = `<em>Loading documentation from CDN...</em><br/><br/><span style="color:#8b949e; font-size: 12px;">${ep.docs_url}</span>`;
+        docsContent.innerHTML = `<em>Loading documentation...</em><br/><br/><span style="color:#8b949e; font-size: 12px;">${ep.docs_url}</span>`;
         fetch(ep.docs_url)
-            .then(r => r.text())
+            .then(async r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const text = await r.text();
+                if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html') || text.trim().startsWith('<!-- CodeMirror') || text.trim().startsWith('<!--')) {
+                    throw new Error("Received HTML shell instead of markdown documentation");
+                }
+                return text;
+            })
             .then(text => {
                 if (typeof marked !== 'undefined') {
                     docsContent.innerHTML = `<div class="markdown-body">${marked.parse(text)}</div>`;
@@ -379,7 +387,10 @@ function openEndpoint(ep, forceDefault = false) {
                 }
             })
             .catch(err => {
-                docsContent.innerHTML = `<span class="status-err">Failed to fetch documentation from CDN.</span>`;
+                docsContent.innerHTML = `<div style="padding: 15px; color: #8b949e; font-size: 13px;">
+                    <span class="status-err" style="color: #ef4444; font-weight: 500;">Unable to load endpoint documentation</span><br/>
+                    <span style="font-size: 11px; font-family: monospace; color: #6b7280;">${err.message}</span>
+                </div>`;
             });
     } else {
         docsContent.innerHTML = "<em>No specific documentation provided for this endpoint.</em>";

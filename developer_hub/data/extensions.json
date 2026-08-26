@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/extensions/list",
       "desc": "Returns a list of all installed extensions.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"extensions\": [\n    {\n      \"id\": \"ext_db_99\",\n      \"name\": \"Cluaiz DB Manager\",\n      \"version\": \"2.0.1\",\n      \"status\": \"active\",\n      \"author\": \"Cluaiz\"\n    }\n  ]\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "POST",
       "path": "/v1/extensions/install",
       "desc": "Installs an extension.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/install.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "extension_uri", "type": "string", "req": true, "desc": "URI of the extension.", "default": "https://registry.cluaiz.com/extensions/cluaiz-db" }
       ],
@@ -68,7 +68,7 @@
       "method": "DELETE",
       "path": "/v1/extensions/remove",
       "desc": "Removes an extension.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/remove.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "extension_id", "type": "string", "req": true, "desc": "ID of the extension.", "default": "ext_db_99" }
       ],
@@ -101,7 +101,7 @@
       "method": "GET",
       "path": "/v1/extensions/cache",
       "desc": "Lists the active caches for extensions.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/cache_list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"caches\": [\n    {\n      \"extension_id\": \"ext_db_99\",\n      \"cache_files\": [\"cache.bin\", \"db_index.bin\"],\n      \"total_size_mb\": 45.2\n    }\n  ]\n}",
       "examples": [
@@ -131,7 +131,7 @@
       "method": "DELETE",
       "path": "/v1/extensions/cache",
       "desc": "Clears extension caches.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/extensions/cache_clear.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "extension_id", "type": "string", "req": false, "desc": "Target specific extension cache.", "default": "cluaiz-db" },
         { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }

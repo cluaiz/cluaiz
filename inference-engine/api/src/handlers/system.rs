@@ -45,6 +45,15 @@ pub async fn skip_think() -> Json<Value> {
     }))
 }
 
+// ─── Cancel Generation ────────────────────────────────────────────────
+pub async fn cancel_generation() -> Json<Value> {
+    cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(true, std::sync::atomic::Ordering::SeqCst);
+    Json(json!({
+        "status": "success",
+        "message": "Global cancel signal triggered. Active inference stopped."
+    }))
+}
+
 // ─── GET /v1/system/control ───────────────────────────────────────────
 pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Value> {
     use cluaiz_shared::hardware::governor::HardwareGovernor;

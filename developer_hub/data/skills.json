@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/v1/skills/list",
       "desc": "Returns a list of all active skills for the agentic systems.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/skills/list.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"skills\": [\n    {\n      \"id\": \"skill_math\",\n      \"name\": \"Math Expert\",\n      \"description\": \"Handles complex algebraic equations.\",\n      \"status\": \"active\"\n    }\n  ]\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "POST",
       "path": "/v1/skills/install",
       "desc": "Installs a new skill into the agent's brain.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/skills/install.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "skill_uri", "type": "string", "req": true, "desc": "URI of the skill package.", "default": "https://registry.cluaiz.com/skills/math-v1.zip" }
       ],
@@ -68,7 +68,7 @@
       "method": "DELETE",
       "path": "/v1/skills/remove",
       "desc": "Removes a skill from the agent's brain.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/skills/remove.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "skill_id", "type": "string", "req": true, "desc": "ID of the skill to remove.", "default": "skill_math" }
       ],

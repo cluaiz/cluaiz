@@ -5,7 +5,7 @@
       "method": "POST",
       "path": "/v1/tuning/start",
       "desc": "Initiates a LoRA/QLoRA fine-tuning process on the local GPU.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/start.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "base_model", "type": "string", "req": true, "desc": "The model to fine-tune.", "default": "llama-3-8b" },
         { "name": "dataset_path", "type": "string", "req": true, "desc": "Path to the JSONL dataset.", "default": "/data/dataset.jsonl" },
@@ -40,7 +40,7 @@
       "method": "GET",
       "path": "/v1/tuning/status/{job_id}",
       "desc": "Check the status of an ongoing fine-tuning job.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/status.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "job_id", "type": "string", "req": true, "desc": "The fine-tuning job ID.", "default": "tune-0912" }
       ],
@@ -72,7 +72,7 @@
       "method": "POST",
       "path": "/v1/tuning/cancel/{job_id}",
       "desc": "Cancels an ongoing fine-tuning job.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/tuning/cancel.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         { "name": "job_id", "type": "string", "req": true, "desc": "The fine-tuning job ID.", "default": "tune-0912" }
       ],

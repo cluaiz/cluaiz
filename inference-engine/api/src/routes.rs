@@ -18,6 +18,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/health", get(system::health_check))
         .route("/info", get(system::system_info))
         .route("/engine/skip_think", post(system::skip_think))
+        .route("/engine/cancel", post(system::cancel_generation))
         .route("/v1/system/cmd", post(system::execute_cmd))
         
         // ── External Compatible Streaming, Embeddings & Audio API ──

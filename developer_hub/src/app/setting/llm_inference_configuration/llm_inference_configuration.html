@@ -145,22 +145,17 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Think Mode</span>
-                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission during decoding.</span>
+                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission and budget.</span>
             </div>
             <div class="setting-control" id="container-gguf-think-mode"></div>
         </div>
 
-        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
-            <div class="setting-info" style="margin-bottom: 0;">
-                <span class="setting-label">Quick Preset Shortcuts</span>
-                <span class="setting-desc">Click any preset to auto-configure optimal temperature and reasoning defaults.</span>
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Response Length</span>
+                <span class="setting-desc">Progressive logit-level EOS bias for graceful answer completion without mid-sentence chops.</span>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="button" class="preset-btn" data-target="gguf" data-preset="think_deep" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Deep (0.0)</button>
-                <button type="button" class="preset-btn" data-target="gguf" data-preset="think_lite" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Lite (0.5)</button>
-                <button type="button" class="preset-btn" data-target="gguf" data-preset="long_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Long Answer (0.7)</button>
-                <button type="button" class="preset-btn" data-target="gguf" data-preset="short_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Short Answer (0.7)</button>
-            </div>
+            <div class="setting-control" id="container-gguf-response-length"></div>
         </div>
     </div>
 
@@ -309,22 +304,17 @@
         <div class="setting-item">
             <div class="setting-info">
                 <span class="setting-label">Think Mode</span>
-                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission during decoding.</span>
+                <span class="setting-desc">Controls Chain-of-Thought (CoT) reasoning token emission and budget.</span>
             </div>
             <div class="setting-control" id="container-onnx-think-mode"></div>
         </div>
 
-        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 12px;">
-            <div class="setting-info" style="margin-bottom: 0;">
-                <span class="setting-label">Quick Preset Shortcuts</span>
-                <span class="setting-desc">Click any preset to auto-configure optimal temperature and reasoning defaults.</span>
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-label">Response Length</span>
+                <span class="setting-desc">Progressive logit-level EOS bias for graceful answer completion without mid-sentence chops.</span>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button type="button" class="preset-btn" data-target="onnx" data-preset="think_deep" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Deep (0.0)</button>
-                <button type="button" class="preset-btn" data-target="onnx" data-preset="think_lite" style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Think Lite (0.5)</button>
-                <button type="button" class="preset-btn" data-target="onnx" data-preset="long_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Long Answer (0.7)</button>
-                <button type="button" class="preset-btn" data-target="onnx" data-preset="short_answer" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer;">Short Answer (0.7)</button>
-            </div>
+            <div class="setting-control" id="container-onnx-response-length"></div>
         </div>
     </div>
 </div>

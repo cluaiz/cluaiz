@@ -74,7 +74,22 @@ export async function mount(container) {
                 configVal = configObj[key];
             }
 
-            let initialValue = configVal !== undefined ? String(configVal) : optionsArr[0].value;
+            let initialValue = optionsArr[0]?.value || '';
+            if (configVal !== undefined && configVal !== null) {
+                if (typeof configVal === 'object') {
+                    initialValue = optionsArr[0]?.value || '';
+                    if (section) configObj[section][key] = initialValue;
+                    else configObj[key] = initialValue;
+                } else {
+                    const strVal = String(configVal);
+                    const matchedOption = optionsArr.find(o => !o.isInput && String(o.value).toLowerCase() === strVal.toLowerCase());
+                    if (matchedOption) {
+                        initialValue = String(matchedOption.value);
+                    } else {
+                        initialValue = strVal;
+                    }
+                }
+            }
 
             const dropdown = new Dropdown({
                 options: optionsArr,
@@ -592,10 +607,31 @@ export async function mount(container) {
     // Samplers
     setupSamplers('container-gguf-samplers', ggufConfig, null, 'samplers', saveGguf);
 
+    const thinkModeOptions = [
+        { value: 'Auto', label: 'Auto (Model Default)' },
+        { value: 'Off', label: 'Off (Think Tag Prefill)' },
+        { value: 'Low', label: 'Low (512 Tokens)' },
+        { value: 'Medium', label: 'Medium (1024 Tokens)' },
+        { value: 'High', label: 'High (Full Reasoning)' },
+        { isInput: true, placeholder: 'Custom Tokens (e.g. 768)', suffix: 'Tokens', inputType: 'number' }
+    ];
+
+    const responseLengthOptions = [
+        { value: 'auto', label: 'Auto (Default)' },
+        { value: 'short', label: 'Short (Concise Answers)' },
+        { value: 'medium', label: 'Medium (Standard Length)' },
+        { value: 'long', label: 'Long (Detailed Answers)' },
+        { isInput: true, placeholder: 'Custom Target (e.g. 200)', suffix: 'Tokens', inputType: 'number' }
+    ];
+
     // User Moved Flags
     setupCustomDropdown('container-gguf-think-mode', undefined, undefined,
-        makeOptions(['Auto', 'On', 'Off']),
+        thinkModeOptions,
         ggufConfig, 'user_moved_flags', 'think_mode', saveGguf);
+
+    setupCustomDropdown('container-gguf-response-length', undefined, undefined,
+        responseLengthOptions,
+        ggufConfig, 'user_moved_flags', 'response_length', saveGguf);
 
 
     // ----- ONNX INITIALIZATION -----
@@ -664,38 +700,12 @@ export async function mount(container) {
     setupToggle('toggle-onnx-deterministic', onnxConfig, null, 'use_deterministic_compute', saveOnnx);
 
     setupCustomDropdown('container-onnx-think-mode', undefined, undefined,
-        makeOptions(['Auto', 'On', 'Off']),
+        thinkModeOptions,
         onnxConfig, 'user_moved_flags', 'think_mode', saveOnnx);
 
-    // Preset button shortcuts
-    container.querySelectorAll('.preset-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const target = btn.dataset.target;
-            const preset = btn.dataset.preset;
-            const config = (target === 'gguf') ? ggufConfig : onnxConfig;
-            const onSave = (target === 'gguf') ? saveGguf : saveOnnx;
-
-            if (!config.samplers) config.samplers = {};
-            if (!config.user_moved_flags) config.user_moved_flags = {};
-
-            if (preset === 'think_deep') {
-                config.user_moved_flags.think_mode = 'On';
-                config.samplers.temp = 0.0;
-            } else if (preset === 'think_lite') {
-                config.user_moved_flags.think_mode = 'On';
-                config.samplers.temp = 0.5;
-            } else if (preset === 'long_answer') {
-                config.user_moved_flags.think_mode = 'Off';
-                config.samplers.temp = 0.7;
-            } else if (preset === 'short_answer') {
-                config.user_moved_flags.think_mode = 'Off';
-                config.samplers.temp = 0.7;
-            }
-
-            await onSave();
-            window.dispatchEvent(new CustomEvent(target + 'ConfigChanged', { detail: { key: 'think_mode', value: config.user_moved_flags.think_mode } }));
-        });
-    });
+    setupCustomDropdown('container-onnx-response-length', undefined, undefined,
+        responseLengthOptions,
+        onnxConfig, 'user_moved_flags', 'response_length', saveOnnx);
 
 
     // Tab switching logic (using tools_setting design)

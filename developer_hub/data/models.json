@@ -4,8 +4,8 @@
     {
       "method": "GET",
       "path": "/api/tags",
-      "desc": "Ollama-compatible endpoint to list all available models.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/tags.md",
+      "desc": "External compatible endpoint to list all available models.",
+      "docs_url": "/docs/api/models/list_models.md",
       "params": [],
       "response": "{\n  \"models\": [\n    {\n      \"name\": \"llama3:8b\",\n      \"model\": \"llama3:8b\",\n      \"modified_at\": \"2024-05-01T12:00:00Z\",\n      \"size\": 4700000000,\n      \"digest\": \"sha256:736f86c8f42013f412\",\n      \"details\": {\n        \"format\": \"gguf\",\n        \"family\": \"llama\",\n        \"families\": [\"llama\"],\n        \"parameter_size\": \"8.0B\",\n        \"quantization_level\": \"Q4_K_M\"\n      }\n    }\n  ]\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "POST",
       "path": "/api/pull",
       "desc": "Pulls an external compatible model from remote registries.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/pull.md",
+      "docs_url": "/docs/api/models/pull_model.md",
       "params": [
         { "name": "name", "type": "string", "req": true, "desc": "Model tag or identifier.", "default": "qwen:0.5b" }
       ],
@@ -68,7 +68,7 @@
       "method": "GET",
       "path": "/models/available",
       "desc": "Legacy. Lists available online models for download.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/available.md",
+      "docs_url": "/docs/api/models/list_models.md",
       "params": [],
       "response": "[\n  {\n    \"id\": \"llama-3-8b-instruct\",\n    \"type\": \"chat\",\n    \"description\": \"Meta's Llama 3 8B Instruct model\",\n    \"size_gb\": 4.7,\n    \"tags\": [\"reasoning\", \"general\"]\n  }\n]",
       "examples": [
@@ -98,7 +98,7 @@
       "method": "GET",
       "path": "/v1/models/installed",
       "desc": "Lists locally installed models inside the cluaiz Vault.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/installed.md",
+      "docs_url": "/docs/api/models/list_models.md",
       "params": [],
       "response": "{\n  \"installed\": [\n    {\n      \"id\": \"llama-3-8b-instruct\",\n      \"status\": \"ready\",\n      \"size_gb\": 4.7,\n      \"category\": \"chat\",\n      \"location\": \"/vault/models/llama-3-8b.gguf\"\n    },\n    {\n      \"id\": \"all-minilm-l6-v2\",\n      \"status\": \"ready\",\n      \"size_gb\": 0.1,\n      \"category\": \"vector\",\n      \"location\": \"/vault/models/minilm.gguf\"\n    }\n  ]\n}",
       "examples": [
@@ -128,7 +128,7 @@
       "method": "GET",
       "path": "/hardware",
       "desc": "Legacy hardware status check.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/hardware.md",
+      "docs_url": "/docs/api/system/control_hardware.md",
       "params": [],
       "response": "{\n  \"vram_total\": 16.0,\n  \"vram_free\": 12.4,\n  \"ram_total\": 32.0,\n  \"ram_free\": 18.5,\n  \"gpu_name\": \"NVIDIA GeForce RTX 4080\"\n}",
       "examples": [
@@ -158,7 +158,7 @@
       "method": "POST",
       "path": "/models/download",
       "desc": "Downloads a .gguf format model from Hugging Face into the local secure vault.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/download.md",
+      "docs_url": "/docs/api/models/pull_model.md",
       "params": [
         { "name": "repo_id", "type": "string", "req": true, "desc": "Hugging Face repo ID.", "default": "unsloth/llama-3-8b" },
         { "name": "filename", "type": "string", "req": true, "desc": "Specific file to download.", "default": "llama-3-8b.gguf" }
@@ -192,7 +192,7 @@
       "method": "POST",
       "path": "/models/load",
       "desc": "Loads a downloaded model into VRAM/RAM for active inference.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/load.md",
+      "docs_url": "/docs/api/models/load_model.md",
       "params": [
         { "name": "model_id", "type": "string", "req": true, "desc": "The local ID of the model.", "default": "llama-3-8b" },
         { "name": "gpu_layers", "type": "integer", "req": false, "desc": "Number of layers to offload to GPU.", "default": -1 }
@@ -226,7 +226,7 @@
       "method": "POST",
       "path": "/v1/hardware/calibrate",
       "desc": "Recalibrates the Hardware Governor (checks RAM, VRAM, CPU topologies dynamically).",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/calibrate.md",
+      "docs_url": "/docs/api/system/control_hardware.md",
       "params": [],
       "request_payload": "{}",
       "response": "{\n  \"status\": \"success\",\n  \"message\": \"Hardware recalibrated.\",\n  \"topology\": {\n    \"cpu_cores\": 16,\n    \"gpu_count\": 1,\n    \"unified_memory\": false\n  }\n}",
@@ -257,7 +257,7 @@
       "method": "DELETE",
       "path": "/v1/models/{model_id}",
       "desc": "Deletes a model permanently from the local vault.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/models/rm.md",
+      "docs_url": "/docs/api/models/list_models.md",
       "params": [
         { "name": "model_id", "type": "string", "req": true, "desc": "The ID of the model.", "default": "llama-3-8b" }
       ],

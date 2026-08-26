@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/health",
       "desc": "Checks the core engine health, memory status, and continuous uptime.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/health.md",
+      "docs_url": "/docs/api/system/info_health.md",
       "params": [],
       "response": "{\n  \"status\": \"healthy\",\n  \"uptime_ms\": 145020,\n  \"components\": {\n    \"db\": \"healthy\",\n    \"gpu\": \"healthy\"\n  }\n}",
       "examples": [
@@ -35,7 +35,7 @@
       "method": "GET",
       "path": "/info",
       "desc": "Retrieves deep architectural information, versioning, and the foundational pillars of the cluaiz system.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/info.md",
+      "docs_url": "/docs/api/system/info_health.md",
       "params": [],
       "response": "{\n  \"engine\": \"Cluaiz Inference Engine\",\n  \"version\": \"0.1.0\",\n  \"build_date\": \"2024-05-10\",\n  \"capabilities\": [\"vision\", \"vector_search\", \"cel\"]\n}",
       "examples": [
@@ -65,7 +65,7 @@
       "method": "GET",
       "path": "/v1/system/ps",
       "desc": "Show active neural engines in memory and their current process IDs. Crucial for load balancers.",
-      "docs_url": "https://raw.githubusercontent.com/cluaiz/cluaiz/main/README.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
       "response": "{\n  \"status\": \"success\",\n  \"active_processes\": [\n    {\n      \"pid\": \"29514\",\n      \"model_id\": \"bonsai:8b\",\n      \"vram_gb\": 4.2,\n      \"context_size\": 8192,\n      \"engine\": \"llama.cpp\"\n    }\n  ]\n}",
       "examples": [
@@ -95,7 +95,7 @@
       "method": "GET",
       "path": "/v1/system/control",
       "desc": "Gets the overall hardware orchestrator system control states including brain connection state and hardware limits.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/control.md",
+      "docs_url": "/docs/api/system/control_hardware.md",
       "params": [],
       "response": "{\n  \"brain\": {\n    \"cluaizdb_connect_ffi\": \"on\"\n  },\n  \"silicon_truth\": {\n    \"memory\": {\"total_capacity_gb\": 32.0}\n  }\n}",
       "examples": [
@@ -124,10 +124,10 @@
     {
       "method": "GET",
       "path": "/v1/system/permission",
-      "desc": "Gets the current active permission schema and firewall rules for the neural foundry.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/permission_get.md",
+      "desc": "Fetch current engine security boundaries, wasm firewalls, and active slot limits.",
+      "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"permission\": {\n    \"wasm_firewall\": \"strict\",\n    \"vectorize_user_input\": true,\n    \"stream_telemetry\": false,\n    \"enable_kvcache\": true\n  }\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"permission\": {\n    \"wasm_firewall\": \"strict\",\n    \"vectorize_user_input\": true,\n    \"stream_telemetry\": false\n  }\n}",
       "examples": [
         {
           "language": "curl",
@@ -154,8 +154,8 @@
     {
       "method": "POST",
       "path": "/v1/system/permission",
-      "desc": "Updates a specific permission rule natively.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/permission_post.md",
+      "desc": "Update engine security boundaries and sandboxing flags.",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         {
           "name": "key",
@@ -200,39 +200,62 @@
     {
       "method": "POST",
       "path": "/engine/skip_think",
-      "desc": "Instructs the engine to skip the '<think>' reasoning block during the next generation.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/skip_think.md",
-      "params": [
-        {
-          "name": "skip",
-          "type": "boolean",
-          "req": true,
-          "desc": "Whether to skip thinking tags in output.",
-          "default": true
-        }
-      ],
-      "request_payload": "{\n  \"skip\": true\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"skip_think_enabled\": true\n}",
+      "desc": "Instructs the active engine to skip '<think>' reasoning block and stream the direct answer immediately.",
+      "docs_url": "/docs/api/system/stream_control.md",
+      "params": [],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Brain skip signal injected. Neural graph will pivot.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/engine/skip_think \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"skip\": true}'"
+          "code": "curl -X POST http://localhost:8000/engine/skip_think"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/engine/skip_think', json={\"skip\": True})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/engine/skip_think')\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/engine/skip_think', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ skip: true })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/engine/skip_think', {\n  method: 'POST'\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/engine/skip_think\")\n    .json(&serde_json::json!({ \"skip\": true }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/engine/skip_think\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/engine/cancel",
+      "desc": "Triggers global cancellation signal to immediately abort active token generation mid-stream.",
+      "docs_url": "/docs/api/system/stream_control.md",
+      "params": [],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Global cancel signal triggered. Active inference stopped.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/engine/cancel"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/engine/cancel')\nprint(res.json())"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js",
+          "code": "const response = await fetch('http://localhost:8000/engine/cancel', {\n  method: 'POST'\n});\nconst data = await response.json();\nconsole.log(data);"
+        },
+        {
+          "language": "rust",
+          "title": "Rust",
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/engine/cancel\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
@@ -240,7 +263,7 @@
       "method": "POST",
       "path": "/v1/system/cmd",
       "desc": "Executes shell commands locally. STRICTLY bound to 127.0.0.1 (Localhost). Rejects any remote attempts to prevent RCE.",
-      "docs_url": "https://cdn.jsdelivr.net/gh/cluaiz/cluaiz@main/docs/system/cmd.md",
+      "docs_url": "/docs/reference/api.md",
       "params": [
         {
           "name": "command",
