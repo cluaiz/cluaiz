@@ -75,7 +75,7 @@ async fn scan_and_register_local_models() {
                             
                             // Try to probe the header for supported tasks
                             if is_primary {
-                                if let Ok((metadata, _, _)) = GGUFProber::probe(&f.path()) {
+                                if let Ok((metadata, _, _)) = GgufProber::probe(&f.path()) {
                                     let arch = metadata.get("general.architecture").map(|s| s.as_str()).unwrap_or("");
                                     let mut tasks = vec!["text-generation", "chat-completion"]; // Base tasks for GGUF LLMs
                                     

@@ -10,14 +10,14 @@ pub enum PayloadType {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: PayloadType,
     pub data_ptr: *const u8,
     pub data_len: usize,
 }
 
 #[no_mangle]
-pub extern "C" fn execute_cel(payload: ExtensionPayload) -> *mut u8 {
+pub extern "C" fn execute_cel(payload: CxpPayload) -> *mut u8 {
     // 1. Read the incoming payload
     let incoming_bytes = unsafe {
         std::slice::from_raw_parts(payload.data_ptr, payload.data_len)

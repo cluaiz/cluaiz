@@ -10,7 +10,7 @@ To prevent memory copies, the Cluaiz Engine passes binary payloads directly acro
 
 Instead of serialization over HTTP/TCP ports, host applications dynamically invoke engine execution parameters directly in memory using shared buffer pointers.
 
-### A. Memory Representation (`ExtensionPayload`)
+### A. Memory Representation (`CxpPayload`)
 The core pointer struct is defined strictly under the C-ABI layout. It binds a payload type identifier, a memory pointer address, and a length segment to guarantee stable memory alignment.
 
 ```c
@@ -26,7 +26,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 ```
 
 ---
@@ -35,11 +35,11 @@ typedef struct {
 
 When handling C-pointers across language boundaries (FFI), explicit allocations and deallocations are mandatory to avoid double-free panics or memory leaks:
 
-1. **Input Payloads**: When the Engine passes an `ExtensionPayload` pointer to an extension, the host Engine retains ownership. The extension must *never* free or write to the input payload's buffer.
-2. **Output Payloads**: When an extension returns a pointer, it must allocate both the `ExtensionPayload` envelope and its underlying buffer using dynamic heap allocations (`malloc` or equivalent).
+1. **Input Payloads**: When the Engine passes an `CxpPayload` pointer to a plugin, the host Engine retains ownership. The plugin must *never* free or write to the input payload's buffer.
+2. **Output Payloads**: When a plugin returns a pointer, it must allocate both the `CxpPayload` envelope and its underlying buffer using dynamic heap allocations (`malloc` or equivalent).
 3. **Deallocation Hook**: The Engine assumes ownership of the returned pointer. Once the Engine consumes the data, it triggers the library's exported deallocation hook to reclaim memory from the system heap:
    ```c
-   void cluaiz_free_payload(ExtensionPayload* ptr);
+   void cluaiz_free_payload(CxpPayload* ptr);
    ```
 
 ---
@@ -53,8 +53,8 @@ flowchart TD
     A["CEL Invoke / Pipeline Execution"] --> B{"Cluaiz Engine"}
     B -->|Resolve Dynamic Symbol| C["Function Pointer: process_data"]
     C -->|Construct Input Pointer| D["Shared Memory Segment"]
-    D -->|FFI Boundary Transition| E["Extension Execution"]
-    E -->|Heap Allocate malloc| F["New ExtensionPayload & Data Buffer"]
+    D -->|FFI Boundary Transition| E["Plugin Execution"]
+    E -->|Heap Allocate malloc| F["New CxpPayload & Data Buffer"]
     F -->|Return Pointer Address| B
     B -->|Consume Bytes| G["Process Pipeline Mappings"]
     G -->|Clean Memory Hook| H["Invoke: cluaiz_free_payload"]
@@ -86,7 +86,7 @@ Below is the compilation reference matrix mapping pointer bindings across target
 - Reference Manual: [NodeJS FFI SDK Guide](../cel/sdk/nodejs-ffi.md).
 
 ### E. Rust Native SDK
-- Interfaces directly with Rust native crates (`ExtensionPayload` with `#[repr(C)]`).
+- Interfaces directly with Rust native crates (`CxpPayload` with `#[repr(C)]`).
 - Reference Manual: [Rust Native SDK Guide](../cel/sdk/rust-native.md).
 
 ---

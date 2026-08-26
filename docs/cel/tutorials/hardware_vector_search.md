@@ -39,7 +39,7 @@ flowchart TD
     D --> E["CelOp::SimilarTo"]
     
     E --> F{"SIMD Native Hardware"}
-    F -->|Dot Product| G["Returns Sorted ExtensionPayload"]
+    F -->|Dot Product| G["Returns Sorted CxpPayload"]
 ```
 
 When the executor hits `SimilarTo`, it does NOT pass this data to a plugin. It natively executes the SIMD comparison algorithm (`cosine`, `euclidean`, or `dot_product`). This prevents cross-boundary FFI overhead when you just need to sort a stream by similarity.

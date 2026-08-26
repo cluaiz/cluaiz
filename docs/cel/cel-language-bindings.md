@@ -23,7 +23,7 @@ flowchart TD
     C --> F["Host OS / Native Rust"]
     
     D -->|ResourceLimiter & set_fuel()| G["WASM Memory Space"]
-    G -->|ExtensionPayload C-ABI| H["Plugin Export (.wasm)"]
+    G -->|CxpPayload C-ABI| H["Plugin Export (.wasm)"]
     
     E --> I["AST Walk (Engine Main Thread)"]
     I -->|Scope Injection| J["legacy_script()"]
@@ -37,14 +37,14 @@ flowchart TD
 
 ## 3. THE UNIVERSAL C-ABI BOUNDARY
 
-The cluaiz Engine acts as a dumb router. When it parses a CEL statement, it transpiles the AST into a raw binary `ExtensionPayload` struct using **Bincode**. This struct is strictly designed under the C Application Binary Interface (`#[repr(C)]`), which guarantees that pointers align correctly across the memory boundary of completely different programming languages.
+The cluaiz Engine acts as a dumb router. When it parses a CEL statement, it transpiles the AST into a raw binary `CxpPayload` struct using **Bincode**. This struct is strictly designed under the C Application Binary Interface (`#[repr(C)]`), which guarantees that pointers align correctly across the memory boundary of completely different programming languages.
 
 ```mermaid
 graph TD
     A["CEL Script (JSON API)"] --> B["AST Parser (inference-cel)"]
     B --> C{"Bincode Transpiler"}
     
-    C -->|Creates| D["struct ExtensionPayload { type, *ptr, len }"]
+    C -->|Creates| D["struct CxpPayload { type, *ptr, len }"]
     
     D --> E{"Execution Dispatcher"}
     
@@ -70,7 +70,7 @@ Community extensions must be compiled to `.wasm` to prevent OS-level system acce
    - `wasmtime::ResourceLimiter` denies memory allocation if it exceeds `max_memory_mb`.
 3. **Execution Execution (`wasm_sandbox.rs`):**
    - The Engine calls the `allocate` function inside WASM to reserve RAM.
-   - The Engine copies the `ExtensionPayload` into WASM linear memory.
+   - The Engine copies the `CxpPayload` into WASM linear memory.
    - The Engine calls `execute_cel(ptr, len)`.
    - The WASM plugin returns a packed 64-bit integer `(ret_ptr, ret_len)`.
    - The Engine reads the result and immediately calls `deallocate` inside WASM to prevent sandbox memory leaks.
@@ -86,14 +86,14 @@ Core engine components (like `cluaiz-db` or CUDA drivers) use native Dynamic Lib
 1. **Security Checks (`native_sandbox.rs`):**
    - Dynamically blocked on Mobile OS (iOS/Android).
    - Engine calls `std::fs::canonicalize` on the DLL path to prevent Path Traversal exploits (`../../hack.dll`).
-2. **libloading:** The DLL is dynamically linked. The Engine searches for the exact C-ABI symbol: `execute_cel(*const ExtensionPayload)`.
+2. **libloading:** The DLL is dynamically linked. The Engine searches for the exact C-ABI symbol: `execute_cel(*const CxpPayload)`.
 3. **Memory Ownership:** Because the DLL allocates memory using the system allocator, the Engine CANNOT free it. The Engine extracts the result, and then calls the DLL's exported `cluaiz_free_payload` function. If missing, the Engine flags a RAM leak warning.
 
 ---
 
 ## 6. DYNAMIC LANGUAGE BINDINGS (Python / Node.js)
 
-The exact same `ExtensionPayload` C-ABI pointer can be passed directly to scripting languages without TCP/HTTP overhead, bridging the engine directly to heavy ML environments.
+The exact same `CxpPayload` C-ABI pointer can be passed directly to scripting languages without TCP/HTTP overhead, bridging the engine directly to heavy ML environments.
 
 ### Python (`ctypes`)
 
@@ -102,7 +102,7 @@ Python extensions bind directly to the cluaiz Engine memory using the `ctypes` l
 ```python
 import ctypes
 
-class ExtensionPayload(ctypes.Structure):
+class CxpPayload(ctypes.Structure):
     _fields_ = [
         ("payload_type", ctypes.c_int),
         ("data_ptr", ctypes.POINTER(ctypes.c_uint8)),
@@ -110,7 +110,7 @@ class ExtensionPayload(ctypes.Structure):
     ]
 
 # The engine calls this Python C-export via FFI
-@ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(ExtensionPayload))
+@ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(CxpPayload))
 def execute_cel(payload_ptr):
     payload = payload_ptr.contents
     print(f"Received {payload.data_len} bytes from Engine natively!")
@@ -125,7 +125,7 @@ Similar to Python, JavaScript (via Node.js) can read the native Engine memory di
 const ffi = require('ffi-napi');
 const ref = require('ref-napi');
 
-const ExtensionPayload = require('ref-struct-di')(ref)({
+const CxpPayload = require('ref-struct-di')(ref)({
   payload_type: ref.types.int,
   data_ptr: ref.refType(ref.types.uint8),
   data_len: ref.types.size_t
@@ -133,7 +133,7 @@ const ExtensionPayload = require('ref-struct-di')(ref)({
 
 // Registering the C-ABI listener for the cluaiz Engine
 const lib = ffi.Library('cluaiz_js_binding', {
-  'execute_cel': [ 'pointer', [ ref.refType(ExtensionPayload) ] ]
+  'execute_cel': [ 'pointer', [ ref.refType(CxpPayload) ] ]
 });
 ```
 

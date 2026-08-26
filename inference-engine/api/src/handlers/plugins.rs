@@ -3,8 +3,12 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 
+// ─── GET /v1/plugins/list ──────────────────────────────────────────────
 pub async fn list_plugins(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    Json(json!({"status": "success", "plugins": []}))
+    match engines::neural_foundry::registry::hub_installer::HubInstaller::list_installed_components("plugin") {
+        Ok(plugins) => Json(json!({"status": "success", "plugins": plugins})),
+        Err(_) => Json(json!({"status": "success", "plugins": []}))
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -12,13 +16,20 @@ pub struct InstallPluginPayload {
     pub plugin_name: String,
 }
 
+// ─── POST /v1/plugins/install ──────────────────────────────────────────
 pub async fn install_plugin(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallPluginPayload>
 ) -> Json<Value> {
-    Json(json!({"status": "success", "message": format!("Plugin '{}' installation queued.", payload.plugin_name)}))
+    let plugin_name = payload.plugin_name.clone();
+    tokio::spawn(async move {
+        let _ = engines::neural_foundry::registry::hub_installer::HubInstaller::install_component("plugin", &plugin_name).await;
+    });
+
+    Json(json!({"status": "success", "message": format!("Plugin '{}' installation queued natively in Engine.", payload.plugin_name)}))
 }
 
+// ─── DELETE /v1/plugins/remove ─────────────────────────────────────────
 pub async fn remove_plugin(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallPluginPayload>
@@ -41,7 +52,7 @@ pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
 // ─── DELETE /v1/plugins/cache ──────────────────────────────────────────
 pub async fn clear_cache(
     State(_state): State<Arc<AppState>>,
-    Json(payload): Json<InstallPluginPayload> // Reusing payload struct for simplicity since it contains the name
+    Json(payload): Json<InstallPluginPayload>
 ) -> Json<Value> {
     let plugin_name = payload.plugin_name.clone();
     let target = if plugin_name == "all" || plugin_name.is_empty() { None } else { Some(plugin_name) };

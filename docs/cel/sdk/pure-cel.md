@@ -35,7 +35,7 @@ When a host application passes a `.cel` string to the Rust Engine, it doesn't ju
 ### The Three Phases
 1. **Lexical Analysis (`lexer.rs`)**: The engine scans the `.cel` string and converts keywords (`use`, `let`, `invoke`) into highly optimized `Token` enums. String processing happens only once here.
 2. **AST Construction (`ast.rs`)**: The tokens are arranged into an Abstract Syntax Tree (AST). The engine strictly enforces `MAX_PARSE_DEPTH = 32` during this phase to prevent stack overflows from malicious or deeply nested scripts.
-3. **Execution Routing**: Once the AST is validated, the Engine maps each AST node to the `ExtensionPayload` C-ABI struct, ready to be dispatched to WASM, Rhai, or Native executors.
+3. **Execution Routing**: Once the AST is validated, the Engine maps each AST node to the `CxpPayload` C-ABI struct, ready to be dispatched to WASM, Rhai, or Native executors.
 
 ```mermaid
 flowchart TD

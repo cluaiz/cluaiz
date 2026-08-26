@@ -3,7 +3,7 @@ title: The Two-Tier Plugin Architecture
 description: Deep architectural dive into how the Engine registers, discovers, and executes custom plugins using manifest files.
 ---
 
-# Two-Tier Extension Architecture: Registry and Manifest
+# Two-Tier Plugin Architecture: Registry and Manifest
 
 When you build a custom plugin (e.g., a `.wasm` file), you must tell the cluaiz Engine how to load and sandbox it. This is handled entirely locally on your machine via a Two-Tier Architecture: **The Registry** and **The Manifest**.
 
@@ -13,7 +13,7 @@ This system ensures that the Engine can index thousands of plugins without scann
 
 ## 1. Architectural Flow
 
-The engine uses a strict separation of concerns between **Indexing** (`registry.yaml`) and **Execution Rules** (`manifest-plugin.yaml`, `manifest-extension.yaml`, `manifest-mcp.yaml`).
+The engine uses a strict separation of concerns between **Indexing** (`registry.yaml`) and **Execution Rules** (`manifest-plugin.yaml`, `manifest-mcp.yaml`).
 
 ```mermaid
 graph TD
@@ -54,10 +54,10 @@ The Engine reads this file *once* at boot. It acts as a phonebook for all your c
 
 ---
 
-### 3. Tier 2: The Component Manifest (`ExtensionManifest`)
+### 3. Tier 2: The Component Manifest (`PluginManifest`)
 
-**Source of Truth File:** `manifest-extension.yaml` / `manifest-plugin.yaml` / `manifest-mcp.yaml` (inside the component's folder)  
-**Binary Cache:** `manifest-extension.bin` / `manifest-plugin.bin` / `manifest-mcp.bin`
+**Source of Truth File:** `manifest-plugin.yaml` / `manifest-mcp.yaml` (inside the component's folder)  
+**Binary Cache:** `manifest-plugin.bin` / `manifest-mcp.bin`
 
 This file defines *how* the component executes, its hardware limits, and its exact AI interface. 
 
@@ -65,7 +65,7 @@ This file defines *how* the component executes, its hardware limits, and its exa
 > For zero-latency boots, the Engine attempts to load the `.bin` cache first. If it misses, it lazily parses the `.yaml` source of truth and instantly auto-compiles it to `.bin`.
 
 > [!TIP]
-> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`docs/cel/manifest-extension.yaml`**](../manifest-extension.yaml), [**`manifest-plugin.yaml`**](../manifest-plugin.yaml), and [**`manifest-mcp.yaml`**](../manifest-mcp.yaml).
+> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`manifest-plugin.yaml`**](../manifest-plugin.yaml), and [**`manifest-mcp.yaml`**](../manifest-mcp.yaml).
 
 ### Base Metadata Fields
 | Keyword | Type | Description |

@@ -33,15 +33,15 @@ flowchart TD
     
     C --> D{"Memory Slicing (Native Rust)"}
     
-    E["ExtensionPayload {email, status, 10MB_embedding}"] --> D
+    E["CxpPayload {email, status, 10MB_embedding}"] --> D
     
-    D -->|Extract| F["New ExtensionPayload {email, status}"]
+    D -->|Extract| F["New CxpPayload {email, status}"]
     D -->|Drop| G["Free 10MB_embedding from RAM"]
     
     F --> H["Next Pipeline Stage"]
 ```
 
-The Engine takes the active `ExtensionPayload` memory struct. It iterates through the payload, allocates a new, smaller memory block containing **only** the specified keys, and immediately drops the original massive block.
+The Engine takes the active `CxpPayload` memory struct. It iterates through the payload, allocates a new, smaller memory block containing **only** the specified keys, and immediately drops the original massive block.
 
 This is fundamentally different from filtering (`filter`). `filter` drops *entire records* based on conditions. `select` reshapes (projects) the records to be smaller.
 

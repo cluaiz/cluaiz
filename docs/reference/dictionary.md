@@ -18,7 +18,7 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 | **VRAM Arbiter** | Internal subsystem inside the Master Router that enforces GPU memory boundaries and prevents OOM crashes. |
 | **Conflict Manager** | Phase that cross-references `system_booster.json` requests against `system_control.json` constraints before execution. |
 | **KV-Cache** | Key-Value cache for intermediate transformer attention states. Critical for context continuity and generation speed. |
-| **FFI Bridge** | Foreign Function Interface boundary between the CEL VM and native C/WASM/Rust extension modules. |
+| **FFI Bridge** | Foreign Function Interface boundary between the CEL VM and native C/WASM/Rust plugin modules. |
 | **WAL** | Write-Ahead Log — a crash-recovery mechanism that journals all mutations before committing to LMDB storage. |
 | **IPC Loop** | Inter-Process Communication loop between `cluaiz-cli` and `cluaiz-engine` using local REST or named pipes. |
 

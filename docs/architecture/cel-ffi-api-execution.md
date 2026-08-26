@@ -19,7 +19,7 @@ sequenceDiagram
     JS/Python Agent->>Engine (API): POST /v1/ingest/file (High Level)
     Engine (API)->>CEL Handler: Generates CEL Manifest (Mid Level)
     JS/Python Agent-->>CEL Handler: Or Agent sends POST /v1/cel/execute directly
-    CEL Handler->>cluaiz DB (FFI): Transpiles to Bincode & Passes ExtensionPayload (C-ABI)
+    CEL Handler->>cluaiz DB (FFI): Transpiles to Bincode & Passes CxpPayload (C-ABI)
     cluaiz DB (FFI)-->>CEL Handler: Native Execution & cluaiz_free_payload (< 10µs)
 ```
 
@@ -73,7 +73,7 @@ This is where the CEL script is executed natively. To avoid the overhead of HTTP
 let binary_plan = Transpiler::to_binary_payload(ast)?;
 
 // 2. Wraps it in a C-ABI struct
-let payload = ExtensionPayload::new(PayloadType::Bincode, &binary_plan);
+let payload = CxpPayload::new(PayloadType::Bincode, &binary_plan);
 
 // 3. Direct DLL invocation via libloading (Zero TCP/HTTP/JSON overhead)
 unsafe {

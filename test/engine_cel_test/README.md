@@ -2,7 +2,7 @@
 
 This directory contains the strict 3-way integration test suite to validate the execution of Cluaiz Engine's dynamic pipeline (CEL, HTTP, and FFI) before handing off raw data to the AI model. 
 
-The goal of this test is to ensure **Zero-Payload-Corruption** across the 3 execution layers when fetching JSON from WASM/Native extensions (like `cluaiz-search`).
+The goal of this test is to ensure **Zero-Payload-Corruption** across the 3 execution layers when fetching JSON from WASM/Native plugins (like `cluaiz-search`).
 
 ## 🏗️ Architecture Flow
 
@@ -16,7 +16,7 @@ graph TD
     C --> E
     
     E --> D
-    D -->|Bypasses Network| F[Extension DLL cluaiz-search]
+    D -->|Bypasses Network| F[Plugin DLL cluaiz-search]
     F -->|JSON Output| D
     
     D -->|Validates JSON| A

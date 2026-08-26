@@ -1,4 +1,4 @@
-//! The CXP Trait (cluaiz Extension Protocol)
+//! The CXP Trait (Cluaiz Execution Protocol)
 //! This defines the C-ABI compatible interface for plugins across all formats.
 
 #[repr(C)]
@@ -12,14 +12,14 @@ pub enum PayloadType {
 }
 
 #[repr(C)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: PayloadType,
     pub data_ptr: *const u8,
     pub data_len: usize,
 }
 
-impl ExtensionPayload {
-    /// Creates a new ExtensionPayload from a byte slice.
+impl CxpPayload {
+    /// Creates a new CxpPayload from a byte slice.
     pub fn new(payload_type: PayloadType, bytes: &[u8]) -> Self {
         Self {
             payload_type,

@@ -5,7 +5,7 @@ use libloading::{Library, Symbol};
 pub struct SafetyChecker;
 
 impl SafetyChecker {
-    /// 🛡️ The 4-Step Audit: Verifies any plugin/extension before it can be registered or executed by the Engine.
+    /// 🛡️ The 4-Step Audit: Verifies any plugin/mcp before it can be registered or executed by the Engine.
     pub fn audit_plugin(_manifest_path: &Path, binary_path: &Path, manifest: &serde_json::Value) -> Result<()> {
         tracing::info!("🛡️ [SafetyChecker] Starting 4-Step Audit for plugin at {:?}", binary_path);
         
@@ -20,7 +20,7 @@ impl SafetyChecker {
 
     /// Step 1: Structural Analysis & Path Containment
     fn step1_structural_analysis(manifest: &serde_json::Value, binary_path: &Path) -> Result<()> {
-        let storage_domain = manifest["storage_domain"].as_str().unwrap_or("extensions");
+        let storage_domain = manifest["storage_domain"].as_str().unwrap_or("plugins");
         
         if storage_domain.starts_with("core/") {
             tracing::warn!("⚠️ [SafetyChecker] Plugin requesting 'core/' domain. High privilege.");

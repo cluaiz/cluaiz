@@ -11,7 +11,7 @@ By using Python's `cffi` module, your Python ML models can directly read from th
 
 ## The Memory Struct
 
-cluaiz passes an `ExtensionPayload` pointer to your Python plugin.
+cluaiz passes an `CxpPayload` pointer to your Python plugin.
 
 ```c
 typedef enum {
@@ -26,7 +26,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 ```
 
 ## Creating a Python SDK Plugin via CFFI
@@ -44,13 +44,13 @@ ffi.cdef("""
         PayloadType payload_type;
         const uint8_t* data_ptr;
         size_t data_len;
-    } ExtensionPayload;
+    } CxpPayload;
 """)
 
 # Global registry to pin memory so Python's GC doesn't delete it
 _pinned_buffers = {}
 
-@ffi.callback("ExtensionPayload* (ExtensionPayload*)")
+@ffi.callback("CxpPayload* (CxpPayload*)")
 def process_data(input_ptr):
     # 1. Read the input struct
     payload_type = input_ptr.payload_type
@@ -74,7 +74,7 @@ def process_data(input_ptr):
     # We must use ffi.new to allocate C-level memory, but keep a reference
     # in Python so the CFFI object isn't garbage collected early.
     out_c_data = ffi.new("uint8_t[]", out_bytes)
-    out_payload = ffi.new("ExtensionPayload*")
+    out_payload = ffi.new("CxpPayload*")
     out_payload.payload_type = 0
     out_payload.data_ptr = out_c_data
     out_payload.data_len = len(out_bytes)
@@ -88,14 +88,14 @@ def process_data(input_ptr):
 
 ## Memory Management (Preventing Leaks)
 
-Python, like Node.js, uses Garbage Collection. You allocated `ffi.new("ExtensionPayload*")` and `ffi.new("uint8_t[]")`. If you just return the pointer, the engine will read it, but Python will keep it in `_pinned_buffers` forever, causing an Out-of-Memory (OOM) error.
+Python, like Node.js, uses Garbage Collection. You allocated `ffi.new("CxpPayload*")` and `ffi.new("uint8_t[]")`. If you just return the pointer, the engine will read it, but Python will keep it in `_pinned_buffers` forever, causing an Out-of-Memory (OOM) error.
 
 You **must** implement `cluaiz_free_payload`.
 
 ### 2. The Free Function
 
 ```python
-@ffi.callback("void (ExtensionPayload*)")
+@ffi.callback("void (CxpPayload*)")
 def cluaiz_free_payload(ptr):
     if ptr == ffi.NULL:
         return
@@ -114,7 +114,7 @@ def cluaiz_free_payload(ptr):
 flowchart TD
     A["CEL: invoke(py_plugin)"] --> B{"cluaiz Engine"}
     
-    B -->|Allocate| C["ExtensionPayload Pointer"]
+    B -->|Allocate| C["CxpPayload Pointer"]
     
     C -->|FFI SDK Call| D["Python CFFI runtime"]
     
@@ -124,7 +124,7 @@ flowchart TD
     
     G -->|json.dumps.encode| H["New Python Bytes"]
     H -->|ffi.new| I["Pinned CFFI Allocations"]
-    I -->|Pack| J["New ExtensionPayload Pointer"]
+    I -->|Pack| J["New CxpPayload Pointer"]
     
     J -->|FFI Return| B
     B -->|Engine Reads Data| K["Pipeline Continues"]

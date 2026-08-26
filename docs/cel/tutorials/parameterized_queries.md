@@ -34,7 +34,7 @@ flowchart TD
     
     E["Secondary Channel (Raw Bytes)"] --> D
     
-    D -->|Dynamically Binds| F["ExtensionPayload"]
+    D -->|Dynamically Binds| F["CxpPayload"]
     F --> G["WASM / Native Plugin"]
 ```
 

@@ -184,6 +184,13 @@
       "example": "cluaiz skill remove web-search-github"
     },
     {
+      "name": "skill",
+      "usage": "cluaiz skill <install|list|remove|cache> [skill_name]",
+      "description": "Manage cluaiz Skills (Cognitive brains).",
+      "category": "skills",
+      "example": "cluaiz skill install frontend-dev"
+    },
+    {
       "name": "skill cache ls",
       "usage": "cluaiz skill cache ls",
       "description": "List all active and orphaned dual-caches.",
@@ -200,64 +207,43 @@
     {
       "name": "plugin",
       "usage": "cluaiz plugin <install|list|remove|link> [plugin_name]",
-      "description": "Manage cluaiz Plugins (Native muscles).",
-      "category": "extensions",
-      "example": "cluaiz plugin install web-scraper"
+      "description": "Manage cluaiz Plugins (WASM & Native tools).",
+      "category": "plugins",
+      "example": "cluaiz plugin install cluaiz-search"
     },
     {
       "name": "plugin cache ls",
       "usage": "cluaiz plugin cache ls",
       "description": "List all active plugin caches.",
-      "category": "extensions",
+      "category": "plugins",
       "example": "cluaiz plugin cache ls"
     },
     {
       "name": "plugin cache clear",
       "usage": "cluaiz plugin cache clear [plugin_name] [--all] [-f]",
       "description": "Clear specific or all plugin caches globally.",
-      "category": "extensions",
+      "category": "plugins",
       "example": "cluaiz plugin cache clear --all"
-    },
-    {
-      "name": "extension",
-      "usage": "cluaiz extension <install|list|remove|start> [extension_name]",
-      "description": "Manage cluaiz Extensions (Brain + Muscle bundles).",
-      "category": "extensions",
-      "example": "cluaiz extension install cluaiz-db"
-    },
-    {
-      "name": "extension cache ls",
-      "usage": "cluaiz extension cache ls",
-      "description": "List all active extension caches.",
-      "category": "extensions",
-      "example": "cluaiz extension cache ls"
-    },
-    {
-      "name": "extension cache clear",
-      "usage": "cluaiz extension cache clear [extension_name] [--all] [-f]",
-      "description": "Clear specific or all extension caches globally.",
-      "category": "extensions",
-      "example": "cluaiz extension cache clear --all"
     },
     {
       "name": "mcp",
       "usage": "cluaiz mcp <install|list|remove|start> [mcp_name]",
       "description": "Manage Model Context Protocol (MCP) integrations.",
-      "category": "extensions",
+      "category": "plugins",
       "example": "cluaiz mcp install github-mcp"
     },
     {
       "name": "mcp cache ls",
       "usage": "cluaiz mcp cache ls",
       "description": "List all active MCP caches.",
-      "category": "extensions",
+      "category": "plugins",
       "example": "cluaiz mcp cache ls"
     },
     {
       "name": "mcp cache clear",
       "usage": "cluaiz mcp cache clear [mcp_name] [--all] [-f]",
       "description": "Clear specific or all MCP caches globally.",
-      "category": "extensions",
+      "category": "plugins",
       "example": "cluaiz mcp cache clear --all"
     },
     {

@@ -1,13 +1,13 @@
 use reqwest::Client;
 use serde_json::{json, Value};
 use std::time::Duration;
-use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
 use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("🚀 [Engine CEL Test] Testing Engine 3-Way Extension Suite");
+    println!("🚀 [Engine CEL Test] Testing Engine 3-Pillar Ecosystem Suite");
     println!("============================================================\n");
     
     let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
@@ -143,8 +143,8 @@ async fn test_ffi_native() -> Result<(), Box<dyn std::error::Error>> {
     // We must pass JSON bytes as the FFI bridge dynamically invokes it
     let json_bytes = serde_json::to_vec(&payload)?;
     
-    // FFI ExtPayload requires a type and raw bytes
-    let ext_payload = ExtensionPayload::new(PayloadType::Json, &json_bytes);
+    // FFI CxpPayload requires a type and raw bytes
+    let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
     
     let start_time = std::time::Instant::now();
     // Simulate what the execute_dynamic / execute_cel_plan does internally!

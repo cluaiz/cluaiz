@@ -356,8 +356,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 if let (Some(c_type), Some(c_name), Some(payload)) = (json_cmd.get("component_type").and_then(|e| e.as_str()), json_cmd.get("component_name").and_then(|e| e.as_str()), json_cmd.get("payload")) {
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
                                         let (base_dir, manifest_file, bin_file) = match c_type {
-                                            "extension" => ("extension", "manifest-extension.yaml", "manifest-extension.bin"),
-                                            "plugin" => ("plugin", "manifest-plugin.yaml", "manifest-plugin.bin"),
+                                            "plugin" => ("plugins", "manifest-plugin.yaml", "manifest-plugin.bin"),
                                             "mcp" => ("mcp", "manifest-mcp.yaml", "manifest-mcp.bin"),
                                             _ => ("", "", ""),
                                         };
@@ -368,11 +367,10 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                                 for entry in entries.flatten() {
                                                     let path = entry.path();
                                                     if path.is_dir() {
-                                                        // For extensions, check nested dirs if needed. For plugins/mcp, it's usually flat.
                                                         if path.file_name().unwrap_or_default() == c_name {
                                                             found_path = Some(path.clone());
                                                             break;
-                                                        } else if c_type == "extension" {
+                                                        } else {
                                                             if let Ok(sub_entries) = std::fs::read_dir(&path) {
                                                                 for sub_entry in sub_entries.flatten() {
                                                                     if sub_entry.path().is_dir() && sub_entry.path().file_name().unwrap_or_default() == c_name {
@@ -387,7 +385,13 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                             }
 
                                             if let Some(ext_dir) = found_path {
-                                                let yaml_path = ext_dir.join(manifest_file);
+                                                let mut yaml_path = ext_dir.join(manifest_file);
+                                                if !yaml_path.exists() {
+                                                    let legacy_yaml = ext_dir.join("manifest.yaml");
+                                                    if legacy_yaml.exists() {
+                                                        yaml_path = legacy_yaml;
+                                                    }
+                                                }
                                                 if yaml_path.exists() {
                                                     let mut success = false;
                                                     if let Ok(content) = std::fs::read_to_string(&yaml_path) {

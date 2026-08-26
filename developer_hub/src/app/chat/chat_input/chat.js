@@ -342,7 +342,7 @@ function setupChatLogic() {
         // Debounce to prevent flickering
         clearTimeout(window.submenuTimeout);
         window.submenuTimeout = setTimeout(() => {
-            const allMenus = ['skills-menu', 'plugins-menu', 'extensions-menu', 'mcp-menu', 'thinking-menu'];
+            const allMenus = ['skills-menu', 'plugins-menu', 'mcp-menu', 'thinking-menu'];
             allMenus.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
@@ -357,7 +357,6 @@ function setupChatLogic() {
 
     document.getElementById('skills-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('skills-menu'));
     document.getElementById('plugins-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('plugins-menu'));
-    document.getElementById('extensions-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('extensions-menu'));
     document.getElementById('mcp-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('mcp-menu'));
     document.getElementById('thinking-menu-wrapper')?.addEventListener('mouseenter', () => openSubmenu('thinking-menu'));
     document.getElementById('upload-file-btn')?.addEventListener('mouseenter', () => openSubmenu(null));
@@ -878,7 +877,6 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
         const categories = [
             { key: 'skill', menuId: 'skills-menu', icon: 'layers', colorClass: 'hover-text-accent' },
             { key: 'plugin', menuId: 'plugins-menu', icon: 'box', colorClass: 'hover-text-blue' },
-            { key: 'extension', menuId: 'extensions-menu', icon: 'puzzle', colorClass: 'hover-text-amber' },
             { key: 'mcp', menuId: 'mcp-menu', icon: 'server', colorClass: 'hover-text-emerald' }
         ];
 

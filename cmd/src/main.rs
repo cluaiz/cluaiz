@@ -42,12 +42,6 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<crate::ComponentCommand>,
     },
-    /// Manage Sovereign Extensions (e.g., Core Brain, Network Router)
-    #[command(alias = "ext")]
-    Extension {
-        #[command(subcommand)]
-        command: Option<crate::ComponentCommand>,
-    },
     /// Manage Model Context Protocol (MCP) integrations
     Mcp {
         #[command(subcommand)]
@@ -506,18 +500,6 @@ async fn main() -> Result<()> {
             if let Some(cmd) = command {
                 if let Err(e) = crate::cli::component::execute("plugin", cmd).await {
                     eprintln!("\n  {} [Cluaiz] Plugin Manager Error: {}\n", "❌".red(), e);
-                    std::process::exit(1);
-                }
-            } else {
-                let mut cmd = crate::Cli::command();
-                let _ = cmd.print_help();
-                std::process::exit(2);
-            }
-        }
-        Some(CliCommand::Extension { command }) => {
-            if let Some(cmd) = command {
-                if let Err(e) = crate::cli::component::execute("extension", cmd).await {
-                    eprintln!("\n  {} [Cluaiz] Extension Manager Error: {}\n", "❌".red(), e);
                     std::process::exit(1);
                 }
             } else {

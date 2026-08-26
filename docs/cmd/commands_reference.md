@@ -161,24 +161,24 @@ cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
 
 ---
 
-## 🧩 COMPONENT MANAGEMENT COMMANDS (Extensions, Plugins, Skills, MCP)
+## 🧩 COMPONENT MANAGEMENT COMMANDS (Plugins, Skills, MCP)
 
-> Manages the installation and lifecycle of all Sovereign AI Ecosystem components. 
-> You can use the component type (`extension`, `plugin`, `skill`, `mcp`) or aliases (`ext`, `p`).
+> Manages the installation and lifecycle of all AI Ecosystem components. 
+> You can use the component type (`plugin`, `skill`, `mcp`) or aliases (`p`, `s`).
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
 | `cluaiz <type> install <id>` | `i` | Install a component from the cluaiz-hub registry (e.g., `cluaiz-search`) |
 | `cluaiz <type> list` | `ls` | List all locally installed components of that type |
 | `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
-| `cluaiz <type> start <id>` | | Start a component's background daemon (Extensions/MCP only) |
-| `cluaiz skill cache clear` | `--all`, `--force`| Clear orphaned dual-caches for skills |
+| `cluaiz <type> start <id>` | | Start a component's background daemon (MCP only) |
+| `cluaiz plugin cache clear` | `--all`, `--force`| Clear orphaned caches for plugins |
 
 **Examples:**
 ```bash
-# Install an extension
-cluaiz extension install cluaiz-search
-cluaiz ext i cluaiz-search
+# Install a plugin (WASM or Native C-FFI)
+cluaiz plugin install cluaiz-search
+cluaiz plugin i cluaiz-search
 
 # List installed plugins
 cluaiz plugin ls
@@ -291,7 +291,7 @@ The CLI provides an interactive, strict-schema mechanism to configure any compon
 | Command | Action |
 |---------|--------|
 | `cluaiz config set` | Launches the **Interactive TUI Dropdown Menu** to select component type, component ID, and the setting to modify. |
-| `cluaiz config set <type> <id> <setting_key> <value>` | One-shot command to set a value non-interactively. (e.g., `cluaiz config set extension cluaiz-search search_api_key "xxx"`) |
+| `cluaiz config set <type> <id> <setting_key> <value>` | One-shot command to set a value non-interactively. (e.g., `cluaiz config set plugin cluaiz-search search_api_key "xxx"`) |
 
 **Features of `config set`:**
 - **Cute Dropdowns:** If a setting is defined as type `enum` in the manifest, the CLI renders an interactive `<inquire>` dropdown menu of allowed `options` instead of a blank text prompt.

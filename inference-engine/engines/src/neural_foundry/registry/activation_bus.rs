@@ -34,7 +34,7 @@ impl ActivationEventBus {
     /// # Arguments
     /// * `event_key`      - The event key (e.g., "on_cel_keyword:scrape")
     /// * `component_name` - The component name (e.g., "web-scraper")
-    /// * `component_type` - The component type (e.g., "plugin", "extension", "mcp")
+    /// * `component_type` - The component type (e.g., "plugin", "skill", "mcp")
     pub fn register(&mut self, event_key: &str, component_name: &str, component_type: &str) {
         self.watchers
             .entry(event_key.to_string())
@@ -83,14 +83,14 @@ impl ActivationEventBus {
         self.fire(&format!("on_cel_keyword:{}", keyword))
     }
 
-    /// Fire a command event (CLI or AI-generated `use plugin/extension/mcp::name`).
+    /// Fire a command event (CLI or AI-generated `use plugin/mcp::name`).
     pub fn fire_command(&self, command: &str) -> Vec<(String, String)> {
         self.fire(&format!("on_command:{}", command))
     }
 
     /// Fire a file-type event (e.g., user provides a .pdf file).
-    pub fn fire_file_type(&self, extension: &str) -> Vec<(String, String)> {
-        self.fire(&format!("on_file_type:{}", extension))
+    pub fn fire_file_type(&self, file_ext: &str) -> Vec<(String, String)> {
+        self.fire(&format!("on_file_type:{}", file_ext))
     }
 
     /// Fire an API route event (e.g., a specific REST endpoint was hit).

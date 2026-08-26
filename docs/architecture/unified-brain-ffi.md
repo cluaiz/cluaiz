@@ -32,7 +32,7 @@ pub enum PayloadType {
 }
 
 #[repr(C)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: PayloadType,
     pub data_ptr: *const u8,
     pub data_len: usize,

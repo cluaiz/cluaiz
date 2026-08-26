@@ -1,5 +1,4 @@
 use engines::models::GgufProber;
-use std::path::PathBuf;
 
 #[test]
 fn dump_all_keys() {
@@ -12,7 +11,7 @@ fn dump_all_keys() {
     for path in [qwen, gemma] {
         if path.exists() {
             println!("Probing ALL keys for: {}", path.display());
-            if let Ok((metadata, tensor_infos, _)) = GGUFProber::probe(&path) {
+            if let Ok((metadata, tensor_infos, _)) = GgufProber::probe(&path) {
                 let arch = metadata.get("general.architecture").map(|s| s.as_str()).unwrap_or("");
                 println!("Arch: {}", arch);
                 let mut keys: Vec<&String> = metadata.keys().collect();

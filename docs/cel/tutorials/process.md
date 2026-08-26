@@ -41,7 +41,7 @@ flowchart TD
     
     D -->|Executes in Main Thread| E["Native Rust String Manipulation"]
     
-    E --> F["Return ExtensionPayload"]
+    E --> F["Return CxpPayload"]
 ```
 
 The Engine intercepts this command *before* it ever reaches the WASM Sandbox or Plugin Manager. It executes the manipulation natively in the Engine's primary Rust thread. If the manipulation is supported, it runs directly against the CPU (often utilizing SIMD registers for string scanning).

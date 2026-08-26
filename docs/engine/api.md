@@ -15,7 +15,7 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 *   **`GET /status/embedded`**: Confirms host environment parameters.
 
 ### 2. Conversational Engine
-*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Now includes Two-Step Discovery: Natively intercepts CEL `<TRIGGER:X>` tokens mid-generation to inject Tool/Extension `SKILL.md` schemas dynamically without crashing RAM.*
+*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Natively intercepts CEL `<TRIGGER:X>` tokens mid-generation to inject Tool/Plugin `SKILL.md` schemas dynamically without crashing RAM.*
 *   **`GET /history`**: Lists active chat session IDs and metadata configurations.
 *   **`GET /history/{session_id}`**: Retrieves raw, chronological message buffers for a specific session.
 
@@ -27,10 +27,12 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 
 ### 4. CEL Execution (Direct Engine Control)
 *   **`POST /v1/cel/execute`**: Accepts a raw CEL script payload, builds an Execution Plan (AST), and natively executes VRAM/API commands bypassing standard inference workflows.
-*   **`POST /v1/execute/:component_name/:function_name`**: Dynamically routes REST calls directly to the specified extension/plugin loaded in the `MasterRegistry`.
+*   **`POST /v1/execute/:component_name/:function_name`**: Dynamically routes REST calls directly to the specified plugin loaded in the `MasterRegistry`.
 
-### 5. Skills & Extension Hub Management
+### 5. Skills & Plugins Hub Management
 *   **`GET /v1/skills/list`**: Returns all installed native/WASM skills across domains.
-*   **`POST /v1/skills/install`**: Queues the download and WASM compilation of a community extension.
+*   **`POST /v1/skills/install`**: Queues the download and installation of a community skill.
 *   **`DELETE /v1/skills/remove`**: Natively unloads and wipes a skill.
 *   **`GET /v1/skills/cache` & `DELETE /v1/skills/cache`**: Manages the loaded skill binary cache.
+*   **`GET /v1/plugins/list`**: Returns all installed WASM and Native plugins.
+*   **`POST /v1/plugins/install`**: Downloads and sets up a plugin from the registry.

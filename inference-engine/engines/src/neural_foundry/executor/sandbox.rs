@@ -4,7 +4,7 @@ use cluaiz_shared::environment::EnvironmentManager;
 use inference_cel::execution::{
     native_sandbox::NativeExecutor, process_sandbox::ProcessExecutor, wasm_sandbox::WasmExecutor,
 };
-use inference_cel::ffi::cxp_ffi::{ExtensionPayload, Transpiler};
+use inference_cel::ffi::cxp_ffi::{CxpPayload, Transpiler};
 use inference_cel::parser::metadata_parser::EngineRules as CelEngineRules;
 use inference_cel::parser::metadata_parser::IntegrationMetadata;
 use std::path::PathBuf;
@@ -34,14 +34,13 @@ impl UnifiedExecutor {
 
     /// Executes a plugin by name. Automatically resolves domain, parses manifest,
     /// checks security envelope, and dispatches to the correct sandbox.
-    pub fn execute(&self, plugin_name: &str, payload: &ExtensionPayload) -> Result<Vec<u8>> {
+    pub fn execute(&self, plugin_name: &str, payload: &CxpPayload) -> Result<Vec<u8>> {
         let registry =
             MasterRegistry::load().map_err(|e| anyhow!("Failed to load MasterRegistry: {}", e))?;
 
         let entry = registry
             .plugins
             .get(plugin_name)
-            .or_else(|| registry.extensions.get(plugin_name))
             .or_else(|| registry.mcp.get(plugin_name))
             .ok_or_else(|| anyhow!("Component '{}' not found in registry", plugin_name))?;
 
@@ -79,7 +78,7 @@ impl UnifiedExecutor {
             .and_then(|e| e.binary_path.clone())
             .unwrap_or_default();
         if binary_name.is_empty() {
-            // Auto-discovery fallback for plugins/extensions
+            // Auto-discovery fallback for plugins
             if let Ok(entries) = std::fs::read_dir(&domain_path) {
                 for entry in entries.flatten() {
                     let path = entry.path();
@@ -177,7 +176,7 @@ impl UnifiedExecutor {
             final_payload_bytes = payload_bytes.to_vec();
         }
 
-        let injected_payload = ExtensionPayload::new(payload.payload_type, &final_payload_bytes);
+        let injected_payload = CxpPayload::new(payload.payload_type, &final_payload_bytes);
 
         match envelope.as_str() {
             "NATIVE" => {
@@ -225,8 +224,8 @@ impl UnifiedExecutor {
     fn load_manifest(dir: &PathBuf) -> Option<IntegrationMetadata> {
         let candidates = [
             "manifest-plugin.yaml",
-            "manifest-extension.yaml",
             "manifest-mcp.yaml",
+            "manifest.yaml",
         ];
         for candidate in candidates {
             let yaml_path = dir.join(candidate);

@@ -61,13 +61,6 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/plugins/cache", get(crate::handlers::plugins::list_cache))
         .route("/v1/plugins/cache", axum::routing::delete(crate::handlers::plugins::clear_cache))
 
-        // ── Extensions API ──
-        .route("/v1/extensions/list", get(crate::handlers::extensions::list_extensions))
-        .route("/v1/extensions/install", post(crate::handlers::extensions::install_extension))
-        .route("/v1/extensions/remove", axum::routing::delete(crate::handlers::extensions::remove_extension))
-        .route("/v1/extensions/cache", get(crate::handlers::extensions::list_cache))
-        .route("/v1/extensions/cache", axum::routing::delete(crate::handlers::extensions::clear_cache))
-
         // ── MCP API ──
         .route("/v1/mcp/list", get(crate::handlers::mcp::list_mcp))
         .route("/v1/mcp/install", post(crate::handlers::mcp::install_mcp))

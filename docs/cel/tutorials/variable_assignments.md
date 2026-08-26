@@ -35,7 +35,7 @@ flowchart TD
     
     C --> D{"Engine Execution"}
     
-    D -->|Executes Pipeline| E["Result (ExtensionPayload)"]
+    D -->|Executes Pipeline| E["Result (CxpPayload)"]
     
     E -->|Stored as| F["Execution Frame's Hashmap"]
     

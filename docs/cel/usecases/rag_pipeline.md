@@ -70,6 +70,6 @@ flowchart TD
     
     G -->|String Pointer| H["Plugin: llm"]
     
-    H -->|Final String Pointer| I["ExtensionPayload"]
+    H -->|Final String Pointer| I["CxpPayload"]
     I -->|FFI Boundary| J["Python Result"]
 ```

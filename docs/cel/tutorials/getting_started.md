@@ -15,7 +15,7 @@ The cluaiz Expression Language (CEL) is a pipeline-based, Turing-complete execut
 The `->` (Pipe) operator is the heartbeat of CEL. It takes the output of the left operation and passes it as the input to the right operation. 
 
 ### Under the Hood (Hardware Reality)
-When the CEL Planner parses `->` into the `CelOp::Pipe` AST node, it does **not** copy the data. Instead, it passes a 64-bit memory pointer to an `ExtensionPayload` C-ABI struct. 
+When the CEL Planner parses `->` into the `CelOp::Pipe` AST node, it does **not** copy the data. Instead, it passes a 64-bit memory pointer to an `CxpPayload` C-ABI struct. 
 This means moving 1 GB of data from one plugin to another takes exactly `0.00ms` because the data never actually moves in RAM. It's a zero-copy memory barrier.
 
 ### Syntax
@@ -29,12 +29,12 @@ flowchart LR
     A["[Operation A]"] -->|Creates| B["Memory Buffer"]
     
     B --> C{"CelOp::Pipe (->)"}
-    C -->|Passes C-ABI ptr| D["ExtensionPayload { *ptr, len }"]
+    C -->|Passes C-ABI ptr| D["CxpPayload { *ptr, len }"]
     
     D --> E["[Operation B]"]
     
     E -->|Reads ptr natively| F["Processes Data"]
-    F -->|Returns| G["New ExtensionPayload"]
+    F -->|Returns| G["New CxpPayload"]
     G --> H{"CelOp::Pipe (->)"}
     H --> I["[Operation C]"]
 ```

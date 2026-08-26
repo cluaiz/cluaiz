@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use std::time::Duration;
 use tracing::{info, warn, error};
 
-use crate::ffi::cxp_ffi::ExtensionPayload;
+use crate::ffi::cxp_ffi::CxpPayload;
 use crate::parser::metadata_parser::EngineRules as CelEngineRules;
 
 pub struct ProcessExecutor {}
@@ -25,7 +25,7 @@ impl ProcessExecutor {
     pub fn execute_with_rules(
         &self,
         command_str: &str,
-        payload: &ExtensionPayload,
+        payload: &CxpPayload,
         rules: &CelEngineRules,
     ) -> Result<Vec<u8>> {
         // Parse the command string. E.g. "python server.py" or "node app.js"

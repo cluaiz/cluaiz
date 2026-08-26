@@ -28,7 +28,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 ```
 
 ## Creating a C SDK Plugin
@@ -44,14 +44,14 @@ When you compile your C code to a shared library (`.so`, `.dll`), the Engine loa
 #define EXPORT __attribute__((visibility("default")))
 #endif
 
-EXPORT ExtensionPayload* process_data(const ExtensionPayload* input) {
+EXPORT CxpPayload* process_data(const CxpPayload* input) {
     if (!input) return NULL;
     
     // Example: Read input bytes
     // Note: Do not free `input`. The Engine owns it.
     
     // Allocate outgoing payload
-    ExtensionPayload* out_payload = (ExtensionPayload*)malloc(sizeof(ExtensionPayload));
+    CxpPayload* out_payload = (CxpPayload*)malloc(sizeof(CxpPayload));
     
     const char* response = "{\"status\": \"processed_by_c\"}";
     size_t len = strlen(response);
@@ -75,7 +75,7 @@ In C, memory management is explicit. Because you used `malloc`, you are responsi
 ### 2. The Free Function
 
 ```c
-EXPORT void cluaiz_free_payload(ExtensionPayload* ptr) {
+EXPORT void cluaiz_free_payload(CxpPayload* ptr) {
     if (!ptr) return;
     
     if (ptr->data_ptr) {
@@ -92,12 +92,12 @@ EXPORT void cluaiz_free_payload(ExtensionPayload* ptr) {
 flowchart TD
     A["CEL: invoke(c_plugin)"] --> B{"cluaiz Engine"}
     
-    B -->|Allocate| C["ExtensionPayload Pointer"]
+    B -->|Allocate| C["CxpPayload Pointer"]
     
     C -->|dlopen/dlsym| D["C Shared Library"]
     
     D -->|malloc| E["New buffer"]
-    E -->|malloc| F["New ExtensionPayload Pointer"]
+    E -->|malloc| F["New CxpPayload Pointer"]
     
     F -->|Return Pointer| B
     B -->|Engine Reads Data| G["Pipeline Continues"]

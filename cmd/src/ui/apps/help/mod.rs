@@ -55,7 +55,7 @@ pub fn render_widget(app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut B
         ("core",   "  Core",   Color::Cyan),
         ("models", "  Models", Color::Green),
         ("skills", "  Skills", Color::Blue),
-        ("extensions", "  Extensions", Color::Magenta),
+        ("plugins", "  Plugins", Color::Magenta),
         ("system", "  System", Color::Yellow),
     ];
 

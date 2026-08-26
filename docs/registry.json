@@ -105,7 +105,7 @@
         "pages": [
           { "slug": "cel-language-bindings", "title": "🔗 Language Bindings", "file_path": "docs/cel/cel-language-bindings.md" },
           { "slug": "cel-syntax-reference", "title": "📖 Syntax Reference", "file_path": "docs/cel/cel-syntax-reference.md" },
-          { "slug": "plugin-vs-extension", "title": "🔌 Plugin vs Extension", "file_path": "docs/cel/plugin_vs_extension.md" }
+          { "slug": "plugins", "title": "🔌 Plugins & Sandboxes", "file_path": "docs/cel/plugins.md" }
         ]
       },
       {

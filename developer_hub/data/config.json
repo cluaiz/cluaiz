@@ -4,10 +4,10 @@
     {
       "method": "GET",
       "path": "/v1/config/<type>/<id>",
-      "desc": "Reads all settings for a component from its manifest-extension.yaml. Returns the full settings schema with current default values.",
+      "desc": "Reads all settings for a component from its manifest-plugin.yaml. Returns the full settings schema with current default values.",
       "docs_url": "/docs/reference/engine-configuration.md",
       "params": [
-        { "name": "type", "type": "string", "req": true, "desc": "Component type: extension, plugin, skill, mcp", "default": "extension" },
+        { "name": "type", "type": "string", "req": true, "desc": "Component type: plugin, skill, mcp", "default": "plugin" },
         { "name": "id", "type": "string", "req": true, "desc": "Component ID as registered in registry", "default": "cluaiz-search" }
       ],
       "response": "{\n  \"search_api_key\": { \"type\": \"string\", \"default\": \"\", \"desc\": \"API Key for search queries\" },\n  \"search_api_type\": { \"type\": \"enum\", \"options\": [\"tavily\",\"serpapi\",\"duckduckgo\"], \"default\": \"duckduckgo\" },\n  \"max_results\": { \"type\": \"integer\", \"default\": 10, \"desc\": \"Maximum number of search results to return\" }\n}",
@@ -15,22 +15,22 @@
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X GET http://localhost:8000/v1/config/extension/cluaiz-search"
+          "code": "curl -X GET http://localhost:8000/v1/config/plugin/cluaiz-search"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/config/extension/cluaiz-search')\nprint(res.json())"
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/config/plugin/cluaiz-search')\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/config/extension/cluaiz-search');\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/config/plugin/cluaiz-search');\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let res = reqwest::get(\"http://localhost:8000/v1/config/extension/cluaiz-search\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let res = reqwest::get(\"http://localhost:8000/v1/config/plugin/cluaiz-search\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
@@ -40,33 +40,33 @@
       "desc": "Updates a single setting's default value in the component's manifest file. Preserves original YAML schema structure and invalidates the .bin cache automatically.",
       "docs_url": "/docs/reference/engine-configuration.md",
       "params": [
-        { "name": "type", "type": "string", "req": true, "desc": "Component type: extension, plugin, skill, mcp", "default": "extension" },
+        { "name": "type", "type": "string", "req": true, "desc": "Component type: plugin, skill, mcp", "default": "plugin" },
         { "name": "id", "type": "string", "req": true, "desc": "Component ID", "default": "cluaiz-search" },
         { "name": "key", "type": "string", "req": true, "desc": "Settings key path (e.g. search_api_key)", "default": "search_api_key" },
         { "name": "value", "type": "string", "req": true, "desc": "New default value to save", "default": "my-api-key" }
       ],
-      "request_payload": "{\n  \"type\": \"extension\",\n  \"id\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"tvly-test-123\"\n}",
+      "request_payload": "{\n  \"type\": \"plugin\",\n  \"id\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"tvly-test-123\"\n}",
       "response": "{\n  \"status\": \"success\",\n  \"message\": \"Configuration updated successfully.\",\n  \"component\": \"cluaiz-search\",\n  \"key\": \"search_api_key\",\n  \"value\": \"tvly-test-123\",\n  \"cache_invalidated\": true\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/config/extension/cluaiz-search/set \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"type\": \"extension\", \"id\": \"cluaiz-search\", \"key\": \"search_api_key\", \"value\": \"tvly-test-123\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/config/plugin/cluaiz-search/set \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"type\": \"plugin\", \"id\": \"cluaiz-search\", \"key\": \"search_api_key\", \"value\": \"tvly-test-123\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\npayload = {\n    \"type\": \"extension\",\n    \"id\": \"cluaiz-search\",\n    \"key\": \"search_api_key\",\n    \"value\": \"tvly-test-123\"\n}\nres = requests.post('http://localhost:8000/v1/config/extension/cluaiz-search/set', json=payload)\nprint(res.json())"
+          "code": "import requests\n\npayload = {\n    \"type\": \"plugin\",\n    \"id\": \"cluaiz-search\",\n    \"key\": \"search_api_key\",\n    \"value\": \"tvly-test-123\"\n}\nres = requests.post('http://localhost:8000/v1/config/plugin/cluaiz-search/set', json=payload)\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/config/extension/cluaiz-search/set', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    type: 'extension',\n    id: 'cluaiz-search',\n    key: 'search_api_key',\n    value: 'tvly-test-123'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/config/plugin/cluaiz-search/set', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    type: 'plugin',\n    id: 'cluaiz-search',\n    key: 'search_api_key',\n    value: 'tvly-test-123'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/config/extension/cluaiz-search/set\")\n    .json(&serde_json::json!({\n        \"type\": \"extension\",\n        \"id\": \"cluaiz-search\",\n        \"key\": \"search_api_key\",\n        \"value\": \"tvly-test-123\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/config/plugin/cluaiz-search/set\")\n    .json(&serde_json::json!({\n        \"type\": \"plugin\",\n        \"id\": \"cluaiz-search\",\n        \"key\": \"search_api_key\",\n        \"value\": \"tvly-test-123\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     }

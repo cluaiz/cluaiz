@@ -73,14 +73,14 @@ engine -> inference -> pause()
 
 ## ⚡ 3. The 4-Tier Execution Architecture (Runtimes)
 
-The `registry.rs` acts as the Universal Router. It dynamically hot-loads plugins and routes payloads based on the plugin's file extension, allowing limitless expansion.
+The `registry.rs` acts as the Plugin Router. It dynamically hot-loads plugins and routes payloads based on the manifest's `engine_rules.sandbox_type`.
 
 1. **WASM Envelope (`wasmtime`):** 
    - **For:** Untrusted Community Plugins (Web Agents, Experimental Tools).
    - **Security:** Absolute memory sandboxing (`wasm_sandbox.rs`). It dynamically allocates fuel and memory limits based on system resources, completely eliminating the legacy 50MB hardcoded caps. Prevents rogue plugins from crashing the cluaiz Engine.
 2. **Native C-FFI (`libloading`):** 
    - **For:** Trusted Core Plugins (e.g., `engine-lmdb` Database).
-   - **Speed:** Zero-cost abstraction, direct memory mapping via the cluaiz Extension Protocol (CXP).
+   - **Speed:** Zero-cost abstraction, direct memory mapping via the Cluaiz Execution Protocol (CXP).
 3. **Auto-WASM (`cargo` backend):** 
    - **For:** Developers writing raw `logic.rs` scripts. The Engine auto-compiles them into WASM in the background and hot-reloads them into RAM.
 4. **Legacy Rhai (`rhai` interpreter):** 
@@ -88,7 +88,7 @@ The `registry.rs` acts as the Universal Router. It dynamically hot-loads plugins
 
 ---
 
-## 🛡️ 4. The CXP (cluaiz Extension Protocol) Boundary (`cxp_ffi.rs`)
+## 🛡️ 4. The CXP (Cluaiz Execution Protocol) Boundary (`cxp_ffi.rs`)
 
 Passing raw JSON strings across an FFI boundary causes massive CPU serialization bottlenecks and memory leaks. `inference-cel` completely drops the "JSON-only" mandate and introduces the **CXP Envelope**. 
 

@@ -22,7 +22,7 @@ impl Bootstrapper {
         
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
-        for dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+        for dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
             if dir.exists() {
                 registry.load_from_directory(&dir.to_string_lossy());
             }

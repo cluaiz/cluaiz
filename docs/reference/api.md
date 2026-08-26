@@ -466,7 +466,7 @@ pub enum PayloadType {
 }
 
 #[repr(C)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: PayloadType,
     pub data_ptr: *const u8,
     pub data_len: usize,
@@ -476,12 +476,12 @@ pub struct ExtensionPayload {
 ### Windows IPC Named Pipe Packet Structure
 Clients communicate through `\\.\pipe\cluaiz_engine_pipe` using JSON payload wrapping. 
 
-To execute an extension directly over memory-mapped pointers, the client writes a packet with action `EXTENSION_PAYLOAD`:
+To execute a plugin directly over memory-mapped pointers, the client writes a packet with action `PLUGIN_PAYLOAD`:
 
 ```json
 {
-  "action": "EXTENSION_PAYLOAD",
-  "extension_name": "vector_accelerator",
+  "action": "PLUGIN_PAYLOAD",
+  "plugin_name": "vector_accelerator",
   "payload": "{\"query\":\"tensor_search\",\"values\":[0.1,0.5,0.9]}"
 }
 ```
@@ -502,16 +502,16 @@ The engine resolves dynamic function symbols via POSIX `dlopen` / Windows `LoadL
 
 ### `POST /api/components/settings`
 
-Dynamically hot-reloads and updates any component's manifest (`manifest-extension.yaml`, `manifest-mcp.yaml`, `manifest-plugin.yaml`, `SKILL.md`) at runtime, without an engine restart. This is universally applicable to all plugins, extensions, MCPs, and skills.
+Dynamically hot-reloads and updates any component's manifest (`manifest-plugin.yaml`, `manifest-mcp.yaml`, `SKILL.md`) at runtime, without an engine restart. This is applicable across plugins, MCPs, and skills.
 
 The engine uses a schema-less `serde_yaml::Value` deep-merge strategy. This means you can inject or modify any arbitrary nested keys inside any section (`settings`, `permissions`, `discovery`, `activation`) and it will perfectly preserve the rest of the file.
 
-#### Example 1: Updating an Extension's API Keys
+#### Example 1: Updating a Plugin's API Keys
 Used to switch API providers or keys dynamically (e.g. `cluaiz-search` from SerpAPI to Tavily).
 **Request Payload:**
 ```json
 {
-  "component_type": "extension",
+  "component_type": "plugin",
   "component_id": "cluaiz-search",
   "updates": {
     "settings": {

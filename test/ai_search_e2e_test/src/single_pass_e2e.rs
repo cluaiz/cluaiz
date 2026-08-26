@@ -188,7 +188,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 "5_final_answer_stream": trace_logs_5
             },
-            "search_extension_payload": tool_output_payload,
+            "search_plugin_payload": tool_output_payload,
             "final_output": final_text,
             "hardware_usage": {
                 "note": "Metrics logged locally by engine."

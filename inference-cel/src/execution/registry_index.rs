@@ -13,9 +13,9 @@
 //! version: "1.0.0"
 //! schema: "cluaiz-registry-v1"
 //!
-//! extensions:
+//! plugins:
 //!   cluaiz-db:
-//!     id: "ext_core_db_001"
+//!     id: "plugin_core_db_001"
 //!     domain: "core/cluaiz-db"
 //!     load_strategy: "EAGER"
 //!     activation_events: ["on_startup"]
@@ -83,8 +83,6 @@ struct RawRegistry {
     #[allow(dead_code)]
     schema: Option<String>,
     #[serde(default)]
-    extensions: HashMap<String, RegistryEntry>,
-    #[serde(default)]
     plugins: HashMap<String, RegistryEntry>,
     #[serde(default)]
     mcp: HashMap<String, RegistryEntry>,
@@ -131,10 +129,6 @@ impl MasterRegistry {
         // Merge all component maps and inject the map key as the `name` field
         let mut all_entries: Vec<RegistryEntry> = Vec::new();
 
-        for (name, mut entry) in raw.extensions.drain() {
-            entry.name = name;
-            all_entries.push(entry);
-        }
         for (name, mut entry) in raw.plugins.drain() {
             entry.name = name;
             all_entries.push(entry);

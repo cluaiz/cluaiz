@@ -5,11 +5,11 @@ description: Embedding cluaiz plugins via native Rust C-ABI and Bincode transpil
 
 # CEL Native Rust SDK
 
-Because the cluaiz Engine is built in Rust, native Rust plugins bypass WebAssembly sandbox serialization. However, to maintain decoupled ABIs, they still communicate via the **CEL Extension Protocol** — a strictly typed C-ABI FFI boundary.
+Because the cluaiz Engine is built in Rust, native Rust plugins bypass WebAssembly sandbox serialization. However, to maintain decoupled ABIs, they still communicate via the **CXP (Cluaiz Execution Protocol)** — a strictly typed C-ABI FFI boundary.
 
 ## The Memory Struct
 
-As defined in `inference-cel/src/ffi/cxp_ffi.rs`, all data moving between the executor and a plugin takes the shape of the `ExtensionPayload` struct:
+As defined in `inference-cel/src/ffi/cxp_ffi.rs`, all data moving between the executor and a plugin takes the shape of the `CxpPayload` struct:
 
 ```rust
 #[repr(C)]
@@ -22,7 +22,7 @@ pub enum PayloadType {
 }
 
 #[repr(C)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: PayloadType,
     pub data_ptr: *const u8,
     pub data_len: usize,
@@ -31,12 +31,12 @@ pub struct ExtensionPayload {
 
 ## Creating a Native SDK Plugin
 
-Your plugin must compile to a dynamic library (`.so`, `.dylib`, `.dll`) exposing `extern "C"` functions that receive and return `ExtensionPayload`.
+Your plugin must compile to a dynamic library (`.so`, `.dylib`, `.dll`) exposing `extern "C"` functions that receive and return `CxpPayload`.
 
 ### 1. The Execution Function
 
 ```rust
-use cluaiz_sdk::{ExtensionPayload, PayloadType, Transpiler};
+use cluaiz_sdk::{CxpPayload, PayloadType, Transpiler};
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
@@ -46,7 +46,7 @@ struct UserData {
 }
 
 #[no_mangle]
-pub extern "C" fn process_user(input: *const ExtensionPayload) -> *mut ExtensionPayload {
+pub extern "C" fn process_user(input: *const CxpPayload) -> *mut CxpPayload {
     unsafe {
         // 1. Read the input pointer
         let payload = &*input;
@@ -64,7 +64,7 @@ pub extern "C" fn process_user(input: *const ExtensionPayload) -> *mut Extension
         // 5. Allocate memory for the Engine to take ownership of
         let mut boxed_bytes = out_bytes.into_boxed_slice();
         
-        let out_payload = Box::new(ExtensionPayload {
+        let out_payload = Box::new(CxpPayload {
             payload_type: PayloadType::Bincode,
             data_ptr: boxed_bytes.as_mut_ptr(),
             data_len: boxed_bytes.len(),
@@ -86,7 +86,7 @@ You **must** expose a `cluaiz_free_payload` function in your DLL so the Engine c
 
 ```rust
 #[no_mangle]
-pub extern "C" fn cluaiz_free_payload(ptr: *mut ExtensionPayload) {
+pub extern "C" fn cluaiz_free_payload(ptr: *mut CxpPayload) {
     if ptr.is_null() { return; }
     unsafe {
         // Re-construct the Box and let Rust's ownership drop it naturally
@@ -113,14 +113,14 @@ flowchart TD
     A["CEL: invoke(process_user)"] --> B{"cluaiz Engine"}
     
     B -->|Transpiler::to_binary_payload| C["Bincode bytes"]
-    C --> D["ExtensionPayload Pointer"]
+    C --> D["CxpPayload Pointer"]
     
     D -->|FFI SDK Call| E["Rust DLL (process_user)"]
     
     E -->|Transpiler::from_binary_payload| F["Rust Struct"]
     F -->|Logic| G["New Struct"]
     
-    G -->|Serialize & Box::into_raw| H["New ExtensionPayload Pointer"]
+    G -->|Serialize & Box::into_raw| H["New CxpPayload Pointer"]
     
     H -->|FFI Return| B
     B -->|Engine Reads Data| I["Pipeline Continues"]

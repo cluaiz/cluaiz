@@ -1,7 +1,7 @@
 use std::ffi::{c_char, CStr};
 use libloading::{Library, Symbol};
 
-use crate::ffi::cxp_ffi::ExtensionPayload;
+use crate::ffi::cxp_ffi::CxpPayload;
 use crate::parser::metadata_parser::EngineRules;
 
 /// Executor for dynamically loading and running native (`.dll` / `.so`) plugins.
@@ -38,7 +38,7 @@ impl NativeExecutor {
     pub fn execute_with_rules(
         &self,
         plugin_path: &str,
-        payload: &ExtensionPayload,
+        payload: &CxpPayload,
         rules: &EngineRules,
     ) -> Result<Vec<u8>, String> {
         // Platform gate — mobile OS bans dynamic native loading
@@ -86,7 +86,7 @@ impl NativeExecutor {
             })?;
 
             // 2. Resolve the universal CEL boundary function
-            let execute_cel: Symbol<unsafe extern "C" fn(*const ExtensionPayload) -> *mut c_char> =
+            let execute_cel: Symbol<unsafe extern "C" fn(*const CxpPayload) -> *mut c_char> =
                 lib.get(b"execute_cel\0").map_err(|e| {
                     format!(
                         "Symbol 'execute_cel' not found in native plugin '{}': {}",
@@ -95,7 +95,7 @@ impl NativeExecutor {
                 })?;
 
             // 3. Execute the native plugin
-            let result_ptr = execute_cel(payload as *const ExtensionPayload);
+            let result_ptr = execute_cel(payload as *const CxpPayload);
 
             if result_ptr.is_null() {
                 return Err(format!(

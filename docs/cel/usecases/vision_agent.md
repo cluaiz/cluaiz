@@ -50,7 +50,7 @@ if ($ocr_text != "") {
 const imageBuffer = fs.readFileSync('./invoice.png');
 
 // 2. Pass it as Parameter ?1 natively
-// The SDK handles binding the Buffer to `ExtensionPayload::RawBytes`
+// The SDK handles binding the Buffer to `CxpPayload::RawBytes`
 const category = cluaiz.execute(cel_script, [imageBuffer]);
 
 console.log(`Document Category: ${category}`);
@@ -69,7 +69,7 @@ flowchart TD
     D -->|True| E["Plugin: llm"]
     D -->|False| F["Return 'NO_TEXT_FOUND'"]
     
-    E -->|Categorized String| G["ExtensionPayload"]
+    E -->|Categorized String| G["CxpPayload"]
     F -->|Raw String| G
     
     G -->|FFI Boundary| H["Node.js String"]

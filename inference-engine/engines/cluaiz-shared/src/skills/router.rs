@@ -100,7 +100,7 @@ impl SkillRouter {
         let active_model = get_active_embedding_model();
         let target_filename = active_model.map(|m| format!("{}.emb.safetensors", m.replace(":", "-").replace("/", "-").replace("\\", "-")));
 
-        for base_dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+        for base_dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
             if !base_dir.exists() { continue; }
             if let Ok(entries) = fs::read_dir(base_dir) {
                 for entry in entries.flatten() {
@@ -108,15 +108,10 @@ impl SkillRouter {
                     
                     if path.is_dir() {
                 let skill_md_path = path.join("SKILL.md");
-                let ext_yaml_path = path.join("manifest-extension.yaml");
                 let plugin_yaml_path = path.join("manifest-plugin.yaml");
                 let mcp_yaml_path = path.join("manifest-mcp.yaml");
                 
-                let parsed_manifest = if ext_yaml_path.exists() {
-                    if let Ok(content) = fs::read_to_string(&ext_yaml_path) {
-                        serde_yaml::from_str::<SkillManifest>(&content).ok()
-                    } else { None }
-                } else if plugin_yaml_path.exists() {
+                let parsed_manifest = if plugin_yaml_path.exists() {
                     if let Ok(content) = fs::read_to_string(&plugin_yaml_path) {
                         serde_yaml::from_str::<SkillManifest>(&content).ok()
                     } else { None }
@@ -160,8 +155,6 @@ impl SkillRouter {
                                 if let Ok(cache_meta) = std::fs::metadata(&emb_path) {
                                     let mut source_time = None;
                                     if let Ok(m) = std::fs::metadata(&skill_md_path) {
-                                        if let Ok(t) = m.modified() { source_time = Some(t); }
-                                    } else if let Ok(m) = std::fs::metadata(&ext_yaml_path) {
                                         if let Ok(t) = m.modified() { source_time = Some(t); }
                                     } else if let Ok(m) = std::fs::metadata(&plugin_yaml_path) {
                                         if let Ok(t) = m.modified() { source_time = Some(t); }
@@ -209,7 +202,7 @@ impl SkillRouter {
         }
         }
         
-        tracing::debug!("[Router] Loaded {} skills/extensions into index", self.loaded_manifests.len());
+        tracing::debug!("[Router] Loaded {} components into index", self.loaded_manifests.len());
         Ok(())
     }
 

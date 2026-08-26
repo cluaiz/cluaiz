@@ -21,12 +21,15 @@ const ENGINE_BASE_URL: &str = "http://127.0.0.1:8000";
 
 #[derive(Deserialize, Debug)]
 struct RegistryYaml {
-    extensions: HashMap<String, ExtensionInfo>,
+    #[serde(default)]
+    plugins: HashMap<String, PluginInfo>,
 }
 
 #[derive(Deserialize, Debug)]
-struct ExtensionInfo {
+struct PluginInfo {
+    #[serde(default)]
     id: String,
+    #[serde(default)]
     semantic_index: Vec<String>,
 }
 
@@ -264,7 +267,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "8_tool_execution": {
                 "plugin_called": "cluaiz-search",
                 "execution_success": step8_exec,
-                "search_extension_payload": {
+                "search_plugin_payload": {
                     "query": "cluaiz.com",
                     "status": "success"
                 }

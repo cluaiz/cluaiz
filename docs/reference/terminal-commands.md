@@ -137,46 +137,35 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 
 ---
 
-## 🛠️ Extensibility (Skills, Plugins, MCP, Extensions)
+## 🛠️ Extensibility (Skills, Plugins, MCP)
 
-Cluaiz provides deep native extensibility via WASM Skills, Native Plugins, and MCP integrations. All extensibility components share a unified command structure supporting aliases like `i` (install), `ls` (list), and `rm` (remove).
+Cluaiz provides deep native extensibility via Skills, Plugins, and MCP integrations. All extensibility components share a unified command structure supporting aliases like `i` (install), `ls` (list), and `rm` (remove).
 
-### 🧠 WASM Skills
-Skills are isolated WebAssembly binaries that execute securely within the Cluaiz sandbox.
+### 🧠 Skills
+Skills are cognitive instruction sets (`SKILL.md`) that teach the AI how to reason and call tools.
 * **`cluaiz skill install <skill_name>`** (alias: `i`)
-  * **Flow:** Downloads and compiles the WASM binary. 
+  * **Flow:** Downloads and installs the skill.
   * **API Mapping:** `POST /v1/skills/install` (`skills::install_skill`).
 * **`cluaiz skill list`** (alias: `ls`)
-  * **Flow:** Lists active WASM sandboxes. 
+  * **Flow:** Lists active installed skills.
   * **API Mapping:** `GET /v1/skills/list` (`skills::list_skills`).
 * **`cluaiz skill remove <skill_name>`** (alias: `rm`)
   * **Flow:** Deletes the skill and its local footprint.
-* **`cluaiz skill cache ls`**
-  * **Flow:** Lists dual-caches (pre-computed KV cache states for fast skill routing). 
-  * **API Mapping:** `GET /v1/skills/cache`.
-* **`cluaiz skill cache clear [cache_id]`**
-  * **Flow:** Wipes orphaned KV states to free SSD space. 
-  * **API Mapping:** `DELETE /v1/skills/cache`.
+* **`cluaiz skill cache ls`** & **`cluaiz skill cache clear [cache_id]`**
+  * **Flow:** Manages cached skill runtime states.
 
-### ⚙️ Native Plugins
-Plugins are OS-native C/Rust FFI binaries (Muscles) that provide deep OS access.
+### ⚙️ Plugins (WASM & Native Execution)
+Plugins provide high-performance execution power, either in a secure `WASM` micro-sandbox or as a bare-metal `NATIVE` C-FFI binary (`cluaiz-search`, `cluaiz-db`).
 * **`cluaiz plugin install <plugin_name>`** (alias: `i`)
+  * **Flow:** Downloads and compiles/installs the plugin.
+  * **API Mapping:** `POST /v1/plugins/install` (`plugins::install_plugin`).
 * **`cluaiz plugin list`** (alias: `ls`)
+  * **Flow:** Lists active installed plugins.
+  * **API Mapping:** `GET /v1/plugins/list` (`plugins::list_plugins`).
 * **`cluaiz plugin remove <plugin_name>`** (alias: `rm`)
-* **`cluaiz plugin link <plugin_name> <skill_name>`**
-  * **Flow:** Links a native plugin binary to a specific WASM skill sandbox.
+  * **Flow:** Deletes the plugin and its local binaries.
 * **`cluaiz plugin cache ls`** & **`cluaiz plugin cache clear [cache_id]`**
-  * **Flow:** Manages cached plugin runtime states. 
-
-### 📦 Extensions
-Extensions are complex bundles combining Brain (WASM Skills) and Muscles (Native Plugins).
-* **Command Alias:** `cluaiz ext` can be used instead of `cluaiz extension`.
-* **`cluaiz extension install <extension_name>`** (alias: `i`)
-* **`cluaiz extension list`** (alias: `ls`)
-* **`cluaiz extension remove <extension_name>`** (alias: `rm`)
-* **`cluaiz extension start <extension_name>`**
-  * **Flow:** Starts background daemons for Extension bundles.
-* **`cluaiz extension cache ls`** & **`cluaiz extension cache clear [cache_id]`**
+  * **Flow:** Manages cached plugin runtime states.
 
 ### 🌐 Model Context Protocol (MCP)
 MCP integrations allow Cluaiz to interface with external standard tools.

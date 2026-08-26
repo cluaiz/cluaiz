@@ -5,7 +5,7 @@ description: Embedding cluaiz plugins in Go via CGO and FFI.
 
 # CEL Go SDK
 
-Go (Golang) is highly performant and widely used for backend microservices. To interact with the cluaiz Engine natively without HTTP overhead, you can use **cgo** to interface directly with the `ExtensionPayload` C-ABI struct.
+Go (Golang) is highly performant and widely used for backend microservices. To interact with the cluaiz Engine natively without HTTP overhead, you can use **cgo** to interface directly with the `CxpPayload` C-ABI struct.
 
 ## The Memory Struct
 
@@ -24,7 +24,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 ```
 
 ## Creating a Go SDK Plugin
@@ -46,7 +46,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 */
 import "C"
 import (
@@ -55,7 +55,7 @@ import (
 )
 
 //export process_data
-func process_data(input *C.ExtensionPayload) *C.ExtensionPayload {
+func process_data(input *C.CxpPayload) *C.CxpPayload {
 	// 1. Read the input pointer
 	dataLen := int(input.data_len)
 	dataSlice := C.GoBytes(unsafe.Pointer(input.data_ptr), C.int(dataLen))
@@ -77,7 +77,7 @@ func process_data(input *C.ExtensionPayload) *C.ExtensionPayload {
 	// We MUST allocate this using C.malloc so the C-ABI memory isn't collected by Go's GC
 	cDataPtr := (*C.uint8_t)(C.CBytes(outBytes))
 
-	outPayload := (*C.ExtensionPayload)(C.malloc(C.sizeof_ExtensionPayload))
+	outPayload := (*C.CxpPayload)(C.malloc(C.sizeof_CxpPayload))
 	outPayload.payload_type = C.Json
 	outPayload.data_ptr = cDataPtr
 	outPayload.data_len = outLen
@@ -98,7 +98,7 @@ You **must** implement `cluaiz_free_payload`.
 
 ```go
 //export cluaiz_free_payload
-func cluaiz_free_payload(ptr *C.ExtensionPayload) {
+func cluaiz_free_payload(ptr *C.CxpPayload) {
 	if ptr == nil {
 		return
 	}
@@ -119,7 +119,7 @@ func cluaiz_free_payload(ptr *C.ExtensionPayload) {
 flowchart TD
     A["CEL: invoke(go_plugin)"] --> B{"cluaiz Engine"}
     
-    B -->|Allocate| C["ExtensionPayload Pointer"]
+    B -->|Allocate| C["CxpPayload Pointer"]
     
     C -->|cgo Call| D["Go Runtime"]
     
@@ -129,7 +129,7 @@ flowchart TD
     
     G -->|json.Marshal| H["New Go Bytes"]
     H -->|C.CBytes & C.malloc| I["Pinned C Allocations"]
-    I -->|Pack| J["New ExtensionPayload Pointer"]
+    I -->|Pack| J["New CxpPayload Pointer"]
     
     J -->|cgo Return| B
     B -->|Engine Reads Data| K["Pipeline Continues"]

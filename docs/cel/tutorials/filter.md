@@ -30,11 +30,11 @@ pub enum CelOp {
 
 ```mermaid
 flowchart TD
-    A["Incoming ExtensionPayload"] --> B{"Native Rust AST Engine"}
+    A["Incoming CxpPayload"] --> B{"Native Rust AST Engine"}
     
     B --> C{"Evaluate: CompareOp"}
     
-    C -->|true| D["Pass ExtensionPayload to next Node"]
+    C -->|true| D["Pass CxpPayload to next Node"]
     C -->|false| E["drop(payload) -> Memory Freed"]
     
     D --> F["WASM Plugin / Pipeline"]

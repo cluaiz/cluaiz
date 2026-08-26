@@ -21,5 +21,5 @@ The framework enforces absolute separation of concerns across its core execution
 cluaiz prioritizes absolute privacy by routing all computing operations on-device:
 
 * **On-Device Embedding Vectors:** All document chunking and vector space creations occur inside local memory allocations.
-* **Deterministic Sandboxing:** Sandboxed WASM routines run under strict memory limits and fuel restrictions to isolate third-party extensions.
+* **Deterministic Sandboxing:** Sandboxed WASM routines run under strict memory limits and fuel restrictions to isolate third-party plugins.
 * **Controlled Telemetry:** Diagnostics tracking is disabled by default and runs entirely under explicit user toggle parameters.

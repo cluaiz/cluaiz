@@ -5,7 +5,7 @@ description: Embedding cluaiz plugins in C++ using C-ABI bindings.
 
 # CEL C++ SDK
 
-C++ plugins are incredibly fast and can easily manage memory dynamically using smart pointers. However, to interface with the cluaiz Engine, you must expose an `extern "C"` boundary that speaks the `ExtensionPayload` struct protocol.
+C++ plugins are incredibly fast and can easily manage memory dynamically using smart pointers. However, to interface with the cluaiz Engine, you must expose an `extern "C"` boundary that speaks the `CxpPayload` struct protocol.
 
 ## The Memory Struct
 
@@ -30,7 +30,7 @@ extern "C" {
         PayloadType payload_type;
         const uint8_t* data_ptr;
         size_t data_len;
-    } ExtensionPayload;
+    } CxpPayload;
 }
 ```
 
@@ -47,7 +47,7 @@ You can use modern C++ features inside your function, but the boundaries must be
 #define EXPORT __attribute__((visibility("default")))
 #endif
 
-extern "C" EXPORT ExtensionPayload* process_data(const ExtensionPayload* input) {
+extern "C" EXPORT CxpPayload* process_data(const CxpPayload* input) {
     if (!input) return nullptr;
     
     // 1. Read input as std::string (Assuming it's JSON)
@@ -61,7 +61,7 @@ extern "C" EXPORT ExtensionPayload* process_data(const ExtensionPayload* input) 
     uint8_t* buffer = new uint8_t[out_str.length()];
     std::memcpy(buffer, out_str.data(), out_str.length());
     
-    ExtensionPayload* out_payload = new ExtensionPayload();
+    CxpPayload* out_payload = new CxpPayload();
     out_payload->payload_type = Json;
     out_payload->data_ptr = buffer;
     out_payload->data_len = out_str.length();
@@ -77,7 +77,7 @@ Because you used `new`, you are responsible for `delete`. The Engine will call `
 ### 2. The Free Function
 
 ```cpp
-extern "C" EXPORT void cluaiz_free_payload(ExtensionPayload* ptr) {
+extern "C" EXPORT void cluaiz_free_payload(CxpPayload* ptr) {
     if (!ptr) return;
     
     if (ptr->data_ptr) {
@@ -94,7 +94,7 @@ extern "C" EXPORT void cluaiz_free_payload(ExtensionPayload* ptr) {
 flowchart TD
     A["CEL: invoke(cpp_plugin)"] --> B{"cluaiz Engine"}
     
-    B -->|Allocate| C["ExtensionPayload Pointer"]
+    B -->|Allocate| C["CxpPayload Pointer"]
     
     C -->|dlopen/dlsym| D["extern 'C' boundary"]
     
@@ -102,7 +102,7 @@ flowchart TD
     E -->|Logic| F["New std::string"]
     
     F -->|new uint8_t[]| G["Raw C++ heap allocation"]
-    G -->|new ExtensionPayload| H["New ExtensionPayload Pointer"]
+    G -->|new CxpPayload| H["New CxpPayload Pointer"]
     
     H -->|Return Pointer| B
     B -->|Engine Reads Data| I["Pipeline Continues"]

@@ -9,7 +9,7 @@ While Node.js operates inside the V8 JavaScript engine, it can interface with th
 
 ## The Memory Struct
 
-When the cluaiz Engine invokes a JavaScript SDK plugin, it passes a pointer to the `ExtensionPayload` C-ABI struct. You must read this using `node-ffi-napi` or a native C++ addon.
+When the cluaiz Engine invokes a JavaScript SDK plugin, it passes a pointer to the `CxpPayload` C-ABI struct. You must read this using `node-ffi-napi` or a native C++ addon.
 
 ```c
 // The C equivalent of cxp_ffi.rs
@@ -25,7 +25,7 @@ typedef struct {
     PayloadType payload_type;
     const uint8_t* data_ptr;
     size_t data_len;
-} ExtensionPayload;
+} CxpPayload;
 ```
 
 ## Creating a Node.js SDK Plugin
@@ -39,17 +39,17 @@ const ffi = require('ffi-napi');
 const ref = require('ref-napi');
 const StructType = require('ref-struct-di')(ref);
 
-// Define the ExtensionPayload C-Struct in JS
-const ExtensionPayload = StructType({
+// Define the CxpPayload C-Struct in JS
+const CxpPayload = StructType({
     payload_type: ref.types.int32,
     data_ptr: ref.refType(ref.types.uint8),
     data_len: ref.types.size_t
 });
 
-const ExtensionPayloadPtr = ref.refType(ExtensionPayload);
+const CxpPayloadPtr = ref.refType(CxpPayload);
 
 // Export the C-ABI function
-module.exports = ffi.Callback(ExtensionPayloadPtr, [ExtensionPayloadPtr], function(inputPtr) {
+module.exports = ffi.Callback(CxpPayloadPtr, [CxpPayloadPtr], function(inputPtr) {
     // 1. Dereference the C struct
     const input = inputPtr.deref();
     
@@ -69,8 +69,8 @@ module.exports = ffi.Callback(ExtensionPayloadPtr, [ExtensionPayloadPtr], functi
     const outString = JSON.stringify(data);
     const outBuffer = Buffer.from(outString, 'utf8');
 
-    // 5. Construct the returned ExtensionPayload
-    const outPayload = new ExtensionPayload();
+    // 5. Construct the returned CxpPayload
+    const outPayload = new CxpPayload();
     outPayload.payload_type = 0; // Json
     outPayload.data_ptr = outBuffer;
     outPayload.data_len = outBuffer.length;
@@ -94,7 +94,7 @@ To properly free memory, you should maintain a global registry of pointers you h
 // A registry to prevent V8 from garbage collecting buffers while Rust is reading them
 const activeBuffers = new Map(); 
 
-module.exports.cluaiz_free_payload = ffi.Callback(ref.types.void, [ExtensionPayloadPtr], function(ptr) {
+module.exports.cluaiz_free_payload = ffi.Callback(ref.types.void, [CxpPayloadPtr], function(ptr) {
     if (ptr.isNull()) return;
     
     const payload = ptr.deref();
@@ -112,7 +112,7 @@ module.exports.cluaiz_free_payload = ffi.Callback(ref.types.void, [ExtensionPayl
 flowchart TD
     A["CEL: invoke(js_plugin)"] --> B{"cluaiz Engine"}
     
-    B -->|Allocate| C["ExtensionPayload Pointer"]
+    B -->|Allocate| C["CxpPayload Pointer"]
     
     C -->|FFI SDK Call| D["V8 Node.js Runtime"]
     
@@ -121,7 +121,7 @@ flowchart TD
     F -->|Logic| G["New JS Object"]
     
     G -->|Buffer.from| H["New JS Buffer (Pinned)"]
-    H -->|ref-struct| I["New ExtensionPayload Pointer"]
+    H -->|ref-struct| I["New CxpPayload Pointer"]
     
     I -->|FFI Return| B
     B -->|Engine Reads Data| J["Pipeline Continues"]

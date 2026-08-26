@@ -19,9 +19,8 @@ impl HubInstaller {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let component_dir = match component_type {
             "skill" => env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir()).join(&component_id),
-            "extension" => env.ensure_extensions_dir().unwrap_or_else(|_| env.extensions_dir()).join(&component_id),
-            "mcp" => env.ensure_mcp_dir().unwrap_or_else(|_| env.mcp_dir()).join(&component_id),
             "plugin" => env.ensure_plugins_dir().unwrap_or_else(|_| env.plugins_dir()).join(&component_id),
+            "mcp" => env.ensure_mcp_dir().unwrap_or_else(|_| env.mcp_dir()).join(&component_id),
             _ => return Err(anyhow::anyhow!("Unknown component type: {}", component_type)),
         };
 
@@ -224,11 +223,11 @@ impl HubInstaller {
                             let _ = std::fs::write(&bin_manifest_path, bin_data);
                             cluaiz_shared::dev_info!("  {} [Registry] Cached fast binary manifest: {}", "⚡".yellow(), bin_manifest_path.display());
                         }
-                    } else if let Ok(ext_parsed) = serde_yaml::from_str::<crate::neural_foundry::registry::ExtensionManifest>(&content) {
-                        semantic_index = Some(ext_parsed.discovery.semantic_triggers.clone());
+                    } else if let Ok(plugin_parsed) = serde_yaml::from_str::<crate::neural_foundry::registry::PluginManifest>(&content) {
+                        semantic_index = Some(plugin_parsed.discovery.semantic_triggers.clone());
                         
                         let bin_manifest_path = component_dir.join(format!("manifest-{}.bin", component_type));
-                        if let Ok(bin_data) = bincode::serialize(&ext_parsed) {
+                        if let Ok(bin_data) = bincode::serialize(&plugin_parsed) {
                             let _ = std::fs::write(&bin_manifest_path, bin_data);
                             cluaiz_shared::dev_info!("  {} [Registry] Cached fast binary manifest: {}", "⚡".yellow(), bin_manifest_path.display());
                         }
@@ -238,12 +237,14 @@ impl HubInstaller {
             
             let entry = crate::neural_foundry::registry::registry_index::RegistryEntry {
                 id: component_id.clone(),
+                name: component_id.clone(),
                 domain: format!("{}/{}", component_type, component_id),
                 load_strategy: crate::neural_foundry::registry::registry_index::LoadStrategy::Lazy,
                 activation_events: vec![format!("on_{}_trigger", component_type)],
                 enabled: true,
                 binary_hash: downloaded_binary_hash,
-                semantic_index,
+                semantic_index: semantic_index.unwrap_or_default(),
+                ..Default::default()
             };
             let _ = registry.register_component(component_type, &component_id, entry);
         }
@@ -257,9 +258,8 @@ impl HubInstaller {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let component_dir = match component_type {
             "skill" => env.ensure_skills_dir().unwrap_or_else(|_| env.skills_dir()).join(component_name),
-            "extension" => env.ensure_extensions_dir().unwrap_or_else(|_| env.extensions_dir()).join(component_name),
-            "mcp" => env.ensure_mcp_dir().unwrap_or_else(|_| env.mcp_dir()).join(component_name),
             "plugin" => env.ensure_plugins_dir().unwrap_or_else(|_| env.plugins_dir()).join(component_name),
+            "mcp" => env.ensure_mcp_dir().unwrap_or_else(|_| env.mcp_dir()).join(component_name),
             _ => return Err(anyhow::anyhow!("Unknown component type: {}", component_type)),
         };
 
@@ -282,9 +282,8 @@ impl HubInstaller {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let target_dir = match component_type {
             "skill" => env.skills_dir(),
-            "extension" => env.extensions_dir(),
-            "mcp" => env.mcp_dir(),
             "plugin" => env.plugins_dir(),
+            "mcp" => env.mcp_dir(),
             _ => return Err(anyhow::anyhow!("Unknown component type")),
         };
 
@@ -309,9 +308,8 @@ impl HubInstaller {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let target_dir = match component_type {
             "skill" => env.skills_dir(),
-            "extension" => env.extensions_dir(),
-            "mcp" => env.mcp_dir(),
             "plugin" => env.plugins_dir(),
+            "mcp" => env.mcp_dir(),
             _ => return Err(anyhow::anyhow!("Unknown component type")),
         };
 
@@ -386,9 +384,8 @@ impl HubInstaller {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let target_dir = match component_type {
             "skill" => env.skills_dir(),
-            "extension" => env.extensions_dir(),
-            "mcp" => env.mcp_dir(),
             "plugin" => env.plugins_dir(),
+            "mcp" => env.mcp_dir(),
             _ => return Err(anyhow::anyhow!("Unknown component type")),
         };
 

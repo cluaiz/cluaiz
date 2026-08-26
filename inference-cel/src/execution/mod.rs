@@ -16,8 +16,8 @@ use crate::parser::metadata_parser::EngineRules;
 /// Previously named `UniversalExecutor` — renamed to comply with the cluaiz banned word policy
 /// (`Universal` is banned; see `.agent/❌bannword.md`).
 ///
-/// The variant is chosen by `CluaizxtensionRegistry` based on the plugin manifest's
-/// `engine_rules.sandbox_type` field — NOT by the plugin's file extension.
+/// The variant is chosen by `CluaizPluginRegistry` based on the plugin manifest's
+/// `engine_rules.sandbox_type` field — NOT by the plugin's file suffix.
 pub enum Cluaizxecutor {
     Wasm(wasm_sandbox::WasmExecutor),
     Native(native_sandbox::NativeExecutor),
@@ -43,7 +43,7 @@ impl Cluaizxecutor {
             Self::Native(executor) => {
                 // Transpile ExecutionPlan to strict Bincode for zero-allocation C-FFI transfer
                 let binary_bytes = crate::ffi::cxp_ffi::Transpiler::to_binary_payload(plan)?;
-                let payload = crate::ffi::cxp_ffi::ExtensionPayload::new(
+                let payload = crate::ffi::cxp_ffi::CxpPayload::new(
                     crate::ffi::cxp_ffi::PayloadType::Bincode,
                     &binary_bytes,
                 );

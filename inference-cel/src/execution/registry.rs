@@ -1,4 +1,4 @@
-//! cluaiz Extension Registry
+//! cluaiz Plugin Registry
 //!
 //! The dynamic router that bridges parsed manifest metadata and executable plugin binaries.
 //! It does NOT hardcode any knowledge of what a plugin does or what sandbox it needs —

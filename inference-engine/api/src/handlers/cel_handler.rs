@@ -12,7 +12,7 @@ use crate::state::AppState;
 // External dependency from the CEL crate
 use inference_cel::parser::lexer::parse;
 use inference_cel::parser::planner::{CelPlanner, PlanBlock, PlanStep};
-use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType, Transpiler};
+use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType, Transpiler};
 use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
 use inference_cel::vram::prefix_caching::{inject_from_cpu, ContextInjectionEnvelope, TensorData};
 
@@ -102,7 +102,7 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                         PlanStep::ExecuteAction { method, args } => {
                             let executor = UnifiedExecutor::new();
                             let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
-                            let ext_payload = ExtensionPayload::new(PayloadType::Bincode, &binary_args);
+                            let ext_payload = CxpPayload::new(PayloadType::Bincode, &binary_args);
                             
                             // method acts as the plugin_name in this context (e.g. use plugin::X)
                             match executor.execute(&method, &ext_payload) {
@@ -126,7 +126,7 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                             
                             // For commands, target is the component name
                             if let Some(component) = target {
-                                let ext_payload = ExtensionPayload::new(PayloadType::Json, &json_bytes);
+                                let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
                                 match executor.execute(&component, &ext_payload) {
                                     Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
                                     Err(e) => final_result.push_str(&format!("[Error] Component Execution: {}\n", e)),
@@ -171,7 +171,7 @@ pub async fn execute_dynamic(
         }
     };
     
-    let ext_payload = ExtensionPayload::new(PayloadType::Json, &json_bytes);
+    let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
     
     match executor.execute(&component_name, &ext_payload) {
         Ok(result_bytes) => {

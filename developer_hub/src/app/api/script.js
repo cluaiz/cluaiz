@@ -99,7 +99,6 @@ async function initApp() {
             'plugins.json',
             'skills.json',
             'mcp.json',
-            'extensions.json',
             'config.json',
             'tuning.json'
         ];

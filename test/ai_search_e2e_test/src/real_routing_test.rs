@@ -5,7 +5,7 @@
 // PURPOSE:
 //   True E2E test. Sends raw user query via STREAMING HTTP API (stream: true).
 //   Skill injection + CEL interception only happen in the streaming path.
-//   Checks whether LLM emits `use extension::cluaiz-search` command.
+//   Checks whether LLM emits `use plugin::cluaiz-search` command.
 
 use reqwest::Client;
 use serde_json::{json, Value};
@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Check for CEL command in the final assembled text
-        if final_text.contains("use extension::cluaiz-search") {
+        if final_text.contains("use plugin::cluaiz-search") {
             cel_triggered = true;
         }
         if final_text.contains("[SYSTEM INJECTION: TOOL EXECUTION RESULT]") 
@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n──── 📊 DIAGNOSIS ────────────────────────────────────");
     if cel_triggered {
-        println!("🎉 [PASSED] LLM emitted `use extension::cluaiz-search`!");
+        println!("🎉 [PASSED] LLM emitted `use plugin::cluaiz-search`!");
     } else {
         println!("❌ [FAILED] LLM did NOT emit the CEL command.");
         println!("   Root cause options:");

@@ -72,12 +72,12 @@ pub struct FfiBindings {
     pub abi: String,
 }
 
-/// Defines how the Engine discovers this extension and how the AI interacts with it.
+/// Defines how the Engine discovers this plugin and how the AI interacts with it.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Discovery {
-    /// List of keywords that trigger the engine to lazy-load this extension into the AI's context.
+    /// List of keywords that trigger the engine to lazy-load this plugin into the AI's context.
     pub semantic_triggers: Option<Vec<String>>,
-    /// The exact CEL syntax the AI must use to invoke this extension.
+    /// The exact CEL syntax the AI must use to invoke this plugin.
     pub cel_grammar: Option<String>,
     /// Relative path to the markdown file containing the natural language instructions for the AI.
     pub brain_manual: Option<String>,
@@ -88,7 +88,7 @@ pub struct Discovery {
 pub struct Activation {
     /// If true, the Engine defers loading the binary until an activation event occurs.
     pub lazy_load: Option<bool>,
-    /// List of trigger events (e.g., "onCelCommand:use extension::math") that activate the binary.
+    /// List of trigger events (e.g., "onCelCommand:use plugin::math") that activate the binary.
     pub trigger_on: Option<Vec<String>>,
 }
 
@@ -128,7 +128,7 @@ pub struct Permissions {
     pub file_system: Option<String>,
 }
 
-/// The parsed YAML frontmatter of a plugin/skill/extension manifest file.
+/// The parsed YAML frontmatter of a plugin/skill/mcp manifest file.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntegrationMetadata {
     pub name: String,

@@ -25,7 +25,7 @@
 //! // At runtime when AI generates CEL:
 //! let names = bus.fire("on_command:use plugin::web-scraper");
 //! for name in names {
-//!     extension_registry.load_integration(&manifest_path_for(name))?;
+//!     plugin_registry.load_integration(&manifest_path_for(name))?;
 //! }
 //! ```
 

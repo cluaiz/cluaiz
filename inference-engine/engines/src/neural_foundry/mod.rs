@@ -58,7 +58,7 @@ impl CoreFoundry {
     pub fn initialize(&mut self, _skills_dir: &str) {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         cluaiz_shared::dev_info!("[cluaiz] Initializing Core Foundry from: {}", env.skills_dir().display());
-        for dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+        for dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
             self.registry.load_from_directory(&dir.to_string_lossy());
         }
     }
@@ -303,13 +303,12 @@ pub fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
         }
     }
 
-    let ext_yaml_path = skill_dir.join("manifest-extension.yaml");
     let plugin_yaml_path = skill_dir.join("manifest-plugin.yaml");
     let mcp_yaml_path = skill_dir.join("manifest-mcp.yaml");
 
     let skill_name = skill_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
 
-    for (yaml_path, tool_type) in &[(&ext_yaml_path, "extension"), (&plugin_yaml_path, "plugin"), (&mcp_yaml_path, "mcp")] {
+    for (yaml_path, tool_type) in &[(&plugin_yaml_path, "plugin"), (&mcp_yaml_path, "mcp")] {
         if yaml_path.exists() {
             if let Ok(content) = std::fs::read_to_string(yaml_path) {
                 let mut desc = String::new();
@@ -333,7 +332,6 @@ pub fn extract_skill_body(skill_dir: &std::path::Path) -> Option<String> {
                 }
                 
                 let rule_str = match *tool_type {
-                    "extension" => crate::neural_foundry::registry::injectors::ExtensionRuleInjector::compile_rules(&skill_name, &cel_grammar),
                     "plugin" => crate::neural_foundry::registry::injectors::PluginRuleInjector::compile_rules(&skill_name, &cel_grammar),
                     "mcp" => crate::neural_foundry::registry::injectors::McpRuleInjector::compile_rules(&skill_name),
                     _ => String::new(),

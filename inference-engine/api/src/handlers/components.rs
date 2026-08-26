@@ -7,7 +7,7 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
     let env = cluaiz_shared::environment::EnvironmentManager::current();
     let mut results = serde_json::Map::new();
     
-    for comp_type in ["extension", "plugin", "mcp", "skill"] {
+    for comp_type in ["plugin", "mcp", "skill"] {
         let dir = env.global_dir.join(format!("{}s", comp_type));
         let mut items = Vec::new();
         if dir.exists() {
@@ -38,8 +38,13 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     
     let base_dir = env.global_dir.join(format!("{}s", comp_type));
     let comp_dir = base_dir.join(&comp_id);
-    let file_name = if comp_type == "skill" { "SKILL.md".to_string() } else { format!("manifest-{}.yaml", comp_type) };
-    let file_path = comp_dir.join(&file_name);
+    let mut file_path = if comp_type == "skill" { comp_dir.join("SKILL.md") } else { comp_dir.join(format!("manifest-{}.yaml", comp_type)) };
+    if !file_path.exists() && comp_type == "plugin" {
+        let alt = comp_dir.join("manifest-plugin.yaml");
+        if alt.exists() {
+            file_path = alt;
+        }
+    }
 
     if !file_path.exists() {
         return Json(serde_json::json!({

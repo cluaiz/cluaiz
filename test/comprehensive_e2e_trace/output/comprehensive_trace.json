@@ -20,7 +20,7 @@
   "8_tool_execution": {
     "execution_success": true,
     "plugin_called": "cluaiz-search",
-    "search_extension_payload": {
+    "search_plugin_payload": {
       "query": "cluaiz.com",
       "status": "success"
     }

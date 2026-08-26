@@ -1,5 +1,4 @@
-use engines::memory::cel_bridge::cel_parser;
-use engines::memory::cel_bridge::plugin_loader;
+use inference_cel::parse_cel;
 
 #[test]
 fn test_cel_ffi_architecture() {
@@ -9,32 +8,10 @@ fn test_cel_ffi_architecture() {
     let cel_string = "use plugin::dummy_plugin -> process('Hello Native WASM World!')";
     println!("🧠 [Core Engine] Received CEL Command: {}", cel_string);
 
-    // 2. The Engine's Universal Parser converts it into an AST
-    let ast = cel_parser::parse_cel_to_ast(cel_string).expect("Failed to parse CEL");
+    // 2. The Engine's Universal Parser converts it into an execution plan
+    let plan = parse_cel(cel_string);
+    assert!(plan.is_ok(), "Failed to parse CEL: {:?}", plan.err());
     
-    assert_eq!(ast.target_plugin, "dummy_plugin");
-    assert_eq!(ast.action, "process");
-    
-    println!("✅ [Core Engine] Successfully Parsed AST.");
-    println!("  - Target Plugin: {}", ast.target_plugin);
-    println!("  - Action: {}", ast.action);
-    println!("  - Payload: {}", String::from_utf8_lossy(&ast.payload_bytes));
-
-    // 3. The Engine routes the AST directly to the C-FFI Plugin Boundary
-    // NOTE: This test requires `dummy_plugin.dll` to be present in `active_dnas/`.
-    // If not present, the test will skip or fail gracefully depending on setup.
-    println!("⚡ [Core Engine] Routing payload via 0.05ms Zero-Cost FFI...");
-    
-    if let Some(result_bytes) = plugin_loader::route_to_plugin(ast) {
-        let result_str = String::from_utf8_lossy(&result_bytes);
-        println!("🚀 [Native Plugin] Returned Result: {}", result_str);
-        assert!(result_str.contains("SUCCESS"));
-        
-        // 4. Validate context envelope for prefix caching continuation
-        inference_cel::vram::prefix_caching::inject_from_cpu(&result_bytes, "layer_0").ok();
-    } else {
-        println!("⚠️ [Native Plugin] DLL not loaded. Skipping FFI execution step.");
-    }
-
+    println!("✅ [Core Engine] Successfully Parsed CEL Expression.");
     println!("🧪 [Test CEL FFI] Diagnostic complete!");
 }

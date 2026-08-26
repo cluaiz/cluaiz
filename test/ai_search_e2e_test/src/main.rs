@@ -5,12 +5,12 @@
 // PURPOSE:
 //   True end-to-end test. Sends a user prompt to the AI via /v1/chat/completions.
 //   The AI, guided by its SKILL.md (cluaiz-search), is expected to emit a
-//   `use extension::cluaiz-search` token, which the Dispatcher intercepts,
-//   executes the search extension, and injects results back into AI context.
+//   `use plugin::cluaiz-search` token, which the Dispatcher intercepts,
+//   executes the search plugin, and injects results back into AI context.
 //   The AI then synthesizes a final answer grounded in real search data.
 //
-//   This test does NOT manually call the search extension.
-//   It verifies that the AI → SKILL.md → Extension → AI synthesis pipeline works end-to-end.
+//   This test does NOT manually call the search plugin.
+//   It verifies that the AI → SKILL.md → Plugin → AI synthesis pipeline works end-to-end.
 //
 // WHAT IS VALIDATED:
 //   ✅ AI is alive and a model is loaded
@@ -132,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
 
     let combined_prompt = format!(
-        "SYSTEM INSTRUCTION: If you need to search the web for real-time or up-to-date information, you MUST trigger the cluaiz-search extension by outputting EXACTLY this token (and nothing else): use extension::cluaiz-search\n\nUSER PROMPT: {}",
+        "SYSTEM INSTRUCTION: If you need to search the web for real-time or up-to-date information, you MUST trigger the cluaiz-search plugin by outputting EXACTLY this token (and nothing else): use plugin::cluaiz-search\n\nUSER PROMPT: {}",
         USER_PROMPT
     );
     let chat_payload = json!({
@@ -195,8 +195,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", final_text);
         println!("────────────────────────────────────────────────────────────\n");
 
-        // 🚀 Step 3: Run the search extension (Mocking UI execution)
-        if final_text.contains("extension::cluaiz-search") || final_text.contains("search") {
+        // 🚀 Step 3: Run the search plugin (Mocking UI execution)
+        if final_text.contains("plugin::cluaiz-search") || final_text.contains("search") {
             println!("🔍 [Step 3] AI emitted trigger. Simulating UI executing cluaiz-search...");
             
             // We use the Tavily API key from manifest defaults
@@ -314,7 +314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "model": AI_MODEL,
             "total_elapsed_sec": elapsed.as_secs_f32()
         },
-        "search_extension_payload": search_json,
+        "search_plugin_payload": search_json,
         "ai_output": {
             "initial_trigger_output": final_text,
             "final_answer": final_answer,
@@ -337,8 +337,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if has_search_signal {
         println!("🎉 [PASSED] AI produced a grounded answer with real data.");
     } else if final_text.contains("Error:") {
-        println!("❌ [FAILED] AI returned an error — model or search extension issue.");
-        println!("   Hint: Check engine logs for 'use extension::cluaiz-search' trigger.");
+        println!("❌ [FAILED] AI returned an error — model or search plugin issue.");
+        println!("   Hint: Check engine logs for 'use plugin::cluaiz-search' trigger.");
     } else {
         println!("⚠️  [PARTIAL] AI responded but may not have triggered web search.");
         println!("   Hint: Verify SKILL.md triggers are configured in the AI's skill context.");

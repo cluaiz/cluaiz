@@ -30,7 +30,7 @@ pub enum CelStatement {
 ```
 
 **Linear Memory Re-use:**
-When a `foreach` loop triggers a `use plugin::...` block inside it, the Engine does **not** re-initialize the WASM instance (`wasmtime::Store`) for every item. Instead, the Engine holds the WASM instance open and simply overwrites the linear memory buffer with the next item's `ExtensionPayload` pointer. 
+When a `foreach` loop triggers a `use plugin::...` block inside it, the Engine does **not** re-initialize the WASM instance (`wasmtime::Store`) for every item. Instead, the Engine holds the WASM instance open and simply overwrites the linear memory buffer with the next item's `CxpPayload` pointer. 
 This results in microsecond-level iteration speeds.
 
 ```mermaid

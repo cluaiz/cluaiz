@@ -34,7 +34,7 @@ foreach ($log in $logs) {
 When using the SDK natively inside a Rust host service, this data transfer is 100% zero-copy. The `$logs` array remains in the host's memory, and the CEL engine iterates over it using pointers.
 
 ```rust
-use cluaiz_sdk::{execute, ExtensionPayload, PayloadType, Transpiler};
+use cluaiz_sdk::{execute, CxpPayload, PayloadType, Transpiler};
 use serde_json::json;
 
 fn process_server_logs() {
@@ -60,7 +60,7 @@ fn process_server_logs() {
 
     // Bincode transpilation (0.05ms) instead of JSON parsing overhead
     let payload_bytes = Transpiler::to_binary_payload(&huge_log_array).unwrap();
-    let payload = ExtensionPayload::new(PayloadType::Bincode, &payload_bytes);
+    let payload = CxpPayload::new(PayloadType::Bincode, &payload_bytes);
 
     // Executes in Rust Tokio Runtime, dropping unneeded logs instantly
     let _ = execute(cel_script, vec![payload]);

@@ -20,7 +20,7 @@ pub async fn execute(
     if final_type.is_none() {
         final_type = inquire::Select::new(
             "Select Component Type:",
-            vec!["extension".to_string(), "plugin".to_string(), "skill".to_string(), "mcp".to_string()],
+            vec!["plugin".to_string(), "skill".to_string(), "mcp".to_string()],
         ).prompt().ok();
     }
     let comp_type = final_type.ok_or_else(|| anyhow!("Component type required"))?;

@@ -34,16 +34,16 @@ flowchart TD
     C -->|method| D["String"]
     C -->|key: val| E["HashMap<String, CelValue>"]
     
-    E -->|Serialize| F["ExtensionPayload C-ABI"]
+    E -->|Serialize| F["CxpPayload C-ABI"]
     D -->|Target Symbol| G["WASM / DLL FFI Call"]
 ```
 
 **The C-ABI Struct:**
-You cannot simply pass a Rust `String` or `Vec` into a Python or C++ plugin; it will cause a segfault. The Engine intercepts the `invoke` command and packs the data (and any arguments) into a strictly aligned C-ABI struct called `ExtensionPayload`.
+You cannot simply pass a Rust `String` or `Vec` into a Python or C++ plugin; it will cause a segfault. The Engine intercepts the `invoke` command and packs the data (and any arguments) into a strictly aligned C-ABI struct called `CxpPayload`.
 
 ```rust
 #[repr(C)]
-pub struct ExtensionPayload {
+pub struct CxpPayload {
     pub payload_type: i32,
     pub data_ptr: *mut u8,
     pub data_len: usize,

@@ -5,7 +5,7 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("🚀 [Cluaiz Test] End-to-End Extension Test: cluaiz-search");
+    println!("🚀 [Cluaiz Test] End-to-End Plugin Test: cluaiz-search");
     println!("============================================================\n");
     
     let client = Client::builder()
@@ -22,8 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 2. Execute the Search Extension natively via Execute Dynamic
-    println!("🌐 [Step 2] Executing Native Web Search via Extension API...");
+    // 2. Execute the Search Plugin natively via Execute Dynamic
+    println!("🌐 [Step 2] Executing Native Web Search via Plugin API...");
     let cel_url = "http://127.0.0.1:8000/v1/execute/cluaiz-search/search";
     
     let cel_payload = json!({
@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let data: Value = search_res.json().await?;
         println!("✅ Search Completed in {:.2}s!\n", search_elapsed.as_secs_f32());
         
-        println!("==================== EXTENSION JSON RESPONSE ====================");
+        println!("==================== PLUGIN JSON RESPONSE ====================");
         let pretty_json = serde_json::to_string_pretty(&data)?;
         println!("{}", pretty_json);
         println!("=================================================================\n");
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             search_json_result = pretty_json;
         }
     } else {
-        println!("❌ [Error] Extension execution failed: {}", search_res.status());
+        println!("❌ [Error] Plugin execution failed: {}", search_res.status());
         let err_text = search_res.text().await?;
         println!("Details: {}", err_text);
         return Ok(());

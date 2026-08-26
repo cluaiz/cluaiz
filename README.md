@@ -5,7 +5,7 @@
   </picture>
 </p>
 <h3 align="center">
-Power your local AI and execute native inference with bare-metal hardware and real-time LLM steering using modular extensions plugins MCP skills and CEL language modifications</h3>
+Power your local AI and execute native inference with bare-metal hardware and real-time LLM steering using modular plugins, MCP connectors, skills, and CEL language modifications</h3>
 
 </br>
 <p align="center">
@@ -175,15 +175,15 @@ $ cluaiz plugin install web-scraper
 - **Technical Purpose:** This is the official graphical user interface. It connects as a **Pure Client** to the background `cluaiz serve` daemon.
 - **Execution Flow:** By communicating with the engine over REST endpoints (`/health`, `/v1/chat/stream`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
 
-### 2. `cluaiz-hub` (Global Registry & Extensions)
+### 2. `cluaiz-hub` (Global Registry & Plugins)
 
 - **[Repository: cluaiz-hub](https://github.com/cluaiz/cluaiz-hub)**
-- **Technical Purpose:** The central, automated manifest registry (`registry.json`) for the Cluaiz ecosystem. It hosts the source code and manifests for WASM Skills, Native Plugins, and Extensions. The CLI commands (e.g., `cluaiz extension install`) directly fetch manifests from this hub to securely link extensions into the engine.
-- **Example Extension hosted in the Hub:**
-  - **[cluaize-search](https://github.com/cluaiz/cluaiz-hub/tree/main/Extensions/cluaize-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
+- **Technical Purpose:** The central, automated manifest registry (`registry.json`) for the Cluaiz ecosystem. It hosts the source code and manifests for WASM Skills, Native Plugins, and MCP Servers. The CLI commands (e.g., `cluaiz plugin install`) directly fetch manifests from this hub to securely link plugins into the engine.
+- **Example Plugin hosted in the Hub:**
+  - **[cluaiz-search](https://github.com/cluaiz/cluaiz-hub/tree/main/plugins/cluaiz-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
   - **Execution Flow:**
-    1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<TRIGGER:extension:cluaiz-search>`.
-    2. The extension concurrently hits SearXNG and DuckDuckGo using `reqwest`, parses the DOM using `scraper` (stripping JS/CSS), and dynamically compresses the text (using BM25) to fit the available VRAM envelope.
+    1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<TRIGGER:plugin:cluaiz-search>`.
+    2. The plugin concurrently hits SearXNG and DuckDuckGo using `reqwest`, parses the DOM using `scraper` (stripping JS/CSS), and dynamically compresses the text (using BM25) to fit the available VRAM envelope.
     3. The parsed knowledge is injected directly into the active C-pointer KV-Cache and generation resumes seamlessly.
 
 </details>

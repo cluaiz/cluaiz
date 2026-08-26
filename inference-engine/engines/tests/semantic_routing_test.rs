@@ -79,7 +79,7 @@ This is a secure system skill that handles diagnostic memory allocation.
                     if model_file.exists() && tokenizer_file.exists() {
                         println!("⏳ [Test] Instantiating ONNX engine to verify embedding compilation...");
                         let mut engine = cluaiz_onnx::engine::OnnxEngine::new().unwrap();
-                        engine.load_text_model(&model_file.to_string_lossy(), &tokenizer_file.to_string_lossy(), None).unwrap();
+                        engine.load_model(&model_file.to_string_lossy(), 1).unwrap();
                         
                         let skill_content = format!(
                             "Skill Name: {}\nDescription: {}\nTriggers: run test diagnostic, check memory constraints",

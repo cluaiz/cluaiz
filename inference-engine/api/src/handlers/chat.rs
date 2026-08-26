@@ -616,7 +616,7 @@ pub async fn chat_completions(
                                     let header = &clean_token[..header_end];
                                     let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
                                     
-                                    let comp_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                    let comp_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
                                     let comp_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
                                     
                                     tracing::info!("🔍 [API] Single-Pass Intercepted Request for {} '{}'.", comp_type, comp_name);
@@ -631,9 +631,9 @@ pub async fn chat_completions(
                                     let mut execution_result = String::new();
                                     
                                     {
-                                        use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                                        use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
                                         let executor = engines::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                                        let ext_payload = ExtensionPayload::new(PayloadType::Json, payload.as_bytes());
+                                        let ext_payload = CxpPayload::new(PayloadType::Json, payload.as_bytes());
                                         
                                         match executor.execute(comp_name, &ext_payload) {
                                             Ok(bytes) => {

@@ -12,7 +12,7 @@ This single page is the exhaustive, exact reference for every operator and contr
 
 | CEL Syntax | AST Enum | Under the Hood (Engine Level) |
 |---|---|---|
-| `->` | `Pipe` | Memory barrier. Passes the binary `ExtensionPayload` struct to the next node. |
+| `->` | `Pipe` | Memory barrier. Passes the binary `CxpPayload` struct to the next node. |
 | `use plugin::<name>` | `ImportPlugin` | Checks `EngineRules`. Dynamically links `.dll/.so` (via `libloading`) with path traversal guards, or loads WASM into global `WASM_CACHE`. |
 | `invoke(<method>, args...)` | `InvokeAction` | Translates args to FFI boundary. For WASM, strictly enforces `wasmtime::Store::set_fuel` and `ResourceLimiter` before execution. |
 | `process("<text>")` | `FastProcess` | Bypasses VM initialization. Triggers fast-path CPU loops (SIMD optimization) for raw string manipulations. |
@@ -25,7 +25,7 @@ This single page is the exhaustive, exact reference for every operator and contr
 |---|---|---|
 | `<action> <Target>(<args>)` | `Command` | Generic parser fallback. Matches `action target(args)` and passes them dynamically to the executor plugin payload. |
 | `filter <field> <op> <val>` | `Filter` | Performs native CPU comparisons (`>`, `<`, `==`, `!=`, `>=`). Drops unmatched memory payloads *before* they are sent to the next node. |
-| `select(<f1>, <f2>)` | `Select` | Memory projection. Strips unused fields from the `ExtensionPayload` to prevent VRAM footprint leaks during massive dataset iterations. |
+| `select(<f1>, <f2>)` | `Select` | Memory projection. Strips unused fields from the `CxpPayload` to prevent VRAM footprint leaks during massive dataset iterations. |
 | `time_window(size: "1h")` | `TimeWindow` | Hard-truncates the active session memory/context for token generation loops to stay within strict KV Cache limits. |
 | `similar_to(vec: [...], metric: "L2")` | `SimilarTo` | Dispatches direct hardware vector similarity scans (Cosine, L2, Dot) directly to CPU SIMD registers or GPU tensor cores. |
 

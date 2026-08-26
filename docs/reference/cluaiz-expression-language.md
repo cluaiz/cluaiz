@@ -119,7 +119,7 @@ Below is the exhaustive specification for each instruction option parsed by the 
 
 * ### `->` (Pipe)
   * **Syntax:** `op1 -> op2`
-  * **Description:** The memory barrier operator passing raw binary `ExtensionPayload`.
+  * **Description:** The memory barrier operator passing raw binary `CxpPayload`.
   * **Reference:** [Getting Started Tutorial](../cel/tutorials/getting_started.md)
 
 * ### `cel://local/executor`
@@ -155,7 +155,7 @@ Learn the security models and authoring boundaries for executing CEL logic.
 
 ## 🌐 6. Native SDKs Integration
 
-Learn how to integrate the CEL engine into your backend using zero-overhead C-ABI pointers (`ExtensionPayload`) instead of slow HTTP protocols.
+Learn how to integrate the CEL engine into your backend using zero-overhead C-ABI pointers (`CxpPayload`) instead of slow HTTP protocols.
 * **SDK Protocol Overview**: Standard architecture manual. Reference: [SDK Master Overview](../cel/sdk/sdk.md).
 * **C FFI Integration**: Zero-copy allocations using pure structs. Reference: [C FFI SDK](../cel/sdk/c-ffi.md).
 * **C++ FFI Integration**: Bridging pointers directly into C++ engines. Reference: [C++ FFI SDK](../cel/sdk/cpp-ffi.md).
@@ -165,7 +165,7 @@ Learn how to integrate the CEL engine into your backend using zero-overhead C-AB
 * **Rust Native Integration**: Low-level native crate bindings. Reference: [Rust Native SDK](../cel/sdk/rust-native.md).
 * **Pure CEL Compiler**: Zero-latency Rust AST compiler configurations. Reference: [Pure CEL SDK](../cel/sdk/pure-cel.md).
 * **Custom WASM Plugin**: Compiling Rust/AssemblyScript targets to WASM. Reference: [Custom WASM Plugin](../cel/sdk/custom-wasm-plugin.md).
-* **Manifest Architecture**: Plugin/Extension lifecycle manifests. Reference: [Manifest Architecture](../cel/sdk/manifest-architecture.md).
+* **Manifest Architecture**: Plugin/MCP lifecycle manifests. Reference: [Manifest Architecture](../cel/sdk/manifest-architecture.md).
 
 ---
 

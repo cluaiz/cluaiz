@@ -1,5 +1,5 @@
 [package]
-name = "extension_testing"
+name = "plugin_testing"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -255,7 +255,7 @@ impl CoreRouter {
                 if let Some(skill) = self.foundry.registry.skills.iter().find(|s| s.manifest.id == *id) {
                     skill_path = skill.path.clone();
                 } else {
-                    for base_dir in [env.skills_dir(), env.extensions_dir(), env.plugins_dir(), env.mcp_dir()] {
+                    for base_dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
                         let possible_path = base_dir.join(&skill_manifest.name);
                         if possible_path.exists() {
                             skill_path = possible_path;
@@ -787,7 +787,7 @@ impl CoreRouter {
                             // Check if buffer contains any full dynamic trigger
                             let mut found_trigger = None;
                             for dt in &dynamic_triggers {
-                                // Extract the prefix before the '->' or '{' (e.g., "use extension::cluaiz-search")
+                                // Extract the prefix before the '->' or '{' (e.g., "use plugin::cluaiz-search")
                                 let base_trigger = dt.split("->").next().unwrap_or(dt).split('{').next().unwrap_or(dt).trim();
                                 if let Some(idx) = buffer_cache.find(base_trigger) {
                                     found_trigger = Some((idx, base_trigger.to_string()));
@@ -874,7 +874,7 @@ impl CoreRouter {
                                     if let Some(header_end) = actual_buffer.find('>') {
                                         let header = &actual_buffer[..header_end];
                                         let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
-                                        let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                        let t_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
                                         let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
                                         
                                         let json_start = header_end + 1;
@@ -932,7 +932,7 @@ impl CoreRouter {
                                 if let Some(header_end) = actual_buffer.find('>') {
                                     let header = &actual_buffer[..header_end];
                                     let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
-                                    let t_type = if parts.len() >= 2 { parts[0] } else { "extension" };
+                                    let t_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
                                     let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
                                     
                                     let json_start = header_end + 1;
@@ -977,9 +977,9 @@ impl CoreRouter {
                                                     match step {
                                                         inference_cel::parser::planner::PlanStep::ExecuteAction { method, args } => {
                                                             let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                                                            use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType, Transpiler};
+                                                            use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType, Transpiler};
                                                             let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
-                                                            let ext_payload = ExtensionPayload::new(PayloadType::Bincode, &binary_args);
+                                                            let ext_payload = CxpPayload::new(PayloadType::Bincode, &binary_args);
                                                             match executor.execute(&method, &ext_payload) {
                                                                 Ok(bytes) => exec_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
                                                                 Err(e) => exec_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
@@ -1008,16 +1008,16 @@ impl CoreRouter {
                             }
                         } else {
                             // Legacy execution path (Sovereign format)
-                            let mut t_type = "extension";
+                            let mut t_type = "plugin";
                             let mut actual_name = t_name.as_str();
                             if let Some((parsed_type, parsed_name)) = t_name.split_once(':') {
                                 t_type = parsed_type;
                                 actual_name = parsed_name;
                             }
                             
-                            use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType};
+                            use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
                             let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new(); 
-                            let ext_payload = ExtensionPayload::new(PayloadType::Json, t_payload.as_bytes());
+                            let ext_payload = CxpPayload::new(PayloadType::Json, t_payload.as_bytes());
                             
                             match executor.execute(actual_name, &ext_payload) {
                                 Ok(bytes) => {

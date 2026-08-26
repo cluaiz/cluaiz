@@ -24,7 +24,7 @@ impl HardwareOrchestrator {
     ) -> Result<ModelWeightsWrapper> {
         tracing::info!("🔩 [Orchestrator] Initiating Dynamic Hardware Handshake for Engine: {}", engine_type);
 
-        // Engine boots purely as a router. Any DB/Memory extensions will be loaded via ExtensionManager.
+        // Engine boots purely as a router. Any DB/Memory plugins will be loaded via PluginManager.
 
         if engine_type == "onnx" {
             tracing::info!("🔮 [Orchestrator] Bypassing FFI Linker. Instantiating Native Rust ONNX Gatekeeper.");

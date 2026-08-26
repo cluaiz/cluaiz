@@ -1,5 +1,5 @@
 // cluaiz-engine: Core Foundry - Registry
-// Manages the lifecycle of cluaiz skills, extensions, plugins, and MCP servers.
+// Manages the lifecycle of cluaiz skills, plugins, and MCP servers.
 
 pub mod scanner;
 pub mod compiler_daemon;
@@ -93,17 +93,17 @@ pub struct Permissions {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExtensionManifest {
+pub struct PluginManifest {
     pub name: String,
     pub version: String,
     pub description: String,
     pub author: String,
     #[serde(rename = "type")]
     pub component_type: String,
-    pub discovery: ExtensionDiscovery,
-    pub activation: ExtensionActivation,
-    pub permissions: ExtensionPermissions,
-    pub execution: ExtensionExecution,
+    pub discovery: PluginDiscovery,
+    pub activation: PluginActivation,
+    pub permissions: PluginPermissions,
+    pub execution: PluginExecution,
     pub settings: Option<HashMap<String, SchemaField>>,
 }
 
@@ -117,19 +117,19 @@ pub struct SchemaField {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExtensionDiscovery {
+pub struct PluginDiscovery {
     pub semantic_triggers: Vec<String>,
     pub cel_grammar: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExtensionActivation {
+pub struct PluginActivation {
     pub lazy_load: Option<bool>,
     pub trigger_on: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExtensionPermissions {
+pub struct PluginPermissions {
     pub max_memory_mb: Option<u32>,
     pub max_cpu_time_ms: Option<u64>,
     pub network_access: Option<bool>,
@@ -139,7 +139,7 @@ pub struct ExtensionPermissions {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExtensionExecution {
+pub struct PluginExecution {
     pub envelope: Option<String>,
     pub entry_point: Option<String>,
     pub payload_format: Option<String>,

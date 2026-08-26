@@ -1,19 +1,21 @@
+// cluaiz-engine: Core Foundry - Registry Index
+// O(1) Master Registry that replaces filesystem walks at runtime.
+// Stored as:
+//   - ~/.cluaiz/engine/config/registry.yaml  (Human readable / editable)
+//   - ~/.cluaiz/engine/config/registry.bin   (Bincode pre-compiled, 0-ms load)
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
-// ─── Load Strategy ────────────────────────────────────────────────────────────
+// ─── Entry Types ─────────────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[serde(rename_all = "UPPERCASE")]
+#[serde(rename_all = "lowercase")]
 pub enum LoadStrategy {
-    /// Load binary into RAM at engine startup (for core dependencies like cluaiz-db)
     Eager,
-    /// Register activation events only. Zero RAM until triggered at runtime.
     Lazy,
-    /// Never auto-load. Only via explicit `cluaiz load <name>` CLI command.
-    Manual,
 }
 
 impl Default for LoadStrategy {
@@ -22,38 +24,64 @@ impl Default for LoadStrategy {
     }
 }
 
-// ─── Registry Entry (One per component in registry.yaml) ─────────────────────
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// A single entry in the registry representing an installed component.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct RegistryEntry {
-    /// Unique ID for this component (e.g., "ext_core_db_001")
+    /// Unique identifier e.g., "cluaiz-search"
+    #[serde(default)]
+    pub name: String,
+
+    #[serde(default)]
     pub id: String,
 
-    /// Relative path under ~/.cluaiz/ where this component lives
-    /// e.g., "extension/cluaiz-db" or "plugin/web-scraper"
+    #[serde(default)]
     pub domain: String,
 
-    /// Whether to load at startup (Eager) or only on trigger (Lazy)
+    /// Semantic version
+    #[serde(default)]
+    pub version: String,
+
+    /// Short description
+    #[serde(default)]
+    pub description: String,
+
+    /// How the engine loads this component
     #[serde(default)]
     pub load_strategy: LoadStrategy,
 
-    /// Events that trigger this component to be lazy-loaded
-    /// Formats: "on_startup", "on_cel_keyword:scrape", "on_command:use plugin::web-scraper"
+    /// Words/phrases that trigger this component to be loaded
+    #[serde(default)]
+    pub semantic_triggers: Vec<String>,
+
+    #[serde(default)]
+    pub semantic_index: Vec<String>,
+
+    /// Specific event strings like "on_command:use plugin::math"
+    #[serde(default)]
+    pub trigger_events: Vec<String>,
+
     #[serde(default)]
     pub activation_events: Vec<String>,
 
-    /// Whether this component is active. Disabled = never loaded, even if triggered.
-    #[serde(default = "default_true")]
-    pub enabled: bool,
+    /// Path to the component folder relative to ~/.cluaiz/
+    /// e.g., "plugins/cluaiz-search"
+    #[serde(default)]
+    pub location: String,
 
-    /// SHA256 hash of the compiled binary for integrity verification
-    /// Format: "sha256:a4fbc89e3fbc..."
+    /// Path to the compiled binary/wasm (if applicable)
+    #[serde(default)]
+    pub binary: Option<String>,
+
+    #[serde(default)]
     pub binary_hash: Option<String>,
 
-    /// Global lookup index for semantic triggers (e.g. ["math", "calculator"])
-    /// Used by the Engine to instantly find extensions without parsing manifests.
+    /// Path to SKILL.md (if applicable)
     #[serde(default)]
-    pub semantic_index: Option<Vec<String>>,
+    pub brain: Option<String>,
+
+    /// Whether this component is enabled in the registry
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 fn default_true() -> bool {
@@ -73,11 +101,7 @@ pub struct MasterRegistry {
     #[serde(default = "default_schema")]
     pub schema: String,
 
-    /// Extensions (Brain + Muscle bundles, stored in ~/.cluaiz/extension/)
-    #[serde(default)]
-    pub extensions: HashMap<String, RegistryEntry>,
-
-    /// Plugins (Pure tool .dll, stored in ~/.cluaiz/plugin/)
+    /// Plugins (WASM or Native tools, stored in ~/.cluaiz/plugins/)
     #[serde(default)]
     pub plugins: HashMap<String, RegistryEntry>,
 
@@ -98,15 +122,18 @@ impl MasterRegistry {
             .join("registry.yaml")
     }
 
-    /// Returns the canonical path for registry.bin (binary cache)
+    /// Returns the canonical path for the pre-compiled binary cache
+    /// Location: ~/.cluaiz/engine/config/registry.bin
     pub fn registry_bin_path() -> PathBuf {
         cluaiz_shared::environment::EnvironmentManager::current()
             .config_dir()
             .join("registry.bin")
     }
 
-    /// Load MasterRegistry from disk.
-    /// Priority: registry.bin (fast binary) → registry.yaml (source of truth)
+    /// Load the registry.
+    /// Fast Path:  Tries ~/.cluaiz/engine/config/registry.bin (Bincode deserialization).
+    /// Slow Path:  Falls back to registry.yaml if .bin does not exist or is corrupted.
+    /// Cold Path:  Returns empty MasterRegistry if neither exists.
     /// Called ONCE at engine cold boot.
     pub fn load() -> Result<Self> {
         let bin_path = Self::registry_bin_path();
@@ -117,8 +144,7 @@ impl MasterRegistry {
             if let Ok(bytes) = std::fs::read(&bin_path) {
                 if let Ok(mut registry) = bincode::deserialize::<MasterRegistry>(&bytes) {
                     let _ = registry.sync_with_filesystem();
-                    tracing::info!("📋 [Registry] Loaded {} extensions, {} plugins, {} mcp from binary cache",
-                        registry.extensions.len(),
+                    tracing::info!("📋 [Registry] Loaded {} plugins, {} mcp from binary cache",
                         registry.plugins.len(),
                         registry.mcp.len()
                     );
@@ -133,8 +159,7 @@ impl MasterRegistry {
             let mut registry: MasterRegistry = serde_yaml::from_str(&content)?;
             let _ = registry.sync_with_filesystem();
 
-            tracing::info!("📋 [Registry] Loaded {} extensions, {} plugins, {} mcp from registry.yaml",
-                registry.extensions.len(),
+            tracing::info!("📋 [Registry] Loaded {} plugins, {} mcp from registry.yaml",
                 registry.plugins.len(),
                 registry.mcp.len()
             );
@@ -168,8 +193,8 @@ impl MasterRegistry {
         // Regenerate binary cache
         updated.save_bin_cache()?;
 
-        tracing::info!("💾 [Registry] Saved registry.yaml with {} extensions, {} plugins, {} mcp",
-            self.extensions.len(), self.plugins.len(), self.mcp.len());
+        tracing::info!("💾 [Registry] Saved registry.yaml with {} plugins, {} mcp",
+            self.plugins.len(), self.mcp.len());
         Ok(())
     }
 
@@ -187,21 +212,10 @@ impl MasterRegistry {
 
     pub fn sync_with_filesystem(&mut self) -> Result<()> {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
-        let ext_dir = env.extensions_dir();
         let plugins_dir = env.plugins_dir();
         let mcp_dir = env.mcp_dir();
-        let skills_dir = env.skills_dir();
         
         let mut changed = false;
-        
-        // extensions
-        let ext_keys: Vec<String> = self.extensions.keys().cloned().collect();
-        for key in ext_keys {
-            if !ext_dir.join(&key).exists() && !skills_dir.join(&key).exists() {
-                self.extensions.remove(&key);
-                changed = true;
-            }
-        }
         
         // plugins
         let plugin_keys: Vec<String> = self.plugins.keys().cloned().collect();
@@ -229,24 +243,22 @@ impl MasterRegistry {
     }
 
     /// Add/update a component entry and persist to disk.
-    /// Called by CLI after `cluaiz extension install <name>`.
+    /// Called after `cluaiz plugin install <name>`.
     pub fn register_component(&mut self, component_type: &str, name: &str, entry: RegistryEntry) -> Result<()> {
         match component_type {
-            "extension" | "extensions" => { self.extensions.insert(name.to_string(), entry); }
-            "plugin"    | "plugins"    => { self.plugins.insert(name.to_string(), entry); }
-            "mcp"                      => { self.mcp.insert(name.to_string(), entry); }
+            "plugin" | "plugins" => { self.plugins.insert(name.to_string(), entry); }
+            "mcp"                => { self.mcp.insert(name.to_string(), entry); }
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         }
         self.save()
     }
 
     /// Remove a component entry and persist to disk.
-    /// Called by CLI after `cluaiz extension remove <name>`.
+    /// Called after `cluaiz plugin remove <name>`.
     pub fn deregister_component(&mut self, component_type: &str, name: &str) -> Result<()> {
         let removed = match component_type {
-            "extension" | "extensions" => self.extensions.remove(name).is_some(),
-            "plugin"    | "plugins"    => self.plugins.remove(name).is_some(),
-            "mcp"                      => self.mcp.remove(name).is_some(),
+            "plugin" | "plugins" => self.plugins.remove(name).is_some(),
+            "mcp"                => self.mcp.remove(name).is_some(),
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         };
 
@@ -260,9 +272,8 @@ impl MasterRegistry {
     /// Toggle enabled/disabled state of a component
     pub fn set_enabled(&mut self, component_type: &str, name: &str, enabled: bool) -> Result<()> {
         let entry = match component_type {
-            "extension" | "extensions" => self.extensions.get_mut(name),
-            "plugin"    | "plugins"    => self.plugins.get_mut(name),
-            "mcp"                      => self.mcp.get_mut(name),
+            "plugin" | "plugins" => self.plugins.get_mut(name),
+            "mcp"                => self.mcp.get_mut(name),
             other => return Err(anyhow::anyhow!("Unknown component type: {}", other)),
         };
 
@@ -279,11 +290,6 @@ impl MasterRegistry {
     /// Called at boot to know what to load immediately.
     pub fn eager_components(&self) -> Vec<(String, &str, &RegistryEntry)> {
         let mut result = Vec::new();
-        for (name, entry) in &self.extensions {
-            if entry.enabled && entry.load_strategy == LoadStrategy::Eager {
-                result.push((name.clone(), "extension", entry));
-            }
-        }
         for (name, entry) in &self.plugins {
             if entry.enabled && entry.load_strategy == LoadStrategy::Eager {
                 result.push((name.clone(), "plugin", entry));
@@ -301,11 +307,6 @@ impl MasterRegistry {
     /// Called at boot to populate the ActivationEventBus (zero RAM cost).
     pub fn lazy_watch_list(&self) -> Vec<(String, &str, &RegistryEntry)> {
         let mut result = Vec::new();
-        for (name, entry) in &self.extensions {
-            if entry.enabled && entry.load_strategy == LoadStrategy::Lazy {
-                result.push((name.clone(), "extension", entry));
-            }
-        }
         for (name, entry) in &self.plugins {
             if entry.enabled && entry.load_strategy == LoadStrategy::Lazy {
                 result.push((name.clone(), "plugin", entry));
@@ -319,12 +320,9 @@ impl MasterRegistry {
         result
     }
 
-    /// List all components with their status (for `cluaiz extension list` CLI)
+    /// List all components with their status (for `cluaiz plugin list` CLI)
     pub fn list_all(&self) -> Vec<(String, &str, &RegistryEntry)> {
         let mut result = Vec::new();
-        for (name, entry) in &self.extensions {
-            result.push((name.clone(), "extension", entry));
-        }
         for (name, entry) in &self.plugins {
             result.push((name.clone(), "plugin", entry));
         }

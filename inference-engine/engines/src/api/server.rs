@@ -206,7 +206,7 @@ async fn handle_components_list() -> Result<String, String> {
     let env = cluaiz_shared::environment::EnvironmentManager::current();
     let mut results = serde_json::Map::new();
     
-    for comp_type in ["extension", "plugin", "mcp", "skill"] {
+    for comp_type in ["plugin", "mcp", "skill"] {
         let dir = env.global_dir.join(format!("{}s", comp_type));
         let mut items = Vec::new();
         if dir.exists() {

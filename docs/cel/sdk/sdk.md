@@ -14,7 +14,7 @@ Unlike traditional SDKs that connect to an external server via HTTP, the cluaiz 
 ### 1. The HTTP Loophole
 You should **never** wrap the cluaiz Engine behind an HTTP server (e.g., FastAPI, Express) and send raw CEL strings over the network for execution.
 - **The Security Loophole:** Exposing a network endpoint that accepts and executes dynamic CEL code allows unbounded execution. While the internal parser has a `MAX_PARSE_DEPTH = 32`, an attacker could still trigger Denial of Service via massive `foreach` loops if the HTTP layer isn't heavily guarded. Native FFI SDKs keep the execution completely contained and sandboxed within your secure backend process.
-- **The Performance Bottleneck:** The cluaiz SDK uses the C-ABI `ExtensionPayload` pointer for memory transfers. You cannot send a raw RAM pointer over HTTP. Serializing a 10MB tensor payload to JSON over HTTP takes ~500ms. Transferring it via the Native SDK (FFI Bincode pointers) takes **0.05ms**.
+- **The Performance Bottleneck:** The cluaiz SDK uses the C-ABI `CxpPayload` pointer for memory transfers. You cannot send a raw RAM pointer over HTTP. Serializing a 10MB tensor payload to JSON over HTTP takes ~500ms. Transferring it via the Native SDK (FFI Bincode pointers) takes **0.05ms**.
 
 ### 2. Embedding CEL inside JSON, YAML, or Markdown
 You should **never** embed CEL code inside JSON payloads, YAML configurations, or Markdown (`.md`) code blocks with the expectation that the cluaiz engine will natively extract and run it.
@@ -40,7 +40,7 @@ Defined in `legacy_rhai.rs`, the engine can drop down to execute raw Rhai script
 - **Usage:** Used ONLY for highly trusted, internal configuration logic where raw performance and scripting flexibility are prioritized over hard security boundaries.
 
 ### 3. Native SDK (FFI)
-The logic executes natively in Rust, but passes data to your host language (Node.js/Python) via `ExtensionPayload` pointers.
+The logic executes natively in Rust, but passes data to your host language (Node.js/Python) via `CxpPayload` pointers.
 
 ---
 

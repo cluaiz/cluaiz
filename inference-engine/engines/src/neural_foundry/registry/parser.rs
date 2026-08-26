@@ -43,7 +43,7 @@ impl SkillParser {
                     permissions,
                     computational_budget: None,
                     user_profile_binding: None,
-                    soul_type: "extension".to_string(),
+                    soul_type: "plugin".to_string(),
                     Core_metadata: None,
                 })
             } else {

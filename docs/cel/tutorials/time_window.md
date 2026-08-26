@@ -34,14 +34,14 @@ flowchart TD
     
     C --> D{"Engine Execution"}
     
-    E["ExtensionPayload Array"] --> D
+    E["CxpPayload Array"] --> D
     
     D -->|Check timestamp| F{"Is older than 1h?"}
     
     F -->|Yes| G["Drop from RAM"]
     F -->|No| H["Keep in Array"]
     
-    H --> I["Return truncated ExtensionPayload"]
+    H --> I["Return truncated CxpPayload"]
 ```
 
 **Sliding Window Truncation:**

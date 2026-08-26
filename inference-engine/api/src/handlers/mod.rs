@@ -9,7 +9,6 @@ pub mod setup;
 pub mod optimization;
 pub mod benchmark;
 pub mod plugins;
-pub mod extensions;
 pub mod mcp;
 pub mod cel_handler;
 pub mod components;

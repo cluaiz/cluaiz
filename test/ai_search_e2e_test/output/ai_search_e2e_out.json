@@ -1,7 +1,7 @@
 {
   "ai_output": {
     "final_answer": "\n\nBased on the search results provided, here is an overview of **Cluaiz** and its products:\n\n### What is Cluaiz.com?\nThe website `https://cluaiz.com` serves as the official home for **Cluaiz**, a high-performance, hardware-agnostic AI inference engine. The site focuses on providing tools for running advanced open-source models locally with \"industrial-grade precision\" and complete privacy. It emphasizes bypassing legacy software layers (like hypervisors and container containers) to connect directly with GPU cores via APIs such as CUDA, Metal, and Vulkan.\n\n### Products Built by Cluaiz Technologies\nAccording to the search results, Cluaiz builds a **Local AI Inference Engine & Orchestrator**. Key features include:\n\n*   **Hardware Agnostic Runtime:** It is designed to run on various hardware architectures including AMD, Intel, Apple Silicon (M-series), ARM, and NVIDIA GPUs.\n*   **System-Level Optimization:** The engine minimizes software overheads by utilizing compute APIs directly, ensuring maximum performance for local workstations ranging from consumer laptops to private servers.\n*   **Sovereign Neural Runtime:** It allows users to deploy AI models natively with a single command, offering complete privacy since inference happens locally without needing an external cloud connection.\n*   **Native Execution:** Built in Rust and available as a standalone engine (e.g., `cluaiz` binary) that can be installed via PowerShell or similar shell commands for rapid deployment.\n[DONE]\n",
-    "initial_trigger_output": "\n\nuse extension::cluaiz-search\n[DONE]\n",
+    "initial_trigger_output": "\n\nuse plugin::cluaiz-search\n[DONE]\n",
     "usage": {
       "completion_tokens": 9,
       "hardware_snapshot": {
@@ -60,7 +60,7 @@
       "total_tokens": 9
     }
   },
-  "search_extension_payload": [
+  "search_plugin_payload": [
     {
       "favicon": "https://www.google.com/s2/favicons?sz=64&domain=cluaiz.com",
       "raw_content": null,

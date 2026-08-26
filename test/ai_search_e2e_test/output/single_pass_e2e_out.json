@@ -1,6 +1,6 @@
 {
   "execution_trace": {
-    "1_initial_trigger_stream": "\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER<TRIGGER:extension:cluaiz-search>{\"query\": \"Cluaiz.com web search\"}\n</TRIGGER\n\n[DONE]\n",
+    "1_initial_trigger_stream": "\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER\n\n<TRIGGER<TRIGGER:plugin:cluaiz-search>{\"query\": \"Cluaiz.com web search\"}\n</TRIGGER\n\n[DONE]\n",
     "2_engine_interception": {
       "extracted_payload": null,
       "log": "",
@@ -16,7 +16,7 @@
   "hardware_usage": {
     "note": "Metrics logged locally by engine."
   },
-  "search_extension_payload": null,
+  "search_plugin_payload": null,
   "test_metadata": {
     "description": "Engine natively intercepted <TRIGGER>, executed tool, injected payload, and AI synthesized final answer.",
     "model": "default",

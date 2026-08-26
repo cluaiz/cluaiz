@@ -120,9 +120,6 @@ impl EnvironmentManager {
     pub fn skills_dir(&self) -> PathBuf {
         self.global_dir.join("skills")
     }
-    pub fn extensions_dir(&self) -> PathBuf {
-        self.global_dir.join("extensions")
-    }
     pub fn plugins_dir(&self) -> PathBuf {
         self.global_dir.join("plugins")
     }
@@ -290,14 +287,6 @@ impl EnvironmentManager {
 
     pub fn ensure_skills_dir(&self) -> std::io::Result<PathBuf> {
         let dir = self.skills_dir();
-        if !dir.exists() {
-            std::fs::create_dir_all(&dir)?;
-        }
-        Ok(dir)
-    }
-
-    pub fn ensure_extensions_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.extensions_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }
