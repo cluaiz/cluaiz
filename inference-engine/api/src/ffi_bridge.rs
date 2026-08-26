@@ -506,7 +506,6 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                      flash_attention: if has_gpu { FeatureState::On } else { FeatureState::Auto },
                                      kv_cache_quantization: if vram_gb < 4.0 { KvCacheQuantization::Kv8 } else { KvCacheQuantization::Auto },
                                      hybrid_memory: FeatureState::Off,
-                                     force_vram_reclaim: FeatureState::Off,
                                      force_memory_lock: if ram_gb < 8.0 { FeatureState::On } else { FeatureState::Off },
                                      context_shifting: ContextShiftingMode::Auto,
                                      speculative_decoding: optimal_spec,
@@ -515,9 +514,6 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                      extreme_moe_streaming: FeatureState::Auto,
                                      custom_vram_buffer_gb: None,
                                      custom_ram_buffer_gb: None,
-                                     turbo_quant: FeatureState::Auto,
-                                     auto_round: FeatureState::Auto,
-                                     enforce_json: false,
                                  };
 
                                 let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&optimal_optimization);

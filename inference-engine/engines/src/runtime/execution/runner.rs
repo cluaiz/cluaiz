@@ -44,7 +44,7 @@ impl cluaizRunner {
         self.model.apply_optimization(&optimization)?;
         
         // 🌊 Liquid Mode Linkage
-        if optimization.turbo_quant == cluaiz_shared::hardware::schema::optimization::FeatureState::On {
+        if optimization.kv_cache_quantization != cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv16 {
             self.model.set_liquid_mode(true)?;
         }
 

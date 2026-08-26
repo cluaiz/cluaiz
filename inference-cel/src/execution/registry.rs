@@ -8,7 +8,7 @@ use dashmap::DashMap;
 
 use crate::parser::metadata_parser::{MetadataParser, Integration, EngineRules};
 use crate::execution::{Cluaizxecutor, wasm_sandbox::WasmExecutor, native_sandbox::NativeExecutor, legacy_rhai::LegacyRhaiExecutor};
-use crate::vram::gpu_injector::inject_from_cpu;
+use crate::vram::prefix_caching::inject_from_cpu;
 
 /// The default sandbox to fall back to when a manifest does not declare `engine_rules`.
 /// WASM is the safest default — fully sandboxed, no host access.

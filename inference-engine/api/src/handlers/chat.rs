@@ -31,8 +31,9 @@ pub struct ExternalChatRequest {
     pub temporary_chat: Option<TemporaryChatMode>,
     #[serde(default)]
     pub session_id: Option<String>,
-    // Cluaiz Extension Parameters
-    pub think_mode: Option<String>,
+    // Cluaiz Extension & OpenAI Reasoning Parameters
+    pub think_mode: Option<serde_json::Value>,
+    pub reasoning_effort: Option<String>,
     pub response_length: Option<serde_json::Value>,
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
@@ -355,7 +356,7 @@ pub async fn chat_completions(
     };
 
     let mut matched_tool = String::new();
-    let mut jit_injected = false;
+    let mut prefix_caching_injected = false;
     let keep_alive_val = request.keep_alive;
     
     // We will modify the last message in the array if a skill is matched
@@ -382,7 +383,7 @@ pub async fn chat_completions(
             if let Some(name) = std::path::Path::new(&skill_path).file_name() {
                 matched_tool = name.to_string_lossy().to_string();
             }
-            jit_injected = true;
+            prefix_caching_injected = true;
             if let Some(last_msg) = augmented_messages.last_mut() {
                 let prev_content = last_msg.content.flatten_to_string().await;
                 last_msg.content = MessageContent::Text(format!("{}\n\n{}", body, prev_content));
@@ -391,142 +392,67 @@ pub async fn chat_completions(
         }
     }
 
-    // 🌡️ DYNAMIC RESPONSE LENGTH & TEMPERATURE CONSTRAINT
-    let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-    let mut applied_constraint: Option<String> = None;
-    let mut applied_temp: Option<f64> = request.temperature.map(|t| t as f64);
-    
-    let map_val = gguf_meta.user_moved_flags.response_length.to_value();
+    // 🧠 REASONING & THINKING BUDGET RESOLUTION (OpenAI reasoning_effort + Cluaiz think_mode)
+    let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+    let n_ctx_limit = (gguf_meta.hardware_and_execution.n_ctx as usize).max(512);
 
-    if let Some(payload_val) = &request.response_length {
-        if let Some(payload_map) = payload_val.as_object() {
-            // If UI sends a custom map, pick the first one as override
-            if let Some((temp_str, constraint_val)) = payload_map.iter().next() {
-                if let Ok(temp) = temp_str.parse::<f64>() {
-                    applied_temp = Some(temp);
-                    if let Some(c_str) = constraint_val.as_str() {
-                        applied_constraint = Some(c_str.to_string());
-                    }
-                }
-            }
-        } else if let Some(mode_str) = payload_val.as_str() {
-            // If UI sends a predefined mode as string, lookup from config dynamically
-            if let Some(map_obj) = map_val.as_object() {
-                for branch_name in &["think_on", "think_off"] {
-                    if let Some(branch) = map_obj.get(*branch_name).and_then(|v| v.as_object()) {
-                        if let Some(mode_obj) = branch.get(mode_str).and_then(|v| v.as_object()) {
-                            if let Some((temp_str, constraint_val)) = mode_obj.iter().next() {
-                                if let Ok(temp) = temp_str.parse::<f64>() {
-                                    applied_temp = Some(temp);
-                                    if let Some(c_str) = constraint_val.as_str() {
-                                        applied_constraint = Some(c_str.to_string());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if applied_constraint.is_none() {
-        let current_temp = applied_temp.unwrap_or(gguf_meta.samplers.temp as f64);
-        let current_temp_str = current_temp.to_string();
-        let current_temp_str_1 = format!("{:.1}", current_temp);
-
-        if let Some(map_obj) = map_val.as_object() {
-            let active_think_mode = request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str());
-            
-            // If Auto, we DO NOT inject any default constraints. The AI handles it automatically.
-            if !active_think_mode.eq_ignore_ascii_case("auto") {
-                if let Some(t) = map_obj.get("type").and_then(|v| v.as_str()) {
-                    if t == "predefined" {
-                        let branch_key = if active_think_mode.eq_ignore_ascii_case("on") { "think_on" } else { "think_off" };
-                        if let Some(branch) = map_obj.get(branch_key).and_then(|v| v.as_object()) {
-                            for (_, temp_obj) in branch {
-                                if let Some(temp_map) = temp_obj.as_object() {
-                                    if let Some(constraint_val) = temp_map.get(&current_temp_str).or_else(|| temp_map.get(&current_temp_str_1)) {
-                                        if let Some(constraint_str) = constraint_val.as_str() {
-                                            applied_constraint = Some(constraint_str.to_string());
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if t == "custom" {
-                        if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
-                            if let Some(constraint_str) = constraint_val.as_str() {
-                                applied_constraint = Some(constraint_str.to_string());
-                            }
-                        }
-                    }
+    let active_think_mode_owned = request.reasoning_effort.as_deref()
+        .map(|re| re.to_string())
+        .or_else(|| {
+            request.think_mode.as_ref().map(|v| {
+                if let Some(s) = v.as_str() {
+                    s.to_string()
+                } else if let Some(b) = v.as_bool() {
+                    if b { "high".to_string() } else { "off".to_string() }
+                } else if let Some(n) = v.as_i64() {
+                    n.to_string()
+                } else if let Some(n) = v.as_u64() {
+                    n.to_string()
                 } else {
-                    if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
-                        if let Some(constraint_str) = constraint_val.as_str() {
-                            applied_constraint = Some(constraint_str.to_string());
-                        }
-                    }
+                    "auto".to_string()
+                }
+            })
+        })
+        .unwrap_or_else(|| gguf_meta.user_moved_flags.think_mode.clone());
+
+    // Mathematical clamping of custom integer budgets against n_ctx and max_tokens
+    let normalized_think_mode = match active_think_mode_owned.to_lowercase().as_str() {
+        "off" | "false" | "0" | "minimal" => "off".to_string(),
+        "low" => "low".to_string(),
+        "medium" => "medium".to_string(),
+        "high" | "on" | "max" => "high".to_string(),
+        "auto" => "auto".to_string(),
+        custom_str => {
+            if let Ok(custom_budget) = custom_str.parse::<usize>() {
+                if custom_budget == 0 {
+                    "off".to_string()
+                } else {
+                    let max_tok = validated_max_tokens.unwrap_or(2048);
+                    let clamped = custom_budget
+                        .min(n_ctx_limit)
+                        .min(max_tok.saturating_sub(32).max(1));
+                    clamped.to_string()
                 }
             } else {
-                if let Some(constraint_val) = map_obj.get(&current_temp_str).or_else(|| map_obj.get(&current_temp_str_1)) {
-                    if let Some(constraint_str) = constraint_val.as_str() {
-                        applied_constraint = Some(constraint_str.to_string());
-                    }
-                }
+                "auto".to_string()
             }
         }
-    }
+    };
+    let active_think_mode = normalized_think_mode;
 
-    // Apply strict payload overrides (Phase 3)
-    if let Some(t) = request.temperature {
-        gguf_meta.samplers.temp = t as f64;
-    } else if let Some(temp) = applied_temp {
-        gguf_meta.samplers.temp = temp;
-    }
-
-    if let Some(p) = request.top_p {
-        gguf_meta.samplers.top_p = p as f64;
-    }
-    if let Some(k) = request.top_k {
-        gguf_meta.samplers.top_k = k as usize;
-    }
-    if let Some(mp) = request.min_p {
-        gguf_meta.samplers.min_p = mp as f64;
-    }
-    if let Some(pp) = request.presence_penalty {
-        gguf_meta.samplers.presence_penalty = pp as f64;
-    }
-    if let Some(fp) = request.frequency_penalty {
-        gguf_meta.samplers.frequency_penalty = fp as f64;
-    }
-    if let Some(rp) = request.repetition_penalty {
-        gguf_meta.samplers.repeat_penalty = rp as f64;
-    }
-    if let Some(s) = request.seed {
-        gguf_meta.samplers.seed = Some(s as u64);
-    }
-
-    if let Some(think_mode) = &request.think_mode {
-        gguf_meta.user_moved_flags.think_mode = think_mode.clone();
-    }
-
-    if let Some(constraint) = applied_constraint {
-        if !constraint.is_empty() {
-            tracing::info!("🌡️ [Prompt] Injecting response constraint.");
-            if let Some(sys_msg) = augmented_messages.iter_mut().find(|m| m.role.to_lowercase() == "system") {
-                let prev_sys = sys_msg.content.flatten_to_string().await;
-                sys_msg.content = MessageContent::Text(format!("{}\n\n{}", prev_sys, constraint));
-            } else {
-                augmented_messages.insert(0, ExternalMessage {
-                    role: "system".to_string(),
-                    content: MessageContent::Text(constraint.to_string()),
-                });
-            }
+    let active_response_length = request.response_length.as_ref().map(|v| {
+        if let Some(s) = v.as_str() {
+            s.to_string()
+        } else if let Some(n) = v.as_i64() {
+            n.to_string()
+        } else if let Some(n) = v.as_u64() {
+            n.to_string()
+        } else {
+            "auto".to_string()
         }
-    }
+    }).unwrap_or_else(|| gguf_meta.user_moved_flags.response_length.clone());
 
-    // Serialize the entire message array to JSON to preserve full chat history.
+    // 🚀 ZERO-DISK CONCURRENCY: Direct In-Memory Payload & Sampler Dispatch
     // Packaging in-memory samplers into the prompt envelope eliminates disk race conditions and threads parameters directly into generation.
     let mut serialized_messages = Vec::new();
     for msg in &augmented_messages {
@@ -536,19 +462,29 @@ pub async fn chat_completions(
             "content": content_str
         }));
     }
+    let effective_temp = request.temperature.map(|t| t as f64).unwrap_or(gguf_meta.samplers.temp);
+    let effective_top_p = request.top_p.map(|p| p as f64).unwrap_or(gguf_meta.samplers.top_p);
+    let effective_top_k = request.top_k.map(|k| k as usize).unwrap_or(gguf_meta.samplers.top_k);
+    let effective_min_p = request.min_p.map(|m| m as f64).unwrap_or(gguf_meta.samplers.min_p);
+    let effective_presence = request.presence_penalty.map(|p| p as f64).unwrap_or(gguf_meta.samplers.presence_penalty);
+    let effective_frequency = request.frequency_penalty.map(|f| f as f64).unwrap_or(gguf_meta.samplers.frequency_penalty);
+    let effective_repeat = request.repetition_penalty.map(|r| r as f64).unwrap_or(gguf_meta.samplers.repeat_penalty);
+    let effective_seed = request.seed.or(gguf_meta.samplers.seed.map(|s| s as i64));
+
     let payload_envelope = json!({
         "messages": serialized_messages,
         "samplers": {
-            "temp": gguf_meta.samplers.temp,
-            "top_p": gguf_meta.samplers.top_p,
-            "top_k": gguf_meta.samplers.top_k,
-            "min_p": gguf_meta.samplers.min_p,
-            "presence_penalty": gguf_meta.samplers.presence_penalty,
-            "frequency_penalty": gguf_meta.samplers.frequency_penalty,
-            "repeat_penalty": gguf_meta.samplers.repeat_penalty,
-            "seed": request.seed.or(gguf_meta.samplers.seed.map(|s| s as i64))
+            "temp": effective_temp,
+            "top_p": effective_top_p,
+            "top_k": effective_top_k,
+            "min_p": effective_min_p,
+            "presence_penalty": effective_presence,
+            "frequency_penalty": effective_frequency,
+            "repeat_penalty": effective_repeat,
+            "seed": effective_seed
         },
-        "think_mode": request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+        "think_mode": &active_think_mode,
+        "response_length": &active_response_length
     });
     let json_prompt = serde_json::to_string(&payload_envelope).unwrap_or_else(|_| "{}".to_string());
     // Initial dispatch to see if it's a stream or an error
@@ -562,14 +498,18 @@ pub async fn chat_completions(
                 let temp_mode = request.temporary_chat.clone();
                 let req_session_id = request.session_id.clone();
                 let req_id_stream = request_id.clone();
+                let active_think_mode_stream = active_think_mode.clone();
+                let active_response_length_stream = active_response_length.clone();
                 
                 let stream = async_stream::stream! {
                      let mut current_prompt = json_prompt.clone();
-                     let mut total_generated = String::new();
-                     let mut overall_token_count = 0;
-                     let mut first_ttft_ms = 0;
-                     let mut is_first_token = true;
-                     let mut telemetry_sent = false;
+                      let mut total_generated = String::new();
+                      let mut overall_token_count = 0;
+                      let mut reasoning_tokens_count = 0usize;
+                      let mut in_think_block = false;
+                      let mut first_ttft_ms = 0;
+                      let mut is_first_token = true;
+                      let mut telemetry_sent = false;
 
                      // 🚀 YIELD MODEL HEADER METADATA EARLY (REAL-TIME UI UPDATE)
                      let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
@@ -706,14 +646,17 @@ pub async fn chat_completions(
                                         user_query, comp_type, comp_name, execution_result
                                     ),
                                     "samplers": {
-                                        "temp": gguf_meta.samplers.temp,
-                                        "top_p": gguf_meta.samplers.top_p,
-                                        "top_k": gguf_meta.samplers.top_k,
-                                        "min_p": gguf_meta.samplers.min_p,
-                                        "presence_penalty": gguf_meta.samplers.presence_penalty,
-                                        "repeat_penalty": gguf_meta.samplers.repeat_penalty
+                                        "temp": effective_temp,
+                                        "top_p": effective_top_p,
+                                        "top_k": effective_top_k,
+                                        "min_p": effective_min_p,
+                                        "presence_penalty": effective_presence,
+                                        "frequency_penalty": effective_frequency,
+                                        "repeat_penalty": effective_repeat,
+                                        "seed": effective_seed
                                     },
-                                    "think_mode": request.think_mode.as_deref().unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+                                    "think_mode": &active_think_mode_stream,
+                                    "response_length": &active_response_length_stream
                                 });
                                 current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
 
@@ -722,7 +665,17 @@ pub async fn chat_completions(
                                 break;
                             }
                             
-                            // Normal Token Yielding
+                            // Normal Token Yielding & Reasoning Detection
+                            if token.contains("<think") || token.contains("<|thought") || token.contains("<thought") {
+                                in_think_block = true;
+                            }
+                            if in_think_block {
+                                reasoning_tokens_count += 1;
+                            }
+                            if token.contains("</think>") || token.contains("<channel|>") || token.contains("</thought>") || token.contains("</|thought|>") {
+                                in_think_block = false;
+                            }
+
                             total_generated.push_str(&token);
                             overall_token_count += 1;
                             
@@ -764,9 +717,14 @@ pub async fn chat_completions(
                     };
 
                     if send_telemetry {
+                        let prompt_tok_est = augmented_messages.len() * 4;
                         let mut usage_json = json!({
+                            "prompt_tokens": prompt_tok_est,
                             "completion_tokens": overall_token_count,
-                            "total_tokens": overall_token_count,
+                            "total_tokens": overall_token_count + prompt_tok_est,
+                            "completion_tokens_details": {
+                                "reasoning_tokens": reasoning_tokens_count
+                            },
                             "time_to_first_token_ms": first_ttft_ms,
                             "total_time_ms": total_time_ms,
                             "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
@@ -873,7 +831,15 @@ pub async fn chat_completions(
 
         if send_telemetry {
             let total_time_ms = start_time.elapsed().as_millis();
+            let comp_tok_est = content.split_whitespace().count().max(1);
+            let prompt_tok_est = augmented_messages.len() * 4;
             let mut usage_json = json!({
+                "prompt_tokens": prompt_tok_est,
+                "completion_tokens": comp_tok_est,
+                "total_tokens": comp_tok_est + prompt_tok_est,
+                "completion_tokens_details": {
+                    "reasoning_tokens": 0
+                },
                 "total_time_ms": total_time_ms
             });
             

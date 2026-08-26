@@ -14,7 +14,7 @@ use inference_cel::parser::lexer::parse;
 use inference_cel::parser::planner::{CelPlanner, PlanBlock, PlanStep};
 use inference_cel::ffi::cxp_ffi::{ExtensionPayload, PayloadType, Transpiler};
 use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
-use inference_cel::vram::gpu_injector::{inject_from_cpu, ContextInjectionEnvelope, TensorData};
+use inference_cel::vram::prefix_caching::{inject_from_cpu, ContextInjectionEnvelope, TensorData};
 
 #[derive(Deserialize)]
 pub struct CelExecuteRequest {

@@ -135,7 +135,7 @@ pub struct ExtensionPermissions {
     pub network_access: Option<bool>,
     pub vram_kv_inject: Option<bool>,
     pub file_system: Option<String>,
-    pub mid_layer_jit_injection: Option<bool>,
+    pub prefix_caching: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
