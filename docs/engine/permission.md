@@ -3,7 +3,7 @@
 ## 1. System Overview
 The `Permission.json` is the absolute sovereign policy file for the cluaiz Inference Engine. It acts as the primary firewall and capability router, determining exactly what hardware resources (models), data flows (vectorization), and sandboxed privileges (WASM) are permitted during runtime. 
 
-Unlike static configuration files, this file dictates the **Backend Power Dynamics**—how the engine orchestrates its telemetry and handles JIT (Just-In-Time) extension requests.
+Unlike static configuration files, this file dictates the **Backend Power Dynamics**—how the engine orchestrates its telemetry and handles extension execution requests.
 
 ## 2. Capability Architecture & Memory Mapping
 
@@ -25,9 +25,9 @@ When an extension asks for execution power via the `/v1/cel/execute` endpoint, t
 * **`vectorize_user_input` / `vectorize_ai_response`**: 
   When set to `true`, the engine spawns an asynchronous background thread. For every conversational turn, the text is streamed through the `vector_models.text` graph, converted into high-dimensional vectors, and written to the LMDB local vector store. This creates a perpetual, searchable memory without stalling the main UI generation loop.
 
-## 4. Architectural Flow: Extension JIT Control
+## 4. Architectural Flow: Extension Execution & Prefix Caching
 
-The following diagram illustrates how user settings in `Permission.json` actively govern what power an extension actually gets during a JIT execution event.
+The following diagram illustrates how user settings in `Permission.json` actively govern what power an extension actually gets during an execution event.
 
 ```mermaid
 sequenceDiagram
@@ -37,7 +37,7 @@ sequenceDiagram
     
     User/UI->>Engine: Sends CEL Command `<cel>use ext::search...</cel>`
     Engine->>Engine: Pauses LLM Generation (Think Hook)
-    Engine->>Engine: Reads `Permission.json` & `system_booster.json`
+    Engine->>Engine: Reads `Permission.json` & `llm_optimization.json`
     
     Note over Engine: Firewall & Feature Validation
     
@@ -49,10 +49,10 @@ sequenceDiagram
         Extension->>Extension: Executes basic logic
     end
     
-    Extension-->>Engine: Returns Result / JIT Skill Logic
+    Extension-->>Engine: Returns Result / Skill Logic
     
-    Note over Engine: Mid-Layer VRAM Injection
+    Note over Engine: Prefix Caching Context Continuation
     
-    Engine->>Engine: Pushes Result into KV Cache
+    Engine->>Engine: Pushes Result into Sequence Context
     Engine-->>User/UI: Resumes LLM Text Stream with New Knowledge
 ```

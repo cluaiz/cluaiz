@@ -109,7 +109,7 @@ Plugins define their "DNA / Genomes" as strict Rust structs. The Engine transpil
 ## 🧠 5. GPU Isolation & Crash Prevention (LAW 11 & 12)
 
 **The Flaw:** If a dynamic `.dll` tries to manipulate VRAM (GPU memory) directly, it causes an OS-level Segmentation Fault.
-**The CEL Solution:** The FFI layer enforces a strictly isolated pipeline. Plugins execute ONLY on the CPU and return data payloads (Pointers). The `gpu_injector.rs` then takes sole ownership of these payloads, validates them, and safely injects them into the LLM's Key-Value Cache/Context window using verified Sequence IDs. No plugin is ever allowed direct GPU access, guaranteeing engine stability.
+**The CEL Solution:** The FFI layer enforces a strictly isolated pipeline. Plugins execute ONLY on the CPU and return data payloads (Pointers). The `prefix_caching.rs` layer then validates these payloads and prepares them for seamless context continuation in the active sequence. No plugin is ever allowed direct GPU access, guaranteeing engine stability.
 
 ---
 
@@ -123,6 +123,6 @@ When the LLM outputs a CEL script, the following exact lifecycle occurs:
 4. **Manifest Reading (`metadata_parser.rs`):** Reads `manifest.yaml` files parsing the strict 4-tier schema (`Discovery`, `Activation`, `Execution`, `Permissions`) to understand semantic triggers, lazy-loading rules, binary execution paths, and hardware constraints.
 5. **Dispatch & Routing (`registry.rs`):** The router matches the `use plugin::<name>` directive to the loaded plugin.
 6. **Execution (`cxp_ffi.rs` / `wasm_sandbox.rs`):** The payload is transpiled to a C-ABI struct and dispatched. Sandboxed modules run via Wasmtime, trusted modules run via native C-Pointers.
-7. **GPU Injection & Native Execution (`gpu_injector.rs` / `cel_handler.rs`):** Returned payloads from plugins are verified and injected back into the LLM's attention mechanism. For `<cel>` hooks, the Native Engine Directives bypass plugins entirely and directly execute internal hooks (like KV cache flushing) inside the active inference loop.
+7. **Prefix Caching & Native Continuation (`prefix_caching.rs` / `cel_handler.rs`):** Returned payloads from plugins are verified and mapped back into the active sequence context. For `<cel>` hooks, the Native Engine Directives bypass plugins entirely and directly execute internal hooks (like KV cache flushing) inside the active inference loop.
 
 > **"The Engine does not know what a Database is. It only knows how to speak CEL."** - cluaiz Engineering Doctrine

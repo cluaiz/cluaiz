@@ -143,13 +143,24 @@ For a deeper dive into how this relates to model loading and multimodal routing,
     ```
 
 ### `POST /engine/skip_think`
-*   **Description:** Injects a global signal directing the neural engine to skip `<think>` reasoning block parsing.
+*   **Description:** Injects a global signal directing the active inference engine to skip `<think>` reasoning and start streaming the direct answer immediately.
 *   **Request Format:** `POST /engine/skip_think`
 *   **Response Schema (200 OK):**
     ```json
     {
       "status": "success",
       "message": "Brain skip signal injected. Neural graph will pivot."
+    }
+    ```
+
+### `POST /engine/cancel`
+*   **Description:** Triggers a global cancellation signal to immediately abort active token generation.
+*   **Request Format:** `POST /engine/cancel`
+*   **Response Schema (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "message": "Global cancel signal triggered. Active inference stopped."
     }
     ```
 
@@ -338,10 +349,8 @@ For a deeper dive into how this relates to model loading and multimodal routing,
         "kv_cache_quantization": "Auto",
         "mode_run": "multitasking",
         "n_gpu_layers": -1,
-        "response_length": "auto",
         "speculative_decoding": "Off",
-        "think_mode": "Off",
-        "turbo_quant": "On"
+        "think_mode": "Auto"
       },
       "status": "success"
     }
@@ -442,7 +451,7 @@ For a deeper dive into how this relates to model loading and multimodal routing,
 
 ## 🧱 5. C-ABI FFI IPC Specification (Zero-Copy Bridge)
 
-For zero-copy data pipelines, client wrappers bind directly to the engine's memory space. For details on how mid-layer FFI interventions pause generation loops to inject context, see the [JIT Injection Architecture Explanation](../engine/jit_architecture.md).
+For zero-copy data pipelines, client wrappers bind directly to the engine's memory space. For details on how prefix caching and tool resumption operate, see the [Prefix Caching Architecture Explanation](../engine/prefix_caching_architecture.md).
 
 
 

@@ -53,8 +53,7 @@ permissions:
   # [FIXED SCHEMA] Allowed domains (Whitelist).
   allowed_hosts: ["api.github.com"]
   
-  # [FIXED SCHEMA] MCP processes typically do not inject directly into the engine's mid-layer (C-pointer boundary).
-  mid_layer_jit_injection: false
+  prefix_caching: false
   
   # [FIXED SCHEMA] File system access.
   file_system: "none"

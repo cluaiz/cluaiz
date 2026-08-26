@@ -65,7 +65,7 @@ This file defines *how* the component executes, its hardware limits, and its exa
 > For zero-latency boots, the Engine attempts to load the `.bin` cache first. If it misses, it lazily parses the `.yaml` source of truth and instantly auto-compiles it to `.bin`.
 
 > [!TIP]
-> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`docs/cel/manifest-extension.yaml`**](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/docs/cel/manifest-extension.yaml), [**`manifest-plugin.yaml`**](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/docs/cel/manifest-plugin.yaml), and [**`manifest-mcp.yaml`**](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/docs/cel/manifest-mcp.yaml).
+> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`docs/cel/manifest-extension.yaml`**](../manifest-extension.yaml), [**`manifest-plugin.yaml`**](../manifest-plugin.yaml), and [**`manifest-mcp.yaml`**](../manifest-mcp.yaml).
 
 ### Base Metadata Fields
 | Keyword | Type | Description |

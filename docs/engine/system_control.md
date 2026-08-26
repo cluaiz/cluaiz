@@ -8,7 +8,7 @@ When a user manipulates `system_booster.json` (like changing `mode_run`), the En
 ## 2. Hardware Mapping Protocol
 
 ### A. Identity & Host Telemetry
-* **`identity`**: Maps the OS target and CPU architecture. The Engine uses this to compile JIT dependencies or dispatch specific OS syscalls (e.g., `VirtualLock` on Windows vs `mlock` on Linux).
+* **`identity`**: Maps the OS target and CPU architecture. The Engine uses this to configure dynamic dependencies or dispatch specific OS syscalls (e.g., `VirtualLock` on Windows vs `mlock` on Linux).
 * **`brain.cluaizdb_connect_ffi`**: A critical state flag indicating if the Rust backend has achieved a low-latency IPC/FFI lock on the `cluaizdb` database engine.
 
 ### B. Silicon Truth: CPU Topology

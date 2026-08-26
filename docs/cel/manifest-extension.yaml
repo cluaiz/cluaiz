@@ -54,8 +54,8 @@ permissions:
   # [FIXED SCHEMA] Special extension power: Inject huge DB results straight to LLM memory.
   vram_kv_inject: true
   
-  # [FIXED SCHEMA] Special power: Inject tools/skills dynamically mid-generation if AI is confused (JIT injection).
-  mid_layer_jit_injection: true
+  # [FIXED SCHEMA] Prefix caching context continuation for tool results.
+  prefix_caching: true
   
   # [FIXED SCHEMA] Access to user's hard drive.
   file_system: "read_write"

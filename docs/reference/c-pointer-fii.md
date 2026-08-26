@@ -91,9 +91,9 @@ Below is the compilation reference matrix mapping pointer bindings across target
 
 ---
 
-## 🛡️ 5. JIT & WASM Sandbox Pointer Barriers
+## 🛡️ 5. Prefix Caching & WASM Sandbox Pointer Barriers
 
 To secure raw memory pointer operations, the engine implements strict sandbox limits:
-* **JIT Context Injection**: The JIT pipeline injects context directly into attention pointer segments, requiring strict permission checks. Refer to the [JIT Architecture Manual](../engine/jit_architecture.md) and [Permission Manual](../engine/permission.md).
+* **Prefix Caching Memory Guards**: The prefix caching pipeline validates context envelopes and token boundaries before sequence continuation. Refer to the [Prefix Caching Architecture Manual](../engine/prefix_caching_architecture.md) and [Permission Manual](../engine/permission.md).
 * **WASM Instruction Fuel Limits**: Before passing a pointer into a WebAssembly module, the Cluaiz Engine isolates memory structures using WASM memory barriers. Refer to the [WASM Security Matrix](../cel/authoring/wasm_vs_rhai_vs_pure.md).
 

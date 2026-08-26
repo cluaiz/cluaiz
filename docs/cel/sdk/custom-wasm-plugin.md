@@ -113,7 +113,7 @@ Create a dedicated folder on your disk. Place all your compiled `.wasm` files in
 This file tells the engine exactly what your plugin does, its security limits, and how to route requests to your different `.wasm` files.
 
 > [!TIP]
-> **Complete Example:** View a fully documented, real-world example of this file here: [**`docs/cel/manifest-plugin.yaml`**](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/docs/cel/manifest-plugin.yaml).
+> **Complete Example:** View a fully documented, real-world example of this file here: [**`docs/cel/manifest-plugin.yaml`**](../manifest-plugin.yaml).
 
 Create `/opt/cluaiz/plugins/my-custom-tools/manifest-plugin.yaml`:
 

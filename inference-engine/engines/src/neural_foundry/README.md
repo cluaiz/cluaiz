@@ -31,7 +31,7 @@ graph TD
 
 ### 2. `intelligence/`
 - **The Core Logic:** Manages the active context window state during inference and resolves dynamic skill triggers.
-- **The "Why":** When streaming a 32k context conversation, the engine must keep track of KV (Key-Value) attention states. Additionally, it reads model configuration variables via the dynamic active slots system to verify features like reasoning (`supports_thinking`), sliding window attention patterns, and custom JIT compilation configurations.
+- **The "Why":** When streaming a 32k context conversation, the engine must keep track of KV (Key-Value) attention states. Additionally, it reads model configuration variables via the dynamic active slots system to verify features like reasoning (`supports_thinking`), sliding window attention patterns, and Prefix Caching configurations.
 
 ### 3. `ingestion/`
 - **The Core Logic:** Post-processing of mathematical logits. Handles Top-K, Top-P, and Temperature sampling.
@@ -39,7 +39,7 @@ graph TD
 
 ### 4. `security/`
 - **The Core Logic:** Validates neural weights, controls execution access, and manages active model slots configuration.
-- **The "Why":** Under the **vLLM-Grade Active Slots Specification** ([permission_schema.rs](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/neural_foundry/security/permission_schema.rs)), this module validates loaded model architectures and tags them with their corresponding `supported_tasks`. This prevents malicious model injections and enforces strict pre-flight guardrails (rejecting HTTP 400 Bad Request if an embedding model is targeted for a text-generation task, safeguarding GPU VRAM from corruption).
+- **The "Why":** Under the **Active Slots Specification** ([permission_schema.rs](./security/permission_schema.rs)), this module validates loaded model architectures and tags them with their corresponding `supported_tasks`. This prevents malicious model injections and enforces strict pre-flight guardrails (rejecting HTTP 400 Bad Request if an embedding model is targeted for a text-generation task, safeguarding GPU VRAM from corruption).
 
 ### 5. `registry/`
 - **The Core Logic:** Controls Sovereign Roster Discovery and Cache Synchronization.

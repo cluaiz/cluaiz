@@ -69,7 +69,7 @@ cluaiz model set-vector bge_m3:unknown:onnx:fp32
 | `cluaiz --benchmark` | _(legacy flag)_ | Same as `benchmark` (older style) |
 | `cluaiz logs stream --tail` | | Stream active logs to terminal |
 | `cluaiz ps` | | Show active neural engines loaded in memory |
-| `cluaiz test-jit` | | Test JIT KV Cache compilation and memory footprint |
+| `cluaiz test-prefix` | | Test Prefix Caching compilation and memory footprint |
 
 **Examples:**
 ```bash

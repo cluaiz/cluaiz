@@ -58,8 +58,8 @@ permissions:
   # [FIXED SCHEMA] True/False. Can this plugin inject data directly into the AI's memory (KV cache)?
   vram_kv_inject: false
   
-  # [FIXED SCHEMA] JIT Injection control (Plugins usually don't need this complex power).
-  mid_layer_jit_injection: false
+  # [FIXED SCHEMA] Prefix caching control.
+  prefix_caching: false
   
   # [FIXED SCHEMA] Disk access: "none", "read_only", "read_write"
   file_system: "none"

@@ -50,11 +50,7 @@ For exhaustive parameter implications and physical hardware consequences, see th
 | **`context_shift`** | String | `auto` | `auto` / `off` / `minimal` / `standard` / `aggressive` / `extreme` | Rolling KV cache compression strategy. Drops old context while preserving system prompts. |
 | **`flash_attention`** | String | `auto` | `on` / `off` / `auto` | Toggles Flash Attention SRAM tiling optimizations. |
 | **`speculative_decoding`** | String | `auto` | `on` / `off` / `auto` | Toggles Draft-model speculative decoding (requires compatible models). |
-| **`turbo_quant`** | String | `auto` | `on` / `off` / `auto` | Applies Givens rotations to mathematically minimize quantization losses. |
-| **`auto_round`** | String | `auto` | `on` / `off` / `auto` | Engages dynamic rounding during matrix multiplications. |
-| **`dflash`** | String | `auto` | `on` / `off` / `auto` | Dynamic Flash Attention - adjusts memory footprint frame-by-frame. |
-| **`think_mode`** | String | `auto` | `on` / `off` / `auto` | Forces internal hidden Chain of Thought (CoT) reasoning phase. |
-| **`response_length`** | String | `auto` | `auto` / `short` / `long` / Integer | Sets hard limit boundaries on token response lengths. |
+| **`think_mode`** | String | `auto` | `auto` / `off` / `low` / `medium` / `high` / Integer | Controls Chain of Thought (CoT) reasoning token budget. |
 | **`enforce_json`** | Boolean | `false` | `true` / `false` | Logit processor mask to enforce strictly valid JSON structure. |
 | **`force_memory_lock`** | String | `off` | `on` / `off` / `auto` | Invokes `mlock` / `VirtualLock` to prevent OS memory swapping. |
 | **`force_vram_reclaim`** | String | `off` | `on` / `off` / `auto` | Disables memory pooling to free every tensor instantly. |
@@ -67,7 +63,7 @@ For exhaustive parameter implications and physical hardware consequences, see th
 
 The permission profile serves as the primary gateway authorization file, determining sandbox execution limits, telemetry access, and model allocations. During execution of dynamic WebAssembly components, this profile governs the OS syscall filter ring.
 
-For detailed information on JIT isolation and how sandbox execution loops operate, see the [Permissions Architecture Manual](../engine/permission.md) and the [JIT Injection Architecture Explanation](../engine/jit_architecture.md).
+For detailed information on sandbox isolation and how runtime execution loops operate, see the [Permissions Architecture Manual](../engine/permission.md) and the [Prefix Caching Architecture Explanation](../engine/prefix_caching_architecture.md).
 
 
 ### Configuration Schema Table

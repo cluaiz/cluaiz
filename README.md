@@ -40,7 +40,7 @@ Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engin
 
 - **Compile-Time 1-Bit BitNet Injection & Cross-Platform Execution**: Cluaiz optimizes the execution of 1-bit and 1.58-bit (Ternary) quantization models through dynamic compile-time interception. By leveraging the cross-platform hardware portability of `llama.cpp`, the engine ensures that BitNet models can run natively on any hardware tier (CPU or GPU). During the build process, Cluaiz dynamically patches the underlying C++ inference libraries, hijacking the tensor math operations before they compile. Through injected low-level hardware instructions, the engine forces both CPUs and GPUs to process the model using actual 1-bit calculations natively. By executing pure addition and subtraction directly on hardware registers, Cluaiz achieves true 1-bit primitive throughput and entirely avoids floating-point conversions across all devices.
 
-- **State Manipulation, JIT Injection, and Memory Safety**: The engine provides complete, transparent oversight over system operations. It features a unique Just-In-Time (JIT) tool injection capability, allowing token generation to be paused mid-stream so that custom skills or runtime plugins can be injected via CEL under strict Rust safe memory isolation and atomic state swapping. Generation can then be instantly resumed without requiring a re-prompt or context recalculation. Parallel to this, the VRAM Arbiter continuously monitors the hardware matrix. By mathematically evaluating available physical memory before every single token generation step, the arbiter actively prevents Out-of-Memory (OOM) segment faults across any hardware scale.
+- **State Manipulation, Prefix Reuse, and Memory Safety**: The engine provides complete, transparent oversight over system operations. It features native KV-Cache Prefix Reuse and zero-recompute tool resumption, allowing token generation to be paused mid-stream (via CLI Ctrl+C or API tool execution) so that custom skills or runtime plugins can be executed under strict Rust safe memory isolation. Generation then instantly resumes from active context via `[PIVOT_CONTINUE]` without requiring full re-prompt token recalculation. Parallel to this, the Memory Governor continuously monitors physical memory headroom, actively preventing Out-of-Memory (OOM) crashes across hardware targets.
 
 - **Engine Optimization & Memory Governance**: Cluaiz features a dedicated optimization profile granting developers surgical tunability over runtime behaviors. It dictates memory allocation boundaries, dynamic hardware-layer splits, and advanced KV-cache compression techniques (such as `kv_cache_quantization` and rolling `context_shifting`) directly governed by the Memory Governor. Additionally, it unlocks advanced execution features like Flash Attention, MoE SSD Streaming, Speculative Decoding, and Hybrid Memory allocation, allowing users to precisely balance execution speed against memory limitations.
 
@@ -148,8 +148,8 @@ $ cluaiz plugin install web-scraper
 
 - **[Dual Engine Architecture](docs/engine/dual_engine_architecture.md)**  
   Understand the heart of Cluaiz: the seamless orchestration layer. It explains how `cluaiz` acts as a unified C-level memory space bridging `llama.cpp` (for LLMs) and **ONNX Runtime** (for Vision & Embeddings), eliminating the fragmented network lag typical of multi-engine local AI setups.
-- **[JIT KV-Cache Architecture](docs/engine/jit_architecture.md)**  
-  Deep dive into the Just-In-Time memory compilation pipeline. Learn how Cluaiz analyzes prompt constraints, calculates exact physical memory limits natively, and injects pre-computed KV cache states (Dual-Caches) to dramatically reduce Time To First Token (TTFT).
+- **[Prefix Caching Architecture](docs/engine/prefix_caching_architecture.md)**  
+  Deep dive into the Prefix Caching pipeline. Learn how Cluaiz preserves dialogue context in memory and decodes only new delta tokens, drastically cutting Time To First Token (TTFT) and multi-turn prefill latency.
 - **[Model Format & Architecture Release Matrix](RELEASE.md)**  
   Comprehensive support matrix defining supported package contracts, GGUF/ONNX compatibility across text, vision, audio (TTS/STT), and OCR modalities.
 
@@ -206,7 +206,7 @@ $ cluaiz plugin install web-scraper
 
 - **WASM Skills & Sandboxing:** Secure WebAssembly binaries executing in an isolated memory ring, giving agents native system capabilities without REST API latency. Code executes in a strict WASM sandbox, isolated from the host.
 - **Secure MCP & Native Plugin Execution (.dlso):** Manifest-driven execution. Model outputs a CEL command, and the engine directly invokes the native plugin's FFI boundary—no localhost network calls required.
-- **JIT KV-Cache Injection & Hybrid Caching:** When a tool returns massive data, Cluaiz filters it natively in memory and injects only the final result directly into the attention matrix (KV Cache). Future invocations perform native `M-RoPE` injection via `.kvcache.bin`.
+- **Prefix Caching & Delta Decoding:** When a tool returns data or conversations continue, Cluaiz matches the prompt prefix against active KV-cache memory and decodes only the new delta tokens, eliminating redundant prefill computation.
 - **Agentic Pause:** If a skill exceeds your VRAM, cluaiz safely offloads calculation to the CPU to prevent OOM errors.
 - **Hot-Reload Settings Controller:** Dynamically update YAML manifests (API keys, permissions, model settings) without restarting the engine.
 

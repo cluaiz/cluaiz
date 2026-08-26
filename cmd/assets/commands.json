@@ -114,11 +114,11 @@
       "example": "cluaiz permission kvcache on"
     },
     {
-      "name": "test-jit",
-      "usage": "cluaiz test-jit",
-      "description": "Test JIT KV Cache compilation and memory footprint.",
+      "name": "test-prefix",
+      "usage": "cluaiz test-prefix",
+      "description": "Test Prefix Caching compilation and memory footprint.",
       "category": "system",
-      "example": "cluaiz test-jit"
+      "example": "cluaiz test-prefix"
     },
     {
       "name": "ingest",

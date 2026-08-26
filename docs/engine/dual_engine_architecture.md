@@ -14,7 +14,7 @@ The Llama bridge (`interface-engines/llama/src/bridge.rs`) does not use standard
 
 ## 3. ONNX Interface (The Universal & Multimodal Engine)
 The ONNX engine (`interface-engines/onnx/src/chat.rs` and `engine.rs`) is not just an embedder; it is a full-fledged inference backend implementing `UnifiedBackend`.
-* **Chat Generation & JIT Support:** ONNX natively supports autoregressive text generation (`generate_stream`) and handles KV cache manipulation (`forward_raw`). It supports Mid-Layer JIT Injection identically to Llama.
+* **Chat Generation & Prefix Caching:** ONNX natively supports autoregressive text generation (`generate_stream`) and handles KV cache manipulation (`forward_raw`). It supports prefix caching and context continuation identically to Llama.
 * **Concurrency Session Pools (For RAG):** For text embeddings (e.g., `bge-m3`), it spawns a highly concurrent **Session Pool** (N sessions based on physical CPU cores). This allows the engine to embed multiple documents simultaneously.
 * **Vision Singleton:** For massive vision models (e.g., CLIP), it restricts the pool to exactly 1 session to conserve critical VRAM.
 * **Dynamic Telemetry Routing:** Before loading an ONNX graph (Chat or Vision), it probes physical hardware via `get_pulse()`. If VRAM is safe (>2GB free and <95% pressure), it mounts the ONNX graph onto the **GPU (CUDA)**. If VRAM is choked by the Llama model, it safely falls back to **CPU AVX** execution to prevent an OOM blue screen.

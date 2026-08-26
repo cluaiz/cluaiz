@@ -22,7 +22,7 @@ $ cluaiz skill cache clear --all      # Nuke all orphaned caches globally
 $ cluaiz benchmark                    # Process-isolated full system VRAM stress test
 $ cluaiz benchmark bonsai1-8b --runs 3 # Iterative thermal-throttled evaluation
 $ cluaiz run <model_id>               # Launch CLI stream via C++ FFI Kernel
-$ cluaiz test-jit                     # Dynamic Pipeline Diagnostic & Memory Check
+$ cluaiz test-prefix                  # Dynamic Prefix Caching Diagnostic & Memory Check
 ```
 
 ### 🗄️ Vault Management & Identity

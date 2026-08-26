@@ -130,10 +130,10 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 * **Execution Flow:** Edits firewall rules and telemetry flags natively in `Permission.json` (e.g., `wasm_firewall strict`, `stream_telemetry off`). Controls what the active engine is permitted to execute.
 * **API Mapping:** `GET /v1/system/permission` and `POST /v1/system/permission` (`permission::update_permission`).
 
-### `cluaiz test-jit`
-* **Usage:** `cluaiz test-jit`
-* **Description:** Test JIT KV Cache compilation and memory footprint.
-* **Execution Flow:** Performs a native dry-run memory allocation to test Just-In-Time KV Cache compilation, analyzing exactly how much VRAM a prompt will consume before actual inference occurs.
+### `cluaiz test-prefix`
+* **Usage:** `cluaiz test-prefix`
+* **Description:** Test Prefix Caching compilation and memory footprint.
+* **Execution Flow:** Performs a native dry-run memory allocation to test Prefix Caching, analyzing shared token reuse before actual inference occurs.
 
 ---
 
