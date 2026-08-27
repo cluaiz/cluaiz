@@ -8,10 +8,15 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
     let mut results = serde_json::Map::new();
     
     for comp_type in ["plugin", "mcp", "skill"] {
-        let dir = env.global_dir.join(format!("{}s", comp_type));
+        let dir = match comp_type {
+            "skill" => env.skills_dir(),
+            "plugin" => env.plugins_dir(),
+            "mcp" => env.mcp_dir(),
+            _ => env.tools_dir().join(format!("{}s", comp_type)),
+        };
         let mut items = Vec::new();
         if dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(dir) {
+            if let Ok(entries) = std::fs::read_dir(&dir) {
                 for entry in entries.filter_map(|e| e.ok()) {
                     if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                         items.push(serde_json::Value::String(entry.file_name().to_string_lossy().to_string()));
@@ -36,7 +41,12 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     let comp_type = query.component_type.trim_end_matches('s');
     let comp_id = query.component_id;
     
-    let base_dir = env.global_dir.join(format!("{}s", comp_type));
+    let base_dir = match comp_type {
+        "skill" => env.skills_dir(),
+        "plugin" => env.plugins_dir(),
+        "mcp" => env.mcp_dir(),
+        _ => env.tools_dir().join(format!("{}s", comp_type)),
+    };
     let comp_dir = base_dir.join(&comp_id);
     let mut file_path = if comp_type == "skill" { comp_dir.join("SKILL.md") } else { comp_dir.join(format!("manifest-{}.yaml", comp_type)) };
     if !file_path.exists() && comp_type == "plugin" {
@@ -110,6 +120,10 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
             }
         }
     }
+    // Check enabled status from unified ToolsRegistry
+    if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(&comp_id) {
+        current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
+    }
 
     Json(serde_json::json!({
         "status": "success",
@@ -128,6 +142,11 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
             "status": "error",
             "message": "Missing component_type, component_id, or settings"
         }));
+    }
+
+    // Sync enabled state directly to ToolsRegistry (tools_registry.json)
+    if let Some(enabled_val) = settings.unwrap().get("enabled").and_then(|v| v.as_bool()) {
+        let _ = engines::tools::ToolsEngine::set_tool_enabled(comp_id, enabled_val);
     }
 
     let env = cluaiz_shared::environment::EnvironmentManager::current();
@@ -331,13 +350,13 @@ pub struct ClearCachePayload {
 
 pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> Json<Value> {
     let comp_type = payload.component_type.trim_end_matches('s');
-    match engines::neural_foundry::registry::hub_installer::HubInstaller::clear_component_cache(
+    match engines::tools::ToolHubInstaller::clear_component_cache(
         comp_type,
         Some(payload.component_id.clone()),
         payload.all,
         true
     ) {
-        Ok(wiped) => Json(serde_json::json!({"status": "success", "message": format!("Wiped {} caches", wiped)})),
-        Err(e) => Json(serde_json::json!({"status": "error", "message": format!("Failed: {}", e)}))
+        Ok(wiped) => Json(serde_json::json!({"status": "success", "message": format!("Successfully wiped {} caches.", wiped)})),
+        Err(e) => Json(serde_json::json!({"status": "error", "message": format!("Failed to clear cache: {}", e)}))
     }
 }

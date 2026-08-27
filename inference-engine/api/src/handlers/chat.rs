@@ -379,25 +379,11 @@ pub async fn chat_completions(
 
     // 🚀 SEMANTIC ROUTING (Sovereign Injection)
     let prompt_lower = last_message.flatten_to_string().await.to_lowercase();
-    let mut matched_skills = Vec::new();
-    if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-        if let Some(path) = router.check_trigger(&prompt_lower) {
-            matched_skills.push(path.clone());
-        } else {
-            for (keyword, path) in &router.keyword_index {
-                if prompt_lower.contains(keyword) {
-                    matched_skills.push(path.clone());
-                    break;
-                }
-            }
-        }
-    }
+    let matched_skills = engines::tools::ToolsEngine::match_skills(&prompt_lower);
     
-    for skill_path in matched_skills {
-        if let Some(body) = engines::neural_foundry::extract_skill_body(&skill_path) {
-            if let Some(name) = std::path::Path::new(&skill_path).file_name() {
-                matched_tool = name.to_string_lossy().to_string();
-            }
+    for skill_id in matched_skills {
+        if let Some(body) = engines::tools::ToolsEngine::get_skill_instructions(&skill_id) {
+            matched_tool = skill_id.clone();
             prefix_caching_injected = true;
             if let Some(last_msg) = augmented_messages.last_mut() {
                 let prev_content = last_msg.content.flatten_to_string().await;
@@ -666,20 +652,14 @@ pub async fn chat_completions(
                                     
                                     let mut execution_result = String::new();
                                     
-                                    {
-                                        use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
-                                        let executor = engines::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                                        let ext_payload = CxpPayload::new(PayloadType::Json, payload.as_bytes());
-                                        
-                                        match executor.execute(comp_name, &ext_payload) {
-                                            Ok(bytes) => {
-                                                execution_result = String::from_utf8_lossy(&bytes).to_string();
-                                                tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
-                                            },
-                                            Err(e) => {
-                                                execution_result = format!("Error executing {}: {}", comp_name, e);
-                                                tracing::error!("❌ [API] Failed to execute tool: {}", e);
-                                            }
+                                    match engines::tools::ToolsEngine::execute_plugin_by_name(comp_name, payload.as_bytes()) {
+                                        Ok(bytes) => {
+                                            execution_result = String::from_utf8_lossy(&bytes).to_string();
+                                            tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
+                                        },
+                                        Err(e) => {
+                                            execution_result = format!("Error executing {}: {}", comp_name, e);
+                                            tracing::error!("❌ [API] Failed to execute tool: {}", e);
                                         }
                                     }
 
@@ -951,6 +931,11 @@ pub async fn chat_completions(
             }
             
             response["usage"] = usage_json;
+        }
+
+        // ⏳ Decrement session tool turns & purge expired ephemeral tools
+        if let Some(ref sid) = request.session_id {
+            crate::handlers::session_tools::decrement_session_turns(sid);
         }
 
         // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING

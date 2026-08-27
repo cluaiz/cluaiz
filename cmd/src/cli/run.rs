@@ -239,12 +239,8 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(manifest.id.clone());
     }
 
-    // 🚀 Trigger Skill Registry (which triggers CompilerDaemon) to provision the caches for this active model
-    let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
-    if skills_dir.exists() {
-        let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
-        registry.load_from_directory(&skills_dir.to_string_lossy());
-    }
+    // 🚀 Trigger Tools Engine to sync and provision tools registry
+    let _ = engines::tools::ToolsEngine::registry();
 
     // 2. Silicon Audit (Local Probe or HF Metadata)
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
@@ -608,23 +604,24 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                         if let Some(action) = val.get("action").and_then(|v| v.as_str()) {
                             println!("\n⚙️ [CLI REPL] Intercepted JSON ABI tool call: {}", action.bold().cyan());
                             
-                            let mut skill_manifest = None;
+                            let mut skill_name = None;
                             let mut logic_path = None;
                             let mut is_allowed = false;
                             
                             {
-                                let router = state.Core_engine.router.lock().await;
-                                if let Some(skill) = router.foundry.registry.skills.iter().find(|s| &s.manifest.id == action) {
-                                    skill_manifest = Some(skill.manifest.clone());
-                                    logic_path = Some(skill.path.join("logic.wasm"));
-                                    is_allowed = router.foundry.guard.validate_action(&skill.manifest, engines::neural_foundry::security::guard::PermissionLevel::ReadOnly).is_ok();
+                                if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(action) {
+                                    let router = state.Core_engine.router.lock().await;
+                                    let tool_path = std::path::PathBuf::from(&tool.local_dir);
+                                    skill_name = Some(tool.name.clone());
+                                    logic_path = Some(tool_path.join("logic.wasm"));
+                                    is_allowed = router.foundry.guard.validate_action(&tool.id, engines::neural_foundry::security::guard::PermissionLevel::ReadOnly).is_ok();
                                 }
                             }
                             
-                            if let Some(manifest) = skill_manifest {
+                            if let Some(name) = skill_name {
                                 let l_path = logic_path.unwrap();
                                 if is_allowed && l_path.exists() {
-                                    println!("⚙️ [CLI REPL] Executing WASM Sandbox for: {}", manifest.name.green());
+                                    println!("⚙️ [CLI REPL] Executing WASM Sandbox for: {}", name.green());
                                     let mut router = state.Core_engine.router.lock().await;
                                     let wasm_res = router.foundry.wasm_runtime.execute_skill_logic(&l_path, "run", prompt).await;
                                     match wasm_res {

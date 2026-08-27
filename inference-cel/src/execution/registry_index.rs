@@ -113,22 +113,65 @@ impl MasterRegistry {
     ///
     /// Only `enabled: true` entries are classified into eager/lazy/manual.
     /// Disabled entries are collected separately for diagnostic purposes.
-    pub fn load_from_path(registry_yaml_path: &Path) -> Result<RegistryIndex, String> {
-        let content = std::fs::read_to_string(registry_yaml_path).map_err(|e| {
+    pub fn load_from_path(registry_path: &Path) -> Result<RegistryIndex, String> {
+        let actual_path = if !registry_path.exists() {
+            if let Some(parent) = registry_path.parent() {
+                let json_alt = parent.join("tools_registry.json");
+                if json_alt.exists() {
+                    json_alt
+                } else {
+                    registry_path.to_path_buf()
+                }
+            } else {
+                registry_path.to_path_buf()
+            }
+        } else {
+            registry_path.to_path_buf()
+        };
+
+        let content = std::fs::read_to_string(&actual_path).map_err(|e| {
             format!(
-                "registry.yaml not found at {:?}: {}. \
-                 Run `cluaiz init` to create it.",
-                registry_yaml_path, e
+                "Registry file not found at {:?}: {}. Run `cluaiz init` to create it.",
+                actual_path, e
             )
         })?;
 
+        // 1. Try parsing modern tools_registry.json
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(tools) = val.get("installed_tools").and_then(|t| t.as_object()) {
+                let mut all_entries: Vec<RegistryEntry> = Vec::new();
+                for (id, t_val) in tools {
+                    let name = t_val.get("name").and_then(|n| n.as_str()).unwrap_or(id).to_string();
+                    let enabled = t_val.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true);
+                    let mode_str = t_val.get("execution_mode").and_then(|m| m.as_str()).unwrap_or("Auto");
+                    let load_strategy = match mode_str.to_lowercase().as_str() {
+                        "auto" => LoadStrategy::Lazy,
+                        "manual" => LoadStrategy::Manual,
+                        _ => LoadStrategy::Lazy,
+                    };
+                    let events = t_val.get("activation_events").and_then(|a| a.as_array())
+                        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default();
+                    all_entries.push(RegistryEntry {
+                        id: id.clone(),
+                        domain: format!("tools/{}", id),
+                        load_strategy,
+                        activation_events: events,
+                        enabled,
+                        binary_hash: None,
+                        name,
+                    });
+                }
+                return Ok(Self::classify_entries(all_entries));
+            }
+        }
+
+        // 2. Fallback to legacy YAML structure
         let mut raw: RawRegistry = serde_yaml::from_str(&content).map_err(|e| {
-            format!("Failed to parse registry.yaml at {:?}: {}", registry_yaml_path, e)
+            format!("Failed to parse registry at {:?}: {}", actual_path, e)
         })?;
 
-        // Merge all component maps and inject the map key as the `name` field
         let mut all_entries: Vec<RegistryEntry> = Vec::new();
-
         for (name, mut entry) in raw.plugins.drain() {
             entry.name = name;
             all_entries.push(entry);
@@ -138,7 +181,10 @@ impl MasterRegistry {
             all_entries.push(entry);
         }
 
-        // Classify entries
+        Ok(Self::classify_entries(all_entries))
+    }
+
+    fn classify_entries(all_entries: Vec<RegistryEntry>) -> RegistryIndex {
         let mut index = RegistryIndex {
             eager: Vec::new(),
             lazy: Vec::new(),
@@ -181,7 +227,7 @@ impl MasterRegistry {
             index.disabled.len()
         );
 
-        Ok(index)
+        index
     }
 
     /// Verifies the SHA-256 hash of a binary file against the expected hash from the registry.

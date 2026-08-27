@@ -13,7 +13,7 @@ use crate::state::AppState;
 use inference_cel::parser::lexer::parse;
 use inference_cel::parser::planner::{CelPlanner, PlanBlock, PlanStep};
 use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType, Transpiler};
-use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
+use inference_cel::execution::native_sandbox::NativeExecutor;
 use inference_cel::vram::prefix_caching::{inject_from_cpu, ContextInjectionEnvelope, TensorData};
 
 #[derive(Deserialize)]
@@ -100,20 +100,14 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                             final_result.push_str(&format!("[Engine] Inference command: {}\n", command));
                         }
                         PlanStep::ExecuteAction { method, args } => {
-                            let executor = UnifiedExecutor::new();
+                            use inference_cel::ffi::cxp_ffi::Transpiler;
                             let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
-                            let ext_payload = CxpPayload::new(PayloadType::Bincode, &binary_args);
-                            
-                            // method acts as the plugin_name in this context (e.g. use plugin::X)
-                            match executor.execute(&method, &ext_payload) {
-                                Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
+                            match engines::tools::ToolsEngine::execute_plugin_by_name(&method, &binary_args) {
+                                Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(&bytes)),
                                 Err(e) => final_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
                             }
                         }
                         PlanStep::ExecuteCommand { action: _action, target, args } => {
-                            let executor = UnifiedExecutor::new();
-                            // Serialize args into a JSON Value
-                            // Note: We'll construct a simple JSON from args
                             let mut map = serde_json::Map::new();
                             for (k, v) in args {
                                 match v {
@@ -126,9 +120,8 @@ pub async fn execute_cel_plan(plan: inference_cel::parser::planner::ExecutionPla
                             
                             // For commands, target is the component name
                             if let Some(component) = target {
-                                let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
-                                match executor.execute(&component, &ext_payload) {
-                                    Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
+                                match engines::tools::ToolsEngine::execute_plugin_by_name(&component, &json_bytes) {
+                                    Ok(bytes) => final_result.push_str(&String::from_utf8_lossy(&bytes)),
                                     Err(e) => final_result.push_str(&format!("[Error] Component Execution: {}\n", e)),
                                 }
                             } else {
@@ -160,7 +153,6 @@ pub async fn execute_dynamic(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<DynamicPayload>
 ) -> impl IntoResponse {
-    let executor = UnifiedExecutor::new();
     let json_bytes = match serde_json::to_vec(&payload.params) {
         Ok(b) => b,
         Err(e) => {
@@ -171,9 +163,7 @@ pub async fn execute_dynamic(
         }
     };
     
-    let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
-    
-    match executor.execute(&component_name, &ext_payload) {
+    match engines::tools::ToolsEngine::execute_plugin_by_name(&component_name, &json_bytes) {
         Ok(result_bytes) => {
             // Try to parse result as string or JSON
             let result_str = String::from_utf8_lossy(&result_bytes).to_string();

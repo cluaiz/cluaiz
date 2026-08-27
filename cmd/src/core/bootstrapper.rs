@@ -15,18 +15,12 @@ impl Bootstrapper {
         let _ = Self::sync_dev_artifacts("all", None, local_dir, profile);
         Self::ensure_global_path();
         
-        // 🚀 0. Neural Foundry Genesis (Create permission.json and Trigger Compiler Daemons)
-        tracing::info!("🧠 [cluaiz] Igniting Neural Foundry (Permissions & Skills)...");
+        // 🚀 0. Tools Engine Genesis (Create tools_registry.json and sync ~/.cluaiz/tools/)
+        tracing::info!("🛠️ [cluaiz] Initializing Tools Engine (Registry & Governance)...");
         let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         permissions.auto_assign_defaults();
         
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
-        let mut registry = engines::neural_foundry::registry::SkillRegistry::new();
-        for dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
-            if dir.exists() {
-                registry.load_from_directory(&dir.to_string_lossy());
-            }
-        }
+        let _ = engines::tools::ToolsEngine::registry();
 
         // 📜 Write Third-Party Licenses (Automatic Legal Compliance)
         let hub_path = cluaiz_shared::HardwareGovernor::resolve_hub_path();

@@ -2,7 +2,7 @@ use reqwest::Client;
 use serde_json::{json, Value};
 use std::time::Duration;
 use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
-use engines::neural_foundry::executor::sandbox::UnifiedExecutor;
+use inference_cel::execution::native_sandbox::NativeExecutor;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -130,9 +130,9 @@ async fn test_cel_execution(client: &Client) -> Result<(), Box<dyn std::error::E
 }
 
 async fn test_ffi_native() -> Result<(), Box<dyn std::error::Error>> {
-    println!("⏳ Instantiating UnifiedExecutor locally...");
+    println!("⏳ Instantiating NativeExecutor locally...");
     
-    let executor = UnifiedExecutor::new();
+    let executor = NativeExecutor::new();
     
     let payload = json!({
         "action": "query",

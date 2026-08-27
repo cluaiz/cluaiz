@@ -18,6 +18,8 @@ pub mod sync;
 #[path = "interface-engines/mod.rs"]
 pub mod interface_engines;
 pub mod neural_foundry;
+pub mod tools;
+pub use tools::ToolsEngine;
 pub use system_optimization;
 
 // ─── Master Archer Unified Access ────────────────────────────────────

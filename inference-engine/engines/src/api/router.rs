@@ -252,8 +252,8 @@ impl CoreRouter {
                 let mut skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
                 let env = cluaiz_shared::environment::EnvironmentManager::current();
                 
-                if let Some(skill) = self.foundry.registry.skills.iter().find(|s| s.manifest.id == *id) {
-                    skill_path = skill.path.clone();
+                if let Ok(Some(tool)) = crate::tools::ToolsEngine::get_tool(id) {
+                    skill_path = std::path::PathBuf::from(tool.local_dir);
                 } else {
                     for base_dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
                         let possible_path = base_dir.join(&skill_manifest.name);
@@ -339,80 +339,7 @@ impl CoreRouter {
         self.ensure_skills_indexed();
 
         // 🚀 SLIDING WINDOW SEMANTIC SEARCH & ROUTING
-        let mut matched_skill_ids = Vec::new();
-        let prompt_lower = prompt.to_lowercase().trim().to_string();
-        
-        // 1. Text Match Fast-Path (Exact keyword match + Substring containment)
-        if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-            // Try exact full-prompt match first
-            if let Some(path) = router.check_trigger(&prompt_lower) {
-                if let Some(name) = path.file_name() {
-                    matched_skill_ids.push(name.to_string_lossy().to_string());
-                }
-            }
-            
-            // If no exact match, try substring containment: check if prompt CONTAINS any registered trigger phrase
-            if matched_skill_ids.is_empty() {
-                for (keyword, path) in &router.keyword_index {
-                    if prompt_lower.contains(keyword) {
-                        if let Some(name) = path.file_name() {
-                            matched_skill_ids.push(name.to_string_lossy().to_string());
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // 2. Sliding Window Semantic Match & Fallback triggers
-        if matched_skill_ids.is_empty() {
-             let schema = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-             let active_model_opt = schema.get_active_embedding_model();
-             
-             // Dynamic Lazy-Loading Check: Check if prompt contains any registered trigger keywords first
-             let mut has_trigger_keyword = false;
-             let padded_prompt = format!(" {} ", prompt_lower);
-             if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-                 for keyword in router.keyword_index.keys() {
-                     let norm_keyword = format!(" {} ", keyword.to_lowercase().trim());
-                     if padded_prompt.contains(&norm_keyword) {
-                         has_trigger_keyword = true;
-                         break;
-                     }
-                 }
-             }
-
-             if has_trigger_keyword && active_model_opt.is_some() {
-                 if let Some(full_vec) = crate::memory::embedding_generator::EmbeddingGenerator::generate_full_vector(prompt) {
-                     if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-                         if let Some(path) = router.check_semantic_trigger(&full_vec, 0.70) {
-                             if let Some(name) = path.file_name() {
-                                 matched_skill_ids.push(name.to_string_lossy().to_string());
-                             }
-                         }
-                     }
-                 }
-             }
-
-             // Fallback triggers containment match: check substring containment in prompt dynamically
-             if matched_skill_ids.is_empty() {
-                 if let Ok(router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-                     let prompt_lower = prompt.to_lowercase();
-                     let padded_prompt = format!(" {} ", prompt_lower);
-                     for (keyword, path) in &router.keyword_index {
-                         let norm_keyword = format!(" {} ", keyword.to_lowercase().trim());
-                         if padded_prompt.contains(&norm_keyword) {
-                             if let Some(name) = path.file_name() {
-                                 let id = name.to_string_lossy().to_string();
-                                 if !matched_skill_ids.contains(&id) {
-                                     matched_skill_ids.push(id);
-                                 }
-                             }
-                         }
-                     }
-                 }
-             }
-        }
+        let matched_skill_ids = crate::tools::ToolsEngine::match_skills(prompt);
 
         // 🧪 cluaiz HANDSHAKE: Process Foundry Intent
         let mut intent_result = std::thread::scope(|s| {
@@ -436,18 +363,8 @@ impl CoreRouter {
         for (cache_path, skill_content) in intent_result.missing_caches.drain(..) {
             let skill_tokens_est = skill_content.len() / 3;
             
-            // Look up skill metadata from registry to get exact size and head dimension
-            let skill_path = cache_path.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf());
             let mut head_dim = 128;
-            let mut token_count_override = skill_tokens_est;
-            if let Some(ref path) = skill_path {
-                if let Some(skill) = self.foundry.registry.skills.iter().find(|s| s.path == *path) {
-                    if let Some(meta) = &skill.manifest.Core_metadata {
-                        head_dim = meta.head_dim;
-                        token_count_override = meta.token_count;
-                    }
-                }
-            }
+            let token_count_override = skill_tokens_est;
 
             // Check if this cache path is already compilation locked
             let is_compiling = {
@@ -637,14 +554,12 @@ impl CoreRouter {
         if let Some(gen_model) = schema.get_active_chat_model() {
             let gen_model_safe = gen_model.replace(":", "-");
             for skill_id in &matched_skill_ids {
-                if let Some(skill) = self.foundry.registry.skills.iter().find(|s| &s.manifest.id == skill_id) {
-                    let cache_dir = skill.path.join(".cache");
+                if let Ok(Some(skill)) = crate::tools::ToolsEngine::get_tool(skill_id) {
+                    let tool_path = std::path::PathBuf::from(&skill.local_dir);
+                    let cache_dir = tool_path.join(".cache");
                     let kv_cache_path = cache_dir.join(format!("{}.kvcache.safetensors", gen_model_safe));
                     if kv_cache_path.exists() {
-                        // Check if the skill's token count exceeds what the main engine can actually load
-                        let skill_tokens_est = skill.manifest.Core_metadata.as_ref()
-                            .map(|m| m.token_count)
-                            .unwrap_or(0);
+                        let skill_tokens_est = 0;
                         if skill_tokens_est > 0 && skill_tokens_est + 256 > self.hardware_n_ctx {
                             cluaiz_shared::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
                                 skill_id, skill_tokens_est + 256, self.hardware_n_ctx);
@@ -674,10 +589,10 @@ impl CoreRouter {
                             let _ = self.active_backend.prefill("");
                         } else {
                             // Inject the skill description into responses so the prompt prefix matches the KV prefill!
-                            if let Some(content) = crate::neural_foundry::extract_skill_body(&skill.path) {
+                            if let Some(content) = crate::tools::ToolsEngine::get_skill_instructions(&skill_id) {
                                 intent_result.responses.push(content);
                             } else {
-                                intent_result.responses.push(skill.manifest.description.clone());
+                                intent_result.responses.push(skill.description.clone());
                             }
                         }
                         
@@ -762,12 +677,10 @@ impl CoreRouter {
                     
                     let cb_clone = cb.clone();
                     let mut dynamic_triggers: Vec<String> = Vec::new();
-                    if let Ok(skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.read() {
-                        for skill_id in &matched_skill_ids {
-                            if let Some(manifest) = skill_router.loaded_manifests.get(skill_id) {
-                                if let Some(grammar) = &manifest.triggers.cel_grammar {
-                                    dynamic_triggers.push(grammar.clone());
-                                }
+                    for skill_id in &matched_skill_ids {
+                        if let Ok(Some(tool)) = crate::tools::ToolsEngine::get_tool(skill_id) {
+                            for trigger in tool.semantic_triggers {
+                                dynamic_triggers.push(trigger);
                             }
                         }
                     }
@@ -976,12 +889,10 @@ impl CoreRouter {
                                                 for step in pipeline_plan.steps {
                                                     match step {
                                                         inference_cel::parser::planner::PlanStep::ExecuteAction { method, args } => {
-                                                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new();
-                                                            use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType, Transpiler};
+                                                            use inference_cel::ffi::cxp_ffi::Transpiler;
                                                             let binary_args = Transpiler::to_binary_payload(&args).unwrap_or(vec![]);
-                                                            let ext_payload = CxpPayload::new(PayloadType::Bincode, &binary_args);
-                                                            match executor.execute(&method, &ext_payload) {
-                                                                Ok(bytes) => exec_result.push_str(&String::from_utf8_lossy(bytes.as_ref())),
+                                                            match crate::tools::ToolsEngine::execute_plugin_by_name(&method, &binary_args) {
+                                                                Ok(bytes) => exec_result.push_str(&String::from_utf8_lossy(&bytes)),
                                                                 Err(e) => exec_result.push_str(&format!("[Error] Plugin Execution: {}\n", e)),
                                                             }
                                                         },
@@ -1015,11 +926,7 @@ impl CoreRouter {
                                 actual_name = parsed_name;
                             }
                             
-                            use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
-                            let executor = crate::neural_foundry::executor::sandbox::UnifiedExecutor::new(); 
-                            let ext_payload = CxpPayload::new(PayloadType::Json, t_payload.as_bytes());
-                            
-                            match executor.execute(actual_name, &ext_payload) {
+                            match crate::tools::ToolsEngine::execute_plugin_by_name(actual_name, t_payload.as_bytes()) {
                                 Ok(bytes) => {
                                     result_str = String::from_utf8_lossy(&bytes).to_string();
                                     let mut cb_guard = cb.lock().unwrap();
