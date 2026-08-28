@@ -49,7 +49,11 @@ export async function mountChatStream(rootElement) {
 }
 
 function getSelectedModel() {
+    if (window.currentActiveModelId) return window.currentActiveModelId;
     const modelText = document.getElementById('selected-model-text');
+    if (modelText && modelText.dataset.modelId) return modelText.dataset.modelId;
+    const btn = document.getElementById('model-select-btn');
+    if (btn && btn.dataset.modelId) return btn.dataset.modelId;
     return modelText ? modelText.textContent.trim() : 'default';
 }
 
@@ -492,6 +496,16 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
         if (think_mode) payload.think_mode = think_mode;
         if (temperature !== null && temperature !== undefined) payload.temperature = temperature;
 
+        const streamStartTime = performance.now();
+        let firstTokenTime = null;
+        let streamedTokensCount = 0;
+
+        let totalPromptChars = 0;
+        conversationHistory.forEach(m => {
+            totalPromptChars += (m.content || '').length;
+        });
+        const baseInputTokens = Math.max(1, Math.round(totalPromptChars / 4));
+
         const response = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
             method: 'POST',
             headers: headers,
@@ -599,6 +613,55 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
 
                     if (!delta.content) continue;
                     const content = delta.content;
+
+                    if (!firstTokenTime) {
+                        firstTokenTime = performance.now();
+                        const ttftSec = ((firstTokenTime - streamStartTime) / 1000).toFixed(2);
+                        const ttftEl = document.getElementById('live-ttft');
+                        const ttftTag = document.getElementById('live-ttft-tag');
+                        if (ttftEl && ttftTag) {
+                            ttftEl.textContent = ttftSec;
+                            ttftTag.style.display = 'inline-flex';
+                        }
+                    }
+
+                    // Live Token Accounting (1 SSE chunk event = 1 generation token tick)
+                    streamedTokensCount += 1;
+
+                    // Live Generation Speed (TPS)
+                    const elapsedSec = (performance.now() - firstTokenTime) / 1000;
+                    if (elapsedSec > 0.05) {
+                        const liveTps = (streamedTokensCount / elapsedSec).toFixed(2);
+                        const tpsEl = document.getElementById('live-tps');
+                        const tpsTag = document.getElementById('live-tps-tag');
+                        if (tpsEl && tpsTag) {
+                            tpsEl.textContent = liveTps;
+                            tpsTag.style.display = 'inline-flex';
+                        }
+                    }
+
+                    const tokensEl = document.getElementById('live-tokens');
+                    const tokensTag = document.getElementById('live-tokens-tag');
+                    if (tokensEl && tokensTag) {
+                        tokensEl.textContent = streamedTokensCount;
+                        tokensTag.style.display = 'inline-flex';
+                    }
+
+                    // Live Context Bar Update (Dynamic without hardcoded numbers)
+                    const usedEl = document.getElementById('live-ctx-used');
+                    const pctEl = document.getElementById('live-ctx-pct');
+                    const limitEl = document.getElementById('live-ctx-limit');
+                    const currentActiveTokens = baseInputTokens + streamedTokensCount;
+                    if (usedEl) {
+                        usedEl.textContent = currentActiveTokens >= 1000 ? (currentActiveTokens / 1000).toFixed(1) + 'k' : currentActiveTokens;
+                    }
+                    if (pctEl && limitEl && limitEl.textContent) {
+                        const rawLimitText = limitEl.textContent.trim();
+                        const rawLimit = rawLimitText.toLowerCase().includes('k') ? parseFloat(rawLimitText) * 1024 : parseFloat(rawLimitText);
+                        if (rawLimit && rawLimit > 0) {
+                            pctEl.textContent = `${Math.min(100, Math.round((currentActiveTokens / rawLimit) * 100))}%`;
+                        }
+                    }
 
                     if (statusContainer.style.display !== 'none') {
                         statusContainer.style.display = 'none';
@@ -805,16 +868,108 @@ function renderTelemetry(container, usage, fullContent) {
     const tps = typeof usage.tokens_per_second === 'number' ? usage.tokens_per_second.toFixed(2) : '0.00';
     const time = typeof usage.total_time_ms === 'number' ? (usage.total_time_ms / 1000).toFixed(2) : '0.00';
     const ttft = typeof usage.time_to_first_token_ms === 'number' ? (usage.time_to_first_token_ms / 1000).toFixed(2) : '0.00';
-    const tokens = usage.total_tokens || 0;
+    const tokens = usage.completion_tokens || usage.total_tokens || 0;
     
     let hardwareHtml = '';
     if (usage.hardware_snapshot && usage.hardware_snapshot.system_control) {
         let sc = usage.hardware_snapshot.system_control;
         let vram = sc.silicon_truth && sc.silicon_truth.accelerators && sc.silicon_truth.accelerators.gpus && sc.silicon_truth.accelerators.gpus.length > 0 ? (sc.silicon_truth.accelerators.gpus[0].vram_available_gb || 0).toFixed(1) : '?';
-        hardwareHtml = `<span>💻 VRAM: ${vram} GB</span>`;
+        hardwareHtml = `<span>VRAM: ${vram} GB</span>`;
     }
 
-    telemetryEl.innerHTML = `<span>⚡ ${tps} TPS</span><span>⏱️ ${time}s</span><span>🚀 ${ttft}s TTFT</span><span>🪙 ${tokens} Tokens</span>${hardwareHtml}`;
+    const breakdown = usage.context_telemetry?.context_breakdown || usage.context_breakdown;
+    let tokensHtml = `<span>${tokens} Tokens</span>`;
+    
+    if (breakdown) {
+        const formatK = (n) => {
+            if (!n && n !== 0) return '0';
+            if (n >= 1048576) {
+                const m = n / 1048576;
+                return m % 1 === 0 ? m + 'M' : m.toFixed(1) + 'M';
+            }
+            if (n >= 1024) {
+                const k = n / 1024;
+                return k % 1 === 0 ? k + 'k' : (n >= 10000 ? Math.round(k) + 'k' : k.toFixed(1) + 'k');
+            }
+            return n.toString();
+        };
+
+        const totalLimitStr = formatK(breakdown.total_context_limit);
+        const modelMaxStr = formatK(breakdown.model_native_context);
+        const totalActiveStr = formatK(breakdown.total_active_tokens || tokens);
+        const totalPct = breakdown.active_percentage || (breakdown.total_context_limit > 0 ? ((breakdown.total_active_tokens / breakdown.total_context_limit) * 100).toFixed(1) : '0');
+
+        tokensHtml = `
+            <div class="token-stat-wrapper" style="position: relative; display: inline-flex; align-items: center; cursor: pointer;">
+                <span class="token-trigger" style="text-decoration: underline dotted rgba(255,255,255,0.4);">${tokens} Tokens</span>
+                <div class="context-popover" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; width: 290px; background: #18181b; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 14px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6); z-index: 1000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f4f4f5;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.82rem; font-weight: 500; color: #a1a1aa;">
+                        <span>Context Window</span>
+                        <span style="font-size: 0.72rem; color: #71717a;">Model Max: <b style="color: #d4d4d8;">${modelMaxStr}</b></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.78rem;">
+                        <span style="color: #9ca3af;">Usable Allocated</span>
+                        <span style="color: #ffffff; font-weight: 600;">${totalActiveStr} / ${totalLimitStr} (${totalPct}%)</span>
+                    </div>
+
+                    <!-- Progress Multi-bar (5 pillars) -->
+                    <div style="display: flex; height: 4px; border-radius: 9999px; overflow: hidden; background: #27272a; margin-bottom: 12px;">
+                        <div style="width: ${breakdown.messages_percentage || 0}%; background: #3b82f6;"></div>
+                        <div style="width: ${breakdown.system_prompt_percentage || 0}%; background: #eab308;"></div>
+                        <div style="width: ${breakdown.skills_percentage || 0}%; background: #ec4899;"></div>
+                        <div style="width: ${breakdown.plugins_percentage || breakdown.system_tools_percentage || 0}%; background: #ea580c;"></div>
+                        <div style="width: ${breakdown.mcp_tools_percentage || 0}%; background: #10b981;"></div>
+                    </div>
+
+                    <!-- Breakdown items -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3b82f6;"></span> Messages</span>
+                            <span><b>${formatK(breakdown.messages_tokens)}</b> <span style="color: #a1a1aa;">${breakdown.messages_percentage || 0}%</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #eab308;"></span> System prompt</span>
+                            <span><b>${formatK(breakdown.system_prompt_tokens)}</b> <span style="color: #a1a1aa;">${breakdown.system_prompt_percentage || 0}%</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #ec4899;"></span> Skills</span>
+                            <span><b>${formatK(breakdown.skills_tokens)}</b> <span style="color: #a1a1aa;">${breakdown.skills_percentage || 0}%</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #ea580c;"></span> Plugins</span>
+                            <span><b>${formatK(breakdown.plugins_tokens || breakdown.system_tools_tokens)}</b> <span style="color: #a1a1aa;">${breakdown.plugins_percentage || breakdown.system_tools_percentage || 0}%</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #10b981;"></span> MCP tools</span>
+                            <span><b>${formatK(breakdown.mcp_tools_tokens)}</b> <span style="color: #a1a1aa;">${breakdown.mcp_tools_percentage || 0}%</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; color: #71717a;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3f3f46;"></span> Free space</span>
+                            <span><b>${formatK(breakdown.free_space_tokens)}</b> <span style="color: #71717a;">${breakdown.free_space_percentage || 0}%</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    telemetryEl.innerHTML = `<span>${tps} TPS</span><span>${time}s</span><span>${ttft}s TTFT</span>${tokensHtml}${hardwareHtml}`;
+
+    // Add interactive hover listeners for the popover
+    const wrapper = telemetryEl.querySelector('.token-stat-wrapper');
+    if (wrapper) {
+        const popover = wrapper.querySelector('.context-popover');
+        wrapper.addEventListener('mouseenter', () => {
+            if (popover) popover.style.display = 'block';
+        });
+        wrapper.addEventListener('mouseleave', () => {
+            if (popover) popover.style.display = 'none';
+        });
+    }
+
+    if (window.updateLiveContextBar) {
+        window.updateLiveContextBar(usage);
+    }
 
     // Add action buttons (TTS Read Aloud & Copy)
     if (fullContent) {

@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 ///   allow_env_vars: false
 ///   allow_subprocess: false
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct EngineRules {
     /// Which runtime sandbox to use: "WASM" | "NATIVE" | "RHAI"
     /// This field — NOT the file extension — is the authority on executor selection.

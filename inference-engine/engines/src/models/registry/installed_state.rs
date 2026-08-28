@@ -12,31 +12,30 @@ use crate::models::taxonomy::rules::{ModelCapabilities, UniversalTaskRules};
 pub struct InstalledStateRegistry;
 
 impl InstalledStateRegistry {
-    /// Resolves the absolute path to model_registry.json
+    /// Resolves the absolute path to model_registry.json dynamically via EnvironmentManager
     pub fn get_registry_path() -> PathBuf {
-        let primary = cluaiz_shared::environment::EnvironmentManager::current()
-            .config_dir()
-            .join("model_registry.json");
-        if primary.exists() {
-            return primary;
-        }
-        let fallback = PathBuf::from(".cluaiz/engine/config/model_registry.json");
-        if fallback.exists() {
-            return fallback;
-        }
-        primary
+        cluaiz_shared::environment::EnvironmentManager::current().model_registry_json_path()
     }
 
-    /// Loads the active model_registry.json from disk, pruning non-existent models
+    /// Resolves the absolute path to fast binary cache model_registry.bin dynamically via EnvironmentManager
+    pub fn get_registry_bin_path() -> PathBuf {
+        cluaiz_shared::environment::EnvironmentManager::current().model_registry_bin_path()
+    }
+
+    /// Loads the active ModelRegistry (Fast Path: .bin binary cache; Fallback: .json with auto-cache sync)
     pub fn load() -> ModelRegistry {
-        let mut path = Self::get_registry_path();
-        if !path.exists() {
-            let fallback = PathBuf::from(".cluaiz/engine/config/model_registry.json");
-            if fallback.exists() {
-                path = fallback;
-            } else {
-                return ModelRegistry::default();
+        let bin_path = Self::get_registry_bin_path();
+        if bin_path.exists() {
+            if let Ok(bytes) = std::fs::read(&bin_path) {
+                if let Ok(reg) = bincode::deserialize::<ModelRegistry>(&bytes) {
+                    return reg;
+                }
             }
+        }
+
+        let path = Self::get_registry_path();
+        if !path.exists() {
+            return ModelRegistry::default();
         }
 
         let content = match std::fs::read_to_string(&path) {
@@ -70,12 +69,15 @@ impl InstalledStateRegistry {
                 reg.installed_models.remove(&id);
             }
             let _ = Self::save(&reg);
+        } else {
+            // Save fast binary cache for subsequent 0-ms reads
+            let _ = Self::save_bin_cache(&reg);
         }
 
         reg
     }
 
-    /// Persists the active ModelRegistry to disk
+    /// Persists the active ModelRegistry to disk (.json and .bin)
     pub fn save(reg: &ModelRegistry) -> Result<(), String> {
         let path = Self::get_registry_path();
         if let Some(parent) = path.parent() {
@@ -86,6 +88,21 @@ impl InstalledStateRegistry {
             .map_err(|e| format!("Serialization error: {}", e))?;
 
         std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))?;
+
+        // Sync fast binary cache
+        let _ = Self::save_bin_cache(reg);
+        Ok(())
+    }
+
+    /// Saves fast binary cache for 0-ms instant deserialization
+    pub fn save_bin_cache(reg: &ModelRegistry) -> Result<(), String> {
+        let bin_path = Self::get_registry_bin_path();
+        if let Some(parent) = bin_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let bytes = bincode::serialize(reg)
+            .map_err(|e| format!("Binary serialization error: {}", e))?;
+        std::fs::write(&bin_path, bytes).map_err(|e| format!("Binary write error: {}", e))?;
         Ok(())
     }
 

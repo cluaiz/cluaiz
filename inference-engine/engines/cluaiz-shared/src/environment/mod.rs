@@ -135,6 +135,12 @@ impl EnvironmentManager {
     pub fn tools_registry_bin_path(&self) -> PathBuf {
         self.config_dir().join("tools_registry.bin")
     }
+    pub fn model_registry_json_path(&self) -> PathBuf {
+        self.config_dir().join("model_registry.json")
+    }
+    pub fn model_registry_bin_path(&self) -> PathBuf {
+        self.config_dir().join("model_registry.bin")
+    }
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
     }

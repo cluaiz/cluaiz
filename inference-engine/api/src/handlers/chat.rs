@@ -377,26 +377,71 @@ pub async fn chat_completions(
     // We will modify the last message in the array if a skill is matched
     let mut augmented_messages = request.messages.clone();
 
-    // 🚀 SEMANTIC ROUTING (Sovereign Injection)
+    // 🚀 RESOLVE ACTIVE SESSION TOOLS & SEMANTIC ROUTING (Turn Lifecycle & Skills Injection)
+    let mut active_skill_bodies = Vec::new();
+
+    // 1. Check Session Tools bound to session_id
+    if let Some(ref sid) = request.session_id {
+        let session_tools = engines::tools::SessionToolManager::get_session_tools(sid);
+        for tool_binding in session_tools {
+            if let Some(body) = engines::tools::ToolsEngine::get_skill_instructions(&tool_binding.id) {
+                active_skill_bodies.push(body);
+            }
+        }
+    }
+
+    // 2. Also check one-off request.tools payload (Ephemeral tools)
+    if let Some(ref tools_vec) = request.tools {
+        for tool_val in tools_vec {
+            if let Some(tool_id) = tool_val.get("id").and_then(|v| v.as_str()) {
+                if let Some(body) = engines::tools::ToolsEngine::get_skill_instructions(tool_id) {
+                    if !active_skill_bodies.contains(&body) {
+                        active_skill_bodies.push(body);
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Fallback to semantic triggers matching on prompt
     let prompt_lower = last_message.flatten_to_string().await.to_lowercase();
     let matched_skills = engines::tools::ToolsEngine::match_skills(&prompt_lower);
-    
     for skill_id in matched_skills {
         if let Some(body) = engines::tools::ToolsEngine::get_skill_instructions(&skill_id) {
-            matched_tool = skill_id.clone();
-            prefix_caching_injected = true;
-            if let Some(last_msg) = augmented_messages.last_mut() {
-                let prev_content = last_msg.content.flatten_to_string().await;
-                last_msg.content = MessageContent::Text(format!("{}\n\n{}", body, prev_content));
+            if !active_skill_bodies.contains(&body) {
+                active_skill_bodies.push(body);
+                break; // Limit semantic trigger match to 1
             }
-            break; // Only inject one tool context for now to save space
+        }
+    }
+
+    // 🧠 Context Window & Tool Instruction Budgeting Safety Cap
+    let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+    let n_ctx_limit = (gguf_meta.hardware_and_execution.n_ctx as usize).max(512);
+
+    let max_tool_chars = (n_ctx_limit * 4 * 35) / 100; // max 35% of context window for tool prompts
+    let mut total_chars = 0;
+    let mut budgeted_skill_bodies = Vec::new();
+    for body in active_skill_bodies {
+        if total_chars + body.len() <= max_tool_chars || budgeted_skill_bodies.is_empty() {
+            total_chars += body.len();
+            budgeted_skill_bodies.push(body);
+        } else {
+            tracing::warn!("⚠️ [ChatHandler] Skill prompt truncated to prevent Context Window overflow (budget limit: {} chars)", max_tool_chars);
+            break;
+        }
+    }
+
+    // Inject budgeted active tool instructions into the last user prompt context
+    if !budgeted_skill_bodies.is_empty() {
+        if let Some(last_msg) = augmented_messages.last_mut() {
+            let prev_content = last_msg.content.flatten_to_string().await;
+            let combined_instructions = budgeted_skill_bodies.join("\n\n---\n\n");
+            last_msg.content = MessageContent::Text(format!("{}\n\n{}", combined_instructions, prev_content));
         }
     }
 
     // 🧠 REASONING & THINKING BUDGET RESOLUTION (OpenAI reasoning_effort + Cluaiz think_mode)
-    let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-    let n_ctx_limit = (gguf_meta.hardware_and_execution.n_ctx as usize).max(512);
-
     let active_think_mode_owned = request.reasoning_effort.as_deref()
         .map(|re| re.to_string())
         .or_else(|| {
@@ -456,8 +501,21 @@ pub async fn chat_completions(
     // 🚀 ZERO-DISK CONCURRENCY: Direct In-Memory Payload & Sampler Dispatch
     // Packaging in-memory samplers into the prompt envelope eliminates disk race conditions and threads parameters directly into generation.
     let mut serialized_messages = Vec::new();
-    for msg in &augmented_messages {
+    let mut system_prompt_chars = 0;
+    let mut history_chars = 0;
+    let mut user_prompt_chars = 0;
+    let total_msgs = augmented_messages.len();
+
+    for (i, msg) in augmented_messages.iter().enumerate() {
         let content_str = msg.content.flatten_to_string().await;
+        let c_len = content_str.len();
+        if msg.role.eq_ignore_ascii_case("system") {
+            system_prompt_chars += c_len;
+        } else if i == total_msgs.saturating_sub(1) && msg.role.eq_ignore_ascii_case("user") {
+            user_prompt_chars += c_len;
+        } else {
+            history_chars += c_len;
+        }
         serialized_messages.push(json!({
             "role": msg.role,
             "content": content_str
@@ -781,14 +839,21 @@ pub async fn chat_completions(
                     
                     // Generate Telemetry and Final Updates
                     let total_time_ms = start_time.elapsed().as_millis();
-                    let tps = if total_time_ms > 0 {
-                        (overall_token_count as f64 / (total_time_ms as f64 / 1000.0))
+                    let decode_time_ms = total_time_ms.saturating_sub(first_ttft_ms);
+                    let tps = if decode_time_ms > 30 {
+                        (overall_token_count as f64) / (decode_time_ms as f64 / 1000.0)
+                    } else if total_time_ms > 0 {
+                        (overall_token_count as f64) / (total_time_ms as f64 / 1000.0)
                     } else {
                         0.0
                     };
 
                     if send_telemetry {
-                        let prompt_tok_est = augmented_messages.len() * 4;
+                        let prompt_tok_est = if user_prompt_chars + history_chars + system_prompt_chars > 0 {
+                            ((user_prompt_chars + history_chars + system_prompt_chars) / 4).max(1)
+                        } else {
+                            0
+                        };
                         let mut usage_json = json!({
                             "prompt_tokens": prompt_tok_est,
                             "completion_tokens": overall_token_count,
@@ -800,6 +865,21 @@ pub async fn chat_completions(
                             "total_time_ms": total_time_ms,
                             "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
                         });
+
+                        // 🌐 Real-Time Context & Memory Telemetry Breakdown
+                        let active_ids = req_session_id.as_deref()
+                            .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
+                            .unwrap_or_default();
+                        let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
+                            &resolved_model_name,
+                            req_session_id.as_deref().unwrap_or("ephemeral"),
+                            &active_ids,
+                            user_prompt_chars,
+                            history_chars,
+                            system_prompt_chars,
+                            overall_token_count,
+                        );
+                        usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
 
                         // Inject model_header_info if enabled in PermissionSchema
                         let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
@@ -911,7 +991,11 @@ pub async fn chat_completions(
         if send_telemetry {
             let total_time_ms = start_time.elapsed().as_millis();
             let comp_tok_est = content.split_whitespace().count().max(1);
-            let prompt_tok_est = augmented_messages.len() * 4;
+            let prompt_tok_est = if user_prompt_chars + history_chars + system_prompt_chars > 0 {
+                ((user_prompt_chars + history_chars + system_prompt_chars) / 4).max(1)
+            } else {
+                0
+            };
             let mut usage_json = json!({
                 "prompt_tokens": prompt_tok_est,
                 "completion_tokens": comp_tok_est,
@@ -921,6 +1005,21 @@ pub async fn chat_completions(
                 },
                 "total_time_ms": total_time_ms
             });
+            
+            // 🌐 Real-Time Context & Memory Telemetry Breakdown
+            let active_ids = request.session_id.as_deref()
+                .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
+                .unwrap_or_default();
+            let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
+                &resolved_model_name,
+                request.session_id.as_deref().unwrap_or("ephemeral"),
+                &active_ids,
+                user_prompt_chars,
+                history_chars,
+                system_prompt_chars,
+                comp_tok_est,
+            );
+            usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
             
             let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             if permission.model_header_info {

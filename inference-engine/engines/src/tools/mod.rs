@@ -89,8 +89,8 @@ impl ToolsEngine {
     }
 
     /// Computes real-time context token breakdown and KV-cache telemetry
-    pub fn compute_telemetry(session_id: &str, active_tool_ids: &[String], prompt_len: usize, history_len: usize) -> SystemContextTelemetry {
-        ContextTracker::compute_telemetry(session_id, active_tool_ids, prompt_len, history_len)
+    pub fn compute_telemetry(active_model_id: &str, session_id: &str, active_tool_ids: &[String], prompt_len: usize, history_len: usize, system_prompt_len: usize, generated_tokens: usize) -> SystemContextTelemetry {
+        ContextTracker::compute_telemetry(active_model_id, session_id, active_tool_ids, prompt_len, history_len, system_prompt_len, generated_tokens)
     }
 
     /// Matches user query against skill keyword triggers

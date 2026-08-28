@@ -792,6 +792,8 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
         // Set the active model
         const activeFormatted = formatModelName(activeModelId);
         selectedModelText.textContent = activeFormatted.shortName;
+        selectedModelText.dataset.modelId = activeModelId;
+        window.currentActiveModelId = activeModelId;
 
         // Build dropdown buttons
         menuInner.innerHTML = '';
@@ -815,6 +817,8 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
             // Click handler for model selection
             btn.addEventListener('click', async () => {
                 selectedModelText.textContent = formatted.shortName;
+                selectedModelText.dataset.modelId = model.id;
+                window.currentActiveModelId = model.id;
                 modelMenu.classList.add('hidden');
                 modelMenu.classList.remove('flex');
                 modelSelectBtn.classList.remove('bg-secondary', 'text-primary');
@@ -963,3 +967,123 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
         console.error("Failed to fetch tools/skills list:", e);
     }
 }
+
+window.updateLiveContextBar = function(usage) {
+    if (!usage) return;
+    const breakdown = usage.context_telemetry?.context_breakdown || usage.context_breakdown;
+
+    const formatK = (n) => {
+        if (!n && n !== 0) return '0';
+        if (n >= 1048576) {
+            const m = n / 1048576;
+            return m % 1 === 0 ? m + 'M' : m.toFixed(1) + 'M';
+        }
+        if (n >= 1024) {
+            const k = n / 1024;
+            return k % 1 === 0 ? k + 'k' : (n >= 10000 ? Math.round(k) + 'k' : k.toFixed(1) + 'k');
+        }
+        return n.toString();
+    };
+
+    // 1. Generation Performance Stats (Left side)
+    const tps = typeof usage.tokens_per_second === 'number' ? usage.tokens_per_second.toFixed(2) : (usage.tokens_per_second || '0.00');
+    const ttft = typeof usage.time_to_first_token_ms === 'number' ? (usage.time_to_first_token_ms / 1000).toFixed(2) : '0.00';
+    const tokens = usage.total_tokens || usage.completion_tokens || 0;
+
+    const tpsEl = document.getElementById('live-tps');
+    const tpsTag = document.getElementById('live-tps-tag');
+    if (tpsEl && tpsTag) {
+        tpsEl.textContent = tps;
+        tpsTag.style.display = 'inline-flex';
+    }
+
+    const ttftEl = document.getElementById('live-ttft');
+    const ttftTag = document.getElementById('live-ttft-tag');
+    if (ttftEl && ttftTag) {
+        ttftEl.textContent = ttft;
+        ttftTag.style.display = 'inline-flex';
+    }
+
+    const tokensEl = document.getElementById('live-tokens');
+    const tokensTag = document.getElementById('live-tokens-tag');
+    if (tokensEl && tokensTag) {
+        tokensEl.textContent = tokens;
+        tokensTag.style.display = 'inline-flex';
+    }
+
+    // 2. Context Window Bar (Right side)
+    const usedEl = document.getElementById('live-ctx-used');
+    const limitEl = document.getElementById('live-ctx-limit');
+    const pctEl = document.getElementById('live-ctx-pct');
+    const toolCountEl = document.getElementById('live-tool-count');
+
+    if (breakdown) {
+        const usableLimit = breakdown.total_context_limit;
+        const modelMax = breakdown.model_native_context;
+        const totalActive = breakdown.total_active_tokens || tokens;
+        const activePct = breakdown.active_percentage || (usableLimit > 0 ? Math.round((totalActive / usableLimit) * 100) : 0);
+
+        if (usedEl) usedEl.textContent = formatK(totalActive);
+        if (limitEl) limitEl.textContent = formatK(usableLimit);
+        if (pctEl) pctEl.textContent = `${activePct}%`;
+        if (toolCountEl) toolCountEl.textContent = `${breakdown.active_tools_count || 0}`;
+
+        // 3. Popover Elements
+        const popoverTotal = document.getElementById('popover-ctx-total');
+        if (popoverTotal) popoverTotal.textContent = `${formatK(totalActive)} / ${formatK(usableLimit)} (${activePct}%)`;
+
+        const popoverModelMax = document.getElementById('popover-model-max');
+        if (popoverModelMax) popoverModelMax.textContent = formatK(modelMax);
+
+        // Progress bar segments (5 pillars)
+        const setBar = (id, pct) => {
+            const el = document.getElementById(id);
+            if (el) el.style.width = `${pct || 0}%`;
+        };
+        setBar('bar-messages', breakdown.messages_percentage);
+        setBar('bar-system-prompt', breakdown.system_prompt_percentage);
+        setBar('bar-skills', breakdown.skills_percentage);
+        setBar('bar-plugins', breakdown.plugins_percentage || breakdown.system_tools_percentage);
+        setBar('bar-mcp-tools', breakdown.mcp_tools_percentage);
+
+        // List item values & percentages
+        const setItem = (valId, pctId, val, pct) => {
+            const vEl = document.getElementById(valId);
+            const pEl = document.getElementById(pctId);
+            if (vEl) vEl.textContent = formatK(val);
+            if (pEl) pEl.textContent = `${pct || 0}%`;
+        };
+        setItem('item-messages-val', 'item-messages-pct', breakdown.messages_tokens, breakdown.messages_percentage);
+        setItem('item-system-prompt-val', 'item-system-prompt-pct', breakdown.system_prompt_tokens, breakdown.system_prompt_percentage);
+        setItem('item-skills-val', 'item-skills-pct', breakdown.skills_tokens, breakdown.skills_percentage);
+        setItem('item-plugins-val', 'item-plugins-pct', breakdown.plugins_tokens || breakdown.system_tools_tokens, breakdown.plugins_percentage || breakdown.system_tools_percentage);
+        setItem('item-mcp-tools-val', 'item-mcp-tools-pct', breakdown.mcp_tools_tokens, breakdown.mcp_tools_percentage);
+        setItem('item-free-space-val', 'item-free-space-pct', breakdown.free_space_tokens, breakdown.free_space_percentage);
+
+        // Popover items populated cleanly
+    } else if (usage.total_tokens) {
+        if (usedEl) usedEl.textContent = formatK(usage.total_tokens);
+    }
+
+    // 4. Bind interactive popover toggle/hover on #live-ctx-wrapper
+    const ctxWrapper = document.getElementById('live-ctx-wrapper');
+    const popover = document.getElementById('live-context-popover');
+    if (ctxWrapper && popover && !ctxWrapper.dataset.bound) {
+        ctxWrapper.dataset.bound = 'true';
+        ctxWrapper.addEventListener('mouseenter', () => {
+            popover.classList.remove('hidden');
+        });
+        ctxWrapper.addEventListener('mouseleave', () => {
+            popover.classList.add('hidden');
+        });
+        ctxWrapper.addEventListener('click', (e) => {
+            e.stopPropagation();
+            popover.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!ctxWrapper.contains(e.target)) {
+                popover.classList.add('hidden');
+            }
+        });
+    }
+};
