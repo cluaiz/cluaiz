@@ -699,27 +699,23 @@ pub async fn chat_completions(
                                     let comp_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
                                     let comp_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
                                     
-                                    tracing::info!("🔍 [API] Single-Pass Intercepted Request for {} '{}'.", comp_type, comp_name);
-                                    
                                     // Extract the JSON payload
                                     let json_start = header_end + 1;
                                     let json_end = clean_token.find("</TRIGGER>").unwrap_or(clean_token.len());
                                     let payload = clean_token[json_start..json_end].trim();
                                     
-                                    tracing::info!("⚙️ [API] Extracted JSON Payload: {}", payload);
+                                    tracing::info!("🔍 [API] Single-Pass Tool Execution: {} '{}' with payload: {}", comp_type, comp_name, payload);
                                     
-                                    let mut execution_result = String::new();
-                                    
-                                    match engines::tools::ToolsEngine::execute_plugin_by_name(comp_name, payload.as_bytes()) {
-                                        Ok(bytes) => {
-                                            execution_result = String::from_utf8_lossy(&bytes).to_string();
-                                            tracing::info!("✅ [API] Tool execution completed. Result length: {}", execution_result.len());
+                                    let execution_result = match engines::tools::ToolsEngine::execute_tool_by_name(comp_type, comp_name, None, payload).await {
+                                        Ok(res_str) => {
+                                            tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", comp_name, res_str.len());
+                                            res_str
                                         },
                                         Err(e) => {
-                                            execution_result = format!("Error executing {}: {}", comp_name, e);
-                                            tracing::error!("❌ [API] Failed to execute tool: {}", e);
+                                            tracing::error!("❌ [API] Failed to execute tool '{}': {}", comp_name, e);
+                                            format!("Error executing {}: {}", comp_name, e)
                                         }
-                                    }
+                                    };
 
                                     (comp_type.to_string(), comp_name.to_string(), payload.to_string(), execution_result)
                                 };

@@ -130,4 +130,40 @@ impl ToolsEngine {
     pub async fn call_mcp(mcp_dir: &Path, tool_name: &str, arguments: Value) -> Result<Value> {
         McpClient::call_tool(mcp_dir, tool_name, arguments).await
     }
+
+    /// Calls an external MCP tool by name resolving path from ~/.cluaiz/tools/mcp
+    pub async fn call_mcp_by_name(mcp_name: &str, tool_name: &str, arguments: Value) -> Result<Value> {
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let mcp_dir = env.mcp_dir().join(mcp_name);
+        if mcp_dir.exists() {
+            Self::call_mcp(&mcp_dir, tool_name, arguments).await
+        } else {
+            let alt_dir = env.global_dir.join("mcp").join(mcp_name);
+            if alt_dir.exists() {
+                Self::call_mcp(&alt_dir, tool_name, arguments).await
+            } else {
+                Err(anyhow::anyhow!("MCP server '{}' not found in {:?}", mcp_name, mcp_dir))
+            }
+        }
+    }
+
+    /// Unified DRY executor across plugins and MCP servers by component type
+    pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
+        match category {
+            "mcp" => {
+                let target_tool = tool_name.unwrap_or(name);
+                let args: Value = serde_json::from_str(payload).unwrap_or_else(|_| serde_json::json!({ "raw": payload }));
+                let result_val = Self::call_mcp_by_name(name, target_tool, args).await?;
+                if let Some(s) = result_val.as_str() {
+                    Ok(s.to_string())
+                } else {
+                    Ok(result_val.to_string())
+                }
+            }
+            "plugin" | _ => {
+                let bytes = Self::execute_plugin_by_name(name, payload.as_bytes())?;
+                Ok(String::from_utf8_lossy(&bytes).to_string())
+            }
+        }
+    }
 }
