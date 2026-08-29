@@ -130,7 +130,29 @@ impl WasmExecutor {
             tracing::debug!("WASM '{}': filesystem access denied by manifest.", plugin_name);
         }
 
-        let linker = Linker::new(&self.engine); // No host functions exposed — absolute sandbox
+        let mut linker = Linker::new(&self.engine);
+
+        // ── Cluaiz Capability-Gated Host ABI ──
+        // 1. Time Capability: returns UTC timestamp in milliseconds
+        linker.func_wrap("cluaiz", "now_utc_ms", |_caller: wasmtime::Caller<'_, PluginStoreLimits>| -> i64 {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0)
+        }).map_err(|e| format!("Failed to bind 'cluaiz::now_utc_ms' to WASM linker: {}", e))?;
+
+        // 2. Platform Capability: returns OS integer identifier (1 = Windows, 2 = macOS, 3 = Linux, 0 = Unknown)
+        linker.func_wrap("cluaiz", "os_platform", |_caller: wasmtime::Caller<'_, PluginStoreLimits>| -> i32 {
+            if cfg!(target_os = "windows") {
+                1
+            } else if cfg!(target_os = "macos") {
+                2
+            } else if cfg!(target_os = "linux") {
+                3
+            } else {
+                0
+            }
+        }).map_err(|e| format!("Failed to bind 'cluaiz::os_platform' to WASM linker: {}", e))?;
 
         let instance = linker
             .instantiate(&mut store, &module)
