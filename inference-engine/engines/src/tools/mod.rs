@@ -14,7 +14,7 @@ pub use installer::ToolHubInstaller;
 pub use lifecycle::{SessionToolBinding, SessionToolManager, TurnLifecycleEngine};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
-pub use registry::{ExecutionMode, LoadStrategy, ToolCategory, ToolEntry, ToolsRegistry};
+pub use registry::{ExecutionMode, LoadStrategy, SecurityMode, ToolCategory, ToolEntry, ToolsRegistry};
 pub use skills::{ParsedSkill, SkillParser, SkillRouter};
 pub use telemetry::{ContextBreakdown, ContextTracker, SystemContextTelemetry};
 
@@ -56,6 +56,16 @@ impl ToolsEngine {
     pub fn set_tool_default_turns(id: &str, turns: i32) -> Result<()> {
         let mut reg = Self::registry()?;
         reg.set_tool_default_turns(id, turns)
+    }
+
+    /// Configures security mode (full_access / sandboxed / strict)
+    pub fn set_tool_security_mode(id: &str, mode: SecurityMode) -> Result<()> {
+        let mut reg = Self::registry()?;
+        if let Some(tool) = reg.installed_tools.get_mut(id) {
+            tool.security_mode = mode;
+            reg.save()?;
+        }
+        Ok(())
     }
 
     /// Downloads and installs a tool from Cluaiz Hub into `~/.cluaiz/tools/{skills,plugins,mcp}`

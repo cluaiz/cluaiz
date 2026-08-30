@@ -14,7 +14,7 @@ pub struct PluginExecutor;
 impl PluginExecutor {
     /// Executes a plugin located at `plugin_dir` with the given input payload
     pub fn execute(plugin_dir: &Path, payload: &[u8]) -> Result<Vec<u8>> {
-        let manifest_path = plugin_dir.join("manifest-plugin.yaml");
+        let manifest_path = plugin_dir.join("package.json");
         let manifest = PluginManifestParser::parse_file(&manifest_path)
             .unwrap_or_default();
 

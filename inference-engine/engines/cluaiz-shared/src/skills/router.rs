@@ -11,13 +11,15 @@ pub static GLOBAL_SKILL_ROUTER: LazyLock<RwLock<SkillRouter>> = LazyLock::new(||
     RwLock::new(router)
 });
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SkillManifest {
     #[serde(default)]
     pub id: String,
     #[serde(alias = "title", default)]
     pub name: String,
+    #[serde(default)]
     pub version: String,
+    #[serde(default)]
     pub description: String,
     #[serde(alias = "discovery", default)]
     pub triggers: SkillTriggers,
@@ -107,25 +109,37 @@ impl SkillRouter {
                     let path = entry.path();
                     
                     if path.is_dir() {
+                let pkg_json_path = path.join("package.json");
                 let skill_md_path = path.join("SKILL.md");
-                let plugin_yaml_path = path.join("manifest-plugin.yaml");
-                let mcp_yaml_path = path.join("manifest-mcp.yaml");
                 
-                let parsed_manifest = if plugin_yaml_path.exists() {
-                    if let Ok(content) = fs::read_to_string(&plugin_yaml_path) {
-                        serde_yaml::from_str::<SkillManifest>(&content).ok()
-                    } else { None }
-                } else if mcp_yaml_path.exists() {
-                    if let Ok(content) = fs::read_to_string(&mcp_yaml_path) {
-                        serde_yaml::from_str::<SkillManifest>(&content).ok()
+                let parsed_manifest = if pkg_json_path.exists() {
+                    if let Ok(content) = fs::read_to_string(&pkg_json_path) {
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                            let mut sm = SkillManifest::default();
+                            if let Some(id) = val.get("id").and_then(|v| v.as_str()) {
+                                sm.id = id.to_string();
+                            } else if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                                sm.id = n.to_string();
+                            }
+                            if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                                sm.name = n.to_string();
+                            }
+                            if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
+                                sm.description = d.to_string();
+                            }
+                            if let Some(triggers) = val.get("discovery").and_then(|d| d.get("semantic_triggers")).and_then(|t| t.as_array()) {
+                                sm.triggers.semantic = triggers.iter().filter_map(|t| t.as_str().map(|s| s.to_string())).collect();
+                            }
+                            Some(sm)
+                        } else { None }
                     } else { None }
                 } else if skill_md_path.exists() {
                     if let Ok(content) = fs::read_to_string(&skill_md_path) {
                         let normalized = content.replace("\r\n", "\n");
                         if let Some(start) = normalized.find("---\n") {
                             if let Some(end) = normalized[start + 4..].find("\n---") {
-                                let yaml_content = &normalized[start + 4..start + 4 + end];
-                                serde_yaml::from_str::<SkillManifest>(yaml_content).ok()
+                                let frontmatter = &normalized[start + 4..start + 4 + end];
+                                serde_yaml::from_str::<SkillManifest>(frontmatter).ok()
                             } else { None }
                         } else { None }
                     } else { None }
@@ -154,13 +168,11 @@ impl SkillRouter {
                                 let mut is_valid = true;
                                 if let Ok(cache_meta) = std::fs::metadata(&emb_path) {
                                     let mut source_time = None;
-                                    if let Ok(m) = std::fs::metadata(&skill_md_path) {
-                                        if let Ok(t) = m.modified() { source_time = Some(t); }
-                                    } else if let Ok(m) = std::fs::metadata(&plugin_yaml_path) {
-                                        if let Ok(t) = m.modified() { source_time = Some(t); }
-                                    } else if let Ok(m) = std::fs::metadata(&mcp_yaml_path) {
-                                        if let Ok(t) = m.modified() { source_time = Some(t); }
-                                    }
+                                     if let Ok(m) = std::fs::metadata(&skill_md_path) {
+                                         if let Ok(t) = m.modified() { source_time = Some(t); }
+                                     } else if let Ok(m) = std::fs::metadata(&pkg_json_path) {
+                                         if let Ok(t) = m.modified() { source_time = Some(t); }
+                                     }
                                     
                                     if let (Ok(cache_time), Some(src_time)) = (cache_meta.modified(), source_time) {
                                         if src_time > cache_time {

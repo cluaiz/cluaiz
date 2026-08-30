@@ -81,6 +81,21 @@ pub struct PluginManifestParser;
 impl PluginManifestParser {
     pub fn parse_file<P: AsRef<Path>>(path: P) -> Option<PluginManifest> {
         let content = std::fs::read_to_string(path).ok()?;
-        serde_yaml::from_str(&content).ok()
+        
+        let val = serde_json::from_str::<serde_json::Value>(&content).ok()?;
+        let mut manifest = PluginManifest::default();
+        if let Some(id) = val.get("id").and_then(|v| v.as_str()) {
+            manifest.name = id.to_string();
+        } else if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+            manifest.name = n.to_string();
+        }
+        if let Some(desc) = val.get("description").and_then(|v| v.as_str()) {
+            manifest.description = desc.to_string();
+        }
+        let btype = val.get("build_type").and_then(|v| v.as_str()).unwrap_or("wasm");
+        let mut exec = PluginExecution::default();
+        exec.envelope = if btype == "binary" { "NATIVE".to_string() } else { "WASM".to_string() };
+        manifest.execution = Some(exec);
+        Some(manifest)
     }
 }

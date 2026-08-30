@@ -14,9 +14,9 @@ pub struct McpClient;
 impl McpClient {
     /// Calls an external MCP tool by running its configured process with spec-compliant handshake over stdio
     pub async fn call_tool(mcp_dir: &Path, tool_name: &str, arguments: Value) -> Result<Value> {
-        let manifest_path = mcp_dir.join("manifest-mcp.yaml");
+        let manifest_path = mcp_dir.join("package.json");
         let manifest = McpManifestParser::parse_file(&manifest_path)
-            .ok_or_else(|| anyhow!("Failed to parse manifest-mcp.yaml in {:?}", mcp_dir))?;
+            .ok_or_else(|| anyhow!("Failed to parse MCP package.json in {:?}", mcp_dir))?;
 
         let exec = manifest.execution
             .ok_or_else(|| anyhow!("No execution configuration found for MCP in {:?}", mcp_dir))?;
@@ -35,6 +35,7 @@ impl McpClient {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
+        cmd.envs(std::env::vars());
         for (k, v) in &exec.env {
             cmd.env(k, v);
         }

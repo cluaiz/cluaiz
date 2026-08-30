@@ -56,7 +56,7 @@ pub struct McpPermissions {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct McpExecution {
     #[serde(default = "default_command")]
-    pub command: String, // "npx", "node", "python"
+    pub command: String, // "npx", "node", "python", "uvx"
     #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
@@ -64,7 +64,7 @@ pub struct McpExecution {
 }
 
 fn default_command() -> String {
-    "node".to_string()
+    "npx".to_string()
 }
 
 pub struct McpManifestParser;
@@ -72,6 +72,43 @@ pub struct McpManifestParser;
 impl McpManifestParser {
     pub fn parse_file<P: AsRef<Path>>(path: P) -> Option<McpManifest> {
         let content = std::fs::read_to_string(path).ok()?;
-        serde_yaml::from_str(&content).ok()
+        
+        // 1. Prefer pure package.json
+        let val = serde_json::from_str::<serde_json::Value>(&content).ok()?;
+        let mut manifest = McpManifest::default();
+        if let Some(id) = val.get("id").and_then(|v| v.as_str()) {
+            manifest.name = id.to_string();
+        } else if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+            manifest.name = n.to_string();
+        }
+        if let Some(desc) = val.get("description").and_then(|v| v.as_str()) {
+            manifest.description = desc.to_string();
+        }
+        
+        let mut exec = McpExecution::default();
+        if let Some(versions) = val.get("versions").and_then(|v| v.as_object()) {
+            if let Some(first_ver) = versions.values().next() {
+                if let Some(cmd) = first_ver.get("command").and_then(|c| c.as_str()) {
+                    exec.command = cmd.to_string();
+                }
+                if let Some(args_arr) = first_ver.get("args").and_then(|a| a.as_array()) {
+                    exec.args = args_arr.iter().filter_map(|a| a.as_str().map(|s| s.to_string())).collect();
+                }
+                if let Some(env_obj) = first_ver.get("env").and_then(|e| e.as_object()) {
+                    for (k, v) in env_obj {
+                        if let Some(val_str) = v.as_str() {
+                            exec.env.insert(k.clone(), val_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        if exec.command.is_empty() {
+            if let Some(cmd) = val.get("command").and_then(|c| c.as_str()) {
+                exec.command = cmd.to_string();
+            }
+        }
+        manifest.execution = Some(exec);
+        Some(manifest)
     }
 }

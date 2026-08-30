@@ -1,7 +1,7 @@
 use anyhow::Result;
 use cluaiz_shared::environment::EnvironmentManager;
 use super::index::ToolsRegistry;
-use super::types::{ExecutionMode, ToolEntry};
+use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 
 impl ToolsRegistry {
     /// Auto-probes ~/.cluaiz/tools/skills, plugins, and mcp directories
@@ -54,6 +54,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: true,
+                                security_mode: SecurityMode::FullAccess,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: Vec::new(),
@@ -96,6 +97,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: binary,
                                 enabled: true,
+                                security_mode: SecurityMode::FullAccess,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: perms,
@@ -137,6 +139,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: true,
+                                security_mode: SecurityMode::Strict,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: perms,
@@ -224,38 +227,36 @@ impl ToolsRegistry {
             }
         }
 
+        let mut name = String::new();
         let mut version = String::new();
+        let mut desc = String::new();
+        let mut triggers = Vec::new();
+        let mut perms = Vec::new();
+        let mut mode = ExecutionMode::Auto;
+        let mut default_turns = -1;
+
         let pkg_json = dir.join("package.json");
         if pkg_json.exists() {
             if let Ok(c) = std::fs::read_to_string(&pkg_json) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&c) {
+                    if let Some(id) = val.get("id").and_then(|v| v.as_str()) {
+                        name = id.to_string();
+                    } else if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                        name = n.to_string();
+                    }
                     if let Some(v) = val.get("latest_version").or_else(|| val.get("version")).and_then(|v| v.as_str()) {
                         version = v.to_string();
                     }
-                }
-            }
-        }
-
-        let manifest = dir.join("manifest-plugin.yaml");
-        if manifest.exists() {
-            if let Ok(content) = std::fs::read_to_string(&manifest) {
-                if let Ok(val) = serde_yaml::from_str::<serde_json::Value>(&content) {
-                    let name = val.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
-                    if let Some(v) = val.get("version").and_then(|v| v.as_str()) {
-                        version = v.to_string();
+                    if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
+                        desc = d.to_string();
                     }
-                    let desc = val.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                    
-                    let mut triggers = Vec::new();
-                    if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
-                        triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
-                    } else if let Some(d) = val.get("discovery") {
+                    if let Some(d) = val.get("discovery") {
                         if let Some(arr) = d.get("semantic_triggers").and_then(|s| s.as_array()) {
                             triggers = arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                         }
+                    } else if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
+                        triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                     }
-
-                    let mut perms = Vec::new();
                     if let Some(p) = val.get("permissions") {
                         if p.get("network_access").and_then(|n| n.as_bool()).unwrap_or(false) {
                             perms.push("net:fetch".to_string());
@@ -264,25 +265,8 @@ impl ToolsRegistry {
                             perms.push("fs:access".to_string());
                         }
                     }
-
-                    let mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Auto);
-                    let default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(-1) as i32;
-
-                    if triggers.is_empty() {
-                        let skill_path = dir.join("SKILL.md");
-                        if skill_path.exists() {
-                            if let Ok(s_content) = std::fs::read_to_string(&skill_path) {
-                                let (_, s_ver, _, s_triggers, _, _) = Self::probe_skill_frontmatter(&s_content);
-                                if !s_triggers.is_empty() {
-                                    triggers = s_triggers;
-                                }
-                                if version.is_empty() && !s_ver.is_empty() {
-                                    version = s_ver;
-                                }
-                            }
-                        }
-                    }
-
+                    mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Auto);
+                    default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(-1) as i32;
                     return (name, version, desc, binary, triggers, perms, mode, default_turns);
                 }
             }
@@ -296,44 +280,51 @@ impl ToolsRegistry {
             }
         }
 
-        (String::new(), version, String::new(), binary, Vec::new(), Vec::new(), ExecutionMode::Auto, -1)
+        (name, version, desc, binary, triggers, perms, mode, default_turns)
     }
 
     fn probe_mcp_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Vec<String>, ExecutionMode, i32) {
+        let mut name = String::new();
         let mut version = String::new();
-        let manifest = dir.join("manifest-mcp.yaml");
-        if manifest.exists() {
-            if let Ok(content) = std::fs::read_to_string(&manifest) {
-                if let Ok(val) = serde_yaml::from_str::<serde_json::Value>(&content) {
-                    let name = val.get("name").and_then(|n| n.as_str()).unwrap_or("").to_string();
-                    if let Some(v) = val.get("version").and_then(|v| v.as_str()) {
+        let mut desc = String::new();
+        let mut triggers = Vec::new();
+        let mut perms = Vec::new();
+        let mut mode = ExecutionMode::Manual;
+        let mut default_turns = 3;
+
+        let pkg_json = dir.join("package.json");
+        if pkg_json.exists() {
+            if let Ok(c) = std::fs::read_to_string(&pkg_json) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&c) {
+                    if let Some(id) = val.get("id").and_then(|v| v.as_str()) {
+                        name = id.to_string();
+                    } else if let Some(n) = val.get("name").and_then(|v| v.as_str()) {
+                        name = n.to_string();
+                    }
+                    if let Some(v) = val.get("latest_version").or_else(|| val.get("version")).and_then(|v| v.as_str()) {
                         version = v.to_string();
                     }
-                    let desc = val.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                    
-                    let mut triggers = Vec::new();
-                    if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
-                        triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
-                    } else if let Some(d) = val.get("discovery") {
+                    if let Some(d) = val.get("description").and_then(|v| v.as_str()) {
+                        desc = d.to_string();
+                    }
+                    if let Some(d) = val.get("discovery") {
                         if let Some(arr) = d.get("semantic_triggers").and_then(|s| s.as_array()) {
                             triggers = arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                         }
+                    } else if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
+                        triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                     }
-
-                    let mut perms = Vec::new();
                     if let Some(p) = val.get("permissions") {
                         if p.get("network_access").and_then(|n| n.as_bool()).unwrap_or(false) {
                             perms.push("net:fetch".to_string());
                         }
                     }
-
-                    let mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Manual);
-                    let default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(3) as i32;
-
+                    mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Manual);
+                    default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(3) as i32;
                     return (name, version, desc, triggers, perms, mode, default_turns);
                 }
             }
         }
-        (String::new(), version, String::new(), Vec::new(), Vec::new(), ExecutionMode::Manual, 3)
+        (name, version, desc, triggers, perms, mode, default_turns)
     }
 }

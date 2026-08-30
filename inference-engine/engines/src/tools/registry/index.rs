@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 use cluaiz_shared::environment::EnvironmentManager;
-use super::types::{ExecutionMode, ToolEntry};
+use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 
 /// Master Tools Registry (Single Source of Truth for all Skills, Plugins, and MCP connectors)
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
@@ -13,6 +13,10 @@ pub struct ToolsRegistry {
 
     #[serde(default)]
     pub last_updated: String,
+
+    /// Global default security mode ("full_access" | "sandboxed" | "strict")
+    #[serde(default)]
+    pub default_security_mode: SecurityMode,
 
     /// Map of tool_id -> ToolEntry
     #[serde(default)]
@@ -82,6 +86,7 @@ impl ToolsRegistry {
                                 local_dir: env.plugins_dir().join(k).to_string_lossy().to_string(),
                                 binary_path: v.get("binary").and_then(|b| b.as_str()).map(|s| s.to_string()),
                                 enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
+                                security_mode: SecurityMode::FullAccess,
                                 execution_mode: ExecutionMode::Auto,
                                 default_turns: -1,
                                 permissions: Vec::new(),
@@ -102,6 +107,7 @@ impl ToolsRegistry {
                                 local_dir: env.skills_dir().join(k).to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
+                                security_mode: SecurityMode::FullAccess,
                                 execution_mode: ExecutionMode::Auto,
                                 default_turns: -1,
                                 permissions: Vec::new(),
@@ -122,6 +128,7 @@ impl ToolsRegistry {
                                 local_dir: env.mcp_dir().join(k).to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
+                                security_mode: SecurityMode::Strict,
                                 execution_mode: ExecutionMode::Manual,
                                 default_turns: 3,
                                 permissions: Vec::new(),

@@ -129,6 +129,36 @@ impl ToolHubInstaller {
             }
         }
 
+        // Fallback: Construct deterministic GitHub release URLs if not explicitly present in package.json
+        if download_url.is_empty() && !component_id.is_empty() {
+            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            let prefix = match component_type {
+                "skill" => "skill",
+                "plugin" => "plugin",
+                "mcp" => "mcp",
+                _ => "ext",
+            };
+            download_url = format!(
+                "https://github.com/cluaiz/cluaiz-hub/releases/download/{}-{}-v{}/{}-files.zip",
+                prefix, component_id, ver, component_id
+            );
+        }
+
+        if binary_download_url.is_empty() && !component_id.is_empty() && component_type == "plugin" {
+            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            let (os_name, ext) = if cfg!(target_os = "windows") {
+                ("windows_x64", "dll")
+            } else if cfg!(target_os = "macos") {
+                ("macos_arm64", "dylib")
+            } else {
+                ("linux_x64", "so")
+            };
+            binary_download_url = format!(
+                "https://github.com/cluaiz/cluaiz-hub/releases/download/plugin-{}-v{}/{}_{}.{}",
+                component_id, ver, component_id, os_name, ext
+            );
+        }
+
         if download_url.is_empty() {
             return Err(anyhow::anyhow!(
                 "Package '{}' (version '{}') does not specify a valid download bundle in Cluaiz Hub.",
