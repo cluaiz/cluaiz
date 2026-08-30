@@ -1,4 +1,4 @@
-use super::types::{ContextBreakdown, SystemContextTelemetry};
+use super::types::{CategoryTelemetryGroup, ComponentTelemetryItem, ContextBreakdown, SystemContextTelemetry};
 use crate::tools::registry::ToolsRegistry;
 
 pub struct ContextTracker;
@@ -17,7 +17,7 @@ impl ContextTracker {
         let registry = ToolsRegistry::load().unwrap_or_default();
         let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         
-        // 🎯 100% Dynamic Model Native Context from InstalledStateRegistry / model_registry.json
+        // 🎯 Dynamic Model Native Context from InstalledStateRegistry / model_registry.json
         let installed_reg = crate::models::InstalledStateRegistry::load();
         let mut model_native_limit = 0;
 
@@ -85,15 +85,12 @@ impl ContextTracker {
         let mut deferred_plugins_tokens = 0;
         let mut deferred_saved = 0;
 
+        let mut skill_items = Vec::new();
+        let mut plugin_items = Vec::new();
+        let mut mcp_items = Vec::new();
+
         for (id, entry) in &registry.installed_tools {
             if !entry.enabled {
-                continue;
-            }
-
-            // 🛡️ Physical Disk Check: Reject phantom/dummy tools whose directory or binary does not exist on disk!
-            let dir_exists = std::path::Path::new(&entry.local_dir).exists();
-            let bin_exists = entry.binary_path.as_ref().map(|p| std::path::Path::new(p).exists()).unwrap_or(false);
-            if !dir_exists && !bin_exists {
                 continue;
             }
 
@@ -102,30 +99,61 @@ impl ContextTracker {
                 + entry.permissions.iter().map(|s| s.len()).sum::<usize>()
                 + entry.semantic_triggers.iter().map(|s| s.len()).sum::<usize>();
             
-            // Only count if tool has real schema parameters
             let estimated_tokens = if schema_chars > 0 {
                 (schema_chars / 4).max(4)
             } else {
-                0
+                4
             };
 
-            if estimated_tokens == 0 {
-                continue;
-            }
+            let is_active = active_tool_ids.contains(id);
+            let item = ComponentTelemetryItem {
+                name: if entry.name.is_empty() { id.clone() } else { entry.name.clone() },
+                category: entry.category.clone(),
+                status: if is_active { "active".to_string() } else { "deferred".to_string() },
+                security_mode: format!("{:?}", entry.security_mode).to_lowercase(),
+                tokens: if is_active { estimated_tokens } else { 0 },
+                execution_latency_ms: 0.0,
+                memory_used_mb: 0.0,
+                memory_cap_mb: 16.0,
+                cpu_fuel_consumed: 0,
+                input_payload: None,
+                output_result: None,
+                logs: Vec::new(),
+            };
 
-            if active_tool_ids.contains(id) {
+            if is_active {
                 match entry.category.as_str() {
-                    "skill" => skills_tokens += estimated_tokens,
-                    "plugin" => plugins_tokens += estimated_tokens,
-                    "mcp" => mcp_tools_tokens += estimated_tokens,
-                    _ => plugins_tokens += estimated_tokens,
+                    "skill" => {
+                        skills_tokens += estimated_tokens;
+                        skill_items.push(item);
+                    }
+                    "plugin" => {
+                        plugins_tokens += estimated_tokens;
+                        plugin_items.push(item);
+                    }
+                    "mcp" => {
+                        mcp_tools_tokens += estimated_tokens;
+                        mcp_items.push(item);
+                    }
+                    _ => {
+                        plugins_tokens += estimated_tokens;
+                        plugin_items.push(item);
+                    }
                 }
             } else {
                 deferred_saved += estimated_tokens;
                 match entry.category.as_str() {
-                    "mcp" => deferred_mcp_tokens += estimated_tokens,
-                    "skill" => {}, // Inactive skills take zero active prompt space
-                    _ => deferred_plugins_tokens += estimated_tokens,
+                    "mcp" => {
+                        deferred_mcp_tokens += estimated_tokens;
+                        mcp_items.push(item);
+                    }
+                    "skill" => {
+                        skill_items.push(item);
+                    }
+                    _ => {
+                        deferred_plugins_tokens += estimated_tokens;
+                        plugin_items.push(item);
+                    }
                 }
             }
         }
@@ -162,6 +190,27 @@ impl ContextTracker {
             }
         };
 
+        let skills_group = CategoryTelemetryGroup {
+            count: skill_items.len(),
+            tokens: skills_tokens,
+            percent: pct(skills_tokens),
+            items: skill_items,
+        };
+
+        let plugins_group = CategoryTelemetryGroup {
+            count: plugin_items.len(),
+            tokens: plugins_tokens,
+            percent: pct(plugins_tokens),
+            items: plugin_items,
+        };
+
+        let mcp_group = CategoryTelemetryGroup {
+            count: mcp_items.len(),
+            tokens: mcp_tools_tokens,
+            percent: pct(mcp_tools_tokens),
+            items: mcp_items,
+        };
+
         let kv_cache_vram_bytes = total_active * 2 * 32 * 128;
 
         SystemContextTelemetry {
@@ -182,6 +231,9 @@ impl ContextTracker {
                 mcp_tools_percentage: pct(mcp_tools_tokens),
                 free_space_tokens: free_space,
                 free_space_percentage: pct(free_space),
+                skills: skills_group,
+                plugins: plugins_group,
+                mcp_tools: mcp_group,
                 deferred_mcp_tokens,
                 deferred_plugins_tokens,
                 deferred_tools_tokens_saved: deferred_saved,
@@ -200,4 +252,3 @@ impl ContextTracker {
         }
     }
 }
-

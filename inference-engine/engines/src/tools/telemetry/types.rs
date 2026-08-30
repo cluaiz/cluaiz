@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+pub use cluaiz_shared::telemetry::types::{CategoryTelemetryGroup, ComponentTelemetryItem};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ContextBreakdown {
@@ -25,6 +26,11 @@ pub struct ContextBreakdown {
     
     pub free_space_tokens: usize,
     pub free_space_percentage: f64,
+
+    // Tree Category Groups for Drill-Down Inspector
+    pub skills: CategoryTelemetryGroup,
+    pub plugins: CategoryTelemetryGroup,
+    pub mcp_tools: CategoryTelemetryGroup,
     
     // Deferred (Saved Tokens)
     pub deferred_mcp_tokens: usize,
@@ -48,4 +54,3 @@ pub struct SystemContextTelemetry {
     pub kv_cache_vram_bytes_allocated: usize,
     pub active_session_id: String,
 }
-
