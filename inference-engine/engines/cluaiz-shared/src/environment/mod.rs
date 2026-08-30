@@ -74,11 +74,61 @@ impl EnvironmentManager {
         // Check dirs package for home directory
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         let global_path = home_dir.join(".cluaiz");
-        Self {
+        let mgr = Self {
             mode: EnvironmentMode::Installed,
             local_dir: global_path.clone(),
             global_dir: global_path,
+        };
+        let _ = mgr.ensure_env_file();
+        mgr.load_env();
+        mgr
+    }
+
+    /// Automatically loads environment variables from ~/.cluaiz/engine/config/.env into std::env
+    pub fn load_env(&self) {
+        let candidates = [
+            self.config_dir().join(".env"),
+            self.global_dir.join("engine").join("config").join(".env"),
+            self.local_dir.join("engine").join("config").join(".env"),
+            std::env::current_dir().map(|p| p.join(".cluaiz/engine/config/.env")).unwrap_or_default(),
+            std::env::current_dir().map(|p| p.join(".env")).unwrap_or_default(),
+        ];
+
+        for path in candidates {
+            if path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if trimmed.is_empty() || trimmed.starts_with('#') {
+                            continue;
+                        }
+                        if let Some((key, val)) = trimmed.split_once('=') {
+                            let key = key.trim();
+                            let val = val.trim().trim_matches('"').trim_matches('\'');
+                            if !key.is_empty() && std::env::var(key).is_err() {
+                                std::env::set_var(key, val);
+                            }
+                        }
+                    }
+                }
+            }
         }
+    }
+
+    pub fn env_file_path(&self) -> PathBuf {
+        self.config_dir().join(".env")
+    }
+
+    /// Ensures ~/.cluaiz/engine/config/.env exists
+    pub fn ensure_env_file(&self) -> std::io::Result<PathBuf> {
+        let path = self.env_file_path();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if !path.exists() {
+            let _ = std::fs::write(&path, "# Cluaiz Engine Environment Configuration\n");
+        }
+        Ok(path)
     }
 
     pub fn engine_dir(&self) -> PathBuf {
