@@ -635,38 +635,15 @@ impl CoreRouter {
                 let cb = std::sync::Arc::new(std::sync::Mutex::new(callback));
                 
                 let mut current_prompt = formatted_prompt.clone();
-                let mut max_iters = 3; // Max agentic pauses per request
+                let mut max_iters = 10; // Max agentic loop steps per request
                 let mut is_continuation = false; // Track if this is a tool-resume iteration
                 
                 while max_iters > 0 {
                     max_iters -= 1;
                     
-                    // 🎯 CONTINUATION MODE: Tool was executed. Stream final answer DIRECTLY.
-                    // Do NOT go through the trigger interceptor — the skill instructions in the
-                    // system prompt would cause the model to re-trigger the tool in a loop.
-                    // Instead: clear KV state, stream raw tokens straight to dashboard, then break.
-                    // If model tries to generate another TRIGGER despite the system override, stop it.
                     if is_continuation {
                         let _ = b.prefill("");
-                        let cb_final = cb.clone();
-                        let mut trig_acc = String::new();
-                        if let Err(e) = b.generate_stream(&current_prompt, max_tokens, Box::new(move |token: String| {
-                            trig_acc.push_str(&token);
-                            // Stop immediately if model tries to call a tool again
-                            if trig_acc.contains("<TRIGGER:") {
-                                return false;
-                            }
-                            // Keep only last 20 chars for sliding trigger detection
-                            if trig_acc.len() > 30 {
-                                let keep = trig_acc.len().saturating_sub(20);
-                                trig_acc = trig_acc[keep..].to_string();
-                            }
-                            let mut cb_guard = cb_final.lock().unwrap();
-                            (*cb_guard)(token)
-                        })) {
-                            return Err(e.to_string());
-                        }
-                        break; // Final answer done — exit loop unconditionally
+                        is_continuation = false;
                     }
                     
                     let tool_state = std::sync::Arc::new(std::sync::Mutex::new((false, String::new(), String::new())));
@@ -958,14 +935,11 @@ impl CoreRouter {
                         };
                         
                         current_prompt.push_str(&generated_trigger_text);
-                        // System override message: highest priority in Llama-3 instruct RLHF.
-                        // A new system turn mid-conversation overrides the original skill instructions
-                        // that tell the model to use tools — preventing re-trigger loops.
                         current_prompt.push_str(&format!(
-                            "<|eot_id|>\n<|start_header_id|>system<|end_header_id|>\n\nTool execution is complete. DO NOT call any tools. DO NOT generate any TRIGGER tags. Write your final conversational answer using the search result below.\n<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n<result:{}>\n{}\n</result>\n<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
+                            "<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n<result:{}>\n{}\n</result>\n<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
                             t_name, safe_result_str
                         ));
-                        is_continuation = true; // Next iteration must reset KV cache
+                        is_continuation = true;
                         
                     } else {
                         break; // Normal generation finished without tools

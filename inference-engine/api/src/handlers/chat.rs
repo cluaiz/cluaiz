@@ -639,7 +639,7 @@ pub async fn chat_completions(
                      
                      let mut rx = initial_rx;
                      
-                     let mut max_iters = 3;
+                     let mut max_iters = 10;
                     while max_iters > 0 {
                         max_iters -= 1;
                          let mut tool_executed = false;
@@ -767,7 +767,7 @@ pub async fn chat_completions(
                                 let user_query = last_message.flatten_to_string().await;
                                 let pivot_envelope = json!({
                                     "pivot_prompt": format!(
-                                        "<user_query>\n{}\n</user_query>\n<result:{}:{}>\n{}\n</result>\nNow, provide the final conversational answer to the user based on the user query and tool result above. Do NOT use any tools. Just answer the user directly.\n",
+                                        "<user_query>\n{}\n</user_query>\n<result:{}:{}>\n{}\n</result>\nReview the tool result above. If sufficient information exists to answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.\n",
                                         user_query, comp_type, comp_name, execution_result
                                     ),
                                     "samplers": {

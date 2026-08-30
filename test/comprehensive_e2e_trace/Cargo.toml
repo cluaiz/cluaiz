@@ -14,5 +14,5 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 tokio = { version = "1.52.3", features = ["full"] }
 futures-util = "0.3.30"
-cluaiz-search = { path = "../../../cluaiz-hub/plugins/cluaiz-search" }
+cluaiz-search = { path = "../../../cluaiz-hub/plugins/web-search" }
 serde_yaml = "0.9.34+deprecated"
