@@ -8,7 +8,7 @@
   },
   "3_layer_rule_injection": {
     "injected": true,
-    "rules": "JIT Engine-to-AI Instruction"
+    "rules": "Dynamic Prefix Engine-to-AI Instruction"
   },
   "4_ai_reads_sms": true,
   "5_ai_formulates_plan": {

@@ -145,7 +145,7 @@ enum CliCommand {
         file_path: String,
     },
 
-    /// Test JIT KV Cache compilation and memory footprint
+    /// Test Dynamic Prefix Caching KV Cache compilation and memory footprint
     TestJit,
 
     /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
@@ -528,7 +528,7 @@ async fn main() -> Result<()> {
         }
         Some(CliCommand::TestJit) => {
             if let Err(e) = crate::cli::test_jit::execute().await {
-                eprintln!("\n  {} [Cluaiz] JIT Test Error: {}\n", "❌".red(), e);
+                eprintln!("\n  {} [Cluaiz] Diagnostic Test Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }

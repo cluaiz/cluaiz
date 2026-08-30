@@ -495,7 +495,7 @@ impl DashboardEngine {
                                             print!("\r\n\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool: '{}' (Score: {})\r\n", matched, score);
                                             is_system_step = true;
                                         } else if token.starts_with("__STEP_3_INJECT_START__") {
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic JIT Layer rules compile & inject successfully.\r\n");
+                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully.\r\n");
                                             is_system_step = true;
                                         } else if token == "__STEP_4_READ_SMS__" {
                                             print!("\r\n\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context.\r\n");
@@ -521,9 +521,9 @@ impl DashboardEngine {
                                             sp.stop(Some("\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool"));
                                             println!();
                                             
-                                            sp.start("Compiling Dynamic JIT Layer rules...");
+                                            sp.start("Compiling Dynamic Prefix Layer rules...");
                                             std::thread::sleep(std::time::Duration::from_millis(200));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic JIT Layer rules compile & inject successfully."));
+                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully."));
                                             println!();
                                             
                                             sp.start("Parsing SMS input context...");

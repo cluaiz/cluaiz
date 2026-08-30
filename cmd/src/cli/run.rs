@@ -506,9 +506,9 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                                         
                                         tracker.complete_step(&format!("[Step 2] Match Found -> Registry Tool: '{}' (Score: {})", matched, score));
                                         step_lines_count += 1;
-                                        tracker.set_step("[Step 3] Dynamic JIT Layer rules compile & inject (Loading rules...)");
+                                        tracker.set_step("[Step 3] Dynamic Prefix Layer rules compile & inject (Loading rules...)");
                                     } else if token.starts_with("__STEP_3_INJECT_START__") {
-                                        tracker.complete_step("[Step 3] Dynamic JIT Layer rules compile & inject successfully.");
+                                        tracker.complete_step("[Step 3] Dynamic Prefix Layer rules compile & inject successfully.");
                                         step_lines_count += 1;
                                         tracker.set_step("[Step 4] Inference system parses user SMS input context...");
                                     } else if token == "__STEP_4_READ_SMS__" {

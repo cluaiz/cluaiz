@@ -17,9 +17,9 @@ cluaiz is designed to eliminate the "Abstraction Bloat" found in traditional inf
 ### Tier II: The Brain (Relational Persistence Layer)
 - **Role**: Infinite memory and state management.
 - **Logic**: Utilizes **LanceDB** for vector embeddings and **SurrealDB** for relational state graphs.
-- **State Stitching**: JIT mounting of historical context into the active inference window.
+- **State Stitching**: Dynamic mounting of historical context into the active inference window.
 
-### Tier III: The Driver-Manager (JIT Hardware Provisioner)
+### Tier III: The Driver-Manager (Dynamic Hardware Provisioner)
 - **Role**: Hardware-aware kernel management.
 - **Logic**: Performs deep hardware probing (Silicon ID, VRAM, Compute Units) and pulls the exact versioned kernel from the registry.
 - **DHL (Direct Hardware Linkage)**: Ensures the FFI handshake is zero-copy and atomically synchronized with host silicon.
@@ -35,7 +35,7 @@ LogitSteer is our proprietary method for **Physical State Injection**.
 
 ## 🛰️ 4. Silicon-Direct Workflow
 1.  **Probe**: Detect CPU/GPU/NPU capabilities.
-2.  **Bind**: JIT link the optimized shared library (.so/.dll).
+2.  **Bind**: Dynamically link the optimized shared library (.so/.dll).
 3.  **Execute**: Pure ternary arithmetic (no matrix multiplication overhead).
 4.  **Persist**: Store neural states in the Relational Brain.
 

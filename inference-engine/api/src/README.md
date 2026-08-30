@@ -42,4 +42,4 @@ graph TD
 - **The Core Logic:** Bypasses HTTP entirely. Implements Named Pipes (Windows) and Unix Domain Sockets (Linux). It also **actively monitors the LLM's token stream** for `<cel>` tags to intercept Engine Directives mid-inference.
 - **The "Why":** 
   - The upcoming cluaiz Desktop App requires 0-latency communication with the engine.
-  - **Dynamic AI Agency (JIT Injection):** By intercepting `<cel>` tags, the engine can execute raw scripts natively (like injecting data into the Mid-Layer) without streaming the command to the user, allowing the AI to dynamically correct itself during inference.
+  - **Dynamic AI Agency (Dynamic Prefix Injection):** By intercepting `<cel>` tags, the engine can execute raw scripts natively (like injecting data into the Mid-Layer) without streaming the command to the user, allowing the AI to dynamically correct itself during inference.

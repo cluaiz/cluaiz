@@ -6,7 +6,7 @@
 
 ## 🌟 Executive Summary & Core Philosophy
 
-The **Sovereign Model Subsystem** decouples raw model weights, format parsing (GGUF/ONNX), taxonomy classification, and disk storage from execution backends (LlamaCpp, ONNX Runtime, Candle, Custom JIT Kernels).
+The **Sovereign Model Subsystem** decouples raw model weights, format parsing (GGUF/ONNX), taxonomy classification, and disk storage from execution backends (LlamaCpp, ONNX Runtime, Candle, Custom Math Kernels).
 
 ### Key Architectural Pillars:
 1. **Modular Sovereignty (Zero-Khichdi):** Every layer has single-responsibility boundaries. Taxonomy intelligence never touches disk I/O; binary probers never handle network requests; and downloaders never inspect model weights.
@@ -70,7 +70,7 @@ Every model downloaded or discovered is assigned to exactly one of the **6 Sover
 
 | # | Domain Category | Local Vault Directory Path | Canonical REST API Endpoint | Supported Engine Backends | Primary Example Models |
 |---|---|---|---|---|---|
-| **1** | **`chat`** | `~/.cluaiz/models/chat/` | **`POST /v1/chat/completions`** | LlamaCpp, Custom JIT, Candle | Llama-3, Qwen-2.5, DeepSeek-R1, Gemma-2 |
+| **1** | **`chat`** | `~/.cluaiz/models/chat/` | **`POST /v1/chat/completions`** | LlamaCpp, ONNX Runtime, Candle | Llama-3, Qwen-2.5, DeepSeek-R1, Gemma-2 |
 | **2** | **`vision-ingest`** | `~/.cluaiz/models/vision-ingest/` | **`POST /v1/ingest/file`** | VisionParser, QwenVL Engine | Qwen2-VL, MiniCPM-V, Florence-2, OCR |
 | **3** | **`vision-embedding`** | `~/.cluaiz/models/vision-embedding/` | **`POST /v1/embeddings/vision`** | ONNX Runtime (CUDA/DirectML) | CLIP-ViT, SigLIP, ColPali |
 | **4** | **`text-embedding`** | `~/.cluaiz/models/text-embedding/` | **`POST /v1/embeddings`** | ONNX Runtime, Candle | BGE-M3, MiniLM-L6, Nomic-Embed, GTE |
