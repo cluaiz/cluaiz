@@ -57,14 +57,20 @@ impl GgufProber {
         let is_embedding = metadata.get("general.architecture").map(|a| a == "bert" || a == "nomic_bert" || a == "jina_bert").unwrap_or(false)
             || tensor_infos.keys().any(|k| k.to_lowercase().contains("pooling"));
 
+        let (think_start_tag, think_end_tag) = if let Some(ref tmpl) = chat_template {
+            cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl)
+        } else {
+            (None, None)
+        };
+
         Ok(GgufProbeResult {
             architecture,
             context_window,
             chat_template,
             quantization,
             parameter_count,
-            think_start_tag: None,
-            think_end_tag: None,
+            think_start_tag,
+            think_end_tag,
             is_embedding,
             has_vision,
         })

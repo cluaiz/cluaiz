@@ -16,8 +16,8 @@ $$\mathbf{engines/src/tools/}$$
 | **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` and fast binary cache `tools_registry.bin`. Auto-probes `~/.cluaiz/tools/`. |
 | **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Hub. |
 | **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` frontmatter and provides O(1) keyword and semantic routing. |
-| **Plugins** | [`plugins/`](./plugins/) | Parses `manifest-plugin.yaml` and executes WASM binaries and native libraries. |
-| **MCP** | [`mcp/`](./mcp/) | Parses `manifest-mcp.yaml` and handles JSON-RPC 2.0 subprocess communication over stdio. |
+| **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and executes WASM binaries and native libraries. |
+| **MCP** | [`mcp/`](./mcp/) | Parses `package.json` and handles JSON-RPC 2.0 subprocess communication over stdio. |
 | **Lifecycle** | [`lifecycle/`](./lifecycle/) | Tracks session-bound active tools, turn countdowns (`-1`, `0`, `N`), and auto-unloading. |
 | **Telemetry** | [`telemetry/`](./telemetry/) | Calculates active token breakdowns, lazy loading savings, and KV-cache VRAM allocation. |
 
@@ -35,7 +35,7 @@ $$\mathbf{engines/src/tools/}$$
     ├── skills/                          <── Installed Cognitive Skills
     │   └── frontend-dev/SKILL.md
     ├── plugins/                         <── Installed WASM / Native Tool Binaries
-    │   └── cluaiz-search/plugin.wasm & manifest-plugin.yaml
+    │   └── cluaiz-search/plugin.wasm & package.json
     └── mcp/                             <── Installed MCP Servers
-        └── sqlite-bridge/manifest-mcp.yaml
+        └── sqlite-bridge/package.json
 ```

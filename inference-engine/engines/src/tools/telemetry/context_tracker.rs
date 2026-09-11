@@ -62,20 +62,34 @@ impl ContextTracker {
             }
         }
 
+        // Query live active context calculated by HardwareGovernor for active model
+        let live_active_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations()
+            .iter()
+            .find(|p| p.context_size > 0)
+            .map(|p| p.context_size);
+
         if model_native_limit == 0 {
-            model_native_limit = if gguf_meta.hardware_and_execution.n_ctx > 0 {
-                gguf_meta.hardware_and_execution.n_ctx as usize
-            } else {
-                4096
-            };
+            model_native_limit = live_active_ctx.unwrap_or_else(|| {
+                if gguf_meta.hardware_and_execution.n_ctx > 0 {
+                    gguf_meta.hardware_and_execution.n_ctx as usize
+                } else {
+                    let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                    let dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                    cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
+                }
+            });
         }
         
-        // Usable Context Limit (hardware safety clamped)
-        let usable_limit = if gguf_meta.hardware_and_execution.n_ctx > 0 {
-            gguf_meta.hardware_and_execution.n_ctx as usize
-        } else {
-            4096
-        }.max(2048);
+        // Usable Context Limit (hardware safety clamped from live allocation)
+        let usable_limit = live_active_ctx.unwrap_or_else(|| {
+            if gguf_meta.hardware_and_execution.n_ctx > 0 {
+                gguf_meta.hardware_and_execution.n_ctx as usize
+            } else {
+                let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                let dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
+            }
+        }).max(2048);
 
         let mut skills_tokens = 0;
         let mut plugins_tokens = 0;
@@ -114,7 +128,7 @@ impl ContextTracker {
                 tokens: if is_active { estimated_tokens } else { 0 },
                 execution_latency_ms: 0.0,
                 memory_used_mb: 0.0,
-                memory_cap_mb: 16.0,
+                memory_cap_mb: 0.0,
                 cpu_fuel_consumed: 0,
                 input_payload: None,
                 output_result: None,
@@ -179,12 +193,13 @@ impl ContextTracker {
         let messages_tokens = user_prompt_tokens + chat_history_tokens + generated_tokens;
         let active_tools_tokens = skills_tokens + plugins_tokens + mcp_tools_tokens;
         
-        let total_active = system_prompt_tokens + messages_tokens + active_tools_tokens;
+        let total_active = (system_prompt_tokens + messages_tokens + active_tools_tokens).min(usable_limit);
         let free_space = usable_limit.saturating_sub(total_active);
         
         let pct = |t: usize| -> f64 {
             if usable_limit > 0 {
-                ((t as f64) / (usable_limit as f64) * 1000.0).round() / 10.0
+                let val = ((t as f64) / (usable_limit as f64) * 1000.0).round() / 10.0;
+                val.clamp(0.0, 100.0)
             } else {
                 0.0
             }
@@ -219,7 +234,7 @@ impl ContextTracker {
                 model_native_context: model_native_limit,
                 total_active_tokens: total_active,
                 active_percentage: pct(total_active),
-                messages_tokens,
+                messages_tokens: messages_tokens.min(usable_limit),
                 messages_percentage: pct(messages_tokens),
                 system_prompt_tokens,
                 system_prompt_percentage: pct(system_prompt_tokens),

@@ -124,13 +124,6 @@ impl ModelManager {
             return Err(format!("Model weights '{}' missing. Registration aborted.", manifest.huggingface_filename));
         }
 
-        // Auto-heal missing tokenizer or config if needed
-        let _ = AutoHeal::auto_heal_missing_asset(&model_path, "tokenizer.json", &["Qwen/Qwen2.5-Coder-7B-Instruct", "meta-llama/Llama-3.2-3B-Instruct"]).await;
-
-        // Save manifest
-        if let Ok(manifest_json) = serde_json::to_string_pretty(manifest) {
-            let _ = tokio::fs::write(model_path.join("model_manifest.json"), manifest_json).await;
-        }
 
         // Deep Probe and Register into live model_registry.json
         let primary_file = model_path.join(&manifest.huggingface_filename);
