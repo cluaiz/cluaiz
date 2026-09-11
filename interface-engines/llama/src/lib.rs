@@ -11,20 +11,20 @@ use tokenizers::Tokenizer;
 pub mod asm_kernels;
 pub mod bridge;
 pub mod config;
+pub mod dma_streamer;
+pub mod expert_offloading;
 pub mod ffi;
 pub mod ffi_exports;
 pub mod hybrid;
 pub mod loader;
-pub mod expert_offloading;
 pub mod native;
 pub mod pipeline;
 pub mod router;
 pub mod sampling;
-pub mod dma_streamer;
 pub use dma_streamer::{
-    CudaDmaStreamer, CudaPinnedHostBuffer, CudaDeviceScratchBuffer,
-    SiliconDmaStreamer, SiliconPinnedHostBuffer, SiliconDeviceScratchBuffer,
-    DmaStreamer, PinnedHostBuffer, DeviceScratchBuffer,
+    CudaDeviceScratchBuffer, CudaDmaStreamer, CudaPinnedHostBuffer, DeviceScratchBuffer,
+    DmaStreamer, PinnedHostBuffer, SiliconDeviceScratchBuffer, SiliconDmaStreamer,
+    SiliconPinnedHostBuffer,
 };
 
 use crate::config::OptimizationConfig;
@@ -127,7 +127,8 @@ pub struct RuntimeB {
     pub native: Option<NativeLlama>,
     pub lucebox: Option<Arc<ffi::lucebox::LuceboxBridge>>,
     pub last_prefilled_tokens: Vec<i32>,
-    pub moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
+    pub moe_controller:
+        Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
 }
 
 impl RuntimeB {
@@ -152,20 +153,42 @@ impl RuntimeB {
         let mut is_ssm_model = false;
         let mut probed_layers = None;
 
-        let model_p = std::path::Path::new(&self.model_path);
-        let parent_dir = if model_p.is_file() {
-            model_p.parent().unwrap_or(model_p)
-        } else {
-            model_p
-        };
-
-        let manifest_path = parent_dir.join("model_manifest.json");
-        if manifest_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+        // 🎯 Single Source of Truth: Query model_registry.json directly if present
+        let reg_path = cluaiz_shared::environment::EnvironmentManager::current().model_registry_json_path();
+        if reg_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&reg_path) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                    has_native_mtp = val.get("has_native_mtp").and_then(|v| v.as_bool()).unwrap_or(false);
-                    is_ssm_model = val.get("is_ssm_model").and_then(|v| v.as_bool()).unwrap_or(false);
-                    probed_layers = val.get("layer_count").and_then(|v| v.as_u64()).map(|c| c as usize);
+                    if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
+                        let path_norm = self.model_path.to_lowercase().replace('\\', "/");
+                        for (_id, entry) in installed {
+                            let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
+                            let primary_file = entry.get("files")
+                                .and_then(|f| f.as_array())
+                                .and_then(|arr| arr.iter().find(|f| f.get("is_primary").and_then(|p| p.as_bool()).unwrap_or(false)))
+                                .and_then(|f| f.get("name").and_then(|n| n.as_str()))
+                                .unwrap_or("")
+                                .to_lowercase();
+                            let matches = (!local_dir.is_empty() && path_norm.contains(&local_dir))
+                                || (!primary_file.is_empty() && path_norm.contains(&primary_file));
+                            if matches {
+                                if let Some(meta) = entry.get("metadata") {
+                                    if let Some(arch) = meta.get("architecture").and_then(|a| a.as_str()) {
+                                        self.context.dna.model_identity = arch.to_string();
+                                    }
+                                    if let Some(lc) = meta.get("layer_count").and_then(|l| l.as_u64()) {
+                                        probed_layers = Some(lc as usize);
+                                    }
+                                    if let Some(ssm) = meta.get("is_ssm_model").and_then(|s| s.as_bool()) {
+                                        is_ssm_model = ssm;
+                                    }
+                                    if let Some(mtp) = meta.get("has_native_mtp").and_then(|m| m.as_bool()) {
+                                        has_native_mtp = mtp;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -203,20 +226,24 @@ impl RuntimeB {
         let user_n_gpu_layers = self.optimization.n_gpu_layers;
 
         // Apply use_mmap logic: respect config but force true under SsdStreaming/expert swapping
-        model_params.use_mmap = !user_no_mmap;
+        model_params.set_mmap(!user_no_mmap);
         if grant.tier == cluaiz_shared::hardware::PlacementTier::SsdStreaming {
-            model_params.use_mmap = true;
+            model_params.set_mmap(true);
             model_params.use_extra_bufts = true;
             eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
             eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent 11 GB duplicate RAM buffer.");
         }
-        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: use_mmap = {}, n_gpu_layers = {}, tier = {:?}", model_params.use_mmap, model_params.n_gpu_layers, grant.tier);
+        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: load_mode = {}, n_gpu_layers = {}, tier = {:?}", model_params.load_mode, model_params.n_gpu_layers, grant.tier);
 
         // Clamp user custom layers setting to negotiator allocated safe GPU budget limit
         let target_gpu_layers = if user_n_gpu_layers == 0 {
             0
         } else if user_n_gpu_layers == -1 {
-            if grant.n_gpu_layers == -1 { layers as i32 } else { grant.n_gpu_layers }
+            if grant.n_gpu_layers == -1 {
+                -1
+            } else {
+                grant.n_gpu_layers
+            }
         } else {
             // Custom layers case: honor custom value but bound by negotiator safe allocation limit
             if grant.n_gpu_layers >= 0 {
@@ -233,10 +260,12 @@ impl RuntimeB {
             model_params.n_gpu_layers, original_layers
         );
 
-
         // Hook MoE controller if the negotiator verified it is a MoE model
         if let Some(ref moe_info) = grant.moe_info {
-            eprintln!("🧠 [Native-Llama] Grant contains MoE info. checking is_moe = {}", moe_info.is_moe);
+            eprintln!(
+                "🧠 [Native-Llama] Grant contains MoE info. checking is_moe = {}",
+                moe_info.is_moe
+            );
             if moe_info.is_moe {
                 eprintln!("🧠 [Native-Llama] Loading MoE Streaming Controller. Cache budget: {:.2} GB | GPU offloaded layers: {}", grant.expert_cache_budget_gb, model_params.n_gpu_layers);
                 let offloaded_layers = model_params.n_gpu_layers.max(0) as usize;
@@ -251,7 +280,10 @@ impl RuntimeB {
                         eprintln!("🧠 [Native-Llama] ✅ MoE Streaming Controller initialized and pre-warmed.");
                     }
                     Err(e) => {
-                        eprintln!("🧠 [Native-Llama] ❌ Failed to initialize MoE controller: {}", e);
+                        eprintln!(
+                            "🧠 [Native-Llama] ❌ Failed to initialize MoE controller: {}",
+                            e
+                        );
                     }
                 }
             }
@@ -260,79 +292,43 @@ impl RuntimeB {
         // 🧬 DNA TRUTH SYNC: Ensure DNA context is applied to context params
         let mut ctx_params = self.optimization.to_context_params();
 
-        // 🧠 Dynamic & Clamped Context Sizing from live leftover RAM/VRAM
-        let mut dedicated_vram = 0.0;
-        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
-            dedicated_vram = control
-                .silicon_truth
-                .accelerators
-                .gpus
-                .iter()
-                .map(|g| g.vram_available_gb)
-                .sum::<f64>();
-        }
-        let mut sys = sysinfo::System::new();
-        sys.refresh_memory();
-        let total_ram = (sys.total_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
-        let available_ram = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
-
-        let weights_gb = if let Some(ref controller) = self.moe_controller {
-            if let Ok(guard) = controller.lock() {
-                let dense_gb = guard.moe_info.dense_backbone_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-                let cache_gb = guard.moe_info.recommended_cache_budget_gb();
-                let active_ram_footprint = dense_gb + cache_gb;
-                cluaiz_shared::dev_info!(
-                    "🧠 [Arbiter] MoE Active Weight RAM Footprint: {:.2} GB (Dense: {:.2} GB, Cache: {:.2} GB) vs Total Model: {:.2} GB",
-                    active_ram_footprint, dense_gb, cache_gb, self.context.dna.weights_size_gb
-                );
-                active_ram_footprint
-            } else {
-                self.context.dna.weights_size_gb as f64
-            }
-        } else {
-            self.context.dna.weights_size_gb as f64
-        };
-
-        let opt_ctrl = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-        let vram_safety = cluaiz_shared::hardware::calculate_safety_buffer(&opt_ctrl, dedicated_vram, dedicated_vram);
-        let ram_safety = cluaiz_shared::hardware::calculate_ram_safety_buffer(&opt_ctrl, total_ram, available_ram);
-
-        let usable_dedicated_vram = cluaiz_shared::hardware::calculate_usable_vram(&opt_ctrl, dedicated_vram, dedicated_vram);
-        let usable_ram = cluaiz_shared::hardware::calculate_usable_ram(&opt_ctrl, total_ram, available_ram);
-
-        let leftover_gb = if model_params.n_gpu_layers == layers as i32 {
-            (usable_dedicated_vram - weights_gb).max(0.0)
-        } else {
-            (usable_dedicated_vram + usable_ram - weights_gb).max(0.0)
-        };
-
-        let leftover_bytes = (leftover_gb * 1024.0 * 1024.0 * 1024.0) as i64;
-        let kv_bytes_per_token = 128 * 1024;
-        let max_safe_ctx = ((leftover_bytes / kv_bytes_per_token).max(1024) as u32)
-            .min(self.context.dna.max_context_length.unwrap_or(32768) as u32);
-
-        if self.optimization.n_ctx == 0 {
-            ctx_params.n_ctx = max_safe_ctx;
-            cluaiz_shared::dev_info!("🧠 [Arbiter] Dynamic Context Window (n_ctx=0) scaled to: {} tokens (Leftover Memory: {:.2} GB)", ctx_params.n_ctx, leftover_gb);
-        } else if self.optimization.n_ctx == u32::MAX {
-            ctx_params.n_ctx = std::cmp::min(self.context.dna.max_context_length.unwrap_or(8192) as u32, max_safe_ctx);
-            cluaiz_shared::dev_info!("🧠 [Arbiter] Context window locked to Max Native Limit (clamped to available memory): {} tokens", ctx_params.n_ctx);
-        } else {
-            let requested = self.optimization.n_ctx;
-            if requested <= max_safe_ctx {
-                ctx_params.n_ctx = requested;
-                cluaiz_shared::dev_info!("🧠 [Arbiter] Explicit user n_ctx={} tokens honored (Memory available)", ctx_params.n_ctx);
-            } else {
-                ctx_params.n_ctx = max_safe_ctx;
-                cluaiz_shared::dev_info!("⚠️ [Arbiter] Explicit user n_ctx={} tokens exceeds live free RAM! Overriding and clamping down to {} tokens to prevent OOM crash.", requested, max_safe_ctx);
-            }
-        }
+        // 🧠 Dynamic Context Window (Single Source of Truth from Unified Resource Negotiator, min 2048)
+        ctx_params.n_ctx = grant.target_ctx_tokens as u32;
+        cluaiz_shared::dev_info!(
+            "🧠 [Arbiter] Dynamic Context Window set to {} tokens (Single Source of Truth, min 2048)",
+            ctx_params.n_ctx
+        );
 
         ctx_params.swa_full = 0; // Enforce safe SWA cache sizing
 
+        // 🛡️ Dynamic Flash Attention Policy: Flash Attention is strictly a pure-GPU kernel.
+        // If the Negotiator placed the model in Hybrid, CPU, or SSD Streaming, disable Flash Attention
+        // to prevent cross-device numerical divergence (NaNs) in split attention graphs.
+        if grant.tier != cluaiz_shared::hardware::PlacementTier::GpuOnly
+            || (model_params.n_gpu_layers >= 0 && model_params.n_gpu_layers < layers as i32)
+        {
+            cluaiz_shared::dev_info!(
+                "⚖️ [Arbiter] Placement tier is {:?} or layers split across GPU/CPU (n_gpu_layers = {}). Flash Attention disabled for cross-device stability.",
+                grant.tier,
+                model_params.n_gpu_layers
+            );
+            ctx_params.flash_attn_type = 0;
+        }
+
+        // 🛡️ Dynamic Architecture Capability Guards (Zero Hardcoded Model Names)
+        let is_recurrent_ssm = is_ssm_model || self.context.dna.signature.is_ssm;
+        if !self.context.dna.supports_flash_attention() || is_recurrent_ssm {
+            cluaiz_shared::dev_info!("🛡️ [Architecture Guard] Non-standard attention geometry detected: Disabling Flash Attention to prevent numerical divergence.");
+            ctx_params.flash_attn_type = 0;
+        }
+        if self.context.dna.requires_fp16_kv() || is_recurrent_ssm || (grant.tier != cluaiz_shared::hardware::PlacementTier::GpuOnly && ctx_params.flash_attn_type == 0) {
+            cluaiz_shared::dev_info!("🛡️ [Architecture Guard] Enforcing F16 KV-cache for mathematical stability across splits.");
+            ctx_params.type_k = 1; // GGML_TYPE_F16
+            ctx_params.type_v = 1; // GGML_TYPE_F16
+        }
 
         // 🧠 RESOLVE SPECULATIVE MODE & SYNC DNA
-        if is_ssm_model {
+        if is_recurrent_ssm {
             // 🚨 For hybrid/recurrent models (Qwen3.5 GDN, Mamba, RWKV):
             // Speculative decoding is incompatible with non-transformer architectures.
             cluaiz_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
@@ -370,7 +366,7 @@ impl RuntimeB {
         if model_params.n_gpu_layers == 0 {
             ctx_params.n_batch = 32;
             ctx_params.n_ubatch = 32;
-        } else if self.moe_controller.is_some() || dedicated_vram <= 6.0 {
+        } else if self.moe_controller.is_some() || grant.vram_budget_gb <= 6.0 {
             // 🛡️ MoE / 4GB-6GB VRAM Stream Decoding: Cap batch to 512 / ubatch to 128
             // This cuts GGML compute graph workspace from ~880 MB to ~150 MB,
             // preventing CUDA OOM and graph split allocation failures.
@@ -393,12 +389,12 @@ impl RuntimeB {
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
         let mem_pct = (sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0;
-        if mem_pct >= 90.0 && model_params.use_mlock {
+        if mem_pct >= 90.0 && model_params.is_mlock() {
             cluaiz_shared::dev_info!("⚠️ [Arbiter] High Memory Pressure Detected ({:.1}%). Disabling use_mlock to prevent OS paging freeze.", mem_pct);
-            model_params.use_mlock = false;
+            model_params.set_mlock(false);
         }
-        if model_params.use_mmap && self.moe_controller.is_some() {
-            cluaiz_shared::hardware::apply_windows_hard_memory_quota(usable_ram);
+        if model_params.is_mmap() && self.moe_controller.is_some() {
+            cluaiz_shared::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
         }
 
         let native = NativeLlama::load(
@@ -406,7 +402,12 @@ impl RuntimeB {
             model_params,
             ctx_params,
             &mut self.context.dna,
-            match self.optimization.kv_cache_quantization.to_lowercase().as_str() {
+            match self
+                .optimization
+                .kv_cache_quantization
+                .to_lowercase()
+                .as_str()
+            {
                 "kv8" => 1,
                 "kv4" => 2,
                 _ => 0,
@@ -419,7 +420,12 @@ impl RuntimeB {
                 "extreme" => 4,
                 _ => 2,
             },
-            match self.optimization.speculative_decoding.to_lowercase().as_str() {
+            match self
+                .optimization
+                .speculative_decoding
+                .to_lowercase()
+                .as_str()
+            {
                 "off" => 0,
                 "on" => 1,
                 _ => 2,
@@ -551,7 +557,7 @@ impl cluaizInference for RuntimeB {
         &mut self,
         signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>,
     ) -> Result<()> {
-        let max_ctx = self.context.dna.max_context_length.unwrap_or(4096);
+        let max_ctx = (self.optimization.n_ctx as usize).max(2048);
         let mut current_offset = 0;
 
         if signals.is_empty() {
@@ -629,7 +635,9 @@ impl cluaizInference for RuntimeB {
 
             // Sync settings dynamically
             let optimization_ctx =
-                cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext::from(control);
+                cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext::from(
+                    control,
+                );
             native.kv_cache_quantization_mode = optimization_ctx.kv_cache_quantization_mode;
             native.context_shifting_mode = optimization_ctx.context_shifting_mode;
 

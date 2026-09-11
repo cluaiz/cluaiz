@@ -14,19 +14,53 @@ pub struct LlamaModelParams {
     pub tensor_buft_overrides: *const std::ffi::c_void,
     pub n_gpu_layers: i32,
     pub split_mode: i32,
+    pub load_mode: i32, // enum llama_load_mode (0=none, 1=mmap, 2=mlock, 3=mmap+mlock, 4=direct_io)
+    pub lazy_mode: i32, // enum llama_lazy_mode (0=off, 1=auto, 2=on)
     pub main_gpu: i32,
     pub tensor_split: *const f32,
     pub progress_callback: Option<extern "C" fn(f32, *mut std::ffi::c_void) -> bool>,
     pub progress_callback_user_data: *mut std::ffi::c_void,
     pub kv_overrides: *const std::ffi::c_void,
     pub vocab_only: bool,
-    pub use_mmap: bool,
-    pub use_direct_io: bool,
-    pub use_mlock: bool,
     pub check_tensors: bool,
     pub use_extra_bufts: bool,
     pub no_host: bool,
     pub no_alloc: bool,
+    pub load_mtp: bool,
+}
+
+impl LlamaModelParams {
+    #[inline]
+    pub fn is_mmap(&self) -> bool {
+        self.load_mode == 1 || self.load_mode == 3
+    }
+
+    #[inline]
+    pub fn is_mlock(&self) -> bool {
+        self.load_mode == 2 || self.load_mode == 3
+    }
+
+    #[inline]
+    pub fn set_mmap(&mut self, mmap: bool) {
+        let mlock = self.is_mlock();
+        self.load_mode = match (mmap, mlock) {
+            (true, true) => 3,
+            (true, false) => 1,
+            (false, true) => 2,
+            (false, false) => 0,
+        };
+    }
+
+    #[inline]
+    pub fn set_mlock(&mut self, mlock: bool) {
+        let mmap = self.is_mmap();
+        self.load_mode = match (mmap, mlock) {
+            (true, true) => 3,
+            (true, false) => 1,
+            (false, true) => 2,
+            (false, false) => 0,
+        };
+    }
 }
 
 #[repr(C)]
@@ -37,6 +71,8 @@ pub struct LlamaContextParams {
     pub n_ubatch: u32,
     pub n_seq_max: u32,
     pub n_rs_seq: u32,
+    pub n_outputs_max: u32,
+    pub n_outputs_max_per_seq: u32,
     pub n_threads: i32,
     pub n_threads_batch: i32,
     pub ctx_type: i32, // enum llama_context_type
@@ -71,6 +107,14 @@ pub struct LlamaContextParams {
     // [EXPERIMENTAL]
     pub samplers: *mut std::ffi::c_void,
     pub n_samplers: usize,
+    pub ctx_other: *mut std::ffi::c_void,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LlamaChatMessage {
+    pub role: *const c_char,
+    pub content: *const c_char,
 }
 
 extern "C" {
@@ -137,6 +181,17 @@ extern "C" {
     /// 📐 Extract Embeddings
     pub fn llama_get_embeddings(ctx: *mut std::ffi::c_void) -> *mut c_float;
     pub fn llama_model_n_embd(model: *const std::ffi::c_void) -> i32;
+    pub fn llama_model_n_head(model: *const std::ffi::c_void) -> i32;
+    pub fn llama_model_is_recurrent(model: *const std::ffi::c_void) -> bool;
+    pub fn llama_model_is_hybrid(model: *const std::ffi::c_void) -> bool;
+    pub fn llama_model_n_expert(model: *const std::ffi::c_void) -> i32;
+    pub fn llama_model_desc(model: *const std::ffi::c_void, buf: *mut c_char, buf_size: usize) -> i32;
+    pub fn llama_model_meta_val_str(
+        model: *const std::ffi::c_void,
+        key: *const c_char,
+        buf: *mut c_char,
+        buf_size: usize,
+    ) -> i32;
 
     /// 📊 Get Logits
     pub fn llama_get_logits_ith(ctx: *mut std::ffi::c_void, i: i32) -> *mut c_float;
@@ -151,6 +206,7 @@ extern "C" {
     pub fn llama_sampler_init_temp(t: f32) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_dist(seed: u32) -> *mut std::ffi::c_void;
     pub fn llama_sampler_init_penalties(
+        n_vocab: i32,
         penalty_last_n: i32,
         penalty_repeat: f32,
         penalty_freq: f32,
@@ -179,6 +235,8 @@ extern "C" {
 
     /// 🏁 EOS/EOG Detection
     pub fn llama_vocab_is_eog(vocab: *const std::ffi::c_void, token: i32) -> bool;
+    pub fn llama_vocab_is_control(vocab: *const std::ffi::c_void, token: i32) -> bool;
+    pub fn llama_vocab_get_add_bos(vocab: *const std::ffi::c_void) -> bool;
     pub fn llama_vocab_eos(vocab: *const std::ffi::c_void) -> i32;
     pub fn llama_vocab_nl(vocab: *const std::ffi::c_void) -> i32;
 
@@ -186,6 +244,15 @@ extern "C" {
     pub fn llama_model_meta_count(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_meta_key_by_index(model: *const std::ffi::c_void, i: i32, buf: *mut c_char, buf_size: usize) -> i32;
     pub fn llama_model_meta_val_str_by_index(model: *const std::ffi::c_void, i: i32, buf: *mut c_char, buf_size: usize) -> i32;
+    pub fn llama_model_chat_template(model: *const std::ffi::c_void, name: *const c_char) -> *const c_char;
+    pub fn llama_chat_apply_template(
+        tmpl: *const c_char,
+        chat: *const LlamaChatMessage,
+        n_msg: usize,
+        add_ass: bool,
+        buf: *mut c_char,
+        length: i32,
+    ) -> i32;
 
     /// 🛑 Logging: Redirect native library logs to avoid TUI noise.
     pub fn llama_log_set(log_callback: Option<LlamaLogCallback>, user_data: *mut std::ffi::c_void);

@@ -176,11 +176,10 @@ impl NeuralDispatcher {
                                     tracing::info!("🔗 [Dispatcher] Instantiating kernel with model path: {:?}", model_path);
                                     
                                     let instantiate_raw = *instantiate_fn as usize;
-                                    let c_path_raw = c_path.as_ptr() as usize;
                                     
                                     let engine_ptr_raw = tokio::task::spawn_blocking(move || {
                                         let func: unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void = unsafe { std::mem::transmute(instantiate_raw) };
-                                        let ptr = unsafe { func(c_path_raw as *const _, std::ptr::null()) };
+                                        let ptr = unsafe { func(c_path.as_ptr(), std::ptr::null()) };
                                         ptr as usize
                                     }).await.unwrap_or(0);
                                     

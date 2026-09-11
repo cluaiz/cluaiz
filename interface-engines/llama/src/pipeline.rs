@@ -140,12 +140,7 @@ impl RuntimeBPipeline {
             
             match spec_type {
                 "draft-mtp" => {
-                    let draft_path = opt.draft_model_path.clone().or_else(|| {
-                        match &opt.dflash {
-                            cluaiz_shared::hardware::schema::optimization::SmartState::Custom(cfg) => cfg.draft_model_path.clone(),
-                            _ => None,
-                        }
-                    });
+                    let draft_path = opt.draft_model_path.clone();
                     if let Some(path) = draft_path {
                         base_args.push("-md".to_string());
                         base_args.push(path);

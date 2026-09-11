@@ -1,10 +1,10 @@
 use super::*;
-// ─── Sovereign FFI Gateway ──────────────────────────────────────────────────
+// ─── Native FFI Gateway ──────────────────────────────────────────────────
 
 #[no_mangle]
 pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
     unsafe {
-        // 🤫 Sovereign Silence: Hard-redirect native stdout/stderr to NUL
+        // 🤫 Hard-redirect native stdout/stderr to NUL
         // This stops all non-callback logs (CUDA Graph, etc.) from polluting the TUI.
         /* 🧪 Debug Mode: Temporarily disabled NUL redirection
         #[cfg(windows)]
@@ -35,18 +35,11 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
         // 🚀 Set default op offload threshold to 1 for dynamic GPU streaming during single-token generation
         std::env::set_var("GGML_OP_OFFLOAD_MIN_BATCH", "1");
 
+        // 🚀 Backend Init: llama_backend_init() internally registers all static
+        // and dynamic backend devices (CUDA, CPU) safely without duplicate pointer re-insertion.
         ffi::llama_cpp::llama_backend_init();
-
-        #[cfg(feature = "cuda")]
-        {
-            let reg = ffi::llama_cpp::ggml_backend_cuda_reg();
-            if !reg.is_null() {
-                ffi::llama_cpp::ggml_backend_register(reg);
-                tracing::info!("🟢 [Llama-Engine] CUDA Backend explicitly re-registered after init.");
-            }
-        }
     }
-    tracing::info!("🧬 [Llama.cpp-Kernel] Sovereign Handshake & Backend Initialized.");
+    tracing::info!("🧬 [Llama.cpp-Kernel] Backend Initialized.");
     "cluaiz-llama.cpp-active\0".as_ptr() as *const std::os::raw::c_char
 }
 
@@ -67,16 +60,10 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         let model_dir = model_path.parent().unwrap_or(model_path);
 
         cluaiz_shared::dev_info!(
-            "🧬 [Llama-Lib] Initiating Sovereign DNA Handshake for: {:?}",
+            "🧬 [Llama-Lib] Initiating DNA Handshake for: {:?}",
             model_dir
         );
-        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::load(
-            &model_dir.join("structural_dna.json"),
-        )
-        .unwrap_or_else(|_| {
-            cluaiz_shared::dev_info!("⚠️ [Llama-Lib] DNA Manifest missing. Creating transient skeleton...");
-            cluaiz_shared::metadata::dna::StructuralDNA::default()
-        });
+        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
 
         // ALWAYS perform real-time discovery to sync with LIVE hardware state
         cluaiz_shared::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");

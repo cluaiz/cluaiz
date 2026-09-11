@@ -9,211 +9,19 @@ fn main() {
     let mut llama_path = Path::new(&out_dir).join("llama.cpp");
 
     // ═══════════════════════════════════════════════════════════════
-    // PHASE 1: SOVEREIGN CLONE (Prioritize local cached copy)
+    // PHASE 1: REPOSITORY INITIALIZATION (Prioritize local cached copy)
     // ═══════════════════════════════════════════════════════════════
     let local_cache_path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("llama.cpp");
     if local_cache_path.exists() {
         println!("cargo:warning=🔩 Found local cached llama.cpp at {:?}", local_cache_path);
         llama_path = local_cache_path;
     } else if !llama_path.exists() {
-        println!("cargo:warning=🔩 Cloning official ggml-org/llama.cpp source...");
+        println!("cargo:warning=🔩 Cloning official cluaiz/llama.cpp engine...");
         let status = Command::new("git")
-            .args(["clone", "--depth", "1", "https://github.com/ggml-org/llama.cpp", llama_path.to_str().unwrap()])
+            .args(["clone", "--depth", "1", "--branch", "cluaiz-main", "https://github.com/cluaiz/llama.cpp", llama_path.to_str().unwrap()])
             .status()
             .expect("Failed to clone llama.cpp");
         if !status.success() { panic!("Clone failed"); }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 1.5: SOVEREIGN INJECTION (Apply BFE PTX Injection via Rust)
-    // ═══════════════════════════════════════════════════════════════
-    let dequantize_cuh_path = llama_path.join("ggml/src/ggml-cuda/dequantize.cuh");
-    if dequantize_cuh_path.exists() {
-        println!("cargo:warning=💉 Injecting 1-Cycle PTX BFE Assembly into ggml-cuda...");
-        let mut content = std::fs::read_to_string(&dequantize_cuh_path).unwrap();
-        content = content.replace("\r\n", "\n");
-        
-        let target_q1 = r#"    // Extract bits: 1 = +d, 0 = -d (branchless)
-    const int bit_0 = (x[ib].qs[byte_index_0] >> bit_offset_0) & 1;
-    const int bit_1 = (x[ib].qs[byte_index_1] >> bit_offset_1) & 1;"#.replace("\r\n", "\n");
-        
-        let inject_q1 = r#"    // cluaiz Sovereign: 1-Cycle PTX bfe.u32 Injection
-    unsigned int qs_0 = x[ib].qs[byte_index_0];
-    unsigned int qs_1 = x[ib].qs[byte_index_1];
-    unsigned int bit_0, bit_1;
-    asm volatile("bfe.u32 %0, %1, %2, 1;" : "=r"(bit_0) : "r"(qs_0), "r"(bit_offset_0));
-    asm volatile("bfe.u32 %0, %1, %2, 1;" : "=r"(bit_1) : "r"(qs_1), "r"(bit_offset_1));"#.replace("\r\n", "\n");
-
-        let target_q4 = r#"    v.x = vui & 0xF;
-    v.y = vui >> 4;"#.replace("\r\n", "\n");
-
-        let inject_q4 = r#"    // cluaiz Sovereign: 1-Cycle PTX bfe.u32 Injection
-    unsigned int vx_int, vy_int;
-    asm volatile("bfe.u32 %0, %1, 0, 4;" : "=r"(vx_int) : "r"((unsigned int)vui));
-    asm volatile("bfe.u32 %0, %1, 4, 4;" : "=r"(vy_int) : "r"((unsigned int)vui));
-    v.x = vx_int;
-    v.y = vy_int;"#.replace("\r\n", "\n");
-
-        if content.contains(&target_q4) || content.contains(&target_q1) {
-            let new_content = content.replace(&target_q1, &inject_q1).replace(&target_q4, &inject_q4);
-            std::fs::write(&dequantize_cuh_path, new_content).unwrap();
-            println!("cargo:warning=✅ BFE PTX Injection Complete!");
-        } else {
-            println!("cargo:warning=⚠️ BFE PTX already injected or target strings changed.");
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 1.6: SOVEREIGN KV-CACHE PATCH (Bypass n_pos_per_embd assert for M-RoPE sliding window)
-    // ═══════════════════════════════════════════════════════════════
-    let kv_cache_cpp_path = llama_path.join("src/llama-kv-cache.cpp");
-    if kv_cache_cpp_path.exists() {
-        println!("cargo:warning=💉 Patching llama-kv-cache.cpp to support M-RoPE sliding window context shifting...");
-        let mut content = std::fs::read_to_string(&kv_cache_cpp_path).unwrap();
-        content = content.replace("\r\n", "\n");
-        
-        let target_add_assert = r#"    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1");"#;
-        let patch_add_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_add() is only supported for n_pos_per_embd() == 1"); // cluaiz Sovereign: Bypassed for M-RoPE"#;
-
-        let target_div_assert = r#"    GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1");"#;
-        let patch_div_assert = r#"    // GGML_ASSERT(hparams.n_pos_per_embd() == 1 && "seq_div() is only supported for n_pos_per_embd() == 1"); // cluaiz Sovereign: Bypassed for M-RoPE"#;
-
-        let target_can_shift = "bool llama_kv_cache::get_can_shift() const {\n    // Step35 uses per-layer RoPE dims; K-shift assumes a single global n_rot.\n    if (model.arch == LLM_ARCH_STEP35) {\n        return false;\n    }\n    if (hparams.n_pos_per_embd() > 1) {\n        return false;\n    }\n    return true;\n}";
-        let patch_can_shift = "bool llama_kv_cache::get_can_shift() const {\n    // Step35 uses per-layer RoPE dims; K-shift assumes a single global n_rot.\n    if (model.arch == LLM_ARCH_STEP35) {\n        return false;\n    }\n    if (hparams.n_pos_per_embd() > 1) {\n        // cluaiz Sovereign: allow shifting for M-RoPE models (e.g. Qwen2-VL, Qwen3.5-VL)\n        if (hparams.rope_type == LLAMA_ROPE_TYPE_MROPE || hparams.rope_type == LLAMA_ROPE_TYPE_IMROPE) {\n            return true;\n        }\n        return false;\n    }\n    return true;\n}";
-
-        let mut modified = false;
-        if content.contains(target_add_assert) {
-            content = content.replace(target_add_assert, patch_add_assert);
-            modified = true;
-        }
-        if content.contains(target_div_assert) {
-            content = content.replace(target_div_assert, patch_div_assert);
-            modified = true;
-        }
-        if content.contains(target_can_shift) {
-            content = content.replace(target_can_shift, patch_can_shift);
-            modified = true;
-        }
-
-        if modified {
-            std::fs::write(&kv_cache_cpp_path, content).unwrap();
-            println!("cargo:warning=✅ M-RoPE KV-Cache Patches Applied!");
-        } else {
-            println!("cargo:warning=⚠️ M-RoPE KV-Cache Patches already applied or target assertions/checks not found.");
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 1.7: SOVEREIGN BITNET INTERCEPTION (Stable TQ2_0 Multi-Block)
-    // ═══════════════════════════════════════════════════════════════
-    let quants_c_path = llama_path.join("ggml/src/ggml-cpu/arch/x86/quants.c");
-    if quants_c_path.exists() {
-        println!("cargo:warning=💉 Patching x86 quants.c for BitNet TQ2_0 Interception...");
-        let mut content = std::fs::read_to_string(&quants_c_path).unwrap();
-        content = content.replace("\r\n", "\n");
-
-        let target_sig = r#"void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
-    assert(nrc == 1);
-    UNUSED(nrc);
-    UNUSED(bx);
-    UNUSED(by);
-    UNUSED(bs);
-
-    const block_tq2_0 * GGML_RESTRICT x = vx;
-    const block_q8_K  * GGML_RESTRICT y = vy;
-
-    const int nb = n / QK_K;
-
-#if defined(__AVX2__)"#;
-
-        let inject_sig = r#"#ifdef __cplusplus
-extern "C" {
-#endif
-    int cluaiz_fast_ternary_dot(
-        const uint8_t * packed_weights,
-        const int8_t * activations,
-        int32_t * output,
-        size_t count
-    );
-#ifdef __cplusplus
-}
-#endif
-
-void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
-    assert(nrc == 1);
-    UNUSED(nrc);
-    UNUSED(bx);
-    UNUSED(by);
-    UNUSED(bs);
-
-    const block_tq2_0 * GGML_RESTRICT x = vx;
-    const block_q8_K  * GGML_RESTRICT y = vy;
-
-    const int nb = n / QK_K;
-
-    // 🚀 Sovereign Interception: Stable Multi-Block Rust AVX2 Execution
-    float cluaiz_total_sum = 0.0f;
-    bool cluaiz_success = true;
-    for (int i = 0; i < nb; ++i) {
-        int32_t cluaiz_out = 0;
-        if (cluaiz_fast_ternary_dot((const uint8_t*)x[i].qs, (const int8_t*)y[i].qs, &cluaiz_out, QK_K) == 0) {
-            float d_x = GGML_FP16_TO_FP32(x[i].d);
-            float d_y = GGML_FP16_TO_FP32(y[i].d);
-            cluaiz_total_sum += ((float)cluaiz_out * d_x * d_y);
-        } else {
-            cluaiz_success = false;
-            break;
-        }
-    }
-
-    if (cluaiz_success) {
-        *s = cluaiz_total_sum;
-        return;
-    }
-
-#if defined(__AVX2__)"#;
-
-        if content.contains("cluaiz_fast_ternary_dot") {
-            println!("cargo:warning=⚠️ BitNet Interception already injected.");
-        } else if content.contains(target_sig) {
-            content = content.replace(target_sig, inject_sig);
-            std::fs::write(&quants_c_path, content).unwrap();
-            println!("cargo:warning=✅ BitNet TQ2_0 Patches Applied!");
-        } else {
-            println!("cargo:warning=⚠️ BitNet target signature not found in quants.c!");
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 1.9: SAFE CACHED DEVICE CONTEXT CUDA HOST BUFFER UNLOCK
-    // ═══════════════════════════════════════════════════════════════
-    let cuda_cu_path = llama_path.join("ggml/src/ggml-cuda/ggml-cuda.cu");
-    if cuda_cu_path.exists() {
-        println!("cargo:warning=💉 Patching ggml-cuda.cu with Safe Cached Device Context...");
-        let mut content = std::fs::read_to_string(&cuda_cu_path).unwrap();
-        content = content.replace("\r\n", "\n");
-
-        let target_buft = "const bool integrated = ggml_cuda_info().devices[dev_ctx->device].integrated;\n    return (((ggml_backend_buft_is_cuda(buft) || ggml_backend_buft_is_cuda_split(buft)) && buft->device == dev) || (integrated && ggml_backend_buft_is_cuda_host(buft)));";
-        let patch_buft = "const bool valid_dev = dev_ctx != NULL && dev_ctx->device >= 0;\n    return (((ggml_backend_buft_is_cuda(buft) || ggml_backend_buft_is_cuda_split(buft)) && buft->device == dev) || (valid_dev && ggml_backend_buft_is_cuda_host(buft)));";
-
-        if content.contains(target_buft) {
-            content = content.replace(target_buft, patch_buft);
-            std::fs::write(&cuda_cu_path, &content).unwrap();
-            println!("cargo:warning=✅ Safe Cached Device Context Patch Applied!");
-        } else if content.contains("valid_dev") {
-            println!("cargo:warning=⚠️ Safe Cached Device Context Patch already active.");
-        }
-
-        let target_min_batch = "const int min_batch_size = getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\") ? atoi(getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\")) : 32;";
-        let patch_min_batch  = "const int min_batch_size = getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\") ? atoi(getenv(\"GGML_OP_OFFLOAD_MIN_BATCH\")) : 1;";
-
-        if content.contains(target_min_batch) {
-            content = content.replace(target_min_batch, patch_min_batch);
-            std::fs::write(&cuda_cu_path, &content).unwrap();
-            println!("cargo:warning=✅ Single-Token GPU Operator Offloading Enabled (min_batch_size = 1)!");
-        } else if content.contains("min_batch_size = getenv") {
-            println!("cargo:warning=⚠️ Single-Token GPU Operator Offloading Patch already active.");
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -277,31 +85,7 @@ void ggml_vec_dot_tq2_0_q8_K(int n, float * GGML_RESTRICT s, size_t bs, const vo
         config.define("CMAKE_OSX_DEPLOYMENT_TARGET", "11.0");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // PHASE 1.8: SOVEREIGN BITNET GGUF COMPATIBILITY (Type 42 -> 35)
-    // ═══════════════════════════════════════════════════════════════
-    let gguf_cpp_path = llama_path.join("ggml/src/gguf.cpp");
-    if gguf_cpp_path.exists() {
-        let mut content = std::fs::read_to_string(&gguf_cpp_path).unwrap();
-        let target_check = "if (info.t.type < 0 || info.t.type >= GGML_TYPE_COUNT) {";
-        let patch = r#"// 🛡️ CLUAIZ SOVEREIGN COMPATIBILITY PATCH
-            // Older BitNet models encoded TQ2_0 as 42, but llama.cpp reordered the enums.
-            if (info.t.type == 42) {
-                info.t.type = GGML_TYPE_TQ2_0;
-            }
-            if (info.t.type < 0 || info.t.type >= GGML_TYPE_COUNT) {"#;
-
-        if !content.contains("CLUAIZ SOVEREIGN COMPATIBILITY PATCH") {
-            println!("cargo:warning=💉 Patching gguf.cpp for BitNet GGUF Legacy Compatibility (Type 42)...");
-            content = content.replace(target_check, patch);
-            std::fs::write(&gguf_cpp_path, content).unwrap();
-            println!("cargo:warning=✅ GGUF Compatibility Patch Applied!");
-        } else {
-            println!("cargo:warning=⚠️ GGUF Compatibility Patch already applied.");
-        }
-    }
-
-    // ── GPU Driver Logic (Sovereign Dispatch) ─────────────────────────
+    // ── GPU Driver Logic ──────────────────────────────────────────────
     let feature_cuda     = env::var("CARGO_FEATURE_CUDA").is_ok();
     let feature_metal    = env::var("CARGO_FEATURE_METAL").is_ok();
     let feature_vulkan   = env::var("CARGO_FEATURE_VULKAN").is_ok();
