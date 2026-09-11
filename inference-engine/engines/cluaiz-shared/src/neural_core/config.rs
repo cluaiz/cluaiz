@@ -23,15 +23,9 @@ impl NeuralConfig {
     pub fn resolve(dna: &StructuralDNA) -> ResolvedNeuralParams {
         let sys_control = HardwareGovernor::load_system_control();
         
-        // 1. Dynamic Context Window (Sensed from Physical GPU VRAM)
-        let n_ctx = sys_control.as_ref().ok()
-            .map(|sc| {
-                let vram = sc.silicon_truth.accelerators.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
-                if vram >= 16.0 { 32768 } 
-                else if vram >= 8.0 { 8192 } 
-                else { 4096 }
-            })
-            .unwrap_or(2048);
+        // 1. Dynamic Context Window (Single Source of Truth)
+        let opt_control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let n_ctx = HardwareGovernor::negotiate_vram_envelope_with_optimization(dna, &opt_control) as u32;
 
         // 2. Dynamic Batch Size (Adaptive Policy)
         let batch_size = 512; // Static base for Phase 1
