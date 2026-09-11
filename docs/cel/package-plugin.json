@@ -1,0 +1,36 @@
+{
+  "name": "cluaiz-math-accelerator",
+  "version": "1.2.0",
+  "description": "A hardware-accelerated math parsing plugin compiled to WASM.",
+  "author": "Aryan",
+  "type": "plugin",
+  "discovery": {
+    "semantic_triggers": ["solve", "calculate", "math", "integrate", "matrix"],
+    "cel_grammar": "use plugin::cluaiz-math-accelerator -> solve(...)"
+  },
+  "activation": {
+    "lazy_load": true,
+    "trigger_on": [
+      "on_command:use plugin::cluaiz-math-accelerator"
+    ]
+  },
+  "execution": {
+    "engine": "wasm",
+    "entrypoint": "plugin.wasm",
+    "methods": {
+      "solve": {
+        "params": {
+          "expression": "string"
+        },
+        "returns": "number"
+      }
+    }
+  },
+  "permissions": {
+    "max_memory_mb": 256,
+    "max_cpu_time_ms": 5000,
+    "network_access": false,
+    "vram_kv_inject": true,
+    "file_system": "none"
+  }
+}

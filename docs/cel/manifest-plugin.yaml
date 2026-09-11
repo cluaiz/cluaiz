@@ -1,13 +1,6 @@
-# =====================================================================
-# cluaiz PLUGIN MANIFEST (manifest-plugin.yaml)
-#
-# PURPOSE: Configures a "Plugin" which is pure muscle (compiled WASM/C++).
-# A plugin has NO `SKILL.md` (no AI prompt). It executes blindly when called.
-# =====================================================================
+# DEPRECATED: Manifest format migrated to package.json.
+# See docs/cel/package-plugin.json
 
-# [FIXED SCHEMA] The exact unique name of this plugin in the ecosystem. 
-# Dynamic Value Example: "image-resizer", "fast-math"
-name: "cluaiz-math-accelerator"
 
 # [FIXED SCHEMA] Semantic versioning for updates.
 # Dynamic Value Example: "1.0.0", "2.1.3"
