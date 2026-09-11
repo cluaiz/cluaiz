@@ -165,168 +165,40 @@ impl HardwareGovernor {
         dna: &crate::metadata::dna::StructuralDNA,
         opt_control: &crate::hardware::schema::optimization::OptimizationControl,
     ) -> usize {
-        let mut arbiter = ARBITER.lock().unwrap();
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let total_ram_gb = (sys.total_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
+        let available_ram_gb = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
 
-        let path = Self::resolve_engine_path().join("config").join("llm_optimization.json");
+        let decision = crate::hardware::memory_governor::get_memory_decision(
+            opt_control,
+            0.0,
+            0.0,
+            total_ram_gb,
+            available_ram_gb,
+        );
 
-        // 🔍 LIVE SILICON PROBE: We don't trust cached values for safety-critical negotiation.
-        if let Ok(control) = Self::load_system_control() {
-            arbiter.total_vram_gb = control
-                .silicon_truth
-                .accelerators
-                .gpus
-                .iter()
-                .map(|g| g.vram_total_gb)
-                .sum::<f64>();
-        } else if arbiter.total_vram_gb == 0.0 {
-            let _ = Self::auto_calibrate();
-        }
-
-        // 🌊 ADAPTIVE MARGIN LOGIC: Delegated to unified resource_negotiator
-        let total_gb = arbiter.total_vram_gb;
-        let live_free_gb = (total_gb - arbiter.allocated_vram_gb).max(0.0);
-        let safety_buffer_gb = crate::hardware::memory_governor::calculate_safety_buffer(opt_control, total_gb, live_free_gb);
-        let margin = if total_gb > 0.0 { (safety_buffer_gb / total_gb).min(0.95) } else { 0.15 };
-
-        // We use static theoretical math for context negotiation.
-        // Using live_vram_probe() here squashes the context window on subsequent prompts
-        // because the context is already allocated in VRAM, making live VRAM appear artificially low.
-        let other_allocations = arbiter
-            .active_allocations
-            .iter()
-            .filter(|(id, _)| {
-                !id.contains(&dna.model_identity)
-                    && id.as_str() != "llama"
-                    && id.as_str() != "onnx"
-                    && id.as_str() != "whisper"
-            })
-            .map(|(_, info)| info.vram_gb)
-            .sum::<f64>();
-        let available_gb = (total_gb * (1.0 - margin)) - other_allocations;
-        let final_available_gb = (available_gb - (dna.weights_size_gb as f64)).max(0.0);
-
-        // 🧪 SOVEREIGN MATH: Calculate KV-Cache cost per 1024 tokens for THIS model
-        let layers = dna.layer_count.unwrap_or(32) as f64;
-        let kv_heads = dna
-            .attention_head_count_kv
-            .or(dna.attention_head_count)
-            .unwrap_or(32) as f64;
-
-        // 🧬 DNA Interrogation: head_dim = hidden_size / heads (Architecture Truth)
-        let head_dim_calc = if let (Some(h), Some(c)) = (dna.hidden_size, dna.attention_head_count)
-        {
-            (h / c) as f64
-        } else {
-            dna.attention_head_dim.unwrap_or(128) as f64
-        };
-
-        let head_dim = dna
-            .attention_head_dim
-            .map(|d| d as f64)
-            .unwrap_or(head_dim_calc);
-
-        // 🚀 Conservative Math: Always assume FP16 for KV-cache unless confirmed by engine state.
-        let bytes_per_element = 2.0; // FP16 standard (Safe)
-
-        // GB per 1024 tokens
-        let gb_per_k = (1024.0 * layers * kv_heads * head_dim * bytes_per_element * 2.0)
-            / (1024.0 * 1024.0 * 1024.0);
-
-        // 🛑 DYNAMIC STABILITY CAP: No more static traps.
-        // Rule: Never exceed what the model architecture supports (DNA Truth).
-        // If DNA is missing, we assume an infinite architecture limit (usize::MAX)
-        // and let the Physical VRAM Arbiter determine the safe ceiling.
         let user_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-        let user_ctx_cap = if user_meta.hardware_and_execution.n_ctx > 0 {
-            user_meta.hardware_and_execution.n_ctx as usize
-        } else {
-            usize::MAX
-        };
-        let arch_cap = dna.max_context_length.unwrap_or(usize::MAX).min(user_ctx_cap);
+        let user_n_ctx = user_meta.hardware_and_execution.n_ctx;
 
-        // If CPU-only Mode (n_gpu_layers = 0), calculate context based on System RAM instead of VRAM
-        let gguf_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-        if gguf_meta.hardware_and_execution.n_gpu_layers == 0 {
-            let mut system_ram_gb = 0.0;
-            let mut sys = sysinfo::System::new();
-            sys.refresh_memory();
-            let avail_ram_bytes = sys.available_memory();
-            if avail_ram_bytes > 0 {
-                system_ram_gb = (avail_ram_bytes as f64) / (1024.0 * 1024.0 * 1024.0);
-            }
+        let res = crate::hardware::context_negotiator::resolve_context_window(
+            std::path::Path::new(""),
+            user_n_ctx,
+            decision.usable_ram_gb,
+            total_ram_gb,
+            dna.weights_size_gb as f64,
+            0.0,
+        );
 
-            // OS Safety Floor for System RAM (leave at least 1.5GB for OS)
-            let os_floor_gb = 1.5;
-            let safe_ram_gb = (system_ram_gb - os_floor_gb).max(0.0);
-            
-            // Subtract model weights (since they are also stored in RAM in CPU mode)
-            let ram_for_kv = (safe_ram_gb - (dna.weights_size_gb as f64)).max(0.0);
-
-            // Calculate how many tokens we can fit in available RAM
-            let mut safe_tokens = if gb_per_k > 0.0 {
-                ((ram_for_kv / gb_per_k) * 1024.0) as usize
-            } else {
-                4096 // Fallback if math fails
-            };
-
-            // 🚀 ALIGNMENT FIX: llama.cpp fails if context is not aligned to a reasonable multiple (e.g., batch size).
-            // We align down to the nearest multiple of 1024 to ensure the KV cache block aligns properly in memory.
-            safe_tokens = (safe_tokens / 1024) * 1024;
-
-            // Clamp between a strict minimum and the architecture maximum
-            let min_context = 2048;
-            let cpu_ctx = safe_tokens.clamp(min_context, arch_cap);
-
-            println!("⚖️ [Arbiter] CPU-only Mode detected (n_gpu_layers = 0). Safe Context: {} tokens (Free RAM: {:.2} GB)", cpu_ctx, system_ram_gb);
-
-            let my_pid = std::process::id();
-            if let Some((_, info)) = arbiter.active_allocations.iter_mut().find(|(_, info)| info.pid == my_pid) {
-                info.context_size = cpu_ctx;
-            }
-            return cpu_ctx;
-        }
-
-        // Starting point for negotiation should be the Architecture Truth
-        let mut current_ctx = arch_cap;
-
-        // Expansion logic for high-power modes (Only if architecture allows)
-        // 🚀 THE REALITY DOCTRINE (CERD): 3-Tier Hardware Modes
-        let is_hybrid_requested = opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::On;
-        let model_exceeds_vram = (dna.weights_size_gb as f64) > (arbiter.total_vram_gb * (1.0 - margin));
-
-        if is_hybrid_requested || (opt_control.hybrid_memory == crate::hardware::schema::optimization::FeatureState::Auto && model_exceeds_vram) {
-            // 🔄 HYBRID MODE (Explicitly requested OR auto-triggered because VRAM is too small)
-            // Use VRAM + Shared System RAM to calculate absolute maximum possible context.
-            let mut system_ram_gb = 0.0;
-            let mut sys = sysinfo::System::new();
-            sys.refresh_memory();
-            let avail_ram_bytes = sys.available_memory(); // ACTUAL FREE RAM
-            if avail_ram_bytes > 0 {
-                system_ram_gb = (avail_ram_bytes as f64) / (1024.0 * 1024.0 * 1024.0);
-            }
-            
-            let total_combined_gb = arbiter.total_vram_gb + system_ram_gb;
-            let safe_combined_gb = (total_combined_gb * (1.0 - margin)).max(0.0);
-            let available_for_kv = (safe_combined_gb - (dna.weights_size_gb as f64)).max(0.0);
-            
-            let max_possible_k = available_for_kv / gb_per_k;
-            current_ctx = ((max_possible_k * 1024.0) as usize).min(arch_cap);
-        } else {
-            // ⚡ GPU ONLY MODE (Default)
-            // Model easily fits in VRAM. Give it ONLY the context that fits perfectly in Dedicated VRAM.
-            // This guarantees MAX TPS and zero shared memory spill.
-            let possible_max = (final_available_gb / gb_per_k) * 1024.0;
-            current_ctx = (possible_max as usize).min(arch_cap);
-        }
-
-        // Envelope Negotiation Log Hidden for clean UI
-        // Sync context size to RAM state
+        let target_ctx = res.target_ctx_tokens;
         let my_pid = std::process::id();
-        if let Some((_, info)) = arbiter.active_allocations.iter_mut().find(|(_, info)| info.pid == my_pid) {
-            info.context_size = current_ctx;
+        if let Ok(mut arbiter) = ARBITER.lock() {
+            if let Some((_, info)) = arbiter.active_allocations.iter_mut().find(|(_, info)| info.pid == my_pid) {
+                info.context_size = target_ctx;
+            }
         }
 
-        current_ctx
+        target_ctx
     }
 
     /// 🔓 Release VRAM allocation when an engine is unloaded.
