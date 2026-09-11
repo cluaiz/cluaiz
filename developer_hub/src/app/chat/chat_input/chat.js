@@ -270,7 +270,7 @@ function setupChatLogic() {
         if (content.length > 0 || window.canContinue) {
             isStopped = false;
 
-            let thinkModePayload = isThinkModeOn ? "on" : "off";
+            let thinkModePayload = isThinkModeOn ? "on" : "auto";
             let overrideTemp = null;
             let systemConstraint = null;
 
@@ -789,6 +789,16 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
             console.error('Failed to read active model:', e);
         }
 
+        // 🛡️ Auto-heal: Ensure activeModelId is actually present in installed chatModels
+        const normalizeId = (id) => id ? id.replace(/[-_:]/g, '').toLowerCase() : '';
+        const foundInInstalled = chatModels.find(m => normalizeId(m.id) === normalizeId(activeModelId));
+        if (foundInInstalled) {
+            activeModelId = foundInInstalled.id;
+        } else if (chatModels.length > 0) {
+            console.warn(`[Chat] Configured model '${activeModelId}' is not installed. Auto-healing to '${chatModels[0].id}'.`);
+            activeModelId = chatModels[0].id;
+        }
+
         // Set the active model
         const activeFormatted = formatModelName(activeModelId);
         selectedModelText.textContent = activeFormatted.shortName;
@@ -988,6 +998,13 @@ window.updateLiveContextBar = function(usage) {
     // 1. Generation Performance Stats (Left side)
     const tps = typeof usage.tokens_per_second === 'number' ? usage.tokens_per_second.toFixed(2) : (usage.tokens_per_second || '0.00');
     const ttft = typeof usage.time_to_first_token_ms === 'number' ? (usage.time_to_first_token_ms / 1000).toFixed(2) : '0.00';
+    const time = typeof usage.total_time_ms === 'number' 
+        ? (usage.total_time_ms / 1000).toFixed(2) 
+        : (typeof usage.duration_ms === 'number' 
+            ? (usage.duration_ms / 1000).toFixed(2) 
+            : (typeof usage.total_duration_sec === 'number' 
+                ? usage.total_duration_sec.toFixed(2) 
+                : (usage.time_seconds ? Number(usage.time_seconds).toFixed(2) : '0.00')));
     const tokens = usage.total_tokens || usage.completion_tokens || 0;
 
     const tpsEl = document.getElementById('live-tps');
@@ -995,6 +1012,13 @@ window.updateLiveContextBar = function(usage) {
     if (tpsEl && tpsTag) {
         tpsEl.textContent = tps;
         tpsTag.style.display = 'inline-flex';
+    }
+
+    const timeEl = document.getElementById('live-time');
+    const timeTag = document.getElementById('live-time-tag');
+    if (timeEl && timeTag) {
+        timeEl.textContent = time;
+        timeTag.style.display = 'inline-flex';
     }
 
     const ttftEl = document.getElementById('live-ttft');
