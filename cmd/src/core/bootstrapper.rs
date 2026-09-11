@@ -31,7 +31,7 @@ impl Bootstrapper {
         #[cfg(windows)]
         let _ = colored::control::set_virtual_terminal(true);
 
-        let bin_dir = HardwareGovernor::resolve_hub_path().join("bin");
+        let _bin_dir = HardwareGovernor::resolve_hub_path().join("bin");
 
         if is_dev_sync {
             tracing::info!("⚙️ [DevSync] Basic Configuration generated. Skipping network and registry sync for local deployment.");

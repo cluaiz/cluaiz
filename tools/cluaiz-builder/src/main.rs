@@ -162,47 +162,55 @@ fn main() {
         }
     }
 
-    // Auto-sync compiled driver DLLs directly to .cluaiz runtime folders
+    // Auto-sync compiled driver DLLs directly to .cluaiz runtime folders (both workspace and home)
     let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let engine_dir = root.join(".cluaiz").join("engine");
-    let drivers_dir = engine_dir.join("drivers");
+    let mut candidate_engine_dirs = vec![root.join(".cluaiz").join("engine")];
+    if let Some(home) = dirs::home_dir() {
+        let home_engine = home.join(".cluaiz").join("engine");
+        if !candidate_engine_dirs.contains(&home_engine) {
+            candidate_engine_dirs.push(home_engine);
+        }
+    }
     let target_dir = if profile == "release" { root.join("target").join("release") } else { root.join("target").join("debug") };
 
     let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
 
-    if engine_dir.exists() {
-        let drivers_to_sync = if !driver_name.is_empty() {
-            vec![driver_name.clone()]
-        } else {
-            vec!["onnx".to_string(), "llama".to_string()]
-        };
-
-        for d in drivers_to_sync {
-            let src_name = format!("cluaiz_{}.{}", d, ext);
-            let alt_src_name = format!("{}.{}", d, ext);
-            let src_path = if target_dir.join(&src_name).exists() {
-                target_dir.join(&src_name)
-            } else if target_dir.join(&alt_src_name).exists() {
-                target_dir.join(&alt_src_name)
+    for engine_dir in candidate_engine_dirs {
+        if engine_dir.exists() {
+            let drivers_dir = engine_dir.join("drivers");
+            let drivers_to_sync = if !driver_name.is_empty() {
+                vec![driver_name.clone()]
             } else {
-                continue;
+                vec!["onnx".to_string(), "llama".to_string()]
             };
 
-            let dest_name = format!("cluaiz-{}.{}", d, ext);
-            let dest_path = engine_dir.join(&dest_name);
-            
-            if std::fs::copy(&src_path, &dest_path).is_ok() {
-                println!("🧬 [cluaiz-builder] Auto-synced engine: {:?}", dest_path);
-            }
+            for d in &drivers_to_sync {
+                let src_name = format!("cluaiz_{}.{}", d, ext);
+                let alt_src_name = format!("{}.{}", d, ext);
+                let src_path = if target_dir.join(&src_name).exists() {
+                    target_dir.join(&src_name)
+                } else if target_dir.join(&alt_src_name).exists() {
+                    target_dir.join(&alt_src_name)
+                } else {
+                    continue;
+                };
 
-            if drivers_dir.exists() {
-                if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
-                    for entry in entries.flatten() {
-                        let p = entry.path();
-                        if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
-                            if fname.contains(&d) || (d == "onnx" && fname.contains("cuda")) {
-                                if std::fs::copy(&src_path, &p).is_ok() {
-                                    println!("🧬 [cluaiz-builder] Overwrote active driver DLL: {:?}", p);
+                let dest_name = format!("cluaiz-{}.{}", d, ext);
+                let dest_path = engine_dir.join(&dest_name);
+                
+                if std::fs::copy(&src_path, &dest_path).is_ok() {
+                    println!("🧬 [cluaiz-builder] Auto-synced engine: {:?}", dest_path);
+                }
+
+                if drivers_dir.exists() {
+                    if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
+                        for entry in entries.flatten() {
+                            let p = entry.path();
+                            if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
+                                if fname.contains(d) || (d == "onnx" && fname.contains("cuda")) {
+                                    if std::fs::copy(&src_path, &p).is_ok() {
+                                        println!("🧬 [cluaiz-builder] Overwrote active driver DLL: {:?}", p);
+                                    }
                                 }
                             }
                         }

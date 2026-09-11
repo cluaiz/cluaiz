@@ -317,9 +317,9 @@ async fn main() -> Result<()> {
     // ══ SOVEREIGN KERNEL SILENCE ══
     // These env vars suppress CUDA Graph + ggml verbose logs at the source.
     // NOTE: We do NOT redirect stderr here because inquire (input box) uses stderr to render.
-    // Stderr is selectively redirected only during inference (in dashboard.rs generate_stream).
-    // 🚀 GGML_CUDA_USE_GRAPHS=1: Enables 40% speed boost.
-    std::env::set_var("GGML_CUDA_USE_GRAPHS", "1");
+    // 🚀 GGML_CUDA_USE_GRAPHS: Default to 0 for stability across hybrid/CPU splits.
+    // NativeLlama enables it dynamically when running 100% on Dedicated GPU.
+    std::env::set_var("GGML_CUDA_USE_GRAPHS", "0");
     std::env::set_var("GGML_LOG_LEVEL", "ERROR");
 
     color_eyre::install()?;
@@ -445,12 +445,18 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name, profile }) => {
-            let global_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir;
+            let env_mgr = cluaiz_shared::environment::EnvironmentManager::current();
+            let global_dir = env_mgr.global_dir.clone();
+            let local_dir = env_mgr.local_dir.clone();
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
             if let Err(_e) = cluaiz_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
                 let _ = std::fs::create_dir_all(cluaiz_shared::HardwareGovernor::resolve_engine_path());
             }
             core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
+            if local_dir != global_dir {
+                println!("⚙️  [DevSync] Also synchronizing to local workspace {}...", local_dir.display());
+                let _ = core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), local_dir, &profile);
+            }
             
             // 🚀 Force base configuration into the Global Directory so the user doesn't have an empty config!
             std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
