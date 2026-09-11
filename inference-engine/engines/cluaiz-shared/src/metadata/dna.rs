@@ -88,6 +88,17 @@ const MIN_CONTEXT_FACTOR: usize = 4; // 25% for stability
 const DEFAULT_COMPRESSION: f32 = 4.0; // Q4 Standard
 
 impl StructuralDNA {
+    /// Single Source of Truth for all reasoning delimiters across Cluaiz (DRY Protocol)
+    pub const KNOWN_REASONING_DELIMITERS: &'static [(&'static str, &'static str)] = &[
+        ("<think>", "</think>"),
+        ("<thought>", "</thought>"),
+        ("<|thought|>", "</|thought|>"),
+        ("<|start_thought|>", "</|end_thought|>"),
+        ("<reasoning>", "</reasoning>"),
+        ("[THINK]", "[/THINK]"),
+        ("<|begin_thought|>", "<|end_thought|>"),
+    ];
+
     pub fn load(path: &std::path::Path) -> Result<Self, String> {
         let content =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read DNA: {e}"))?;
@@ -99,6 +110,124 @@ impl StructuralDNA {
         let archived = unsafe { rkyv::archived_root::<StructuralDNA>(&bytes) };
         let deserialized: StructuralDNA = archived.deserialize(&mut rkyv::Infallible).unwrap();
         Ok(deserialized)
+    }
+
+    /// Dynamically analyzes chat template to extract reasoning start/end markers
+    /// inspired by upstream auto-parser architecture (zero hardcoding).
+    pub fn extract_reasoning_markers(template: &str) -> (Option<String>, Option<String>) {
+        if template.is_empty() {
+            return (None, None);
+        }
+
+        // 1. Template variable analysis for reasoning content
+        // Jinja: `<think>{{ message.reasoning_content }}</think>` or similar
+        if let Some(pos) = template.find("reasoning_content") {
+            let before = &template[..pos];
+            let after = &template[pos + "reasoning_content".len()..];
+
+            // Extract closing tag from after: find first closing XML/bracket tag in `after`
+            let end_tag = if let Some(close_tag_start) = after.find("</") {
+                if let Some(close_tag_end) = after[close_tag_start..].find('>') {
+                    Some(after[close_tag_start..=close_tag_start + close_tag_end].to_string())
+                } else {
+                    None
+                }
+            } else if let Some(close_bracket) = after.find("[/") {
+                if let Some(end_bracket) = after[close_bracket..].find(']') {
+                    Some(after[close_bracket..=close_bracket + end_bracket].to_string())
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            // Extract opening tag from before: find tag right before `{{`
+            let start_tag = if let Some(open_tag_start) = before.rfind('<') {
+                if let Some(open_tag_end) = before[open_tag_start..].find('>') {
+                    let tag = &before[open_tag_start..=open_tag_start + open_tag_end];
+                    if !tag.starts_with("</") && !tag.contains(' ') && !tag.contains('%') {
+                        Some(tag.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else if let Some(open_bracket) = before.rfind('[') {
+                if let Some(end_bracket) = before[open_bracket..].find(']') {
+                    let tag = &before[open_bracket..=open_bracket + end_bracket];
+                    if !tag.starts_with("[/") && !tag.contains(' ') && !tag.contains('%') {
+                        Some(tag.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            if start_tag.is_some() || end_tag.is_some() {
+                return (start_tag, end_tag);
+            }
+        }
+
+        // 2. Generic differential scan for standard reasoning delimiter schemas in template
+        for &(start, end) in Self::KNOWN_REASONING_DELIMITERS {
+            if template.contains(end) || template.contains(start) {
+                return (Some(start.to_string()), Some(end.to_string()));
+            }
+        }
+
+        (None, None)
+    }
+
+    /// Separates raw model output into reasoning_content and clean answer content,
+    /// matching OpenAI / DeepSeek industry standard payloads.
+    pub fn separate_reasoning(
+        raw: &str,
+        custom_start: Option<&str>,
+        custom_end: Option<&str>,
+    ) -> (Option<String>, String, usize) {
+        if raw.is_empty() {
+            return (None, String::new(), 0);
+        }
+
+        let marker_candidates: Vec<(&str, &str)> = {
+            let mut list = Vec::new();
+            if let (Some(cs), Some(ce)) = (custom_start, custom_end) {
+                if !cs.is_empty() && !ce.is_empty() {
+                    list.push((cs, ce));
+                }
+            }
+            list.extend_from_slice(Self::KNOWN_REASONING_DELIMITERS);
+            list
+        };
+
+        for (start, end) in marker_candidates {
+            if let Some(start_pos) = raw.find(start) {
+                let reasoning_start = start_pos + start.len();
+                if let Some(end_offset) = raw[reasoning_start..].find(end) {
+                    let end_pos = reasoning_start + end_offset;
+                    let reasoning = raw[reasoning_start..end_pos].trim().to_string();
+                    let before = &raw[..start_pos];
+                    let after = &raw[end_pos + end.len()..];
+                    let clean = format!("{}{}", before, after).trim().to_string();
+                    let tokens = (reasoning.len() / 4).max(reasoning.split_whitespace().count()).max(1);
+                    return (Some(reasoning), clean, tokens);
+                } else {
+                    // Start tag found, but end tag missing (e.g. truncated generation)
+                    let reasoning = raw[reasoning_start..].trim().to_string();
+                    let clean = raw[..start_pos].trim().to_string();
+                    let tokens = (reasoning.len() / 4).max(reasoning.split_whitespace().count()).max(1);
+                    return (Some(reasoning), clean, tokens);
+                }
+            }
+        }
+
+        (None, raw.to_string(), 0)
     }
 
     /// 🧬 Neural Discovery: Learns model behavior and cross-references with Hardware Truth.
@@ -126,21 +255,6 @@ impl StructuralDNA {
             .sum::<f64>() as f32;
         self.ram_headroom_gb = control.silicon_truth.memory.available_capacity_gb as f32;
 
-        // 🛡️ Manifest Validation: Check if model REQUIRES GPU
-        let manifest_path = model_dir.join("model_manifest.json");
-        if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                self.requires_gpu = json
-                    .get("requires_gpu")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false);
-            }
-        }
-
-        if self.requires_gpu && self.vram_headroom_gb == 0.0 {
-            return Err(anyhow::anyhow!("❌ [DNA] Hardware Mismatch: This model requires a GPU but none was detected or available. Aborting to prevent freeze."));
-        }
-
         if self.vram_headroom_gb == 0.0 && self.ram_headroom_gb == 0.0 {
             return Err(anyhow::anyhow!(
                 "❌ [DNA] Fatal: Hardware Truth Missing or Corrupted. Run 'cluaiz calibrate'."
@@ -148,118 +262,100 @@ impl StructuralDNA {
         }
 
         let mut did_probe = false;
+        let mut template_opt = None;
         if self.layer_count.is_none() || !self.dynamic_attributes.contains_key("has_native_mtp") {
-            let manifest_path = model_dir.join("model_manifest.json");
-            let mut template_opt = None;
+            let paths_to_check = vec![
+                crate::environment::EnvironmentManager::current().model_registry_json_path(),
+                crate::environment::EnvironmentManager::current()
+                    .local_dir
+                    .join("engine")
+                    .join("config")
+                    .join("model_registry.json"),
+            ];
+            for reg_path in paths_to_check {
+                if reg_path.exists() {
+                    if let Ok(content) = std::fs::read_to_string(&reg_path) {
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                            if let Some(installed) =
+                                val.get("installed_models").and_then(|m| m.as_object())
+                            {
+                                let target_dir_str = model_dir
+                                    .to_string_lossy()
+                                    .to_lowercase()
+                                    .replace('\\', "/");
+                                for (_id, entry) in installed {
+                                    let local_dir = entry
+                                        .get("local_dir")
+                                        .and_then(|d| d.as_str())
+                                        .unwrap_or("")
+                                        .to_lowercase()
+                                        .replace('\\', "/");
+                                    let primary_file = entry
+                                        .get("files")
+                                        .and_then(|f| f.as_array())
+                                        .and_then(|arr| {
+                                            arr.iter().find(|f| {
+                                                f.get("is_primary")
+                                                    .and_then(|p| p.as_bool())
+                                                    .unwrap_or(false)
+                                            })
+                                        })
+                                        .and_then(|f| f.get("name").and_then(|n| n.as_str()))
+                                        .unwrap_or("")
+                                        .to_lowercase();
 
-            if manifest_path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                        if let Some(arch) = val.get("architecture").and_then(|v| v.as_str()) {
-                            self.model_identity = arch.to_string();
-                        }
-                        if let Some(ctx) = val.get("context_window").and_then(|v| v.as_u64()) {
-                            arch_limit = Some(ctx as usize);
-                        }
-                        if let Some(tmpl) = val.get("chat_template").and_then(|v| v.as_str()) {
-                            template_opt = Some(tmpl.to_string());
-                        }
-                        did_probe = true;
-                    }
-                }
-            }
+                                    let matches = (!local_dir.is_empty()
+                                        && (local_dir == target_dir_str
+                                            || target_dir_str.contains(&local_dir)
+                                            || local_dir.contains(&target_dir_str)))
+                                        || (!primary_file.is_empty()
+                                            && target_dir_str.contains(&primary_file));
 
-            if !did_probe {
-                let reg_path = crate::environment::EnvironmentManager::current().config_dir().join("model_registry.json");
-                if let Ok(content) = std::fs::read_to_string(&reg_path) {
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                        if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
-                            let target_dir_str = model_dir.to_string_lossy().to_lowercase().replace('\\', "/");
-                            for (_id, entry) in installed {
-                                let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
-                                if !local_dir.is_empty() && (local_dir == target_dir_str || target_dir_str.contains(&local_dir)) {
-                                    if let Some(meta) = entry.get("metadata") {
-                                        if let Some(arch) = meta.get("architecture").and_then(|v| v.as_str()) {
-                                            self.model_identity = arch.to_string();
-                                        }
-                                        if let Some(ctx_str) = meta.get("context_length").and_then(|v| v.as_str()) {
-                                            if let Ok(ctx) = ctx_str.parse::<usize>() {
-                                                arch_limit = Some(ctx);
+                                    if matches {
+                                        if let Some(meta) = entry.get("metadata") {
+                                            if let Some(arch) =
+                                                meta.get("architecture").and_then(|v| v.as_str())
+                                            {
+                                                self.model_identity = arch.to_string();
+                                            }
+                                            if let Some(ctx_str) = meta
+                                                .get("context_length")
+                                                .or_else(|| meta.get("context_window"))
+                                                .and_then(|v| v.as_str())
+                                            {
+                                                if let Ok(ctx) = ctx_str.parse::<usize>() {
+                                                    arch_limit = Some(ctx);
+                                                }
+                                            }
+                                            if let Some(tmpl) =
+                                                meta.get("chat_template").and_then(|v| v.as_str())
+                                            {
+                                                template_opt = Some(tmpl.to_string());
                                             }
                                         }
-                                        if let Some(tmpl) = meta.get("chat_template").and_then(|v| v.as_str()) {
-                                            template_opt = Some(tmpl.to_string());
-                                        }
+                                        did_probe = true;
+                                        break;
                                     }
-                                    did_probe = true;
-                                    break;
                                 }
                             }
                         }
                     }
                 }
+                if did_probe {
+                    break;
+                }
             }
 
             if let Some(template) = template_opt {
-                self.chat_template = Some(template.clone());
-                let template_lower = template.to_lowercase();
-                let mut detected_start = None;
-                let mut detected_end = None;
-
-                let keywords = [
-                    "think",
-                    "thought",
-                    "reasoning",
-                    "reason",
-                    "brainstorm",
-                    "logic",
-                ];
-                for kw in keywords.iter() {
-                    let formats = [
-                        (format!("<{}>", kw), format!("</{}>", kw)),
-                        (format!("<|{}_start|>", kw), format!("<|{}_end|>", kw)),
-                        (format!("<|{}|>", kw), format!("</|{}|>", kw)),
-                        (format!("<|channel>{}", kw), format!("<channel|>")),
-                    ];
-
-                    for (start, end) in formats.iter() {
-                        if template_lower.contains(start) {
-                            detected_start = Some(start.clone());
-                            if template_lower.contains(end) {
-                                detected_end = Some(end.clone());
-                            }
-                            break;
-                        }
-                    }
-                    if detected_start.is_some() {
-                        break;
-                    }
-                }
-
-                if let Some(start_tag) = detected_start {
+                let (st, et) = Self::extract_reasoning_markers(&template);
+                if let Some(start) = st {
                     self.supports_thinking = true;
-                    self.think_tag_schema = start_tag.clone();
-                    
-                    if let Some(end_tag) = detected_end.clone() {
-                        self.think_end_schema = end_tag;
-                        self.reliable_think_close = true;
-                    } else {
-                        if start_tag.contains("_start") {
-                            self.think_end_schema = start_tag.replace("_start", "_end");
-                        } else if start_tag.contains("<|") {
-                            self.think_end_schema = start_tag.replace("<|", "</|");
-                        } else {
-                            self.think_end_schema = start_tag.replace("<", "</");
-                        }
-                        self.reliable_think_close = false;
-                    }
-
-                    crate::dev_info!(
-                        "🧠 [DNA] Universal Native Truth: Reasoning Model Detected (Start: {}, End: {})",
-                        self.think_tag_schema,
-                        self.think_end_schema
-                    );
+                    self.think_tag_schema = start;
                 }
+                if let Some(end) = et {
+                    self.think_end_schema = end;
+                }
+                self.chat_template = Some(template);
             }
         }
 
@@ -270,43 +366,13 @@ impl StructuralDNA {
             self.max_context_length
         };
 
-        // Rule: If manual DNA exists, prioritize it but CAP by Architecture to prevent Hallucinations.
-        let dna_json_path = model_dir.join("structural_dna.json");
-        if let Ok(content) = std::fs::read_to_string(&dna_json_path) {
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                // Try root max_context_length first, then dynamic_attributes
-                let dna_ctx_val = json.get("max_context_length").or_else(|| {
-                    json.get("dynamic_attributes")
-                        .and_then(|d| d.get("context_window"))
-                });
-
-                if let Some(val) = dna_ctx_val {
-                    let dna_ctx = if let Some(ctx_u) = val.as_u64() {
-                        ctx_u as usize
-                    } else if let Some(ctx_s) = val.as_str() {
-                        Self::parse_context_string(ctx_s)
-                    } else {
-                        0
-                    };
-
-                    if dna_ctx > 0 {
-                        if let Some(arch_ctx) = final_truth {
-                            final_truth = Some(dna_ctx.min(arch_ctx));
-                        } else {
-                            final_truth = Some(dna_ctx);
-                        }
-                    }
-                }
-            }
-        }
-
         if final_truth.is_none() {
             return Err(anyhow::anyhow!("❌ [DNA] Fatal: Corrupted Model Metadata."));
         }
 
         let _ctx = final_truth.unwrap();
 
-        // 🧬 SOVEREIGN WEIGHT DISCOVERY
+        // 🧬 WEIGHT DISCOVERY
         let mut model_size_gb = 0.0;
         let abs_dir = std::fs::canonicalize(model_dir).unwrap_or(model_dir.to_path_buf());
 
@@ -427,7 +493,7 @@ impl StructuralDNA {
                 .unwrap_or(1);
             num * 1024 * 1024
         } else {
-            normalized.parse::<usize>().unwrap_or(4096)
+            normalized.parse::<usize>().unwrap_or(2048)
         }
     }
 
@@ -458,5 +524,19 @@ impl StructuralDNA {
             max_context_length: Some(Self::parse_context_string(context_window)),
             ..Default::default()
         }
+    }
+
+    /// Dynamic Architectural Truth: Determines whether this model requires pure F16 KV cache
+    pub fn requires_fp16_kv(&self) -> bool {
+        self.signature.requires_fp16_kv(self.attention_head_dim)
+            || self.dynamic_attributes.contains_key("is_ssm")
+            || self.dynamic_attributes.contains_key("has_softcapping")
+    }
+
+    /// Dynamic Architectural Truth: Determines whether Flash Attention is valid for this model without divergence
+    pub fn supports_flash_attention(&self) -> bool {
+        self.signature
+            .supports_flash_attention(self.attention_head_dim)
+            && !self.dynamic_attributes.contains_key("is_ssm")
     }
 }
