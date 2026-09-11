@@ -402,6 +402,57 @@ function setupChatStream() {
         }
 }
 
+function getMarkedRenderer() {
+    if (typeof marked !== 'undefined' && !window.cluaizMarkedRenderer) {
+        window.cluaizMarkedRenderer = new marked.Renderer();
+        window.cluaizMarkedRenderer.code = function(codeArg, langArg) {
+            let code = '';
+            let language = '';
+            if (typeof codeArg === 'object' && codeArg !== null) {
+                code = codeArg.text || '';
+                language = codeArg.lang || langArg || 'plaintext';
+            } else {
+                code = String(codeArg || '');
+                language = langArg || 'plaintext';
+            }
+
+            const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            let encodedData = '';
+            try {
+                encodedData = btoa(unescape(encodeURIComponent(code)));
+            } catch (e) {
+                encodedData = '';
+            }
+            return '<div class="code-block-wrapper" style="position: relative; margin-top: 1em; margin-bottom: 1em; background: #1e1e1e; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">' +
+                '<div style="background: rgba(255,255,255,0.05); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-family: monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">' +
+                    '<span>' + escapeHtml(language) + '</span>' +
+                    '<button class="copy-code-btn" style="background: transparent; border: none; color: #9ca3af; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; transition: color 0.2s;" onclick="window.copyCodeBlock(this, \'' + encodedData + '\')">' +
+                        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy' +
+                    '</button>' +
+                '</div>' +
+                '<pre style="margin: 0; padding: 12px; overflow-x: auto; font-size: 0.85rem;"><code class="language-' + escapeHtml(language) + '">' + escapedCode + '</code></pre>' +
+            '</div>';
+        };
+    }
+    return window.cluaizMarkedRenderer;
+}
+
+function renderMarkdownSafe(text) {
+    if (!text || !text.trim()) return '';
+    if (typeof marked !== 'undefined') {
+        try {
+            if (typeof marked.setOptions === 'function') {
+                marked.setOptions({ gfm: true, breaks: true });
+            }
+            return marked.parse(text, { renderer: getMarkedRenderer(), gfm: true, breaks: true });
+        } catch (mErr) {
+            console.error('Marked parse error:', mErr);
+            return escapeHtml(text);
+        }
+    }
+    return escapeHtml(text);
+}
+
 async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
     const container = document.getElementById('chat-stream-container');
     const model = getSelectedModel();
@@ -419,6 +470,18 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                 </div>
             </div>
             <div class="tools-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
+            <details class="think-accordion" open style="display: none;">
+                <summary class="think-summary">
+                    <div class="think-summary-left">
+                        <svg class="think-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                        <span class="think-status-title">Thinking Process...</span>
+                    </div>
+                    <span class="think-badge">Live</span>
+                </summary>
+                <div class="think-content markdown-body"></div>
+            </details>
             <div class="divider" style="border-top: 1px solid rgba(156, 163, 175, 0.2); display: none;"></div>
             <div class="final-text markdown-body" style="font-size: 0.9rem;"></div>
         </div>
@@ -428,14 +491,22 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
 
     const statusContainer = aiMsgEl.querySelector('.status-container');
     const divider = aiMsgEl.querySelector('.divider');
+    const thinkAccordionEl = aiMsgEl.querySelector('.think-accordion');
+    const thinkTitleEl = aiMsgEl.querySelector('.think-status-title');
+    const thinkBadgeEl = aiMsgEl.querySelector('.think-badge');
+    const thinkContentEl = aiMsgEl.querySelector('.think-content');
     const aiTextEl = aiMsgEl.querySelector('.final-text');
     let hasStarted = false;
     let isThinking = false;
     let skipThinking = false;
+    let inRawThinkTag = false;
     let fullContent = '';
 
     const onSkipThinking = () => {
         skipThinking = true;
+        if (thinkAccordionEl) {
+            thinkAccordionEl.style.display = 'none';
+        }
     };
     window.addEventListener('chat:skip_thinking', onSkipThinking);
 
@@ -520,6 +591,8 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         fullContent = '';
+        let reasoningContent = '';
+        let answerContent = '';
         let sseBuffer = '';
 
         while (true) {
@@ -611,8 +684,10 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                         continue;
                     }
 
-                    if (!delta.content) continue;
-                    const content = delta.content;
+                    const reasoningPiece = delta.reasoning_content || delta.reasoning || delta.thought || '';
+                    const contentPiece = delta.content || '';
+
+                    if (!reasoningPiece && !contentPiece) continue;
 
                     if (!firstTokenTime) {
                         firstTokenTime = performance.now();
@@ -668,98 +743,70 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                         divider.style.display = 'none';
                     }
 
-                    fullContent += content;
+                    // Check scroll position before updating content
+                    const isNearBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 150;
 
-                    // Thinking detection
-                    let justFinishedThinking = false;
-                    if (fullContent.includes('<think>') && !isThinking) {
-                        isThinking = true;
-                        window.dispatchEvent(new CustomEvent('chat:thinking_start'));
-                    }
-                    if (fullContent.includes('</think>') && isThinking) {
-                        isThinking = false;
-                        justFinishedThinking = true;
-                        window.dispatchEvent(new CustomEvent('chat:thinking_end'));
-                    }
-
-                    // Render content with optional skip filtering
-                    let displayContent = fullContent;
-                    if (skipThinking) {
-                        displayContent = fullContent.replace(/<think>[\s\S]*?(<\/think>|$)/g, '');
-                    } else {
-                        displayContent = fullContent.replace(/<think>([\s\S]*?)(<\/think>|$)/g, (match, content, endTag) => {
-                            const isOpen = endTag === '' ? 'open' : '';
-                            const summaryText = endTag === '' ? 'Thinking Process...' : 'Thought Process';
-                            const closingHtml = endTag === '</think>' ? '</div></details>' : '';
-                            return `\n\n<details class="think-accordion" ${isOpen}><summary><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="think-icon"><polyline points="6 9 12 15 18 9"></polyline></svg> <span>${summaryText}</span></summary><div class="think-content">\n\n${content}\n\n${closingHtml}\n\n`;
-                        });
-                    }
-
-                    // Only auto-scroll if user is currently near the bottom
-                    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-                    
-                    const activeStates = [];
-                    if (!skipThinking) {
-                        aiTextEl.querySelectorAll('details.think-accordion').forEach(d => {
-                            activeStates.push(d.open);
-                        });
-                    }
-
-                    if (typeof marked !== 'undefined') {
-                        if (!window.cluaizMarkedRenderer) {
-                            window.cluaizMarkedRenderer = new marked.Renderer();
-                            window.cluaizMarkedRenderer.code = function(codeArg, langArg) {
-                                let code = '';
-                                let language = '';
-                                if (typeof codeArg === 'object' && codeArg !== null) {
-                                    code = codeArg.text || '';
-                                    language = codeArg.lang || langArg || 'plaintext';
+                    // Fallback: If reasoningPiece is empty but contentPiece has raw <think> tags
+                    if (!reasoningPiece && contentPiece) {
+                        if (inRawThinkTag) {
+                            const endIdx = contentPiece.indexOf('</think>');
+                            if (endIdx !== -1) {
+                                reasoningPiece = contentPiece.slice(0, endIdx);
+                                contentPiece = contentPiece.slice(endIdx + 8);
+                                inRawThinkTag = false;
+                            } else {
+                                reasoningPiece = contentPiece;
+                                contentPiece = '';
+                            }
+                        } else {
+                            const startIdx = contentPiece.indexOf('<think>');
+                            if (startIdx !== -1) {
+                                const before = contentPiece.slice(0, startIdx);
+                                const after = contentPiece.slice(startIdx + 7);
+                                const endIdx = after.indexOf('</think>');
+                                if (endIdx !== -1) {
+                                    reasoningPiece = after.slice(0, endIdx);
+                                    contentPiece = before + after.slice(endIdx + 8);
                                 } else {
-                                    code = String(codeArg || '');
-                                    language = langArg || 'plaintext';
+                                    reasoningPiece = after;
+                                    contentPiece = before;
+                                    inRawThinkTag = true;
                                 }
-
-                                const escapedCode = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                                let encodedData = '';
-                                try {
-                                    encodedData = btoa(unescape(encodeURIComponent(code)));
-                                } catch (e) {
-                                    encodedData = '';
-                                }
-                                return '<div class="code-block-wrapper" style="position: relative; margin-top: 1em; margin-bottom: 1em; background: #1e1e1e; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">' +
-                                    '<div style="background: rgba(255,255,255,0.05); padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-family: monospace; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05);">' +
-                                        '<span>' + escapeHtml(language) + '</span>' +
-                                        '<button class="copy-code-btn" style="background: transparent; border: none; color: #9ca3af; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; transition: color 0.2s;" onclick="window.copyCodeBlock(this, \'' + encodedData + '\')">' +
-                                            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy' +
-                                        '</button>' +
-                                    '</div>' +
-                                    '<pre style="margin: 0; padding: 12px; overflow-x: auto; font-size: 0.85rem;"><code class="language-' + escapeHtml(language) + '">' + escapedCode + '</code></pre>' +
-                                '</div>';
-                            };
-                        }
-                        try {
-                            if (typeof marked.setOptions === 'function') {
-                                marked.setOptions({ gfm: true, breaks: true });
                             }
-                            aiTextEl.innerHTML = marked.parse(displayContent, { renderer: window.cluaizMarkedRenderer, gfm: true, breaks: true });
-                        } catch (mErr) {
-                            console.error('Marked parse error:', mErr);
                         }
-                    } else {
-                        aiTextEl.innerHTML = displayContent; // Use innerHTML to render details if marked is missing
                     }
 
-                    if (!skipThinking) {
-                        const newDetails = aiTextEl.querySelectorAll('details.think-accordion');
-                        newDetails.forEach((d, i) => {
-                            if (justFinishedThinking && i === newDetails.length - 1) {
-                                d.open = false; // Close automatically when thinking ends
-                            } else if (i < activeStates.length) {
-                                d.open = activeStates[i]; // Restore user's manual toggle state
+                    // Handle Reasoning / Thinking Stream
+                    if (reasoningPiece) {
+                        reasoningContent += reasoningPiece;
+                        if (!isThinking) {
+                            isThinking = true;
+                            if (!skipThinking) {
+                                thinkAccordionEl.style.display = 'block';
+                                thinkAccordionEl.open = true;
                             }
-                        });
+                            window.dispatchEvent(new CustomEvent('chat:thinking_start'));
+                        }
+                        thinkContentEl.textContent = reasoningContent;
                     }
-                    
+
+                    // Handle Answer Stream
+                    if (contentPiece) {
+                        if (isThinking) {
+                            isThinking = false;
+                            thinkTitleEl.textContent = 'Thought Process';
+                            thinkBadgeEl.textContent = 'Done';
+                            thinkBadgeEl.className = 'think-badge done';
+                            thinkAccordionEl.open = false;
+                            thinkAccordionEl.removeAttribute('open'); // Ensure closed state in all browsers
+                            thinkContentEl.innerHTML = renderMarkdownSafe(reasoningContent);
+                            window.dispatchEvent(new CustomEvent('chat:thinking_end'));
+                        }
+                        answerContent += contentPiece;
+                        fullContent = answerContent;
+                        aiTextEl.innerHTML = renderMarkdownSafe(answerContent);
+                    }
+
                     if (isNearBottom) {
                         container.scrollTop = container.scrollHeight;
                     }
@@ -770,8 +817,26 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
             }
         }
 
+        // Finalize state when generation ends
+        if (isThinking) {
+            isThinking = false;
+            thinkTitleEl.textContent = 'Thought Process';
+            thinkBadgeEl.textContent = 'Done';
+            thinkBadgeEl.className = 'think-badge done';
+            thinkContentEl.innerHTML = renderMarkdownSafe(reasoningContent);
+        }
+        if (answerContent && answerContent.trim().length > 0) {
+            thinkAccordionEl.open = false;
+            thinkAccordionEl.removeAttribute('open');
+        }
+        if (skipThinking) {
+            thinkAccordionEl.style.display = 'none';
+        }
+
         if (fullContent.trim()) {
             conversationHistory.push({ role: 'assistant', content: fullContent });
+            window.canContinue = true;
+        } else if (reasoningContent.trim().length > 0) {
             window.canContinue = true;
         } else if (!fullContent) {
             aiTextEl.textContent = 'Error: No final response synthesized.';
@@ -979,7 +1044,8 @@ function renderTelemetry(container, usage, fullContent) {
         // TTS Sound Button
         const soundBtn = document.createElement('button');
         soundBtn.className = "tts-speak-btn";
-        soundBtn.style.cssText = "background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s;";
+        soundBtn.title = "Read aloud";
+        soundBtn.style.cssText = "background: transparent; border: none; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 4px; transition: color 0.2s; color: #9ca3af;";
         setTtsButtonIcon(soundBtn, 'idle');
         soundBtn.addEventListener('click', () => {
             playTtsAudio(fullContent, soundBtn);
