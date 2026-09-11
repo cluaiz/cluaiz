@@ -601,7 +601,7 @@ impl CoreRouter {
                 }
             }
         }
-        let max_ctx = self.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(8192);
+        let max_ctx = self.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(self.hardware_n_ctx);
 
         match &mut self.active_backend {
             Backend::cluaiz(b) => {

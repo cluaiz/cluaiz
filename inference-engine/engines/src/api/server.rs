@@ -261,9 +261,8 @@ async fn handle_settings_read(component_type: &str, component_id: &str) -> Resul
     let comp_dir = env.global_dir.join(format!("{}s", component_type)).join(component_id);
     
     let possible_manifests = [
-        format!("manifest-{}.yaml", component_type),
-        format!("manifest-{}.yml", component_type),
-        "SKILL.md".to_string()
+        "package.json".to_string(),
+        "SKILL.md".to_string(),
     ];
 
     let mut target_manifest = None;
@@ -278,6 +277,10 @@ async fn handle_settings_read(component_type: &str, component_id: &str) -> Resul
     let target_manifest = target_manifest.ok_or("No manifest file found")?;
     let content = std::fs::read_to_string(&target_manifest).map_err(|e| e.to_string())?;
     
+    if target_manifest.to_string_lossy().ends_with("package.json") {
+        return Ok(content);
+    }
+
     let is_skill_md = target_manifest.to_string_lossy().ends_with("SKILL.md");
     let yaml_str = if is_skill_md {
         let mut parts = content.splitn(3, "---");
@@ -305,9 +308,8 @@ async fn handle_settings_update(payload: serde_json::Value) -> Result<(), String
     }
 
     let possible_manifests = [
-        format!("manifest-{}.yaml", component_type),
-        format!("manifest-{}.yml", component_type),
-        "SKILL.md".to_string()
+        "package.json".to_string(),
+        "SKILL.md".to_string(),
     ];
 
     let mut target_manifest = None;

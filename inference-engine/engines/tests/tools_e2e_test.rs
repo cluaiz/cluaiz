@@ -35,20 +35,22 @@ Always check for buffer overflows, memory safety, and DRY principles.
 "#;
     fs::write(dummy_skill_dir.join("SKILL.md"), skill_md_content).unwrap();
 
-    // Create Dummy Plugin (manifest-plugin.yaml)
-    let plugin_yaml_content = r#"name: test-dummy-calc
-version: 1.0.0
-description: High performance math plugin
-execution_mode: auto
-default_turns: -1
-execution:
-  envelope: WASM
-  binary_path: logic.wasm
-"#;
-    fs::write(dummy_plugin_dir.join("manifest-plugin.yaml"), plugin_yaml_content).unwrap();
+    // Create Dummy Plugin (package.json)
+    let plugin_json_content = serde_json::to_string_pretty(&serde_json::json!({
+        "name": "test-dummy-calc",
+        "version": "1.0.0",
+        "description": "High performance math plugin",
+        "execution_mode": "auto",
+        "default_turns": -1,
+        "execution": {
+            "envelope": "WASM",
+            "binary_path": "logic.wasm"
+        }
+    })).unwrap();
+    fs::write(dummy_plugin_dir.join("package.json"), plugin_json_content).unwrap();
     fs::write(dummy_plugin_dir.join("logic.wasm"), b"\x00asm\x01\x00\x00\x00").unwrap();
 
-    // Create Real Subprocess Echo MCP (manifest-mcp.yaml)
+    // Create Real Subprocess Echo MCP (package.json)
     // Runs OS standard shell echoing standard JSON-RPC 2.0 response to stdio
     #[cfg(target_os = "windows")]
     let mcp_cmd = "cmd.exe";
@@ -60,7 +62,7 @@ execution:
     #[cfg(not(target_os = "windows"))]
     let mcp_args = vec!["-c".to_string(), "echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"mcp_test_ok\"}'".to_string()];
 
-    let mcp_manifest_json = serde_yaml::to_string(&serde_json::json!({
+    let mcp_manifest_json = serde_json::to_string_pretty(&serde_json::json!({
         "name": "test-dummy-mcp",
         "version": "1.0.0",
         "description": "Model Context Protocol subprocess test bridge",
@@ -72,7 +74,7 @@ execution:
         }
     })).unwrap();
 
-    fs::write(dummy_mcp_dir.join("manifest-mcp.yaml"), mcp_manifest_json).unwrap();
+    fs::write(dummy_mcp_dir.join("package.json"), mcp_manifest_json).unwrap();
 
     // 2. Test Master Registry Sync
     let _ = ToolsEngine::registry().expect("ToolsRegistry should load and sync from disk");

@@ -34,22 +34,6 @@ impl AutonomousDiscovery {
                         if let Ok(content) = fs::read_to_string(&manifest_path) {
                             if let Ok(mut manifest) = serde_json::from_str::<ModelManifest>(&content) {
                                 manifest.local_path = Some(path.to_string_lossy().to_string());
-
-                                // 🧬 DNA HEALING: Trigger regeneration if DNA is missing or has nulls
-                                let mut needs_healing = !dna_path.exists();
-                                if !needs_healing {
-                                    if let Ok(dna_str) = fs::read_to_string(&dna_path) {
-                                        if dna_str.contains(": null") || dna_str.contains(":null") {
-                                            needs_healing = true;
-                                            info!("🧬 [Healing] Null fields detected for '{}'. Regenerating...", manifest.id);
-                                        }
-                                    }
-                                }
-
-                                if needs_healing {
-                                    let _ = Self::repair_dna_from_local(&path, &manifest);
-                                }
-
                                 if dna_path.exists() {
                                     manifest.dna_path = Some(dna_path.to_string_lossy().to_string());
                                 }
@@ -139,30 +123,6 @@ impl AutonomousDiscovery {
             experts_per_token: None,
         };
 
-        // Create DNA skeleton and save manifest
-        let _ = Self::repair_dna_from_local(dir, &manifest);
-        if let Ok(manifest_json) = serde_json::to_string_pretty(&manifest) {
-            let _ = fs::write(dir.join("model_manifest.json"), manifest_json);
-        }
-
         Some(manifest)
-    }
-
-    /// 🩹 DNA Creation / Healing: Generates and seals structural_dna.json
-    fn repair_dna_from_local(dir: &Path, manifest: &ModelManifest) -> Result<(), String> {
-        let dna = cluaiz_shared::StructuralDNA::create_skeleton(
-            manifest.id.clone(),
-            manifest.has_vision,
-            manifest.expert_count,
-            manifest.bit_depth,
-            &manifest.context_window,
-        );
-
-        let dna_path = dir.join("structural_dna.json");
-        if let Ok(dna_json) = serde_json::to_string_pretty(&dna) {
-            let _ = fs::write(&dna_path, dna_json);
-        }
-
-        Ok(())
     }
 }
