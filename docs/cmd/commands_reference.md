@@ -286,7 +286,7 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 
 ## ⚙️ UNIVERSAL COMPONENT CONFIGURATION
 
-The CLI provides an interactive, strict-schema mechanism to configure any component. It reads the component's `manifest-*.yaml` to understand the available `settings:` (their types, default values, and enum options), and then securely saves user overrides into `~/.cluaiz/engine/config/user_settings.yaml` without mutating the core files.
+The CLI provides an interactive, strict-schema mechanism to configure any component. It reads the component's `package.json` (or `SKILL.md`) to understand the available `settings:` (their types, default values, and enum options), and then securely saves user overrides into `~/.cluaiz/engine/config/user_settings.yaml` without mutating the core files.
 
 | Command | Action |
 |---------|--------|

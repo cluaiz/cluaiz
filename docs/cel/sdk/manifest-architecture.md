@@ -13,12 +13,12 @@ This system ensures that the Engine can index thousands of plugins without scann
 
 ## 1. Architectural Flow
 
-The engine uses a strict separation of concerns between **Indexing** (`registry.yaml`) and **Execution Rules** (`manifest-plugin.yaml`, `manifest-mcp.yaml`).
+The engine uses a strict separation of concerns between **Indexing** (`registry.json`) and **Execution Rules** (`package.json`, `SKILL.md`).
 
 ```mermaid
 graph TD
     A["Engine Boot (Cold Start)"] --> B["Bincode deserialize registry.bin (Fast Cache)"]
-    B -- "Cache Miss" --> C["Parse ~/.cluaiz/engine/config/registry.yaml"]
+    B -- "Cache Miss" --> C["Parse ~/.cluaiz/engine/config/registry.json"]
     C --> D{"Evaluate Load Strategy"}
     
     D -->|Eager| E["Load binary to RAM instantly"]
@@ -26,7 +26,7 @@ graph TD
     
     G["AI / CEL Pipeline triggers Plugin"] --> H["ActivationEventBus Triggers"]
     H --> I["Locate storage_domain on disk"]
-    I --> J["Parse manifest-*.yaml (Execution Rules)"]
+    I --> J["Parse package.json (Execution Rules)"]
     J --> K["Enforce Sandbox limits (Memory/Fuel)"]
     K --> L["FFI via libloading / WASM Execution"]
 ```
@@ -35,7 +35,7 @@ graph TD
 
 ## 2. Tier 1: The Master Registry (`MasterRegistry`)
 
-**Source of Truth File:** `~/.cluaiz/engine/config/registry.yaml`  
+**Source of Truth File:** `~/.cluaiz/engine/config/registry.json`  
 **Binary Cache:** `registry.bin`  
 
 The Engine reads this file *once* at boot. It acts as a phonebook for all your custom plugins. When you create a new WASM plugin folder, you add an entry here so the Engine knows it exists.
@@ -56,16 +56,16 @@ The Engine reads this file *once* at boot. It acts as a phonebook for all your c
 
 ### 3. Tier 2: The Component Manifest (`PluginManifest`)
 
-**Source of Truth File:** `manifest-plugin.yaml` / `manifest-mcp.yaml` (inside the component's folder)  
-**Binary Cache:** `manifest-plugin.bin` / `manifest-mcp.bin`
+**Source of Truth File:** `package.json` (inside the component's folder)  
+**Binary Cache:** `package.bin`
 
 This file defines *how* the component executes, its hardware limits, and its exact AI interface. 
 
 > [!NOTE]
-> For zero-latency boots, the Engine attempts to load the `.bin` cache first. If it misses, it lazily parses the `.yaml` source of truth and instantly auto-compiles it to `.bin`.
+> For zero-latency boots, the Engine attempts to load the `.bin` cache first. If it misses, it lazily parses the `package.json` source of truth and instantly auto-compiles it to `.bin`.
 
 > [!TIP]
-> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`manifest-plugin.yaml`**](../manifest-plugin.yaml), and [**`manifest-mcp.yaml`**](../manifest-mcp.yaml).
+> **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`package-plugin.json`**](../package-plugin.json), and [**`package-mcp.json`**](../package-mcp.json).
 
 ### Base Metadata Fields
 | Keyword | Type | Description |

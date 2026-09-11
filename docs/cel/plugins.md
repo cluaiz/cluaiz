@@ -47,27 +47,31 @@ flowchart TD
 
 ## 4. UNIFIED PLUGIN MANIFEST SPECIFICATION
 
-All tools in the ecosystem share the same standardized manifest (`manifest-plugin.yaml`):
+All tools in the ecosystem share the same standardized manifest (`package.json`):
 
-```yaml
-name: "cluaiz-search"
-version: "1.0.0"
-description: "High-performance web intelligence plugin with CEL grammar."
-author: "Cluaiz Technologies"
-type: "plugin"
-
-discovery:
-  semantic_triggers: ["search", "web", "lookup"]
-  cel_grammar: "use plugin::cluaiz-search -> search(...)"
-
-activation:
-  lazy_load: true
-  trigger_on:
-    - "on_command:use plugin::cluaiz-search"
-
-permissions:
-  max_memory_mb: 256
-  max_cpu_time_ms: 5000
+```json
+{
+  "name": "cluaiz-search",
+  "version": "1.0.0",
+  "description": "High-performance web intelligence plugin with CEL grammar.",
+  "author": "Cluaiz Technologies",
+  "type": "plugin",
+  "discovery": {
+    "semantic_triggers": ["search", "web", "lookup"],
+    "cel_grammar": "use plugin::cluaiz-search -> search(...)"
+  },
+  "activation": {
+    "lazy_load": true,
+    "trigger_on": [
+      "on_command:use plugin::cluaiz-search"
+    ]
+  },
+  "permissions": {
+    "max_memory_mb": 256,
+    "max_cpu_time_ms": 5000
+  }
+}
+```
   network_access: true
   vram_kv_inject: true
   file_system: "none"

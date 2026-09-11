@@ -502,7 +502,7 @@ The engine resolves dynamic function symbols via POSIX `dlopen` / Windows `LoadL
 
 ### `POST /api/components/settings`
 
-Dynamically hot-reloads and updates any component's manifest (`manifest-plugin.yaml`, `manifest-mcp.yaml`, `SKILL.md`) at runtime, without an engine restart. This is applicable across plugins, MCPs, and skills.
+Dynamically hot-reloads and updates any component's manifest (`package.json`, `SKILL.md`) at runtime, without an engine restart. This is applicable across plugins, MCPs, and skills.
 
 The engine uses a schema-less `serde_yaml::Value` deep-merge strategy. This means you can inject or modify any arbitrary nested keys inside any section (`settings`, `permissions`, `discovery`, `activation`) and it will perfectly preserve the rest of the file.
 

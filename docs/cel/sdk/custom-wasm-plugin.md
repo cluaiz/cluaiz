@@ -102,61 +102,62 @@ Create a dedicated folder on your disk. Place all your compiled `.wasm` files in
 
 ```text
 /opt/cluaiz/plugins/my-custom-tools/
-├── manifest-plugin.yaml    <-- The Master Execution File
+├── package.json            <-- The Master Execution File
 └── bin/
     ├── math_tool.wasm
     ├── string_tool.wasm
     └── image_tool.wasm
 ```
 
-### Step 2: Write the Master `manifest-plugin.yaml`
+### Step 2: Write the Master `package.json`
 This file tells the engine exactly what your plugin does, its security limits, and how to route requests to your different `.wasm` files.
 
 > [!TIP]
-> **Complete Example:** View a fully documented, real-world example of this file here: [**`docs/cel/manifest-plugin.yaml`**](../manifest-plugin.yaml).
+> **Complete Example:** View a fully documented, real-world example of this file here: [**`docs/cel/package-plugin.json`**](../package-plugin.json).
 
-Create `/opt/cluaiz/plugins/my-custom-tools/manifest-plugin.yaml`:
+Create `/opt/cluaiz/plugins/my-custom-tools/package.json`:
 
-```yaml
-name: my-custom-tools
-version: 1.0.0
-description: A collection of internal WASM tools for our Chat App.
-
-permissions:
-  max_memory_mb: 128
-  max_cpu_time_ms: 10000
-
-execution:
-  envelope: "WASM"
-  # Advanced Execution Routing for Multiple WASM files
-  routes:
-    - method: "calculate"
-      binary_path: "bin/math_tool.wasm"
-      entry_point: "cluaiz_entry"
-    - method: "parse_string"
-      binary_path: "bin/string_tool.wasm"
-      entry_point: "cluaiz_entry"
-    - method: "process_image"
-      binary_path: "bin/image_tool.wasm"
-      entry_point: "cluaiz_entry"
+```json
+{
+  "name": "my-custom-tools",
+  "version": "1.0.0",
+  "description": "A collection of internal WASM tools for our Chat App.",
+  "permissions": {
+    "max_memory_mb": 128,
+    "max_cpu_time_ms": 10000
+  },
+  "execution": {
+    "envelope": "WASM",
+    "routes": [
+      { "method": "calculate", "binary_path": "bin/math_tool.wasm", "entry_point": "cluaiz_entry" },
+      { "method": "parse_string", "binary_path": "bin/string_tool.wasm", "entry_point": "cluaiz_entry" },
+      { "method": "process_image", "binary_path": "bin/image_tool.wasm", "entry_point": "cluaiz_entry" }
+    ]
+  }
+}
 ```
 
 ### Step 3: Register the Plugin in the Engine
-The Engine will not scan your hard drive. You must explicitly tell the Engine where your master folder is by adding it to the `registry.yaml`.
+The Engine will not scan your hard drive. You must explicitly tell the Engine where your master folder is by adding it to the `registry.json`.
 
-Open `~/.cluaiz/engine/config/registry.yaml` and append your plugin:
+Open `~/.cluaiz/engine/config/registry.json` and append your plugin:
 
-```yaml
-extensions:
-  - id: ext_my_custom_tools
-    domain: /opt/cluaiz/plugins/my-custom-tools/
-    load_strategy: LAZY
-    enabled: true
+```json
+{
+  "extensions": [
+    {
+      "id": "ext_my_custom_tools",
+      "domain": "/opt/cluaiz/plugins/my-custom-tools/",
+      "load_strategy": "LAZY",
+      "enabled": true
+    }
+  ]
+}
 ```
 *Note: `LAZY` loading ensures the 128MB memory cap isn't allocated until the CEL script actually calls the plugin.*
 
 ### Step 4: Invoke the Tools via CEL
-Now, your host application (Python/Node.js) can instantly trigger any of the 15 tools inside your master plugin package. The Engine automatically matches the `invoke()` method to the correct `.wasm` file based on your `manifest-plugin.yaml` routes.
+Now, your host application (Python/Node.js) can instantly trigger any of the 15 tools inside your master plugin package. The Engine automatically matches the `invoke()` method to the correct `.wasm` file based on your `package.json` routes.
 
 ```cel
 // 1. Call the math_tool.wasm
@@ -166,4 +167,4 @@ let $math_result = use plugin::my-custom-tools -> invoke(calculate, data: "2+2")
 let $final = use plugin::my-custom-tools -> invoke(parse_string, input: $math_result)
 ```
 
-To understand how the Engine automatically discovers your plugin folder and reads the `manifest-plugin.yaml` to load the WASM files, read the [Manifest Architecture Guide](./manifest-architecture.md).
+To understand how the Engine automatically discovers your plugin folder and reads the `package.json` to load the WASM files, read the [Manifest Architecture Guide](./manifest-architecture.md).

@@ -1,0 +1,28 @@
+{
+  "name": "cluaiz-database-mcp",
+  "version": "1.0.0",
+  "description": "Model Context Protocol JSON-RPC 2.0 bridge to SQLite database.",
+  "author": "Aryan",
+  "type": "mcp",
+  "discovery": {
+    "semantic_triggers": ["database", "sql", "query", "sqlite", "table"],
+    "cel_grammar": "use mcp::cluaiz-database-mcp -> query(...)"
+  },
+  "activation": {
+    "lazy_load": true,
+    "trigger_on": [
+      "on_command:use mcp::cluaiz-database-mcp"
+    ]
+  },
+  "execution": {
+    "command": "sqlite-bridge",
+    "args": ["--port", "8000"]
+  },
+  "permissions": {
+    "max_memory_mb": 512,
+    "max_cpu_time_ms": 10000,
+    "network_access": false,
+    "vram_kv_inject": true,
+    "file_system": "read-write"
+  }
+}

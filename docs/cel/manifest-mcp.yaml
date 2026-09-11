@@ -1,9 +1,5 @@
-# =====================================================================
-# cluaiz MCP MANIFEST (manifest-mcp.yaml)
-#
-# PURPOSE: An "MCP" (Model Context Protocol) runs outside the Engine.
-# It is a separate process (like Node.js or Python). Engine talks to it via stdio.
-# =====================================================================
+# DEPRECATED: Manifest format migrated to package.json.
+# See docs/cel/package-mcp.json
 
 # [FIXED SCHEMA] Unique name. Example: "github-mcp-connector"
 name: "github-mcp-connector"
