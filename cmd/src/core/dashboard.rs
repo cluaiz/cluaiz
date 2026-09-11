@@ -97,7 +97,7 @@ impl DashboardEngine {
                                     let mut lock = state.Core_engine.router.blocking_lock();
                                     *lock = router;
                                     
-                                    let ctx = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(2048);
+                                    let ctx = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx);
                                     let model_gb = state.sorted_models.iter()
                                         .find(|m| m.manifest.name == *name)
                                         .map(|m| m.manifest.download_size_gb)
@@ -368,13 +368,13 @@ impl DashboardEngine {
                             let formatted_prompt = final_message.clone();
 
                             // 🧬 DYNAMIC TOKEN ALLOCATION: Calculate space based on DNA Context Window
-                            let ctx_window = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(2048);
+                            let ctx_window = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx);
                             let prompt_tokens = 0; // We no longer rely on external tokenizers for length prediction
                             
                             let max_t = lock.get_active_dna()
                                 .and_then(|d| d.inference_params.get("max_tokens"))
                                 .and_then(|v| v.parse::<usize>().ok())
-                                .unwrap_or(8192); // 🚀 DYNAMIC: Allow large stream, context shifting will handle KV bounds.
+                                .unwrap_or(ctx_window);
 
                             // 🔇 SURGICAL SILENCE: Temporarily redirect stderr to NUL/dev/null
                             let mut saved_stderr: libc::c_int = -1;
@@ -1366,7 +1366,7 @@ impl DashboardEngine {
                             
                             let ctx = tokio::task::block_in_place(|| {
                                 let mut lock = state.Core_engine.router.blocking_lock();
-                                lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(2048)
+                                lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx)
                             });
                             let model_gb = model.manifest.download_size_gb;
                             

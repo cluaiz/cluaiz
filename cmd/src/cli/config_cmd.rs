@@ -48,16 +48,14 @@ pub async fn execute(
     let comp_id = final_id.ok_or_else(|| anyhow!("Component ID required"))?;
 
     let comp_dir = base_dir.join(&comp_id);
-    let file_name = if comp_type == "skill" {
-        "SKILL.md".to_string()
-    } else {
-        format!("manifest-{}.yaml", comp_type)
-    };
-    let file_path = comp_dir.join(&file_name);
-
-    if !file_path.exists() {
-        return Err(anyhow!("Component not found at {}", file_path.display()));
-    }
+    let possible_manifests = [
+        "package.json".to_string(),
+        "SKILL.md".to_string(),
+    ];
+    let file_path = possible_manifests.iter()
+        .map(|f| comp_dir.join(f))
+        .find(|p| p.exists())
+        .ok_or_else(|| anyhow!("Component not found at {}", comp_dir.display()))?;
 
     let content = std::fs::read_to_string(&file_path)?;
     let yaml_part = if comp_type == "skill" && content.starts_with("---\n") {
@@ -105,7 +103,7 @@ pub async fn execute(
         let mut default_val: String = String::new();
         let mut is_enum: bool = false;
         let mut enum_options: Vec<String> = Vec::new();
-        let mut expected_type: String = String::new();
+        let mut _expected_type: String = String::new();
     
         if let Some(map) = yaml.as_mapping() {
             if let Some(schema) = map.get(&serde_yaml::Value::String("settings".to_string())) {
@@ -119,7 +117,7 @@ pub async fn execute(
                             // Check type
                             if let Some(typ) = field_map.get(&serde_yaml::Value::String("type".to_string())) {
                                 if let Some(t_str) = typ.as_str() {
-                                    expected_type = t_str.to_string();
+                                    _expected_type = t_str.to_string();
                                     if t_str == "enum" {
                                         is_enum = true;
                                         if let Some(opts) = field_map.get(&serde_yaml::Value::String("options".to_string())) {
@@ -168,11 +166,33 @@ pub async fn execute(
         }
         let value_str = final_val.ok_or_else(|| anyhow!("Value required"))?;
 
-        // Read manifest as raw string — update ONLY the `default:` field for this key
-        // This preserves the original YAML formatting (inline `{ }` style or block style)
-        let manifest_content = std::fs::read_to_string(&file_path)?;
-        let updated_content = update_setting_default(&manifest_content, &key, &value_str);
-        std::fs::write(&file_path, updated_content.as_bytes())?;
+        // Read manifest — for package.json use direct JSON AST, for YAML/SKILL.md update raw default: field
+        let is_json = file_path.extension().map(|e| e == "json").unwrap_or(false);
+        if is_json {
+            let manifest_content = std::fs::read_to_string(&file_path)?;
+            if let Ok(mut json_val) = serde_json::from_str::<serde_json::Value>(&manifest_content) {
+                if let Some(settings_obj) = json_val.get_mut("settings").and_then(|s| s.as_object_mut()) {
+                    if let Some(target_obj) = settings_obj.get_mut(&key).and_then(|t| t.as_object_mut()) {
+                        if value_str == "true" {
+                            target_obj.insert("default".to_string(), serde_json::Value::Bool(true));
+                        } else if value_str == "false" {
+                            target_obj.insert("default".to_string(), serde_json::Value::Bool(false));
+                        } else if let Ok(n) = value_str.parse::<i64>() {
+                            target_obj.insert("default".to_string(), serde_json::json!(n));
+                        } else if let Ok(f) = value_str.parse::<f64>() {
+                            target_obj.insert("default".to_string(), serde_json::json!(f));
+                        } else {
+                            target_obj.insert("default".to_string(), serde_json::Value::String(value_str.clone()));
+                        }
+                    }
+                }
+                std::fs::write(&file_path, serde_json::to_string_pretty(&json_val)?.as_bytes())?;
+            }
+        } else {
+            let manifest_content = std::fs::read_to_string(&file_path)?;
+            let updated_content = update_setting_default(&manifest_content, &key, &value_str);
+            std::fs::write(&file_path, updated_content.as_bytes())?;
+        }
 
         // Invalidate the .bin cache by deleting it — engine will regenerate it on next run
         // from the freshly-updated YAML. This ensures stale cache never serves old settings.

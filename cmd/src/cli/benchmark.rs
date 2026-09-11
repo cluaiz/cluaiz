@@ -184,7 +184,7 @@ pub async fn execute(target_model_id: Option<String>, runs: usize) -> Result<()>
 }
 
 fn get_benchmark_out_dir() -> PathBuf {
-    let mut base = if cfg!(debug_assertions) {
+    let base = if cfg!(debug_assertions) {
         // Development Environment
         let mut path = std::env::current_dir().unwrap_or_default();
         while let Some(name) = path.file_name() {
@@ -354,7 +354,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
     let (vram_used_gb, context_size) = if let Some(info) = registry.iter().find(|i| i.pid == my_pid) {
         (info.vram_gb, info.context_size)
     } else {
-        (approx_params_b as f64 * 0.8, dna.max_context_length.unwrap_or(8192))
+        (approx_params_b as f64 * 0.8, dna.max_context_length.unwrap_or(2048))
     };
 
     // Create report directory early

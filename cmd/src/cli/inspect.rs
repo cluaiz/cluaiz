@@ -29,7 +29,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
                             println!("    {}: {}", k.green(), v);
                         }
                         println!("\n  [Tensors (First 10 of {})]", tensor_infos.len());
-                        for (i, (name, dims)) in tensor_infos.iter().enumerate().take(10) {
+                        for (_i, (name, dims)) in tensor_infos.iter().enumerate().take(10) {
                             println!("    {}: {:?}", name.cyan(), dims);
                         }
                         if tensor_infos.len() > 10 {
