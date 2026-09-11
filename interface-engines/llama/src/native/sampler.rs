@@ -7,6 +7,7 @@ pub unsafe fn build_sampler_chain(
     dna: &StructuralDNA,
     tokens: &[i32],
     req_samplers: Option<&serde_json::Value>,
+    n_vocab: i32,
 ) -> anyhow::Result<*mut std::ffi::c_void> {
     let sparams = llama_cpp::LlamaSamplerChainParams { no_perf: true };
     let sampler_chain = llama_cpp::llama_sampler_chain_init(sparams);
@@ -45,6 +46,7 @@ pub unsafe fn build_sampler_chain(
         llama_cpp::llama_sampler_chain_add(
             sampler_chain,
             llama_cpp::llama_sampler_init_penalties(
+                n_vocab,
                 repeat_last_n,
                 repeat_penalty,
                 req_frequency_penalty,
@@ -79,6 +81,7 @@ pub unsafe fn build_sampler_chain(
         llama_cpp::llama_sampler_chain_add(
             sampler_chain,
             llama_cpp::llama_sampler_init_penalties(
+                n_vocab,
                 repeat_last_n,
                 repeat_penalty,
                 0.0,

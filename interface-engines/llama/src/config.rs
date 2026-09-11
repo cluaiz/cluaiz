@@ -22,7 +22,6 @@ pub struct OptimizationConfig {
     #[serde(skip_serializing)]
     pub n_threads: i32,
     pub turbo_quant: String,
-    pub dflash: String, // 🏛️ Delta Flash (FlashKDA Support)
     pub speculative_decoding: String,
     pub auto_round: String,
     pub force_vram_reclaim: String,
@@ -41,7 +40,6 @@ impl Default for OptimizationConfig {
             n_ctx: 0,
             n_threads: -1,
             turbo_quant: "Auto".to_string(),
-            dflash: "Auto".to_string(),
             speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
             force_vram_reclaim: "Off".to_string(),
@@ -64,7 +62,6 @@ impl OptimizationConfig {
             n_ctx: 0,         // Auto-detect from model
             n_threads: -1,    // Auto-detect CPU cores
             turbo_quant: "Auto".to_string(),
-            dflash: "Auto".to_string(),
             speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
             force_vram_reclaim: "Off".to_string(),
@@ -76,10 +73,6 @@ impl OptimizationConfig {
 
         if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings() {
             config.flash_attn = control.flash_attention.is_active();
-            config.dflash = match control.dflash {
-                SmartState::Static(s) => s,
-                _ => "Auto".to_string(),
-            };
             config.speculative_decoding = match control.speculative_decoding {
                 FeatureState::On => "On".to_string(),
                 FeatureState::Off => "Off".to_string(),
@@ -126,8 +119,8 @@ impl OptimizationConfig {
         let mut params = unsafe { llama_model_default_params() };
         let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
         params.n_gpu_layers = self.n_gpu_layers;
-        params.use_mmap = self.use_mmap;
-        params.use_mlock = self.force_memory_lock == "On";
+        params.set_mmap(self.use_mmap);
+        params.set_mlock(self.force_memory_lock == "On");
         params.no_host = false; // 🚀 Must be false to enable CUDA_Host pinned buffers for host-tensor GPU offloading
         params.use_extra_bufts = true; // 🚀 Enable extra host backend buffer types (CUDA host pinned buffers)
         params
@@ -208,7 +201,7 @@ impl OptimizationConfig {
         params.flash_attn_type = if (self.flash_attn || is_quantized_kv) && !force_disable_fa_for_cpu { 1 } else { 0 }; // 1 = LLAMA_FLASH_ATTN_TYPE_ENABLED
         params.offload_kqv = if self.n_gpu_layers == 0 { 0 } else { 1 }; // Force KV cache offload to VRAM only if GPU is enabled
         params.op_offload = if self.n_gpu_layers == 0 { 0 } else { 1 }; // GPU offload for batch operations
-        params.embeddings = 1; // 📐 Enable native embedding extraction buffer (llama_get_embeddings)
+        params.embeddings = 0; // 0 = Standard generative LLM chat (only last token logits, avoids graph split abort)
 
         params
     }
@@ -231,7 +224,6 @@ impl OptimizationConfig {
                 FeatureState::Auto
             },
             draft_model_path: None,
-            dflash: SmartState::Static(self.dflash.clone()),
             kv_cache_quantization: match self.kv_cache_quantization.to_lowercase().as_str() {
                 "kv16" => KvCacheQuantization::Kv16,
                 "kv8" => KvCacheQuantization::Kv8,

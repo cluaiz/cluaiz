@@ -170,7 +170,7 @@ impl NativeLlama {
         let c_path = CString::new(model_path)?;
 
         print_memory_trace("1. BEFORE MODEL LOAD");
-        eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, use_mmap = {}, use_mlock = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.use_mmap, model_params.use_mlock, ctx_params.n_threads, ctx_params.n_threads_batch);
+        eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, load_mode = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.load_mode, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
@@ -181,10 +181,10 @@ impl NativeLlama {
         print_memory_trace("2. AFTER MODEL LOAD");
 
         // 🔒 Mlock Graceful Fallback
-        if model_ptr.is_null() && model_params.use_mlock {
+        if model_ptr.is_null() && model_params.is_mlock() {
             warn!("🔒 [Arbiter] mlock failed. Falling back to high-speed mmap...");
             let mut fallback_params = model_params;
-            fallback_params.use_mlock = false;
+            fallback_params.set_mlock(false);
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), fallback_params) };
         }
@@ -216,7 +216,7 @@ impl NativeLlama {
 
         // 🚨 Ultimate Mmap Fallback
         // If it STILL fails on CPU, it might be an mmap mapping limitation (e.g. Windows file locking or unsupported tensor alignment).
-        if model_ptr.is_null() && model_params.use_mmap {
+        if model_ptr.is_null() && model_params.is_mmap() {
             // Check available system RAM first to prevent disk thrashing OOM
             let model_size_bytes = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
             let model_size_gb = model_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
@@ -243,7 +243,7 @@ impl NativeLlama {
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
             ram_params.no_host = false;
-            ram_params.use_mmap = false;
+            ram_params.set_mmap(false);
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), ram_params) };
         }
@@ -287,8 +287,8 @@ impl NativeLlama {
         );
 
         let mut speculative_decoding_mode = speculative_decoding_mode;
-        if dna.model_identity.to_lowercase().contains("gemma") {
-            info!("🛡️ [Native-Llama] Gemma model detected: Disabling speculative decoding.");
+        if dna.requires_fp16_kv() || !dna.supports_flash_attention() {
+            info!("🛡️ [Native-Llama] Non-standard attention / recurrent architecture: Disabling speculative decoding.");
             speculative_decoding_mode = 0;
         }
 
@@ -300,7 +300,8 @@ impl NativeLlama {
             }
 
             let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
-            let target_graphs = if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
+            let is_hybrid = model_params.n_gpu_layers > 0;
+            let target_graphs = if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 || is_hybrid {
                 "0"
             } else {
                 "1"
@@ -334,6 +335,33 @@ impl NativeLlama {
         ctx_params.cb_eval = std::ptr::null_mut();
         ctx_params.cb_eval_user_data = std::ptr::null_mut();
 
+        // 🛡️ 99% Dynamic Model Header Truth (Native C++ Engine & Tensor Geometry)
+        let is_recurrent_arch = unsafe {
+            llama_cpp::llama_model_is_recurrent(model_ptr) || llama_cpp::llama_model_is_hybrid(model_ptr)
+        };
+
+        let n_embd = unsafe { llama_cpp::llama_model_n_embd(model_ptr) };
+        let n_head = unsafe { llama_cpp::llama_model_n_head(model_ptr) };
+        let head_dim = if n_head > 0 { (n_embd / n_head) as usize } else { 128 };
+        let is_non_standard_attention = is_recurrent_arch || head_dim != 128;
+
+        info!(
+            "🔍 [Native-Llama] Model Header Truth: is_hybrid_or_recurrent={}, n_embd={}, n_head={}, head_dim={}",
+            is_recurrent_arch, n_embd, n_head, head_dim
+        );
+
+        if is_non_standard_attention || !dna.supports_flash_attention() {
+            info!("🛡️ [Native-Llama] Non-standard attention / Recurrent / Non-128 head architecture: Disabling Flash Attention.");
+            ctx_params.flash_attn_type = 0;
+            speculative_decoding_mode = 0;
+        }
+
+        if is_non_standard_attention || dna.requires_fp16_kv() {
+            info!("🛡️ [Native-Llama] Architecture requires pure F16 KV cache (head_dim={} or hybrid/recurrent): Enforcing type_k = 1, type_v = 1.", head_dim);
+            ctx_params.type_k = 1; // GGML_TYPE_F16
+            ctx_params.type_v = 1; // GGML_TYPE_F16
+        }
+
         print_memory_trace("4. BEFORE CONTEXT CREATION");
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
         print_memory_trace("5. AFTER CONTEXT CREATION");
@@ -344,7 +372,6 @@ impl NativeLlama {
             cluaiz_shared::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Initiating Safe Fallback (keeping quantized KV cache)...");
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
-            // Preserve original type_k and type_v so RAM doesn't blow up to 47GB!
             ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, fallback_ctx_params) };
         }
 
@@ -366,10 +393,28 @@ impl NativeLlama {
         })
     }
 
-    pub fn resize_context(&mut self, ctx_params: LlamaContextParams) -> anyhow::Result<()> {
+    pub fn resize_context(&mut self, mut ctx_params: LlamaContextParams) -> anyhow::Result<()> {
         if self.model_ptr.is_null() {
             return Err(anyhow::anyhow!("Cannot resize context: Model not loaded"));
         }
+        // 🛡️ Skip redundant context re-allocations if parameters are unchanged
+        if self.n_ctx == ctx_params.n_ctx && self.n_batch == ctx_params.n_batch && !self.ctx_ptr.is_null() {
+            return Ok(());
+        }
+
+        let n_embd = unsafe { llama_cpp::llama_model_n_embd(self.model_ptr) };
+        let n_head = unsafe { llama_cpp::llama_model_n_head(self.model_ptr) };
+        let head_dim = if n_head > 0 { (n_embd / n_head) as usize } else { 128 };
+        let is_recurrent_arch = unsafe {
+            llama_cpp::llama_model_is_recurrent(self.model_ptr) || llama_cpp::llama_model_is_hybrid(self.model_ptr)
+        };
+
+        if is_recurrent_arch || head_dim != 128 {
+            ctx_params.flash_attn_type = 0;
+            ctx_params.type_k = 1;
+            ctx_params.type_v = 1;
+        }
+
         unsafe {
             if !self.ctx_ptr.is_null() {
                 llama_cpp::llama_free(self.ctx_ptr);

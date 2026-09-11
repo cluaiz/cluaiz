@@ -355,10 +355,10 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             "UPDATE_COMPONENT_PERMISSIONS" => {
                                 if let (Some(c_type), Some(c_name), Some(payload)) = (json_cmd.get("component_type").and_then(|e| e.as_str()), json_cmd.get("component_name").and_then(|e| e.as_str()), json_cmd.get("payload")) {
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
-                                        let (base_dir, manifest_file, bin_file) = match c_type {
-                                            "plugin" => ("plugins", "manifest-plugin.yaml", "manifest-plugin.bin"),
-                                            "mcp" => ("mcp", "manifest-mcp.yaml", "manifest-mcp.bin"),
-                                            _ => ("", "", ""),
+                                        let (base_dir, manifest_file) = match c_type {
+                                            "plugin" => ("plugins", "package.json"),
+                                            "mcp" => ("mcp", "package.json"),
+                                            _ => ("", ""),
                                         };
                                         if !base_dir.is_empty() {
                                             let mut found_path = None;
@@ -385,45 +385,20 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                             }
 
                                             if let Some(ext_dir) = found_path {
-                                                let mut yaml_path = ext_dir.join(manifest_file);
-                                                if !yaml_path.exists() {
-                                                    let legacy_yaml = ext_dir.join("manifest.yaml");
-                                                    if legacy_yaml.exists() {
-                                                        yaml_path = legacy_yaml;
-                                                    }
-                                                }
-                                                if yaml_path.exists() {
+                                                let json_path = ext_dir.join(manifest_file);
+                                                if json_path.exists() {
                                                     let mut success = false;
-                                                    if let Ok(content) = std::fs::read_to_string(&yaml_path) {
-                                                        if let Ok(mut yaml_val) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                                                            if let Some(map) = yaml_val.as_mapping_mut() {
-                                                                let perms_key = serde_yaml::Value::String("permissions".to_string());
-                                                                if !map.contains_key(&perms_key) {
-                                                                    map.insert(perms_key.clone(), serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
-                                                                }
-                                                                if let Some(perms_val) = map.get_mut(&perms_key) {
-                                                                    if let Some(perms_map) = perms_val.as_mapping_mut() {
-                                                                        let k = serde_yaml::Value::String(key.to_string());
-                                                                        let v = match value {
-                                                                            serde_json::Value::Null => serde_yaml::Value::Null,
-                                                                            serde_json::Value::Bool(b) => serde_yaml::Value::Bool(*b),
-                                                                            serde_json::Value::Number(n) => {
-                                                                                if let Some(u) = n.as_u64() { serde_yaml::Value::Number(u.into()) }
-                                                                                else if let Some(i) = n.as_i64() { serde_yaml::Value::Number(i.into()) }
-                                                                                else if let Some(f) = n.as_f64() { serde_yaml::Value::Number(f.into()) }
-                                                                                else { serde_yaml::Value::Null }
-                                                                            },
-                                                                            serde_json::Value::String(s) => serde_yaml::Value::String(s.clone()),
-                                                                            _ => serde_yaml::Value::String(value.to_string())
-                                                                        };
-                                                                        perms_map.insert(k, v);
+                                                    if let Ok(content) = std::fs::read_to_string(&json_path) {
+                                                        if let Ok(mut json_val) = serde_json::from_str::<serde_json::Value>(&content) {
+                                                            if let Some(map) = json_val.as_object_mut() {
+                                                                let perms_entry = map.entry("permissions".to_string()).or_insert_with(|| serde_json::json!({}));
+                                                                if let Some(perms_obj) = perms_entry.as_object_mut() {
+                                                                    perms_obj.insert(key.to_string(), value.clone());
+                                                                    if let Ok(new_content) = serde_json::to_string_pretty(&json_val) {
+                                                                        if std::fs::write(&json_path, new_content).is_ok() {
+                                                                            success = true;
+                                                                        }
                                                                     }
-                                                                }
-                                                            }
-                                                            if let Ok(new_content) = serde_yaml::to_string(&yaml_val) {
-                                                                if std::fs::write(&yaml_path, new_content).is_ok() {
-                                                                    let _ = std::fs::remove_file(ext_dir.join(bin_file));
-                                                                    success = true;
                                                                 }
                                                             }
                                                         }
@@ -514,7 +489,6 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                      context_shifting: ContextShiftingMode::Auto,
                                      speculative_decoding: optimal_spec,
                                      draft_model_path: None,
-                                     dflash: SmartState::Static("Auto".into()),
                                      extreme_moe_streaming: FeatureState::Auto,
                                      custom_vram_buffer_gb: None,
                                      custom_ram_buffer_gb: None,
