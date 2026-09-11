@@ -61,33 +61,83 @@ pub struct GgufMoeDetector;
 
 impl GgufMoeDetector {
     pub fn detect(model_path: &Path) -> MoeModelInfo {
-        let parent_dir = if model_path.is_file() {
-            model_path.parent().unwrap_or(model_path)
-        } else {
-            model_path
-        };
+        let file_size = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
+        let path_norm = model_path.to_string_lossy().to_lowercase().replace('\\', "/");
 
-        let manifest_path = parent_dir.join("model_manifest.json");
-        if manifest_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&manifest_path) {
-                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                    let is_moe = val.get("is_moe").and_then(|v| v.as_bool()).unwrap_or(false);
-                    if is_moe {
-                        let expert_count = val.get("expert_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                        let active_experts = val.get("active_experts").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                        let file_size = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
-                        let expert_bytes = (file_size as f64 * 0.8) as u64;
-                        let dense_bytes = file_size.saturating_sub(expert_bytes);
-                        return MoeModelInfo {
-                            is_moe: true,
-                            expert_count,
-                            moe_layer_count: val.get("layer_count").and_then(|v| v.as_u64()).unwrap_or(32) as usize,
-                            active_experts_per_token: if active_experts > 0 { active_experts } else { (expert_count / 8).max(1) },
-                            total_expert_bytes: expert_bytes,
-                            expert_size_bytes: if expert_count > 0 { expert_bytes / expert_count as u64 } else { 0 },
-                            dense_backbone_bytes: dense_bytes,
-                        };
+        // 1. Check model_registry.json (Single Source of Truth)
+        let paths_to_check = vec![
+            crate::environment::EnvironmentManager::current().model_registry_json_path(),
+            crate::environment::EnvironmentManager::current().local_dir.join("engine").join("config").join("model_registry.json"),
+        ];
+
+        for reg_path in paths_to_check {
+            if reg_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&reg_path) {
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                        if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
+                            for (_id, entry) in installed {
+                                let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
+                                let primary_file = entry.get("files")
+                                    .and_then(|f| f.as_array())
+                                    .and_then(|arr| arr.iter().find(|f| f.get("is_primary").and_then(|p| p.as_bool()).unwrap_or(false)))
+                                    .and_then(|f| f.get("name").and_then(|n| n.as_str()))
+                                    .unwrap_or("")
+                                    .to_lowercase();
+
+                                let matches = (!local_dir.is_empty() && path_norm.contains(&local_dir))
+                                    || (!primary_file.is_empty() && path_norm.contains(&primary_file));
+
+                                if matches {
+                                    if let Some(meta) = entry.get("metadata") {
+                                        let is_moe = meta.get("is_moe").and_then(|v| v.as_bool()).unwrap_or(false)
+                                            || meta.get("expert_count").and_then(|v| v.as_u64()).unwrap_or(0) > 0;
+                                        if is_moe {
+                                            let expert_count = meta.get("expert_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                                            let active_experts = meta.get("active_experts").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                                            let layer_count = meta.get("layer_count").and_then(|v| v.as_u64()).unwrap_or(32) as usize;
+                                            let expert_bytes = (file_size as f64 * 0.8) as u64;
+                                            let dense_bytes = file_size.saturating_sub(expert_bytes);
+                                            return MoeModelInfo {
+                                                is_moe: true,
+                                                expert_count,
+                                                moe_layer_count: layer_count,
+                                                active_experts_per_token: if active_experts > 0 { active_experts } else { (expert_count / 8).max(1) },
+                                                total_expert_bytes: expert_bytes,
+                                                expert_size_bytes: if expert_count > 0 { expert_bytes / expert_count as u64 } else { 0 },
+                                                dense_backbone_bytes: dense_bytes,
+                                            };
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        // 2. Direct GGUF Header Probing (First 512 KB of file for expert_count metadata)
+        if model_path.exists() && model_path.is_file() {
+            if let Ok(mut file) = std::fs::File::open(model_path) {
+                use std::io::Read;
+                let mut header_buf = vec![0u8; 512 * 1024]; // 512 KB buffer
+                let read_bytes = file.read(&mut header_buf).unwrap_or(0);
+                header_buf.truncate(read_bytes);
+
+                let header_str = String::from_utf8_lossy(&header_buf);
+                if header_str.contains(".expert_count") || header_str.contains(".expert_used_count") {
+                    let expert_bytes = (file_size as f64 * 0.8) as u64;
+                    let dense_bytes = file_size.saturating_sub(expert_bytes);
+                    return MoeModelInfo {
+                        is_moe: true,
+                        expert_count: 64, // Standard MoE default
+                        moe_layer_count: 32,
+                        active_experts_per_token: 8,
+                        total_expert_bytes: expert_bytes,
+                        expert_size_bytes: expert_bytes / 64,
+                        dense_backbone_bytes: dense_bytes,
+                    };
                 }
             }
         }

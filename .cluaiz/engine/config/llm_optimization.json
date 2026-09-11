@@ -4,9 +4,8 @@
   "hybrid_memory": "Off",
   "force_memory_lock": "Auto",
   "context_shifting": "Auto",
-  "speculative_decoding": "On",
+  "speculative_decoding": "Off",
   "draft_model_path": "",
-  "dflash": "",
   "extreme_moe_streaming": "On",
   "custom_vram_buffer_gb": null,
   "custom_ram_buffer_gb": null

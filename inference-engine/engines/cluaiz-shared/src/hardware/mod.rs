@@ -10,6 +10,7 @@ pub mod governor;
 pub mod speed_checker;
 pub mod circuit_breaker;
 pub mod resource_negotiator;
+pub mod context_negotiator;
 pub mod expert_offloading;
 pub mod memory_governor;
 
@@ -19,6 +20,7 @@ pub use system_performance::pulse_schema::LivePulse;
 pub use system_performance::get_pulse;
 pub use governor::HardwareGovernor;
 pub use memory_governor::{calculate_safety_buffer, calculate_ram_safety_buffer, calculate_usable_vram, calculate_usable_ram};
+pub use context_negotiator::{resolve_context_window, ContextResolution};
 pub use resource_negotiator::{negotiate_resource, ResourceRequest, ResourceGrant, PlacementTier, EngineType, InferenceMode, apply_windows_hard_memory_quota};
 
 /// 📡 Helper: Quick access to the Sovereign Silicon Truth.

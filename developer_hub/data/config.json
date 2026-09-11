@@ -4,7 +4,7 @@
     {
       "method": "GET",
       "path": "/v1/config/<type>/<id>",
-      "desc": "Reads all settings for a component from its manifest-plugin.yaml. Returns the full settings schema with current default values.",
+      "desc": "Reads all settings for a component from its package.json. Returns the full settings schema with current default values.",
       "docs_url": "/docs/reference/engine-configuration.md",
       "params": [
         { "name": "type", "type": "string", "req": true, "desc": "Component type: plugin, skill, mcp", "default": "plugin" },

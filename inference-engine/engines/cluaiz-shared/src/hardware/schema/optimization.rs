@@ -55,16 +55,6 @@ impl FeatureState {
     }
 }
 
-#[derive(
-    Debug, Clone, Serialize, Deserialize, Default, PartialEq, Archive, RkyvSerialize, RkyvDeserialize,
-)]
-#[archive(check_bytes)]
-pub struct DFlashConfig {
-    pub state: String,       // Always "On" in this variant
-    pub budget: u32,         // Safe user-tunable knob
-    pub asymmetric_kv: bool, // TQ3_0 for K, F16 for V
-    pub draft_model_path: Option<String>,
-}
 
 #[derive(
     Debug,
@@ -164,8 +154,6 @@ pub struct OptimizationControl {
     #[serde(default)]
     pub draft_model_path: Option<String>,
     #[serde(default)]
-    pub dflash: SmartState<DFlashConfig>,
-    #[serde(default)]
     pub extreme_moe_streaming: FeatureState,
     /// Direct GB safety buffer override for VRAM. None = dynamic auto mode.
     #[serde(default)]
@@ -183,7 +171,7 @@ impl OptimizationControl {
     pub fn resolve_conflicts(
         &mut self,
         silicon: &crate::hardware::schema::profiles::SiliconTruth,
-        _signature: &crate::backend::signature::KernelSignature,
+        signature: &crate::backend::signature::KernelSignature,
     ) {
         let vram_available = silicon
             .accelerators
@@ -191,6 +179,16 @@ impl OptimizationControl {
             .iter()
             .map(|g| g.vram_available_gb)
             .sum::<f64>();
+
+        // 🛡️ Dynamic Architectural Guard (Zero Hardcoded Model Names)
+        if !signature.supports_flash_attention(None) {
+            self.flash_attention = FeatureState::Off;
+            println!("🔒 [Arbiter] Non-standard attention architecture detected. Disabling Flash Attention for numerical stability.");
+        }
+        if signature.requires_fp16_kv(None) {
+            self.kv_cache_quantization = KvCacheQuantization::Kv16;
+            self.speculative_decoding = FeatureState::Off;
+        }
 
         if self.speculative_decoding == FeatureState::On {
             if self.flash_attention == FeatureState::Auto {
@@ -215,7 +213,6 @@ impl Default for OptimizationControl {
             context_shifting: ContextShiftingMode::Auto,
             speculative_decoding: FeatureState::Off,
             draft_model_path: None,
-            dflash: SmartState::Static("Auto".into()),
             extreme_moe_streaming: FeatureState::On,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
