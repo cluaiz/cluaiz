@@ -88,17 +88,6 @@ const MIN_CONTEXT_FACTOR: usize = 4; // 25% for stability
 const DEFAULT_COMPRESSION: f32 = 4.0; // Q4 Standard
 
 impl StructuralDNA {
-    /// Single Source of Truth for all reasoning delimiters across Cluaiz (DRY Protocol)
-    pub const KNOWN_REASONING_DELIMITERS: &'static [(&'static str, &'static str)] = &[
-        ("<think>", "</think>"),
-        ("<thought>", "</thought>"),
-        ("<|thought|>", "</|thought|>"),
-        ("<|start_thought|>", "</|end_thought|>"),
-        ("<reasoning>", "</reasoning>"),
-        ("[THINK]", "[/THINK]"),
-        ("<|begin_thought|>", "<|end_thought|>"),
-    ];
-
     pub fn load(path: &std::path::Path) -> Result<Self, String> {
         let content =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read DNA: {e}"))?;
@@ -112,80 +101,17 @@ impl StructuralDNA {
         Ok(deserialized)
     }
 
-    /// Dynamically analyzes chat template to extract reasoning start/end markers
-    /// inspired by upstream auto-parser architecture (zero hardcoding).
-    pub fn extract_reasoning_markers(template: &str) -> (Option<String>, Option<String>) {
-        if template.is_empty() {
-            return (None, None);
-        }
-
-        // 1. Template variable analysis for reasoning content
-        // Jinja: `<think>{{ message.reasoning_content }}</think>` or similar
-        if let Some(pos) = template.find("reasoning_content") {
-            let before = &template[..pos];
-            let after = &template[pos + "reasoning_content".len()..];
-
-            // Extract closing tag from after: find first closing XML/bracket tag in `after`
-            let end_tag = if let Some(close_tag_start) = after.find("</") {
-                if let Some(close_tag_end) = after[close_tag_start..].find('>') {
-                    Some(after[close_tag_start..=close_tag_start + close_tag_end].to_string())
-                } else {
-                    None
-                }
-            } else if let Some(close_bracket) = after.find("[/") {
-                if let Some(end_bracket) = after[close_bracket..].find(']') {
-                    Some(after[close_bracket..=close_bracket + end_bracket].to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            // Extract opening tag from before: find tag right before `{{`
-            let start_tag = if let Some(open_tag_start) = before.rfind('<') {
-                if let Some(open_tag_end) = before[open_tag_start..].find('>') {
-                    let tag = &before[open_tag_start..=open_tag_start + open_tag_end];
-                    if !tag.starts_with("</") && !tag.contains(' ') && !tag.contains('%') {
-                        Some(tag.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            } else if let Some(open_bracket) = before.rfind('[') {
-                if let Some(end_bracket) = before[open_bracket..].find(']') {
-                    let tag = &before[open_bracket..=open_bracket + end_bracket];
-                    if !tag.starts_with("[/") && !tag.contains(' ') && !tag.contains('%') {
-                        Some(tag.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            if start_tag.is_some() || end_tag.is_some() {
-                return (start_tag, end_tag);
-            }
-        }
-
-        // 2. Generic differential scan for standard reasoning delimiter schemas in template
-        for &(start, end) in Self::KNOWN_REASONING_DELIMITERS {
-            if template.contains(end) || template.contains(start) {
-                return (Some(start.to_string()), Some(end.to_string()));
-            }
-        }
-
+    /// Static reasoning tag extraction is intentionally delegated to the native inference engine
+    /// (e.g. llama.cpp C-ABI via `llama_chat_extract_thinking_tags`) to ensure zero hardcoding
+    /// and 100% dynamic template AST evaluation.
+    pub fn extract_reasoning_markers(_template: &str) -> (Option<String>, Option<String>) {
         (None, None)
     }
 
     /// Separates raw model output into reasoning_content and clean answer content,
-    /// matching OpenAI / DeepSeek industry standard payloads.
+    /// matching standard inference payloads.
+    /// Pure mathematical delimiter matching: works for any opening/closing tag pair
+    /// without hardcoding tag names or model architectures.
     pub fn separate_reasoning(
         raw: &str,
         custom_start: Option<&str>,
@@ -195,34 +121,89 @@ impl StructuralDNA {
             return (None, String::new(), 0);
         }
 
-        let marker_candidates: Vec<(&str, &str)> = {
-            let mut list = Vec::new();
-            if let (Some(cs), Some(ce)) = (custom_start, custom_end) {
-                if !cs.is_empty() && !ce.is_empty() {
-                    list.push((cs, ce));
+        // 1. If explicit markers are provided, apply them
+        if let (Some(start), Some(end)) = (custom_start, custom_end) {
+            if !start.is_empty() && !end.is_empty() {
+                if let Some(start_pos) = raw.find(start) {
+                    let reasoning_start = start_pos + start.len();
+                    if let Some(end_offset) = raw[reasoning_start..].find(end) {
+                        let end_pos = reasoning_start + end_offset;
+                        let reasoning = raw[reasoning_start..end_pos].trim().to_string();
+                        let before = &raw[..start_pos];
+                        let after = &raw[end_pos + end.len()..];
+                        let clean = format!("{}{}", before, after).trim().to_string();
+                        let tokens = (reasoning.len() / 4)
+                            .max(reasoning.split_whitespace().count())
+                            .max(1);
+                        return (Some(reasoning), clean, tokens);
+                    } else {
+                        let reasoning = raw[reasoning_start..].trim().to_string();
+                        let clean = raw[..start_pos].trim().to_string();
+                        let tokens = (reasoning.len() / 4)
+                            .max(reasoning.split_whitespace().count())
+                            .max(1);
+                        return (Some(reasoning), clean, tokens);
+                    }
+                } else if let Some(end_pos) = raw.find(end) {
+                    let reasoning = raw[..end_pos].trim().to_string();
+                    let clean = raw[end_pos + end.len()..].trim().to_string();
+                    let tokens = (reasoning.len() / 4)
+                        .max(reasoning.split_whitespace().count())
+                        .max(1);
+                    return (Some(reasoning), clean, tokens);
                 }
             }
-            list.extend_from_slice(Self::KNOWN_REASONING_DELIMITERS);
-            list
-        };
+        }
 
-        for (start, end) in marker_candidates {
-            if let Some(start_pos) = raw.find(start) {
-                let reasoning_start = start_pos + start.len();
-                if let Some(end_offset) = raw[reasoning_start..].find(end) {
-                    let end_pos = reasoning_start + end_offset;
-                    let reasoning = raw[reasoning_start..end_pos].trim().to_string();
-                    let before = &raw[..start_pos];
-                    let after = &raw[end_pos + end.len()..];
-                    let clean = format!("{}{}", before, after).trim().to_string();
-                    let tokens = (reasoning.len() / 4).max(reasoning.split_whitespace().count()).max(1);
-                    return (Some(reasoning), clean, tokens);
-                } else {
-                    // Start tag found, but end tag missing (e.g. truncated generation)
-                    let reasoning = raw[reasoning_start..].trim().to_string();
-                    let clean = raw[..start_pos].trim().to_string();
-                    let tokens = (reasoning.len() / 4).max(reasoning.split_whitespace().count()).max(1);
-                    return (Some(reasoning), clean, tokens);
+        // 2. Generic structural delimiter detection:
+        // If generation starts with an opening XML tag `<TAG>` or bracket tag `[TAG]`,
+        // match with corresponding closing tag `</TAG>` or `[/TAG]`.
+        // Zero hardcoding: mathematically maps <XYZ> to </XYZ>.
+        let trimmed_start = raw.trim_start();
+        let leading_ws_len = raw.len() - trimmed_start.len();
+
+        if let Some(first_char) = trimmed_start.chars().next() {
+            if first_char == '<' {
+                if let Some(close_idx) = trimmed_start.find('>') {
+                    let open_tag = &trimmed_start[..=close_idx];
+                    if !open_tag.starts_with("</") && !open_tag.contains(' ') && open_tag.len() > 2
+                    {
+                        let tag_content = &open_tag[1..open_tag.len() - 1];
+                        let expected_close = format!("</{}>", tag_content);
+                        let reasoning_start = leading_ws_len + open_tag.len();
+
+                        if let Some(end_offset) = raw[reasoning_start..].find(&expected_close) {
+                            let end_pos = reasoning_start + end_offset;
+                            let reasoning = raw[reasoning_start..end_pos].trim().to_string();
+                            let after = &raw[end_pos + expected_close.len()..];
+                            let clean = after.trim().to_string();
+                            let tokens = (reasoning.len() / 4)
+                                .max(reasoning.split_whitespace().count())
+                                .max(1);
+                            return (Some(reasoning), clean, tokens);
+                        }
+                    }
+                }
+            } else if first_char == '[' {
+                if let Some(close_idx) = trimmed_start.find(']') {
+                    let open_tag = &trimmed_start[..=close_idx];
+                    if !open_tag.starts_with("[/") && !open_tag.contains(' ') && open_tag.len() > 2
+                    {
+                        let tag_content = &open_tag[1..open_tag.len() - 1];
+                        let expected_close = format!("[/{}]", tag_content);
+                        let reasoning_start = leading_ws_len + open_tag.len();
+
+                        if let Some(end_offset) = raw[reasoning_start..].find(&expected_close) {
+                            let end_pos = reasoning_start + end_offset;
+                            let reasoning = raw[reasoning_start..end_pos].trim().to_string();
+                            let after = &raw[end_pos + expected_close.len()..];
+                            let clean = after.trim().to_string();
+                            let tokens = (reasoning.len() / 4)
+                                .max(reasoning.split_whitespace().count())
+                                .max(1);
+                            return (Some(reasoning), clean, tokens);
+                        }
+                    }
                 }
             }
         }

@@ -170,10 +170,31 @@ impl HardwareGovernor {
         let total_ram_gb = (sys.total_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
         let available_ram_gb = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
 
+        let control = Self::load_system_control().unwrap_or_default();
+        let total_vram_gb: f64 = control
+            .silicon_truth
+            .accelerators
+            .gpus
+            .iter()
+            .map(|g| g.vram_total_gb)
+            .sum();
+
+        let live_free_vram_gb: f64 = if let Ok(nvml) = nvml_wrapper::Nvml::init() {
+            if let Ok(dev) = nvml.device_by_index(0) {
+                dev.memory_info()
+                    .map(|m| m.free as f64 / 1_073_741_824.0)
+                    .unwrap_or(total_vram_gb)
+            } else {
+                total_vram_gb
+            }
+        } else {
+            total_vram_gb
+        };
+
         let decision = crate::hardware::memory_governor::get_memory_decision(
             opt_control,
-            0.0,
-            0.0,
+            total_vram_gb,
+            live_free_vram_gb,
             total_ram_gb,
             available_ram_gb,
         );

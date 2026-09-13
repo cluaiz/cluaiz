@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-
 /// Reads `cluaiz_root` securely via the cluaiz Hardware Governor.
 /// This uses the binary truth (`system_control.bin`) as the ultimate source,
 /// exactly as the cluaiz Architecture intends. Zero custom hardcoding.
@@ -40,12 +39,19 @@ impl KernelLoader {
 
     /// Resolves path based on current compilation target (NATIVE).
     pub fn resolve_path(&self, kernel_name: &str) -> PathBuf {
-        let os = if cfg!(target_os = "windows") { "Windows" }
-            else if cfg!(target_os = "linux") { "Linux" }
-            else if cfg!(target_os = "android") { "Android" }
-            else if cfg!(target_os = "macos") { "macOS" }
-            else if cfg!(target_os = "ios") { "iOS" }
-            else { "Unknown" };
+        let os = if cfg!(target_os = "windows") {
+            "Windows"
+        } else if cfg!(target_os = "linux") {
+            "Linux"
+        } else if cfg!(target_os = "android") {
+            "Android"
+        } else if cfg!(target_os = "macos") {
+            "macOS"
+        } else if cfg!(target_os = "ios") {
+            "iOS"
+        } else {
+            "Unknown"
+        };
         self.resolve_path_for_os(kernel_name, os)
     }
 
@@ -61,18 +67,18 @@ impl KernelLoader {
 
         // We try multiple potential naming conventions and subdirectories
         let mut candidates = Vec::new();
-        
+
         // 1. Unified cluaiz Naming Format (e.g. cluaiz-llama.dll, libcluaiz_llama.so)
         candidates.push(format!("cluaiz-{}.{}", kernel_name, ext));
         candidates.push(format!("cluaiz_{}.{}", kernel_name, ext));
         candidates.push(format!("libcluaiz_{}.{}", kernel_name, ext));
         candidates.push(format!("libcluaiz-{}.{}", kernel_name, ext));
-        
+
         // 2. Legacy Archer Naming Format (e.g. archer_llama.dll, libarcher_llama.so)
         candidates.push(format!("archer_{}.{}", kernel_name, ext));
         candidates.push(format!("archer-{}.{}", kernel_name, ext));
         candidates.push(format!("libarcher_{}.{}", kernel_name, ext));
-        
+
         // 3. DEVELOPMENT FALLBACK: Check local target/debug/ if we are running from source.
         // We prioritize this over the global installation so developers don't accidentally load stale DLLs.
         let mut dev_path = if let Some(root) = read_cluaiz_root() {
@@ -92,7 +98,11 @@ impl KernelLoader {
             for file_name in &candidates {
                 let path = profile_path.join(file_name);
                 if path.exists() {
-                    tracing::info!("🎯 [KernelLoader] cluaiz dev path resolved ({}): {:?}", profile, path);
+                    tracing::info!(
+                        "🎯 [KernelLoader] cluaiz dev path resolved ({}): {:?}",
+                        profile,
+                        path
+                    );
                     return path;
                 }
             }
@@ -102,7 +112,7 @@ impl KernelLoader {
         if let Some(_) = read_cluaiz_root() {
             let env = cluaiz_shared::environment::EnvironmentManager::current();
             let base_link = env.engine_dir();
-            
+
             for file_name in &candidates {
                 // Check flat engine directory
                 let path = base_link.join(file_name);
@@ -112,9 +122,13 @@ impl KernelLoader {
                 }
             }
         }
-        
-        tracing::warn!("⚠️ [KernelLoader] cluaiz path not found for {}. Checked dev paths.", kernel_name);
-        dev_path.join("release").join(format!("cluaiz_{}.{}", kernel_name, ext))
+
+        tracing::warn!(
+            "⚠️ [KernelLoader] cluaiz path not found for {}. Checked dev paths.",
+            kernel_name
+        );
+        dev_path
+            .join("release")
+            .join(format!("cluaiz_{}.{}", kernel_name, ext))
     }
 }
-
