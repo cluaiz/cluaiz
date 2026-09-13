@@ -45,7 +45,10 @@ pub fn stream_tokens(
     unsafe {
         // 🛑 ROOT FIX: Reset interrupt signal when entering generation to ensure pivot works!
         llama.interrupt_signal.store(false, Ordering::SeqCst);
-        eprintln!("🔥 [NativeStream] stream_tokens CALLED! prompt (len={}): {}", prompt.len(), prompt);
+        tracing::debug!(
+            "🔥 [NativeStream] stream_tokens CALLED! prompt len={}",
+            prompt.len()
+        );
 
         let is_pivot = prompt.starts_with("[PIVOT_CONTINUE]");
         let actual_prompt = if is_pivot {
@@ -121,24 +124,27 @@ pub fn stream_tokens(
             .unwrap_or(gguf_meta.user_moved_flags.response_length.as_str())
             .to_lowercase();
 
-        let mut think_start_tag = String::new();
-        let mut think_end_tag = String::new();
-        if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" {
-            think_start_tag = dna.think_tag_schema.clone();
-            think_end_tag = dna.think_end_schema.clone();
-        } else if let Some(ref tmpl) = dna.chat_template {
-            let (st, et) = cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl);
-            think_start_tag = st.unwrap_or_default();
-            think_end_tag = et.unwrap_or_default();
-        } else {
-            let tmpl_ptr = unsafe { llama_cpp::llama_model_chat_template(llama.model_ptr, std::ptr::null()) };
-            if !tmpl_ptr.is_null() {
-                let tmpl_str = unsafe { std::ffi::CStr::from_ptr(tmpl_ptr) }.to_string_lossy();
-                let (st, et) = cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(&tmpl_str);
-                think_start_tag = st.unwrap_or_default();
-                think_end_tag = et.unwrap_or_default();
+        // 🧬 Primary Authority: Query llama.cpp native common_chat_templates engine using model pointer
+        let (native_st, native_et) = crate::native::templater::extract_thinking_tags_native(
+            llama.model_ptr,
+            dna.chat_template.as_deref(),
+        );
+
+        let think_start_tag = native_st.unwrap_or_else(|| {
+            if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" && !dna.think_tag_schema.contains("tool") {
+                dna.think_tag_schema.clone()
+            } else {
+                String::new()
             }
-        }
+        });
+
+        let think_end_tag = native_et.unwrap_or_else(|| {
+            if !dna.think_end_schema.is_empty() && dna.think_end_schema != "none" && !dna.think_end_schema.contains("tool") {
+                dna.think_end_schema.clone()
+            } else {
+                String::new()
+            }
+        });
 
         let mut formatted_prompt = if !structured_messages.is_empty() {
             let msg_refs: Vec<(&str, &str)> = structured_messages
@@ -159,7 +165,9 @@ pub fn stream_tokens(
                     }
                 }
                 Ok(_) => {
-                    return Err(anyhow::anyhow!("llama_chat_apply_template returned empty prompt"));
+                    return Err(anyhow::anyhow!(
+                        "llama_chat_apply_template returned empty prompt"
+                    ));
                 }
                 Err(e) => {
                     tracing::error!("❌ [NativeTemplate] llama.cpp chat template error: {}", e);
@@ -169,6 +177,7 @@ pub fn stream_tokens(
         } else if actual_prompt.contains("<|im_start|>")
             || actual_prompt.contains("<|user|>")
             || actual_prompt.contains("<start_of_turn>")
+            || actual_prompt.contains("<|turn>")
             || actual_prompt.contains("[INST]")
         {
             actual_prompt.clone()
@@ -188,10 +197,15 @@ pub fn stream_tokens(
                     }
                 }
                 Ok(_) => {
-                    return Err(anyhow::anyhow!("llama_chat_apply_template returned empty prompt for single message"));
+                    return Err(anyhow::anyhow!(
+                        "llama_chat_apply_template returned empty prompt for single message"
+                    ));
                 }
                 Err(e) => {
-                    tracing::error!("❌ [NativeTemplate] llama.cpp chat template error on single message: {}", e);
+                    tracing::error!(
+                        "❌ [NativeTemplate] llama.cpp chat template error on single message: {}",
+                        e
+                    );
                     return Err(e);
                 }
             }
@@ -238,10 +252,9 @@ pub fn stream_tokens(
             return Err(anyhow::anyhow!("💀 Invalid model vocabulary"));
         }
 
-        eprintln!(
-            "📝 [NativeStream] Final prompt to tokenize (len={}):\n{}",
-            formatted_prompt.len(),
-            formatted_prompt
+        tracing::debug!(
+            "📝 [NativeStream] Final prompt to tokenize len={}",
+            formatted_prompt.len()
         );
 
         let c_prompt = CString::new(formatted_prompt.clone())?;
@@ -502,7 +515,10 @@ pub fn stream_tokens(
         // Sample the first token from the prompt prefill logits
         let mut next_token_id =
             llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
-        eprintln!("🎲 [NativeStream] Initial sampled token_id: {}", next_token_id);
+        eprintln!(
+            "🎲 [NativeStream] Initial sampled token_id: {}",
+            next_token_id
+        );
 
         while n_gen < max_tokens as i32 {
             if llama.interrupt_signal.load(Ordering::SeqCst)
@@ -511,8 +527,12 @@ pub fn stream_tokens(
                 break;
             }
 
-            // Check if end of generation / control token
+            // Upstream standard: check if token is end of generation
             if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
+                tracing::info!(
+                    "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
+                    next_token_id
+                );
                 break;
             }
 
@@ -520,8 +540,8 @@ pub fn stream_tokens(
             llama_cpp::llama_sampler_accept(safe_sampler.sampler, next_token_id);
             history.push(next_token_id);
 
-            // Convert token to UTF-8 piece
-            let mut buf = [0u8; 128];
+            // Convert token to UTF-8 piece (special = true ensures reasoning control tokens like <think> and <|channel> are emitted)
+            let mut buf = [0u8; 256];
             let n_bytes = llama_cpp::llama_token_to_piece(
                 vocab,
                 next_token_id,
@@ -552,11 +572,13 @@ pub fn stream_tokens(
                 }
 
                 if !piece.is_empty() {
+                    let emit_str = piece.as_str();
+
                     // Dynamic thinking tag state tracking
-                    if !think_start_tag.is_empty() && piece.contains(&think_start_tag) {
+                    if !think_start_tag.is_empty() && emit_str.contains(&think_start_tag) {
                         in_think_block = true;
                     }
-                    if !think_end_tag.is_empty() && piece.contains(&think_end_tag) {
+                    if !think_end_tag.is_empty() && emit_str.contains(&think_end_tag) {
                         in_think_block = false;
                     }
 
@@ -565,9 +587,13 @@ pub fn stream_tokens(
                         if think_tokens_count >= max_think_tokens {
                             in_think_block = false;
                         }
-                    } else {
-                        eprintln!("📤 [NativeStream] Emitting token_id {}: {:?}", next_token_id, piece);
-                        if !callback(piece) {
+                    } else if !emit_str.is_empty() {
+                        tracing::debug!(
+                            "📤 [NativeStream] Emitting token_id {}: {:?}",
+                            next_token_id,
+                            emit_str
+                        );
+                        if !callback(emit_str.to_string()) {
                             break;
                         }
                     }
@@ -622,14 +648,18 @@ pub fn stream_tokens(
             }
 
             if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                tracing::error!("❌ [NativeStream] llama_decode failed at position {}", n_cur);
+                tracing::error!(
+                    "❌ [NativeStream] llama_decode failed at position {}",
+                    n_cur
+                );
                 break;
             }
 
             n_cur += 1;
 
             // Sample next token
-            next_token_id = llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
+            next_token_id =
+                llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         }
 
         history.truncate(n_cur as usize);
