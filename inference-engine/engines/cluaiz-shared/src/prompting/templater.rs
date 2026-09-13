@@ -1,4 +1,4 @@
-use minijinja::{Environment, context};
+use minijinja::{context, Environment};
 use serde_json::json;
 
 /// 🎭 TemplateManager: 100% Dynamic Metadata & Registry-Driven Jinja2 Prompt Formatter.
@@ -17,18 +17,37 @@ impl TemplateManager {
     }
 
     /// Pure dynamic MiniJinja renderer for any GGUF chat template.
-    fn render_jinja(template_str: &str, messages: &[serde_json::Value], add_gen: bool) -> Result<String, minijinja::Error> {
+    pub fn render_jinja(
+        template_str: &str,
+        messages: &[serde_json::Value],
+        add_gen: bool,
+    ) -> Result<String, minijinja::Error> {
         let mut env = Environment::new();
-        env.add_function("raise_exception", |err: String| -> Result<String, minijinja::Error> {
-            Err(minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, err))
-        });
-        env.add_filter("tojson", |val: minijinja::Value| -> Result<String, minijinja::Error> {
-            serde_json::to_string(&val).map_err(|e| minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e.to_string()))
+        env.add_function(
+            "raise_exception",
+            |err: String| -> Result<String, minijinja::Error> {
+                Err(minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    err,
+                ))
+            },
+        );
+        env.add_filter(
+            "tojson",
+            |val: minijinja::Value| -> Result<String, minijinja::Error> {
+                serde_json::to_string(&val).map_err(|e| {
+                    minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e.to_string())
+                })
+            },
+        );
+        env.add_function("strftime_now", |format: Option<String>| -> String {
+            let fmt = format.unwrap_or_else(|| "%Y-%m-%d".to_string());
+            chrono::Utc::now().format(&fmt).to_string()
         });
 
         env.add_template("chat", template_str)?;
         let tmpl = env.get_template("chat")?;
-        
+
         let ctx = context! {
             messages => messages,
             add_generation_prompt => add_gen,
@@ -38,6 +57,19 @@ impl TemplateManager {
         };
 
         tmpl.render(ctx)
+    }
+
+    /// Renders raw role/content message pairs using MiniJinja
+    pub fn render_messages(
+        template_str: &str,
+        messages: &[(&str, &str)],
+        add_gen: bool,
+    ) -> Result<String, minijinja::Error> {
+        let json_msgs: Vec<serde_json::Value> = messages
+            .iter()
+            .map(|(r, c)| serde_json::json!({ "role": *r, "content": *c }))
+            .collect();
+        Self::render_jinja(template_str, &json_msgs, add_gen)
     }
 
     /// 🌟 Dynamic Template Resolver:

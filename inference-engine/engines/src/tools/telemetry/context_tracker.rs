@@ -74,7 +74,11 @@ impl ContextTracker {
                     gguf_meta.hardware_and_execution.n_ctx as usize
                 } else {
                     let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                    let dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                    let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                    if let Some(entry) = target_entry {
+                        let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
+                        dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
+                    }
                     cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
                 }
             });
@@ -86,8 +90,17 @@ impl ContextTracker {
                 gguf_meta.hardware_and_execution.n_ctx as usize
             } else {
                 let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                let dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
-                cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
+                let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                if let Some(entry) = target_entry {
+                    let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
+                    dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
+                }
+                let target = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control);
+                if model_native_limit > 0 {
+                    target.min(model_native_limit)
+                } else {
+                    target
+                }
             }
         }).max(2048);
 
