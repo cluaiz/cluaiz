@@ -47,6 +47,9 @@ interface-engines/llama/llama.cpp/
 *.swp
 *.swo
 
+# --- Local Runtime Cache & Machine Configs ---
+.cluaiz/
+
 # --- AI & Agent State ---
 .agent/
 .gemini/
