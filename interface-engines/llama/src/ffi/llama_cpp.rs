@@ -238,6 +238,7 @@ extern "C" {
     pub fn llama_vocab_is_control(vocab: *const std::ffi::c_void, token: i32) -> bool;
     pub fn llama_vocab_get_add_bos(vocab: *const std::ffi::c_void) -> bool;
     pub fn llama_vocab_eos(vocab: *const std::ffi::c_void) -> i32;
+    pub fn llama_vocab_eot(vocab: *const std::ffi::c_void) -> i32;
     pub fn llama_vocab_nl(vocab: *const std::ffi::c_void) -> i32;
 
     /// 🧬 Metadata Extraction
@@ -292,6 +293,27 @@ extern "C" {
     ) -> usize;
 
     pub fn ggml_get_name(tensor: *const std::ffi::c_void) -> *const c_char;
+
+    pub fn llama_chat_extract_thinking_tags(
+        model: *const std::ffi::c_void,
+        custom_tmpl: *const c_char,
+        out_start: *mut c_char,
+        max_start_len: usize,
+        out_end: *mut c_char,
+        max_end_len: usize,
+    ) -> bool;
+
+    pub fn llama_chat_apply_template_native(
+        model: *const std::ffi::c_void,
+        custom_tmpl: *const c_char,
+        roles: *const *const c_char,
+        contents: *const *const c_char,
+        n_messages: usize,
+        add_ass: bool,
+        enable_thinking: bool,
+        buf: *mut c_char,
+        buf_size: usize,
+    ) -> i32;
 }
 
 pub type LlamaLogCallback = extern "C" fn(level: i32, text: *const c_char, user_data: *mut std::ffi::c_void);

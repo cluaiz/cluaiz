@@ -279,6 +279,19 @@ impl NativeLlama {
             cluaiz_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
+        let (native_start, native_end) = crate::native::templater::extract_thinking_tags_native(
+            model_ptr,
+            dna.chat_template.as_deref(),
+        );
+        dna.think_tag_schema = native_start.clone().unwrap_or_default();
+        dna.think_end_schema = native_end.clone().unwrap_or_default();
+        if let Some(st) = native_start {
+            info!("🧠 [Native-Llama] llama.cpp detected native thinking start tag: {:?}", st);
+        }
+        if let Some(et) = native_end {
+            info!("🧠 [Native-Llama] llama.cpp detected native thinking end tag: {:?}", et);
+        }
+
         // Ensure n_ctx is strictly bound by Negotiator's requested limit, preventing 256k token (14.4 GB) KV Cache allocations
         ctx_params.n_ctx = requested_n_ctx;
         info!(
@@ -602,5 +615,12 @@ impl Drop for NativeLlama {
     }
 }
 
+// SAFETY: NativeLlama encapsulates raw FFI pointers (*mut c_void) to llama.cpp model and context.
+// 1. Send: Ownership can be transferred safely across threads because the underlying C pointers
+//    are not tied to thread-local storage and remain valid until NativeLlama is dropped.
+// 2. Sync: Implementing Sync is sound because all inference, decoding, sampling, and mutation
+//    methods (stream_tokens, prefill, stitch_signal, load_prompt_cache) strictly require
+//    exclusive mutable references (&mut self). Rust's static borrow checker guarantees that
+//    concurrent threads cannot invoke mutating FFI calls on the underlying llama_context simultaneously.
 unsafe impl Send for NativeLlama {}
 unsafe impl Sync for NativeLlama {}

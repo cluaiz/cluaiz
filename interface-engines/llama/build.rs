@@ -61,6 +61,7 @@ fn main() {
         // We only need the static libraries (llama.a, ggml.a, etc.), not any binaries.
         .define("LLAMA_BUILD_TOOLS",    "OFF")
         .define("LLAMA_BUILD_APP",      "OFF")
+        .define("LLAMA_BUILD_COMMON",   "ON")
         .define("LLAMA_STATIC",         "ON")
         .define("BUILD_SHARED_LIBS",    "OFF")
         // Use MultiThreadedDLL (/MD) to match Rust's default dynamic CRT on Windows MSVC,
@@ -146,6 +147,8 @@ fn main() {
 
     // ── Core libs (always present) ────────────────────────────────────
     println!("cargo:rustc-link-lib=static=llama");
+    println!("cargo:rustc-link-lib=static=llama-common");
+    println!("cargo:rustc-link-lib=static=llama-common-base");
     println!("cargo:rustc-link-lib=static=ggml");
     println!("cargo:rustc-link-lib=static=ggml-base");
     println!("cargo:rustc-link-lib=static=ggml-cpu");

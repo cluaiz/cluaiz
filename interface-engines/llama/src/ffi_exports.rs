@@ -52,6 +52,11 @@ pub extern "C" fn cluaiz_kernel_instantiate(
     optimization_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
 ) -> *mut RuntimeB {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if path_ptr.is_null() {
+            tracing::error!("❌ [FFI] path_ptr is null in cluaiz_kernel_instantiate");
+            return std::ptr::null_mut();
+        }
+
         let path_str = unsafe { std::ffi::CStr::from_ptr(path_ptr) }
             .to_string_lossy()
             .into_owned();
@@ -165,7 +170,7 @@ pub extern "C" fn cluaiz_kernel_generate_stream(
     user_data: *mut std::ffi::c_void,
 ) -> i32 {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        if engine_ptr.is_null() {
+        if engine_ptr.is_null() || prompt_ptr.is_null() {
             return -1;
         }
         let engine = unsafe { &mut *engine_ptr };
