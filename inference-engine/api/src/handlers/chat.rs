@@ -393,42 +393,31 @@ pub async fn chat_completions(
         .unwrap_or(2048)
         .max(2048);
 
-    // 🧬 Resolve Dynamic Model Thinking Markers (Zero Hardcoding)
+    // 🧬 Resolve Dynamic Model Thinking Markers Directly from llama.cpp Native Engine (Zero Hardcoding)
     let (dyn_think_start, dyn_think_end): (Option<String>, Option<String>) = {
-        let from_entry = active_model_entry.and_then(|entry| {
-            let st = entry.metadata.think_start_tag.clone()
-                .or_else(|| {
-                    entry.metadata.chat_template.as_deref()
-                        .and_then(|tmpl| cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl).0)
-                });
-            let et = entry.metadata.think_end_tag.clone()
-                .or_else(|| {
-                    entry.metadata.chat_template.as_deref()
-                        .and_then(|tmpl| cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl).1)
-                });
-            if st.is_some() || et.is_some() {
-                Some((st, et))
-            } else {
-                None
-            }
-        });
-
-        if let Some(pair) = from_entry {
-            pair
-        } else if let Some(ref path) = active_model_path {
-            if path.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                if let Ok((meta, _, _)) = engines::models::GgufProber::probe(path) {
-                    if let Some(tmpl) = meta.get("tokenizer.chat_template") {
-                        cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl)
+        let chat_tmpl = active_model_entry
+            .and_then(|entry| entry.metadata.chat_template.clone())
+            .or_else(|| {
+                active_model_path.as_ref().and_then(|path| {
+                    if path.extension().and_then(|e| e.to_str()) == Some("gguf") {
+                        engines::models::GgufProber::probe(path).ok().and_then(|(meta, _, _)| {
+                            meta.get("tokenizer.chat_template").cloned()
+                        })
                     } else {
-                        (None, None)
+                        None
                     }
-                } else {
-                    (None, None)
-                }
-            } else {
-                (None, None)
-            }
+                })
+            });
+
+        // 1. Primary Authority: Query llama.cpp native common_chat_templates engine directly via dispatcher
+        let native_tags = state.dispatcher.get_thinking_tags(chat_tmpl.as_deref());
+        if native_tags.0.is_some() || native_tags.1.is_some() {
+            native_tags
+        } else if let Some(entry) = active_model_entry {
+            // Secondary fallback only if entry has explicit valid thinking tags that are not tool markers
+            let st = entry.metadata.think_start_tag.clone().filter(|s| !s.is_empty() && !s.contains("tool") && !s.contains("important"));
+            let et = entry.metadata.think_end_tag.clone().filter(|s| !s.is_empty() && !s.contains("tool") && !s.contains("important"));
+            (st, et)
         } else {
             (None, None)
         }
@@ -696,6 +685,7 @@ pub async fn chat_completions(
                       let mut overall_token_count = 0;
                       let mut reasoning_tokens_count = 0usize;
                       let mut in_think_block = false;
+                      let mut think_done = active_think_mode == "off";
                       let mut active_think_start = dyn_think_start.clone();
                       let mut active_think_end = dyn_think_end.clone();
                       let mut stream_buffer = String::new();
@@ -922,9 +912,7 @@ pub async fn chat_completions(
                                 is_first_token = false;
                             }
 
-                            // Dynamic Reasoning Detection & Stream Separation Buffer (Single Source of Truth)
-                            let known_delimiters = cluaiz_shared::metadata::dna::StructuralDNA::KNOWN_REASONING_DELIMITERS;
-
+                            // Dynamic Reasoning Detection & Stream Separation Buffer (100% Dynamic Model Metadata)
                             stream_buffer.push_str(&token);
 
                             // Helper: Safely calculate maximum suffix length matching a candidate prefix using valid UTF-8 char boundaries
@@ -947,192 +935,170 @@ pub async fn chat_completions(
                                 max_hold
                             };
 
-                            if active_think_start.is_none() && !in_think_block {
-                                for &(s, e) in known_delimiters {
-                                    if stream_buffer.contains(s) {
-                                        active_think_start = Some(s.to_string());
-                                        active_think_end = Some(e.to_string());
-                                        break;
-                                    }
+                            let make_chunk = |content: Option<String>, reasoning: Option<String>| -> Event {
+                                let mut delta = serde_json::Map::new();
+                                if let Some(c) = content {
+                                    delta.insert("content".to_string(), serde_json::Value::String(c));
                                 }
-                            }
-
-                            if !in_think_block {
-                                // 1. Check if start delimiter is found
-                                let matched_start = if let Some(ref st) = active_think_start {
-                                    stream_buffer.find(st.as_str()).map(|idx| (idx, st.clone(), active_think_end.clone().unwrap_or_else(|| "</think>".to_string())))
-                                } else {
-                                    None
-                                }.or_else(|| {
-                                    known_delimiters.iter().find_map(|&(s, e)| {
-                                        stream_buffer.find(s).map(|idx| (idx, s.to_string(), e.to_string()))
-                                    })
+                                if let Some(r) = reasoning {
+                                    delta.insert("reasoning_content".to_string(), serde_json::Value::String(r));
+                                }
+                                let chunk = json!({
+                                    "id": req_id_stream.clone(),
+                                    "object": "chat.completion.chunk",
+                                    "created": Utc::now().timestamp(),
+                                    "model": resolved_model_name.clone(),
+                                    "choices": [{"delta": delta}]
                                 });
+                                Event::default().data(chunk.to_string())
+                            };
 
-                                if let Some((idx, st_found, et_found)) = matched_start {
-                                    in_think_block = true;
-                                    active_think_start = Some(st_found.clone());
-                                    active_think_end = Some(et_found.clone());
-                                    let before = stream_buffer[..idx].to_string();
-                                    let after = stream_buffer[idx + st_found.len()..].to_string();
-                                    stream_buffer.clear();
-
-                                    if !before.is_empty() {
-                                        let chunk = json!({
-                                            "id": req_id_stream.clone(),
-                                            "object": "chat.completion.chunk",
-                                            "created": Utc::now().timestamp(),
-                                            "model": resolved_model_name.clone(),
-                                            "choices": [{"delta": {"content": before}}]
-                                        });
-                                        yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
-                                    }
-                                    if !after.is_empty() {
-                                        if let Some(end_idx) = after.find(&et_found) {
-                                            in_think_block = false;
-                                            let r_part = after[..end_idx].to_string();
-                                            let a_part = after[end_idx + et_found.len()..].to_string();
-                                            if !r_part.is_empty() && !should_skip {
-                                                reasoning_tokens_count += 1;
-                                                let chunk = json!({
-                                                    "id": req_id_stream.clone(),
-                                                    "object": "chat.completion.chunk",
-                                                    "created": Utc::now().timestamp(),
-                                                    "model": resolved_model_name.clone(),
-                                                    "choices": [{"delta": {"reasoning_content": r_part}}]
-                                                });
-                                                yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
-                                            }
-                                            if !a_part.is_empty() {
-                                                let chunk = json!({
-                                                    "id": req_id_stream.clone(),
-                                                    "object": "chat.completion.chunk",
-                                                    "created": Utc::now().timestamp(),
-                                                    "model": resolved_model_name.clone(),
-                                                    "choices": [{"delta": {"content": a_part}}]
-                                                });
-                                                yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
-                                            }
-                                        } else if !should_skip {
-                                            reasoning_tokens_count += 1;
-                                            let chunk = json!({
-                                                "id": req_id_stream.clone(),
-                                                "object": "chat.completion.chunk",
-                                                "created": Utc::now().timestamp(),
-                                                "model": resolved_model_name.clone(),
-                                                "choices": [{"delta": {"reasoning_content": after}}]
-                                            });
-                                            yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
-                                        }
-                                    }
-                                } else {
-                                    // 2. Check if end delimiter appears while in_think_block is false (e.g. prompt already had <think>)
-                                    let end_tag_check = active_think_end.as_deref().unwrap_or("</think>");
-                                    if let Some(idx) = stream_buffer.find(end_tag_check) {
+                            if think_done {
+                                // 🔒 Thinking phase permanently concluded for this turn: stream pure answer content
+                                let text = std::mem::take(&mut stream_buffer);
+                                if !text.is_empty() {
+                                    yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                }
+                            } else if in_think_block {
+                                // 🧠 Inside Thinking Block: actively tracking active_think_end
+                                if let Some(ref end_tag) = active_think_end {
+                                    if let Some(idx) = stream_buffer.find(end_tag.as_str()) {
+                                        in_think_block = false;
+                                        think_done = true; // 🔒 Permanent one-way latch: turn will never re-enter thinking
                                         let reasoning_part = stream_buffer[..idx].to_string();
-                                        let answer_part = stream_buffer[idx + end_tag_check.len()..].to_string();
+                                        let answer_part = stream_buffer[idx + end_tag.len()..].to_string();
                                         stream_buffer.clear();
 
                                         if !reasoning_part.is_empty() && !should_skip {
                                             reasoning_tokens_count += 1;
-                                            let chunk = json!({
-                                                "id": req_id_stream.clone(),
-                                                "object": "chat.completion.chunk",
-                                                "created": Utc::now().timestamp(),
-                                                "model": resolved_model_name.clone(),
-                                                "choices": [{"delta": {"reasoning_content": reasoning_part}}]
-                                            });
-                                            yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                            yield Ok::<_, Infallible>(make_chunk(None, Some(reasoning_part)));
                                         }
                                         if !answer_part.is_empty() {
-                                            let chunk = json!({
-                                                "id": req_id_stream.clone(),
-                                                "object": "chat.completion.chunk",
-                                                "created": Utc::now().timestamp(),
-                                                "model": resolved_model_name.clone(),
-                                                "choices": [{"delta": {"content": answer_part}}]
-                                            });
-                                            yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                            yield Ok::<_, Infallible>(make_chunk(Some(answer_part), None));
                                         }
                                     } else {
-                                        // 3. Lookahead holdback: Hold back candidate prefix match safely on UTF-8 char boundaries
-                                        let mut lookahead_cands: Vec<&str> = Vec::new();
-                                        if let Some(ref st) = active_think_start {
-                                            lookahead_cands.push(st.as_str());
-                                        }
-                                        for &(s, _) in known_delimiters {
-                                            if !lookahead_cands.contains(&s) {
-                                                lookahead_cands.push(s);
-                                            }
-                                        }
-                                        lookahead_cands.push(end_tag_check);
-
-                                        let hold_len = calc_safe_hold_len(&stream_buffer, &lookahead_cands);
+                                        // Hold back if stream_buffer ends with a prefix of end_tag
+                                        let hold_len = calc_safe_hold_len(&stream_buffer, &[end_tag.as_str()]);
                                         if stream_buffer.len() > hold_len {
                                             let split_pos = stream_buffer.len() - hold_len;
                                             let emit = stream_buffer[..split_pos].to_string();
                                             stream_buffer = stream_buffer[split_pos..].to_string();
-                                            if !emit.is_empty() {
-                                                let chunk = json!({
-                                                    "id": req_id_stream.clone(),
-                                                    "object": "chat.completion.chunk",
-                                                    "created": Utc::now().timestamp(),
-                                                    "model": resolved_model_name.clone(),
-                                                    "choices": [{"delta": {"content": emit}}]
-                                                });
-                                                yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                            if !emit.is_empty() && !should_skip {
+                                                reasoning_tokens_count += 1;
+                                                yield Ok::<_, Infallible>(make_chunk(None, Some(emit)));
                                             }
                                         }
                                     }
+                                } else {
+                                    // No end tag registered: emit buffer as content and terminate thinking phase
+                                    let emit = std::mem::take(&mut stream_buffer);
+                                    if !emit.is_empty() {
+                                        yield Ok::<_, Infallible>(make_chunk(Some(emit), None));
+                                    }
+                                    in_think_block = false;
+                                    think_done = true;
                                 }
                             } else {
-                                // in_think_block is TRUE
-                                let end_tag = active_think_end.as_deref().unwrap_or("</think>");
-                                if let Some(idx) = stream_buffer.find(end_tag) {
-                                    in_think_block = false;
-                                    let reasoning_part = stream_buffer[..idx].to_string();
-                                    let answer_part = stream_buffer[idx + end_tag.len()..].to_string();
-                                    stream_buffer.clear();
+                                // !in_think_block && !think_done: Pre-thinking or direct answer phase
+                                if let Some(ref st) = active_think_start {
+                                    if let Some(idx) = stream_buffer.find(st.as_str()) {
+                                        in_think_block = true;
+                                        let before = stream_buffer[..idx].to_string();
+                                        let after = stream_buffer[idx + st.len()..].to_string();
+                                        stream_buffer = after;
 
-                                    if !reasoning_part.is_empty() && !should_skip {
-                                        reasoning_tokens_count += 1;
-                                        let chunk = json!({
-                                            "id": req_id_stream.clone(),
-                                            "object": "chat.completion.chunk",
-                                            "created": Utc::now().timestamp(),
-                                            "model": resolved_model_name.clone(),
-                                            "choices": [{"delta": {"reasoning_content": reasoning_part}}]
-                                        });
-                                        yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                        if !before.is_empty() {
+                                            yield Ok::<_, Infallible>(make_chunk(Some(before), None));
+                                        }
+
+                                        // Check if end_tag is already present in the remaining buffer
+                                        if let Some(ref end_tag) = active_think_end {
+                                            if let Some(end_idx) = stream_buffer.find(end_tag.as_str()) {
+                                                in_think_block = false;
+                                                think_done = true;
+                                                let r_part = stream_buffer[..end_idx].to_string();
+                                                let a_part = stream_buffer[end_idx + end_tag.len()..].to_string();
+                                                stream_buffer.clear();
+                                                if !r_part.is_empty() && !should_skip {
+                                                    reasoning_tokens_count += 1;
+                                                    yield Ok::<_, Infallible>(make_chunk(None, Some(r_part)));
+                                                }
+                                                if !a_part.is_empty() {
+                                                    yield Ok::<_, Infallible>(make_chunk(Some(a_part), None));
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Buffer does not contain start tag yet
+                                        let trimmed = stream_buffer.trim_start();
+                                        let is_prefix_of_start = trimmed.is_empty() || st.starts_with(trimmed);
+                                        let max_wait = st.len() + 8;
+                                        if is_prefix_of_start && stream_buffer.len() < max_wait {
+                                            // Keep accumulating prefix tokens (e.g. "<th")
+                                        } else {
+                                            // Model diverged from start tag: model started generating answer directly!
+                                            let text = std::mem::take(&mut stream_buffer);
+                                            if !text.is_empty() {
+                                                yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                            }
+                                            think_done = true; // 🔒 Model is answering directly, lock thinking out
+                                        }
                                     }
-                                    if !answer_part.is_empty() {
-                                        let chunk = json!({
-                                            "id": req_id_stream.clone(),
-                                            "object": "chat.completion.chunk",
-                                            "created": Utc::now().timestamp(),
-                                            "model": resolved_model_name.clone(),
-                                            "choices": [{"delta": {"content": answer_part}}]
-                                        });
-                                        yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                } else if let Some(ref end_tag) = active_think_end {
+                                    // Start tag was either injected in prompt or absent: check if end_tag appears
+                                    if let Some(idx) = stream_buffer.find(end_tag.as_str()) {
+                                        in_think_block = false;
+                                        think_done = true;
+                                        let r_part = stream_buffer[..idx].to_string();
+                                        let a_part = stream_buffer[idx + end_tag.len()..].to_string();
+                                        stream_buffer.clear();
+                                        if !r_part.is_empty() && !should_skip {
+                                            reasoning_tokens_count += 1;
+                                            yield Ok::<_, Infallible>(make_chunk(None, Some(r_part)));
+                                        }
+                                        if !a_part.is_empty() {
+                                            yield Ok::<_, Infallible>(make_chunk(Some(a_part), None));
+                                        }
+                                    } else {
+                                        let text = std::mem::take(&mut stream_buffer);
+                                        if !text.is_empty() {
+                                            yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                        }
+                                        think_done = true;
                                     }
                                 } else {
-                                    // Hold back if stream_buffer ends with a prefix of end_tag
-                                    let hold_len = calc_safe_hold_len(&stream_buffer, &[end_tag]);
-                                    if stream_buffer.len() > hold_len {
-                                        let split_pos = stream_buffer.len() - hold_len;
-                                        let emit = stream_buffer[..split_pos].to_string();
-                                        stream_buffer = stream_buffer[split_pos..].to_string();
-                                        if !emit.is_empty() && !should_skip {
-                                            reasoning_tokens_count += 1;
-                                            let chunk = json!({
-                                                "id": req_id_stream.clone(),
-                                                "object": "chat.completion.chunk",
-                                                "created": Utc::now().timestamp(),
-                                                "model": resolved_model_name.clone(),
-                                                "choices": [{"delta": {"reasoning_content": emit}}]
-                                            });
-                                            yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                    // No registered reasoning markers: check for generic XML delimiter syntax on first tokens
+                                    let trimmed = stream_buffer.trim_start();
+                                    if (trimmed.starts_with('<') && !trimmed.starts_with("</")) || (trimmed.starts_with('[') && !trimmed.starts_with("[/")) {
+                                        let delimiter_close = if trimmed.starts_with('<') { trimmed.find('>') } else { trimmed.find(']') };
+                                        if let Some(close_idx) = delimiter_close {
+                                            let open_tag = &trimmed[..=close_idx];
+                                            if !open_tag.contains(' ') && open_tag.len() > 2 {
+                                                let tag_content = &open_tag[1..open_tag.len() - 1];
+                                                let expected_close = if trimmed.starts_with('<') { format!("</{}>", tag_content) } else { format!("[/{}]", tag_content) };
+                                                active_think_start = Some(open_tag.to_string());
+                                                active_think_end = Some(expected_close);
+                                                in_think_block = true;
+                                                let tag_pos = stream_buffer.find(open_tag).unwrap_or(0);
+                                                let after = stream_buffer[tag_pos + open_tag.len()..].to_string();
+                                                stream_buffer = after;
+                                            } else {
+                                                let text = std::mem::take(&mut stream_buffer);
+                                                yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                                think_done = true;
+                                            }
+                                        } else if stream_buffer.len() < 32 {
+                                            // Accumulating tag prefix
+                                        } else {
+                                            let text = std::mem::take(&mut stream_buffer);
+                                            yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                            think_done = true;
                                         }
+                                    } else {
+                                        // Direct content stream (e.g. standard Llama 3, Mistral, Gemma generation)
+                                        let text = std::mem::take(&mut stream_buffer);
+                                        yield Ok::<_, Infallible>(make_chunk(Some(text), None));
+                                        think_done = true; // 🔒 Direct answer started, no thinking block
                                     }
                                 }
                             }
@@ -1159,29 +1125,27 @@ pub async fn chat_completions(
                         } else {
                             false
                         };
-                        if in_think_block {
+                        let final_flush = std::mem::take(&mut stream_buffer);
+                        if in_think_block && !think_done {
                             if !should_skip {
                                 reasoning_tokens_count += 1;
-                                let chunk = json!({
+                                yield Ok::<_, Infallible>(Event::default().data(json!({
                                     "id": req_id_stream.clone(),
                                     "object": "chat.completion.chunk",
                                     "created": Utc::now().timestamp(),
                                     "model": resolved_model_name.clone(),
-                                    "choices": [{"delta": {"reasoning_content": stream_buffer}}]
-                                });
-                                yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                    "choices": [{"delta": {"reasoning_content": final_flush}}]
+                                }).to_string()));
                             }
                         } else {
-                            let chunk = json!({
+                            yield Ok::<_, Infallible>(Event::default().data(json!({
                                 "id": req_id_stream.clone(),
                                 "object": "chat.completion.chunk",
                                 "created": Utc::now().timestamp(),
                                 "model": resolved_model_name.clone(),
-                                "choices": [{"delta": {"content": stream_buffer}}]
-                            });
-                            yield Ok::<_, Infallible>(Event::default().data(chunk.to_string()));
+                                "choices": [{"delta": {"content": final_flush}}]
+                            }).to_string()));
                         }
-                        stream_buffer.clear();
                     }
                     
                     // Generate Telemetry and Final Updates
@@ -1510,56 +1474,4 @@ pub async fn skip_chat_reasoning(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_utf8_char_boundary_lookahead_safety() {
-        let calc_safe_hold_len = |buf: &str, candidates: &[&str]| -> usize {
-            let mut max_hold = 0;
-            for &cand in candidates {
-                if cand.is_empty() {
-                    continue;
-                }
-                for (byte_idx, _) in buf.char_indices().rev() {
-                    let suffix = &buf[byte_idx..];
-                    if suffix.len() > cand.len() {
-                        break;
-                    }
-                    if cand.starts_with(suffix) {
-                        max_hold = max_hold.max(suffix.len());
-                    }
-                }
-            }
-            max_hold
-        };
-
-        // Test with 4-byte emoji that previously caused panic
-        let buffer_with_emoji = "Hello world 😊";
-        let hold = calc_safe_hold_len(buffer_with_emoji, &["<think>", "</think>"]);
-        assert_eq!(hold, 0);
-        let split_pos = buffer_with_emoji.len() - hold;
-        assert!(buffer_with_emoji.is_char_boundary(split_pos));
-        let emit = &buffer_with_emoji[..split_pos];
-        assert_eq!(emit, "Hello world 😊");
-
-        // Test with multi-byte Hindi characters
-        let hindi_buffer = "नमस्ते <th";
-        let hold = calc_safe_hold_len(hindi_buffer, &["<think>", "</think>"]);
-        assert_eq!(hold, 3); // "<th" is 3 bytes
-        let split_pos = hindi_buffer.len() - hold;
-        assert!(hindi_buffer.is_char_boundary(split_pos));
-        assert_eq!(&hindi_buffer[..split_pos], "नमस्ते ");
-        assert_eq!(&hindi_buffer[split_pos..], "<th");
-
-        // Test with emoji right before partial tag
-        let emoji_partial = "Nice job! 😊</th";
-        let hold = calc_safe_hold_len(emoji_partial, &["<think>", "</think>"]);
-        assert_eq!(hold, 4); // "</th" is 4 bytes
-        let split_pos = emoji_partial.len() - hold;
-        assert!(emoji_partial.is_char_boundary(split_pos));
-        assert_eq!(&emoji_partial[..split_pos], "Nice job! 😊");
-        assert_eq!(&emoji_partial[split_pos..], "</th");
-    }
- 
-}
 

@@ -50,8 +50,33 @@ pub fn resolve_model_path(schema: &PermissionSchema, slot_name: &str) -> Option<
 
 /// Dynamically resolve the absolute PathBuf of a specific model by its ID
 pub fn resolve_model_by_id(model_id: &str) -> Option<PathBuf> {
+    // 1. Primary: Check InstalledStateRegistry first!
+    let installed_reg = engines::models::InstalledStateRegistry::load();
+    let clean_target = model_id.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
+
+    for (id, entry) in &installed_reg.installed_models {
+        let clean_id = id.to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
+        if id == model_id || clean_id == clean_target || (!clean_target.is_empty() && (clean_id.contains(&clean_target) || clean_target.contains(&clean_id))) {
+            let dir = std::path::Path::new(&entry.local_dir);
+            if dir.exists() {
+                if let Some(primary) = entry.files.iter().find(|f| f.is_primary) {
+                    let full = dir.join(&primary.name);
+                    if full.exists() {
+                        return Some(full);
+                    }
+                }
+                for f in &entry.files {
+                    let full = dir.join(&f.name);
+                    if full.exists() {
+                        return Some(full);
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Secondary fallback: Search directory tree
     let normalized_id = model_id.replace(':', "-");
-    
     let env = EnvironmentManager::current();
     let roots = [env.local_dir.join("models"), env.global_dir.join("models")];
     let categories = ["chat", "embedding", "vision", "audio", "code"];
