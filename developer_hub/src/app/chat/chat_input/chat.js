@@ -858,6 +858,47 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newPerm)
                     });
+
+                    // 🎯 Live UI & Context Bar Real-Time Update for Newly Selected Model
+                    const popoverModelMax = document.getElementById('popover-model-max');
+                    const limitEl = document.getElementById('live-ctx-limit');
+                    const usedEl = document.getElementById('live-ctx-used');
+                    const pctEl = document.getElementById('live-ctx-pct');
+                    const popoverTotal = document.getElementById('popover-ctx-total');
+                    const freeSpaceEl = document.getElementById('item-free-space-val');
+                    const freePctEl = document.getElementById('item-free-space-pct');
+
+                    const ctxWindow = model.metadata?.context_window || model.context_length || model.context_window;
+                    if (popoverModelMax) {
+                        popoverModelMax.textContent = ctxWindow ? formatK(ctxWindow) : '—';
+                    }
+
+                    // Default to '—' (dash) until message is sent and backend Negotiator returns actual usable allocation
+                    if (limitEl) limitEl.textContent = '—';
+                    if (usedEl) usedEl.textContent = '0';
+                    if (pctEl) pctEl.textContent = '0%';
+                    if (popoverTotal) popoverTotal.textContent = '0 / — (0%)';
+                    if (freeSpaceEl) freeSpaceEl.textContent = '—';
+                    if (freePctEl) freePctEl.textContent = '0%';
+
+                    const livePerfStats = document.getElementById('live-perf-stats');
+                    if (livePerfStats) livePerfStats.style.display = 'none';
+
+                    // Reset breakdown progress bars & values
+                    ['bar-messages', 'bar-system-prompt', 'bar-skills', 'bar-plugins', 'bar-mcp-tools'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.style.width = '0%';
+                    });
+                    ['item-messages-val', 'item-system-prompt-val', 'item-skills-val', 'item-plugins-val', 'item-mcp-tools-val'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = '0';
+                    });
+                    ['item-messages-pct', 'item-system-prompt-pct', 'item-skills-pct', 'item-plugins-pct', 'item-mcp-tools-pct'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = '0%';
+                    });
+
+                    window.dispatchEvent(new CustomEvent('model-changed', { detail: { modelId: model.id, model } }));
                 } catch (e) {
                     console.error('Failed to update active model in permissions:', e);
                 }
@@ -978,22 +1019,22 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
     }
 }
 
+function formatK(n) {
+    if (!n && n !== 0) return '0';
+    if (n >= 1048576) {
+        const m = n / 1048576;
+        return m % 1 === 0 ? m + 'M' : m.toFixed(1) + 'M';
+    }
+    if (n >= 1024) {
+        const k = n / 1024;
+        return k % 1 === 0 ? k + 'k' : (n >= 10000 ? Math.round(k) + 'k' : k.toFixed(1) + 'k');
+    }
+    return n.toString();
+}
+
 window.updateLiveContextBar = function(usage) {
     if (!usage) return;
     const breakdown = usage.context_telemetry?.context_breakdown || usage.context_breakdown;
-
-    const formatK = (n) => {
-        if (!n && n !== 0) return '0';
-        if (n >= 1048576) {
-            const m = n / 1048576;
-            return m % 1 === 0 ? m + 'M' : m.toFixed(1) + 'M';
-        }
-        if (n >= 1024) {
-            const k = n / 1024;
-            return k % 1 === 0 ? k + 'k' : (n >= 10000 ? Math.round(k) + 'k' : k.toFixed(1) + 'k');
-        }
-        return n.toString();
-    };
 
     // 1. Generation Performance Stats (Left side)
     const tps = typeof usage.tokens_per_second === 'number' ? usage.tokens_per_second.toFixed(2) : (usage.tokens_per_second || '0.00');
@@ -1007,33 +1048,17 @@ window.updateLiveContextBar = function(usage) {
                 : (usage.time_seconds ? Number(usage.time_seconds).toFixed(2) : '0.00')));
     const tokens = usage.total_tokens || usage.completion_tokens || 0;
 
-    const tpsEl = document.getElementById('live-tps');
+    // 1. Generation Performance Stats - Auto-Hide on bottom bar when generation completes (message card has permanent stats)
+    const livePerfStats = document.getElementById('live-perf-stats');
+    if (livePerfStats) livePerfStats.style.display = 'none';
     const tpsTag = document.getElementById('live-tps-tag');
-    if (tpsEl && tpsTag) {
-        tpsEl.textContent = tps;
-        tpsTag.style.display = 'inline-flex';
-    }
-
-    const timeEl = document.getElementById('live-time');
     const timeTag = document.getElementById('live-time-tag');
-    if (timeEl && timeTag) {
-        timeEl.textContent = time;
-        timeTag.style.display = 'inline-flex';
-    }
-
-    const ttftEl = document.getElementById('live-ttft');
     const ttftTag = document.getElementById('live-ttft-tag');
-    if (ttftEl && ttftTag) {
-        ttftEl.textContent = ttft;
-        ttftTag.style.display = 'inline-flex';
-    }
-
-    const tokensEl = document.getElementById('live-tokens');
     const tokensTag = document.getElementById('live-tokens-tag');
-    if (tokensEl && tokensTag) {
-        tokensEl.textContent = tokens;
-        tokensTag.style.display = 'inline-flex';
-    }
+    if (tpsTag) tpsTag.style.display = 'none';
+    if (timeTag) timeTag.style.display = 'none';
+    if (ttftTag) ttftTag.style.display = 'none';
+    if (tokensTag) tokensTag.style.display = 'none';
 
     // 2. Context Window Bar (Right side)
     const usedEl = document.getElementById('live-ctx-used');

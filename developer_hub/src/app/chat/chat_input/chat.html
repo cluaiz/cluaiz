@@ -253,17 +253,19 @@
                 <!-- Real-Time Full Telemetry & Context Breakdown Bar (Below Chat Input) -->
                 <div id="live-context-bar" class="relative flex items-center justify-between text-xs px-3 pt-1-5 text-muted"
                     style="font-family: monospace; font-size: 0.72rem; opacity: 0.95; user-select: none;">
+                    <div>
                     
-                    <!-- Left: Generation Performance Stats (Commented out per user request) -->
-                    <div class="flex items-center gap-3" id="live-perf-stats" style="color: #a1a1aa;">
-                        <!--
+                    <!-- Left: Generation Performance Stats (Dynamic: visible only during active generation) -->
+                    <div class="flex items-center gap-3" id="live-perf-stats" style="color: #a1a1aa; display: none;">
+                        
                         <span id="live-tps-tag" style="display: none;"><b id="live-tps" style="color: #f4f4f5; font-weight: 500;">0.00</b> TPS</span>
                         <span id="live-time-tag" style="display: none;"><b id="live-time" style="color: #f4f4f5; font-weight: 500;">0.00</b>s</span>
                         <span id="live-ttft-tag" style="display: none;"><b id="live-ttft" style="color: #f4f4f5; font-weight: 500;">0.00</b>s TTFT</span>
                         <span id="live-tokens-tag" style="display: none;"><b id="live-tokens" style="color: #f4f4f5; font-weight: 500;">0</b> Tokens</span>
-                        -->
+                       
                     </div>
-
+    
+                    </div>
                     <!-- Right: Interactive Context Window Trigger & Popover (Clean, No Emojis, Crisp White Numbers) -->
                     <div class="relative flex items-center gap-2 cursor-pointer" id="live-ctx-wrapper" style="color: #a1a1aa;">
                         <span id="live-ctx-trigger" class="flex items-center gap-1 hover:text-white transition-colors" title="Click to view Context Window breakdown">

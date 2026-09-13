@@ -571,6 +571,9 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
         let firstTokenTime = null;
         let streamedTokensCount = 0;
 
+        const perfStatsEl = document.getElementById('live-perf-stats');
+        if (perfStatsEl) perfStatsEl.style.display = 'flex';
+
         let totalPromptChars = 0;
         conversationHistory.forEach(m => {
             totalPromptChars += (m.content || '').length;
@@ -715,6 +718,14 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                         }
                     }
 
+                    // Live Generation Elapsed Time
+                    const timeEl = document.getElementById('live-time');
+                    const timeTag = document.getElementById('live-time-tag');
+                    if (timeEl && timeTag) {
+                        timeEl.textContent = ((performance.now() - streamStartTime) / 1000).toFixed(2);
+                        timeTag.style.display = 'inline-flex';
+                    }
+
                     const tokensEl = document.getElementById('live-tokens');
                     const tokensTag = document.getElementById('live-tokens-tag');
                     if (tokensEl && tokensTag) {
@@ -746,35 +757,6 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                     // Check scroll position before updating content
                     const isNearBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 150;
 
-                    // Fallback: If reasoningPiece is empty but contentPiece has raw <think> tags
-                    if (!reasoningPiece && contentPiece) {
-                        if (inRawThinkTag) {
-                            const endIdx = contentPiece.indexOf('</think>');
-                            if (endIdx !== -1) {
-                                reasoningPiece = contentPiece.slice(0, endIdx);
-                                contentPiece = contentPiece.slice(endIdx + 8);
-                                inRawThinkTag = false;
-                            } else {
-                                reasoningPiece = contentPiece;
-                                contentPiece = '';
-                            }
-                        } else {
-                            const startIdx = contentPiece.indexOf('<think>');
-                            if (startIdx !== -1) {
-                                const before = contentPiece.slice(0, startIdx);
-                                const after = contentPiece.slice(startIdx + 7);
-                                const endIdx = after.indexOf('</think>');
-                                if (endIdx !== -1) {
-                                    reasoningPiece = after.slice(0, endIdx);
-                                    contentPiece = before + after.slice(endIdx + 8);
-                                } else {
-                                    reasoningPiece = after;
-                                    contentPiece = before;
-                                    inRawThinkTag = true;
-                                }
-                            }
-                        }
-                    }
 
                     // Handle Reasoning / Thinking Stream
                     if (reasoningPiece) {
@@ -881,6 +863,16 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
         }
         window.removeEventListener('chat:skip_thinking', onSkipThinking);
         window.removeEventListener('chat:abort', onAbort);
+        const livePerfStats = document.getElementById('live-perf-stats');
+        if (livePerfStats) livePerfStats.style.display = 'none';
+        const tpsTag = document.getElementById('live-tps-tag');
+        const timeTag = document.getElementById('live-time-tag');
+        const ttftTag = document.getElementById('live-ttft-tag');
+        const tokensTag = document.getElementById('live-tokens-tag');
+        if (tpsTag) tpsTag.style.display = 'none';
+        if (timeTag) timeTag.style.display = 'none';
+        if (ttftTag) ttftTag.style.display = 'none';
+        if (tokensTag) tokensTag.style.display = 'none';
         if (isAborted) {
             window.dispatchEvent(new CustomEvent('chat:aborted'));
         } else {
