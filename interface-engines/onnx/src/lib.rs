@@ -10,7 +10,7 @@ pub mod vision;
 // ─── Sovereign FFI Gateway for ONNX ─────────────────────────────────────────
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
+pub extern "C" fn cluaiz_onnx_kernel_init() -> *const std::os::raw::c_char {
     // ONNX Environment Init
     let _ = ort::init()
         .with_name("cluaiz_onnx_env")
@@ -21,7 +21,7 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_instantiate(
+pub extern "C" fn cluaiz_onnx_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
     _optimization_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
 ) -> *mut OnnxEngine {
@@ -99,14 +99,14 @@ pub extern "C" fn cluaiz_kernel_instantiate(
     match result {
         Ok(ptr) => ptr,
         Err(_) => {
-            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_kernel_instantiate (ONNX)!");
+            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_onnx_kernel_instantiate (ONNX)!");
             std::ptr::null_mut()
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_generate_embedding(
+pub extern "C" fn cluaiz_onnx_kernel_generate_embedding(
     engine_ptr: *mut OnnxEngine,
     text_ptr: *const std::os::raw::c_char,
     out_ptr: *mut f32,
@@ -143,7 +143,7 @@ pub extern "C" fn cluaiz_kernel_generate_embedding(
 }
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_free(engine_ptr: *mut OnnxEngine) {
+pub extern "C" fn cluaiz_onnx_kernel_free(engine_ptr: *mut OnnxEngine) {
     if !engine_ptr.is_null() {
         unsafe {
             let _ = Box::from_raw(engine_ptr);
@@ -154,7 +154,7 @@ pub extern "C" fn cluaiz_kernel_free(engine_ptr: *mut OnnxEngine) {
 // ── Chat Generation FFI ──
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_generate_stream(
+pub extern "C" fn cluaiz_onnx_kernel_generate_stream(
     engine_ptr: *mut OnnxEngine,
     prompt_ptr: *const std::os::raw::c_char,
     max_tokens: usize,
@@ -191,7 +191,7 @@ pub extern "C" fn cluaiz_kernel_generate_stream(
     match result {
         Ok(res) => res,
         Err(_) => {
-            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_kernel_generate_stream!");
+            tracing::error!("🚨 [FFI-Panic] Caught panic in cluaiz_onnx_kernel_generate_stream!");
             -3
         },
     }
@@ -200,7 +200,7 @@ pub extern "C" fn cluaiz_kernel_generate_stream(
 // ── KV Cache Dump/Load FFI ──
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_dump_kv_cache(
+pub extern "C" fn cluaiz_onnx_kernel_dump_kv_cache(
     engine_ptr: *mut OnnxEngine,
     path_ptr: *const std::os::raw::c_char,
 ) -> i32 {
@@ -222,7 +222,7 @@ pub extern "C" fn cluaiz_kernel_dump_kv_cache(
 }
 
 #[no_mangle]
-pub extern "C" fn cluaiz_kernel_load_kv_cache(
+pub extern "C" fn cluaiz_onnx_kernel_load_kv_cache(
     engine_ptr: *mut OnnxEngine,
     path_ptr: *const std::os::raw::c_char,
 ) -> i32 {

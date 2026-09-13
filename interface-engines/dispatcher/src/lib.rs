@@ -402,6 +402,11 @@ impl NeuralDispatcher {
             Ok(())
         }
     }
+
+    /// Dynamically queries thinking delimiters directly from native llama.cpp common chat templates engine
+    pub fn get_thinking_tags(&self, custom_tmpl: Option<&str>) -> (Option<String>, Option<String>) {
+        cluaiz_llama::native::templater::extract_thinking_tags_native(std::ptr::null(), custom_tmpl)
+    }
 }
 
 pub struct EmbeddingDispatcher {
@@ -478,13 +483,16 @@ impl EmbeddingDispatcher {
                 let lib = libloading::Library::new(&binary_path)
                     .map_err(|e| anyhow::anyhow!("ONNX Binary Mapping Failed on path {:?}: {}. OS Error: {:?}", binary_path, e, std::io::Error::last_os_error()))?;
 
-                let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = lib.get(b"cluaiz_kernel_init")
-                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_init' missing"))?;
+                let init: libloading::Symbol<unsafe extern "C" fn() -> *const std::os::raw::c_char> = 
+                    lib.get(b"cluaiz_onnx_kernel_init")
+                    .or_else(|_| lib.get(b"cluaiz_kernel_init"))
+                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_onnx_kernel_init' missing"))?;
                 init();
 
                 let instantiate_fn: libloading::Symbol<unsafe extern "C" fn(*const std::os::raw::c_char, *const std::ffi::c_void) -> *mut std::ffi::c_void> = 
-                    lib.get(b"cluaiz_kernel_instantiate")
-                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_kernel_instantiate' missing"))?;
+                    lib.get(b"cluaiz_onnx_kernel_instantiate")
+                    .or_else(|_| lib.get(b"cluaiz_kernel_instantiate"))
+                    .map_err(|_| anyhow::anyhow!("Invalid Kernel: 'cluaiz_onnx_kernel_instantiate' missing"))?;
 
                 let c_path = std::ffi::CString::new(model_path.to_string_lossy().as_ref())?;
                 let engine_ptr = instantiate_fn(c_path.as_ptr() as *const std::os::raw::c_char, std::ptr::null());
@@ -504,8 +512,9 @@ impl EmbeddingDispatcher {
 
         unsafe {
             let gen_emb_fn: libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void, *const std::os::raw::c_char, *mut f32, usize, *mut usize) -> i32> = 
-                lib.get(b"cluaiz_kernel_generate_embedding")
-                    .map_err(|e| anyhow::anyhow!("Symbol 'cluaiz_kernel_generate_embedding' missing: {:?}", e))?;
+                lib.get(b"cluaiz_onnx_kernel_generate_embedding")
+                    .or_else(|_| lib.get(b"cluaiz_kernel_generate_embedding"))
+                    .map_err(|e| anyhow::anyhow!("Symbol 'cluaiz_onnx_kernel_generate_embedding' missing: {:?}", e))?;
 
             let c_prompt = std::ffi::CString::new(text)
                 .map_err(|_| anyhow::anyhow!("CString conversion failed"))?;
@@ -563,7 +572,8 @@ impl Drop for EmbeddingDispatcher {
         if let Some((_, safe_ptr, lib)) = lock.take() {
             if !safe_ptr.0.is_null() {
                 unsafe {
-                    if let Ok(free_fn) = lib.get::<libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>>(b"cluaiz_kernel_free") {
+                    if let Ok(free_fn) = lib.get::<libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>>(b"cluaiz_onnx_kernel_free")
+                        .or_else(|_| lib.get(b"cluaiz_kernel_free")) {
                         free_fn(safe_ptr.0);
                     }
                 }
