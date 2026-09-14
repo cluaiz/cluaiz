@@ -211,6 +211,26 @@ impl StructuralDNA {
         (None, raw.to_string(), 0)
     }
 
+    /// Safely calculate maximum suffix length matching a candidate prefix using valid UTF-8 char boundaries
+    pub fn calc_safe_hold_len(buf: &str, candidates: &[&str]) -> usize {
+        let mut max_hold = 0;
+        for &cand in candidates {
+            if cand.is_empty() {
+                continue;
+            }
+            for (byte_idx, _) in buf.char_indices().rev() {
+                let suffix = &buf[byte_idx..];
+                if suffix.len() > cand.len() {
+                    break;
+                }
+                if cand.starts_with(suffix) {
+                    max_hold = max_hold.max(suffix.len());
+                }
+            }
+        }
+        max_hold
+    }
+
     /// 🧬 Neural Discovery: Learns model behavior and cross-references with Hardware Truth.
     pub fn discover_from_path(&mut self, model_dir: &std::path::Path) -> anyhow::Result<()> {
         crate::dev_info!(
@@ -519,5 +539,215 @@ impl StructuralDNA {
         self.signature
             .supports_flash_attention(self.attention_head_dim)
             && !self.dynamic_attributes.contains_key("is_ssm")
+    }
+}
+
+/// Unified Real-Time Streaming Reasoning Filter.
+/// Enforces 1:1 mathematical parity with `separate_reasoning` for live SSE token streams.
+#[derive(Debug, Clone)]
+pub struct StreamingReasoningFilter {
+    pub start_tag: Option<String>,
+    pub end_tag: Option<String>,
+    pub in_think_block: bool,
+    pub think_done: bool,
+    pub buffer: String,
+    pub disabled: bool,
+}
+
+impl StreamingReasoningFilter {
+    pub fn new(start_tag: Option<String>, end_tag: Option<String>, disabled: bool) -> Self {
+        let has_markers = start_tag.is_some() || end_tag.is_some();
+        let think_done = disabled || !has_markers;
+        Self {
+            start_tag,
+            end_tag,
+            in_think_block: false,
+            think_done,
+            buffer: String::new(),
+            disabled,
+        }
+    }
+
+    /// Processes an incoming token chunk and yields (content_delta, reasoning_delta)
+    pub fn process_token(&mut self, token: &str) -> (Option<String>, Option<String>) {
+        if self.disabled || self.think_done {
+            return (Some(token.to_string()), None);
+        }
+
+        self.buffer.push_str(token);
+
+        // State 1: Currently inside thinking block (tracking end_tag)
+        if self.in_think_block {
+            if let Some(ref end) = self.end_tag {
+                if let Some(idx) = self.buffer.find(end.as_str()) {
+                    self.in_think_block = false;
+                    self.think_done = true;
+                    let reasoning_part = self.buffer[..idx].to_string();
+                    let answer_part = self.buffer[idx + end.len()..].to_string();
+                    self.buffer.clear();
+                    let r = if reasoning_part.is_empty() { None } else { Some(reasoning_part) };
+                    let a = if answer_part.is_empty() { None } else { Some(answer_part) };
+                    return (a, r);
+                } else {
+                    let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
+                    if self.buffer.len() > hold_len {
+                        let split_pos = self.buffer.len() - hold_len;
+                        let emit = self.buffer[..split_pos].to_string();
+                        self.buffer = self.buffer[split_pos..].to_string();
+                        return (None, Some(emit));
+                    }
+                    return (None, None);
+                }
+            } else {
+                let emit = std::mem::take(&mut self.buffer);
+                self.in_think_block = false;
+                self.think_done = true;
+                return (Some(emit), None);
+            }
+        }
+
+        // State 2: Not yet marked in_think_block
+        // Case 2A: Explicit start_tag registered (e.g. "<think>")
+        if let Some(ref st) = self.start_tag {
+            if let Some(idx) = self.buffer.find(st.as_str()) {
+                self.in_think_block = true;
+                let before = self.buffer[..idx].to_string();
+                let after = self.buffer[idx + st.len()..].to_string();
+                self.buffer = after;
+
+                // Check if end_tag is already present in remaining buffer
+                if let Some(ref end) = self.end_tag {
+                    if let Some(end_idx) = self.buffer.find(end.as_str()) {
+                        self.in_think_block = false;
+                        self.think_done = true;
+                        let r_part = self.buffer[..end_idx].to_string();
+                        let a_part = self.buffer[end_idx + end.len()..].to_string();
+                        self.buffer.clear();
+                        let r = if r_part.is_empty() { None } else { Some(r_part) };
+                        let combined_a = if before.is_empty() {
+                            if a_part.is_empty() { None } else { Some(a_part) }
+                        } else {
+                            Some(format!("{}{}", before, a_part))
+                        };
+                        return (combined_a, r);
+                    }
+                }
+
+                let b = if before.is_empty() { None } else { Some(before) };
+                return (b, None);
+            } else {
+                // Buffer does not contain start tag yet
+                let trimmed = self.buffer.trim_start();
+                let is_prefix_of_start = trimmed.is_empty() || st.starts_with(trimmed);
+                let max_wait = st.len() + 4;
+
+                if is_prefix_of_start && self.buffer.len() < max_wait {
+                    // Accumulating potential start tag prefix (e.g. "<th")
+                    return (None, None);
+                }
+
+                // 1:1 Parity with separate_reasoning: If model did not emit start_tag,
+                // but end_tag (e.g. "</think>") exists, the prompt template already had
+                // <think> or the model started directly in reasoning!
+                if let Some(ref end) = self.end_tag {
+                    self.in_think_block = true;
+                    if let Some(idx) = self.buffer.find(end.as_str()) {
+                        self.in_think_block = false;
+                        self.think_done = true;
+                        let r_part = self.buffer[..idx].to_string();
+                        let a_part = self.buffer[idx + end.len()..].to_string();
+                        self.buffer.clear();
+                        let r = if r_part.is_empty() { None } else { Some(r_part) };
+                        let a = if a_part.is_empty() { None } else { Some(a_part) };
+                        return (a, r);
+                    } else {
+                        let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
+                        if self.buffer.len() > hold_len {
+                            let split_pos = self.buffer.len() - hold_len;
+                            let emit = self.buffer[..split_pos].to_string();
+                            self.buffer = self.buffer[split_pos..].to_string();
+                            return (None, Some(emit));
+                        }
+                        return (None, None);
+                    }
+                } else {
+                    let text = std::mem::take(&mut self.buffer);
+                    self.think_done = true;
+                    return (Some(text), None);
+                }
+            }
+        }
+
+        // Case 2B: Only end_tag registered (prompt injected start tag)
+        if let Some(ref end) = self.end_tag {
+            self.in_think_block = true;
+            if let Some(idx) = self.buffer.find(end.as_str()) {
+                self.in_think_block = false;
+                self.think_done = true;
+                let r_part = self.buffer[..idx].to_string();
+                let a_part = self.buffer[idx + end.len()..].to_string();
+                self.buffer.clear();
+                let r = if r_part.is_empty() { None } else { Some(r_part) };
+                let a = if a_part.is_empty() { None } else { Some(a_part) };
+                return (a, r);
+            } else {
+                let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
+                if self.buffer.len() > hold_len {
+                    let split_pos = self.buffer.len() - hold_len;
+                    let emit = self.buffer[..split_pos].to_string();
+                    self.buffer = self.buffer[split_pos..].to_string();
+                    return (None, Some(emit));
+                }
+                return (None, None);
+            }
+        }
+
+        // Case 2C: Generic structural delimiter detection (<TAG> ... </TAG>)
+        let trimmed = self.buffer.trim_start();
+        if (trimmed.starts_with('<') && !trimmed.starts_with("</")) || (trimmed.starts_with('[') && !trimmed.starts_with("[/")) {
+            let delimiter_close = if trimmed.starts_with('<') { trimmed.find('>') } else { trimmed.find(']') };
+            if let Some(close_idx) = delimiter_close {
+                let open_tag = &trimmed[..=close_idx];
+                if !open_tag.contains(' ') && open_tag.len() > 2 {
+                    let tag_content = &open_tag[1..open_tag.len() - 1];
+                    let expected_close = if trimmed.starts_with('<') { format!("</{}>", tag_content) } else { format!("[/{}]", tag_content) };
+                    self.start_tag = Some(open_tag.to_string());
+                    self.end_tag = Some(expected_close);
+                    self.in_think_block = true;
+                    let tag_pos = self.buffer.find(open_tag).unwrap_or(0);
+                    let after = self.buffer[tag_pos + open_tag.len()..].to_string();
+                    self.buffer = after;
+                    return (None, None);
+                } else {
+                    let text = std::mem::take(&mut self.buffer);
+                    self.think_done = true;
+                    return (Some(text), None);
+                }
+            } else if self.buffer.len() < 32 {
+                return (None, None);
+            } else {
+                let text = std::mem::take(&mut self.buffer);
+                self.think_done = true;
+                return (Some(text), None);
+            }
+        } else {
+            // Direct content stream (e.g. Llama 3, Mistral, Gemma)
+            let text = std::mem::take(&mut self.buffer);
+            self.think_done = true;
+            return (Some(text), None);
+        }
+    }
+
+    /// Flushes any remaining buffer at stream completion
+    pub fn flush_final(&mut self) -> (Option<String>, Option<String>) {
+        if self.buffer.is_empty() {
+            return (None, None);
+        }
+        let text = std::mem::take(&mut self.buffer);
+        if self.in_think_block && !self.think_done {
+            (None, Some(text))
+        } else {
+            (Some(text), None)
+        }
     }
 }
