@@ -555,16 +555,55 @@ pub struct StreamingReasoningFilter {
 }
 
 impl StreamingReasoningFilter {
-    pub fn new(start_tag: Option<String>, end_tag: Option<String>, disabled: bool) -> Self {
+    pub fn new(
+        start_tag: Option<String>,
+        end_tag: Option<String>,
+        prompt_starts_in_think: bool,
+        disabled: bool,
+    ) -> Self {
         let has_markers = start_tag.is_some() || end_tag.is_some();
         let think_done = disabled || !has_markers;
+        let in_think_block = !disabled && has_markers && prompt_starts_in_think;
         Self {
             start_tag,
             end_tag,
-            in_think_block: false,
+            in_think_block,
             think_done,
             buffer: String::new(),
             disabled,
+        }
+    }
+
+    /// Internal DRY helper to handle streaming inside a think block against end_tag.
+    /// Returns (content_delta, reasoning_delta).
+    fn handle_end_tag_transition(&mut self, end: &str) -> (Option<String>, Option<String>) {
+        if let Some(idx) = self.buffer.find(end) {
+            self.in_think_block = false;
+            self.think_done = true;
+            let reasoning_part = self.buffer[..idx].to_string();
+            let answer_part = self.buffer[idx + end.len()..].to_string();
+            self.buffer.clear();
+            let r = if reasoning_part.is_empty() {
+                None
+            } else {
+                Some(reasoning_part)
+            };
+            let a = if answer_part.is_empty() {
+                None
+            } else {
+                Some(answer_part)
+            };
+            (a, r)
+        } else {
+            let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end]);
+            if self.buffer.len() > hold_len {
+                let split_pos = self.buffer.len() - hold_len;
+                let emit = self.buffer[..split_pos].to_string();
+                self.buffer = self.buffer[split_pos..].to_string();
+                (None, Some(emit))
+            } else {
+                (None, None)
+            }
         }
     }
 
@@ -577,27 +616,10 @@ impl StreamingReasoningFilter {
         self.buffer.push_str(token);
 
         // State 1: Currently inside thinking block (tracking end_tag)
+        // (For models where prompt prefills <think> like Bonsai 27B, in_think_block is true from token 1)
         if self.in_think_block {
-            if let Some(ref end) = self.end_tag {
-                if let Some(idx) = self.buffer.find(end.as_str()) {
-                    self.in_think_block = false;
-                    self.think_done = true;
-                    let reasoning_part = self.buffer[..idx].to_string();
-                    let answer_part = self.buffer[idx + end.len()..].to_string();
-                    self.buffer.clear();
-                    let r = if reasoning_part.is_empty() { None } else { Some(reasoning_part) };
-                    let a = if answer_part.is_empty() { None } else { Some(answer_part) };
-                    return (a, r);
-                } else {
-                    let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
-                    if self.buffer.len() > hold_len {
-                        let split_pos = self.buffer.len() - hold_len;
-                        let emit = self.buffer[..split_pos].to_string();
-                        self.buffer = self.buffer[split_pos..].to_string();
-                        return (None, Some(emit));
-                    }
-                    return (None, None);
-                }
+            if let Some(ref end) = self.end_tag.clone() {
+                return self.handle_end_tag_transition(&end);
             } else {
                 let emit = std::mem::take(&mut self.buffer);
                 self.in_think_block = false;
@@ -606,9 +628,9 @@ impl StreamingReasoningFilter {
             }
         }
 
-        // State 2: Not yet marked in_think_block
+        // State 2: Not yet marked in_think_block (prompt did NOT prefill thinking)
         // Case 2A: Explicit start_tag registered (e.g. "<think>")
-        if let Some(ref st) = self.start_tag {
+        if let Some(ref st) = self.start_tag.clone() {
             if let Some(idx) = self.buffer.find(st.as_str()) {
                 self.in_think_block = true;
                 let before = self.buffer[..idx].to_string();
@@ -616,24 +638,21 @@ impl StreamingReasoningFilter {
                 self.buffer = after;
 
                 // Check if end_tag is already present in remaining buffer
-                if let Some(ref end) = self.end_tag {
-                    if let Some(end_idx) = self.buffer.find(end.as_str()) {
-                        self.in_think_block = false;
-                        self.think_done = true;
-                        let r_part = self.buffer[..end_idx].to_string();
-                        let a_part = self.buffer[end_idx + end.len()..].to_string();
-                        self.buffer.clear();
-                        let r = if r_part.is_empty() { None } else { Some(r_part) };
-                        let combined_a = if before.is_empty() {
-                            if a_part.is_empty() { None } else { Some(a_part) }
-                        } else {
-                            Some(format!("{}{}", before, a_part))
-                        };
-                        return (combined_a, r);
-                    }
+                if let Some(ref end) = self.end_tag.clone() {
+                    let (a_opt, r_opt) = self.handle_end_tag_transition(&end);
+                    let combined_a = match (before.is_empty(), a_opt) {
+                        (true, opt) => opt,
+                        (false, Some(a)) => Some(format!("{}{}", before, a)),
+                        (false, None) => Some(before),
+                    };
+                    return (combined_a, r_opt);
                 }
 
-                let b = if before.is_empty() { None } else { Some(before) };
+                let b = if before.is_empty() {
+                    None
+                } else {
+                    Some(before)
+                };
                 return (b, None);
             } else {
                 // Buffer does not contain start tag yet
@@ -646,71 +665,42 @@ impl StreamingReasoningFilter {
                     return (None, None);
                 }
 
-                // 1:1 Parity with separate_reasoning: If model did not emit start_tag,
-                // but end_tag (e.g. "</think>") exists, the prompt template already had
-                // <think> or the model started directly in reasoning!
-                if let Some(ref end) = self.end_tag {
-                    self.in_think_block = true;
-                    if let Some(idx) = self.buffer.find(end.as_str()) {
-                        self.in_think_block = false;
-                        self.think_done = true;
-                        let r_part = self.buffer[..idx].to_string();
-                        let a_part = self.buffer[idx + end.len()..].to_string();
-                        self.buffer.clear();
-                        let r = if r_part.is_empty() { None } else { Some(r_part) };
-                        let a = if a_part.is_empty() { None } else { Some(a_part) };
-                        return (a, r);
-                    } else {
-                        let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
-                        if self.buffer.len() > hold_len {
-                            let split_pos = self.buffer.len() - hold_len;
-                            let emit = self.buffer[..split_pos].to_string();
-                            self.buffer = self.buffer[split_pos..].to_string();
-                            return (None, Some(emit));
-                        }
-                        return (None, None);
-                    }
-                } else {
-                    let text = std::mem::take(&mut self.buffer);
-                    self.think_done = true;
-                    return (Some(text), None);
-                }
+                // Start tag was registered (e.g. "<think>"), but the model did NOT emit it.
+                // Since prompt_starts_in_think was false, this is 100% NORMAL CONTENT (e.g. Bonsai 8B, Llama 3).
+                let text = std::mem::take(&mut self.buffer);
+                self.think_done = true;
+                self.in_think_block = false;
+                return (Some(text), None);
             }
         }
 
-        // Case 2B: Only end_tag registered (prompt injected start tag)
-        if let Some(ref end) = self.end_tag {
-            self.in_think_block = true;
-            if let Some(idx) = self.buffer.find(end.as_str()) {
-                self.in_think_block = false;
-                self.think_done = true;
-                let r_part = self.buffer[..idx].to_string();
-                let a_part = self.buffer[idx + end.len()..].to_string();
-                self.buffer.clear();
-                let r = if r_part.is_empty() { None } else { Some(r_part) };
-                let a = if a_part.is_empty() { None } else { Some(a_part) };
-                return (a, r);
-            } else {
-                let hold_len = StructuralDNA::calc_safe_hold_len(&self.buffer, &[end.as_str()]);
-                if self.buffer.len() > hold_len {
-                    let split_pos = self.buffer.len() - hold_len;
-                    let emit = self.buffer[..split_pos].to_string();
-                    self.buffer = self.buffer[split_pos..].to_string();
-                    return (None, Some(emit));
-                }
-                return (None, None);
-            }
+        // Case 2B: Only end_tag registered (no start tag, and prompt did NOT start in think)
+        if self.end_tag.is_some() {
+            let text = std::mem::take(&mut self.buffer);
+            self.think_done = true;
+            self.in_think_block = false;
+            return (Some(text), None);
         }
 
         // Case 2C: Generic structural delimiter detection (<TAG> ... </TAG>)
         let trimmed = self.buffer.trim_start();
-        if (trimmed.starts_with('<') && !trimmed.starts_with("</")) || (trimmed.starts_with('[') && !trimmed.starts_with("[/")) {
-            let delimiter_close = if trimmed.starts_with('<') { trimmed.find('>') } else { trimmed.find(']') };
+        if (trimmed.starts_with('<') && !trimmed.starts_with("</"))
+            || (trimmed.starts_with('[') && !trimmed.starts_with("[/"))
+        {
+            let delimiter_close = if trimmed.starts_with('<') {
+                trimmed.find('>')
+            } else {
+                trimmed.find(']')
+            };
             if let Some(close_idx) = delimiter_close {
                 let open_tag = &trimmed[..=close_idx];
                 if !open_tag.contains(' ') && open_tag.len() > 2 {
                     let tag_content = &open_tag[1..open_tag.len() - 1];
-                    let expected_close = if trimmed.starts_with('<') { format!("</{}>", tag_content) } else { format!("[/{}]", tag_content) };
+                    let expected_close = if trimmed.starts_with('<') {
+                        format!("</{}>", tag_content)
+                    } else {
+                        format!("[/{}]", tag_content)
+                    };
                     self.start_tag = Some(open_tag.to_string());
                     self.end_tag = Some(expected_close);
                     self.in_think_block = true;
@@ -751,3 +741,176 @@ impl StreamingReasoningFilter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bonsai_27b_prefilled_thinking() {
+        // Bonsai 27B: prompt prefills <think>, so prompt_starts_in_think = true.
+        // Model emits thoughts directly without <think>, then emits </think> followed by answer.
+        let mut filter = StreamingReasoningFilter::new(
+            Some("<think>".to_string()),
+            Some("</think>".to_string()),
+            true, // prompt_starts_in_think
+            false,
+        );
+
+        let tokens = vec![
+            "Here", "'s", " a", " thinking", " process", ":", "\n",
+            "First", " step", " done", ".", "\n",
+            "</think>", "\n\n",
+            "Hello", "!", " How", " can", " I", " help", " you", "?",
+        ];
+
+        let mut collected_reasoning = String::new();
+        let mut collected_content = String::new();
+
+        for t in tokens {
+            let (c, r) = filter.process_token(t);
+            if let Some(c_text) = c {
+                collected_content.push_str(&c_text);
+            }
+            if let Some(r_text) = r {
+                collected_reasoning.push_str(&r_text);
+            }
+        }
+        let (final_c, final_r) = filter.flush_final();
+        if let Some(c_text) = final_c {
+            collected_content.push_str(&c_text);
+        }
+        if let Some(r_text) = final_r {
+            collected_reasoning.push_str(&r_text);
+        }
+
+        assert!(collected_reasoning.contains("thinking process"));
+        assert!(collected_reasoning.contains("First step done."));
+        assert!(!collected_reasoning.contains("</think>"));
+        assert!(collected_content.contains("Hello! How can I help you?"));
+        assert!(!collected_content.contains("thinking process"));
+    }
+
+    #[test]
+    fn test_bonsai_8b_normal_content_safety() {
+        // Bonsai 8B: prompt does NOT prefill thinking, so prompt_starts_in_think = false.
+        // Model emits normal text directly.
+        let mut filter = StreamingReasoningFilter::new(
+            Some("<think>".to_string()),
+            Some("</think>".to_string()),
+            false, // prompt_starts_in_think
+            false,
+        );
+
+        let tokens = vec![
+            "It", " looks", " like", " the", " message", " got", " cut", " off", ".",
+            " How", " can", " I", " assist", " you", " today", "?",
+        ];
+
+        let mut collected_reasoning = String::new();
+        let mut collected_content = String::new();
+
+        for t in tokens {
+            let (c, r) = filter.process_token(t);
+            if let Some(c_text) = c {
+                collected_content.push_str(&c_text);
+            }
+            if let Some(r_text) = r {
+                collected_reasoning.push_str(&r_text);
+            }
+        }
+        let (final_c, final_r) = filter.flush_final();
+        if let Some(c_text) = final_c {
+            collected_content.push_str(&c_text);
+        }
+        if let Some(r_text) = final_r {
+            collected_reasoning.push_str(&r_text);
+        }
+
+        // Reasoning MUST be empty! Normal content MUST be in content!
+        assert!(collected_reasoning.is_empty(), "Reasoning must be empty for Bonsai 8B!");
+        assert_eq!(
+            collected_content,
+            "It looks like the message got cut off. How can I assist you today?"
+        );
+    }
+
+    #[test]
+    fn test_dynamic_think_tag_emission() {
+        // Model dynamically emits <think> during generation
+        let mut filter = StreamingReasoningFilter::new(
+            Some("<think>".to_string()),
+            Some("</think>".to_string()),
+            false, // prompt_starts_in_think
+            false,
+        );
+
+        let tokens = vec![
+            "<think>", "Analyzing", " request", "... ", "Done.", "</think>",
+            "The", " answer", " is", " 42", ".",
+        ];
+
+        let mut collected_reasoning = String::new();
+        let mut collected_content = String::new();
+
+        for t in tokens {
+            let (c, r) = filter.process_token(t);
+            if let Some(c_text) = c {
+                collected_content.push_str(&c_text);
+            }
+            if let Some(r_text) = r {
+                collected_reasoning.push_str(&r_text);
+            }
+        }
+        let (final_c, final_r) = filter.flush_final();
+        if let Some(c_text) = final_c {
+            collected_content.push_str(&c_text);
+        }
+        if let Some(r_text) = final_r {
+            collected_reasoning.push_str(&r_text);
+        }
+
+        assert_eq!(collected_reasoning, "Analyzing request... Done.");
+    }
+
+    #[test]
+    fn test_bonsai_models_prompt_starts_in_think_parity() {
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            let path = std::path::PathBuf::from(userprofile).join(".cluaiz").join("engine").join("config").join("model_registry.json");
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(models) = val.get("installed_models").and_then(|m| m.as_object()) {
+                        for (k, v) in models {
+                            if k.to_lowercase().contains("bonsai") {
+                                if let Some(tmpl) = v.get("metadata").and_then(|m| m.get("chat_template")).and_then(|t| t.as_str()) {
+                                    let st = "<think>";
+                                    let et = "</think>";
+                                    let prompt_starts = if let Some(idx) = tmpl.rfind("add_generation_prompt") {
+                                        let gen_part = &tmpl[idx..];
+                                        let last_st = gen_part.rfind(st);
+                                        let last_et = gen_part.rfind(et);
+                                        match (last_st, last_et) {
+                                            (Some(s_idx), Some(e_idx)) => s_idx > e_idx,
+                                            (Some(_), None) => true,
+                                            _ => false,
+                                        }
+                                    } else {
+                                        false
+                                    };
+                                    if k == "bonsai1-8b" {
+                                        assert!(!prompt_starts, "bonsai1-8b MUST be false!");
+                                    }
+                                    if k == "bonsai-27b-gguf-q1_0" {
+                                        assert!(prompt_starts, "bonsai-27b MUST be true!");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
