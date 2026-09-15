@@ -391,3 +391,68 @@
     accent-color: #3b82f6;
 }
 
+/* ─── Model Switch Center Divider ────────────────────────────────── */
+.chat-model-switch-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 0 24px;
+    gap: 16px;
+    animation: messageFadeIn 0.3s ease-out forwards;
+}
+
+.model-switch-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.model-switch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    font-size: 0.75rem;
+    color: #9ca3af;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    user-select: none;
+}
+
+.model-switch-icon {
+    color: #a78bfa;
+    flex-shrink: 0;
+}
+
+.model-switch-label {
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.model-switch-old {
+    color: #6b7280;
+    text-decoration: line-through;
+    opacity: 0.85;
+    font-weight: 500;
+}
+
+.model-switch-arrow {
+    color: #a78bfa;
+    flex-shrink: 0;
+}
+
+.model-switch-new {
+    color: #e0e7ff;
+    font-weight: 600;
+    background: rgba(167, 139, 250, 0.15);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+

@@ -2,6 +2,38 @@ import { playTtsAudio, setTtsButtonIcon, showToastNotification } from '../chat_i
 
 // Conversation history for context
 const conversationHistory = [];
+let lastUsedModelId = null;
+let lastUsedModelName = null;
+
+function appendModelSwitchDivider(oldModelName, newModelName) {
+    const container = document.getElementById('chat-stream-container');
+    if (!container) return;
+
+    const dividerEl = document.createElement('div');
+    dividerEl.className = 'chat-model-switch-divider';
+    dividerEl.innerHTML = `
+        <div class="model-switch-line"></div>
+        <div class="model-switch-badge">
+            <svg class="model-switch-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <span class="model-switch-label">Model Switched:</span>
+            <span class="model-switch-old">${escapeHtml(oldModelName)}</span>
+            <svg class="model-switch-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+            <span class="model-switch-new">${escapeHtml(newModelName)}</span>
+        </div>
+        <div class="model-switch-line"></div>
+    `;
+
+    container.appendChild(dividerEl);
+    return dividerEl;
+}
+
 
 window.copyCodeBlock = function(btn, encodedCode) {
     try {
@@ -82,7 +114,8 @@ function setupChatStream() {
         // If chat is empty now, we can leave the chat UI active
         // so the user doesn't get kicked out to the dashboard.
         if (conversationHistory.length === 0) {
-            // Do not hide the stream UI or restore dashboard here
+            lastUsedModelId = null;
+            lastUsedModelName = null;
         }
     });
 
@@ -129,6 +162,19 @@ function setupChatStream() {
                 if (dashboardMain) dashboardMain.style.display = 'none';
                 if (topBar) topBar.style.display = 'none';
             }
+
+            // Check if model changed since last turn
+            const currentModelId = getSelectedModel();
+            const modelTextEl = document.getElementById('selected-model-text');
+            const currentModelName = modelTextEl && modelTextEl.textContent.trim() && modelTextEl.textContent.trim() !== 'Unknown Model'
+                ? modelTextEl.textContent.trim()
+                : (currentModelId || 'Default Model');
+
+            if (lastUsedModelId !== null && lastUsedModelId !== currentModelId) {
+                appendModelSwitchDivider(lastUsedModelName || lastUsedModelId, currentModelName);
+            }
+            lastUsedModelId = currentModelId;
+            lastUsedModelName = currentModelName;
 
             // Render user message
             appendMessage(content, 'user');
@@ -456,6 +502,10 @@ function renderMarkdownSafe(text) {
 async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
     const container = document.getElementById('chat-stream-container');
     const model = getSelectedModel();
+    const modelTextEl = document.getElementById('selected-model-text');
+    const currentModelName = modelTextEl && modelTextEl.textContent.trim() && modelTextEl.textContent.trim() !== 'Unknown Model'
+        ? modelTextEl.textContent.trim()
+        : (model || 'Default Model');
 
     const aiMsgEl = document.createElement('div');
     aiMsgEl.className = 'chat-message ai-message';
@@ -617,7 +667,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                     if (!parsed.choices || parsed.choices.length === 0) {
                         if (parsed.usage && (parsed.usage.tokens_per_second !== undefined || parsed.usage.model_header_info !== undefined)) {
                             if (hasStarted) {
-                                renderTelemetry(aiMsgEl, parsed.usage, fullContent);
+                                renderTelemetry(aiMsgEl, { ...parsed.usage, model_name: currentModelName }, fullContent);
                             }
                         }
                         continue;
