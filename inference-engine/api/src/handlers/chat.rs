@@ -393,22 +393,23 @@ pub async fn chat_completions(
         .unwrap_or(2048)
         .max(2048);
 
+    // 🧬 Resolve Model Chat Template
+    let chat_tmpl = active_model_entry
+        .and_then(|entry| entry.metadata.chat_template.clone())
+        .or_else(|| {
+            active_model_path.as_ref().and_then(|path| {
+                if path.extension().and_then(|e| e.to_str()) == Some("gguf") {
+                    engines::models::GgufProber::probe(path).ok().and_then(|(meta, _, _)| {
+                        meta.get("tokenizer.chat_template").cloned()
+                    })
+                } else {
+                    None
+                }
+            })
+        });
+
     // 🧬 Resolve Dynamic Model Thinking Markers Directly from llama.cpp Native Engine (Zero Hardcoding)
     let (dyn_think_start, dyn_think_end): (Option<String>, Option<String>) = {
-        let chat_tmpl = active_model_entry
-            .and_then(|entry| entry.metadata.chat_template.clone())
-            .or_else(|| {
-                active_model_path.as_ref().and_then(|path| {
-                    if path.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                        engines::models::GgufProber::probe(path).ok().and_then(|(meta, _, _)| {
-                            meta.get("tokenizer.chat_template").cloned()
-                        })
-                    } else {
-                        None
-                    }
-                })
-            });
-
         // 1. Primary Authority: Query llama.cpp native common_chat_templates engine directly via dispatcher
         let native_tags = state.dispatcher.get_thinking_tags(chat_tmpl.as_deref());
         if native_tags.0.is_some() || native_tags.1.is_some() {
@@ -679,6 +680,35 @@ pub async fn chat_completions(
                     );
                 }
 
+                // 🧬 Upstream llama.cpp Parity: Determine if the prompt prefills the thinking start tag
+                let prompt_starts_in_think = if active_think_mode == "off" {
+                    false
+                } else if let (Some(ref st), Some(ref et)) = (&dyn_think_start, &dyn_think_end) {
+                    if st.is_empty() || et.is_empty() {
+                        false
+                    } else if let Some(ref tmpl) = chat_tmpl {
+                        let test_msgs = [("user", "test")];
+                        if let Ok(rendered) = cluaiz_shared::TemplateManager::render_messages(tmpl, &test_msgs, true) {
+                            rendered.contains(st) && !rendered.contains(et)
+                        } else if let Some(idx) = tmpl.rfind("add_generation_prompt") {
+                            let gen_part = &tmpl[idx..];
+                            let last_st = gen_part.rfind(st);
+                            let last_et = gen_part.rfind(et);
+                            match (last_st, last_et) {
+                                (Some(s_idx), Some(e_idx)) => s_idx > e_idx,
+                                (Some(_), None) => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                };
+
                 let stream = async_stream::stream! {
                      let mut current_prompt = json_prompt.clone();
                       let mut total_generated = String::new();
@@ -687,6 +717,7 @@ pub async fn chat_completions(
                       let mut think_filter = cluaiz_shared::metadata::dna::StreamingReasoningFilter::new(
                           dyn_think_start.clone(),
                           dyn_think_end.clone(),
+                          prompt_starts_in_think,
                           active_think_mode == "off",
                       );
                       let mut first_ttft_ms = 0;
