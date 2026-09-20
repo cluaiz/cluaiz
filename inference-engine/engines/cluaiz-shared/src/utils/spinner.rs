@@ -1,11 +1,13 @@
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::Duration;
 
-pub struct cluaizSpinner {
+pub struct TerminalSpinner {
     pb: Option<ProgressBar>,
 }
 
-impl cluaizSpinner {
+pub type cluaizSpinner = TerminalSpinner;
+
+impl TerminalSpinner {
     pub fn new() -> Self {
         Self { pb: None }
     }

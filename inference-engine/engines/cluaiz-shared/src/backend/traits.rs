@@ -15,12 +15,12 @@ pub trait UnifiedBackend {
     }
 }
 
-/// cluaizInference: The advanced streaming iteration interface.
-pub trait cluaizInference: Send + Sync + UnifiedBackend {
+/// StreamingInference: The advanced streaming iteration interface.
+pub trait StreamingInference: Send + Sync + UnifiedBackend {
     /// Returns a generic response from a forward pass (implementation dependent)
     fn forward_raw(&mut self, input_ids: &[u32], pos: usize) -> Result<Vec<f32>>;
     
-    /// The high-performance streaming protocol for Sovereign Silicon
+    /// The high-performance streaming protocol
     fn generate_stream(
         &mut self,
         prompt: &str,
@@ -29,39 +29,42 @@ pub trait cluaizInference: Send + Sync + UnifiedBackend {
     ) -> Result<()>;
 
     /// 🔗 Signal Injection Hook: Injects multiple pre-encoded neural states directly into hardware cache.
-    fn inject_signals(&mut self, _signals: Vec<crate::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> {
+    fn inject_signals(&mut self, _signals: Vec<crate::hardware::memory::kv_cache::stitching::KernelSignal>) -> Result<()> {
         tracing::warn!("⚠️ [Backend] Multi-Signal injection Not Implemented for this kernel.");
         Ok(())
     }
 
-    /// 🚀 Booster Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
+    /// 🚀 Optimization Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
     fn apply_optimization(&mut self, _control: &crate::hardware::schema::optimization::OptimizationControl) -> Result<()> {
         Ok(())
     }
 
-    /// 🌊 Liquid Execution: Activates adaptive context density.
+    /// Adaptive context density
     fn set_liquid_mode(&mut self, _enabled: bool) -> Result<()> {
         Ok(())
     }
 
-    /// 🧠 JEPA Predictor: Returns latent state predictions for future tokens.
+    /// Predictor: Returns latent state predictions for future tokens.
     fn predict_latent(&mut self, _input_ids: &[u32]) -> Result<Vec<f32>> {
-        Err(anyhow::anyhow!("JEPA not supported on this silicon."))
+        Err(anyhow::anyhow!("Latent predictor not supported on this device."))
     }
 
-    /// 💾 Native Memory Dump: Extracts the actual KV cache buffer to a binary file.
+    /// Native Memory Dump: Extracts the actual KV cache buffer to a binary file.
     fn dump_kv_cache(&mut self, _path: &str) -> Result<()> {
         Err(anyhow::anyhow!("KV Cache dumping not implemented on this engine."))
     }
 
-    /// 💾 Load KV Cache from a binary file.
+    /// Load KV Cache from a binary file.
     fn load_kv_cache(&mut self, _path: &str) -> Result<()> {
         Err(anyhow::anyhow!("KV Cache loading not implemented on this engine."))
     }
 }
 
+/// Backward-compatibility alias
+pub use StreamingInference as cluaizInference;
+
 /// Dynamic trait alias bridging generic hardware kernels
-pub type ModelWeightsWrapper = Box<dyn cluaizInference + Send + Sync>;
+pub type ModelWeightsWrapper = Box<dyn StreamingInference + Send + Sync>;
 
 
 // ─── Expert Dispatcher (MoE Routing Protocol) ──────────────────────────────

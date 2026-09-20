@@ -223,7 +223,7 @@ impl Default for OptimizationControl {
 /// 🚀 FFI-Compatible C-Struct for injecting Optimization configurations into C++ Kernels (llama.cpp)
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct cluaizOptimizationContext {
+pub struct OptimizationContext {
     pub turbo_quant: bool,
     pub flash_attention: bool,
     pub speculative_decoding_mode: u8,  // 0 = Off, 1 = On, 2 = Auto
@@ -234,9 +234,10 @@ pub struct cluaizOptimizationContext {
     pub max_context_length: u32,
 }
 
-pub type cluaizBoosterContext = cluaizOptimizationContext;
+pub type cluaizOptimizationContext = OptimizationContext;
+pub type cluaizBoosterContext = OptimizationContext;
 
-impl From<&OptimizationControl> for cluaizOptimizationContext {
+impl From<&OptimizationControl> for OptimizationContext {
     fn from(config: &OptimizationControl) -> Self {
         let kv_mode = match config.kv_cache_quantization {
             KvCacheQuantization::Auto | KvCacheQuantization::Kv16 => 0,
