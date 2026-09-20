@@ -11,8 +11,6 @@ macro_rules! dev_info {
 }
 
 
-pub struct cluaizdbNA;
-
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// 🛑 Global Cancellation Signal for Graceful Interrupts
@@ -39,22 +37,24 @@ pub use prompting::templater::*;
 pub use backend::{context::*, traits::*, signature::*};
 pub use neural_core::NeuralResult;
 
-/// 🏛️ cluaizLinkerPlaceholder: Used during Phase 1 to verify the Dynamic Linker Handshake.
-pub struct cluaizLinkerPlaceholder;
+/// LinkerPlaceholder: Used to verify the Dynamic Linker Handshake.
+pub struct LinkerPlaceholder;
+
+pub type cluaizLinkerPlaceholder = LinkerPlaceholder;
 
 // Ensure placeholder is Send + Sync for the Orchestrator's type requirements
-unsafe impl Send for cluaizLinkerPlaceholder {}
-unsafe impl Sync for cluaizLinkerPlaceholder {}
+unsafe impl Send for LinkerPlaceholder {}
+unsafe impl Sync for LinkerPlaceholder {}
 
-impl crate::backend::traits::UnifiedBackend for cluaizLinkerPlaceholder {
+impl crate::backend::traits::UnifiedBackend for LinkerPlaceholder {
     fn generate(&mut self, _prompt: &str, _max_tokens: usize) -> std::result::Result<String, String> {
-        Err("✅ SOVEREIGN LINKER: Phase 1 Handshake Success. Real inference pending Phase 2.".to_string())
+        Err("Linker handshake success. Real inference pending initialization.".to_string())
     }
     fn prefill(&mut self, _prompt: &str) -> anyhow::Result<()> { Ok(()) }
     fn evaluate_tps(&self) -> f64 { 0.0 }
 }
 
-impl crate::backend::traits::cluaizInference for cluaizLinkerPlaceholder {
+impl crate::backend::traits::StreamingInference for LinkerPlaceholder {
     fn forward_raw(&mut self, _input_ids: &[u32], _pos: usize) -> anyhow::Result<Vec<f32>> {
         Err(anyhow::anyhow!("Handshake Placeholder"))
     }
@@ -64,6 +64,6 @@ impl crate::backend::traits::cluaizInference for cluaizLinkerPlaceholder {
         _max_tokens: usize,
         _callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("✅ SOVEREIGN LINKER: Handshake Complete. Ready for Phase 2."))
+        Err(anyhow::anyhow!("Linker handshake complete."))
     }
 }

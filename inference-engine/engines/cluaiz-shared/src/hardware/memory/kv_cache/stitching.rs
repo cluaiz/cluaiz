@@ -2,17 +2,19 @@ use anyhow::Result;
 use std::sync::Arc;
 use crate::hardware::memory::SovereignBuffer;
 
-/// 🧪 cluaizSignal: A pack of pre-encoded neural states (Frozen History).
+/// KernelSignal: A pack of pre-encoded neural states (Frozen History).
 #[derive(Clone)]
-pub struct cluaizSignal {
+pub struct KernelSignal {
     pub raw_data: Arc<dyn SovereignBuffer>,
     pub token_count: usize,
     pub head_dim: usize,
 }
 
+pub type cluaizSignal = KernelSignal;
+
 /// 🔗 GenericNeuralStitcher: Core logic for surgical memory injection.
 pub trait NeuralStitcher {
-    fn inject_signal(&mut self, signal: cluaizSignal) -> Result<()>;
+    fn inject_signal(&mut self, signal: KernelSignal) -> Result<()>;
 }
 
 pub struct LogitSteerStitcher;

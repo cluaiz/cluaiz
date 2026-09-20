@@ -352,7 +352,7 @@ impl HardwareOrchestrator {
         let mut storage = Vec::new();
         let disks = sysinfo::Disks::new_with_refreshed_list();
 
-        // 🏠 Resolve the primary home of cluaiz-OS
+        // Resolve runtime user configuration directory
         let cluaiz_home = dirs::config_dir().unwrap_or_default().join("cluaiz");
         let cluaiz_home_str = cluaiz_home.to_string_lossy();
 
@@ -361,7 +361,7 @@ impl HardwareOrchestrator {
             let (read, write) = Self::benchmark_storage(&path);
             let dflash = Self::probe_dflash(&path);
 
-            // 🎯 Match: Is this disk hosting the cluaiz kernel?
+            // Match: Is this storage volume hosting the runtime kernel?
             let is_primary = cluaiz_home_str.contains(&path);
 
             storage.push(StorageSubsystem {
