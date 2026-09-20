@@ -35,15 +35,19 @@ impl ToolsRegistry {
                     let path = entry.path();
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                        let (name, ver, desc, triggers, mode, turns) = Self::probe_skill_metadata(&path);
+                        let (name, ver, desc, triggers, sec_opt, mode, turns) = Self::probe_skill_metadata(&path);
+                        let sec_mode = sec_opt.unwrap_or(self.default_security_mode);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
-                            if !name.is_empty() { existing.name = name; }
-                            if !ver.is_empty() { existing.version = ver; }
-                            if !desc.is_empty() { existing.description = desc; }
-                            existing.semantic_triggers = triggers;
-                            existing.execution_mode = mode;
-                            existing.default_turns = turns;
-                            existing.local_dir = path.to_string_lossy().to_string();
+                            let mut entry_changed = false;
+                            if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
+                            if !ver.is_empty() && existing.version != ver { existing.version = ver; entry_changed = true; }
+                            if !desc.is_empty() && existing.description != desc { existing.description = desc; entry_changed = true; }
+                            if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
+                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
+                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
+                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
+                            if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
+                            if entry_changed { changed = true; }
                         } else {
                             self.installed_tools.insert(tool_id.clone(), ToolEntry {
                                 id: tool_id.clone(),
@@ -54,7 +58,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: true,
-                                security_mode: SecurityMode::FullAccess,
+                                security_mode: sec_mode,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: Vec::new(),
@@ -76,17 +80,21 @@ impl ToolsRegistry {
                     let path = entry.path();
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                        let (name, ver, desc, binary, triggers, perms, mode, turns) = Self::probe_plugin_metadata(&path);
+                        let (name, ver, desc, binary, triggers, perms, sec_opt, mode, turns) = Self::probe_plugin_metadata(&path);
+                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::FullAccess } else { self.default_security_mode });
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
-                            if !name.is_empty() { existing.name = name; }
-                            if !ver.is_empty() { existing.version = ver; }
-                            if !desc.is_empty() { existing.description = desc; }
-                            existing.binary_path = binary;
-                            existing.semantic_triggers = triggers;
-                            existing.permissions = perms;
-                            existing.execution_mode = mode;
-                            existing.default_turns = turns;
-                            existing.local_dir = path.to_string_lossy().to_string();
+                            let mut entry_changed = false;
+                            if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
+                            if !ver.is_empty() && existing.version != ver { existing.version = ver; entry_changed = true; }
+                            if !desc.is_empty() && existing.description != desc { existing.description = desc; entry_changed = true; }
+                            if existing.binary_path != binary { existing.binary_path = binary; entry_changed = true; }
+                            if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
+                            if existing.permissions != perms { existing.permissions = perms; entry_changed = true; }
+                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
+                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
+                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
+                            if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
+                            if entry_changed { changed = true; }
                         } else {
                             self.installed_tools.insert(tool_id.clone(), ToolEntry {
                                 id: tool_id.clone(),
@@ -97,7 +105,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: binary,
                                 enabled: true,
-                                security_mode: SecurityMode::FullAccess,
+                                security_mode: sec_mode,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: perms,
@@ -119,16 +127,20 @@ impl ToolsRegistry {
                     let path = entry.path();
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                        let (name, ver, desc, triggers, perms, mode, turns) = Self::probe_mcp_metadata(&path);
+                        let (name, ver, desc, triggers, perms, sec_opt, mode, turns) = Self::probe_mcp_metadata(&path);
+                        let sec_mode = sec_opt.unwrap_or(self.default_security_mode);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
-                            if !name.is_empty() { existing.name = name; }
-                            if !ver.is_empty() { existing.version = ver; }
-                            if !desc.is_empty() { existing.description = desc; }
-                            existing.semantic_triggers = triggers;
-                            existing.permissions = perms;
-                            existing.execution_mode = mode;
-                            existing.default_turns = turns;
-                            existing.local_dir = path.to_string_lossy().to_string();
+                            let mut entry_changed = false;
+                            if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
+                            if !ver.is_empty() && existing.version != ver { existing.version = ver; entry_changed = true; }
+                            if !desc.is_empty() && existing.description != desc { existing.description = desc; entry_changed = true; }
+                            if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
+                            if existing.permissions != perms { existing.permissions = perms; entry_changed = true; }
+                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
+                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
+                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
+                            if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
+                            if entry_changed { changed = true; }
                         } else {
                             self.installed_tools.insert(tool_id.clone(), ToolEntry {
                                 id: tool_id.clone(),
@@ -139,7 +151,7 @@ impl ToolsRegistry {
                                 local_dir: path.to_string_lossy().to_string(),
                                 binary_path: None,
                                 enabled: true,
-                                security_mode: SecurityMode::Strict,
+                                security_mode: sec_mode,
                                 execution_mode: mode,
                                 default_turns: turns,
                                 permissions: perms,
@@ -161,24 +173,24 @@ impl ToolsRegistry {
     }
 
     fn parse_execution_mode(val: Option<&str>, default_mode: ExecutionMode) -> ExecutionMode {
-        match val.unwrap_or("").to_lowercase().as_str() {
-            "auto" => ExecutionMode::Auto,
-            "manual" => ExecutionMode::Manual,
-            _ => default_mode,
-        }
+        val.and_then(ExecutionMode::from_raw).unwrap_or(default_mode)
     }
 
-    fn probe_skill_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, ExecutionMode, i32) {
+    fn parse_security_mode(val: Option<&str>) -> Option<SecurityMode> {
+        val.and_then(SecurityMode::from_raw)
+    }
+
+    fn probe_skill_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let skill_md = dir.join("SKILL.md");
         if skill_md.exists() {
             if let Ok(content) = std::fs::read_to_string(&skill_md) {
                 return Self::probe_skill_frontmatter(&content);
             }
         }
-        (String::new(), String::new(), String::new(), Vec::new(), ExecutionMode::Auto, -1)
+        (String::new(), String::new(), String::new(), Vec::new(), None, ExecutionMode::Auto, -1)
     }
 
-    fn probe_skill_frontmatter(content: &str) -> (String, String, String, Vec<String>, ExecutionMode, i32) {
+    fn probe_skill_frontmatter(content: &str) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let normalized = content.replace("\r\n", "\n");
         let mut start_idx = None;
         if normalized.starts_with("---\n") {
@@ -205,17 +217,18 @@ impl ToolsRegistry {
                         }
                     }
 
+                    let sec_mode = Self::parse_security_mode(val.get("security_mode").and_then(|m| m.as_str()));
                     let mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Auto);
                     let default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(-1) as i32;
 
-                    return (name, version, desc, triggers, mode, default_turns);
+                    return (name, version, desc, triggers, sec_mode, mode, default_turns);
                 }
             }
         }
-        (String::new(), String::new(), String::new(), Vec::new(), ExecutionMode::Auto, -1)
+        (String::new(), String::new(), String::new(), Vec::new(), None, ExecutionMode::Auto, -1)
     }
 
-    fn probe_plugin_metadata(dir: &std::path::Path) -> (String, String, String, Option<String>, Vec<String>, Vec<String>, ExecutionMode, i32) {
+    fn probe_plugin_metadata(dir: &std::path::Path) -> (String, String, String, Option<String>, Vec<String>, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let mut binary = None;
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
@@ -232,6 +245,7 @@ impl ToolsRegistry {
         let mut desc = String::new();
         let mut triggers = Vec::new();
         let mut perms = Vec::new();
+        let mut sec_mode = None;
         let mut mode = ExecutionMode::Auto;
         let mut default_turns = -1;
 
@@ -265,9 +279,10 @@ impl ToolsRegistry {
                             perms.push("fs:access".to_string());
                         }
                     }
+                    sec_mode = Self::parse_security_mode(val.get("security_mode").and_then(|m| m.as_str()));
                     mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Auto);
                     default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(-1) as i32;
-                    return (name, version, desc, binary, triggers, perms, mode, default_turns);
+                    return (name, version, desc, binary, triggers, perms, sec_mode, mode, default_turns);
                 }
             }
         }
@@ -275,20 +290,21 @@ impl ToolsRegistry {
         let skill_path = dir.join("SKILL.md");
         if skill_path.exists() {
             if let Ok(s_content) = std::fs::read_to_string(&skill_path) {
-                let (name, ver, desc, triggers, mode, turns) = Self::probe_skill_frontmatter(&s_content);
-                return (name, ver, desc, binary, triggers, Vec::new(), mode, turns);
+                let (name, ver, desc, triggers, sec_opt, mode, turns) = Self::probe_skill_frontmatter(&s_content);
+                return (name, ver, desc, binary, triggers, Vec::new(), sec_opt, mode, turns);
             }
         }
 
-        (name, version, desc, binary, triggers, perms, mode, default_turns)
+        (name, version, desc, binary, triggers, perms, sec_mode, mode, default_turns)
     }
 
-    fn probe_mcp_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Vec<String>, ExecutionMode, i32) {
+    fn probe_mcp_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let mut name = String::new();
         let mut version = String::new();
         let mut desc = String::new();
         let mut triggers = Vec::new();
         let mut perms = Vec::new();
+        let mut sec_mode = None;
         let mut mode = ExecutionMode::Manual;
         let mut default_turns = 3;
 
@@ -319,12 +335,17 @@ impl ToolsRegistry {
                             perms.push("net:fetch".to_string());
                         }
                     }
+                    sec_mode = Self::parse_security_mode(
+                        val.get("security_mode")
+                            .or_else(|| val.get("mcp").and_then(|m| m.get("security_mode")))
+                            .and_then(|m| m.as_str())
+                    );
                     mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Manual);
                     default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(3) as i32;
-                    return (name, version, desc, triggers, perms, mode, default_turns);
+                    return (name, version, desc, triggers, perms, sec_mode, mode, default_turns);
                 }
             }
         }
-        (name, version, desc, triggers, perms, mode, default_turns)
+        (name, version, desc, triggers, perms, sec_mode, mode, default_turns)
     }
 }

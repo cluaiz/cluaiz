@@ -10,11 +10,31 @@ pub enum LoadStrategy {
 
 /// Execution mode for installed tools and skills
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum ExecutionMode {
     #[default]
     Auto,
     Manual,
+    ConfirmDestructive,
+}
+
+impl ExecutionMode {
+    pub fn from_raw(s: &str) -> Option<Self> {
+        match s.trim().to_lowercase().as_str() {
+            "auto" => Some(Self::Auto),
+            "manual" => Some(Self::Manual),
+            "confirm_destructive" | "confirmdestructive" | "confirm-destructive" => Some(Self::ConfirmDestructive),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Manual => "manual",
+            Self::ConfirmDestructive => "confirm_destructive",
+        }
+    }
 }
 
 /// Security mode for tool execution
@@ -22,9 +42,31 @@ pub enum ExecutionMode {
 #[serde(rename_all = "snake_case")]
 pub enum SecurityMode {
     #[default]
-    FullAccess,
     Sandboxed,
+    FullAccess,
+    WorkspaceWrite,
     Strict,
+}
+
+impl SecurityMode {
+    pub fn from_raw(s: &str) -> Option<Self> {
+        match s.trim().to_lowercase().as_str() {
+            "sandboxed" => Some(Self::Sandboxed),
+            "workspace_write" | "workspacewrite" | "workspace-write" => Some(Self::WorkspaceWrite),
+            "strict" => Some(Self::Strict),
+            "full_access" | "fullaccess" | "full-access" => Some(Self::FullAccess),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Sandboxed => "sandboxed",
+            Self::FullAccess => "full_access",
+            Self::WorkspaceWrite => "workspace_write",
+            Self::Strict => "strict",
+        }
+    }
 }
 
 /// Tool category in the Cluaiz ecosystem
@@ -116,4 +158,46 @@ fn default_persistent_turns() -> i32 {
 
 fn is_default_turn(t: &i32) -> bool {
     *t == -1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_execution_mode_parsing() {
+        assert_eq!(ExecutionMode::from_raw("auto"), Some(ExecutionMode::Auto));
+        assert_eq!(ExecutionMode::from_raw("manual"), Some(ExecutionMode::Manual));
+        assert_eq!(ExecutionMode::from_raw("confirm_destructive"), Some(ExecutionMode::ConfirmDestructive));
+        assert_eq!(ExecutionMode::from_raw("confirm-destructive"), Some(ExecutionMode::ConfirmDestructive));
+        assert_eq!(ExecutionMode::from_raw("invalid"), None);
+    }
+
+    #[test]
+    fn test_security_mode_parsing() {
+        assert_eq!(SecurityMode::from_raw("sandboxed"), Some(SecurityMode::Sandboxed));
+        assert_eq!(SecurityMode::from_raw("workspace_write"), Some(SecurityMode::WorkspaceWrite));
+        assert_eq!(SecurityMode::from_raw("workspace-write"), Some(SecurityMode::WorkspaceWrite));
+        assert_eq!(SecurityMode::from_raw("strict"), Some(SecurityMode::Strict));
+        assert_eq!(SecurityMode::from_raw("full_access"), Some(SecurityMode::FullAccess));
+        assert_eq!(SecurityMode::from_raw("full-access"), Some(SecurityMode::FullAccess));
+        assert_eq!(SecurityMode::from_raw("unknown"), None);
+    }
+
+    #[test]
+    fn test_serde_roundtrip() {
+        let entry_json = r#"{
+            "id": "test-tool",
+            "name": "Test Tool",
+            "security_mode": "workspace_write",
+            "execution_mode": "confirm_destructive"
+        }"#;
+        let parsed: ToolEntry = serde_json::from_str(entry_json).unwrap();
+        assert_eq!(parsed.security_mode, SecurityMode::WorkspaceWrite);
+        assert_eq!(parsed.execution_mode, ExecutionMode::ConfirmDestructive);
+
+        let serialized = serde_json::to_string(&parsed).unwrap();
+        assert!(serialized.contains(r#""security_mode":"workspace_write""#));
+        assert!(serialized.contains(r#""execution_mode":"confirm_destructive""#));
+    }
 }

@@ -1,7 +1,9 @@
+pub mod execution;
 pub mod installer;
 pub mod lifecycle;
 pub mod mcp;
 pub mod plugins;
+pub mod prompt_compiler;
 pub mod registry;
 pub mod skills;
 pub mod telemetry;
@@ -10,13 +12,16 @@ use std::path::Path;
 use anyhow::Result;
 use serde_json::Value;
 
-pub use installer::ToolHubInstaller;
+pub use execution::{CancelHandle, EnvironmentResolver, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
+pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolHubInstaller};
 pub use lifecycle::{SessionToolBinding, SessionToolManager, TurnLifecycleEngine};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
+pub use prompt_compiler::{CompiledPromptTools, ResolvedToolTarget, ToolPromptCompiler};
 pub use registry::{ExecutionMode, LoadStrategy, SecurityMode, ToolCategory, ToolEntry, ToolsRegistry};
 pub use skills::{ParsedSkill, SkillParser, SkillRouter};
 pub use telemetry::{ContextBreakdown, ContextTracker, SystemContextTelemetry};
+
 
 /// Unified Public Facade: ToolsEngine
 /// Single Domain Sovereign Entrypoint for all Tools, Skills, Plugins, and MCP bridges
@@ -125,15 +130,21 @@ impl ToolsEngine {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let plugin_dir = env.plugins_dir().join(plugin_name);
         if plugin_dir.exists() {
-            Self::execute_plugin(&plugin_dir, payload)
-        } else {
-            let alt_dir = env.global_dir.join("plugins").join(plugin_name);
-            if alt_dir.exists() {
-                Self::execute_plugin(&alt_dir, payload)
-            } else {
-                Err(anyhow::anyhow!("Plugin '{}' not found in {:?}", plugin_name, plugin_dir))
+            return Self::execute_plugin(&plugin_dir, payload);
+        }
+        let alt_dir = env.global_dir.join("plugins").join(plugin_name);
+        if alt_dir.exists() {
+            return Self::execute_plugin(&alt_dir, payload);
+        }
+        if let Ok(reg) = Self::registry() {
+            if let Some(entry) = reg.get_tool(plugin_name) {
+                let p = Path::new(&entry.local_dir);
+                if p.exists() {
+                    return Self::execute_plugin(p, payload);
+                }
             }
         }
+        Err(anyhow::anyhow!("Plugin '{}' not found in {:?}", plugin_name, plugin_dir))
     }
 
     /// Calls an external MCP tool via subprocess IPC
@@ -146,29 +157,151 @@ impl ToolsEngine {
         let env = cluaiz_shared::environment::EnvironmentManager::current();
         let mcp_dir = env.mcp_dir().join(mcp_name);
         if mcp_dir.exists() {
-            Self::call_mcp(&mcp_dir, tool_name, arguments).await
+            return Self::call_mcp(&mcp_dir, tool_name, arguments).await;
+        }
+        let alt_dir = env.global_dir.join("mcp").join(mcp_name);
+        if alt_dir.exists() {
+            return Self::call_mcp(&alt_dir, tool_name, arguments).await;
+        }
+        if let Ok(reg) = Self::registry() {
+            if let Some(entry) = reg.get_tool(mcp_name) {
+                let p = Path::new(&entry.local_dir);
+                if p.exists() {
+                    return Self::call_mcp(p, tool_name, arguments).await;
+                }
+            }
+        }
+        Err(anyhow::anyhow!("MCP server '{}' not found in {:?}", mcp_name, mcp_dir))
+    }
+
+    /// Discovers MCP tools dynamically by server name
+    pub async fn list_mcp_tools_by_name(mcp_name: &str) -> Result<Vec<Value>> {
+        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let mcp_dir = env.mcp_dir().join(mcp_name);
+        if mcp_dir.exists() {
+            McpClient::list_tools(&mcp_dir).await
         } else {
             let alt_dir = env.global_dir.join("mcp").join(mcp_name);
             if alt_dir.exists() {
-                Self::call_mcp(&alt_dir, tool_name, arguments).await
+                McpClient::list_tools(&alt_dir).await
             } else {
                 Err(anyhow::anyhow!("MCP server '{}' not found in {:?}", mcp_name, mcp_dir))
             }
         }
     }
 
-    /// Unified DRY executor across plugins and MCP servers by component type
+    /// Compiles prompt tools and instructions for an active session ID
+    pub async fn compile_prompt_tools_for_session(session_id: &str) -> CompiledPromptTools {
+        ToolPromptCompiler::compile_for_session(session_id).await
+    }
+
+    /// Compiles active session tools schema directly into ChatML XML block (FR-1 spec)
+    pub async fn compile_prompt_schema(session_id: &str) -> String {
+        ToolPromptCompiler::compile_for_session(session_id).await.tools_xml
+    }
+
+    /// Compiles prompt tools and instructions for a specific list of tool IDs
+    pub async fn compile_prompt_tools(tool_ids: &[String]) -> CompiledPromptTools {
+        ToolPromptCompiler::compile_tools(tool_ids).await
+    }
+
+    /// Resolves an emitted function name to its host component target (FR-3)
+    pub fn resolve_function_target(fn_name: &str, active_tool_ids: &[String]) -> Option<ResolvedToolTarget> {
+        ToolPromptCompiler::resolve_target(fn_name, active_tool_ids)
+    }
+
+    /// Resolves an emitted function name for an active chat session (FR-3)
+    pub fn resolve_function_target_for_session(session_id: &str, fn_name: &str) -> Option<ResolvedToolTarget> {
+        let active_ids = Self::get_active_tool_ids_for_session(session_id);
+        ToolPromptCompiler::resolve_target(fn_name, &active_ids)
+    }
+
+    /// Formats a tool execution output into standard Market ChatML `<tool_response>` block (FR-4)
+    pub fn format_tool_response(name: &str, content: &Value) -> String {
+        let json_str = serde_json::to_string(content).unwrap_or_else(|_| "{}".to_string());
+        format!("<tool_response>\n{{\"name\": \"{}\", \"content\": {}}}\n</tool_response>", name, json_str)
+    }
+
+    /// Formats a raw tool output string into standard Market ChatML `<tool_response>` block (FR-4)
+    pub fn format_tool_response_raw(name: &str, raw_content: &str) -> String {
+        let content_json: Value = serde_json::from_str(raw_content).unwrap_or_else(|_| {
+            serde_json::json!({ "output": raw_content })
+        });
+        Self::format_tool_response(name, &content_json)
+    }
+
+    /// Unified DRY executor across plugins, MCP servers, skills, and sandboxed terminal commands
     pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
+        let is_terminal = category == "terminal" 
+            || name == "run_command" 
+            || name == "terminal" 
+            || name == "bash"
+            || tool_name.map_or(false, |t| t == "run_command" || t == "bash" || t == "terminal");
+
+        if is_terminal {
+            let parsed_payload: Value = serde_json::from_str(payload).unwrap_or_else(|_| serde_json::json!({ "command": payload }));
+            let command = parsed_payload.get("command")
+                .or_else(|| parsed_payload.get("cmd"))
+                .and_then(|c| c.as_str())
+                .unwrap_or(payload);
+
+            let cwd_path = parsed_payload.get("cwd")
+                .and_then(|c| c.as_str())
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")));
+
+            let sec_mode = Self::get_tool(name)
+                .ok()
+                .flatten()
+                .map(|t| t.security_mode)
+                .unwrap_or(SecurityMode::Sandboxed);
+
+            let stdin_input = parsed_payload.get("stdin")
+                .or_else(|| parsed_payload.get("input"))
+                .and_then(|i| i.as_str());
+
+            let timeout_opt = parsed_payload.get("timeout")
+                .and_then(|t| t.as_u64());
+
+            let venv_dir = RuntimeEnvironmentManager::tool_venv_dir(name);
+            let venv_opt = if venv_dir.exists() { Some(venv_dir.as_path()) } else { None };
+
+            let run_result = SandboxTerminalRunner::execute_advanced(command, &cwd_path, sec_mode, venv_opt, stdin_input, timeout_opt, None).await?;
+            let output_json = serde_json::to_string_pretty(&run_result)?;
+            return Ok(output_json);
+        }
+
         match category {
             "mcp" => {
                 let target_tool = tool_name.unwrap_or(name);
                 let args: Value = serde_json::from_str(payload).unwrap_or_else(|_| serde_json::json!({ "raw": payload }));
+
+                // Auto-provision environment if local tool directory exists
+                if let Ok(Some(entry)) = Self::get_tool(name) {
+                    let tool_dir = std::path::PathBuf::from(&entry.local_dir);
+                    if tool_dir.exists() && !RuntimeEnvironmentManager::is_environment_ready(&tool_dir, name) {
+                        tracing::info!("📦 [ToolsEngine] Auto-provisioning isolated runtime for MCP '{}'", name);
+                        let _ = RuntimeEnvironmentManager::provision_environment(&tool_dir, name).await;
+                    }
+                }
+
                 let result_val = Self::call_mcp_by_name(name, target_tool, args).await?;
                 if let Some(s) = result_val.as_str() {
                     Ok(s.to_string())
                 } else {
                     Ok(result_val.to_string())
                 }
+            }
+            "skill" => {
+                if let Ok(Some(entry)) = Self::get_tool(name) {
+                    let tool_dir = std::path::PathBuf::from(&entry.local_dir);
+                    let skill_file = tool_dir.join("SKILL.md");
+                    if skill_file.exists() {
+                        let content = std::fs::read_to_string(&skill_file)?;
+                        return Ok(content);
+                    }
+                }
+                Ok(format!("Skill '{}' active. Ready for workflow execution.", name))
             }
             "plugin" | _ => {
                 let bytes = Self::execute_plugin_by_name(name, payload.as_bytes())?;
@@ -177,3 +310,4 @@ impl ToolsEngine {
         }
     }
 }
+

@@ -52,6 +52,7 @@ impl ToolsRegistry {
             if let Ok(bytes) = std::fs::read(&bin_path) {
                 if let Ok(mut reg) = bincode::deserialize::<ToolsRegistry>(&bytes) {
                     let _ = reg.sync_with_filesystem();
+                    let _ = reg.save_bin_cache();
                     return Ok(reg);
                 }
             }
