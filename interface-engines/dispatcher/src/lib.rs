@@ -256,21 +256,20 @@ impl NeuralDispatcher {
                                     if let Ok(mut buffer) = data.buffer.lock() {
                                         buffer.push_str(&token);
                                         
-                                        // Are we currently inside a trigger generation?
-                                        if let Some(start_idx) = buffer.find("<TRIGGER:") {
+                                        // Are we currently inside a standard tool call generation?
+                                        if let Some(start_idx) = buffer.find("<tool_call>") {
                                             should_send = false; // Hide from UI
                                             
                                             // Have we reached the end of the payload?
-                                            if let Some(end_idx) = buffer.find("</TRIGGER>") {
-                                                // Include the length of </TRIGGER> (10 chars)
-                                                let full_trigger = &buffer[start_idx..end_idx + 10];
-                                                tracing::info!("🔍 [Dispatcher] Sovereign Interceptor Complete Payload: {}", full_trigger);
+                                            if let Some(end_idx) = buffer.find("</tool_call>") {
+                                                let full_trigger = &buffer[start_idx..end_idx + 12];
+                                                tracing::info!("🔍 [Dispatcher] Standard Tool Call Complete Payload: {}", full_trigger);
                                                 let _ = data.tx.blocking_send(full_trigger.to_string());
                                                 data.cancel_flag.store(true, Ordering::Relaxed);
                                                 return false; // Abort C-FFI Stream gracefully
                                             }
                                         } else {
-                                            // Sliding window for performance if we are not inside a trigger
+                                            // Sliding window for performance if we are not inside a tool call
                                             if buffer.len() > 100 {
                                                 let mut start_idx = buffer.len() - 100;
                                                 while start_idx < buffer.len() && !buffer.is_char_boundary(start_idx) {
@@ -333,13 +332,12 @@ impl NeuralDispatcher {
                                 if !cancel_flag.load(Ordering::Relaxed) {
                                     let mut intercepted_trigger = None;
                                     if let Ok(buffer) = callback_data.buffer.lock() {
-                                        if let Some(start_idx) = buffer.find("<TRIGGER:") {
-                                            if let Some(end_idx) = buffer.find("</TRIGGER>") {
-                                                let full_trigger = &buffer[start_idx..end_idx + 10];
+                                        if let Some(start_idx) = buffer.find("<tool_call>") {
+                                            if let Some(end_idx) = buffer.find("</tool_call>") {
+                                                let full_trigger = &buffer[start_idx..end_idx + 12];
                                                 intercepted_trigger = Some(full_trigger.to_string());
-                                                tracing::info!("🔍 [Dispatcher] Two-Step Discovery Complete Payload for: {}", full_trigger);
+                                                tracing::info!("🔍 [Dispatcher] Tool Call Final Buffer Payload: {}", full_trigger);
                                             } else {
-                                                // Fallback if the model abruptly ended without closing
                                                 let full_trigger = &buffer[start_idx..];
                                                 intercepted_trigger = Some(full_trigger.to_string());
                                             }
