@@ -19,9 +19,9 @@ impl EmbeddingGenerator {
         let model_id = schema.get_active_embedding_model()?;
         
         let formatted_model_id = model_id.replace(":", "-");
-        let model_dir = cluaiz_shared::environment::EnvironmentManager::current()
+        let model_dir = engine_core::environment::EnvironmentManager::current()
             .ensure_text_embedding_models_dir()
-            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().text_embedding_models_dir())
+            .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().text_embedding_models_dir())
             .join(&formatted_model_id);
         
         let model_path = model_dir.join("model.onnx");

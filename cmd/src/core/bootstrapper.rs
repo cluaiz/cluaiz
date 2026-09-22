@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use cluaiz_shared::HardwareGovernor;
+use engine_core::HardwareGovernor;
 use color_eyre::{Result, eyre::eyre};
 use colored::Colorize;
 
@@ -8,22 +8,22 @@ pub struct Bootstrapper;
 impl Bootstrapper {
     const MASTER_REGISTRY_URL: &'static str = "https://raw.githubusercontent.com/cluaiz/cluaiz/main/package.json";
 
-    /// 🚀 cluaiz BOOTSTRAP: The Sovereign Handshake.
+    /// 🚀 BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite(is_dev_sync: bool) -> Result<()> {
-        let local_dir = cluaiz_shared::environment::EnvironmentManager::current().local_dir;
+        let local_dir = engine_core::environment::EnvironmentManager::current().local_dir;
         let profile = if cfg!(debug_assertions) { "debug" } else { "release" };
         let _ = Self::sync_dev_artifacts("all", None, local_dir, profile);
         Self::ensure_global_path();
         
         // 🚀 0. Tools Engine Genesis (Create tools_registry.json and sync ~/.cluaiz/tools/)
-        tracing::info!("🛠️ [cluaiz] Initializing Tools Engine (Registry & Governance)...");
+        tracing::info!("🛠️ Initializing Tools Engine (Registry & Governance)...");
         let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
         permissions.auto_assign_defaults();
         
         let _ = engines::tools::ToolsEngine::registry();
 
         // 📜 Write Third-Party Licenses (Automatic Legal Compliance)
-        let hub_path = cluaiz_shared::HardwareGovernor::resolve_hub_path();
+        let hub_path = engine_core::HardwareGovernor::resolve_hub_path();
         let _ = std::fs::create_dir_all(&hub_path);
         let license_text = include_str!("../assets/THIRD_PARTY_NOTICES.txt");
         let _ = std::fs::write(hub_path.join("THIRD_PARTY_LICENSES.txt"), license_text);
@@ -64,7 +64,7 @@ impl Bootstrapper {
         };
         
         // 🏛️ Seal the Master Registry with Atomic Write Protocol
-        cluaiz_shared::RegistryGovernor::seal_registry(master_registry.clone())
+        engine_core::RegistryGovernor::seal_registry(master_registry.clone())
             .map_err(|e| eyre!("Binary Truth Seal Error: {}", e))?;
         tracing::debug!("✅ [Registry] Binary Truth sealed and verified.");
 
@@ -424,7 +424,7 @@ impl Bootstrapper {
     fn ensure_global_path() {
         #[cfg(windows)]
         {
-            let bin_dir = cluaiz_shared::HardwareGovernor::resolve_bin_gateway();
+            let bin_dir = engine_core::HardwareGovernor::resolve_bin_gateway();
             let bin_str = bin_dir.to_string_lossy().to_string();
             
             // Simple PowerShell script to read User PATH, check if cluaiz is in it, and append if missing.

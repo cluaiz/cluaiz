@@ -2,7 +2,7 @@
 
 ## 1. Architectural Mandate: Single Domain Sovereignty
 
-Just like Model architecture is self-contained in `engines/src/models/` and Hardware Expert Offloading is self-contained in `cluaiz-shared/src/hardware/expert_offloading/`, **all Tool logic** (Skills, Plugins, MCP, Registry, Turn Lifecycle, and Telemetry) is unified within this modular domain:
+Just like Model architecture is self-contained in `engines/src/models/` and Hardware Expert Offloading is self-contained in `engines/core/src/hardware/expert_offloading/`, **all Tool logic** (Skills, Plugins, MCP, Registry, Turn Lifecycle, and Telemetry) is unified within this modular domain:
 
 $$\mathbf{engines/src/tools/}$$
 

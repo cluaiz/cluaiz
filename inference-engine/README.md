@@ -47,7 +47,7 @@ It then automatically compiles the optimal execution graph before the first toke
 |-----------|--------------|
 | `api/`    | The external HTTP and FFI gateway. Manages connection state, CORS, and request parsing. |
 | `engines/`| The heavy computational engine. Manages LMDB memory, tensor math, and active token streaming. |
-| `shared/` | The `cluaiz-shared` crate containing standard structural DNA shared across the workspace. |
+| `engines/core/` | The `engine-core` crate containing standard structural DNA shared across the workspace. |
 
 ---
 

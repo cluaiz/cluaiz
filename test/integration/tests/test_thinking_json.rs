@@ -1,5 +1,5 @@
 use anyhow::Result;
-use cluaiz_shared::{cluaizContext, StructuralDNA, TemplateManager};
+use engine_core::{EngineContext, StructuralDNA, TemplateManager};
 use engines::api::router::{Backend, CoreRouter};
 use engines::runtime::execution::hub::HardwareOrchestrator;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ async fn test_all_reasoning_models_dynamically() -> Result<()> {
 
 async fn run_single_model_isolated(model_name: &str) {
     let folder_name = model_name.replace(':', "-");
-    let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
+    let models_dir = engine_core::environment::EnvironmentManager::current()
         .models_dir()
         .join("chat");
     let model_folder = models_dir.join(&folder_name);
@@ -110,7 +110,7 @@ async fn run_single_model_isolated(model_name: &str) {
     println!("🧠 Using tags - Start: '{}', End: '{}'", start_tag, end_tag);
     println!("⏳ Instantiating Model in VRAM... (Please wait)");
 
-    let context = cluaizContext::boot(dna.clone(), TemplateManager::default());
+    let context = EngineContext::boot(dna.clone(), TemplateManager::default());
     let engine_result = HardwareOrchestrator::instantiate(
         &gguf_file_path,
         "llama",

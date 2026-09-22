@@ -11,9 +11,9 @@ pub async fn execute(model_id: &str) -> Result<()> {
 
     if let Some(m) = model {
         // Resolve path to the model file
-        let vault_path = cluaiz_shared::environment::EnvironmentManager::current()
+        let vault_path = engine_core::environment::EnvironmentManager::current()
             .ensure_models_dir()
-            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+            .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
         
         // This is a simplification; a real manager should handle the specific file naming
         let model_file = vault_path.join(format!("{}.gguf", m.id)); // Assuming GGUF for now

@@ -58,7 +58,7 @@ impl GgufProber {
             || tensor_infos.keys().any(|k| k.to_lowercase().contains("pooling"));
 
         let (think_start_tag, think_end_tag) = if let Some(ref tmpl) = chat_template {
-            cluaiz_shared::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl)
+            engine_core::metadata::dna::StructuralDNA::extract_reasoning_markers(tmpl)
         } else {
             (None, None)
         };

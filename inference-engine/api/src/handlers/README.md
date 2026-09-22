@@ -11,7 +11,7 @@ The `handlers/` directory is the edge layer of the cluaiz inference engine. When
 The strict architectural rule of this module is that **handlers contain zero core business logic**. They are purely translation layers. A handler's only job is to:
 1. Parse the incoming JSON/Multipart payload via Axum.
 2. Validate the structural schema (JWT tokens, parameter boundaries).
-3. Translate the HTTP request into a `cluaiz_shared` internal Rust struct.
+3. Translate the HTTP request into an `engine_core` internal Rust struct.
 4. Dispatch that struct safely to the inner `engines/` core for execution.
 
 ## 🏛️ Architectural Flow

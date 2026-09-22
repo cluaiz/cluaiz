@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::fs::OpenOptions;
 use std::io::Write;
 use tokenizers::Tokenizer;
-use engines::engine::runner::cluaizRunner;
+use engines::EngineRunner;
 use engines::loader::gguf::GGUFLoader;
 use engines::engine::sampler::CoreSampler;
 
@@ -136,7 +136,7 @@ async fn main() {
         };
 
         let sampler = CoreSampler::new(299792, 0.7, 0.9, 1.1);
-        let mut runner = cluaizRunner::new(model, tokenizer, sampler, None);
+        let mut runner = EngineRunner::new(model, tokenizer, sampler, None);
 
         // ── Generation Run ──
         println!("   🚀 Generating...");

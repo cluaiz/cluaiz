@@ -1,7 +1,7 @@
-use cluaiz_shared::backend::traits::{cluaizInference, UnifiedBackend};
-use cluaiz_shared::hardware::governor::HardwareGovernor;
-use cluaiz_shared::hardware::schema::optimization::FeatureState;
-use cluaiz_shared::{cluaizContext, StructuralDNA, TemplateManager};
+use engine_core::backend::traits::{StreamingInference, UnifiedBackend};
+use engine_core::hardware::governor::HardwareGovernor;
+use engine_core::hardware::schema::optimization::FeatureState;
+use engine_core::{EngineContext, StructuralDNA, TemplateManager};
 use color_eyre::Result;
 use colored::Colorize;
 use engines::models::registry::CoreRoster;
@@ -53,7 +53,7 @@ pub async fn execute(target_model_id: Option<String>, runs: usize) -> Result<()>
             local_path.clone()
         } else {
             let folder_name = model.id.replace(':', "-");
-            let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
+            let models_dir = engine_core::environment::EnvironmentManager::current()
                 .models_dir()
                 .join("chat");
             models_dir.join(&folder_name).to_string_lossy().to_string()
@@ -198,7 +198,7 @@ fn get_benchmark_out_dir() -> PathBuf {
         path.join("test").join("benchmark")
     } else {
         // Production Environment
-        cluaiz_shared::environment::EnvironmentManager::current()
+        engine_core::environment::EnvironmentManager::current()
             .local_dir
             .join("reports")
             .join("benchmark")
@@ -250,7 +250,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
     let path_str = if folder_name.contains('/') || folder_name.contains('\\') {
         folder_name.clone()
     } else {
-        let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
+        let models_dir = engine_core::environment::EnvironmentManager::current()
             .models_dir()
             .join("chat");
         models_dir.join(&folder_name).to_string_lossy().to_string()
@@ -319,7 +319,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
     // Allow HardwareGovernor to negotiate context length dynamically based on VRAM
     // dna.max_context_length is left untouched to represent the model's true architecture limit.
 
-    let context = cluaizContext::boot(dna.clone(), TemplateManager::default());
+    let context = EngineContext::boot(dna.clone(), TemplateManager::default());
 
     // Model Params Guess (for prompt filtering)
     let approx_params_b = (dna.weights_size_gb * 1.0) as usize; // Roughly 1GB = 1B params for q4/q8. Simple heuristic.
@@ -406,7 +406,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
             );
 
             // Reconfigure booster
-            let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+            let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
             gguf_meta.user_moved_flags.think_mode = if think_mode {
                 "On".to_string()
             } else {

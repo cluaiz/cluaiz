@@ -8,7 +8,7 @@
 
 The `api/src/` directory is the core entry point for the cluaiz Engine's HTTP and FFI Gateway. While the `engines/` crate performs all the heavy mathematical lifting and memory management, this module is strictly responsible for network I/O, route registration, CORS policies, and process initialization. 
 
-It acts as the strict boundary between the unsafe external world (network requests) and the safe internal execution substrate (`cluaiz-shared` types).
+It acts as the strict boundary between the unsafe external world (network requests) and the safe internal execution substrate (`engine-core` types).
 
 ## 🏛️ Architectural Flow
 

@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use cluaiz_shared::hardware::telemetry::ObservableHardwareState;
+use engine_core::hardware::telemetry::ObservableHardwareState;
 use std::sync::atomic::Ordering;
 
 pub struct TelemetryServer {
@@ -203,7 +203,7 @@ fn json_to_yaml(json: &serde_json::Value) -> serde_yaml::Value {
 }
 
 async fn handle_components_list() -> Result<String, String> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let mut results = serde_json::Map::new();
     
     for comp_type in ["plugin", "mcp", "skill"] {
@@ -257,7 +257,7 @@ fn yaml_to_json(y: serde_yaml::Value) -> serde_json::Value {
 }
 
 async fn handle_settings_read(component_type: &str, component_id: &str) -> Result<String, String> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let comp_dir = env.global_dir.join(format!("{}s", component_type)).join(component_id);
     
     let possible_manifests = [
@@ -300,7 +300,7 @@ async fn handle_settings_update(payload: serde_json::Value) -> Result<(), String
     let component_id = payload.get("component_id").and_then(|v| v.as_str()).ok_or("Missing component_id")?;
     let updates = payload.get("updates").and_then(|v| v.as_object()).ok_or("Missing updates object")?;
 
-    let env_manager = cluaiz_shared::environment::EnvironmentManager::current();
+    let env_manager = engine_core::environment::EnvironmentManager::current();
     let comp_dir = env_manager.global_dir.join(format!("{}s", component_type)).join(component_id);
     
     if !comp_dir.exists() {

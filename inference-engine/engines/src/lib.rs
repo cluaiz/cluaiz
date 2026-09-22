@@ -31,7 +31,7 @@ pub use hardware::{HardwareDetector, SiliconTruth, SiliconTruth as HardwareInfo,
 pub use hardware::system_control_manager::{detect_hardware, has_config, read_config, save_config, update_field};
 
 // 3. Execution & Inference
-pub use runtime::execution::runner::{cluaizRunner, cluaizMetrics};
+pub use runtime::execution::runner::{EngineRunner, ExecutionMetrics};
 pub use runtime::execution::sampler::CoreSampler;
 pub use runtime::execution::loader::GGUFLoader;
 
@@ -42,4 +42,4 @@ pub use models::fetcher::{DownloadEvent, ModelDownloader};
 
 // 5. Routing
 pub use api::router::CoreRouter;
-pub use cluaiz_shared::BackendType;
+pub use engine_core::BackendType;

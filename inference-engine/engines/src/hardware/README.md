@@ -25,7 +25,7 @@ graph TD
 ## 🧬 Significant Files
 
 ### 1. `mod.rs` (The HardwareDetector)
-- **The Core Logic:** Re-exports the `SiliconTruth` structures defined in the `cluaiz-shared` crate and implements the `HardwareDetector` bootloader.
+- **The Core Logic:** Re-exports the `SiliconTruth` structures defined in the `engine-core` crate and implements the `HardwareDetector` bootloader.
 - **The Execution Flow:** Called during engine initialization. It blocks the main thread until it successfully constructs a topological map of the physical hardware.
 
 ### 2. `system_control_manager.rs`

@@ -66,10 +66,6 @@ pub mod telemetry {
     pub use crate::hardware::system_performance::*;
 }
 
-/// 🧬 cluaiz Bridge: Alias for get_sovereign_profile() for naming-migration compat.
-pub fn get_cluaiz_profile() -> schema::profiles::cluaizProfile {
-    get_sovereign_profile()
-}
 
 impl schema::profiles::SovereignProfile {
     /// 🧬 cluaiz Bridge: Alias for to_silicon_truth() for naming-migration compat.

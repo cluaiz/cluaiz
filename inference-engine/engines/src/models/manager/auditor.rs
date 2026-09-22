@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use cluaiz_shared::hardware::schema::profiles::SystemControl;
+use engine_core::hardware::schema::profiles::SystemControl;
 
 /// Hardware Health Auditor
 /// Enforces the 5/10 TPS Rule and VRAM safety.
@@ -24,7 +24,7 @@ impl HardwareAuditor {
     }
 
     fn evaluate_hardware(&self, control: &SystemControl, req_ram: f32, req_gpu: bool) -> HealthStatus {
-        // 🚀 cluaiz Logic: Extract VRAM from the first GPU (Primary)
+        // Extract VRAM from the first GPU (Primary)
         let vram_available = control.silicon_truth.accelerators.gpus.first()
             .map(|g| g.vram_available_gb)
             .unwrap_or(0.0) as f32;
@@ -52,7 +52,7 @@ impl HardwareAuditor {
     }
 
     fn get_system_control_path(&self) -> PathBuf {
-        cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json")
+        engine_core::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json")
     }
 }
 

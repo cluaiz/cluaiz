@@ -1,4 +1,4 @@
-use cluaiz_shared::hardware::telemetry;
+use engine_core::hardware::telemetry;
 use std::time::Duration;
 
 fn main() {

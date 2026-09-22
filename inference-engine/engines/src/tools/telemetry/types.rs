@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-pub use cluaiz_shared::telemetry::types::{CategoryTelemetryGroup, ComponentTelemetryItem};
+pub use engine_core::telemetry::types::{CategoryTelemetryGroup, ComponentTelemetryItem};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ContextBreakdown {

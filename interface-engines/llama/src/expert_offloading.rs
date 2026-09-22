@@ -22,7 +22,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
-use cluaiz_shared::hardware::expert_offloading::{
+use engine_core::hardware::expert_offloading::{
     AsyncExpertPrefetcher, DirectFileReader, ExpertOffsetIndex, MoeModelInfo, RoutingHeatTracker,
     SharedExpertCache, SharedStagingBuffer,
 };

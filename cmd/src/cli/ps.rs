@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
 use sysinfo::System;
-use cluaiz_shared::hardware::governor::HardwareGovernor;
+use engine_core::hardware::governor::HardwareGovernor;
 
 pub async fn execute() -> Result<()> {
     println!("\n  {} [cluaiz] Sovereign Process Audit...", "🔍".cyan());

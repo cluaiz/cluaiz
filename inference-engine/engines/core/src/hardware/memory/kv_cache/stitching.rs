@@ -10,9 +10,6 @@ pub struct KernelSignal {
     pub head_dim: usize,
 }
 
-pub type cluaizSignal = KernelSignal;
-
-/// 🔗 GenericNeuralStitcher: Core logic for surgical memory injection.
 pub trait NeuralStitcher {
     fn inject_signal(&mut self, signal: KernelSignal) -> Result<()>;
 }
@@ -27,7 +24,7 @@ impl LogitSteerStitcher {
     /// Injects a frozen neural state into the early blocks of a paged cache.
     pub fn inject_frozen_history(
         cache: &mut crate::hardware::memory::kv_cache::PagedKVCache,
-        _signal: cluaizSignal
+        _signal: KernelSignal
     ) -> Result<()> {
         tracing::info!("🔗 [LogitSteer] Mapping frozen history blocks into PagedCache...");
         

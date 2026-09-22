@@ -1,8 +1,8 @@
 use anyhow::Result;
-use cluaiz_shared::hardware::resource_negotiator::{
+use engine_core::hardware::resource_negotiator::{
     negotiate_resource, EngineType, InferenceMode, ResourceRequest, PlacementTier
 };
-use cluaiz_shared::hardware::governor::HardwareGovernor;
+use engine_core::hardware::governor::HardwareGovernor;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
@@ -34,9 +34,9 @@ async fn test_gemma_hardware_allocation_trace() -> Result<()> {
     };
 
     // 2. Call the ACTUAL negotiator production logic directly!
-    let grant = cluaiz_shared::hardware::resource_negotiator::negotiate_resource(&request)?;
+    let grant = engine_core::hardware::resource_negotiator::negotiate_resource(&request)?;
 
-    writeln!(log_buf, "DEBUG - Config Path: {:?}", cluaiz_shared::environment::config_manager::ConfigManager::config_dir())?;
+    writeln!(log_buf, "DEBUG - Config Path: {:?}", engine_core::environment::config_manager::ConfigManager::config_dir())?;
     
     writeln!(log_buf, "--- [NEGOTIATOR PRODUCTION DECISION] ---")?;
     writeln!(log_buf, "Assigned Placement Tier: {:?}", grant.tier)?;

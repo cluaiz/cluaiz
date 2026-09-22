@@ -30,7 +30,7 @@ impl DashboardEngine {
 
         // 🛑 GRACEFUL INTERRUPT HANDLER (Sovereign Pivot Control)
         let _ = ctrlc::set_handler(move || {
-            cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
+            engine_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         });
 
         // ── 🧬 ATOMIC Core DISCOVERY (cluaiz Startup Scan) ──
@@ -42,7 +42,7 @@ impl DashboardEngine {
         }
 
         // ── 📡 cluaiz TELEMETRY IGNITION (Ghost Observer Singleton) ──
-        let state_pulse = cluaiz_shared::hardware::telemetry::get_pulse();
+        let state_pulse = engine_core::hardware::telemetry::get_pulse();
         let app_start_time = std::time::Instant::now();
         let last_inference_duration = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let last_ttft = Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -80,14 +80,14 @@ impl DashboardEngine {
                 match boot_target {
                     Some((ref name, Some(ref path_str))) => {
                         // ✅ Model is on disk with a known path — load it directly
-                        let mut spinner = cluaiz_shared::utils::spinner::cluaizSpinner::new();
+                        let mut spinner = engine_core::utils::spinner::TerminalSpinner::new();
                         spinner.start(&format!("Auto-Booting Neural Kernel: {}...", name));
                         let path = std::path::PathBuf::from(path_str);
                         let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
                         let runtime = if is_gguf {
-                            cluaiz_shared::BackendType::RuntimeB
+                            engine_core::BackendType::RuntimeB
                         } else {
-                            cluaiz_shared::BackendType::RuntimeA
+                            engine_core::BackendType::RuntimeA
                         };
                         tokio::task::block_in_place(|| {
                             let handle = tokio::runtime::Handle::current();
@@ -141,7 +141,7 @@ impl DashboardEngine {
         // ── 🔥 BACKGROUND HOT-RELOAD WATCHER ──
         let watcher_engine = state.Core_engine.clone();
         tokio::spawn(async move {
-            let env = cluaiz_shared::environment::EnvironmentManager::current();
+            let env = engine_core::environment::EnvironmentManager::current();
             let opt_path = env.config_dir().join("llm_optimization.json");
             let perm_path = env.config_dir().join("permission.json");
             
@@ -309,10 +309,10 @@ impl DashboardEngine {
                         // ── 🔥 HOT RELOAD MOVED TO BACKGROUND TASK ──
 
                         // Reset cancellation signal before starting
-                        cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
+                        engine_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
 
                         if !state.Core_engine.is_loaded.load(Ordering::SeqCst) && !state.is_client_mode {
-                            let mut spinner = cluaiz_shared::utils::spinner::cluaizSpinner::new();
+                            let mut spinner = engine_core::utils::spinner::TerminalSpinner::new();
                             spinner.start("Lazy loading neural model weights...");
                             let mut loaded_successfully = false;
                             
@@ -327,9 +327,9 @@ impl DashboardEngine {
                                         let path = std::path::PathBuf::from(local_path);
                                         let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
                                         let runtime = if is_gguf {
-                                            cluaiz_shared::BackendType::RuntimeB
+                                            engine_core::BackendType::RuntimeB
                                         } else {
-                                            cluaiz_shared::BackendType::RuntimeA
+                                            engine_core::BackendType::RuntimeA
                                         };
                                         let rt = tokio::runtime::Handle::current();
                                         let load_res = tokio::task::block_in_place(|| {
@@ -397,8 +397,8 @@ impl DashboardEngine {
                                 }
                             }
                             
-                            let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                            let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                            let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                            let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                             let suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
                             
                             let active_model = state._active_model_id.clone().unwrap_or_default().to_lowercase();
@@ -429,7 +429,7 @@ impl DashboardEngine {
                                 max_t,
                                 Box::new(move |token: String| -> bool {
                                     // 🛑 Stop if already past EOS or interrupted
-                                    if (eos_cb.load(Ordering::SeqCst) && !token.starts_with("__ENGINE_PAUSE_EXECUTE__")) || cluaiz_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) { 
+                                    if (eos_cb.load(Ordering::SeqCst) && !token.starts_with("__ENGINE_PAUSE_EXECUTE__")) || engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) { 
                                         return false; 
                                     }
 
@@ -439,7 +439,7 @@ impl DashboardEngine {
                                             if key.code == crossterm::event::KeyCode::Char('t') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                                                 // Only skip if we are currently IN thinking mode — prevents double-fire from key-repeat
                                                 if in_think_cb.load(Ordering::SeqCst) {
-                                                    cluaiz_shared::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
+                                                    engine_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
                                                     // ✅ Immediately reset UI think state — don't wait for </think> text
                                                     in_think_cb.store(false, Ordering::SeqCst);
                                                     global_think_cb.store(false, Ordering::SeqCst);
@@ -447,7 +447,7 @@ impl DashboardEngine {
                                                 }
                                             }
                                             if key.code == crossterm::event::KeyCode::Char('c') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-                                                cluaiz_shared::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
+                                                engine_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
                                             }
                                         }
                                     }
@@ -500,16 +500,16 @@ impl DashboardEngine {
                                         } else if token == "__STEP_4_READ_SMS__" {
                                             print!("\r\n\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context.\r\n");
                                             is_system_step = true;
-                                        } else if token.starts_with("<TRIGGER:") {
+                                        } else if token.contains("<tool_call>") || token.contains("<tool_call") {
                                             let clean = token.replace("\n", "").replace("\r", "");
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Match tag emitted -> {}\r\n", clean);
+                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> {}\r\n", clean);
                                             is_system_step = true;
-                                        } else if token.contains("</TRIGGER>") {
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </TRIGGER>\r\n");
+                                        } else if token.contains("</tool_call>") {
+                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>\r\n");
                                             is_system_step = true;
                                         } else if token.starts_with("__ENGINE_PAUSE_EXECUTE__") {
                                             // ── 🌀 Dynamic Real-Time Agentic Trace ──
-                                            let mut sp = cluaiz_shared::utils::spinner::cluaizSpinner::new();
+                                            let mut sp = engine_core::utils::spinner::TerminalSpinner::new();
                                             
                                             sp.start("Receiving User SMS...");
                                             std::thread::sleep(std::time::Duration::from_millis(250));
@@ -536,12 +536,12 @@ impl DashboardEngine {
                                             
                                             sp.start("AI Formulating Plan...");
                                             std::thread::sleep(std::time::Duration::from_millis(400));
-                                            sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Match tag emitted -> <TRIGGER:{}>", tool_name)));
+                                            sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> <tool_call>{{\"name\": \"{}\"}}", tool_name)));
                                             println!();
                                             
                                             sp.start("Emitting closing sequence tag...");
                                             std::thread::sleep(std::time::Duration::from_millis(200));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </TRIGGER>"));
+                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>"));
                                             println!();
                                             
                                             sp.start("Triggering Engine intercept...");
@@ -582,8 +582,8 @@ impl DashboardEngine {
                                             || display_token.contains("<TOOL_OUTPUT_LOG>") 
                                             || display_token.contains("</TOOL_OUTPUT_LOG>")
                                             || display_token.starts_with("__STEP_")
-                                            || display_token.starts_with("<TRIGGER:")
-                                            || display_token.contains("</TRIGGER>") {
+                                            || display_token.contains("<tool_call>")
+                                            || display_token.contains("</tool_call>") {
                                             display_token = String::new();
                                         }
 
@@ -698,7 +698,7 @@ impl DashboardEngine {
                             let _ = storage_bridge.save_context(&response_id, &response, &response_vector);
                         }
 
-                        if cluaiz_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+                        if engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
                             println!();
                             use crossterm::style::Stylize;
                             println!("{} {}", "⏸️  Paused:".with(crossterm::style::Color::Yellow).bold(), "Engine stopped mid-generation. Context preserved in VRAM.".with(crossterm::style::Color::DarkGrey));
@@ -716,7 +716,7 @@ impl DashboardEngine {
 
                         
                         let ttft_secs = f64::from_bits(ttft_ref.load(Ordering::SeqCst));
-                        let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
+                        let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
                         let mut vram_used_gb = 0.0;
                         for info in registry { if info.pid == std::process::id() { vram_used_gb = info.vram_gb; } }
 
@@ -865,8 +865,8 @@ impl DashboardEngine {
                     print!("\x1B[1A\x1B[2K\r");
                     stdout().flush()?;
                     
-                    let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                    let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                    let mut opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                    let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                     if mode_ans.contains("Flash Mode") {
                         gguf_meta.user_moved_flags.think_mode = "Off".to_string();
                     } else if mode_ans.contains("Think Mode") {
@@ -875,17 +875,17 @@ impl DashboardEngine {
                         gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                     }
                     
-                    let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
+                    let _ = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
                     let _ = gguf_meta.save();
                     
                     println!("  {} {} activated and saved to llm_optimization.json.", "✅".green(), mode_ans.bold());
                     return Ok(());
                 } else if master_ans.contains("Optimization") || master_ans.contains("Booster") {
-                    let _opt_config_path = cluaiz_shared::environment::EnvironmentManager::current().config_dir().join("llm_optimization.json");
+                    let _opt_config_path = engine_core::environment::EnvironmentManager::current().config_dir().join("llm_optimization.json");
 
                     loop {
-                        let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        let mut opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                        let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         
                         let compute_mode_str = match gguf_meta.hardware_and_execution.n_gpu_layers {
                             0 => "CPU Only".to_string(),
@@ -983,7 +983,7 @@ impl DashboardEngine {
                                 _ => {}
                             }
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 let _ = gguf_meta.save();
                                 println!("  {} Optimization updated: Compute Device = {}", "✅".green(), selected_device.bold());
                             } else {
@@ -1023,7 +1023,7 @@ impl DashboardEngine {
                                 }
                             }
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 println!("  {} Optimization updated: VRAM Buffer = {:?}", "✅".green(), opt_control.custom_vram_buffer_gb);
                             } else {
                                 println!("  {} Failed to save optimization settings.", "❌".red());
@@ -1062,7 +1062,7 @@ impl DashboardEngine {
                                 }
                             }
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 println!("  {} Optimization updated: RAM Buffer = {:?}", "✅".green(), opt_control.custom_ram_buffer_gb);
                             } else {
                                 println!("  {} Failed to save optimization settings.", "❌".red());
@@ -1094,15 +1094,15 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             opt_control.context_shifting = match selected_shift.as_str() {
-                                "Off" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Off,
-                                "Minimal" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Minimal,
-                                "Standard" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Standard,
-                                "Aggressive" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Aggressive,
-                                "Extreme" => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Extreme,
-                                _ => cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Auto,
+                                "Off" => engine_core::hardware::schema::optimization::ContextShiftingMode::Off,
+                                "Minimal" => engine_core::hardware::schema::optimization::ContextShiftingMode::Minimal,
+                                "Standard" => engine_core::hardware::schema::optimization::ContextShiftingMode::Standard,
+                                "Aggressive" => engine_core::hardware::schema::optimization::ContextShiftingMode::Aggressive,
+                                "Extreme" => engine_core::hardware::schema::optimization::ContextShiftingMode::Extreme,
+                                _ => engine_core::hardware::schema::optimization::ContextShiftingMode::Auto,
                             };
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 println!("  {} Optimization updated: Context Shifting = {}", "✅".green(), selected_shift.bold());
                             } else {
                                 println!("  {} Failed to save optimization settings.", "❌".red());
@@ -1131,13 +1131,13 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             opt_control.kv_cache_quantization = match selected_kv.as_str() {
-                                s if s.starts_with("16-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv16,
-                                s if s.starts_with("8-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv8,
-                                s if s.starts_with("4-bit") => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4,
-                                _ => cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto,
+                                s if s.starts_with("16-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv16,
+                                s if s.starts_with("8-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv8,
+                                s if s.starts_with("4-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv4,
+                                _ => engine_core::hardware::schema::optimization::KvCacheQuantization::Auto,
                             };
 
-                            if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                                 println!("  {} Optimization updated: KV Cache Quantization = {}", "✅".green(), selected_kv.bold());
                             } else {
                                 println!("  {} Failed to save optimization settings.", "❌".red());
@@ -1179,7 +1179,7 @@ impl DashboardEngine {
                             };
 
                             gguf_meta.user_moved_flags.think_mode = mode_val.clone();
-                            let mut onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+                            let mut onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
                             onnx_meta.user_moved_flags.think_mode = mode_val.clone();
 
                             if let Ok(_) = gguf_meta.save() {
@@ -1207,9 +1207,9 @@ impl DashboardEngine {
                         stdout().flush()?;
 
                         let feature_state = match val_ans.as_str() {
-                            "On" => cluaiz_shared::hardware::schema::optimization::FeatureState::On,
-                            "Off" => cluaiz_shared::hardware::schema::optimization::FeatureState::Off,
-                            _ => cluaiz_shared::hardware::schema::optimization::FeatureState::Auto,
+                            "On" => engine_core::hardware::schema::optimization::FeatureState::On,
+                            "Off" => engine_core::hardware::schema::optimization::FeatureState::Off,
+                            _ => engine_core::hardware::schema::optimization::FeatureState::Auto,
                         };
 
                         match key_part.as_str() {
@@ -1226,7 +1226,7 @@ impl DashboardEngine {
                             _ => {}
                         }
                         
-                        if let Ok(_) = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
+                        if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
                             let _ = gguf_meta.save();
                             println!("  {} Optimization updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
                         } else {
@@ -1308,11 +1308,11 @@ impl DashboardEngine {
                     // High bit-depth -> Native Rust
                     // 1-bit BitNet -> MANDATORY Llama (Binary)
                     let runtime = if model.manifest.bit_depth < 2.0 {
-                        cluaiz_shared::BackendType::RuntimeB
+                        engine_core::BackendType::RuntimeB
                     } else if path_str.to_lowercase().ends_with(".gguf") {
-                        cluaiz_shared::BackendType::RuntimeB
+                        engine_core::BackendType::RuntimeB
                     } else {
-                        cluaiz_shared::BackendType::RuntimeA
+                        engine_core::BackendType::RuntimeA
                     };
 
                     let result = tokio::task::block_in_place(|| {
@@ -1338,14 +1338,14 @@ impl DashboardEngine {
                             Err(e) => {
                                 // ⚠️ NATIVE FALLBACK: Only for standard models (Bit-depth >= 2.0)!
                                 // BitNet MUST NOT use RuntimeA (Candle) as it will crash with tensor errors.
-                                if runtime == cluaiz_shared::BackendType::RuntimeB
+                                if runtime == engine_core::BackendType::RuntimeB
                                     && model.manifest.bit_depth >= 2.0
                                 {
                                     let path_inner = std::path::PathBuf::from(path_str);
                                     handle
                                         .block_on(engines::CoreRouter::load_model(
                                             path_inner,
-                                            cluaiz_shared::BackendType::RuntimeA
+                                            engine_core::BackendType::RuntimeA
                                         ))
                                         .map(|router| {
                                             let mut lock = state.Core_engine.router.blocking_lock();

@@ -122,14 +122,14 @@ $$\text{Per-Token Latency} = T_{\text{VRAM Layers}} + \sum_{L=1}^{N_{\text{CPU L
 
 ## 5. Complete Inter-File Connection Map
 
-This diagram maps all connections between the `cluaiz-shared` hardware subsystem and the `interface-engines/llama` engine:
+This diagram maps all connections between the `engine-core` hardware subsystem and the `interface-engines/llama` engine:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │                            CLUAIZ CROSS-CRATE CODE LINKAGE MAP                              │
 ├─────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                             │
-│  [ cluaiz-shared crate: hardware/expert_offloading ]                                        │
+│  [ engine-core crate: hardware/expert_offloading ]                                          │
 │  ├── direct_io.rs              ──> Low-level aligned Win32/POSIX Direct I/O Driver           │
 │  ├── ring_buffer.rs            ──> Fixed 2x64MB Slot A/B Ping-Pong Staging Buffers          │
 │  ├── async_prefetcher.rs       ──> Dedicated background worker thread (Reads SSD to Buffer) │
@@ -170,7 +170,7 @@ This diagram maps all connections between the `cluaiz-shared` hardware subsystem
 | [`expert_cache.rs`](expert_cache.rs) | `SharedExpertCache`, `ExpertCachePolicy` | Tracks active expert memory usage against Negotiator RAM budgets and executes LRU eviction when memory limits are reached. |
 | [`moe_detector.rs`](moe_detector.rs) | `MoeModelInfo`, `MoeDetector` | Probes model metadata at startup to identify MoE architectures, calculate dense backbone vs expert payload sizes, and determine the optimal memory placement tier. |
 | [`mmap_streamer.rs`](mmap_streamer.rs) | `SsdMmapStreamer` | Encapsulates zero-copy memory mapping and issues OS virtual memory advisories (`libc::madvise` / `PrefetchVirtualMemory`). |
-| [`mod.rs`](mod.rs) | Re-exports & Module Declarations | Cleanly exports all internal modules to `cluaiz-shared::hardware::expert_offloading`. |
+| [`mod.rs`](mod.rs) | Re-exports & Module Declarations | Cleanly exports all internal modules to `engine_core::hardware::expert_offloading`. |
 
 ---
 

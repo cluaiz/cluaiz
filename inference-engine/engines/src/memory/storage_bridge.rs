@@ -1,7 +1,6 @@
-//! 🧠 Cognitive Storage Bridge: Trait abstraction for local and remote database engines.
-//! This ensures cluaiz is fully agnostic of where cluaizdb is deployed.
+//! Cognitive Storage Bridge: Trait abstraction for local and remote database engines.
 
-use cluaiz_shared::hardware::governor::HardwareGovernor;
+use engine_core::hardware::governor::HardwareGovernor;
 use std::sync::Arc;
 
 pub trait CognitiveStorageBridge: Send + Sync {

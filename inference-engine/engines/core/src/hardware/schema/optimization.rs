@@ -234,9 +234,6 @@ pub struct OptimizationContext {
     pub max_context_length: u32,
 }
 
-pub type cluaizOptimizationContext = OptimizationContext;
-pub type cluaizBoosterContext = OptimizationContext;
-
 impl From<&OptimizationControl> for OptimizationContext {
     fn from(config: &OptimizationControl) -> Self {
         let kv_mode = match config.kv_cache_quantization {

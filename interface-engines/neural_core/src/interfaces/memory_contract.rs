@@ -1,1 +1,1 @@
-pub use cluaiz_shared::hardware::memory::{SovereignBuffer, MappedBuffer, ActiveBuffer};
+pub use engine_core::hardware::memory::{SovereignBuffer, MappedBuffer, ActiveBuffer};

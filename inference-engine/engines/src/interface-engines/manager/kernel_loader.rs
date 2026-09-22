@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// This uses the binary truth (`system_control.bin`) as the ultimate source,
 /// exactly as the cluaiz Architecture intends. Zero custom hardcoding.
 fn read_cluaiz_root() -> Option<PathBuf> {
-    match cluaiz_shared::HardwareGovernor::load_system_control() {
+    match engine_core::HardwareGovernor::load_system_control() {
         Ok(control) => Some(PathBuf::from(control.context.cluaiz_root)),
         Err(e) => {
             tracing::error!("❌ [KernelLoader] Failed to read System Truth: {}", e);
@@ -110,7 +110,7 @@ impl KernelLoader {
 
         // 4. System Truth: Read cluaiz_root (Global Installation)
         if let Some(_) = read_cluaiz_root() {
-            let env = cluaiz_shared::environment::EnvironmentManager::current();
+            let env = engine_core::environment::EnvironmentManager::current();
             let base_link = env.engine_dir();
 
             for file_name in &candidates {

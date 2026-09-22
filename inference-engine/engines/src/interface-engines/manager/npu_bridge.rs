@@ -3,7 +3,7 @@
 //! This bridge maps Core Dispatcher intents to Hardware-specific execution paths.
 
 use anyhow::Result;
-use cluaiz_shared::hardware::schema::profiles::{NpuSubsystem, TpuSubsystem};
+use engine_core::hardware::schema::profiles::{NpuSubsystem, TpuSubsystem};
 
 pub struct NpuBridge {
     pub active_npus: Vec<NpuSubsystem>,

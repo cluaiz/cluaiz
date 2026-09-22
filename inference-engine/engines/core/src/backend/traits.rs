@@ -60,8 +60,6 @@ pub trait StreamingInference: Send + Sync + UnifiedBackend {
     }
 }
 
-/// Backward-compatibility alias
-pub use StreamingInference as cluaizInference;
 
 /// Dynamic trait alias bridging generic hardware kernels
 pub type ModelWeightsWrapper = Box<dyn StreamingInference + Send + Sync>;

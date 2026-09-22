@@ -12,7 +12,7 @@ path = "src/main.rs"
 [dependencies]
 # ── Root Architecture ──
 engines = { path = "../inference-engine/engines" }
-cluaiz_shared = { package = "cluaiz-shared", path = "../inference-engine/engines/cluaiz-shared" }
+engine-core = { path = "../inference-engine/engines/core" }
 neural-core = { path = "../interface-engines/neural_core" }
 cluaiz_onnx = { package = "onnx", path = "../interface-engines/onnx" }
 cluaiz_api = { path = "../inference-engine/api" }

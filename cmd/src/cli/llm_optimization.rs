@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
-use cluaiz_shared::hardware::governor::HardwareGovernor;
-use cluaiz_shared::hardware::schema::optimization::{
+use engine_core::hardware::governor::HardwareGovernor;
+use engine_core::hardware::schema::optimization::{
     KvCacheQuantization, ContextShiftingMode, FeatureState
 };
 
@@ -76,10 +76,10 @@ pub async fn execute(
         }
     } else {
         // Loop-based Interactive configuration
-        println!("\n  {} {}", "🚀".cyan(), "cluaiz LLM Optimization - Interactive Performance Setup".bold());
+        println!("\n  {} {}", "🚀".cyan(), "LLM Optimization - Interactive Performance Setup".bold());
         
         loop {
-            let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+            let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
             println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
             println!("    ├─ Flash Attention:   {:?}", control.flash_attention);
             println!("    ├─ KV Cache Quant:    {:?}", control.kv_cache_quantization);
@@ -187,7 +187,7 @@ pub async fn execute(
                 "N GPU Layers" => {
                     let gpu_opts = vec!["GPU Only (Max Acceleration)", "CPU Only (No GPU)", "Hybrid (Custom Layers)"];
                     if let Ok(g_ans) = inquire::Select::new("Compute Architecture:", gpu_opts).with_help_message("").prompt() {
-                        let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         match g_ans {
                             "GPU Only (Max Acceleration)" => {
                                 gguf_meta.hardware_and_execution.n_gpu_layers = -1;

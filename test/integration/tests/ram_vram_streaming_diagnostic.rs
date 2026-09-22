@@ -1,4 +1,4 @@
-use cluaiz_shared::hardware::resource_negotiator::{
+use engine_core::hardware::resource_negotiator::{
     negotiate_resource, EngineType, InferenceMode, ResourceRequest,
 };
 use std::path::PathBuf;

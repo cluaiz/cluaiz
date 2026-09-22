@@ -20,9 +20,9 @@ pub struct ModelDownloader;
 
 impl ModelDownloader {
     pub fn get_models_dir() -> PathBuf {
-        cluaiz_shared::environment::EnvironmentManager::current()
+        engine_core::environment::EnvironmentManager::current()
             .ensure_models_dir()
-            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir())
+            .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir())
     }
 
     pub fn is_model_cached(category: &str, repo_id: &str, filename: &str) -> bool {

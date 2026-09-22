@@ -194,13 +194,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                     
                                                     // Immediately trigger Step 5 spinner
                                                     tracker.set_step("[Step 5] AI Formulating Plan (Generating tags...)").await;
-                                                } else if token.starts_with("<TRIGGER:") {
-                                                    tracker.complete_step(&format!("[Step 5] AI Formulates Plan: Match tag emitted -> {}", token)).await;
+                                                } else if token.contains("<tool_call>") || token.contains("<tool_call") {
+                                                    tracker.complete_step(&format!("[Step 5] AI Formulates Plan: Tool call emitted -> {}", token)).await;
                                                     step5_plan = true;
                                                     
                                                     tracker.set_step("[Step 6] AI Emits plan closing sequence...").await;
-                                                } else if token.contains("</TRIGGER>") {
-                                                    tracker.complete_step("[Step 6] AI Emits closing sequence tag: </TRIGGER>").await;
+                                                } else if token.contains("</tool_call>") {
+                                                    tracker.complete_step("[Step 6] AI Emits closing sequence tag: </tool_call>").await;
                                                     step6_close = true;
                                                     
                                                     tracker.set_step("[Step 7] Engine intercepting & pausing autoregressive loop...").await;

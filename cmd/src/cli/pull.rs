@@ -147,9 +147,9 @@ pub async fn execute(model_id: &str) -> Result<()> {
     }
 
     // 2. Pre-flight Silicon Audit (Universal for both HF and Registry)
-    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
+    let cluaiz_root = engine_core::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
     
     println!("  {} Silicon Pre-flight Architecture:", "📡".cyan());
@@ -202,8 +202,8 @@ pub async fn execute(model_id: &str) -> Result<()> {
         return Err(color_eyre::eyre::eyre!("Model file not found at: {:?}", model_file));
     }
 
-    let dna = cluaiz_shared::StructuralDNA::default();
-    let context = cluaiz_shared::cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
+    let dna = engine_core::StructuralDNA::default();
+    let context = engine_core::EngineContext::boot(dna, engine_core::TemplateManager::default());
 
     let engine = engines::runtime::execution::hub::HardwareOrchestrator::instantiate(
         model_file.to_str().unwrap(),

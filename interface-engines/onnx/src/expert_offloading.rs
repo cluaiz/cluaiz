@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
-use cluaiz_shared::hardware::expert_offloading::{MoeModelInfo, RoutingHeatTracker, SharedExpertCache};
+use engine_core::hardware::expert_offloading::{MoeModelInfo, RoutingHeatTracker, SharedExpertCache};
 
 // ─── Expert Shard Manifest ────────────────────────────────────────────────────
 

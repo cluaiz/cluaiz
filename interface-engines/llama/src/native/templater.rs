@@ -88,7 +88,7 @@ pub fn apply_chat_template(
 
     // 3. Fallback: Render with MiniJinja if llama.cpp C template engine failed
     if let Some(ref template) = tmpl_str {
-        match cluaiz_shared::TemplateManager::render_messages(template, messages, add_generation_prompt) {
+        match engine_core::TemplateManager::render_messages(template, messages, add_generation_prompt) {
             Ok(rendered) if !rendered.trim().is_empty() => {
                 tracing::info!("🎭 [NativeTemplate] MiniJinja fallback rendered template ({} bytes)", rendered.len());
                 return Ok(rendered);

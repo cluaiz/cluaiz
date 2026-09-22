@@ -1,4 +1,4 @@
-// cluaiz-engine: Core Foundry - The cluaiz Engine Core
+// Engine: Core Foundry
 // Clean integration of Runtime, Security, and Ingestion.
 
 pub mod runtime;
@@ -9,13 +9,13 @@ use runtime::wasm_host::WasmHost;
 use runtime::mcp_gateway::McpGateway;
 use security::guard::{PermissionGuard, PermissionLevel};
 use tracing::{info, warn};
-use cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal;
+use engine_core::hardware::memory::kv_cache::stitching::KernelSignal;
 use std::sync::Mutex;
 use std::path::PathBuf;
 
 pub struct IntentResult {
     pub responses: Vec<String>,
-    pub signals: Vec<cluaizSignal>,
+    pub signals: Vec<KernelSignal>,
     pub missing_caches: Vec<(PathBuf, String)>, // (kv_cache_path, skill_content)
 }
 
@@ -43,11 +43,11 @@ impl CoreFoundry {
     }
 
     pub fn initialize(&mut self, _skills_dir: &str) {
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
-        cluaiz_shared::dev_info!("[cluaiz] Initializing Core Foundry with tools at: {}", env.tools_dir().display());
+        let env = engine_core::environment::EnvironmentManager::current();
+        engine_core::dev_info!("[CoreFoundry] Initializing with tools at: {}", env.tools_dir().display());
     }
 
-    /// The cluaiz Flow: Prompt -> Multi-Route -> Execute
+    /// The Flow: Prompt -> Multi-Route -> Execute
     pub async fn process_intent(&self, prompt: &str, pre_matched_skills: Option<Vec<String>>) -> anyhow::Result<IntentResult> {
         let skill_ids = pre_matched_skills.unwrap_or_else(|| crate::tools::ToolsEngine::match_skills(prompt));
         let mut result = IntentResult { responses: Vec::new(), signals: Vec::new(), missing_caches: Vec::new() };
@@ -69,7 +69,7 @@ impl CoreFoundry {
             
             // 2. Dynamic Memory Management (RAM/VRAM Bounding)
             {
-                let pulse = cluaiz_shared::hardware::telemetry::get_pulse();
+                let pulse = engine_core::hardware::telemetry::get_pulse();
                 let pulse_lock = pulse.pulse.read().unwrap();
                 let used_mb = pulse_lock.ram.used_gb * 1024.0;
                 let util = pulse_lock.ram.utilization_pct as f64;
@@ -86,7 +86,7 @@ impl CoreFoundry {
                 while (active_ids.len() as f32 + 1.0) * skill_est_size_mb >= available_ram_mb as f32 * 0.8 {
                     if !active_ids.is_empty() {
                         let evicted_id = active_ids.remove(0);
-                        cluaiz_shared::dev_info!("[cluaiz] [VRAM] Bounding limit hit. Evicting LRU skill: {}", evicted_id);
+                        engine_core::dev_info!("[VRAM] Bounding limit hit. Evicting LRU skill: {}", evicted_id);
                     } else {
                         break;
                     }
@@ -96,13 +96,13 @@ impl CoreFoundry {
                 active_ids.push(skill_id.to_string());
             }
 
-            // 3. Map cluaiz Signal (Zero-Copy Dual-Cache)
+            // 3. Map Kernel Signal (Zero-Copy Dual-Cache)
             let skill_id_clone = skill_id.clone();
             let skill_path_clone = skill_path.clone();
 
             pub enum SkillLoadResult {
                 Signal {
-                    raw_data: cluaiz_shared::hardware::memory::buffer::SafeTensorsMappedBuffer,
+                    raw_data: engine_core::hardware::memory::buffer::SafeTensorsMappedBuffer,
                     token_count: usize,
                     head_dim: usize,
                 },
@@ -134,7 +134,7 @@ impl CoreFoundry {
                     let cache_exists = kv_cache_path.exists();
 
                     if cache_exists {
-                        use cluaiz_shared::hardware::memory::buffer::SafeTensorsMappedBuffer;
+                        use engine_core::hardware::memory::buffer::SafeTensorsMappedBuffer;
                         
                         if let Ok(mapped_buffer) = SafeTensorsMappedBuffer::from_file(&kv_cache_path) {
                             return SkillLoadResult::Signal {
@@ -159,7 +159,7 @@ impl CoreFoundry {
 
             match load_result {
                 SkillLoadResult::Signal { raw_data, token_count, head_dim } => {
-                    result.signals.push(cluaizSignal {
+                    result.signals.push(KernelSignal {
                         raw_data: std::sync::Arc::new(raw_data),
                         token_count,
                         head_dim,

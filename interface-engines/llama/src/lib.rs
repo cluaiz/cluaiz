@@ -3,7 +3,7 @@
 //! This kernel is loaded dynamically by the SiliconOrchestrator.
 
 use anyhow::Result;
-use cluaiz_shared::{cluaizContext, cluaizInference, UnifiedBackend};
+use engine_core::{EngineContext, StreamingInference, UnifiedBackend};
 use neural_core::interfaces::memory_contract::SovereignBuffer;
 use std::sync::Arc;
 use tokenizers::Tokenizer;
@@ -122,7 +122,7 @@ mod tests {
 
 pub struct RuntimeB {
     pub model_path: String,
-    pub context: cluaizContext,
+    pub context: EngineContext,
     pub optimization: OptimizationConfig,
     pub native: Option<NativeLlama>,
     pub lucebox: Option<Arc<ffi::lucebox::LuceboxBridge>>,
@@ -132,7 +132,7 @@ pub struct RuntimeB {
 }
 
 impl RuntimeB {
-    pub fn new(path: &str, context: cluaizContext) -> Self {
+    pub fn new(path: &str, context: EngineContext) -> Self {
         Self {
             model_path: path.to_string(),
             context,
@@ -154,7 +154,7 @@ impl RuntimeB {
         let mut probed_layers = None;
 
         // 🎯 Single Source of Truth: Query model_registry.json directly if present
-        let reg_path = cluaiz_shared::environment::EnvironmentManager::current().model_registry_json_path();
+        let reg_path = engine_core::environment::EnvironmentManager::current().model_registry_json_path();
         if reg_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&reg_path) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -202,14 +202,14 @@ impl RuntimeB {
                 .unwrap_or(0.0) as f32;
         }
 
-        let request = cluaiz_shared::hardware::ResourceRequest {
-            engine_type: cluaiz_shared::hardware::EngineType::GGUF,
-            inference_mode: cluaiz_shared::hardware::InferenceMode::Chat,
+        let request = engine_core::hardware::ResourceRequest {
+            engine_type: engine_core::hardware::EngineType::GGUF,
+            inference_mode: engine_core::hardware::InferenceMode::Chat,
             model_size_gb: weights_gb as f64,
             model_path: std::path::PathBuf::from(&self.model_path),
         };
 
-        let grant = cluaiz_shared::hardware::negotiate_resource(&request)?;
+        let grant = engine_core::hardware::negotiate_resource(&request)?;
 
         // Apply resource negotiator results
         eprintln!(
@@ -221,13 +221,13 @@ impl RuntimeB {
         );
 
         // Extract metadata configuration settings
-        let gguf_hdr = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let gguf_hdr = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         let user_no_mmap = gguf_hdr.hardware_and_execution.no_mmap;
         let user_n_gpu_layers = self.optimization.n_gpu_layers;
 
         // Apply use_mmap logic: respect config but force true under SsdStreaming/expert swapping
         model_params.set_mmap(!user_no_mmap);
-        if grant.tier == cluaiz_shared::hardware::PlacementTier::SsdStreaming {
+        if grant.tier == engine_core::hardware::PlacementTier::SsdStreaming {
             model_params.set_mmap(true);
             model_params.use_extra_bufts = true;
             eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
@@ -294,7 +294,7 @@ impl RuntimeB {
 
         // 🧠 Dynamic Context Window (Single Source of Truth from Unified Resource Negotiator, min 2048)
         ctx_params.n_ctx = grant.target_ctx_tokens as u32;
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "🧠 [Arbiter] Dynamic Context Window set to {} tokens (Single Source of Truth, min 2048)",
             ctx_params.n_ctx
         );
@@ -304,10 +304,10 @@ impl RuntimeB {
         // 🛡️ Dynamic Flash Attention Policy: Flash Attention is strictly a pure-GPU kernel.
         // If the Negotiator placed the model in Hybrid, CPU, or SSD Streaming, disable Flash Attention
         // to prevent cross-device numerical divergence (NaNs) in split attention graphs.
-        if grant.tier != cluaiz_shared::hardware::PlacementTier::GpuOnly
+        if grant.tier != engine_core::hardware::PlacementTier::GpuOnly
             || (model_params.n_gpu_layers >= 0 && model_params.n_gpu_layers < layers as i32)
         {
-            cluaiz_shared::dev_info!(
+            engine_core::dev_info!(
                 "⚖️ [Arbiter] Placement tier is {:?} or layers split across GPU/CPU (n_gpu_layers = {}). Flash Attention disabled for cross-device stability.",
                 grant.tier,
                 model_params.n_gpu_layers
@@ -318,11 +318,11 @@ impl RuntimeB {
         // 🛡️ Dynamic Architecture Capability Guards (Zero Hardcoded Model Names)
         let is_recurrent_ssm = is_ssm_model || self.context.dna.signature.is_ssm;
         if !self.context.dna.supports_flash_attention() || is_recurrent_ssm {
-            cluaiz_shared::dev_info!("🛡️ [Architecture Guard] Non-standard attention geometry detected: Disabling Flash Attention to prevent numerical divergence.");
+            engine_core::dev_info!("🛡️ [Architecture Guard] Non-standard attention geometry detected: Disabling Flash Attention to prevent numerical divergence.");
             ctx_params.flash_attn_type = 0;
         }
-        if self.context.dna.requires_fp16_kv() || is_recurrent_ssm || (grant.tier != cluaiz_shared::hardware::PlacementTier::GpuOnly && ctx_params.flash_attn_type == 0) {
-            cluaiz_shared::dev_info!("🛡️ [Architecture Guard] Enforcing F16 KV-cache for mathematical stability across splits.");
+        if self.context.dna.requires_fp16_kv() || is_recurrent_ssm || (grant.tier != engine_core::hardware::PlacementTier::GpuOnly && ctx_params.flash_attn_type == 0) {
+            engine_core::dev_info!("🛡️ [Architecture Guard] Enforcing F16 KV-cache for mathematical stability across splits.");
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
         }
@@ -331,8 +331,8 @@ impl RuntimeB {
         if is_recurrent_ssm {
             // 🚨 For hybrid/recurrent models (Qwen3.5 GDN, Mamba, RWKV):
             // Speculative decoding is incompatible with non-transformer architectures.
-            cluaiz_shared::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
-            cluaiz_shared::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
+            engine_core::dev_info!("⚖️ [Llama-Engine] SSM/Hybrid architecture detected.");
+            engine_core::dev_info!("⚖️ [Llama-Engine] → Speculative Decoding: FORCED OFF");
             self.optimization.speculative_decoding = "off".to_string();
         }
 
@@ -345,7 +345,7 @@ impl RuntimeB {
         } else {
             "off"
         };
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "🧠 [Llama-Engine] Dynamic Speculative Sync: Mode resolved as '{}' (optimization: {})",
             speculative_mode,
             self.optimization.speculative_decoding
@@ -390,11 +390,11 @@ impl RuntimeB {
         sys.refresh_memory();
         let mem_pct = (sys.used_memory() as f64 / sys.total_memory() as f64) * 100.0;
         if mem_pct >= 90.0 && model_params.is_mlock() {
-            cluaiz_shared::dev_info!("⚠️ [Arbiter] High Memory Pressure Detected ({:.1}%). Disabling use_mlock to prevent OS paging freeze.", mem_pct);
+            engine_core::dev_info!("⚠️ [Arbiter] High Memory Pressure Detected ({:.1}%). Disabling use_mlock to prevent OS paging freeze.", mem_pct);
             model_params.set_mlock(false);
         }
         if model_params.is_mmap() && self.moe_controller.is_some() {
-            cluaiz_shared::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
+            engine_core::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
         }
 
         let native = NativeLlama::load(
@@ -477,13 +477,13 @@ impl UnifiedBackend for RuntimeB {
     fn evaluate_tps(&self) -> f64 {
         // 📡 Sovereign Telemetry: Return the real-time TPS from the pulse counter.
         // This counter is incremented for every token generated in native.rs.
-        cluaiz_shared::hardware::telemetry::get_pulse()
+        engine_core::hardware::telemetry::get_pulse()
             .tps_counter
             .load(std::sync::atomic::Ordering::Relaxed) as f64
     }
 }
 
-impl cluaizInference for RuntimeB {
+impl StreamingInference for RuntimeB {
     fn forward_raw(&mut self, _input_ids: &[u32], _pos: usize) -> Result<Vec<f32>> {
         Err(anyhow::anyhow!("FFI forward optimized via ASM kernels"))
     }
@@ -497,7 +497,7 @@ impl cluaizInference for RuntimeB {
         let mut callback = callback;
 
         // 🛡️ Neural Circuit Breaker: check if paths are safe
-        let mut cb = cluaiz_shared::hardware::circuit_breaker::NeuralCircuitBreaker::default();
+        let mut cb = engine_core::hardware::circuit_breaker::NeuralCircuitBreaker::default();
         if !cb.can_proceed() {
             return Err(anyhow::anyhow!(
                 "🚨 [Circuit Breaker] Inference blocked due to previous system instability."
@@ -555,7 +555,7 @@ impl cluaizInference for RuntimeB {
     /// 💉 Neural Injection Hook: Injects multiple pre-encoded signal states into the Llama cache.
     fn inject_signals(
         &mut self,
-        signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>,
+        signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>,
     ) -> Result<()> {
         let max_ctx = (self.optimization.n_ctx as usize).max(2048);
         let mut current_offset = 0;
@@ -618,7 +618,7 @@ impl cluaizInference for RuntimeB {
     /// Optimization Sync: Applies hardware-level optimization flags (TurboQuant, KV-Cache, etc.)
     fn apply_optimization(
         &mut self,
-        control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl,
+        control: &engine_core::hardware::schema::optimization::OptimizationControl,
     ) -> Result<()> {
         tracing::info!("[Llama-Engine] Applying Optimization: Autonomous Performance Sync");
 
@@ -630,12 +630,12 @@ impl cluaizInference for RuntimeB {
             let mut ctx_params = self.optimization.to_context_params();
 
             // Recalculate context window through Governor using the injected control truth
-            let new_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&self.context.dna, control);
+            let new_ctx = engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&self.context.dna, control);
             ctx_params.n_ctx = new_ctx as u32;
 
             // Sync settings dynamically
             let optimization_ctx =
-                cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext::from(
+                engine_core::hardware::schema::optimization::OptimizationContext::from(
                     control,
                 );
             native.kv_cache_quantization_mode = optimization_ctx.kv_cache_quantization_mode;

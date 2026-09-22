@@ -165,9 +165,9 @@ pub struct ExternalMessage {
 
 /// Helper to fetch real model header and hardware slot allocations
 pub fn generate_model_header_info() -> Vec<Value> {
-    let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
+    let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
     let mut loaded_models = Vec::new();
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let roots = vec![env.local_dir.join("models"), env.global_dir.join("models")];
     let categories = ["chat", "embedding", "vision", "audio", "code"];
 

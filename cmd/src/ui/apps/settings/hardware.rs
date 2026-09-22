@@ -21,7 +21,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             let ram = v["memory"]["total_ram_gb"].as_f64().unwrap_or(0.0);
 
             let mode = "cluaiz Native";
-            let opt = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+            let opt = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
             let flash = opt.flash_attention.is_active();
             let moe = opt.extreme_moe_streaming.is_active();
 

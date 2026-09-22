@@ -1,6 +1,6 @@
 use crate::engine::OnnxEngine;
 use neural_core::interfaces::router_contract::EngineError;
-use cluaiz_shared::{cluaizInference, UnifiedBackend};
+use engine_core::{StreamingInference, UnifiedBackend};
 use ort::value::Value;
 use ort::session::SessionOutputs;
 use anyhow::{Result, anyhow};
@@ -40,7 +40,7 @@ impl UnifiedBackend for OnnxEngine {
     }
 }
 
-impl cluaizInference for OnnxEngine {
+impl StreamingInference for OnnxEngine {
     fn forward_raw(&mut self, input_ids: &[u32], pos: usize) -> Result<Vec<f32>> {
         let session_arc = self.acquire_session().map_err(|e| anyhow!("{:?}", e))?;
         

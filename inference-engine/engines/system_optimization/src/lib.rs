@@ -11,6 +11,6 @@ pub mod telemetry;
 pub mod system_optimization;
 
 // 🏛️ Reusing the Unified Architecture from archer-shared
-pub use cluaiz_shared::hardware::governor::HardwareGovernor;
-pub use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
+pub use engine_core::hardware::governor::HardwareGovernor;
+pub use engine_core::hardware::schema::optimization::{OptimizationControl, FeatureState};
 pub use system_optimization::*;

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::io::Write;
 use anyhow::Result;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 
 pub struct ToolHubInstaller;

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use reqwest;
 use std::fs;
-use cluaiz_shared::HardwareGovernor;
+use engine_core::HardwareGovernor;
 use colored::Colorize;
 
 pub struct DriverProvisioner;
@@ -55,7 +55,7 @@ impl DriverProvisioner {
             let size_mb = dest_path.metadata().map(|m| m.len()).unwrap_or(0) / (1024 * 1024);
             if size_mb > 30 {
                 tracing::info!("🛡️ [Provisioner] CUDA-linked kernel detected ({} MB). Skipping GitHub overwrite.", size_mb);
-                cluaiz_shared::dev_info!("  {} [Provisioner] Sovereign CUDA kernel preserved ({} MB). Skipping registry sync.", "🛡️".green(), size_mb);
+                engine_core::dev_info!("  {} [Provisioner] Sovereign CUDA kernel preserved ({} MB). Skipping registry sync.", "🛡️".green(), size_mb);
                 return Ok(dest_path);
             }
         }
@@ -81,7 +81,7 @@ impl DriverProvisioner {
             }
         }
 
-        cluaiz_shared::dev_info!("  {} [PROVISIONER] Missing Neural Kernel '{}'. Provisioning from Registry...", "🧬".cyan(), kernel_type);
+        engine_core::dev_info!("  {} [PROVISIONER] Missing Neural Kernel '{}'. Provisioning from Registry...", "🧬".cyan(), kernel_type);
 
         let download_url = manifest["kernel"][kernel_type][&registry_key]
             .as_str()
@@ -92,7 +92,7 @@ impl DriverProvisioner {
         fs::write(&dest_path, bytes)?;
 
         fs::write(marker, manifest_version)?;
-        cluaiz_shared::dev_info!("  {} [PROVISIONER] Kernel '{}' successfully deployed.", "✅".green(), kernel_type);
+        engine_core::dev_info!("  {} [PROVISIONER] Kernel '{}' successfully deployed.", "✅".green(), kernel_type);
 
         Ok(dest_path)
     }
@@ -123,7 +123,7 @@ impl DriverProvisioner {
             }
         }
 
-        cluaiz_shared::dev_info!("  {} [PROVISIONER] Provisioning Silicon Driver: {}...", "⚙️".yellow(), driver_type);
+        engine_core::dev_info!("  {} [PROVISIONER] Provisioning Silicon Driver: {}...", "⚙️".yellow(), driver_type);
         let registry_key = Self::get_registry_key(driver_type);
         let download_url = manifest["drivers"][&registry_key].as_str()
             .ok_or_else(|| anyhow!("Driver key '{}' not found.", registry_key))?;

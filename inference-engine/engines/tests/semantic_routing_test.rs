@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod semantic_routing_tests {
     use engines::neural_foundry::security::permission_schema::PermissionSchema;
-    use cluaiz_shared::skills::router::{GLOBAL_SKILL_ROUTER, SkillManifest, SkillTriggers};
+    use engine_core::skills::router::{GLOBAL_SKILL_ROUTER, SkillManifest, SkillTriggers};
     use std::fs;
     use std::path::{Path, PathBuf};
 
     fn get_test_skills_dir() -> PathBuf {
-        cluaiz_shared::environment::EnvironmentManager::current().skills_dir()
+        engine_core::environment::EnvironmentManager::current().skills_dir()
     }
 
     #[tokio::test]

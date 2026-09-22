@@ -120,7 +120,7 @@ pub fn load_or_compile_lexicon(model_dir: &Path) -> HashMap<String, String> {
 
     // 1. If both are missing, copy lexicon.txt from assets/ipa_dictionary/ or download from GitHub Raw
     if !txt_path.exists() && !bin_path.exists() {
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let env = engine_core::environment::EnvironmentManager::current();
         let mut assets_dir = env.local_dir.parent().map(|p| p.join("assets")).unwrap_or_else(|| PathBuf::from("assets"));
         if !assets_dir.exists() {
             assets_dir = env.global_dir.join("assets");

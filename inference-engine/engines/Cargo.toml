@@ -41,7 +41,7 @@ uuid = { version = "1", features = ["v4"] }
 sha2 = "0.10"
 
 # ── Shared Workspace Member Links ──
-cluaiz-shared = { path = "cluaiz-shared" }
+engine-core = { path = "core" }
 inference-cel = { path = "../../inference-cel" }
 # Engines (Llama, Candle, BitNet) are now loaded dynamically via libloading from interface-engines
 system-optimization = { path = "system_optimization", optional = true }

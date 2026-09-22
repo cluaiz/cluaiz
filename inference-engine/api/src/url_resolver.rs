@@ -7,7 +7,7 @@ use reqwest;
 /// Resolves a URL (http, data:base64, or file) into a local temporary file.
 /// Returns the absolute path to the local file.
 pub async fn resolve_to_local_file(url: &str) -> Result<String> {
-    let temp_dir = cluaiz_shared::environment::EnvironmentManager::current().local_dir.join("temp_media");
+    let temp_dir = engine_core::environment::EnvironmentManager::current().local_dir.join("temp_media");
     if !temp_dir.exists() {
         fs::create_dir_all(&temp_dir)?;
     }

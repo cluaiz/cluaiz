@@ -1,8 +1,8 @@
 use std::path::PathBuf;
-use engines::{GGUFLoader, cluaizRunner};
+use engines::{GGUFLoader, EngineRunner};
 use engines::engine::CoreSampler;
 use engines::hardware::cluaizProfile;
-use engines::telemetry::health_check::cluaizHealthChecker;
+use engines::telemetry::health_check::EngineHealthChecker;
 use engines::core::{JitAllocator, ExecutionTier};
 use tokenizers::Tokenizer;
 
@@ -18,7 +18,7 @@ async fn main() {
     
     // ── PHASE 2: MACRO HEALTH BENCHMARKS (RAM & STORAGE) ──
     println!("\n🩺 Phase 2: Macro Health Benchmarking...");
-    profile = cluaizHealthChecker::execute_initial_diagnostic(profile);
+    profile = EngineHealthChecker::execute_initial_diagnostic(profile);
     
     // ── PHASE 3: JIT ORCHESTRATION DECISION ──
     println!("\n🧠 Phase 3: JIT Brain Allocation Decision...");
@@ -59,7 +59,7 @@ async fn main() {
     let tokenizer = Tokenizer::from_file(tokenizer_path).expect("Tokenizer load error");
     
     let sampler = CoreSampler::new(299792, 0.7, 0.9, 1.1);
-    let mut runner = cluaizRunner::new(model, tokenizer, sampler, None);
+    let mut runner = EngineRunner::new(model, tokenizer, sampler, None);
 
     println!("\n✅ SUCCESS: cluaiz Onboarding Complete. System Stable.");
     println!("🤖 Assistant Prompted: \"Describe the soul of a cluaiz AI .\"");

@@ -150,7 +150,7 @@ fn default_api_port() -> u16 {
 }
 
 impl PermissionSchema {
-    // Removed custom load method. It is now handled by cluaiz_shared::define_config!
+    // Removed custom load method. It is now handled by engine_core::define_config!
 
     /// Automatically scans installed models and assigns defaults if null
     pub fn auto_assign_defaults(&mut self) {
@@ -225,7 +225,7 @@ impl PermissionSchema {
 
             // Fallback path search if manifest didn't resolve path
             let search_path = local_path.unwrap_or_else(|| {
-                cluaiz_shared::environment::EnvironmentManager::current()
+                engine_core::environment::EnvironmentManager::current()
                     .models_dir()
                     .join(&clean_id)
             });
@@ -306,7 +306,7 @@ impl PermissionSchema {
                     // Fallback configuration analysis from structural DNA
                     let dna_path = search_path.join("structural_dna.json");
                     if let Ok(dna_str) = std::fs::read_to_string(&dna_path) {
-                        if let Ok(dna) = serde_json::from_str::<cluaiz_shared::StructuralDNA>(&dna_str) {
+                        if let Ok(dna) = serde_json::from_str::<engine_core::StructuralDNA>(&dna_str) {
                             has_vision = dna.signature.is_multimodal;
                         }
                     }
@@ -467,7 +467,7 @@ impl PermissionSchema {
         let _ = schema.save();
     }
 
-    // Removed custom save method. It is now handled by cluaiz_shared::define_config!
+    // Removed custom save method. It is now handled by engine_core::define_config!
 }
 
-cluaiz_shared::define_config!(PermissionSchema, "permission");
+engine_core::define_config!(PermissionSchema, "permission");

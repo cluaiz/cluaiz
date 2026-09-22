@@ -7,7 +7,7 @@ use axum::{
 use serde_json::{json, Value};
 use std::{convert::Infallible, sync::Arc, time::Duration};
 use crate::AppState;
-use cluaiz_shared::hardware::governor::HardwareGovernor;
+use engine_core::hardware::governor::HardwareGovernor;
 
 fn gather_ps_data() -> Value {
     let active_processes = HardwareGovernor::get_active_allocations();
@@ -30,7 +30,7 @@ fn gather_ps_data() -> Value {
     }
 
     let mut pulse_json = json!({});
-    if let Ok(lock) = cluaiz_shared::hardware::telemetry::get_pulse().pulse.read() {
+    if let Ok(lock) = engine_core::hardware::telemetry::get_pulse().pulse.read() {
         pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
     }
 

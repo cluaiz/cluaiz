@@ -40,8 +40,6 @@ pub use neural_core::NeuralResult;
 /// LinkerPlaceholder: Used to verify the Dynamic Linker Handshake.
 pub struct LinkerPlaceholder;
 
-pub type cluaizLinkerPlaceholder = LinkerPlaceholder;
-
 // Ensure placeholder is Send + Sync for the Orchestrator's type requirements
 unsafe impl Send for LinkerPlaceholder {}
 unsafe impl Sync for LinkerPlaceholder {}

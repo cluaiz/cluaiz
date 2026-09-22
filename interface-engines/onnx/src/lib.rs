@@ -23,7 +23,7 @@ pub extern "C" fn cluaiz_onnx_kernel_init() -> *const std::os::raw::c_char {
 #[no_mangle]
 pub extern "C" fn cluaiz_onnx_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
-    _optimization_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
+    _optimization_ptr: *const engine_core::hardware::schema::optimization::OptimizationContext,
 ) -> *mut OnnxEngine {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let path_str = unsafe { std::ffi::CStr::from_ptr(path_ptr) }
@@ -171,7 +171,7 @@ pub extern "C" fn cluaiz_onnx_kernel_generate_stream(
         let cb_ptr = callback as usize;
         let user_data_ptr = user_data as usize;
         
-        use cluaiz_shared::cluaizInference;
+        use engine_core::StreamingInference;
         
         let rust_callback = Box::new(move |token: String| -> bool {
             let c_token = std::ffi::CString::new(token).unwrap_or_default();
@@ -209,7 +209,7 @@ pub extern "C" fn cluaiz_onnx_kernel_dump_kv_cache(
         let engine = unsafe { &mut *engine_ptr };
         let path = unsafe { std::ffi::CStr::from_ptr(path_ptr) }.to_string_lossy();
         
-        use cluaiz_shared::cluaizInference;
+        use engine_core::StreamingInference;
         match engine.dump_kv_cache(&path) {
             Ok(_) => 0,
             Err(e) => {
@@ -231,7 +231,7 @@ pub extern "C" fn cluaiz_onnx_kernel_load_kv_cache(
         let engine = unsafe { &mut *engine_ptr };
         let path = unsafe { std::ffi::CStr::from_ptr(path_ptr) }.to_string_lossy();
         
-        use cluaiz_shared::cluaizInference;
+        use engine_core::StreamingInference;
         match engine.load_kv_cache(&path) {
             Ok(_) => 0,
             Err(e) => {

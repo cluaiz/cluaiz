@@ -1,6 +1,6 @@
 use crate::ffi::llama_cpp;
 use crate::native::core::NativeLlama;
-use cluaiz_shared::StructuralDNA;
+use engine_core::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
@@ -115,9 +115,9 @@ pub fn stream_tokens(
         }
 
         let opt_control =
-            cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings()
+            engine_core::hardware::governor::HardwareGovernor::load_optimization_settings()
                 .unwrap_or_default();
-        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
 
         let effective_response_length = req_response_length
             .as_deref()
@@ -331,7 +331,7 @@ pub fn stream_tokens(
                 match_len += 1;
             }
 
-            cluaiz_shared::dev_info!(
+            engine_core::dev_info!(
                 "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
                 last_prefilled_tokens.len(),
                 tokens.len(),
@@ -339,7 +339,7 @@ pub fn stream_tokens(
             );
 
             if match_len < 4 {
-                cluaiz_shared::dev_info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
+                engine_core::dev_info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
                 let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
                 match_len = 0;
@@ -380,7 +380,7 @@ pub fn stream_tokens(
 
         // 🛡️ Auto-reset KV cache if start_pos is already near context ceiling (prevents GGML stack buffer overrun ops.cpp:3767)
         if start_pos >= (llama.n_ctx as i32 - 16) {
-            cluaiz_shared::dev_info!(
+            engine_core::dev_info!(
                 "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
                 start_pos,
                 llama.n_ctx
@@ -399,7 +399,7 @@ pub fn stream_tokens(
             tokens.drain(0..dropped);
         }
 
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
             start_pos,
             tokens.len()
@@ -414,7 +414,7 @@ pub fn stream_tokens(
         if tokens.is_empty() && effective_cache_len > 0 {
             let last_matched_pos = effective_cache_len as i32 - 1;
             let last_matched_token = full_prompt_tokens[effective_cache_len - 1];
-            cluaiz_shared::dev_info!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
+            engine_core::dev_info!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
 
             // Remove only the last position so we can re-decode it with logits=1
             let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -428,7 +428,7 @@ pub fn stream_tokens(
             safe_batch.batch.n_tokens = 1;
 
             if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                cluaiz_shared::dev_info!(
+                engine_core::dev_info!(
                     "⚠️ [KV-Fix] Logits refresh decode failed. Falling back to full prefill."
                 );
                 decode_failed = true;
@@ -466,7 +466,7 @@ pub fn stream_tokens(
         }
 
         if decode_failed {
-            cluaiz_shared::dev_info!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
+            engine_core::dev_info!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
 
             // 1. Clear KV cache completely
             let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -522,7 +522,7 @@ pub fn stream_tokens(
 
         while n_gen < max_tokens as i32 {
             if llama.interrupt_signal.load(Ordering::SeqCst)
-                || cluaiz_shared::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst)
+                || engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst)
             {
                 break;
             }
@@ -607,7 +607,7 @@ pub fn stream_tokens(
                     should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
                 } else {
                     should_skip =
-                        cluaiz_shared::GLOBAL_SKIP_THINKING_SIGNAL.swap(false, Ordering::SeqCst);
+                        engine_core::GLOBAL_SKIP_THINKING_SIGNAL.swap(false, Ordering::SeqCst);
                 }
             }
             if should_skip && in_think_block {
@@ -622,7 +622,7 @@ pub fn stream_tokens(
                     break;
                 }
             }
-            cluaiz_shared::hardware::telemetry::get_pulse()
+            engine_core::hardware::telemetry::get_pulse()
                 .tps_counter
                 .fetch_add(1, Ordering::SeqCst);
 

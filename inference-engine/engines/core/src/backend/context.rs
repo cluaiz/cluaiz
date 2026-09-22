@@ -12,7 +12,6 @@ pub struct EngineContext {
     pub templater: TemplateManager,
 }
 
-pub type cluaizContext = EngineContext;
 
 impl EngineContext {
     /// Initialize a high-performance execution context
