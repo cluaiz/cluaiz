@@ -198,3 +198,11 @@ async fn test_market_standard_tools_compilation_and_response() {
 
     let _ = fs::remove_dir_all(dummy_plugin_dir);
 }
+
+#[tokio::test]
+async fn test_installed_code_interpreter_skill_compilation() {
+    let compiled = engines::tools::ToolPromptCompiler::compile_tools(&["code-interpreter".to_string()]).await;
+    assert!(compiled.skill_instructions.contains("Code Interpreter"));
+    assert!(compiled.skill_instructions.contains("Multi-Language Code Runner Protocol"));
+    println!("✅ [Test] code-interpreter skill successfully discovered and compiled from active skills path!");
+}
