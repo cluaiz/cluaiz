@@ -14,7 +14,7 @@ $$\mathbf{engines/src/tools/}$$
 | :--- | :--- | :--- |
 | **Facade** | [`mod.rs`](./mod.rs) | `ToolsEngine` public facade providing a clean API for Handlers and Engine. |
 | **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` and fast binary cache `tools_registry.bin`. Auto-probes `~/.cluaiz/tools/`. |
-| **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Hub. |
+| **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Tools. |
 | **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` frontmatter and provides O(1) keyword and semantic routing. |
 | **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and executes WASM binaries and native libraries. |
 | **MCP** | [`mcp/`](./mcp/) | Parses `package.json` and handles JSON-RPC 2.0 subprocess communication over stdio. |

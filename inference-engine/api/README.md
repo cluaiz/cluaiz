@@ -45,7 +45,7 @@ graph TD
   - **Logic:** File Vectorization Engine.
   - **Flow:** Uses `embedding_dispatcher` to chunk and embed documents, then dynamically generates a CEL script and hands it off to `cel_handler.rs` to insert into `cluaiz-db`. Hardcoded `save_context` LMDB calls are permanently eradicated.
 - `skills.rs`: 
-  - **Logic:** Extension Hub Manager (`/v1/skills/*`).
+  - **Logic:** Tools & Extension Manager (`/v1/skills/*`).
   - **Flow:** Used to fetch, install, and wipe native/WASM plugin caches.
 
 ## Failure & Recovery Logic
