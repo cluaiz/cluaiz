@@ -108,7 +108,7 @@ impl ActivationEventBus {
     /// Fires an event and returns the list of integration names that should be loaded.
     ///
     /// The caller is responsible for actually loading those integrations via
-    /// `CluaizxtensionRegistry::load_integration()`.
+    /// `ExtensionRegistry::load_integration()`.
     ///
     /// Returns an empty `Vec` if no integrations are registered for this event.
     pub fn fire(&self, event_key: &str) -> Vec<String> {

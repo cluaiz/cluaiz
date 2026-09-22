@@ -8,7 +8,7 @@
 
 The `engines` crate is the absolute computational heart of the cluaiz inference ecosystem. While the `api` crate merely parses network requests, the `engines` crate physically executes them. It is responsible for memory mapping (LMDB), OS-level hardware negotiation, tensor layer offloading, and the real-time execution of neural network token generation.
 
-This crate is built to be completely decoupled from HTTP—it operates purely on in-memory Rust structures (`cluaiz-shared`), allowing it to be compiled directly into desktop apps, mobile platforms, or backend servers without modification.
+This crate is built to be completely decoupled from HTTP—it operates purely on in-memory Rust structures (`engine-core`), allowing it to be compiled directly into desktop apps, mobile platforms, or backend servers without modification.
 
 ## 🏛️ Architectural Flow
 
