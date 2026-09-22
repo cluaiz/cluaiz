@@ -11,7 +11,7 @@ pub use parser::parse_cel;
 
 // Execution public API
 pub use execution::wasm_sandbox::WasmExecutor;
-pub use execution::registry::CluaizxtensionRegistry;
+pub use execution::registry::ExtensionRegistry;
 pub use execution::registry_index::{MasterRegistry, RegistryIndex, RegistryEntry, LoadStrategy};
 pub use execution::activation_bus::ActivationEventBus;
-pub use execution::Cluaizxecutor;
+pub use execution::ExtensionExecutor;
