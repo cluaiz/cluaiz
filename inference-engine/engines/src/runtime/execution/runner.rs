@@ -1,35 +1,32 @@
 //! ═══════════════════════════════════════════════════════════════════════
-//!   Engine: Universal Runner (cluaiz)
+//!   Engine: Core Execution Runner
 //! ═══════════════════════════════════════════════════════════════════════
 
 use anyhow::Result;
 use crate::runtime::execution::sampler::CoreSampler;
-use cluaiz_shared::ModelWeightsWrapper;
-
-
+use engine_core::ModelWeightsWrapper;
 
 #[derive(Debug, Clone)]
-pub struct cluaizMetrics {
+pub struct ExecutionMetrics {
     pub ttft_ms: f64,
     pub tps: f64,
     pub total_tokens: usize,
     pub total_time_ms: f64,
 }
 
-pub struct cluaizRunner {
+pub struct EngineRunner {
     pub model: ModelWeightsWrapper,
-
     pub sampler: CoreSampler,
     pub bos_token_id: Option<u32>,
 }
 
-impl cluaizRunner {
+impl EngineRunner {
     pub fn new(model: ModelWeightsWrapper, sampler: CoreSampler, bos_token_id: Option<u32>) -> Self {
         Self { model, sampler, bos_token_id }
     }
 
-    /// 🔗 Instant Recall: Injects Core cluaiz signals before generation.
-    pub fn inject_Core_signals(&mut self, signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> {
+    /// Injects Core kernel signals before generation.
+    pub fn inject_Core_signals(&mut self, signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>) -> Result<()> {
         self.model.inject_signals(signals)
     }
 
@@ -38,13 +35,13 @@ impl cluaizRunner {
         prompt: &str,
         max_tokens: usize,
         mut callback: impl FnMut(String) + Send + 'static,
-    ) -> Result<cluaizMetrics> {
-        // cluaiz OPTIMIZATION SYNC: Load truth from Governor before generation
-        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+    ) -> Result<ExecutionMetrics> {
+        // OPTIMIZATION SYNC: Load truth from Governor before generation
+        let optimization = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         self.model.apply_optimization(&optimization)?;
         
         // 🌊 Liquid Mode Linkage
-        if optimization.kv_cache_quantization != cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv16 {
+        if optimization.kv_cache_quantization != engine_core::hardware::schema::optimization::KvCacheQuantization::Kv16 {
             self.model.set_liquid_mode(true)?;
         }
 
@@ -53,7 +50,7 @@ impl cluaizRunner {
         let token_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let count_clone = std::sync::Arc::clone(&token_count);
 
-        // 🧪 ARCHER V5.3 CONVERGENCE: Delegating generation to the kernel
+        // Delegating generation to the kernel
         self.model.generate_stream(
             prompt,
             max_tokens,
@@ -76,7 +73,7 @@ impl cluaizRunner {
             0.0
         };
 
-        Ok(cluaizMetrics {
+        Ok(ExecutionMetrics {
             ttft_ms: 0.0, // Model TTFT placeholder for now
             tps,
             total_tokens: actual_tokens,

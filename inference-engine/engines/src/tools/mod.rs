@@ -127,7 +127,7 @@ impl ToolsEngine {
 
     /// Executes a WASM or Native plugin by name resolving path from ~/.cluaiz/tools/plugins
     pub fn execute_plugin_by_name(plugin_name: &str, payload: &[u8]) -> Result<Vec<u8>> {
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let env = engine_core::environment::EnvironmentManager::current();
         let plugin_dir = env.plugins_dir().join(plugin_name);
         if plugin_dir.exists() {
             return Self::execute_plugin(&plugin_dir, payload);
@@ -154,7 +154,7 @@ impl ToolsEngine {
 
     /// Calls an external MCP tool by name resolving path from ~/.cluaiz/tools/mcp
     pub async fn call_mcp_by_name(mcp_name: &str, tool_name: &str, arguments: Value) -> Result<Value> {
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let env = engine_core::environment::EnvironmentManager::current();
         let mcp_dir = env.mcp_dir().join(mcp_name);
         if mcp_dir.exists() {
             return Self::call_mcp(&mcp_dir, tool_name, arguments).await;
@@ -176,7 +176,7 @@ impl ToolsEngine {
 
     /// Discovers MCP tools dynamically by server name
     pub async fn list_mcp_tools_by_name(mcp_name: &str) -> Result<Vec<Value>> {
-        let env = cluaiz_shared::environment::EnvironmentManager::current();
+        let env = engine_core::environment::EnvironmentManager::current();
         let mcp_dir = env.mcp_dir().join(mcp_name);
         if mcp_dir.exists() {
             McpClient::list_tools(&mcp_dir).await

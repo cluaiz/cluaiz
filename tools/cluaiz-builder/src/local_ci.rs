@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use serde_yaml::Value;
-use cluaiz_shared::HardwareGovernor;
+use engine_core::HardwareGovernor;
 
 pub fn execute_local_ci_for_driver(driver: &str, profile: &str) -> Vec<String> {
     println!("🔍 [Local-CI] Auditing system_control.json & GitHub Action Workflows for [{}] driver...", driver);

@@ -17,9 +17,9 @@ pub struct ModelVault;
 impl ModelVault {
     /// Returns the root models directory (e.g. ~/.cluaiz/models)
     pub fn root_dir() -> PathBuf {
-        cluaiz_shared::environment::EnvironmentManager::current()
+        engine_core::environment::EnvironmentManager::current()
             .ensure_models_dir()
-            .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir())
+            .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir())
     }
 
     // ─── 1. Chat Category ───────────────────────────────────────────────

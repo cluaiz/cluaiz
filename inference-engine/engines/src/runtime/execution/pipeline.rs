@@ -4,16 +4,16 @@
 
 use std::sync::Arc;
 use tokio::sync::mpsc;
-use crate::runtime::execution::runner::{cluaizRunner, cluaizMetrics};
-use cluaiz_shared::cluaizContext;
+use crate::runtime::execution::runner::{EngineRunner, ExecutionMetrics};
+use engine_core::EngineContext;
 
 pub struct CorePipeline {
-    pub runner: cluaizRunner,
-    pub context: cluaizContext,
+    pub runner: EngineRunner,
+    pub context: EngineContext,
 }
 
 impl CorePipeline {
-    pub fn new(runner: cluaizRunner, context: cluaizContext) -> Self {
+    pub fn new(runner: EngineRunner, context: EngineContext) -> Self {
         Self { runner, context }
     }
 

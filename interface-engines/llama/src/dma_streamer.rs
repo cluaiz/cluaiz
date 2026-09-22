@@ -364,10 +364,10 @@ impl CudaDmaStreamer {
         if total_vram_bytes == 0 {
             return 0;
         }
-        let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
         let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-        let vram_safety_gb = cluaiz_shared::hardware::memory_governor::calculate_safety_buffer(
+        let vram_safety_gb = engine_core::hardware::memory_governor::calculate_safety_buffer(
             &opt_control,
             total_vram_gb,
             free_vram_gb,

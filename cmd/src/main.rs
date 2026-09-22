@@ -299,7 +299,7 @@ pub enum ComponentCacheCommand {
 async fn main() -> Result<()> {
     // 🚀 SOVEREIGN GHOST EXECUTION GUARD
     if let Ok(current_exe) = std::env::current_exe() {
-        let global_bin_dir = cluaiz_shared::HardwareGovernor::resolve_bin_gateway();
+        let global_bin_dir = engine_core::HardwareGovernor::resolve_bin_gateway();
         if !current_exe.starts_with(&global_bin_dir) {
             eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
             eprintln!("  {} To use the Sovereign System, run the global 'cluaiz' command.\n", "💡".cyan());
@@ -327,7 +327,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = cluaiz_shared::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
+    let log_path = engine_core::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
 
     if let Ok(log_file) = std::fs::File::create(&log_path) {
         let _ = tracing_subscriber::fmt()
@@ -345,7 +345,7 @@ async fn main() -> Result<()> {
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
-    if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
+    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
         if control.brain.is_pure_brain() {
             pure_brain = true;
         }
@@ -411,7 +411,7 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Status) => {
-            engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
+            engines::telemetry::health_check::EngineHealthChecker::run_full_benchmark();
         }
         Some(CliCommand::Calibrate) => {
              println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
@@ -445,12 +445,12 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name, profile }) => {
-            let env_mgr = cluaiz_shared::environment::EnvironmentManager::current();
+            let env_mgr = engine_core::environment::EnvironmentManager::current();
             let global_dir = env_mgr.global_dir.clone();
             let local_dir = env_mgr.local_dir.clone();
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
-            if let Err(_e) = cluaiz_shared::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
-                let _ = std::fs::create_dir_all(cluaiz_shared::HardwareGovernor::resolve_engine_path());
+            if let Err(_e) = engine_core::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
+                let _ = std::fs::create_dir_all(engine_core::HardwareGovernor::resolve_engine_path());
             }
             core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
             if local_dir != global_dir {
@@ -462,12 +462,12 @@ async fn main() -> Result<()> {
             std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
             let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             permissions.auto_assign_defaults();
-            let _ = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control();
+            let _ = engine_core::hardware::governor::HardwareGovernor::load_system_control();
             
             // 🚀 Also seal the local package.json into the global registry
             if let Ok(pkg_data) = std::fs::read_to_string("package.json") {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&pkg_data) {
-                    let _ = cluaiz_shared::hardware::governor::RegistryGovernor::seal_registry(json);
+                    let _ = engine_core::hardware::governor::RegistryGovernor::seal_registry(json);
                 }
             }
             

@@ -1,9 +1,9 @@
 use std::path::Path;
 use anyhow::{Result, anyhow};
 use crate::runtime::execution::hub::HardwareOrchestrator as CoreHub;
-use cluaiz_shared::{ModelWeightsWrapper, cluaizContext, StructuralDNA, TemplateManager};
+use engine_core::{ModelWeightsWrapper, EngineContext, StructuralDNA, TemplateManager};
 use crate::models::GgufProber;
-use cluaiz_shared::hardware::schema::optimization::FeatureState;
+use engine_core::hardware::schema::optimization::FeatureState;
 
 /// GGUFLoader: Lightweight orchestrator for quantized Core models.
 pub struct GGUFLoader;
@@ -18,7 +18,7 @@ impl GGUFLoader {
             .ok_or_else(|| anyhow!("Registry Alert: Architecture metadata missing in GGUF file."))?;
         
         // [cluaiz CLEAN]: Replaced tracing::info with println for editor stability
-        cluaiz_shared::dev_info!("🔍 Autonomous Discovery: Probed architecture '{}' via Native Prober", arch);
+        engine_core::dev_info!("🔍 Autonomous Discovery: Probed architecture '{}' via Native Prober", arch);
 
         // 2. Extract Special Tokens (Resilient Handshake)
         let bos_token_id = metadata.get("tokenizer.ggml.bos_token_id")
@@ -35,21 +35,21 @@ impl GGUFLoader {
         };
 
         // 🧠 Stage 1/2/3: Arbiter Routing Logic (Speculative Decoding)
-        let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         if opt_control.speculative_decoding != FeatureState::Off {
             let has_native_mtp = GgufProber::check_native_mtp(&tensor_infos);
             if has_native_mtp {
-                cluaiz_shared::dev_info!("🔥 [Arbiter] Native MTP detected in binary headers. Engaging High-Fidelity MTP Loop.");
+                engine_core::dev_info!("🔥 [Arbiter] Native MTP detected in binary headers. Engaging High-Fidelity MTP Loop.");
                 architectural_dna.dynamic_attributes.insert("speculative_mode".to_string(), "native_mtp".to_string());
             } else {
-                cluaiz_shared::dev_info!("🛡️ [Arbiter] No Native MTP. Fallback Path Triggered.");
+                engine_core::dev_info!("🛡️ [Arbiter] No Native MTP. Fallback Path Triggered.");
                 // Stage 3: Eagle vs Lookahead based on VRAM (Simulation using available metadata)
                 // In an actual scenario, VRAM is measured in DNA discovery, but here we assume threshold
                 if architectural_dna.vram_headroom_gb <= 0.1 && architectural_dna.vram_headroom_gb > 0.0 {
-                    cluaiz_shared::dev_info!("⚡ [Arbiter] VRAM Choked. Engaging Draftless Lookahead Decoding.");
+                    engine_core::dev_info!("⚡ [Arbiter] VRAM Choked. Engaging Draftless Lookahead Decoding.");
                     architectural_dna.dynamic_attributes.insert("speculative_mode".to_string(), "lookahead".to_string());
                 } else {
-                    cluaiz_shared::dev_info!("🦅 [Arbiter] VRAM Space Available. Engaging cluaiz Eagle Decoding (2.5x Boost).");
+                    engine_core::dev_info!("🦅 [Arbiter] VRAM Space Available. Engaging cluaiz Eagle Decoding (2.5x Boost).");
                     architectural_dna.dynamic_attributes.insert("speculative_mode".to_string(), "eagle".to_string());
                 }
             }
@@ -60,13 +60,13 @@ impl GGUFLoader {
         // Tokenizer setup removed since GGUF natively extracts it.
 
         // 🧬 cluaiz ACTIVATION: Dynamic Context Bootstrapping
-        let cluaiz_context = cluaizContext::boot(
+        let engine_context = EngineContext::boot(
             architectural_dna,
             TemplateManager::default()
         );
  
         // 4. Delegate Instantiation to the Core Hub (Universal DNA Dispatch)
-        let model = CoreHub::instantiate(path.to_string_lossy().as_ref(), "gguf", cluaiz_context).await?;
+        let model = CoreHub::instantiate(path.to_string_lossy().as_ref(), "gguf", engine_context).await?;
   
         Ok((model, bos_token_id))
     }

@@ -2,7 +2,7 @@
 //! Decouples execution from hardcoded strings using capability signatures.
 
 use std::path::PathBuf;
-use cluaiz_shared::hardware::get_silicon_state;
+use engine_core::hardware::get_silicon_state;
 
 pub struct BinaryRouter;
 

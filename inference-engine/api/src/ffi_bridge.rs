@@ -86,7 +86,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 let mut payload = json_cmd.get("payload").and_then(|p| p.as_str()).unwrap_or("{}").to_string();
                                 
                                 // INJECT SYSTEM BINDINGS (READ-ONLY)
-                                let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                                let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                                 let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
                                 
                                 if let Ok(mut payload_json) = serde_json::from_str::<serde_json::Value>(&payload) {
@@ -95,7 +95,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         obj.insert("permission".to_string(), serde_json::json!(perms));
                                         
                                         // Also inject system_control / silicon_truth
-                                        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
+                                        if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
                                             obj.insert("system_control".to_string(), serde_json::json!(control));
                                         }
 
@@ -108,7 +108,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SYSTEM_PS" => {
-                                let registry = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations();
+                                let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
                                 let mut processes = Vec::new();
                                 for info in registry {
                                     processes.push(serde_json::json!({
@@ -124,12 +124,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "HARDWARE_CALIBRATE" => {
-                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
+                                let _ = engine_core::hardware::governor::HardwareGovernor::auto_calibrate();
                                 let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Hardware recalibrated\"}").await;
                                 continue;
                             }
                             "BENCHMARK_RUN" => {
-                                engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
+                                engines::telemetry::health_check::EngineHealthChecker::run_full_benchmark();
                                 let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Benchmark started\"}").await;
                                 continue;
                             }
@@ -140,9 +140,9 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "MODEL_RM" => {
                                 if let Some(model_id) = json_cmd.get("payload").and_then(|p| p.get("model_id")).and_then(|m| m.as_str()) {
-                                    let model_file = cluaiz_shared::environment::EnvironmentManager::current()
+                                    let model_file = engine_core::environment::EnvironmentManager::current()
                                         .ensure_models_dir()
-                                        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir())
+                                        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir())
                                         .join(format!("{}.gguf", model_id));
                                     if model_file.exists() {
                                         let _ = std::fs::remove_file(&model_file);
@@ -156,7 +156,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_LIST" => {
-                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = engine_core::environment::EnvironmentManager::current().skills_dir();
                                 let mut skill_names: Vec<String> = Vec::new();
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -172,7 +172,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_CACHE_CLEAR" => {
-                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = engine_core::environment::EnvironmentManager::current().skills_dir();
                                 let mut cleared = 0usize;
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -189,7 +189,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 continue;
                             }
                             "SKILL_CACHE_LS" => {
-                                let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
+                                let skills_dir = engine_core::environment::EnvironmentManager::current().skills_dir();
                                 let mut cache_entries: Vec<serde_json::Value> = Vec::new();
                                 if let Ok(entries) = std::fs::read_dir(&skills_dir) {
                                     for entry in entries.flatten() {
@@ -224,11 +224,11 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "GET_SETTINGS" => {
                                 let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-                                let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
                                 let brain_mode = "plugin";
                                 
                                 // Load real optimization settings from disk
-                                let opt_settings = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                                let opt_settings = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                                 
                                 let roster = engines::models::registry::CoreRoster::load_roster();
                                 let mut available_chat_models: Vec<String> = Vec::new();
@@ -362,7 +362,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                         };
                                         if !base_dir.is_empty() {
                                             let mut found_path = None;
-                                            let search_dir = cluaiz_shared::environment::EnvironmentManager::current().global_dir.join(base_dir);
+                                            let search_dir = engine_core::environment::EnvironmentManager::current().global_dir.join(base_dir);
                                             if let Ok(entries) = std::fs::read_dir(&search_dir) {
                                                 for entry in entries.flatten() {
                                                     let path = entry.path();
@@ -430,12 +430,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                 if let Some(payload) = json_cmd.get("payload") {
                                     // Handle single key-value update: {key: "flash_attention", value: "On"}
                                     if let (Some(key), Some(value)) = (payload.get("key").and_then(|k| k.as_str()), payload.get("value")) {
-                                        let mut opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                                        let mut opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                                         if let Ok(mut opt_json) = serde_json::to_value(&opt_control) {
                                             opt_json[key] = value.clone();
                                             if let Ok(updated) = serde_json::from_value(opt_json) {
                                                 opt_control = updated;
-                                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
+                                                let _ = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
                                                 let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                             } else {
                                         let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid optimization format\"}").await;
@@ -443,7 +443,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                     }
                                     // Handle full optimization object update
                                     } else if let Ok(opt_ctrl) = serde_json::from_value(payload.clone()) {
-                                        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_ctrl);
+                                        let _ = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_ctrl);
                                         let _ = pipe.write_all(b"{\"status\": \"success\"}").await;
                                     } else {
                                         let _ = pipe.write_all(b"{\"status\": \"error\", \"message\": \"invalid payload\"}").await;
@@ -471,12 +471,12 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             }
                             "RESET_OPTIMIZATION" | "RESET_BOOSTER" => {
                                 tracing::info!("🔄 [IPC] Resetting LLM Optimization to hardware-optimal defaults...");
-                                let control = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
                                 let has_gpu = !control.silicon_truth.accelerators.gpus.is_empty();
 
-                                use cluaiz_shared::hardware::schema::optimization::*;
+                                use engine_core::hardware::schema::optimization::*;
 
                                 // Speculative decoding only safe with 8GB+ VRAM
                                 let optimal_spec = if vram_gb >= 8.0 { FeatureState::Auto } else { FeatureState::Off };
@@ -494,10 +494,10 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                                      custom_ram_buffer_gb: None,
                                  };
 
-                                let _ = cluaiz_shared::hardware::governor::HardwareGovernor::save_optimization_settings(&optimal_optimization);
+                                let _ = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&optimal_optimization);
                                 
                                 let optimal_gpu_layers: i32 = if !has_gpu { 0 } else { -1 };
-                                let mut gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                                let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                                 gguf_meta.hardware_and_execution.n_gpu_layers = optimal_gpu_layers;
                                 gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
                                 let _ = gguf_meta.save();
@@ -558,7 +558,7 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
                             if let Some(id) = perms.get_active_chat_model() {
                                 if let Some(model) = roster.iter().find(|m| m.id == id) {
                                     if let Some(path) = &model.local_path {
-                                        if let Ok(dna) = cluaiz_shared::metadata::dna::StructuralDNA::load(std::path::Path::new(path)) {
+                                        if let Ok(dna) = engine_core::metadata::dna::StructuralDNA::load(std::path::Path::new(path)) {
                                             if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" {
                                                 start_tag = dna.think_tag_schema.clone();
                                                 end_tag = dna.think_end_schema.clone();

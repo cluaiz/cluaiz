@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use cluaiz_shared::hardware::system_performance::{ObservableHardwareState, get_pulse};
+use engine_core::hardware::system_performance::{ObservableHardwareState, get_pulse};
 use tracing::info;
 
 #[derive(Debug, Clone, PartialEq)]

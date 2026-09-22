@@ -17,7 +17,7 @@ impl SystemOptimization {
              AutoTuner::tune(&mut control, &silicon);
 
              // 2. Resolve initial conflicts
-             ConflictResolver::resolve_and_apply(&mut control, &silicon, &cluaiz_shared::backend::signature::KernelSignature::default());
+             ConflictResolver::resolve_and_apply(&mut control, &silicon, &engine_core::backend::signature::KernelSignature::default());
         }
 
         // OS Tuning: Elevate process priority for high throughput
@@ -29,7 +29,7 @@ impl SystemOptimization {
     }
 
     /// Dynamic Resolve: Called after model loading to align with specific architecture.
-    pub fn align_with_model(control: &mut OptimizationControl, signature: &cluaiz_shared::backend::signature::KernelSignature) -> anyhow::Result<()> {
+    pub fn align_with_model(control: &mut OptimizationControl, signature: &engine_core::backend::signature::KernelSignature) -> anyhow::Result<()> {
         let silicon = HardwareGovernor::load_system_control()?.silicon_truth;
         
         // Re-resolve based on specific model architecture

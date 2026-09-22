@@ -145,7 +145,7 @@ impl PreparedChatContext {
             });
 
         let dynamic_context_limit = active_model_entry
-            .map(|m| cluaiz_shared::metadata::dna::StructuralDNA::parse_context_string(&m.metadata.context_window))
+            .map(|m| engine_core::metadata::dna::StructuralDNA::parse_context_string(&m.metadata.context_window))
             .unwrap_or(2048)
             .max(2048);
 
@@ -231,8 +231,8 @@ impl PreparedChatContext {
 
         let compiled_tools = engines::tools::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
 
-        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-        let live_active_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations()
+        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let live_active_ctx = engine_core::hardware::governor::HardwareGovernor::get_active_allocations()
             .iter()
             .find(|p| p.context_size > 0)
             .map(|p| p.context_size);
@@ -323,7 +323,7 @@ impl PreparedChatContext {
         }).unwrap_or_else(|| gguf_meta.user_moved_flags.response_length.clone());
 
         // 🧠 Dynamic Pre-Flight Context Shifting
-        let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let gen_reserve = validated_max_tokens.unwrap_or(1024).clamp(256, (n_ctx_limit / 4).max(512));
         
         if augmented_messages.len() > 2 {
@@ -335,13 +335,13 @@ impl PreparedChatContext {
                 msg_lengths.push(est_tokens);
             }
             let total_est: usize = msg_lengths.iter().sum();
-            if total_est > prompt_token_budget && opt_control.context_shifting != cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Off {
+            if total_est > prompt_token_budget && opt_control.context_shifting != engine_core::hardware::schema::optimization::ContextShiftingMode::Off {
                 let tokens_to_drop = total_est.saturating_sub(prompt_token_budget);
                 let target_drop = match opt_control.context_shifting {
-                    cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Minimal => ((n_ctx_limit as f32) * 0.05) as usize,
-                    cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Standard => ((n_ctx_limit as f32) * 0.10) as usize,
-                    cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Aggressive => ((n_ctx_limit as f32) * 0.25) as usize,
-                    cluaiz_shared::hardware::schema::optimization::ContextShiftingMode::Extreme => ((n_ctx_limit as f32) * 0.50) as usize,
+                    engine_core::hardware::schema::optimization::ContextShiftingMode::Minimal => ((n_ctx_limit as f32) * 0.05) as usize,
+                    engine_core::hardware::schema::optimization::ContextShiftingMode::Standard => ((n_ctx_limit as f32) * 0.10) as usize,
+                    engine_core::hardware::schema::optimization::ContextShiftingMode::Aggressive => ((n_ctx_limit as f32) * 0.25) as usize,
+                    engine_core::hardware::schema::optimization::ContextShiftingMode::Extreme => ((n_ctx_limit as f32) * 0.50) as usize,
                     _ => tokens_to_drop,
                 }.max(tokens_to_drop);
 
@@ -420,7 +420,7 @@ impl PreparedChatContext {
                 false
             } else if let Some(ref tmpl) = chat_tmpl {
                 let test_msgs = [("user", "test")];
-                if let Ok(rendered) = cluaiz_shared::TemplateManager::render_messages(tmpl, &test_msgs, true) {
+                if let Ok(rendered) = engine_core::TemplateManager::render_messages(tmpl, &test_msgs, true) {
                     rendered.contains(st) && !rendered.contains(et)
                 } else if let Some(idx) = tmpl.rfind("add_generation_prompt") {
                     let gen_part = &tmpl[idx..];

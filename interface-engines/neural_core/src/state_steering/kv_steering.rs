@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use crate::interfaces::memory_contract::{SovereignBuffer, MappedBuffer};
-use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
-use cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal;
+use engine_core::hardware::schema::profiles::SiliconTruth;
+use engine_core::hardware::memory::kv_cache::stitching::KernelSignal;
 
 /// 🏛️ SovereignMapper
 /// Handles the mapping of .kv-cache or .gguf files based on hardware capabilities.
@@ -28,9 +28,9 @@ impl SovereignMapper {
         let is_ssd = self.silicon.storage.iter().any(|s| s.drive_type.to_lowercase().contains("ssd"));
         
         if !is_ssd {
-            cluaiz_shared::dev_info!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
+            engine_core::dev_info!("🐌 [Mapper] Slow storage detected. Applying HDD Pre-fault strategy.");
         } else {
-            cluaiz_shared::dev_info!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
+            engine_core::dev_info!("🚀 [Mapper] NVMe/SSD detected. Zero-copy mmap active.");
         }
 
         Ok(buffer)
@@ -54,14 +54,14 @@ impl SovereignMapper {
 pub struct KVStitcher;
 
 impl KVStitcher {
-    pub fn prepare_signal(state_path: &Path, token_count: usize, head_dim: usize) -> Result<cluaizSignal> {
+    pub fn prepare_signal(state_path: &Path, token_count: usize, head_dim: usize) -> Result<KernelSignal> {
         if !state_path.exists() {
             return Err(anyhow!("❌ State file not found: {:?}", state_path));
         }
 
         let buffer = MappedBuffer::from_file(state_path)?;
         
-        Ok(cluaizSignal {
+        Ok(KernelSignal {
             raw_data: Arc::new(buffer),
             token_count,
             head_dim,
@@ -80,6 +80,6 @@ impl KVSteering {
         let ptr = buffer.as_ptr();
         let len = buffer.len();
         
-        cluaiz_shared::dev_info!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
+        engine_core::dev_info!("💉 [KV-Steering] Injecting zero-copy buffer: {:?} ({} bytes)", ptr, len);
     }
 }

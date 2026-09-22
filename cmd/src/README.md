@@ -58,4 +58,4 @@ When you type `cluaiz` in your terminal:
 
 1. **Never block the event loop:** Any heavy task (like loading a model or talking to the API) MUST be done asynchronously using `tokio::spawn` or background channels.
 2. **Graceful Crashes:** If something panics, the `FlowEngine::restore()` must be called via the panic hook in `main.rs` to prevent the user's terminal from breaking.
-3. **No Direct Hardware Calls here:** The CLI should always use `cluaiz-shared` or the `engines` API crate to talk to the GPU/Drivers. The UI must remain decoupled from the hardware execution logic.
+3. **No Direct Hardware Calls here:** The CLI should always use `engine-core` or the `engines` API crate to talk to the GPU/Drivers. The UI must remain decoupled from the hardware execution logic.

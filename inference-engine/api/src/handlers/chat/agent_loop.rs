@@ -63,7 +63,7 @@ pub async fn execute_streaming_loop(
         let mut total_generated = String::new();
         let mut overall_token_count = 0;
         let mut reasoning_tokens_count = 0usize;
-        let mut think_filter = cluaiz_shared::metadata::dna::StreamingReasoningFilter::new(
+        let mut think_filter = engine_core::metadata::dna::StreamingReasoningFilter::new(
             ctx.dyn_think_start.clone(),
             ctx.dyn_think_end.clone(),
             ctx.prompt_starts_in_think,

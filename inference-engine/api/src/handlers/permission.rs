@@ -22,9 +22,9 @@ fn get_local_ip() -> Option<String> {
 // ─── GET /v1/system/permission ───────────────────────────────────────
 pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let schema = PermissionSchema::load();
-    let models_root = cluaiz_shared::environment::EnvironmentManager::current()
+    let models_root = engine_core::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
 
     let registry = engines::models::InstalledStateRegistry::load();
 

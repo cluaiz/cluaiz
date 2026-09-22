@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib", "staticlib"]
 # ── Sovereign LLaMA Backend (Direct C++ Bridge) ──
 anyhow = "1.0"
 tracing = "0.1"
-cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
+engine-core = { path = "../../inference-engine/engines/core" }
 tokenizers = "0.22.2"
 libloading = "0.8"
 tokio = { version = "1.37", features = ["full"] }

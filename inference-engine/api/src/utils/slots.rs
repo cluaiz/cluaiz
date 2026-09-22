@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use axum::{response::Response, http::StatusCode};
 use serde_json::json;
 use engines::neural_foundry::security::permission_schema::PermissionSchema;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 
 /// Permissive Pre-Flight Guidance: Log informational capabilities and allow execution to proceed to engine
 pub fn require_capability(schema: &PermissionSchema, slot_name: &str, required_tasks: &[&str]) -> Result<(), Response> {

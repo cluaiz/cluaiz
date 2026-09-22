@@ -1,4 +1,4 @@
-use cluaiz_shared::HardwareGovernor;
+use engine_core::HardwareGovernor;
 
 fn main() {
     println!("🧪 [Test] Attempting to load cluaiz Truth...");

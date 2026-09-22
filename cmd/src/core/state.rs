@@ -134,7 +134,7 @@ pub struct AppState {
     pub _active_tab: Tab,
     pub active_app: MenuApp,
     pub _menu_app: MenuApp,
-    pub hardware: ::cluaiz_shared::hardware::schema::profiles::cluaizProfile,
+    pub hardware: ::engine_core::hardware::schema::profiles::SovereignProfile,
     pub ram_gb: f64,
     pub sorted_models: Vec<engines::ModelRecommendation>,
     pub roster_state: TableState,
@@ -164,7 +164,7 @@ pub struct AppState {
     pub _generation_tps: f64,
     pub cpu_usage: f32,
     pub mem_usage_gb: f32,
-    pub live_pulse: Arc<::cluaiz_shared::hardware::telemetry::ObservableHardwareState>,
+    pub live_pulse: Arc<::engine_core::hardware::telemetry::ObservableHardwareState>,
 
     // ── UI State ──
     pub is_dirty: bool,
@@ -262,7 +262,7 @@ impl AppState {
     }
 
     pub fn new(starting_state: Option<OsState>) -> Self {
-        let hardware = ::cluaiz_shared::hardware::get_cluaiz_profile();
+        let hardware = ::engine_core::hardware::get_sovereign_profile();
 
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
@@ -278,7 +278,7 @@ impl AppState {
         // Initialize state
         let os_state = starting_state.unwrap_or(OsState::Dashboard);
 
-        let live_pulse = ::cluaiz_shared::hardware::telemetry::get_pulse();
+        let live_pulse = ::engine_core::hardware::telemetry::get_pulse();
         // ── Detect if Native IPC daemon is already running via Named Pipe probe ──
         // The daemon uses Windows Named Pipe, NOT a TCP socket.
         let _is_client_mode: bool = {

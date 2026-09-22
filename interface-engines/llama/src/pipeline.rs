@@ -1,6 +1,6 @@
 //! Sovereign Implementation B: Acceleration Pipeline (With Binary Fallback).
 
-use cluaiz_shared::backend::context::cluaizContext;
+use engine_core::backend::context::EngineContext;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ pub struct RuntimeBPipeline;
 impl RuntimeBPipeline {
     pub async fn execute_stream(
         model_path: &str,
-        context: &cluaizContext,
+        context: &EngineContext,
         prompt: &str,
         _max_tokens: usize,
         mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
@@ -58,7 +58,7 @@ impl RuntimeBPipeline {
         ];
 
         // 🧠 Dynamically inject missing GGUF arguments
-        let metadata = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let metadata = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         
         // 1. MMAP Toggle
         if metadata.hardware_and_execution.no_mmap {
@@ -133,7 +133,7 @@ impl RuntimeBPipeline {
         }
 
         // 🧠 Dynamically inject Speculative Decoding Flags
-        let opt = cluaiz_shared::hardware::schema::optimization::OptimizationControl::load();
+        let opt = engine_core::hardware::schema::optimization::OptimizationControl::load();
         if opt.speculative_decoding.is_active() {
             let spec_type = metadata.hardware_and_execution.spec_type.as_str();
             let draft_max = metadata.hardware_and_execution.spec_draft_n_max.to_string();
@@ -223,7 +223,7 @@ impl RuntimeBPipeline {
 
     pub fn execute_stream_internal(
         _model_path: &str,
-        _context: &cluaizContext,
+        _context: &EngineContext,
         _prompt: &str,
         _max_tokens: usize,
         _callback: Box<dyn FnMut(String) -> bool + Send + 'static>,

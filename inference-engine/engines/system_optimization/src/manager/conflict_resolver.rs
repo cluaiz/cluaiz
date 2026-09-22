@@ -1,9 +1,9 @@
 //! ⚖️ Conflict Resolver: Sovereign Decision Matrix
 //! Handles synergies and overlaps between incompatible booster features.
 
-use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
-use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
-use cluaiz_shared::backend::signature::KernelSignature;
+use engine_core::hardware::schema::optimization::{OptimizationControl, FeatureState};
+use engine_core::hardware::schema::profiles::SiliconTruth;
+use engine_core::backend::signature::KernelSignature;
 
 pub struct ConflictResolver;
 
@@ -28,8 +28,8 @@ impl ConflictResolver {
         let vram_available = silicon.accelerators.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
         
         if control.speculative_decoding == FeatureState::On {
-            if vram_available < 12.0 && control.kv_cache_quantization == cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto {
-                control.kv_cache_quantization = cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4;
+            if vram_available < 12.0 && control.kv_cache_quantization == engine_core::hardware::schema::optimization::KvCacheQuantization::Auto {
+                control.kv_cache_quantization = engine_core::hardware::schema::optimization::KvCacheQuantization::Kv4;
                 println!("⚖️ [Manager] Low VRAM ({:.1}GB) detected. Calibrating KV Cache to Kv4 to support Speculative path.", vram_available);
             }
         }

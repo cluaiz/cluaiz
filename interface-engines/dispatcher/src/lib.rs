@@ -1,6 +1,6 @@
 use anyhow::Result;
-use cluaiz_shared::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
-use cluaiz_shared::hardware::schema::optimization::OptimizationControl;
+use engine_core::backend::signature::{KernelSignature, GlobalFeatureRegistry, BackendType};
+use engine_core::hardware::schema::optimization::OptimizationControl;
 use std::path::PathBuf;
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 
@@ -46,7 +46,7 @@ impl NeuralDispatcher {
     /// Used by both the FFI Named Pipes (Native Desktop) and HTTP SSE (External).
     pub async fn dispatch_stream(&self, prompt: &str, skip_brain: bool, model_path_opt: Option<PathBuf>, max_tokens: Option<usize>) -> EngineResponse {
         // 🚀 Real-time Silicon Probe
-        let hardware = cluaiz_shared::hardware::HardwareOrchestrator::probe().silicon_truth;
+        let hardware = engine_core::hardware::HardwareOrchestrator::probe().silicon_truth;
         let backend = GlobalFeatureRegistry::select_runtime(&self.current_signature, &hardware);
         
         tracing::info!("🚦 [Master Router] Routing prompt to backend: {:?}", backend);
@@ -110,7 +110,7 @@ impl NeuralDispatcher {
                                     free_fn(safe_ptr.0);
                                     
                                     let engine_id = cached_path.file_name().unwrap_or_default().to_string_lossy().to_string();
-                                    cluaiz_shared::HardwareGovernor::unregister_allocation(&engine_id);
+                                    engine_core::HardwareGovernor::unregister_allocation(&engine_id);
                                 }
                             }
                             // 🛑 CRITICAL FIX: Leak the library handle so the DLL is never unloaded from memory.
@@ -136,11 +136,11 @@ impl NeuralDispatcher {
 
                         let binary_name = format!("{}{}.{}", prefix, core_name, ext);
 
-                        let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+                        let binary_path = engine_core::HardwareGovernor::resolve_interface_path()
                             .join(&binary_name);
 
                         // 🛡️ Strict FFI Validation Boundary
-                        let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+                        let marker_path = engine_core::HardwareGovernor::resolve_interface_path()
                             .join(format!("{}.ready", core_name));
 
                         if !binary_path.exists() || !marker_path.exists() {
@@ -195,14 +195,14 @@ impl NeuralDispatcher {
 
                                         if !is_onnx {
                                             let mut dynamic_ctx = 0;
-                                            let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                                            let mut dna = engine_core::metadata::dna::StructuralDNA::default();
                                             if let Some(parent) = model_path.parent() {
                                                 if dna.discover_from_path(parent).is_ok() {
-                                                    dynamic_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope(&dna);
+                                                    dynamic_ctx = engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope(&dna);
                                                 }
                                             }
 
-                                            cluaiz_shared::HardwareGovernor::register_allocation(
+                                            engine_core::HardwareGovernor::register_allocation(
                                                 &model_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
                                                 vram_gb,
                                                 dynamic_ctx,
@@ -455,9 +455,9 @@ impl EmbeddingDispatcher {
             let prefix = if target_os == "windows" { "" } else { "lib" };
             let binary_name = format!("{}{}.{}", prefix, core_name, ext);
 
-            let binary_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+            let binary_path = engine_core::HardwareGovernor::resolve_interface_path()
                 .join(&binary_name);
-            let marker_path = cluaiz_shared::HardwareGovernor::resolve_interface_path()
+            let marker_path = engine_core::HardwareGovernor::resolve_interface_path()
                 .join(format!("{}.ready", core_name));
 
             if !binary_path.exists() || !marker_path.exists() {
@@ -467,7 +467,7 @@ impl EmbeddingDispatcher {
             unsafe {
                 #[cfg(windows)]
                 let lib: libloading::Library = {
-                    let drivers_dir = cluaiz_shared::HardwareGovernor::resolve_interface_path().join("drivers");
+                    let drivers_dir = engine_core::HardwareGovernor::resolve_interface_path().join("drivers");
                     if let Ok(path) = std::env::var("PATH") {
                         std::env::set_var("PATH", format!("{};{}", drivers_dir.display(), path));
                     }

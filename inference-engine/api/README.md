@@ -37,7 +37,7 @@ graph TD
 ## Deep File Breakdown
 - `chat.rs`: 
   - **Logic:** Inference & Token Streaming logic (SSE).
-  - **Flow:** Intercepts `<TRIGGER:X>` tokens natively for the Two-Step Discovery RAG loop to load `SKILL.md` dynamically.
+  - **Flow:** Intercepts standard `<tool_call>` ChatML blocks natively to dispatch skills, plugins, and MCP servers dynamically.
 - `cel_handler.rs`: 
   - **Logic:** Pure CEL Execution API (`/v1/cel/execute`).
   - **Flow:** Transpiles CEL to VRAM/IPC payloads and triggers `UnifiedExecutor`. Replaces all hardcoded DB logic.

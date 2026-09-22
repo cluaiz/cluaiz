@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use cluaiz_shared::hardware::schema::profiles::SystemControl;
+use engine_core::hardware::schema::profiles::SystemControl;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HealthStatus {
@@ -58,6 +58,6 @@ impl HardwareAuditor {
     }
 
     fn get_system_control_path(&self) -> PathBuf {
-        cluaiz_shared::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json")
+        engine_core::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json")
     }
 }

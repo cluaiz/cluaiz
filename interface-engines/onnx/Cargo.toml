@@ -13,7 +13,7 @@ crate-type = ["cdylib", "rlib"]
 ort = { version = "2.0.0-rc.13", features = ["copy-dylibs", "download-binaries", "cuda", "directml"] } # ONNX Runtime bindings
 anyhow = "1.0"
 tracing = "0.1"
-cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
+engine-core = { path = "../../inference-engine/engines/core" }
 neural-core = { path = "../neural_core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

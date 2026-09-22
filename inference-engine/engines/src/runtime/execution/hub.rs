@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError};
-use cluaiz_shared::{ModelWeightsWrapper, cluaizContext, UnifiedBackend, cluaizInference};
+use engine_core::{ModelWeightsWrapper, EngineContext, UnifiedBackend, StreamingInference};
 use crate::interface_engines::EngineManager;
 use std::sync::{Arc, Mutex};
 
@@ -11,7 +11,7 @@ impl HardwareOrchestrator {
     pub async fn instantiate(
         model_load_path: &str,
         engine_type: &str,
-        cluaiz_context: cluaizContext,
+        cluaiz_context: EngineContext,
     ) -> Result<ModelWeightsWrapper> {
         Self::instantiate_with_optimization(model_load_path, engine_type, cluaiz_context, None).await
     }
@@ -19,8 +19,8 @@ impl HardwareOrchestrator {
     pub async fn instantiate_with_optimization(
         model_load_path: &str,
         engine_type: &str,
-        cluaiz_context: cluaizContext,
-        optimization_override: Option<cluaiz_shared::hardware::schema::optimization::OptimizationControl>,
+        cluaiz_context: EngineContext,
+        optimization_override: Option<engine_core::hardware::schema::optimization::OptimizationControl>,
     ) -> Result<ModelWeightsWrapper> {
         tracing::info!("🔩 [Orchestrator] Initiating Dynamic Hardware Handshake for Engine: {}", engine_type);
 
@@ -52,7 +52,7 @@ impl HardwareOrchestrator {
         }
 
         // 1. Initialize the Engine Manager (The cluaiz Linker)
-        let base_path = cluaiz_shared::hardware::governor::HardwareGovernor::resolve_hub_path();
+        let base_path = engine_core::hardware::governor::HardwareGovernor::resolve_hub_path();
         let mut manager = EngineManager::new(base_path);
 
         // 2. Engine Type provided by Unified Router (e.g., "llama" or "onnx")
@@ -77,13 +77,13 @@ impl HardwareOrchestrator {
         let mut optimization_control = if let Some(optimization) = optimization_override {
             optimization
         } else {
-            cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default()
+            engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default()
         };
 
         // 🛡️ DNA-AWARE FLASH ATTENTION GUARD (Mathematical Resolution)
         // Flash Attention fundamentally requires the attention head dimension to be a specific size (usually 64, 128, or 256)
         // and does not apply to State Space Models (SSMs) or certain 1-bit architectures.
-        if optimization_control.flash_attention == cluaiz_shared::hardware::schema::optimization::FeatureState::On {
+        if optimization_control.flash_attention == engine_core::hardware::schema::optimization::FeatureState::On {
             let head_dim = cluaiz_context.dna.attention_head_dim.unwrap_or_else(|| {
                 if let (Some(h), Some(c)) = (cluaiz_context.dna.hidden_size, cluaiz_context.dna.attention_head_count) {
                     h / c
@@ -102,7 +102,7 @@ impl HardwareOrchestrator {
             let is_architecturally_broken = cluaiz_context.dna.signature.is_bitnet;
 
             if !math_supports_flash || is_architecturally_broken {
-                optimization_control.flash_attention = cluaiz_shared::hardware::schema::optimization::FeatureState::Off;
+                optimization_control.flash_attention = engine_core::hardware::schema::optimization::FeatureState::Off;
                 tracing::warn!("⚠️ [Arbiter] Flash Attention disabled: Math anomaly ({}) or Architecture lacks GGML CUDA FA support.", head_dim);
             }
         }
@@ -139,7 +139,7 @@ impl Drop for SovereignEngine {
         if let Ok(manager) = self.manager.lock() {
             let _ = manager.free_instance(self.engine_ptr);
         }
-        let _ = cluaiz_shared::hardware::governor::HardwareGovernor::release_vram(&self.engine_id);
+        let _ = engine_core::hardware::governor::HardwareGovernor::release_vram(&self.engine_id);
     }
 }
 
@@ -159,7 +159,7 @@ impl UnifiedBackend for SovereignEngine {
     }
 }
 
-impl cluaizInference for SovereignEngine {
+impl StreamingInference for SovereignEngine {
     fn generate_stream(
         &mut self,
         prompt: &str,
@@ -184,7 +184,7 @@ impl cluaizInference for SovereignEngine {
         manager.load_kv_cache_ffi(self.engine_ptr, path)
     }
 
-    fn inject_signals(&mut self, signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> {
+    fn inject_signals(&mut self, signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>) -> Result<()> {
         if signals.is_empty() {
             return Ok(());
         }
@@ -203,7 +203,7 @@ impl cluaizInference for SovereignEngine {
         Ok(())
     }
 
-    fn apply_optimization(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> {
+    fn apply_optimization(&mut self, _control: &engine_core::hardware::schema::optimization::OptimizationControl) -> Result<()> {
         Ok(())
     }
 
@@ -230,7 +230,7 @@ impl UnifiedBackend for NativeOnnxWrapper {
     }
 }
 
-impl cluaizInference for NativeOnnxWrapper {
+impl StreamingInference for NativeOnnxWrapper {
     fn generate_stream(
         &mut self,
         prompt: &str,
@@ -303,7 +303,7 @@ impl cluaizInference for NativeOnnxWrapper {
         Err(anyhow!("ONNX Native does not support forward_raw for text tokens yet."))
     }
 
-    fn inject_signals(&mut self, _signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> Result<()> { Ok(()) }
-    fn apply_optimization(&mut self, _control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> Result<()> { Ok(()) }
+    fn inject_signals(&mut self, _signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>) -> Result<()> { Ok(()) }
+    fn apply_optimization(&mut self, _control: &engine_core::hardware::schema::optimization::OptimizationControl) -> Result<()> { Ok(()) }
     fn set_liquid_mode(&mut self, _enabled: bool) -> Result<()> { Ok(()) }
 }

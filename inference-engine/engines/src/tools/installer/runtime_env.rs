@@ -3,7 +3,7 @@ use std::process::Stdio;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 
 /// The detected runtime environment requirement for a tool
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

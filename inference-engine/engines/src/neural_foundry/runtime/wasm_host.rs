@@ -6,7 +6,7 @@ use wasmtime::*;
 use wasmtime_wasi::p1::{WasiP1Ctx, add_to_linker_async};
 use wasmtime_wasi::WasiCtxBuilder;
 // TODO: Restore once CoreGraph is implemented in archer_shared
-// use cluaiz_shared::Core::graph::CoreGraph;
+// use engine_core::Core::graph::CoreGraph;
 
 use std::sync::Mutex;
 
@@ -22,7 +22,7 @@ pub struct WasmHost {
 }
 
 #[cfg(feature = "wasm-runtime")]
-struct cluaizWasmState {
+struct WasmHostState {
     wasi: WasiP1Ctx,
 }
 
@@ -86,7 +86,7 @@ impl WasmHost {
 
         let wasi = wasi_builder.build_p1();
         
-        let mut store = Store::new(&self.engine, cluaizWasmState { wasi });
+        let mut store = Store::new(&self.engine, WasmHostState { wasi });
         // ⛽ Inject exactly 10 Million CPU instructions as Fuel
         // If the skill hits an infinite loop or tries mining crypto, it traps and dies.
         if let Err(e) = store.set_fuel(10_000_000) {
@@ -94,7 +94,7 @@ impl WasmHost {
         }
 
         let mut linker = Linker::new(&self.engine);
-        add_to_linker_async(&mut linker, |s: &mut cluaizWasmState| &mut s.wasi)?;
+        add_to_linker_async(&mut linker, |s: &mut WasmHostState| &mut s.wasi)?;
 
         // 🔗 Instantiate module
         let instance = linker.instantiate_async(&mut store, &module).await?;
@@ -167,17 +167,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_Core_pulse_generation() {
-        cluaiz_shared::dev_info!("🚀 Testing cluaiz Core Pulse...");
+        engine_core::dev_info!("🚀 Testing cluaiz Core Pulse...");
         // let activity = "Foundry Simulation Pulse";
         // let skill_id = "test_skill_v1";
         
-        // let result = cluaiz_shared::neural_core::graph::CoreGraph::chronicle_pulse(
+        // let result = engine_core::neural_core::graph::CoreGraph::chronicle_pulse(
         //     activity,
         //     skill_id,
         //     "Metadata: [Simulation Mode Active]"
         // );
 
         // assert!(result.is_ok(), "Core Graph should be writable");
-        // cluaiz_shared::dev_info!("✅ Pulse Chronicled in thing.ai.nurale.md");
+        // engine_core::dev_info!("✅ Pulse Chronicled in thing.ai.nurale.md");
     }
 }

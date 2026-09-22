@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 
 /// Master Tools Registry (Single Source of Truth for all Skills, Plugins, and MCP connectors)

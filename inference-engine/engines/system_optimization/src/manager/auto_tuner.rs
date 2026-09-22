@@ -1,8 +1,8 @@
 //! 🧪 Auto Tuner: Hardware-Aware Feature Scaling
 //! Calibrates "Auto" states based on real-time Silicon Truth.
 
-use cluaiz_shared::hardware::schema::optimization::{OptimizationControl, FeatureState};
-use cluaiz_shared::hardware::schema::profiles::SiliconTruth;
+use engine_core::hardware::schema::optimization::{OptimizationControl, FeatureState};
+use engine_core::hardware::schema::profiles::SiliconTruth;
 
 pub struct AutoTuner;
 
@@ -17,10 +17,10 @@ impl AutoTuner {
         }
 
         // Auto KV Cache Quantization for low VRAM
-        if control.kv_cache_quantization == cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Auto {
+        if control.kv_cache_quantization == engine_core::hardware::schema::optimization::KvCacheQuantization::Auto {
             let vram = silicon.accelerators.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
             if vram < 8.0 {
-                control.kv_cache_quantization = cluaiz_shared::hardware::schema::optimization::KvCacheQuantization::Kv4;
+                control.kv_cache_quantization = engine_core::hardware::schema::optimization::KvCacheQuantization::Kv4;
                 println!("🧪 [Manager] Auto-Tuner: KV Cache Quantization calibrated to Kv4 for low VRAM ({:.1}GB)", vram);
             }
         }

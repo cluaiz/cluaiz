@@ -266,7 +266,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         i += 1;
     }
 
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let output_root = env
         .local_dir
         .parent()

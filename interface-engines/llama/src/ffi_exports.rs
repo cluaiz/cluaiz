@@ -49,7 +49,7 @@ static _FORCE_KEEP_INIT: extern "C" fn() -> *const std::os::raw::c_char = cluaiz
 #[no_mangle]
 pub extern "C" fn cluaiz_kernel_instantiate(
     path_ptr: *const std::os::raw::c_char,
-    optimization_ptr: *const cluaiz_shared::hardware::schema::optimization::cluaizOptimizationContext,
+    optimization_ptr: *const engine_core::hardware::schema::optimization::OptimizationContext,
 ) -> *mut RuntimeB {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         if path_ptr.is_null() {
@@ -64,38 +64,38 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         let model_path = std::path::Path::new(&path_str);
         let model_dir = model_path.parent().unwrap_or(model_path);
 
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "🧬 [Llama-Lib] Initiating DNA Handshake for: {:?}",
             model_dir
         );
-        let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+        let mut dna = engine_core::metadata::dna::StructuralDNA::default();
 
         // ALWAYS perform real-time discovery to sync with LIVE hardware state
-        cluaiz_shared::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");
+        engine_core::dev_info!("📂 [Llama-Lib] Discovering real-time truth...");
         if let Err(e) = dna.discover_from_path(model_dir) {
-            cluaiz_shared::dev_info!(
+            engine_core::dev_info!(
                 "⚠️ [Llama-Lib] DNA Discovery Failed: {}. Using best-effort constraints.",
                 e
             );
         }
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "✅ [Llama-Lib] DNA Discovery Complete. Negotiated Context: {:?}",
             dna.max_context_length
         );
-        cluaiz_shared::dev_info!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
+        engine_core::dev_info!("📊 [Llama-Lib] Weights Size: {:.2}GB", dna.weights_size_gb);
 
-        let context = cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
+        let context = engine_core::EngineContext::boot(dna, engine_core::TemplateManager::default());
         let mut engine = Box::new(RuntimeB::new(&path_str, context));
 
         // Inject Optimization Configuration from Caller
         if !optimization_ptr.is_null() {
             let optimization_ctx = unsafe { *optimization_ptr };
-            cluaiz_shared::dev_info!(
-                "🚀 [Llama.cpp-Kernel] Received cluaizOptimizationContext via FFI: {:?}",
+            engine_core::dev_info!(
+                "🚀 [Kernel] Received OptimizationContext via FFI: {:?}",
                 optimization_ctx
             );
             tracing::info!(
-                "🚀 [Llama.cpp-Kernel] Received cluaizOptimizationContext via FFI: {:?}",
+                "🚀 [Kernel] Received OptimizationContext via FFI: {:?}",
                 optimization_ctx
             );
             engine.optimization.flash_attn = optimization_ctx.flash_attention;
@@ -134,7 +134,7 @@ pub extern "C" fn cluaiz_kernel_instantiate(
         } else {
             // Self-load from Binary Optimization Truth if FFI was blank
             if let Ok(opt) =
-                cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings()
+                engine_core::hardware::governor::HardwareGovernor::load_optimization_settings()
             {
                 let _ = engine.apply_optimization(&opt);
             }
@@ -142,7 +142,7 @@ pub extern "C" fn cluaiz_kernel_instantiate(
 
         // 🧬 Trigger Native Load immediately on instantiation
         if let Err(e) = engine.load_native() {
-            cluaiz_shared::dev_info!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
+            engine_core::dev_info!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             tracing::error!("❌ [Llama.cpp-Kernel] Native Load Failed: {}", e);
             return std::ptr::null_mut();
         }
@@ -197,7 +197,7 @@ pub extern "C" fn cluaiz_kernel_generate_stream(
         match engine.generate_stream(&prompt, max_tokens, rust_callback) {
             Ok(_) => 0,
             Err(e) => {
-                cluaiz_shared::dev_info!("❌ [Llama-Engine] Generation failed: {}", e);
+                engine_core::dev_info!("❌ [Llama-Engine] Generation failed: {}", e);
                 tracing::error!("❌ [Llama-Engine] Generation failed: {}", e);
                 -2
             }

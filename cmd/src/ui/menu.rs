@@ -237,7 +237,7 @@ pub async fn run_native(
                             }
                         }
                         "📊 Hardware Status & Health" => {
-                            engines::telemetry::health_check::cluaizHealthChecker::run_full_benchmark();
+                            engines::telemetry::health_check::EngineHealthChecker::run_full_benchmark();
                         }
                         "🔄 Re-calibrate Hardware" => {
                             println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛠️".cyan());

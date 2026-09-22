@@ -17,7 +17,7 @@ pub mod url_resolver;
 use colored::*;
 use dispatcher::NeuralDispatcher;
 use system_optimization::SystemOptimization;
-use cluaiz_shared::backend::signature::KernelSignature;
+use engine_core::backend::signature::KernelSignature;
 use std::env;
 use std::sync::Arc;
 
@@ -28,7 +28,7 @@ pub async fn run_daemon() {
     let args: Vec<String> = env::args().collect();
     if args.iter().any(|arg| arg == "--setup") {
         println!("🛠️ [Calibration] Initializing Hardware Calibration...");
-        if let Err(e) = cluaiz_shared::HardwareGovernor::auto_calibrate() {
+        if let Err(e) = engine_core::HardwareGovernor::auto_calibrate() {
             eprintln!("❌ [Calibration] Failed: {}", e);
             std::process::exit(1);
         }
@@ -43,19 +43,19 @@ pub async fn run_daemon() {
         .compact()
         .try_init();
 
-    // ── Initialize the cluaiz pillars ──
-    tracing::info!("🔧 Initializing cluaiz Engine...");
+    // ── Initialize the engine pillars ──
+    tracing::info!("🔧 Initializing Engine...");
     
     // 📡 Boot-time Model Registry Scan
-    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
+    let cluaiz_root = engine_core::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
     
     engines::models::InstalledStateRegistry::sync_from_disk(&cluaiz_root);
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
-    if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_system_control() {
+    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
         if control.brain.is_pure_brain() {
             tracing::info!("🧠 Pure Brain Mode Active: LLM Engine loading & VRAM allocation is suspended.");
             pure_brain = true;

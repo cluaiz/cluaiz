@@ -4,7 +4,7 @@
 use crate::ffi::llama_cpp::{
     llama_context_default_params, llama_model_default_params, LlamaContextParams, LlamaModelParams,
 };
-use cluaiz_shared::hardware::schema::optimization::{
+use engine_core::hardware::schema::optimization::{
     OptimizationControl, FeatureState, SmartState, KvCacheQuantization, ContextShiftingMode,
 };
 use serde::{Deserialize, Serialize};
@@ -71,7 +71,7 @@ impl OptimizationConfig {
             force_memory_lock: "Auto".to_string(),
         };
 
-        if let Ok(control) = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings() {
+        if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings() {
             config.flash_attn = control.flash_attention.is_active();
             config.speculative_decoding = match control.speculative_decoding {
                 FeatureState::On => "On".to_string(),
@@ -103,7 +103,7 @@ impl OptimizationConfig {
                 _ => "Auto".to_string(),
             };
         }
-        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         config.n_gpu_layers = gguf_meta.hardware_and_execution.n_gpu_layers;
         config.n_ctx = if gguf_meta.hardware_and_execution.n_ctx == -1 {
             u32::MAX // Marker for Max Native
@@ -192,7 +192,7 @@ impl OptimizationConfig {
         // We must instead gracefully fallback the KV Cache to F16.
         let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
         if is_quantized_kv && (!self.flash_attn || force_disable_fa_for_cpu) {
-            cluaiz_shared::dev_info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
+            engine_core::dev_info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
             params.type_k = 1; // GGML_TYPE_F16
             params.type_v = 1;
             is_quantized_kv = false;

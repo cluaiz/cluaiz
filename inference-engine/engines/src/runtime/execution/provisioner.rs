@@ -2,7 +2,7 @@
 //! Handles the on-demand retrieval of hardware-optimized Core executables.
 
 use std::path::{Path, PathBuf};
-use cluaiz_shared::hardware::schema::BackendDriver;
+use engine_core::hardware::schema::BackendDriver;
 use anyhow::{Result, anyhow};
 use tracing::{info, warn};
 

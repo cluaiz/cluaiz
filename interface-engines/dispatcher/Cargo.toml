@@ -13,7 +13,7 @@ llama = { path = "../llama" }
 
 system-optimization = { path = "../../inference-engine/engines/system_optimization" }
 libloading = "0.8"
-cluaiz-shared = { path = "../../inference-engine/engines/cluaiz-shared" }
+engine-core = { path = "../../inference-engine/engines/core" }
 anyhow = "1.0"
 async-trait = "0.1"
 tracing = "0.1"

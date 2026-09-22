@@ -2,7 +2,7 @@
 members = [
     "inference-engine/api",
     "inference-engine/engines",
-    "inference-engine/engines/cluaiz-shared",
+    "inference-engine/engines/core",
     "inference-engine/engines/system_optimization",
     "cmd",
     "tools/cluaiz-builder",

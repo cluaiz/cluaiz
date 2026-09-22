@@ -1,12 +1,10 @@
-use crate::backend::traits::{UnifiedBackend, StreamingInference, cluaizInference};
-use crate::backend::context::{EngineContext, cluaizContext};
+use crate::backend::traits::{UnifiedBackend, StreamingInference};
+use crate::backend::context::EngineContext;
 use anyhow::Result;
 use tokenizers::Tokenizer;
 
 /// LinkerPlaceholder: Used to verify the Dynamic Linker Handshake.
 pub struct LinkerPlaceholder;
-
-pub type cluaizLinkerPlaceholder = LinkerPlaceholder;
 
 impl UnifiedBackend for LinkerPlaceholder {
     fn generate(&mut self, _prompt: &str, _max_tokens: usize) -> std::result::Result<String, String> {

@@ -146,7 +146,7 @@ pub async fn execute_non_streaming(
     }
 
     // Extract reasoning and clean answer conforming to OpenAI / DeepSeek standard
-    let (reasoning_opt, final_content, reasoning_toks) = cluaiz_shared::metadata::dna::StructuralDNA::separate_reasoning(
+    let (reasoning_opt, final_content, reasoning_toks) = engine_core::metadata::dna::StructuralDNA::separate_reasoning(
         &final_raw_text,
         ctx.dyn_think_start.as_deref(),
         ctx.dyn_think_end.as_deref(),

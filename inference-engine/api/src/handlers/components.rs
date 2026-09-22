@@ -4,7 +4,7 @@ use crate::state::AppState;
 use serde_json::Value;
 
 pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let mut results = serde_json::Map::new();
     
     for comp_type in ["plugin", "mcp", "skill"] {
@@ -94,7 +94,7 @@ pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Jso
         }));
     }
 
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let base_dir = env.global_dir.join(format!("{}s", comp_type));
     let comp_dir = base_dir.join(comp_id);
     let file_path = if comp_type == "skill" {
@@ -128,7 +128,7 @@ pub struct GetFileQuery {
 }
 
 pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
     let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
 
@@ -196,7 +196,7 @@ pub async fn open_component_in_editor(State(_state): State<Arc<AppState>>, Query
 }
 
 async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuery) -> Json<Value> {
-    let env = cluaiz_shared::environment::EnvironmentManager::current();
+    let env = engine_core::environment::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
     
     let file_path = if comp_type == "model" {

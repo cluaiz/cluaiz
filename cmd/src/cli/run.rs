@@ -23,7 +23,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
     let mut resolved_id = model_id.to_string();
 
     let roster = CoreRoster::load_roster();
-    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current().models_dir();
+    let cluaiz_root = engine_core::environment::EnvironmentManager::current().models_dir();
 
     // Extract optional explicit quantization/variant tag if specified with colon (e.g. 'repo/model:IQ3_XXS' or 'model:Q4_K_M')
     let (base_input, explicit_tag) = if let Some((base, tag)) = model_id.rsplit_once(':') {
@@ -515,12 +515,12 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                                         tracker.complete_step("[Step 4] Inference system parses user SMS input context.");
                                         step_lines_count += 1;
                                         tracker.set_step("[Step 5] AI Formulating Plan (Generating tags...)");
-                                    } else if token.starts_with("<TRIGGER:") {
-                                        tracker.complete_step(&format!("[Step 5] AI Formulates Plan: Match tag emitted -> {}", token));
+                                    } else if token.contains("<tool_call>") || token.contains("<tool_call") {
+                                        tracker.complete_step(&format!("[Step 5] AI Formulates Plan: Tool call emitted -> {}", token));
                                         step_lines_count += 1;
                                         tracker.set_step("[Step 6] AI Emits plan closing sequence...");
-                                    } else if token.contains("</TRIGGER>") {
-                                        tracker.complete_step("[Step 6] AI Emits closing sequence tag: </TRIGGER>");
+                                    } else if token.contains("</tool_call>") {
+                                        tracker.complete_step("[Step 6] AI Emits closing sequence tag: </tool_call>");
                                         step_lines_count += 1;
                                         tracker.set_step("[Step 7] Engine intercepting & pausing loop...");
                                     } else if token.contains("__ENGINE_PAUSE_EXECUTE__") {

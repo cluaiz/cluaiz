@@ -1,14 +1,14 @@
 //! cluaiz-top: The cluaiz Neural Pulse Monitor (CLI).
 //! High-speed, terminal-native monitoring for the cluaiz Engine.
 
-use cluaiz_shared::hardware::telemetry;
+use engine_core::hardware::telemetry;
 use std::io::{stdout, Write};
 use std::thread;
 use std::time::Duration;
 
 fn main() -> anyhow::Result<()> {
-    // 🏛️ Initialize the cluaiz Governor (Triggers Calibration if JSON is missing)
-    let _governor = cluaiz_shared::HardwareGovernor::start();
+    // Initialize the Governor (Triggers Calibration if JSON is missing)
+    let _governor = engine_core::HardwareGovernor::start();
     
     let sensor = telemetry::get_pulse();
     let mut stdout = stdout();

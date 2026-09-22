@@ -30,7 +30,7 @@ pub struct OnnxEngine {
 impl OnnxEngine {
     pub fn new() -> Result<Self> {
         // Prepend drivers directory to PATH so ONNX Runtime loads CUDA/TensorRT DLLs
-        let drivers_dir = cluaiz_shared::environment::EnvironmentManager::current()
+        let drivers_dir = engine_core::environment::EnvironmentManager::current()
             .engine_dir()
             .join("drivers");
         if drivers_dir.exists() {
@@ -75,23 +75,23 @@ impl OnnxEngine {
     }
 
     pub fn build_session(&self, path: &std::path::Path) -> Result<Session> {
-        let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
         
         let model_size_gb = std::fs::metadata(path)
             .map(|m| (m.len() as f64) / (1024.0 * 1024.0 * 1024.0))
             .unwrap_or(0.5);
 
-        let req = cluaiz_shared::hardware::ResourceRequest {
-            engine_type: cluaiz_shared::hardware::EngineType::ONNX,
-            inference_mode: cluaiz_shared::hardware::InferenceMode::Embedding,
+        let req = engine_core::hardware::ResourceRequest {
+            engine_type: engine_core::hardware::EngineType::ONNX,
+            inference_mode: engine_core::hardware::InferenceMode::Embedding,
             model_size_gb,
             model_path: path.to_path_buf(),
         };
 
-        let grant = cluaiz_shared::hardware::negotiate_resource(&req).ok();
+        let grant = engine_core::hardware::negotiate_resource(&req).ok();
         let use_gpu = grant
             .as_ref()
-            .map(|g| g.tier != cluaiz_shared::hardware::PlacementTier::CpuOnly)
+            .map(|g| g.tier != engine_core::hardware::PlacementTier::CpuOnly)
             .unwrap_or(onnx_meta.n_gpu_layers != 0);
 
         let mut builder = Session::builder()?;
@@ -182,7 +182,7 @@ impl OnnxEngine {
             }
         }
 
-        let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
+        let pulse_state = engine_core::hardware::system_performance::get_pulse();
         let mut use_gpu = true;
 
         if let Ok(state) = pulse_state.pulse.read() {
@@ -205,7 +205,7 @@ impl OnnxEngine {
             }
         }
 
-        let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user config.");
@@ -448,7 +448,7 @@ impl OnnxEngine {
         }
         tracing::info!("📦 [ONNX Encoder] Loading encoder from: {}", encoder_path);
 
-        let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
+        let pulse_state = engine_core::hardware::system_performance::get_pulse();
         let mut use_gpu = true;
 
         if let Ok(state) = pulse_state.pulse.read() {
@@ -471,7 +471,7 @@ impl OnnxEngine {
             }
         }
 
-        let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Encoder.");
@@ -585,7 +585,7 @@ impl OnnxEngine {
     pub fn load_vision_model(&mut self, model_path: &str) -> Result<()> {
         tracing::info!("📦 [ONNX Vision] Loading vision model from: {}", model_path);
 
-        let pulse_state = cluaiz_shared::hardware::system_performance::get_pulse();
+        let pulse_state = engine_core::hardware::system_performance::get_pulse();
         let mut use_gpu = true;
 
         if let Ok(state) = pulse_state.pulse.read() {
@@ -608,7 +608,7 @@ impl OnnxEngine {
             }
         }
 
-        let onnx_meta = cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Vision.");

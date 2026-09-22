@@ -40,7 +40,7 @@ pub async fn system_info() -> Json<Value> {
 
 // ─── GET /v1/system/control ───────────────────────────────────────────
 pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    use cluaiz_shared::hardware::governor::HardwareGovernor;
+    use engine_core::hardware::governor::HardwareGovernor;
     if let Ok(control) = HardwareGovernor::load_system_control() {
         Json(json!({
             "status": "success",
@@ -56,13 +56,13 @@ pub async fn get_system_control(State(_state): State<Arc<AppState>>) -> Json<Val
 
 // ─── GET /v1/system/gguf_config ───────────────────────────────────────
 pub async fn get_gguf_config() -> Json<Value> {
-    use cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders;
+    use engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders;
     let config = GgufMetadataHeaders::load();
     Json(serde_json::to_value(config).unwrap_or(json!({})))
 }
 
 // ─── POST /v1/system/gguf_config ──────────────────────────────────────
-pub async fn update_gguf_config(Json(payload): Json<cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders>) -> Json<Value> {
+pub async fn update_gguf_config(Json(payload): Json<engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders>) -> Json<Value> {
     match payload.save() {
         Ok(_) => Json(json!({"status": "success"})),
         Err(e) => Json(json!({"status": "error", "message": e.to_string()}))
@@ -71,13 +71,13 @@ pub async fn update_gguf_config(Json(payload): Json<cluaiz_shared::hardware::sch
 
 // ─── GET /v1/system/onnx_config ───────────────────────────────────────
 pub async fn get_onnx_config() -> Json<Value> {
-    use cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders;
+    use engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders;
     let config = OnnxMetadataHeaders::load();
     Json(serde_json::to_value(config).unwrap_or(json!({})))
 }
 
 // ─── POST /v1/system/onnx_config ──────────────────────────────────────
-pub async fn update_onnx_config(Json(payload): Json<cluaiz_shared::hardware::schema::onnx_metadata::OnnxMetadataHeaders>) -> Json<Value> {
+pub async fn update_onnx_config(Json(payload): Json<engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders>) -> Json<Value> {
     match payload.save() {
         Ok(_) => Json(json!({"status": "success"})),
         Err(e) => Json(json!({"status": "error", "message": e.to_string()}))

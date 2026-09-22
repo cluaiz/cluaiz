@@ -118,9 +118,9 @@ pub async fn pull_model(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<PullPayload>,
 ) -> Json<Value> {
-    let cluaiz_root = cluaiz_shared::environment::EnvironmentManager::current()
+    let cluaiz_root = engine_core::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
     let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root);
     
     let model_id = payload.model_id.clone();
@@ -137,7 +137,7 @@ pub async fn pull_model(
 
 // ─── POST /v1/hardware/calibrate ──────────────────────────────────────
 pub async fn calibrate(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let _ = cluaiz_shared::hardware::governor::HardwareGovernor::auto_calibrate();
+    let _ = engine_core::hardware::governor::HardwareGovernor::auto_calibrate();
     Json(json!({
         "status": "success",
         "message": "Real-time RDTSC hardware clocking & SIMD profiling completed."
@@ -149,9 +149,9 @@ pub async fn rm_model(
     State(_state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
 ) -> Json<Value> {
-    let models_dir = cluaiz_shared::environment::EnvironmentManager::current()
+    let models_dir = engine_core::environment::EnvironmentManager::current()
         .ensure_models_dir()
-        .unwrap_or_else(|_| cluaiz_shared::environment::EnvironmentManager::current().models_dir());
+        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
     let model_file = models_dir.join(format!("{}.gguf", model_id));
     if model_file.exists() {
         let _ = std::fs::remove_file(&model_file);
@@ -186,8 +186,8 @@ pub async fn load_model(
         if let Some(local_path) = manifest.local_path {
             let model_file = std::path::Path::new(&local_path).join(&manifest.huggingface_filename);
             if model_file.exists() {
-                let dna = cluaiz_shared::StructuralDNA::default();
-                let context = cluaiz_shared::cluaizContext::boot(dna, cluaiz_shared::TemplateManager::default());
+                let dna = engine_core::StructuralDNA::default();
+                let context = engine_core::EngineContext::boot(dna, engine_core::TemplateManager::default());
                 
                 // We don't await the long load here, just signal success for now or wait
                 // In a production setup, this would spawn or use a channel.
@@ -300,7 +300,7 @@ pub async fn inspect_raw_header(
                 }
 
                 // Read engine-level onnx_metadata_headers.json
-                let engine_onnx_config = cluaiz_shared::environment::EnvironmentManager::current()
+                let engine_onnx_config = engine_core::environment::EnvironmentManager::current()
                     .config_dir()
                     .join("onnx_metadata_headers.json");
                 let onnx_engine_settings: Value = std::fs::read_to_string(&engine_onnx_config)

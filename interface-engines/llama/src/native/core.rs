@@ -1,5 +1,5 @@
 use crate::ffi::llama_cpp::{self, LlamaContextParams, LlamaModelParams};
-use cluaiz_shared::StructuralDNA;
+use engine_core::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::AtomicBool;
@@ -148,7 +148,7 @@ impl NativeLlama {
         model_path: &str,
         model_params: LlamaModelParams,
         mut ctx_params: LlamaContextParams,
-        dna: &mut cluaiz_shared::metadata::dna::StructuralDNA,
+        dna: &mut engine_core::metadata::dna::StructuralDNA,
         kv_cache_quantization_mode: u8,
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
@@ -194,7 +194,7 @@ impl NativeLlama {
         // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers > 1 {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
+            engine_core::dev_info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
             let mut half_params = model_params;
             half_params.n_gpu_layers /= 2;
             model_ptr =
@@ -265,7 +265,7 @@ impl NativeLlama {
         let model_dir = std::path::Path::new(model_path)
             .parent()
             .unwrap_or(std::path::Path::new("."));
-        cluaiz_shared::dev_info!(
+        engine_core::dev_info!(
             "🧬 [Native-Llama] Starting DNA Discovery for: {:?}",
             model_dir
         );
@@ -276,7 +276,7 @@ impl NativeLlama {
         let requested_n_ctx = ctx_params.n_ctx;
 
         if let Err(e) = dna.discover_from_path(model_dir) {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
+            engine_core::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
         let (native_start, native_end) = crate::native::templater::extract_thinking_tags_native(
@@ -382,7 +382,7 @@ impl NativeLlama {
         // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
         // If Context Init fails, gracefully retry without Flash Attention while PRESERVING quantized KV cache (no F16 explosion)
         if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
-            cluaiz_shared::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Initiating Safe Fallback (keeping quantized KV cache)...");
+            engine_core::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Initiating Safe Fallback (keeping quantized KV cache)...");
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
             ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, fallback_ctx_params) };
@@ -508,7 +508,7 @@ impl NativeLlama {
             let c_prompt = std::ffi::CString::new(prompt.to_string())?;
 
             // 1. Tokenize
-            cluaiz_shared::dev_info!(
+            engine_core::dev_info!(
                 "🧠 [Native-Llama] Starting tokenization of prompt (len: {})...",
                 prompt.len()
             );

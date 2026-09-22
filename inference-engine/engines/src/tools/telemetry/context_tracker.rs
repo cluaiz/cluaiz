@@ -15,7 +15,7 @@ impl ContextTracker {
         generated_tokens: usize,
     ) -> SystemContextTelemetry {
         let registry = ToolsRegistry::load().unwrap_or_default();
-        let gguf_meta = cluaiz_shared::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         
         // 🎯 Dynamic Model Native Context from InstalledStateRegistry / model_registry.json
         let installed_reg = crate::models::InstalledStateRegistry::load();
@@ -63,7 +63,7 @@ impl ContextTracker {
         }
 
         // Query live active context calculated by HardwareGovernor for active model
-        let live_active_ctx = cluaiz_shared::hardware::governor::HardwareGovernor::get_active_allocations()
+        let live_active_ctx = engine_core::hardware::governor::HardwareGovernor::get_active_allocations()
             .iter()
             .find(|p| p.context_size > 0)
             .map(|p| p.context_size);
@@ -73,13 +73,13 @@ impl ContextTracker {
                 if gguf_meta.hardware_and_execution.n_ctx > 0 {
                     gguf_meta.hardware_and_execution.n_ctx as usize
                 } else {
-                    let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                    let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                    let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                    let mut dna = engine_core::metadata::dna::StructuralDNA::default();
                     if let Some(entry) = target_entry {
                         let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
                         dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
                     }
-                    cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
+                    engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
                 }
             });
         }
@@ -89,13 +89,13 @@ impl ContextTracker {
             if gguf_meta.hardware_and_execution.n_ctx > 0 {
                 gguf_meta.hardware_and_execution.n_ctx as usize
             } else {
-                let opt_control = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                let mut dna = cluaiz_shared::metadata::dna::StructuralDNA::default();
+                let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                let mut dna = engine_core::metadata::dna::StructuralDNA::default();
                 if let Some(entry) = target_entry {
                     let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
                     dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
                 }
-                let target = cluaiz_shared::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control);
+                let target = engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control);
                 if model_native_limit > 0 {
                     target.min(model_native_limit)
                 } else {

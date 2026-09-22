@@ -3,6 +3,7 @@ use serde_json::{json, Value};
 use std::time::Duration;
 use inference_cel::ffi::cxp_ffi::{CxpPayload, PayloadType};
 use inference_cel::execution::native_sandbox::NativeExecutor;
+use inference_cel::parser::metadata_parser::EngineRules;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -147,8 +148,9 @@ async fn test_ffi_native() -> Result<(), Box<dyn std::error::Error>> {
     let ext_payload = CxpPayload::new(PayloadType::Json, &json_bytes);
     
     let start_time = std::time::Instant::now();
+    let rules = EngineRules::default();
     // Simulate what the execute_dynamic / execute_cel_plan does internally!
-    match executor.execute("cluaiz-search", &ext_payload) {
+    match executor.execute_with_rules("cluaiz-search", &ext_payload, &rules) {
         Ok(result_bytes) => {
             let elapsed = start_time.elapsed();
             println!("✅ Native C-Pointer Execution finished in {:.2}s!", elapsed.as_secs_f32());
