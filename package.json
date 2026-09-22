@@ -44,9 +44,9 @@
       "version": "main",
       "manifest_url": "https://github.com/cluaiz/cluaiz/blob/main/docs/registry.json"
     },
-    "hub": {
+    "tools": {
       "version": "main",
-      "manifest_url": "https://raw.githubusercontent.com/cluaiz/cluaiz-hub/main/registry.json"
+      "manifest_url": "https://raw.githubusercontent.com/cluaiz/cluaiz-tools/main/registry.json"
     }
   }
 }

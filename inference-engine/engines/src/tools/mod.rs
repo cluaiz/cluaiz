@@ -13,7 +13,7 @@ use anyhow::Result;
 use serde_json::Value;
 
 pub use execution::{CancelHandle, EnvironmentResolver, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
-pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolHubInstaller};
+pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
 pub use lifecycle::{SessionToolBinding, SessionToolManager, TurnLifecycleEngine};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
@@ -73,14 +73,14 @@ impl ToolsEngine {
         Ok(())
     }
 
-    /// Downloads and installs a tool from Cluaiz Hub into `~/.cluaiz/tools/{skills,plugins,mcp}`
+    /// Downloads and installs a tool from Cluaiz Tools into `~/.cluaiz/tools/{skills,plugins,mcp}`
     pub async fn install_tool(category: &str, tool_id: &str) -> Result<()> {
-        ToolHubInstaller::install_component(category, tool_id).await
+        ToolsInstaller::install_component(category, tool_id).await
     }
 
     /// Removes an installed tool from filesystem and syncs registry
     pub async fn remove_tool(category: &str, tool_id: &str) -> Result<()> {
-        ToolHubInstaller::remove_component(category, tool_id).await
+        ToolsInstaller::remove_component(category, tool_id).await
     }
 
     /// Returns active tools bound to a specific chat session

@@ -1,6 +1,5 @@
-pub mod hub_client;
 pub mod runtime_env;
+pub mod tools_client;
 
-pub use hub_client::ToolHubInstaller;
-pub use runtime_env::{RuntimeEnvironmentManager, RuntimeType, EnvironmentStatus};
-
+pub use runtime_env::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType};
+pub use tools_client::{ToolHubInstaller, ToolsInstaller};

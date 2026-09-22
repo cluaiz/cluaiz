@@ -168,7 +168,7 @@ cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
 
 | Command | Aliases | Description |
 |---------|---------|-------------|
-| `cluaiz <type> install <id>` | `i` | Install a component from the cluaiz-hub registry (e.g., `cluaiz-search`) |
+| `cluaiz <type> install <id>` | `i` | Install a component from the cluaiz-tools registry (e.g., `cluaiz-search`) |
 | `cluaiz <type> list` | `ls` | List all locally installed components of that type |
 | `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
 | `cluaiz <type> start <id>` | | Start a component's background daemon (MCP only) |

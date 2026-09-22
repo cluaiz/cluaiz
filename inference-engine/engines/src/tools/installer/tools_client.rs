@@ -4,9 +4,12 @@ use anyhow::Result;
 use engine_core::environment::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 
-pub struct ToolHubInstaller;
+pub struct ToolsInstaller;
 
-impl ToolHubInstaller {
+/// Backward-compatibility alias
+pub type ToolHubInstaller = ToolsInstaller;
+
+impl ToolsInstaller {
     pub async fn install_component(component_type: &str, component_id_raw: &str) -> Result<()> {
         let (component_id, version) = if component_id_raw.contains('@') {
             let parts: Vec<&str> = component_id_raw.split('@').collect();
@@ -72,7 +75,7 @@ impl ToolHubInstaller {
                                                                         if !versions.contains_key(req_ver) {
                                                                             let available: Vec<&String> = versions.keys().collect();
                                                                             return Err(anyhow::anyhow!(
-                                                                                "Version '{}' not found for '{}'. Available versions in Cluaiz Hub: {:?}",
+                                                                                "Version '{}' not found for '{}'. Available versions in Cluaiz Tools: {:?}",
                                                                                 req_ver,
                                                                                 component_id,
                                                                                 available
@@ -112,7 +115,7 @@ impl ToolHubInstaller {
                                                         }
                                                     } else {
                                                         return Err(anyhow::anyhow!(
-                                                            "Component '{}' not found in Cluaiz Hub category '{}'.",
+                                                            "Component '{}' not found in Cluaiz Tools category '{}'.",
                                                             component_id,
                                                             component_type
                                                         ));
@@ -139,7 +142,7 @@ impl ToolHubInstaller {
                 _ => "ext",
             };
             download_url = format!(
-                "https://github.com/cluaiz/cluaiz-hub/releases/download/{}-{}-v{}/{}-files.zip",
+                "https://github.com/cluaiz/cluaiz-tools/releases/download/{}-{}-v{}/{}-files.zip",
                 prefix, component_id, ver, component_id
             );
         }
@@ -154,14 +157,14 @@ impl ToolHubInstaller {
                 ("linux_x64", "so")
             };
             binary_download_url = format!(
-                "https://github.com/cluaiz/cluaiz-hub/releases/download/plugin-{}-v{}/{}_{}.{}",
+                "https://github.com/cluaiz/cluaiz-tools/releases/download/plugin-{}-v{}/{}_{}.{}",
                 component_id, ver, component_id, os_name, ext
             );
         }
 
         if download_url.is_empty() {
             return Err(anyhow::anyhow!(
-                "Package '{}' (version '{}') does not specify a valid download bundle in Cluaiz Hub.",
+                "Package '{}' (version '{}') does not specify a valid download bundle in Cluaiz Tools.",
                 component_id,
                 target_version
             ));
@@ -306,10 +309,11 @@ impl ToolHubInstaller {
             if p.exists() {
                 if let Ok(content) = std::fs::read_to_string(&p) {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                        if let Some(url) = json.get("web").and_then(|w| w.get("hub")).and_then(|h| h.get("manifest_url")).and_then(|u| u.as_str()) {
+                        // Check "tools" first, then "hub" as backward-compatibility fallback
+                        if let Some(url) = json.get("web").and_then(|w| w.get("tools").or_else(|| w.get("hub"))).and_then(|h| h.get("manifest_url")).and_then(|u| u.as_str()) {
                             return Some(url.to_string());
                         }
-                        if let Some(url) = json.get("hub").and_then(|h| h.get("manifest_url")).and_then(|u| u.as_str()) {
+                        if let Some(url) = json.get("tools").or_else(|| json.get("hub")).and_then(|h| h.get("manifest_url")).and_then(|u| u.as_str()) {
                             return Some(url.to_string());
                         }
                     }
@@ -317,6 +321,6 @@ impl ToolHubInstaller {
             }
         }
 
-        Some("https://raw.githubusercontent.com/cluaiz/cluaiz-hub/main/registry.json".to_string())
+        Some("https://raw.githubusercontent.com/cluaiz/cluaiz-tools/main/registry.json".to_string())
     }
 }
