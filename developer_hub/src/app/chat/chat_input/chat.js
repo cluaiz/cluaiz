@@ -297,12 +297,21 @@ function setupChatLogic() {
                 systemConstraint = "Provide a very concise, direct, and to-the-point answer.";
             }
 
+            const activeTools = [];
+            selectedSkills.forEach(s => {
+                if (!['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].includes(s)) {
+                    const turns = window.toolLifespans?.get(s) ?? 0;
+                    activeTools.push({ name: s, turns: turns });
+                }
+            });
+
             window.dispatchEvent(new CustomEvent('chat:send', {
                 detail: {
                     message: content,
                     think_mode: thinkModePayload,
                     temperature: overrideTemp,
-                    system_prompt: systemConstraint
+                    system_prompt: systemConstraint,
+                    tools: activeTools
                 }
             }));
             textarea.value = '';
@@ -459,6 +468,11 @@ function setupChatLogic() {
 
             const defaultIconHtml = customSvgHtml ? customSvgHtml : `<i data-lucide="${iconStr}" class="w-3-5 h-3-5"></i>`;
 
+            window.toolLifespans = window.toolLifespans || new Map();
+            const currentTurns = window.toolLifespans.get(skill) ?? 0;
+            const turnBadgeText = currentTurns === -1 ? '∞' : (currentTurns === 0 ? '1T' : `${currentTurns}T`);
+            const turnBadgeTitle = currentTurns === -1 ? 'Persistent (all turns)' : (currentTurns === 0 ? 'Ephemeral (1 turn)' : `${currentTurns} Turns Countdown`);
+
             chip.innerHTML = `
                 <div class="icon-default flex-center">
                     ${defaultIconHtml}
@@ -467,7 +481,22 @@ function setupChatLogic() {
                     <i data-lucide="x" class="w-3-5 h-3-5 text-red-500"></i>
                 </div>
                 <span class="hidden sm:inline">${formattedName}</span>
+                <span class="tool-turns-badge" title="${turnBadgeTitle} (Click to toggle)" style="font-size: 0.65rem; background: rgba(255,255,255,0.12); border-radius: 4px; padding: 1px 4px; margin-left: 2px; color: #a1a1aa; cursor: pointer; transition: background 0.2s ease;">${turnBadgeText}</span>
             `;
+
+            const turnsBadge = chip.querySelector('.tool-turns-badge');
+            if (turnsBadge) {
+                turnsBadge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cur = window.toolLifespans.get(skill) ?? 0;
+                    let next = 0;
+                    if (cur === 0) next = 3;
+                    else if (cur === 3) next = -1;
+                    else next = 0;
+                    window.toolLifespans.set(skill, next);
+                    renderSkills();
+                });
+            }
 
             chip.addEventListener('mouseenter', () => {
                 chip.querySelector('.icon-default').style.display = 'none';
@@ -483,6 +512,7 @@ function setupChatLogic() {
             chip.addEventListener('click', (e) => {
                 e.stopPropagation();
                 selectedSkills.delete(skill);
+                window.toolLifespans.delete(skill);
                 renderSkills();
             });
 
