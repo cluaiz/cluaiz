@@ -189,7 +189,8 @@ function setupChatStream() {
             const think_mode = e.detail?.think_mode;
             const temperature = e.detail?.temperature;
             const system_prompt = e.detail?.system_prompt;
-            sendToAI(content, think_mode, temperature, system_prompt);
+            const tools = e.detail?.tools;
+            sendToAI(content, think_mode, temperature, system_prompt, tools);
         };
         window.addEventListener('chat:send', window.chatSendHandler);
     }
@@ -342,6 +343,119 @@ function setupChatStream() {
                 URL.revokeObjectURL(url);
             });
             exportBtn.dataset.bound = "true";
+        }
+
+        const viewContextTreeBtn = document.getElementById('view-context-tree-btn');
+        if (viewContextTreeBtn && !viewContextTreeBtn.dataset.bound) {
+            const modal = document.getElementById('context-tree-modal');
+            const closeBtn = document.getElementById('close-context-tree-modal');
+            const content = document.getElementById('context-tree-content');
+
+            viewContextTreeBtn.addEventListener('click', () => {
+                const telemetry = window.latestContextTelemetry;
+                const dropdown = document.getElementById('chat-menu-dropdown');
+                if (dropdown) dropdown.classList.remove('show');
+
+                if (!telemetry || !telemetry.context_breakdown) {
+                    content.innerHTML = `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 24px; text-align: center; color: #9ca3af; font-size: 0.85rem;">
+                            No active context telemetry recorded in this session yet.<br>
+                            Send a chat turn to inspect real-time token breakdown and sandbox metrics.
+                        </div>
+                    `;
+                } else {
+                    const breakdown = telemetry.context_breakdown;
+                    const totalActive = breakdown.total_active_tokens || 0;
+                    const totalLimit = breakdown.total_context_limit || 4096;
+                    const activePct = breakdown.active_percentage || ((totalActive / totalLimit) * 100).toFixed(1);
+
+                    content.innerHTML = `
+                        <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                                <span style="color: #9ca3af;">Context Window Allocation</span>
+                                <span style="color: #fff; font-weight: 600;">${totalActive} / ${totalLimit} tokens (${activePct}%)</span>
+                            </div>
+                            <div style="display: flex; height: 6px; border-radius: 9999px; overflow: hidden; background: #27272a;">
+                                <div style="width: ${breakdown.messages_percentage || 0}%; background: #3b82f6;" title="Messages"></div>
+                                <div style="width: ${breakdown.system_prompt_percentage || 0}%; background: #eab308;" title="System Prompt"></div>
+                                <div style="width: ${breakdown.skills_percentage || 0}%; background: #ec4899;" title="Skills"></div>
+                                <div style="width: ${breakdown.plugins_percentage || breakdown.system_tools_percentage || 0}%; background: #ea580c;" title="Plugins"></div>
+                                <div style="width: ${breakdown.mcp_tools_percentage || 0}%; background: #10b981;" title="MCP Tools"></div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
+                            <details open style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px; padding: 10px;">
+                                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #93c5fd;">
+                                    <span>💬 Conversational Messages</span>
+                                    <span>${breakdown.messages_tokens || 0} tokens (${breakdown.messages_percentage || 0}%)</span>
+                                </summary>
+                                <div style="margin-top: 8px; padding-left: 12px; color: #cbd5e1; font-size: 0.78rem;">
+                                    Thread turn history & reasoning traces in KV-cache.
+                                </div>
+                            </details>
+
+                            <details open style="background: rgba(234, 179, 8, 0.05); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 8px; padding: 10px;">
+                                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #fde047;">
+                                    <span>⚙️ System Prompt Baseline</span>
+                                    <span>${breakdown.system_prompt_tokens || 0} tokens (${breakdown.system_prompt_percentage || 0}%)</span>
+                                </summary>
+                                <div style="margin-top: 8px; padding-left: 12px; color: #cbd5e1; font-size: 0.78rem;">
+                                    Base identity directives, constraints, and compiled &lt;tools&gt; XML schema.
+                                </div>
+                            </details>
+
+                            <details open style="background: rgba(236, 72, 153, 0.05); border: 1px solid rgba(236, 72, 153, 0.2); border-radius: 8px; padding: 10px;">
+                                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #f472b6;">
+                                    <span>📚 Skills (Markdown Context)</span>
+                                    <span>${breakdown.skills_tokens || 0} tokens (${breakdown.skills_percentage || 0}%)</span>
+                                </summary>
+                                <div style="margin-top: 8px; padding-left: 12px; color: #cbd5e1; font-size: 0.78rem;">
+                                    Guidance instructions with 0-token idle deferral footprint.
+                                </div>
+                            </details>
+
+                            <details open style="background: rgba(234, 88, 12, 0.05); border: 1px solid rgba(234, 88, 12, 0.2); border-radius: 8px; padding: 10px;">
+                                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #fb923c;">
+                                    <span>⚡ Plugins (WASM Sandboxed Runtimes)</span>
+                                    <span>${breakdown.plugins_tokens || breakdown.system_tools_tokens || 0} tokens (${breakdown.plugins_percentage || breakdown.system_tools_percentage || 0}%)</span>
+                                </summary>
+                                <div style="margin-top: 8px; padding-left: 12px; color: #cbd5e1; font-size: 0.78rem; display: flex; flex-direction: column; gap: 4px;">
+                                    <div>• Sandbox Boundary: Wasmtime fuel cap (1,000,000 instrs), 16MB RAM cap.</div>
+                                    <div>• Active Tools: ${telemetry.active_tools && telemetry.active_tools.length > 0 ? telemetry.active_tools.join(', ') : 'None active (deferred)'}</div>
+                                </div>
+                            </details>
+
+                            <details open style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 10px;">
+                                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #34d399;">
+                                    <span>🔌 MCP Servers (Model Context Protocol)</span>
+                                    <span>${breakdown.mcp_tools_tokens || 0} tokens (${breakdown.mcp_tools_percentage || 0}%)</span>
+                                </summary>
+                                <div style="margin-top: 8px; padding-left: 12px; color: #cbd5e1; font-size: 0.78rem;">
+                                    JSON-RPC 2.0 stdio pipes. Dynamic discovery via tools/list.
+                                </div>
+                            </details>
+
+                            <div style="background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; display: flex; justify-content: space-between; align-items: center; color: #71717a;">
+                                <span>🟢 Unallocated Free KV-Cache Space</span>
+                                <span><b>${breakdown.free_space_tokens || (totalLimit - totalActive)}</b> tokens (${breakdown.free_space_percentage || (100 - activePct).toFixed(1)}%)</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                modal.style.display = 'flex';
+            });
+
+            closeBtn.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+
+            viewContextTreeBtn.dataset.bound = "true";
         }
 
         const viewHeaderBtn = document.getElementById('view-model-header-btn');
@@ -499,7 +613,7 @@ function renderMarkdownSafe(text) {
     return escapeHtml(text);
 }
 
-async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
+async function sendToAI(userMessage, think_mode, temperature, system_prompt, tools = null) {
     const container = document.getElementById('chat-stream-container');
     const model = getSelectedModel();
     const modelTextEl = document.getElementById('selected-model-text');
@@ -616,6 +730,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
         };
         if (think_mode) payload.think_mode = think_mode;
         if (temperature !== null && temperature !== undefined) payload.temperature = temperature;
+        if (tools && tools.length > 0) payload.tools = tools;
 
         const streamStartTime = performance.now();
         let firstTokenTime = null;
@@ -665,7 +780,10 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt) {
                 try {
                     const parsed = JSON.parse(data);
                     if (!parsed.choices || parsed.choices.length === 0) {
-                        if (parsed.usage && (parsed.usage.tokens_per_second !== undefined || parsed.usage.model_header_info !== undefined)) {
+                        if (parsed.usage && (parsed.usage.tokens_per_second !== undefined || parsed.usage.model_header_info !== undefined || parsed.usage.context_telemetry !== undefined)) {
+                            if (parsed.usage.context_telemetry) {
+                                window.latestContextTelemetry = parsed.usage.context_telemetry;
+                            }
                             if (hasStarted) {
                                 renderTelemetry(aiMsgEl, { ...parsed.usage, model_name: currentModelName }, fullContent);
                             }
@@ -984,6 +1102,9 @@ function renderTelemetry(container, usage, fullContent) {
         hardwareHtml = `<span>VRAM: ${vram} GB</span>`;
     }
 
+    if (usage.context_telemetry) {
+        window.latestContextTelemetry = usage.context_telemetry;
+    }
     const breakdown = usage.context_telemetry?.context_breakdown || usage.context_breakdown;
     let tokensHtml = `<span>${tokens} Tokens</span>`;
     
