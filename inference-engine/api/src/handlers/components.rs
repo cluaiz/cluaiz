@@ -245,7 +245,7 @@ pub struct ClearCachePayload {
 
 pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> Json<Value> {
     let comp_type = payload.component_type.trim_end_matches('s');
-    match engines::tools::ToolHubInstaller::clear_component_cache(
+    match engines::tools::ToolsInstaller::clear_component_cache(
         comp_type,
         Some(payload.component_id.clone()),
         payload.all,

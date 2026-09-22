@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
 use crate::ComponentCommand;
-use engines::tools::{ToolHubInstaller, ToolsEngine};
+use engines::tools::{ToolsInstaller, ToolsEngine};
 
 pub async fn execute(component_type: &str, command: ComponentCommand) -> Result<()> {
     match command {
@@ -31,14 +31,14 @@ async fn handle_cache_command(component_type: &str, command: crate::ComponentCac
     match command {
         crate::ComponentCacheCommand::Ls => {
             println!("\n  {} [Cluaiz Dual-Cache] Scanning Global {} Memory...", "🧠".cyan(), component_type.to_uppercase());
-            match ToolHubInstaller::list_component_cache(component_type) {
+            match ToolsInstaller::list_component_cache(component_type) {
                 Ok(report) => println!("{}", report),
                 Err(e) => println!("Error listing cache: {}", e),
             }
         }
         crate::ComponentCacheCommand::Clear { component_id, all, force } => {
             println!("\n  {} [Cluaiz Dual-Cache] Initiating Global Wipe for {}...", "🧹".yellow(), component_type.to_uppercase());
-            match ToolHubInstaller::clear_component_cache(component_type, component_id, all, force) {
+            match ToolsInstaller::clear_component_cache(component_type, component_id, all, force) {
                 Ok(wiped) => println!("\n    Successfully wiped {} caches.\n", wiped),
                 Err(e) => println!("Error clearing cache: {}", e),
             }
@@ -53,17 +53,17 @@ async fn install_component(component_type: &str, component_name: &str) -> Result
     println!("\n{}", logo.cyan());
 
     println!("┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    println!("┃ {} {}                        ", "📦 CLUAIZ HUB INSTALLER —".bold().cyan(), component_type.to_uppercase().bold().yellow());
+    println!("┃ {} {}                        ", "📦 CLUAIZ TOOLS INSTALLER —".bold().cyan(), component_type.to_uppercase().bold().yellow());
     println!("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫");
     println!("┃ 🏷️  Target Package:  {}", component_name.bold().green());
     println!("┃ 🧩 Category:        {}", component_type.to_uppercase().cyan());
-    println!("┃ 🌐 Hub Registry:    https://raw.githubusercontent.com/cluaiz/cluaiz-hub");
+    println!("┃ 🌐 Tools Registry:  https://raw.githubusercontent.com/cluaiz/cluaiz-tools");
     println!("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
     println!();
 
-    println!("  {} Resolving package metadata from Cluaiz Hub...", "🔍".cyan());
+    println!("  {} Resolving package metadata from Cluaiz Tools...", "🔍".cyan());
     
-    match ToolHubInstaller::install_component(component_type, component_name).await {
+    match ToolsInstaller::install_component(component_type, component_name).await {
         Ok(_) => {
             let tool_id = component_name.split('@').next().unwrap_or(component_name);
             let tool_opt = ToolsEngine::get_tool(tool_id).ok().flatten();
@@ -107,7 +107,7 @@ async fn install_component(component_type: &str, component_name: &str) -> Result
 
 async fn remove_component(component_type: &str, component_name: &str) -> Result<()> {
     println!("  {} [Cluaiz {}] Removing: {}", "🗑️".cyan(), component_type.to_uppercase(), component_name.bold());
-    if let Err(e) = ToolHubInstaller::remove_component(component_type, component_name).await {
+    if let Err(e) = ToolsInstaller::remove_component(component_type, component_name).await {
         println!("  {} Error removing {}: {}", "❌".red(), component_type, e);
     } else {
         println!("  {} Successfully removed {} '{}' from tools_registry.json", "✅".green(), component_type, component_name.bold());
@@ -116,7 +116,7 @@ async fn remove_component(component_type: &str, component_name: &str) -> Result<
 }
 
 async fn list_components(component_type: &str) -> Result<()> {
-    println!("\n  {} [Cluaiz Hub] Installed Sovereign {}:", "📦".cyan(), component_type.to_uppercase());
+    println!("\n  {} [Cluaiz Tools] Installed Sovereign {}:", "📦".cyan(), component_type.to_uppercase());
     if let Ok(reg) = ToolsEngine::registry() {
         let tools: Vec<_> = reg.installed_tools.values().filter(|t| t.category == component_type).collect();
         if tools.is_empty() {

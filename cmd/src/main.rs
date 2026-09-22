@@ -229,7 +229,7 @@ pub enum SetupCommand {
 
 #[derive(Subcommand)]
 pub enum ComponentCommand {
-    /// Install a component from the cluaiz-hub registry
+    /// Install a component from the cluaiz-tools registry
     #[command(alias = "i")]
     Install {
         /// Name of the component to install (e.g., 'cluaiz-search' or 'cluaiz-search@0.1.0')
