@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 use crate::utils::healer::AutoHealer;
-use cluaiz_shared::{UnifiedBackend, BackendType, cluaizContext, StructuralDNA, TemplateManager, ModelWeightsWrapper, cluaizInference};
+use engine_core::{UnifiedBackend, BackendType, EngineContext, StructuralDNA, TemplateManager, ModelWeightsWrapper, StreamingInference};
 use crate::runtime::execution::hub::HardwareOrchestrator;
 use neural_core::interfaces::router_contract::EmbeddingDriver;
 
@@ -23,6 +23,8 @@ pub enum RouteDecision {
 
 pub enum Backend {
     Empty(DummyBackend),
+    Native(ModelWeightsWrapper),
+    #[deprecated(note = "Use Backend::Native instead")]
     cluaiz(ModelWeightsWrapper),
 }
 
@@ -30,35 +32,35 @@ impl UnifiedBackend for Backend {
     fn generate(&mut self, prompt: &str, max_tokens: usize) -> Result<String, String> {
         match self {
             Self::Empty(b) => b.generate(prompt, max_tokens),
-            Self::cluaiz(b) => b.generate(prompt, max_tokens),
+            Self::cluaiz(b) | Self::Native(b) => b.generate(prompt, max_tokens),
         }
     }
     fn prefill(&mut self, prompt: &str) -> anyhow::Result<()> {
         match self {
             Self::Empty(b) => b.prefill(prompt),
-            Self::cluaiz(b) => b.prefill(prompt),
+            Self::cluaiz(b) | Self::Native(b) => b.prefill(prompt),
         }
     }
 
     fn evaluate_tps(&self) -> f64 {
         match self {
             Self::Empty(b) => b.evaluate_tps(),
-            Self::cluaiz(b) => b.evaluate_tps(),
+            Self::cluaiz(b) | Self::Native(b) => b.evaluate_tps(),
         }
     }
     
     fn embed(&mut self, input: &str) -> anyhow::Result<Vec<f32>> {
         match self {
             Self::Empty(b) => b.embed(input),
-            Self::cluaiz(b) => b.embed(input),
+            Self::cluaiz(b) | Self::Native(b) => b.embed(input),
         }
     }
 }
 
-impl cluaiz_shared::cluaizInference for Backend {
+impl engine_core::StreamingInference for Backend {
     fn forward_raw(&mut self, inputs: &[u32], pos: usize) -> anyhow::Result<Vec<f32>> {
         match self {
-            Self::cluaiz(b) => b.forward_raw(inputs, pos),
+            Self::cluaiz(b) | Self::Native(b) => b.forward_raw(inputs, pos),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
@@ -70,35 +72,35 @@ impl cluaiz_shared::cluaizInference for Backend {
         callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.generate_stream(prompt, max_tokens, callback),
+            Self::cluaiz(b) | Self::Native(b) => b.generate_stream(prompt, max_tokens, callback),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
     fn dump_kv_cache(&mut self, path: &str) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.dump_kv_cache(path),
+            Self::cluaiz(b) | Self::Native(b) => b.dump_kv_cache(path),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
     fn load_kv_cache(&mut self, path: &str) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.load_kv_cache(path),
+            Self::cluaiz(b) | Self::Native(b) => b.load_kv_cache(path),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
-    fn inject_signals(&mut self, signals: Vec<cluaiz_shared::hardware::memory::kv_cache::stitching::cluaizSignal>) -> anyhow::Result<()> {
+    fn inject_signals(&mut self, signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.inject_signals(signals),
+            Self::cluaiz(b) | Self::Native(b) => b.inject_signals(signals),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
 
-    fn apply_optimization(&mut self, control: &cluaiz_shared::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
+    fn apply_optimization(&mut self, control: &engine_core::hardware::schema::optimization::OptimizationControl) -> anyhow::Result<()> {
         match self {
-            Self::cluaiz(b) => b.apply_optimization(control),
+            Self::cluaiz(b) | Self::Native(b) => b.apply_optimization(control),
             Self::Empty(_) => Err(anyhow::anyhow!("Empty backend")),
         }
     }
@@ -107,7 +109,7 @@ impl cluaiz_shared::cluaizInference for Backend {
 pub struct CoreRouter {
     pub active_backend: Backend,
     pub active_backend_name: String,
-    pub active_dna: Option<cluaiz_shared::StructuralDNA>,
+    pub active_dna: Option<engine_core::StructuralDNA>,
     pub active_model_path: Option<PathBuf>,
     pub foundry: crate::neural_foundry::CoreFoundry,
 
@@ -135,7 +137,7 @@ impl Drop for CompilationGuard {
     fn drop(&mut self) {
         if let Ok(mut locks) = COMPILATION_LOCKS.write() {
             locks.remove(&self.path);
-            cluaiz_shared::dev_info!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
+            engine_core::dev_info!("🔓 [Arbiter] Compilation lock released for: {:?}", self.path);
         }
     }
 }
@@ -185,7 +187,7 @@ impl CoreRouter {
                 if let Ok(content) = std::fs::read_to_string(&dna_path) {
                     if let Ok(loaded_dna) = serde_json::from_str::<StructuralDNA>(&content) {
                         dna = loaded_dna;
-                        cluaiz_shared::dev_info!("🧬 [Router] Neural DNA synchronized from local manifest.");
+                        engine_core::dev_info!("🧬 [Router] Neural DNA synchronized from local manifest.");
                     }
                 }
             }
@@ -195,7 +197,7 @@ impl CoreRouter {
         }
         dna.preferred_runtime = Some(runtime.clone());
         
-        let context = cluaizContext::boot(
+        let context = EngineContext::boot(
             dna.clone(),
             TemplateManager::default(),
         );
@@ -209,7 +211,7 @@ impl CoreRouter {
         };
 
         // 🚀 THE cluaiz HANDSHAKE: Dispatching to the Dynamic Linker
-        cluaiz_shared::dev_info!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage ({})...", engine_str);
+        engine_core::dev_info!("🧬 [Router] Dispatching to HardwareOrchestrator for dynamic linkage ({})...", engine_str);
         let engine = HardwareOrchestrator::instantiate(&path.to_string_lossy(), engine_str, context)
             .await
             .map_err(|e| format!("cluaiz Handshake Failure: {}", e))?;
@@ -218,7 +220,7 @@ impl CoreRouter {
 
         let mut foundry = crate::neural_foundry::CoreFoundry::new();
         // Load skills using EnvironmentManager
-        let skills_dir = cluaiz_shared::environment::EnvironmentManager::current().skills_dir();
+        let skills_dir = engine_core::environment::EnvironmentManager::current().skills_dir();
         foundry.initialize(&skills_dir.to_string_lossy());
 
 
@@ -226,7 +228,7 @@ impl CoreRouter {
         let hardware_n_ctx = dna.max_context_length.unwrap_or(2048) as usize;
 
         Ok(Self { 
-            active_backend: Backend::cluaiz(engine),
+            active_backend: Backend::Native(engine),
             active_backend_name: engine_str.to_string(),
             foundry,
             active_dna: Some(dna),
@@ -243,14 +245,14 @@ impl CoreRouter {
             return;
         }
 
-        if let Ok(mut skill_router) = cluaiz_shared::skills::router::GLOBAL_SKILL_ROUTER.write() {
+        if let Ok(mut skill_router) = engine_core::skills::router::GLOBAL_SKILL_ROUTER.write() {
             let _ = skill_router.boot_index();
             let mut new_vectors = Vec::new();
             let safe_filename = schema.get_active_embedding_model().unwrap_or_default().replace(":", "-").replace("/", "-").replace("\\", "-");
 
             for (id, skill_manifest) in &skill_router.loaded_manifests {
-                let mut skill_path = cluaiz_shared::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
-                let env = cluaiz_shared::environment::EnvironmentManager::current();
+                let mut skill_path = engine_core::environment::EnvironmentManager::current().skills_dir().join(&skill_manifest.name);
+                let env = engine_core::environment::EnvironmentManager::current();
                 
                 if let Ok(Some(tool)) = crate::tools::ToolsEngine::get_tool(id) {
                     skill_path = std::path::PathBuf::from(tool.local_dir);
@@ -265,12 +267,12 @@ impl CoreRouter {
                 }
                 let cache_dir = skill_path.join(".cache");
                 let emb_path = cache_dir.join(format!("{}.emb.safetensors", safe_filename));
-                let norm_skill_path = cluaiz_shared::skills::router::normalize_path(&skill_path);
+                let norm_skill_path = engine_core::skills::router::normalize_path(&skill_path);
                 let has_vector = skill_router.skill_vectors.get(&norm_skill_path).map_or(false, |v| !v.is_empty());
                 let cache_file_valid = emb_path.exists() && std::fs::metadata(&emb_path).map(|m| m.len()).unwrap_or(0) > 0;
 
                 if !has_vector || !cache_file_valid {
-                    cluaiz_shared::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
+                    engine_core::dev_info!("⏳ [Sovereign-Ops] Vector Mismatch. Generating semantic vector for skill: {}", skill_manifest.name);
                     let mut combined_vec = Vec::new();
                     
                     if skill_manifest.triggers.semantic.is_empty() {
@@ -302,11 +304,11 @@ impl CoreRouter {
                                 &emb_path
                             ) {
                                 Ok(_) => { new_vectors.push((norm_skill_path, combined_vec)); },
-                                Err(e) => { cluaiz_shared::dev_info!("❌ Failed to write vector cache to {}: {}", emb_path.display(), e); },
+                                Err(e) => { engine_core::dev_info!("❌ Failed to write vector cache to {}: {}", emb_path.display(), e); },
                             }
                         }
                     } else {
-                        cluaiz_shared::dev_info!("⚠️ Failed to generate vector (embedding engine returned empty). Skipping cache write.");
+                        engine_core::dev_info!("⚠️ Failed to generate vector (embedding engine returned empty). Skipping cache write.");
                     }
                 }
             }
@@ -317,7 +319,7 @@ impl CoreRouter {
         }
     }
 
-    pub fn get_active_dna(&self) -> Option<&cluaiz_shared::StructuralDNA> {
+    pub fn get_active_dna(&self) -> Option<&engine_core::StructuralDNA> {
         self.active_dna.as_ref()
     }
 
@@ -373,12 +375,12 @@ impl CoreRouter {
             };
 
             if is_compiling {
-                cluaiz_shared::dev_info!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
+                engine_core::dev_info!("⏳ [Arbiter] Cache compilation for {} is already in progress. Skipping duplicate Agentic Pause.", cache_path.display());
                 continue;
             }
 
             if skill_tokens_est > available_ctx {
-                cluaiz_shared::dev_info!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
+                engine_core::dev_info!("⏳ [Agentic Pause] Low Context Window detected ({} available). Spawning isolated hardware slot for {} tokens...", available_ctx, skill_tokens_est);
                 
                 // Extract skill id for telemetry before the closure moves cache_path
                 let skill_id_for_decision = cache_path
@@ -419,11 +421,11 @@ impl CoreRouter {
                     });
                     
                     if background_success {
-                        cluaiz_shared::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.safetensors` safely generated to SSD.");
+                        engine_core::dev_info!("✅ [Agentic Pause] Dual-Cache `.kvcache.safetensors` safely generated to SSD.");
                         // Only attempt KV load if the cache was saved at a size the main engine can handle.
                         // The background engine used expanded_ctx tokens, but main engine has hardware_n_ctx.
                         if expanded_ctx <= self.hardware_n_ctx {
-                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
+                            engine_core::dev_info!("⚙️ [Arbiter] Loading KV cache natively from SSD: {}", cache_path.display());
                             
                             // Unpack safetensors to temporary .temp_state for llama.cpp loading
                             let temp_bin = cache_path.with_extension("temp_state");
@@ -440,18 +442,18 @@ impl CoreRouter {
                             }
                             
                             if let Err(e) = self.active_backend.load_kv_cache(&temp_bin.to_string_lossy()) {
-                                cluaiz_shared::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
+                                engine_core::dev_info!("❌ [Arbiter] Native KV load failed: {}. Force-resetting memory.", e);
                                 // 🛡️ Force full memory reset to prevent hybrid SSM/KV state corruption
                                 let _ = self.active_backend.prefill("");
                             }
                             
                             let _ = std::fs::remove_file(temp_bin);
                         } else {
-                            cluaiz_shared::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
+                            engine_core::dev_info!("⚠️ [Arbiter] KV cache was saved at {} ctx but engine has {} ctx. Skipping load (would corrupt hybrid memory).",
                                 expanded_ctx, self.hardware_n_ctx);
                         }
                     } else {
-                        cluaiz_shared::dev_info!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
+                        engine_core::dev_info!("❌ [Agentic Pause] Hardware failed to acquire background slot. Proceeding safely without skill.");
                     }
                 }
             } else {
@@ -470,7 +472,7 @@ impl CoreRouter {
                 // Reserve 512 tokens for prompt + generation headroom.
                 let injection_char_cap = self.hardware_n_ctx.saturating_sub(512) * 3;
                 let safe_skill_content = if skill_content.len() > injection_char_cap && injection_char_cap > 0 {
-                    cluaiz_shared::dev_info!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
+                    engine_core::dev_info!("⚠️ [ZeroDelayTTFT] Skill ({} chars) exceeds hardware context cap ({} chars). Truncating for safe injection.",
                         skill_content.len(), injection_char_cap);
                     skill_content[..injection_char_cap].to_string()
                 } else {
@@ -493,13 +495,13 @@ impl CoreRouter {
                     
                     rt.spawn(async move {
                         let _guard = CompilationGuard { path: cache_path_clone.clone() };
-                        use cluaiz_shared::{cluaizContext, StructuralDNA, UnifiedBackend, cluaizInference};
+                        use engine_core::{EngineContext, StructuralDNA, UnifiedBackend, StreamingInference};
                         let mut temp_dna = StructuralDNA::default();
                         temp_dna.max_context_length = Some(expanded_ctx);
-                        let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
+                        let ctx = EngineContext::boot(temp_dna, engine_core::TemplateManager::default());
                         
-                        cluaiz_shared::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
-                        let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                        engine_core::dev_info!("🔩 [Arbiter] Asynchronously requesting {} ctx slot in background...", expanded_ctx);
+                        let optimization = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                         // n_gpu_layers is controlled via GgufMetadataHeaders
                         
                         if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(
@@ -516,7 +518,7 @@ impl CoreRouter {
                                     skill_content_clone
                                 )
                             };
-                            cluaiz_shared::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", prefill_prompt.len() / 3);
+                            engine_core::dev_info!("⚙️ [Arbiter] Async background slot acquired. Prefilling {} tokens...", prefill_prompt.len() / 3);
                             if bg_engine.prefill(&prefill_prompt).is_ok() {
                                 let bin_path = cache_path_clone.with_extension("temp_state");
                                 if bg_engine.dump_kv_cache(&bin_path.to_string_lossy()).is_ok() {
@@ -537,7 +539,7 @@ impl CoreRouter {
                                                 &cache_path_clone
                                             ).is_ok() {
                                                 let _ = std::fs::remove_file(bin_path);
-                                                cluaiz_shared::dev_info!("✅ [Arbiter] Async background KV cache compiled and saved as safetensors successfully.");
+                                                engine_core::dev_info!("✅ [Arbiter] Async background KV cache compiled and saved as safetensors successfully.");
                                             }
                                         }
                                     }
@@ -561,11 +563,11 @@ impl CoreRouter {
                     if kv_cache_path.exists() {
                         let skill_tokens_est = 0;
                         if skill_tokens_est > 0 && skill_tokens_est + 256 > self.hardware_n_ctx {
-                            cluaiz_shared::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
+                            engine_core::dev_info!("⚠️ [Arbiter] Warm cache for '{}' was saved at ~{} tokens but engine has {} ctx. Skipping load.",
                                 skill_id, skill_tokens_est + 256, self.hardware_n_ctx);
                             continue;
                         }
-                        cluaiz_shared::dev_info!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
+                        engine_core::dev_info!("⚙️ [Arbiter] Warm cache found. Loading KV cache natively from SSD: {}", kv_cache_path.display());
                         // Only override if Agentic Pause didn't already set the decision
                         if self.last_route_decision.is_none() {
                             self.last_route_decision = Some(RouteDecision::WarmCacheHit { skill_id: skill_id.clone() });
@@ -585,7 +587,7 @@ impl CoreRouter {
                         }
                         
                         if let Err(e) = self.active_backend.load_kv_cache(&temp_bin.to_string_lossy()) {
-                            cluaiz_shared::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
+                            engine_core::dev_info!("❌ [Arbiter] Native warm KV load failed: {}. Force-resetting memory.", e);
                             let _ = self.active_backend.prefill("");
                         } else {
                             // Inject the skill description into responses so the prompt prefix matches the KV prefill!
@@ -604,11 +606,11 @@ impl CoreRouter {
         let max_ctx = self.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(self.hardware_n_ctx);
 
         match &mut self.active_backend {
-            Backend::cluaiz(b) => {
+            Backend::cluaiz(b) | Backend::Native(b) => {
 
                 // If Core signals (skill souls) were identified, inject them into the kernel
                 if !intent_result.signals.is_empty() {
-                    cluaiz_shared::dev_info!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
+                    engine_core::dev_info!("💉 [Router] Injecting {} M-RoPE KV Cache signals into active hardware...", intent_result.signals.len());
                     b.inject_signals(intent_result.signals).map_err(|e| format!("Signal Injection Failure: {}", e))?;
                 }
 
@@ -629,7 +631,7 @@ impl CoreRouter {
                             prompt
                         );
                     }
-                    cluaiz_shared::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
+                    engine_core::dev_info!("🧠 [Router] Injected skill descriptions (Zero-Delay TTFT).");
                 }
 
                 let cb = std::sync::Arc::new(std::sync::Mutex::new(callback));
@@ -710,9 +712,9 @@ impl CoreRouter {
                                     }
                                 }
                                 
-                                // Legacy check for <TRIGGER: just in case it is forced
+                                // Market-standard check for <tool_call>
                                 if partial_match_idx.is_none() {
-                                    let trigger_target = "<TRIGGER:";
+                                    let trigger_target = "<tool_call>";
                                     if let Some(idx) = buffer_cache.find(trigger_target) {
                                         *capture = true;
                                         json_buffer.push_str(&buffer_cache[idx..]);
@@ -748,8 +750,8 @@ impl CoreRouter {
                             }
                         }
                         
-                        let is_complete = if json_buffer.starts_with("<TRIGGER:") {
-                            json_buffer.contains("</TRIGGER>")
+                        let is_complete = if json_buffer.contains("<tool_call>") {
+                            json_buffer.contains("</tool_call>")
                         } else if json_buffer.contains('{') {
                             json_buffer.contains('}')
                         } else {
@@ -757,32 +759,28 @@ impl CoreRouter {
                         };
                         
                         if *capture && is_complete {
-                            // If it's a Sovereign trigger
-                            if json_buffer.starts_with("<TRIGGER:") && json_buffer.contains("</TRIGGER>") {
-                                if let Some(trigger_start) = json_buffer.rfind("<TRIGGER:") {
+                            // If it's a standard <tool_call>
+                            if json_buffer.contains("<tool_call>") && json_buffer.contains("</tool_call>") {
+                                if let Some(trigger_start) = json_buffer.rfind("<tool_call>") {
                                     let actual_buffer = &json_buffer[trigger_start..];
-                                    if let Some(header_end) = actual_buffer.find('>') {
-                                        let header = &actual_buffer[..header_end];
-                                        let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
-                                        let t_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
-                                        let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
-                                        
-                                        let json_start = header_end + 1;
-                                        let json_end = actual_buffer.find("</TRIGGER>").unwrap_or(actual_buffer.len());
-                                        let mut payload = actual_buffer[json_start..json_end].trim().to_string();
-                                        payload = payload.trim_end_matches('}').to_string();
-                                        if !payload.ends_with('}') {
-                                            payload.push('}');
-                                        }
-                                        
-                                        let mut state = tool_state_clone.lock().unwrap();
-                                        state.0 = true;
-                                        state.1 = format!("{}:{}", t_type, t_name);
-                                        state.2 = payload; 
+                                    let json_end = actual_buffer.find("</tool_call>").unwrap_or(actual_buffer.len());
+                                    let body = actual_buffer["<tool_call>".len()..json_end].trim();
+                                    
+                                    let (t_name, payload) = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(body) {
+                                        let name = parsed.get("name").and_then(|n| n.as_str()).unwrap_or("unknown").to_string();
+                                        let args = parsed.get("arguments").cloned().unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+                                        (name, serde_json::to_string(&args).unwrap_or_else(|_| "{}".to_string()))
+                                    } else {
+                                        ("unknown".to_string(), body.to_string())
+                                    };
+                                    
+                                    let mut state = tool_state_clone.lock().unwrap();
+                                    state.0 = true;
+                                    state.1 = t_name.clone();
+                                    state.2 = payload; 
                                     
                                     let _ = (*cb_guard)(format!("⚙️ [Agentic Pause] Engine intercepted tool execution for '{}'...\n", t_name));
                                     return false; // STOP generation
-                                }
                                 }
                             } else {
                                 // Dynamic CEL script execution interceptor!
@@ -811,36 +809,32 @@ impl CoreRouter {
                         return Err(e.to_string());
                     }
                     
-                    // Fallback for unclosed triggers (if the LLM stopped generating without </TRIGGER>)
+                    // Fallback for unclosed triggers (if the LLM stopped generating without </tool_call>)
                     {
                         let mut bs = buffer_state.lock().unwrap();
                         let capture = bs.0;
                         let json_buffer = &bs.1;
-                        if capture && json_buffer.starts_with("<TRIGGER:") && json_buffer.contains('}') {
-                            if let Some(trigger_start) = json_buffer.rfind("<TRIGGER:") {
+                        if capture && json_buffer.contains("<tool_call>") && json_buffer.contains('}') {
+                            if let Some(trigger_start) = json_buffer.rfind("<tool_call>") {
                                 let actual_buffer = &json_buffer[trigger_start..];
-                                if let Some(header_end) = actual_buffer.find('>') {
-                                    let header = &actual_buffer[..header_end];
-                                    let parts: Vec<&str> = header.trim_start_matches("<TRIGGER:").split(':').collect();
-                                    let t_type = if parts.len() >= 2 { parts[0] } else { "plugin" };
-                                    let t_name = if parts.len() >= 2 { parts[1] } else { parts[0] };
-                                    
-                                    let json_start = header_end + 1;
-                                    let json_end = actual_buffer.find("</TRIGGER>").unwrap_or(actual_buffer.len());
-                                    let mut payload = actual_buffer[json_start..json_end].trim().to_string();
-                                    payload = payload.trim_end_matches('}').to_string();
-                                    if !payload.ends_with('}') {
-                                        payload.push('}');
-                                    }
-                                    
-                                    let mut state = tool_state.lock().unwrap();
-                                    state.0 = true;
-                                    state.1 = format!("{}:{}", t_type, t_name);
-                                    state.2 = payload;
-                                    
-                                    let mut cb_guard = cb.lock().unwrap();
-                                    let _ = (cb_guard)(format!("⚙️ [Agentic Pause] Engine forcefully intercepted unclosed tool execution for '{}'...\n", t_name));
-                                }
+                                let json_end = actual_buffer.find("</tool_call>").unwrap_or(actual_buffer.len());
+                                let body = actual_buffer["<tool_call>".len()..json_end].trim();
+                                
+                                let (t_name, payload) = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(body) {
+                                    let name = parsed.get("name").and_then(|n| n.as_str()).unwrap_or("unknown").to_string();
+                                    let args = parsed.get("arguments").cloned().unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+                                    (name, serde_json::to_string(&args).unwrap_or_else(|_| "{}".to_string()))
+                                } else {
+                                    ("unknown".to_string(), body.to_string())
+                                };
+                                
+                                let mut state = tool_state.lock().unwrap();
+                                state.0 = true;
+                                state.1 = t_name.clone();
+                                state.2 = payload;
+                                
+                                let mut cb_guard = cb.lock().unwrap();
+                                let _ = (cb_guard)(format!("⚙️ [Agentic Pause] Engine forcefully intercepted unclosed tool execution for '{}'...\n", t_name));
                             }
                         }
                     }
@@ -931,13 +925,13 @@ impl CoreRouter {
                         let generated_trigger_text = if t_name == "DYNAMIC_CEL" {
                             t_payload.clone()
                         } else { 
-                            format!("<TRIGGER:{}>{}</TRIGGER>", t_name, t_payload)
+                            format!("<tool_call>\n{{\"name\": \"{}\", \"arguments\": {}}}\n</tool_call>", t_name, t_payload)
                         };
                         
                         current_prompt.push_str(&generated_trigger_text);
                         current_prompt.push_str(&format!(
-                            "<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n<result:{}>\n{}\n</result>\n<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
-                            t_name, safe_result_str
+                            "<|eot_id|>\n<|start_header_id|>user<|end_header_id|>\n\n<tool_response>\n{{\"name\": \"{}\", \"content\": {}}}\n</tool_response>\n<|eot_id|>\n<|start_header_id|>assistant<|end_header_id|>\n\n",
+                            t_name, serde_json::to_string(&safe_result_str).unwrap_or_else(|_| format!("\"{}\"", safe_result_str))
                         ));
                         is_continuation = true;
                         
@@ -958,7 +952,7 @@ impl CoreRouter {
 }
 
 pub struct DummyBackend;
-impl cluaiz_shared::UnifiedBackend for DummyBackend {
+impl engine_core::UnifiedBackend for DummyBackend {
     fn generate(&mut self, _prompt: &str, _max_tokens: usize) -> Result<String, String> {
         Err("Core weights not loaded.".to_string())
     }
@@ -966,7 +960,7 @@ impl cluaiz_shared::UnifiedBackend for DummyBackend {
     fn evaluate_tps(&self) -> f64 { 0.0 }
 }
 
-impl cluaiz_shared::cluaizInference for DummyBackend {
+impl engine_core::StreamingInference for DummyBackend {
     fn forward_raw(&mut self, _inputs: &[u32], _pos: usize) -> anyhow::Result<Vec<f32>> {
         Err(anyhow::anyhow!("Dummy backend"))
     }
@@ -1024,13 +1018,13 @@ pub fn agentic_pause_compile_cache(
         s.spawn(|| {
             rt.block_on(async move {
                 let _guard = CompilationGuard { path: cache_path_clone.clone() };
-                use cluaiz_shared::{cluaizContext, StructuralDNA, UnifiedBackend, cluaizInference};
+                use engine_core::{EngineContext, StructuralDNA, UnifiedBackend, StreamingInference};
                 let mut temp_dna = StructuralDNA::default();
                 temp_dna.max_context_length = Some(expanded_ctx);
-                let ctx = cluaizContext::boot(temp_dna, cluaiz_shared::TemplateManager::default());
+                let ctx = EngineContext::boot(temp_dna, engine_core::TemplateManager::default());
                 
-                cluaiz_shared::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
-                let optimization = cluaiz_shared::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+                engine_core::dev_info!("🔩 [Arbiter] Requesting {} ctx slot in background (CPU fallback mode)...", expanded_ctx);
+                let optimization = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
                 // n_gpu_layers is now controlled via GgufMetadataHeaders
                 
                 if let Ok(mut bg_engine) = crate::runtime::execution::hub::HardwareOrchestrator::instantiate_with_optimization(
@@ -1047,7 +1041,7 @@ pub fn agentic_pause_compile_cache(
                             skill_content_clone
                         )
                     };
-                    cluaiz_shared::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, prefill_prompt.len() / 3);
+                    engine_core::dev_info!("⚙️ [Arbiter] Background slot acquired ({}). Prefilling {} tokens...", backend_name, prefill_prompt.len() / 3);
                     if bg_engine.prefill(&prefill_prompt).is_ok() {
                         let bin_path = cache_path_clone.with_extension("temp_state");
                         if bg_engine.dump_kv_cache(&bin_path.to_string_lossy()).is_ok() {
@@ -1074,7 +1068,7 @@ pub fn agentic_pause_compile_cache(
                                 }
                             }
                         } else {
-                            cluaiz_shared::dev_info!("⚠️ [Arbiter] Background engine '{}' does not support KV Cache dumping. Skipping.", backend_name);
+                            engine_core::dev_info!("⚠️ [Arbiter] Background engine '{}' does not support KV Cache dumping. Skipping.", backend_name);
                             return false;
                         }
                     }

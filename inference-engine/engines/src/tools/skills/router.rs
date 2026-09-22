@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 use super::parser::{SkillParser, ParsedSkill};
 
@@ -75,5 +75,16 @@ impl SkillRouter {
     /// Returns prompt instructions for a given skill ID
     pub fn get_instructions(&self, skill_id: &str) -> Option<&str> {
         self.parsed_cache.get(skill_id).map(|s| s.prompt_instructions.as_str())
+    }
+
+    /// Returns allowed tools restriction for a given skill ID (if specified)
+    pub fn get_allowed_tools(&self, skill_id: &str) -> Option<&[String]> {
+        self.parsed_cache.get(skill_id).and_then(|s| {
+            if s.metadata.allowed_tools.is_empty() {
+                None
+            } else {
+                Some(s.metadata.allowed_tools.as_slice())
+            }
+        })
     }
 }

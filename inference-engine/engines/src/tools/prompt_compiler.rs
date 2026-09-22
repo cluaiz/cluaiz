@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 use crate::tools::lifecycle::SessionToolManager;
 use crate::tools::mcp::McpClient;
 use crate::tools::registry::ToolsRegistry;
@@ -57,6 +57,7 @@ impl ToolPromptCompiler {
         let mut skill_instructions_vec = Vec::new();
         let mut function_schemas: Vec<Value> = Vec::new();
         let mut active_tool_ids = Vec::new();
+        let mut allowed_tools_whitelist: Option<std::collections::HashSet<String>> = None;
 
         for tool_id in tool_ids {
             let normalized_id = tool_id.trim();
@@ -95,6 +96,27 @@ impl ToolPromptCompiler {
                             }
                         }
                     }
+
+                    if let Some(allowed) = skill_router.get_allowed_tools(normalized_id) {
+                        let mut set = allowed_tools_whitelist.unwrap_or_default();
+                        for tool in allowed {
+                            set.insert(tool.to_lowercase().trim().to_string());
+                        }
+                        allowed_tools_whitelist = Some(set);
+                    } else {
+                        let skill_file = local_dir.join("SKILL.md");
+                        if let Ok(content) = std::fs::read_to_string(&skill_file) {
+                            if let Some(parsed) = crate::tools::skills::SkillParser::parse_content(&content) {
+                                if !parsed.metadata.allowed_tools.is_empty() {
+                                    let mut set = allowed_tools_whitelist.unwrap_or_default();
+                                    for tool in &parsed.metadata.allowed_tools {
+                                        set.insert(tool.to_lowercase().trim().to_string());
+                                    }
+                                    allowed_tools_whitelist = Some(set);
+                                }
+                            }
+                        }
+                    }
                 }
                 "plugin" => {
                     // WASM / Native Plugin: JSON schema functions
@@ -120,6 +142,19 @@ impl ToolPromptCompiler {
                     }
                 }
             }
+        }
+
+        // Filter function schemas if an active skill restricts allowed-tools
+        if let Some(ref whitelist) = allowed_tools_whitelist {
+            function_schemas.retain(|schema| {
+                if let Some(name) = schema.get("name").and_then(|n| n.as_str()) {
+                    let name_lower = name.to_lowercase();
+                    whitelist.contains(&name_lower)
+                        || whitelist.iter().any(|allowed| name_lower.ends_with(&format!("__{}", allowed)) || name_lower.contains(allowed))
+                } else {
+                    true
+                }
+            });
         }
 
         // Format standard `<tools> [ ... ] </tools>` container
