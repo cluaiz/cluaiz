@@ -164,7 +164,7 @@ $ cluaiz plugin install web-scraper
 
 - **[Unified Tools API (`/v1/tools` & `/v1/chat/{session_id}/tools`)](developer_hub/data/tools.json)**  
   Single-endpoint architecture unifying Skills, WASM Plugins, and MCP bridges. Supports granular turn-based duration lifecycles (`turns: -1` persistent, `turns: 0` ephemeral single-message, `turns: N` multi-turn countdown).
-- **[Live Context Window & KV-Cache Telemetry Engine](inference-engine/engines/cluaiz-shared/src/telemetry)**  
+- **[Live Context Window & KV-Cache Telemetry Engine](inference-engine/engines/core/src/telemetry)**  
   Real-time token breakdown tracking (Messages, System Prompt, Active Skills, WASM Plugins, MCP Tools, and Deferred Lazy Token Savings) with live mathematical KV-Cache VRAM and Process RSS RAM telemetry emitted over SSE.
 
 </details>
@@ -189,7 +189,7 @@ $ cluaiz plugin install web-scraper
 - **Example Plugin hosted in the Hub:**
   - **[cluaiz-search](https://github.com/cluaiz/cluaiz-hub/tree/main/plugins/cluaiz-search):** A Native Dynamic Library (`cdylib`) built in pure Rust. It provides VRAM-aware web metasearch without heavy Python SDKs or Docker.
   - **Execution Flow:**
-    1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<TRIGGER:plugin:cluaiz-search>`.
+    1. The AI triggers an **Agentic Pause** natively mid-generation by emitting `<tool_call>{"name": "cluaiz-search", "arguments": {"query": "..."}}</tool_call>`.
     2. The plugin concurrently hits SearXNG and DuckDuckGo using `reqwest`, parses the DOM using `scraper` (stripping JS/CSS), and dynamically compresses the text (using BM25) to fit the available VRAM envelope.
     3. The parsed knowledge is injected directly into the active C-pointer KV-Cache and generation resumes seamlessly.
 
@@ -269,7 +269,7 @@ graph TD
   - **Flow:** Evaluates user commands and routes to the appropriate core logic (API server, dashboard, or headless inference).
   - **Why:** To maintain a strict separation between the CLI user interface and the background Rust kernel.
 
-- `inference-engine/engines/cluaiz-shared/src/hardware/governor.rs`:
+- `inference-engine/engines/core/src/hardware/governor.rs`:
   - **Logic:** Manages the `llm_optimization.json` state.
   - **Flow:** Implements the Memory Governor, dynamically allocating and reserving KV Cache limits based on actual physical hardware capacity. Allows toggling `hybrid_memory`, `context_shifting`, and `flash_attention` natively.
   - **Why:** To safely manage memory margins before execution and provide native context-shifting control.

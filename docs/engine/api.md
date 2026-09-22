@@ -15,7 +15,7 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 *   **`GET /status/embedded`**: Confirms host environment parameters.
 
 ### 2. Conversational Engine
-*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Natively intercepts CEL `<TRIGGER:X>` tokens mid-generation to inject Tool/Plugin `SKILL.md` schemas dynamically without crashing RAM.*
+*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Natively intercepts standard `<tool_call>` ChatML tokens mid-generation to execute tools, plugins, and MCP servers dynamically.*
 *   **`GET /history`**: Lists active chat session IDs and metadata configurations.
 *   **`GET /history/{session_id}`**: Retrieves raw, chronological message buffers for a specific session.
 

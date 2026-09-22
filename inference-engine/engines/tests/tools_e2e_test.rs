@@ -1,5 +1,5 @@
 use std::fs;
-use cluaiz_shared::environment::EnvironmentManager;
+use engine_core::environment::EnvironmentManager;
 use engines::tools::{ToolsEngine, SessionToolBinding, ExecutionMode};
 
 #[tokio::test]
@@ -159,4 +159,42 @@ Always check for buffer overflows, memory safety, and DRY principles.
     let _ = ToolsEngine::registry();
 
     println!("✅ [Test] All Tools E2E tests (including real MCP subprocess execution) passed successfully!");
+}
+
+#[tokio::test]
+async fn test_market_standard_tools_compilation_and_response() {
+    let env = EnvironmentManager::current();
+    let plugins_dir = env.plugins_dir();
+    let dummy_plugin_dir = plugins_dir.join("test-market-calc");
+    let _ = fs::create_dir_all(&dummy_plugin_dir);
+
+    let plugin_manifest = serde_json::json!({
+        "name": "test-market-calc",
+        "version": "1.0.0",
+        "description": "Deterministic arithmetic calculator",
+        "functions": [
+            {
+                "name": "calculate",
+                "description": "Evaluates math expression",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {
+                            "type": "string",
+                            "description": "Math expression like 2 + 2"
+                        }
+                    },
+                    "required": ["expression"]
+                }
+            }
+        ]
+    });
+    fs::write(dummy_plugin_dir.join("package.json"), serde_json::to_string_pretty(&plugin_manifest).unwrap()).unwrap();
+
+    let compiled = engines::tools::ToolPromptCompiler::compile_tools(&["test-market-calc".to_string()]).await;
+    assert!(compiled.tools_xml.contains("<tools>"));
+    assert!(compiled.tools_xml.contains("calculate"));
+    assert!(compiled.tools_xml.contains("Evaluates math expression"));
+
+    let _ = fs::remove_dir_all(dummy_plugin_dir);
 }
