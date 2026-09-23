@@ -108,6 +108,7 @@ export async function mount(container) {
             listContainer.innerHTML = '';
 
             for (const [type, names] of Object.entries(data)) {
+                if (type === 'rich' || !Array.isArray(names)) continue;
                 for (const name of names) {
                     let isEnabled = false;
                     try {

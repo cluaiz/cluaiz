@@ -633,7 +633,6 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                     <span>Warming up Cluaiz Engine...</span>
                 </div>
             </div>
-            <div class="tools-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
             <details class="think-accordion" open style="display: none;">
                 <summary class="think-summary">
                     <div class="think-summary-left">
@@ -646,6 +645,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                 </summary>
                 <div class="think-content markdown-body"></div>
             </details>
+            <div class="tools-container" style="display: flex; flex-direction: column; gap: 8px; margin-top: 5px;"></div>
             <div class="divider" style="border-top: 1px solid rgba(156, 163, 175, 0.2); display: none;"></div>
             <div class="final-text markdown-body" style="font-size: 0.9rem;"></div>
         </div>
@@ -723,10 +723,12 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
             }
         }
 
+        window.currentSessionId = window.currentSessionId || ('session_' + Math.random().toString(36).substring(2, 9));
         const payload = {
             model: model,
             messages: conversationHistory,
-            stream: true
+            stream: true,
+            session_id: window.currentSessionId
         };
         if (think_mode) payload.think_mode = think_mode;
         if (temperature !== null && temperature !== undefined) payload.temperature = temperature;
@@ -802,32 +804,40 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                     if (delta.tool_calls && delta.tool_calls.length > 0) {
                         const toolsContainer = aiMsgEl.querySelector('.tools-container');
                         for (const call of delta.tool_calls) {
-                            const callId = call.id || `call_${call.index}`;
+                            const callId = call.id || `call_${call.index !== undefined ? call.index : '0'}`;
                             let toolBlock = toolsContainer.querySelector(`#tool-${callId}`);
+                            const compName = (call.id ? call.id.replace(/^call_/, '') : (call.function?.name || 'tool'));
                             
                             if (!toolBlock) {
                                 toolBlock = document.createElement('details');
                                 toolBlock.id = `tool-${callId}`;
                                 toolBlock.className = 'tool-accordion';
                                 toolBlock.open = true;
-                                toolBlock.style = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace; font-size: 0.85rem;";
+                                toolBlock.style = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-top: 8px; transition: all 0.2s ease;";
                                 
                                 toolBlock.innerHTML = `
-                                    <summary style="padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500;">
-                                        <svg class="tool-icon-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
-                                        <span>Tool Call: <span style="color: #60a5fa;" class="tool-name-span">${escapeHtml(call.function?.name || 'Unknown')}</span></span>
+                                    <summary style="padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 500; user-select: none;">
+                                        <img src="/api/components/file?component_type=skill&component_id=${escapeHtml(compName)}&file_path=assets/icon.svg" width="16" height="16" style="vertical-align: middle; flex-shrink: 0;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" alt="" />
+                                        <span class="fallback-tool-icon" style="display: none; align-items: center; color: #60a5fa;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></span>
+                                        <span style="color: #60a5fa; font-weight: 600;" class="tool-name-span">${escapeHtml(call.function?.name || 'execute')}</span>
+                                        <span class="tool-comp-chip" style="background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; color: #94a3b8;">${escapeHtml(compName)}</span>
+                                        <span class="tool-status-badge" style="margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3);">
+                                            <svg class="tool-icon-spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Running
+                                        </span>
                                     </summary>
                                     <div style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                                        <strong>Request Payload:</strong>
-                                        <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); margin-top: 5px;"><code class="tool-args-code">${escapeHtml(call.function?.arguments || '')}</code></pre>
-                                        <div class="tool-result-container" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; color: #9ca3af; font-style: italic;">Executing in Sandbox...</div>
+                                        <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Request Arguments</div>
+                                        <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px; overflow-x: auto;"><code class="tool-args-code">${escapeHtml(call.function?.arguments || '')}</code></pre>
+                                        <div class="tool-result-container" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; color: #9ca3af; font-style: italic;">
+                                            Executing in Sandbox...
+                                        </div>
                                     </div>
                                 `;
                                 toolsContainer.appendChild(toolBlock);
                             } else {
                                 if (call.function?.arguments) {
                                     const codeEl = toolBlock.querySelector('.tool-args-code');
-                                    codeEl.textContent += call.function.arguments;
+                                    if (codeEl) codeEl.textContent += call.function.arguments;
                                 }
                             }
                         }
@@ -836,20 +846,62 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                     }
 
                     // Handle Custom Result Completion Event
-                    if (delta.cluaiz_tool_result) {
-                        const callId = delta.cluaiz_tool_result.id;
-                        const resultText = delta.cluaiz_tool_result.result;
+                    const toolResult = delta.tool_result || delta.cluaiz_tool_result;
+                    if (toolResult) {
+                        const callId = toolResult.id;
+                        const resultText = toolResult.result || (typeof toolResult.output_result === 'object' ? JSON.stringify(toolResult.output_result, null, 2) : toolResult.output_result) || '';
                         const toolsContainer = aiMsgEl.querySelector('.tools-container');
-                        const toolBlock = toolsContainer.querySelector(`#tool-${callId}`);
+                        const toolBlock = toolsContainer ? (toolsContainer.querySelector(`#tool-${callId}`) || toolsContainer.querySelector(`[id^="tool-call_"]`) || toolsContainer.lastElementChild) : null;
                         if (toolBlock) {
-                            const iconEl = toolBlock.querySelector('.tool-icon-spin');
-                            if (iconEl) {
-                                iconEl.outerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                            // Update Status Badge to Completed
+                            const statusBadge = toolBlock.querySelector('.tool-status-badge');
+                            if (statusBadge) {
+                                statusBadge.style.background = 'rgba(34, 197, 94, 0.15)';
+                                statusBadge.style.color = '#86efac';
+                                statusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+                                statusBadge.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> ${toolResult.latency_ms || 0}ms`;
                             }
+
+                            // Update Component Chip with Category
+                            const compChip = toolBlock.querySelector('.tool-comp-chip');
+                            if (compChip && toolResult.category) {
+                                compChip.textContent = `${toolResult.category}: ${toolBlock.id.replace(/^tool-call_/, '')}`;
+                            }
+
+                            // Render Structured Output and Logs
                             const resContainer = toolBlock.querySelector('.tool-result-container');
-                            resContainer.style.color = '#a7f3d0';
-                            resContainer.style.fontStyle = 'normal';
-                            resContainer.innerHTML = `<strong>Result:</strong><br/><pre style="white-space: pre-wrap; margin: 0; background: transparent; padding: 0;">${escapeHtml(resultText)}</pre>`;
+                            if (resContainer) {
+                                resContainer.style.color = '#e2e8f0';
+                                resContainer.style.fontStyle = 'normal';
+
+                                let logsHtml = '';
+                                if (toolResult.logs && Array.isArray(toolResult.logs) && toolResult.logs.length > 0) {
+                                    logsHtml = `
+                                        <div style="margin-bottom: 8px;">
+                                            <div style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Execution Trace</div>
+                                            <div style="background: rgba(0,0,0,0.25); padding: 6px 8px; border-radius: 4px; font-size: 0.75rem; color: #94a3b8; border: 1px solid rgba(255,255,255,0.03); margin-top: 4px;">
+                                                ${toolResult.logs.map(l => escapeHtml(l)).join('<br/>')}
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+
+                                resContainer.innerHTML = `
+                                    ${logsHtml}
+                                    <div style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Output Result</div>
+                                    <pre style="white-space: pre-wrap; margin: 4px 0 0 0; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); color: #a7f3d0; overflow-x: auto;">${escapeHtml(resultText)}</pre>
+                                `;
+                            }
+                            
+                            // Cache in global map for context inspector drilldown
+                            window.latestExecutedTools = window.latestExecutedTools || new Map();
+                            const toolKey = (toolResult.name || callId || '').replace(/^call_/, '');
+                            window.latestExecutedTools.set(toolKey, toolResult);
+
+                            // Auto-collapse cleanly after brief display
+                            setTimeout(() => {
+                                toolBlock.open = false;
+                            }, 1500);
                         }
                         updateStatus(`Sandbox executed tool successfully.`);
                         continue;
@@ -978,6 +1030,12 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
         if (answerContent && answerContent.trim().length > 0) {
             thinkAccordionEl.open = false;
             thinkAccordionEl.removeAttribute('open');
+            const toolsContainer = aiMsgEl.querySelector('.tools-container');
+            if (toolsContainer) {
+                toolsContainer.querySelectorAll('details.tool-accordion').forEach(t => {
+                    t.open = false;
+                });
+            }
         }
         if (skipThinking) {
             thinkAccordionEl.style.display = 'none';

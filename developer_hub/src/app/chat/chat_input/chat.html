@@ -186,7 +186,6 @@
 
                                 </div>
                             </div>
-
                         </div>
 
                         <!-- Shared Textarea -->
@@ -268,60 +267,135 @@
                     </div>
                     <!-- Right: Interactive Context Window Trigger & Popover (Clean, No Emojis, Crisp White Numbers) -->
                     <div class="relative flex items-center gap-2 cursor-pointer" id="live-ctx-wrapper" style="color: #a1a1aa;">
-                        <span id="live-ctx-trigger" class="flex items-center gap-1 hover:text-white transition-colors" title="Click to view Context Window breakdown">
+                        <span id="live-ctx-trigger" class="flex items-center gap-1 hover:text-white transition-colors" title="Active safe context allocation (hardware-clamped to prevent OOM crash)">
                             Context: <b id="live-ctx-used" style="color: #f4f4f5; font-weight: 500;">0</b> / <span id="live-ctx-limit" style="color: #a1a1aa;">—</span> (<span id="live-ctx-pct" style="color: #a1a1aa;">0%</span>)
                         </span>
                         <!-- <span style="color: #52525b;">|</span> -->
                         <!-- <span style="color: #a1a1aa;">Tools: <b id="live-tool-count" style="color: #f4f4f5; font-weight: 500;">0</b></span> -->
 
-                        <!-- Context Popover -->
-                        <div id="live-context-popover" class="hidden absolute bottom-full right-0 mb-3 w-72 bg-primary border-border-1px rounded-xl p-3-5 shadow-2xl z-50 text-xs text-primary"
-                            style="width: 300px; background: #18181b; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 14px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f4f4f5;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.82rem; font-weight: 600; color: #a1a1aa;">
-                                <span>Context Window</span>
-                                <span style="font-size: 0.72rem; color: #71717a;">Model Max: <b id="popover-model-max" style="color: #d4d4d8;">—</b></span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.78rem;">
-                                <span style="color: #9ca3af;">Usable Allocated</span>
-                                <span id="popover-ctx-total" style="color: #ffffff; font-weight: 600;">0 / — (0%)</span>
+                        <!-- Context Popover (Unified Tree Inspector & Drill-Down) -->
+                        <div id="live-context-popover" class="hidden absolute bottom-full right-0 mb-3 bg-primary border-border-1px rounded-xl p-3-5 shadow-2xl z-50 text-xs text-primary custom-scrollbar"
+                            style="width: 380px; max-height: 520px; overflow-y: auto; background: #18181b; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 14px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.5); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f4f4f5;">
+                            
+                            <!-- Main Inspector View Container -->
+                            <div id="ctx-main-inspector-view">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 0.82rem; font-weight: 600; color: #a1a1aa;">
+                                    <span>Context Window</span>
+                                    <span style="font-size: 0.72rem; color: #71717a;" title="Model weights architecture maximum capacity">Model Max: <b id="popover-model-max" style="color: #d4d4d8;">—</b></span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; font-size: 0.78rem;">
+                                    <span style="color: #9ca3af; display: flex; align-items: center; gap: 5px;" title="Hardware Governor safety clamp on PC RAM/VRAM to prevent Out Of Memory crashes">
+                                        <span>Active Safe Allocation</span>
+                                        <span style="font-size: 0.62rem; padding: 1px 4px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: #93c5fd; font-family: monospace;">Safe VRAM</span>
+                                    </span>
+                                    <span id="popover-ctx-total" style="color: #ffffff; font-weight: 600;">0 / — (0%)</span>
+                                </div>
+                                <div style="font-size: 0.65rem; color: #71717a; margin-bottom: 8px; font-family: monospace;">
+                                    ⚡ VRAM Headroom: 4k safe limit (protects 4GB GPU from OOM)
+                                </div>
+
+                                <!-- Multi-bar progress line (5 pillars) -->
+                                <div style="display: flex; height: 5px; border-radius: 9999px; overflow: hidden; background: #27272a; margin-bottom: 12px;">
+                                    <div id="bar-messages" style="width: 0%; background: #3b82f6; transition: width 0.2s;"></div>
+                                    <div id="bar-system-prompt" style="width: 0%; background: #eab308; transition: width 0.2s;"></div>
+                                    <div id="bar-skills" style="width: 0%; background: #ec4899; transition: width 0.2s;"></div>
+                                    <div id="bar-plugins" style="width: 0%; background: #ea580c; transition: width 0.2s;"></div>
+                                    <div id="bar-mcp-tools" style="width: 0%; background: #10b981; transition: width 0.2s;"></div>
+                                </div>
+
+                                <!-- Breakdown Items Tree -->
+                                <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem;">
+                                    <!-- Messages -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3b82f6;"></span> Messages</span>
+                                        <span><b id="item-messages-val">0</b> <span id="item-messages-pct" style="color: #a1a1aa;">0%</span></span>
+                                    </div>
+                                    <!-- System Prompt -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #eab308;"></span> System prompt</span>
+                                        <span><b id="item-system-prompt-val">0</b> <span id="item-system-prompt-pct" style="color: #a1a1aa;">0%</span></span>
+                                    </div>
+
+                                    <!-- Skills Category with [▾ Open] Tree -->
+                                    <div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 5px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="width: 8px; height: 8px; border-radius: 2px; background: #ec4899;"></span> 
+                                                Skills (<span id="skills-count-badge">0</span>)
+                                            </span>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span><b id="item-skills-val">0</b> <span id="item-skills-pct" style="color: #a1a1aa;">0%</span></span>
+                                                <button type="button" id="skills-tree-toggle" style="background: rgba(236,72,153,0.12); color: #f472b6; border: 1px solid rgba(236,72,153,0.25); border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; cursor: pointer;">▾ Open</button>
+                                            </div>
+                                        </div>
+                                        <div id="skills-tree-list" style="display: none; flex-direction: column; gap: 3px; padding-left: 10px; margin-top: 4px; margin-bottom: 4px; font-family: monospace; font-size: 0.72rem;"></div>
+                                    </div>
+
+                                    <!-- Plugins Category with [▾ Open] Tree -->
+                                    <div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 5px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="width: 8px; height: 8px; border-radius: 2px; background: #ea580c;"></span> 
+                                                Plugins (<span id="plugins-count-badge">0</span>)
+                                            </span>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span><b id="item-plugins-val">0</b> <span id="item-plugins-pct" style="color: #a1a1aa;">0%</span></span>
+                                                <button type="button" id="plugins-tree-toggle" style="background: rgba(234,88,12,0.12); color: #fb923c; border: 1px solid rgba(234,88,12,0.25); border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; cursor: pointer;">▾ Open</button>
+                                            </div>
+                                        </div>
+                                        <div id="plugins-tree-list" style="display: none; flex-direction: column; gap: 3px; padding-left: 10px; margin-top: 4px; margin-bottom: 4px; font-family: monospace; font-size: 0.72rem;"></div>
+                                    </div>
+
+                                    <!-- MCP Tools Category with [▾ Open] Tree -->
+                                    <div style="display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 5px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="width: 8px; height: 8px; border-radius: 2px; background: #10b981;"></span> 
+                                                MCP tools (<span id="mcp-count-badge">0</span>)
+                                            </span>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span><b id="item-mcp-tools-val">0</b> <span id="item-mcp-tools-pct" style="color: #a1a1aa;">0%</span></span>
+                                                <button type="button" id="mcp-tree-toggle" style="background: rgba(16,185,129,0.12); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; cursor: pointer;">▾ Open</button>
+                                            </div>
+                                        </div>
+                                        <div id="mcp-tree-list" style="display: none; flex-direction: column; gap: 3px; padding-left: 10px; margin-top: 4px; margin-bottom: 4px; font-family: monospace; font-size: 0.72rem;"></div>
+                                    </div>
+
+                                    <!-- Free Space -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; color: #71717a; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 5px;">
+                                        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3f3f46;"></span> Free space</span>
+                                        <span><b id="item-free-space-val">—</b> <span id="item-free-space-pct" style="color: #71717a;">—</span></span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Multi-bar progress line (5 pillars) -->
-                            <div style="display: flex; height: 5px; border-radius: 9999px; overflow: hidden; background: #27272a; margin-bottom: 12px;">
-                                <div id="bar-messages" style="width: 0%; background: #3b82f6; transition: width 0.2s;"></div>
-                                <div id="bar-system-prompt" style="width: 0%; background: #eab308; transition: width 0.2s;"></div>
-                                <div id="bar-skills" style="width: 0%; background: #ec4899; transition: width 0.2s;"></div>
-                                <div id="bar-plugins" style="width: 0%; background: #ea580c; transition: width 0.2s;"></div>
-                                <div id="bar-mcp-tools" style="width: 0%; background: #10b981; transition: width 0.2s;"></div>
+                            <!-- Drill-Down Detail Card (Slides in when user clicks any tree item) -->
+                            <div id="ctx-drilldown-card" style="display: none; background: #141416; border: 1px solid rgba(255, 255, 255, 0.10); border-radius: 8px; padding: 10px 12px; font-family: monospace; font-size: 0.70rem; color: #e4e4e7;">
+                                <!-- Sleek Breadcrumb Header -->
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 6px; margin-bottom: 8px;">
+                                    <button type="button" id="drilldown-back-btn" style="background: rgba(255, 255, 255, 0.05); color: #a1a1aa; border: 1px solid rgba(255, 255, 255, 0.10); border-radius: 4px; padding: 2px 7px; cursor: pointer; font-size: 0.68rem; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; align-items: center; gap: 4px; transition: all 0.15s ease;">
+                                        <span>← Context Window</span>
+                                    </button>
+                                    <span id="drilldown-title" style="font-weight: 600; color: #60a5fa; font-size: 0.74rem;"></span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 4px; line-height: 1.4;">
+                                    <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">Status:</span> <b id="drilldown-status" style="color: #4ade80;">ACTIVE</b></div>
+                                    <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">Context Impact:</span> <span id="drilldown-tokens" style="color: #facc15;">0 tok</span></div>
+                                    <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">Execution Latency:</span> <span id="drilldown-latency" style="color: #38bdf8;">—</span></div>
+                                    <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">Memory Limit:</span> <span id="drilldown-memory" style="color: #c084fc;">16 MB</span></div>
+                                    <div style="display: flex; justify-content: space-between;"><span style="color: #71717a;">Fuel / Security:</span> <span id="drilldown-fuel" style="color: #a1a1aa;">Sandboxed</span></div>
+                                    
+                                    <div id="drilldown-input-wrapper" style="margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 4px;">
+                                        <div style="color: #71717a; font-size: 0.66rem; margin-bottom: 2px;">Input Payload:</div>
+                                        <pre id="drilldown-input" style="background: #09090b; padding: 4px 6px; border-radius: 4px; max-height: 48px; overflow-y: auto; color: #93c5fd; white-space: pre-wrap; font-size: 0.65rem; margin: 0; border: 1px solid rgba(255,255,255,0.06);">None</pre>
+                                    </div>
+                                    <div id="drilldown-output-wrapper" style="margin-top: 2px;">
+                                        <div style="color: #71717a; font-size: 0.66rem; margin-bottom: 2px;">Output Result:</div>
+                                        <pre id="drilldown-output" style="background: #09090b; padding: 4px 6px; border-radius: 4px; max-height: 48px; overflow-y: auto; color: #86efac; white-space: pre-wrap; font-size: 0.65rem; margin: 0; border: 1px solid rgba(255,255,255,0.06);">None</pre>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Breakdown Items -->
-                            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3b82f6;"></span> Messages</span>
-                                    <span><b id="item-messages-val">0</b> <span id="item-messages-pct" style="color: #a1a1aa;">0%</span></span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #eab308;"></span> System prompt</span>
-                                    <span><b id="item-system-prompt-val">0</b> <span id="item-system-prompt-pct" style="color: #a1a1aa;">0%</span></span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #ec4899;"></span> Skills</span>
-                                    <span><b id="item-skills-val">0</b> <span id="item-skills-pct" style="color: #a1a1aa;">0%</span></span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #ea580c;"></span> Plugins</span>
-                                    <span><b id="item-plugins-val">0</b> <span id="item-plugins-pct" style="color: #a1a1aa;">0%</span></span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #10b981;"></span> MCP tools</span>
-                                    <span><b id="item-mcp-tools-val">0</b> <span id="item-mcp-tools-pct" style="color: #a1a1aa;">0%</span></span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; color: #71717a;">
-                                    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: #3f3f46;"></span> Free space</span>
-                                    <span><b id="item-free-space-val">—</b> <span id="item-free-space-pct" style="color: #71717a;">—</span></span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

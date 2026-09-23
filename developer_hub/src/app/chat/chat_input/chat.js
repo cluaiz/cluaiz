@@ -64,6 +64,11 @@ function setupChatLogic() {
     // Dynamically fetch and populate tools/skills/plugins/extensions/mcp
     fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, renderSkills);
 
+    // Initial probe of context telemetry on chat mount
+    setTimeout(() => {
+        if (window.refreshContextTelemetry) window.refreshContextTelemetry();
+    }, 400);
+
     // Setup Mic Voice Input Logic
     setupMicVoiceInput(textarea);
 
@@ -417,7 +422,7 @@ function setupChatLogic() {
 
     // Close dropdowns on outside click
     document.addEventListener('click', (e) => {
-        if (isAttachOpen && !attachWrapper.contains(e.target)) {
+        if (isAttachOpen && attachWrapper && !attachWrapper.contains(e.target)) {
             isAttachOpen = false;
             attachMenu.classList.add('hidden');
             attachMenu.classList.remove('flex');
@@ -426,7 +431,7 @@ function setupChatLogic() {
             attachBtn.classList.remove('text-accent', 'bg-secondary');
             attachBtn.classList.add('text-muted');
         }
-        if (isModelOpen && !modelWrapper.contains(e.target)) {
+        if (isModelOpen && modelWrapper && !modelWrapper.contains(e.target)) {
             isModelOpen = false;
             modelMenu.classList.add('hidden');
             modelMenu.classList.remove('flex');
@@ -518,6 +523,14 @@ function setupChatLogic() {
 
             container.appendChild(chip);
         });
+
+        const activeToolCount = Array.from(selectedSkills).filter(s => !['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].includes(s)).length;
+        const badgeEl = document.getElementById('pc-tools-badge');
+        if (badgeEl) badgeEl.textContent = activeToolCount;
+        if (window.refreshContextTelemetry) {
+            window.refreshContextTelemetry();
+        }
+
         if (window.lucide) window.lucide.createIcons();
     }
 
@@ -553,6 +566,24 @@ function setupChatLogic() {
                 }
             }
         });
+
+        // Sync PC Tools checkboxes and switches
+        document.querySelectorAll('.pc-tool-checkbox').forEach(cb => {
+            const toolId = cb.getAttribute('data-id');
+            const isChecked = selectedSkills.has(toolId);
+            cb.checked = isChecked;
+            const slider = cb.nextElementSibling;
+            if (slider) {
+                slider.style.background = isChecked ? '#22c55e' : '#3f3f46';
+                const knob = slider.firstElementChild;
+                if (knob) knob.style.left = isChecked ? '17px' : '2px';
+            }
+        });
+
+        const activeCount = Array.from(selectedSkills).filter(s => !['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].includes(s)).length;
+        const badgeEl = document.getElementById('pc-tools-badge');
+        if (badgeEl) badgeEl.textContent = activeCount;
+
         // Render all the newly created icons
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
@@ -929,6 +960,7 @@ async function fetchAndPopulateModels(modelMenu, selectedModelText, modelSelectB
                     });
 
                     window.dispatchEvent(new CustomEvent('model-changed', { detail: { modelId: model.id, model } }));
+                    if (window.refreshContextTelemetry) window.refreshContextTelemetry();
                 } catch (e) {
                     console.error('Failed to update active model in permissions:', e);
                 }
@@ -958,96 +990,111 @@ async function fetchAndPopulateTools(selectedSkills, updateSkillMenuVisuals, ren
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
+        const richData = data.rich || {};
 
         const categories = [
-            { key: 'skill', menuId: 'skills-menu', icon: 'layers', colorClass: 'hover-text-accent' },
-            { key: 'plugin', menuId: 'plugins-menu', icon: 'box', colorClass: 'hover-text-blue' },
-            { key: 'mcp', menuId: 'mcp-menu', icon: 'server', colorClass: 'hover-text-emerald' }
+            { key: 'skill', menuId: 'skills-menu', icon: 'layers', colorClass: 'hover-text-accent', badgeBg: 'rgba(236, 72, 153, 0.15)', badgeColor: '#f472b6' },
+            { key: 'plugin', menuId: 'plugins-menu', icon: 'box', colorClass: 'hover-text-blue', badgeBg: 'rgba(59, 130, 246, 0.15)', badgeColor: '#93c5fd' },
+            { key: 'mcp', menuId: 'mcp-menu', icon: 'server', colorClass: 'hover-text-emerald', badgeBg: 'rgba(16, 185, 129, 0.15)', badgeColor: '#6ee7b7' }
         ];
+
+        window.componentIcons = window.componentIcons || new Map();
+        const allToolEntries = [];
 
         for (const cat of categories) {
             const menu = document.getElementById(cat.menuId);
-            const allItems = data[cat.key] || [];
+            const richItems = richData[cat.key] || [];
+            const rawNames = data[cat.key] || [];
+
+            // Combine into unified tool items list
+            const toolItems = richItems.length > 0 ? richItems : rawNames.map(name => ({
+                id: name,
+                name: name,
+                category: cat.key,
+                enabled: true,
+                security_mode: 'sandboxed',
+                description: 'Host PC Capability'
+            }));
 
             if (menu) {
-                menu.innerHTML = ''; // clear dummy data
-
-                const enabledItems = [];
-                for (const itemName of allItems) {
-                    try {
-                        const setRes = await fetch(`/api/components/settings?component_type=${cat.key}&component_id=${itemName}`);
-                        const setData = await setRes.json();
-                        if (setData.status === 'success' && setData.values && setData.values.enabled) {
-                            enabledItems.push(itemName);
-                        }
-                    } catch (e) {
-                        console.warn(`Could not fetch settings for ${itemName}`, e);
-                    }
-                }
-
-                if (enabledItems.length === 0) {
+                menu.innerHTML = '';
+                if (toolItems.length === 0) {
                     const displayName = cat.key === 'mcp' ? 'MCPs' : cat.key.charAt(0).toUpperCase() + cat.key.slice(1) + 's';
                     menu.innerHTML = `<div class="p-2 text-xs text-muted text-center italic">No ${displayName} available</div>`;
-                    continue;
-                }
+                } else {
+                    toolItems.forEach(item => {
+                        allToolEntries.push(item);
+                        const itemName = item.id;
+                        const formattedName = item.name || itemName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-                enabledItems.forEach(async (itemName) => {
-                    const btn = document.createElement('button');
-                    btn.className = `dropdown-item w-full flex-between text-primary ${cat.colorClass} hover-bg-secondary group skill-btn`;
-                    btn.setAttribute('data-skill', itemName);
+                        const btn = document.createElement('button');
+                        btn.className = `dropdown-item w-full flex-between text-primary ${cat.colorClass} hover-bg-secondary group skill-btn`;
+                        btn.setAttribute('data-skill', itemName);
 
-                    let iconHtml = `<i data-lucide="${cat.icon}" class="w-4 h-4 text-muted"></i>`;
-                    let rawSvgStr = null;
-                    try {
-                        const svgRes = await fetch(`/api/components/file?component_type=${cat.key}&component_id=${itemName}&file_path=assets/icon.svg`);
-                        const svgData = await svgRes.json();
-                        if (svgData.status === 'success' && svgData.content) {
-                            let svgStr = svgData.content.trim();
-                            if (svgStr.startsWith('<svg')) {
-                                rawSvgStr = svgStr;
-                                iconHtml = `<div class="text-muted flex-center" style="width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;">
-                                    ${svgStr.replace('<svg ', '<svg style="width:100%; height:100%;" ')}
-                                </div>`;
+                        window.componentIcons.set(itemName, { catIcon: cat.icon, customSvg: item.icon_svg });
+                        if (item.name) {
+                            window.componentIcons.set(item.name, { catIcon: cat.icon, customSvg: item.icon_svg });
+                        }
+
+                        let iconHtml = item.icon_svg
+                            ? `<span class="flex-center text-muted" style="width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;">${item.icon_svg.replace('<svg ', '<svg style="width:100%; height:100%; max-width:16px; max-height:16px;" ')}</span>`
+                            : `<i data-lucide="${cat.icon}" class="w-4 h-4 text-muted"></i>`;
+
+                        btn.innerHTML = `
+                            <div class="flex-align gap-2-5">
+                                ${iconHtml}
+                                <span>${formattedName}</span>
+                            </div>
+                        `;
+
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (selectedSkills.has(itemName)) {
+                                selectedSkills.delete(itemName);
+                            } else {
+                                selectedSkills.add(itemName);
                             }
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to fetch SVG for ${itemName}`, e);
-                    }
+                            updateSkillMenuVisuals();
+                            renderSkills();
+                            if (window.refreshContextTelemetry) window.refreshContextTelemetry();
+                        });
 
-                    window.componentIcons = window.componentIcons || new Map();
-                    window.componentIcons.set(itemName, { catIcon: cat.icon, customSvg: rawSvgStr });
-
-                    const formattedName = itemName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-
-                    btn.innerHTML = `
-                        <div class="flex-align gap-2-5">
-                            ${iconHtml}
-                            ${formattedName}
-                        </div>
-                    `;
-
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation(); // keep menu open or let it close?
-                        // If it's a toggle:
-                        if (selectedSkills.has(itemName)) {
-                            selectedSkills.delete(itemName);
-                        } else {
-                            selectedSkills.add(itemName);
-                        }
-                        updateSkillMenuVisuals();
-                        renderSkills();
+                        menu.appendChild(btn);
                     });
-
-                    menu.appendChild(btn);
-                    if (window.lucide) window.lucide.createIcons();
-                });
+                }
+            } else {
+                toolItems.forEach(item => allToolEntries.push(item));
             }
         }
+
+        // Cache all registered tools for the context inspector
+        window.allRegisteredTools = allToolEntries;
+
         if (window.lucide) window.lucide.createIcons();
+        updateSkillMenuVisuals();
+        if (window.refreshContextTelemetry) window.refreshContextTelemetry();
     } catch (e) {
         console.error("Failed to fetch tools/skills list:", e);
     }
 }
+
+window.refreshContextTelemetry = async function() {
+    try {
+        const modelEl = document.getElementById('selected-model-text');
+        const model = (modelEl && modelEl.textContent && modelEl.textContent !== 'Unknown Model') ? modelEl.textContent.trim() : 'default';
+        const activeTools = typeof selectedSkills !== 'undefined' ? Array.from(selectedSkills).filter(s => !['Think Deep', 'Think Lite', 'Long Answer', 'Short Answer'].includes(s)) : [];
+        const sessionId = window.currentSessionId || 'default';
+        const res = await fetch(`/v1/chat/context_telemetry?model=${encodeURIComponent(model)}&session_id=${encodeURIComponent(sessionId)}&tools=${encodeURIComponent(JSON.stringify(activeTools))}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.context_telemetry && window.updateLiveContextBar) {
+                window.updateLiveContextBar({ context_telemetry: data.context_telemetry });
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to refresh context telemetry:', e);
+    }
+};
 
 function formatK(n) {
     if (!n && n !== 0) return '0';
@@ -1060,6 +1107,159 @@ function formatK(n) {
         return k % 1 === 0 ? k + 'k' : (n >= 10000 ? Math.round(k) + 'k' : k.toFixed(1) + 'k');
     }
     return n.toString();
+}
+
+function renderCategoryTree(containerId, items, categoryType) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Strictly filter items: ONLY display tools that are actively loaded into context (taking tokens or in selectedSkills)
+    const displayItems = (items || []).filter(item => {
+        const isSelected = typeof selectedSkills !== 'undefined' && (selectedSkills.has(item.name) || selectedSkills.has(item.id));
+        return item.status === 'active' || (item.tokens && item.tokens > 0) || isSelected;
+    });
+
+    if (displayItems.length === 0) {
+        container.innerHTML = `<div style="color: #71717a; padding: 3px 6px; font-style: italic; font-size: 0.68rem;">No active ${categoryType} loaded in context</div>`;
+        return;
+    }
+
+    displayItems.forEach((item, idx) => {
+        const isLast = idx === displayItems.length - 1;
+        const prefix = isLast ? '└──' : '├──';
+        
+        const customSvg = window.componentIcons?.get(item.name)?.customSvg 
+            || window.componentIcons?.get(item.id)?.customSvg 
+            || item.icon_svg;
+
+        const iconHtml = customSvg 
+            ? `<span style="width: 13px; height: 13px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: #a1a1aa;">${customSvg.replace('<svg ', '<svg style="width:100%; height:100%; max-width:13px; max-height:13px;" ')}</span>`
+            : `<span style="flex-shrink: 0;">${categoryType === 'skill' ? '📋' : (categoryType === 'plugin' ? '🔌' : '🌐')}</span>`;
+
+        let tagInfo = '';
+        if (categoryType === 'skill') {
+            tagInfo = `[Active • ${item.tokens || 42} tok • Ready]`;
+        } else if (categoryType === 'plugin') {
+            const runType = item.security_mode === 'sandboxed' ? 'WASM' : 'Native';
+            const cap = item.memory_cap_mb || 16;
+            tagInfo = `[${runType} • ${cap}MB cap • Ready]`;
+        } else {
+            tagInfo = `[npx • stdio • Ready]`;
+        }
+
+        const el = document.createElement('div');
+        el.className = 'ctx-tree-item';
+        el.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 2px 5px; border-radius: 4px; cursor: pointer; transition: background 0.15s; font-size: 0.70rem;';
+        el.addEventListener('mouseenter', () => el.style.background = 'rgba(255,255,255,0.06)');
+        el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+
+        el.innerHTML = `
+            <span style="display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <span style="color: #71717a;">${prefix}</span> ${iconHtml} <span style="color: #f4f4f5; font-weight: 500;">${item.name}</span>
+            </span>
+            <span style="color: #a1a1aa; font-size: 0.64rem; margin-left: 6px; white-space: nowrap;">${tagInfo}</span>
+        `;
+
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDrilldownCard(item, categoryType);
+        });
+
+        container.appendChild(el);
+    });
+}
+
+function openDrilldownCard(item, categoryType) {
+    const mainView = document.getElementById('ctx-main-inspector-view');
+    const card = document.getElementById('ctx-drilldown-card');
+    if (!mainView || !card) return;
+
+    mainView.style.display = 'none';
+    card.style.display = 'block';
+
+    const titleEl = document.getElementById('drilldown-title');
+    const statusEl = document.getElementById('drilldown-status');
+    const tokensEl = document.getElementById('drilldown-tokens');
+    const latencyEl = document.getElementById('drilldown-latency');
+    const memoryEl = document.getElementById('drilldown-memory');
+    const fuelEl = document.getElementById('drilldown-fuel');
+    const inputEl = document.getElementById('drilldown-input');
+    const outputEl = document.getElementById('drilldown-output');
+
+    const customSvg = window.componentIcons?.get(item.name)?.customSvg 
+        || window.componentIcons?.get(item.id)?.customSvg 
+        || item.icon_svg;
+
+    const sec = item.security_mode === 'sandboxed' ? 'Sandboxed' : (item.security_mode === 'strict' ? 'Strict Sandbox' : 'Host PC');
+    if (titleEl) {
+        if (customSvg) {
+            titleEl.innerHTML = `<span style="display: flex; align-items: center; gap: 5px;"><span style="width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; color: #60a5fa;">${customSvg.replace('<svg ', '<svg style="width:100%; height:100%;" ')}</span><span>${item.name}</span> <span style="color: #71717a; font-size: 0.65rem; font-weight: 400;">(${sec})</span></span>`;
+        } else {
+            const icon = categoryType === 'skill' ? '📋' : (categoryType === 'plugin' ? '🔌' : '🌐');
+            titleEl.textContent = `${icon} ${item.name} (${sec})`;
+        }
+    }
+
+    // Check if tool was executed in live session
+    const executedInfo = window.latestExecutedTools?.get(item.name) || window.latestExecutedTools?.get(item.name?.toLowerCase());
+
+    const isExecuted = !!executedInfo;
+    if (statusEl) {
+        statusEl.textContent = isExecuted ? 'EXECUTED (Completed in turn)' : 'LOADED (Active in context)';
+        statusEl.style.color = isExecuted ? '#4ade80' : '#38bdf8';
+    }
+
+    if (tokensEl) {
+        const tok = item.tokens || 42;
+        tokensEl.textContent = isExecuted 
+            ? `+${tok} tokens (Active • Evaluated)`
+            : `+${tok} tokens (Allocated in prompt)`;
+        tokensEl.style.color = '#facc15';
+    }
+
+    if (latencyEl) {
+        if (isExecuted && executedInfo.latency_ms) {
+            latencyEl.textContent = `${executedInfo.latency_ms.toFixed(2)} ms`;
+            latencyEl.style.color = '#38bdf8';
+        } else {
+            latencyEl.textContent = '— (Awaiting invocation)';
+            latencyEl.style.color = '#71717a';
+        }
+    }
+
+    if (memoryEl) {
+        const cap = item.memory_cap_mb || 16;
+        if (isExecuted && executedInfo.memory_used_mb) {
+            memoryEl.textContent = `${cap} MB (Used: ${executedInfo.memory_used_mb.toFixed(1)} MB)`;
+        } else {
+            memoryEl.textContent = `Limit: ${cap} MB (Standby)`;
+        }
+    }
+
+    if (fuelEl) {
+        if (isExecuted && executedInfo.cpu_fuel_consumed) {
+            fuelEl.textContent = `${executedInfo.cpu_fuel_consumed.toLocaleString()} instructions`;
+        } else {
+            fuelEl.textContent = 'Sandboxed (Zero CPU fuel consumed)';
+        }
+    }
+
+    if (inputEl) {
+        if (isExecuted && executedInfo.input_payload) {
+            inputEl.textContent = JSON.stringify(executedInfo.input_payload, null, 2);
+        } else {
+            inputEl.textContent = 'None (Tool not invoked in current turn)';
+        }
+    }
+
+    if (outputEl) {
+        if (isExecuted && executedInfo.output_result) {
+            outputEl.textContent = JSON.stringify(executedInfo.output_result, null, 2);
+        } else {
+            outputEl.textContent = 'None (Tool not invoked in current turn)';
+        }
+    }
 }
 
 window.updateLiveContextBar = function(usage) {
@@ -1078,7 +1278,7 @@ window.updateLiveContextBar = function(usage) {
                 : (usage.time_seconds ? Number(usage.time_seconds).toFixed(2) : '0.00')));
     const tokens = usage.total_tokens || usage.completion_tokens || 0;
 
-    // 1. Generation Performance Stats - Auto-Hide on bottom bar when generation completes (message card has permanent stats)
+    // Auto-Hide on bottom bar when generation completes
     const livePerfStats = document.getElementById('live-perf-stats');
     if (livePerfStats) livePerfStats.style.display = 'none';
     const tpsTag = document.getElementById('live-tps-tag');
@@ -1094,7 +1294,6 @@ window.updateLiveContextBar = function(usage) {
     const usedEl = document.getElementById('live-ctx-used');
     const limitEl = document.getElementById('live-ctx-limit');
     const pctEl = document.getElementById('live-ctx-pct');
-    const toolCountEl = document.getElementById('live-tool-count');
 
     if (breakdown) {
         const usableLimit = breakdown.total_context_limit;
@@ -1105,7 +1304,6 @@ window.updateLiveContextBar = function(usage) {
         if (usedEl) usedEl.textContent = formatK(totalActive);
         if (limitEl) limitEl.textContent = formatK(usableLimit);
         if (pctEl) pctEl.textContent = `${activePct}%`;
-        if (toolCountEl) toolCountEl.textContent = `${breakdown.active_tools_count || 0}`;
 
         // 3. Popover Elements
         const popoverTotal = document.getElementById('popover-ctx-total');
@@ -1139,28 +1337,86 @@ window.updateLiveContextBar = function(usage) {
         setItem('item-mcp-tools-val', 'item-mcp-tools-pct', breakdown.mcp_tools_tokens, breakdown.mcp_tools_percentage);
         setItem('item-free-space-val', 'item-free-space-pct', breakdown.free_space_tokens, breakdown.free_space_percentage);
 
-        // Popover items populated cleanly
+        // Update category count badges strictly from active in-context items
+        const skillsCountEl = document.getElementById('skills-count-badge');
+        const pluginsCountEl = document.getElementById('plugins-count-badge');
+        const mcpCountEl = document.getElementById('mcp-count-badge');
+
+        const activeSkills = (breakdown.skills?.items || []).filter(i => i.status === 'active' || (i.tokens && i.tokens > 0) || (typeof selectedSkills !== 'undefined' && (selectedSkills.has(i.name) || selectedSkills.has(i.id))));
+        const activePlugins = (breakdown.plugins?.items || []).filter(i => i.status === 'active' || (i.tokens && i.tokens > 0));
+        const activeMcp = (breakdown.mcp_tools?.items || []).filter(i => i.status === 'active' || (i.tokens && i.tokens > 0));
+
+        if (skillsCountEl) skillsCountEl.textContent = `${activeSkills.length}`;
+        if (pluginsCountEl) pluginsCountEl.textContent = `${activePlugins.length}`;
+        if (mcpCountEl) mcpCountEl.textContent = `${activeMcp.length}`;
+
+        // Populate tree structures strictly with active in-context items
+        renderCategoryTree('skills-tree-list', activeSkills, 'skill');
+        renderCategoryTree('plugins-tree-list', activePlugins, 'plugin');
+        renderCategoryTree('mcp-tree-list', activeMcp, 'mcp');
+
     } else if (usage.total_tokens) {
         if (usedEl) usedEl.textContent = formatK(usage.total_tokens);
     }
 
-    // 4. Bind interactive popover toggle/hover on #live-ctx-wrapper
+    // 4. Wire Tree Toggles & Drill-Down Back Button (bound once)
+    const setupTreeToggle = (btnId, listId) => {
+        const btn = document.getElementById(btnId);
+        const list = document.getElementById(listId);
+        if (btn && list && !btn.dataset.bound) {
+            btn.dataset.bound = 'true';
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = list.style.display === 'flex';
+                if (isOpen) {
+                    list.style.display = 'none';
+                    btn.textContent = '▾ Open';
+                } else {
+                    list.style.display = 'flex';
+                    btn.textContent = '▴ Close';
+                }
+            });
+        }
+    };
+    setupTreeToggle('skills-tree-toggle', 'skills-tree-list');
+    setupTreeToggle('plugins-tree-toggle', 'plugins-tree-list');
+    setupTreeToggle('mcp-tree-toggle', 'mcp-tree-list');
+
+    const backBtn = document.getElementById('drilldown-back-btn');
+    if (backBtn && !backBtn.dataset.bound) {
+        backBtn.dataset.bound = 'true';
+        backBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const mainView = document.getElementById('ctx-main-inspector-view');
+            const card = document.getElementById('ctx-drilldown-card');
+            if (mainView && card) {
+                card.style.display = 'none';
+                mainView.style.display = 'block';
+            }
+        });
+    }
+
+    // 5. Bind interactive popover toggle/hover on #live-ctx-wrapper
     const ctxWrapper = document.getElementById('live-ctx-wrapper');
     const popover = document.getElementById('live-context-popover');
     if (ctxWrapper && popover && !ctxWrapper.dataset.bound) {
         ctxWrapper.dataset.bound = 'true';
+        // Open on hover
         ctxWrapper.addEventListener('mouseenter', () => {
             popover.classList.remove('hidden');
         });
-        ctxWrapper.addEventListener('mouseleave', () => {
-            popover.classList.add('hidden');
-        });
+        // Toggle on click
         ctxWrapper.addEventListener('click', (e) => {
             e.stopPropagation();
             popover.classList.toggle('hidden');
         });
+        // Prevent clicks inside popover from closing it
+        popover.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        // Close ONLY when clicking strictly outside
         document.addEventListener('click', (e) => {
-            if (!ctxWrapper.contains(e.target)) {
+            if (!ctxWrapper.contains(e.target) && !popover.contains(e.target)) {
                 popover.classList.add('hidden');
             }
         });
