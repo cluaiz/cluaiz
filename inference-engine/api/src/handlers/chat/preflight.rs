@@ -31,6 +31,7 @@ pub struct PreparedChatContext {
     pub system_prompt_chars: usize,
     pub history_chars: usize,
     pub user_prompt_chars: usize,
+    pub active_tool_ids: Vec<String>,
     pub json_prompt: String,
     pub initial_user_query: String,
     pub send_telemetry: bool,
@@ -260,6 +261,8 @@ impl PreparedChatContext {
             combined_instructions.truncate(max_tool_chars);
         }
 
+        let tool_instruction_chars = combined_instructions.len();
+
         if !combined_instructions.is_empty() {
             if let Some(last_msg) = augmented_messages.last_mut() {
                 let prev_content = last_msg.content.flatten_to_string().await;
@@ -373,10 +376,10 @@ impl PreparedChatContext {
         for (i, msg) in augmented_messages.iter().enumerate() {
             let content_str = msg.content.flatten_to_string().await;
             let c_len = content_str.len();
-            if msg.role.eq_ignore_ascii_case("system") {
+            if msg.role == "system" {
                 system_prompt_chars += c_len;
-            } else if i == total_msgs.saturating_sub(1) && msg.role.eq_ignore_ascii_case("user") {
-                user_prompt_chars += c_len;
+            } else if i == total_msgs.saturating_sub(1) {
+                user_prompt_chars = c_len.saturating_sub(tool_instruction_chars);
             } else {
                 history_chars += c_len;
             }
@@ -384,6 +387,10 @@ impl PreparedChatContext {
                 "role": msg.role,
                 "content": content_str
             }));
+        }
+
+        if system_prompt_chars == 0 && tool_instruction_chars > 0 {
+            system_prompt_chars = tool_instruction_chars;
         }
 
         let effective_temp = request.temperature.map(|t| t as f64).unwrap_or(gguf_meta.samplers.temp);
@@ -467,6 +474,7 @@ impl PreparedChatContext {
             system_prompt_chars,
             history_chars,
             user_prompt_chars,
+            active_tool_ids: tool_ids_to_compile,
             json_prompt,
             initial_user_query,
             send_telemetry,

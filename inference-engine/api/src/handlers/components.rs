@@ -5,7 +5,9 @@ use serde_json::Value;
 
 pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let env = engine_core::environment::EnvironmentManager::current();
+    let registry = engines::tools::ToolsEngine::registry().unwrap_or_default();
     let mut results = serde_json::Map::new();
+    let mut rich_map = serde_json::Map::new();
     
     for comp_type in ["plugin", "mcp", "skill"] {
         let dir = match comp_type {
@@ -14,18 +16,75 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
             "mcp" => env.mcp_dir(),
             _ => env.tools_dir().join(format!("{}s", comp_type)),
         };
-        let mut items = Vec::new();
+        let mut names = Vec::new();
+        let mut rich_items = Vec::new();
+        let get_icon_svg = |base_path: &std::path::Path| -> Option<String> {
+            let p1 = base_path.join("assets").join("icon.svg");
+            let p2 = base_path.join("icon.svg");
+            if p1.exists() {
+                std::fs::read_to_string(p1).ok()
+            } else if p2.exists() {
+                std::fs::read_to_string(p2).ok()
+            } else {
+                None
+            }
+        };
+
+        // 1. Scan directory
         if dir.exists() {
             if let Ok(entries) = std::fs::read_dir(&dir) {
                 for entry in entries.filter_map(|e| e.ok()) {
                     if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        items.push(serde_json::Value::String(entry.file_name().to_string_lossy().to_string()));
+                        let id = entry.file_name().to_string_lossy().to_string();
+                        names.push(serde_json::Value::String(id.clone()));
+                        
+                        let tool_opt = registry.installed_tools.get(&id);
+                        let name = tool_opt.map(|t| t.name.clone()).unwrap_or_else(|| id.clone());
+                        let desc = tool_opt.map(|t| t.description.clone()).unwrap_or_default();
+                        let enabled = tool_opt.map(|t| t.enabled).unwrap_or(true);
+                        let sec_mode = tool_opt.map(|t| format!("{:?}", t.security_mode).to_lowercase()).unwrap_or_else(|| "sandboxed".to_string());
+                        let tokens = (desc.len() / 4).max(4);
+                        let icon_svg = get_icon_svg(&entry.path())
+                            .or_else(|| tool_opt.and_then(|t| get_icon_svg(&std::path::PathBuf::from(&t.local_dir))));
+
+                        rich_items.push(serde_json::json!({
+                            "id": id,
+                            "name": name,
+                            "category": comp_type,
+                            "description": desc,
+                            "enabled": enabled,
+                            "security_mode": sec_mode,
+                            "tokens": tokens,
+                            "icon_svg": icon_svg,
+                        }));
                     }
                 }
             }
         }
-        results.insert(comp_type.to_string(), serde_json::Value::Array(items));
+
+        // 2. Also merge any tools registered in ToolsRegistry for this category
+        for (id, tool) in &registry.installed_tools {
+            if tool.category == comp_type && !names.iter().any(|v| v.as_str() == Some(id.as_str())) {
+                names.push(serde_json::Value::String(id.clone()));
+                let tokens = (tool.description.len() / 4).max(4);
+                let icon_svg = get_icon_svg(&std::path::PathBuf::from(&tool.local_dir));
+                rich_items.push(serde_json::json!({
+                    "id": id,
+                    "name": tool.name,
+                    "category": comp_type,
+                    "description": tool.description,
+                    "enabled": tool.enabled,
+                    "security_mode": format!("{:?}", tool.security_mode).to_lowercase(),
+                    "tokens": tokens,
+                    "icon_svg": icon_svg,
+                }));
+            }
+        }
+
+        results.insert(comp_type.to_string(), serde_json::Value::Array(names));
+        rich_map.insert(comp_type.to_string(), serde_json::Value::Array(rich_items));
     }
+    results.insert("rich".to_string(), serde_json::Value::Object(rich_map));
     
     Json(serde_json::Value::Object(results))
 }
@@ -43,8 +102,13 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     // Query tool directly from ToolsRegistry (tools_registry.json)
     if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(&comp_id) {
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
-        current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("full_access")));
+        current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("sandboxed")));
         current_values.insert("execution_mode".to_string(), serde_json::to_value(&tool.execution_mode).unwrap_or(serde_json::json!("auto")));
+    } else {
+        // Fallback default for discovered components
+        current_values.insert("enabled".to_string(), serde_json::Value::Bool(true));
+        current_values.insert("security_mode".to_string(), serde_json::json!("sandboxed"));
+        current_values.insert("execution_mode".to_string(), serde_json::json!("auto"));
     }
 
     Json(serde_json::json!({
@@ -130,7 +194,17 @@ pub struct GetFileQuery {
 pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
     let env = engine_core::environment::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
-    let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+    let target_dir = match comp_type {
+        "skill" => env.skills_dir().join(&query.component_id),
+        "plugin" => env.plugins_dir().join(&query.component_id),
+        "mcp" => env.mcp_dir().join(&query.component_id),
+        _ => env.tools_dir().join(format!("{}s", comp_type)).join(&query.component_id),
+    };
+    let comp_dir = if target_dir.exists() {
+        target_dir
+    } else {
+        env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id)
+    };
 
     if !comp_dir.exists() {
         return Json(serde_json::json!({"status": "error", "message": "Component directory not found"}));
@@ -215,7 +289,16 @@ async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuer
         }
         found_path
     } else {
-        let comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+        let base_dir = match comp_type {
+            "skill" => env.skills_dir(),
+            "plugin" => env.plugins_dir(),
+            "mcp" => env.mcp_dir(),
+            _ => env.tools_dir().join(format!("{}s", comp_type)),
+        };
+        let mut comp_dir = base_dir.join(&query.component_id);
+        if !comp_dir.exists() {
+            comp_dir = env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id);
+        }
         if let Some(p) = &query.file_path {
             Some(comp_dir.join(p))
         } else {

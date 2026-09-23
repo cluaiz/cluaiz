@@ -12,7 +12,7 @@ use std::path::Path;
 use anyhow::Result;
 use serde_json::Value;
 
-pub use execution::{CancelHandle, EnvironmentResolver, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
+pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
 pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
 pub use lifecycle::{SessionToolBinding, SessionToolManager, TurnLifecycleEngine};
 pub use mcp::{McpClient, McpManifest};
@@ -230,8 +230,79 @@ impl ToolsEngine {
         Self::format_tool_response(name, &content_json)
     }
 
+    /// Locates the root directory of a component across registry and filesystem candidates
+    pub fn resolve_component_dir(category: &str, name: &str) -> Option<std::path::PathBuf> {
+        if let Ok(Some(entry)) = Self::get_tool(name) {
+            let p = std::path::PathBuf::from(&entry.local_dir);
+            if p.exists() {
+                return Some(p);
+            }
+        }
+
+        let env = engine_core::environment::EnvironmentManager::current();
+        let candidates = match category {
+                "skill" => vec![
+                    env.skills_dir().join(name),
+                    env.global_dir.join("skills").join(name),
+                ],
+                "plugin" => vec![
+                    env.plugins_dir().join(name),
+                    env.global_dir.join("plugins").join(name),
+                ],
+                "mcp" => vec![
+                    env.mcp_dir().join(name),
+                    env.global_dir.join("mcp").join(name),
+                ],
+                _ => vec![
+                    env.skills_dir().join(name),
+                    env.plugins_dir().join(name),
+                    env.mcp_dir().join(name),
+                    env.global_dir.join("skills").join(name),
+                    env.global_dir.join("plugins").join(name),
+                ],
+            };
+            for c in candidates {
+                if c.exists() {
+                    return Some(c);
+                }
+            }
+        None
+    }
+
     /// Unified DRY executor across plugins, MCP servers, skills, and sandboxed terminal commands
     pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
+        let cwd_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let sec_mode = Self::get_tool(name)
+            .ok()
+            .flatten()
+            .map(|t| t.security_mode)
+            .unwrap_or(SecurityMode::Sandboxed);
+
+        // 1. Declarative Execution Manifest check (dynamic from tool package.json)
+        if let Some(comp_dir) = Self::resolve_component_dir(category, name) {
+            let manifest_path = comp_dir.join("package.json");
+            if manifest_path.exists() {
+                if let Ok(content) = std::fs::read_to_string(&manifest_path) {
+                    if let Ok(val) = serde_json::from_str::<Value>(&content) {
+                        if let Some(exec_val) = val.get("execution") {
+                            let exec_manifest: ExecutionManifest = serde_json::from_value(exec_val.clone()).unwrap_or_default();
+                            let exec_type = exec_manifest.execution_type.as_deref().unwrap_or("script_runner");
+
+                            if exec_type == "script_runner" {
+                                tracing::info!("⚡ [ToolsEngine] Dispatching '{}' via dynamic DeclarativeScriptRunner", name);
+                                return DeclarativeScriptRunner::execute(
+                                    &exec_manifest,
+                                    payload,
+                                    &cwd_path,
+                                    sec_mode,
+                                ).await;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let is_terminal = category == "terminal" 
             || name == "run_command" 
             || name == "terminal" 
@@ -293,8 +364,7 @@ impl ToolsEngine {
                 }
             }
             "skill" => {
-                if let Ok(Some(entry)) = Self::get_tool(name) {
-                    let tool_dir = std::path::PathBuf::from(&entry.local_dir);
+                if let Some(tool_dir) = Self::resolve_component_dir("skill", name) {
                     let skill_file = tool_dir.join("SKILL.md");
                     if skill_file.exists() {
                         let content = std::fs::read_to_string(&skill_file)?;

@@ -203,9 +203,14 @@ pub async fn execute_non_streaming(
         });
         
         // 🌐 Real-Time Context & Memory Telemetry Breakdown
-        let active_ids = req_session_id.as_deref()
+        let mut active_ids = req_session_id.as_deref()
             .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
             .unwrap_or_default();
+        for tid in &ctx.active_tool_ids {
+            if !active_ids.contains(tid) {
+                active_ids.push(tid.clone());
+            }
+        }
         let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
             req_session_id.as_deref().unwrap_or("ephemeral"),

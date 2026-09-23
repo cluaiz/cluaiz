@@ -21,6 +21,7 @@ pub fn build(state: Arc<AppState>) -> Router {
         
         // ── External Compatible Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", post(chat::chat_completions))
+        .route("/v1/chat/context_telemetry", get(chat::get_context_telemetry))
         .route("/v1/chat/cancel", post(chat::cancel_chat_stream))
         .route("/v1/chat/skip-reasoning", post(chat::skip_chat_reasoning))
         .route("/v1/embeddings", post(embeddings::generate_embeddings))

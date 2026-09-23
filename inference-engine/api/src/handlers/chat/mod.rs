@@ -76,3 +76,50 @@ pub async fn chat_completions(
         non_streaming::execute_non_streaming(state, request, ctx, dispatch_result).await
     }
 }
+
+#[derive(serde::Deserialize)]
+pub struct ContextTelemetryQuery {
+    pub model: Option<String>,
+    pub session_id: Option<String>,
+    pub tools: Option<String>,
+}
+
+pub async fn get_context_telemetry(
+    axum::extract::Query(query): axum::extract::Query<ContextTelemetryQuery>,
+) -> Json<serde_json::Value> {
+    let model = query.model.unwrap_or_else(|| "default".to_string());
+    let session_id = query.session_id.unwrap_or_else(|| "default".to_string());
+
+    let mut active_tools_list = crate::handlers::session_tools::get_active_tool_ids_for_session(&session_id);
+    if let Some(tools_str) = query.tools {
+        if let Ok(arr) = serde_json::from_str::<Vec<String>>(&tools_str) {
+            for t in arr {
+                if !active_tools_list.contains(&t) {
+                    active_tools_list.push(t);
+                }
+            }
+        } else {
+            for t in tools_str.split(',') {
+                let trimmed = t.trim().to_string();
+                if !trimmed.is_empty() && !active_tools_list.contains(&trimmed) {
+                    active_tools_list.push(trimmed);
+                }
+            }
+        }
+    }
+
+    let telemetry = engines::tools::ToolsEngine::compute_telemetry(
+        &model,
+        &session_id,
+        &active_tools_list,
+        0,
+        0,
+        0,
+        0,
+    );
+
+    Json(json!({
+        "status": "success",
+        "context_telemetry": telemetry
+    }))
+}

@@ -182,12 +182,56 @@ impl ToolsRegistry {
 
     fn probe_skill_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let skill_md = dir.join("SKILL.md");
-        if skill_md.exists() {
+        let (mut name, mut ver, mut desc, mut triggers, mut sec_mode, mut mode, mut default_turns) = if skill_md.exists() {
             if let Ok(content) = std::fs::read_to_string(&skill_md) {
-                return Self::probe_skill_frontmatter(&content);
+                Self::probe_skill_frontmatter(&content)
+            } else {
+                (String::new(), String::new(), String::new(), Vec::new(), None, ExecutionMode::Auto, -1)
+            }
+        } else {
+            (String::new(), String::new(), String::new(), Vec::new(), None, ExecutionMode::Auto, -1)
+        };
+
+        // Enrich with package.json if present
+        let pkg_json = dir.join("package.json");
+        if pkg_json.exists() {
+            if let Ok(content) = std::fs::read_to_string(&pkg_json) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if name.is_empty() {
+                        name = val.get("name").or_else(|| val.get("id")).and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    }
+                    if ver.is_empty() {
+                        ver = val.get("version").or_else(|| val.get("latest_version")).and_then(|v| v.as_str()).unwrap_or("1.0.0").to_string();
+                    }
+                    if desc.is_empty() {
+                        desc = val.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    }
+                    if sec_mode.is_none() {
+                        sec_mode = Self::parse_security_mode(val.get("security_mode").and_then(|v| v.as_str()));
+                    }
+                    if let Some(t_obj) = val.get("triggers") {
+                        if let Some(arr) = t_obj.get("semantic").or_else(|| t_obj.get("semantic_triggers")).and_then(|v| v.as_array()) {
+                            for item in arr.iter().filter_map(|v| v.as_str()) {
+                                let s = item.to_string();
+                                if !triggers.contains(&s) {
+                                    triggers.push(s);
+                                }
+                            }
+                        }
+                    }
+                    if let Some(tags) = val.get("tags").and_then(|v| v.as_array()) {
+                        for tag in tags.iter().filter_map(|v| v.as_str()) {
+                            let tag_lower = tag.to_lowercase();
+                            if !triggers.contains(&tag_lower) {
+                                triggers.push(tag_lower);
+                            }
+                        }
+                    }
+                }
             }
         }
-        (String::new(), String::new(), String::new(), Vec::new(), None, ExecutionMode::Auto, -1)
+
+        (name, ver, desc, triggers, sec_mode, mode, default_turns)
     }
 
     fn probe_skill_frontmatter(content: &str) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {

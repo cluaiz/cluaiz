@@ -117,6 +117,13 @@ impl ToolPromptCompiler {
                             }
                         }
                     }
+
+                    // Check if skill provides executable function tools in package.json
+                    let pkg_json = local_dir.join("package.json");
+                    if pkg_json.exists() {
+                        let schemas = Self::extract_plugin_schemas(&local_dir, normalized_id, &name, &description);
+                        function_schemas.extend(schemas);
+                    }
                 }
                 "plugin" => {
                     // WASM / Native Plugin: JSON schema functions
@@ -136,6 +143,11 @@ impl ToolPromptCompiler {
                                 skill_instructions_vec.push(parsed.prompt_instructions);
                             }
                         }
+                        let pkg_json = local_dir.join("package.json");
+                        if pkg_json.exists() {
+                            let schemas = Self::extract_plugin_schemas(&local_dir, normalized_id, &name, &description);
+                            function_schemas.extend(schemas);
+                        }
                     } else if local_dir.join("package.json").exists() {
                         let schemas = Self::extract_plugin_schemas(&local_dir, normalized_id, &name, &description);
                         function_schemas.extend(schemas);
@@ -147,7 +159,12 @@ impl ToolPromptCompiler {
         // Filter function schemas if an active skill restricts allowed-tools
         if let Some(ref whitelist) = allowed_tools_whitelist {
             function_schemas.retain(|schema| {
-                if let Some(name) = schema.get("name").and_then(|n| n.as_str()) {
+                let tool_fn_name = schema.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .or_else(|| schema.get("name").and_then(|n| n.as_str()));
+
+                if let Some(name) = tool_fn_name {
                     let name_lower = name.to_lowercase();
                     whitelist.contains(&name_lower)
                         || whitelist.iter().any(|allowed| name_lower.ends_with(&format!("__{}", allowed)) || name_lower.contains(allowed))
@@ -521,8 +538,8 @@ impl ToolPromptCompiler {
                         }
                     }
                 }
-            } else if category == "plugin" {
-                // Check plugin package.json
+            } else if category == "plugin" || category == "skill" {
+                // Check plugin or skill package.json
                 let manifest_path = local_dir.join("package.json");
                 if let Ok(content) = std::fs::read_to_string(&manifest_path) {
                     if let Ok(val) = serde_json::from_str::<Value>(&content) {
@@ -531,7 +548,7 @@ impl ToolPromptCompiler {
                                 if let Some(name) = f.get("name").and_then(|n| n.as_str()) {
                                     if name.eq_ignore_ascii_case(trimmed_name) {
                                         return Some(ResolvedToolTarget {
-                                            category: "plugin".to_string(),
+                                            category: category.clone(),
                                             component_id: comp_id.clone(),
                                             sub_function: Some(trimmed_name.to_string()),
                                         });
@@ -544,7 +561,7 @@ impl ToolPromptCompiler {
                                 if let Some(name) = t.get("name").and_then(|n| n.as_str()) {
                                     if name.eq_ignore_ascii_case(trimmed_name) {
                                         return Some(ResolvedToolTarget {
-                                            category: "plugin".to_string(),
+                                            category: category.clone(),
                                             component_id: comp_id.clone(),
                                             sub_function: Some(trimmed_name.to_string()),
                                         });
