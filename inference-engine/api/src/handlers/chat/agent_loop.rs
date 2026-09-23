@@ -92,19 +92,24 @@ pub async fn execute_streaming_loop(
         }
 
         // 📊 YIELD LIVE CONTEXT & HARDWARE TELEMETRY EARLY
-        let active_tools_list = if let Some(ref sid) = req_session_id {
+        let mut active_tools_list = if let Some(ref sid) = req_session_id {
             crate::handlers::session_tools::get_active_tool_ids_for_session(sid)
         } else {
             Vec::new()
         };
+        for tid in &ctx.active_tool_ids {
+            if !active_tools_list.contains(tid) {
+                active_tools_list.push(tid.clone());
+            }
+        }
 
         let context_snap = engines::tools::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
             req_session_id.as_deref().unwrap_or("default"),
             &active_tools_list,
-            current_prompt.len(),
-            0,
-            100,
+            ctx.user_prompt_chars,
+            ctx.history_chars,
+            ctx.system_prompt_chars,
             0,
         );
 
@@ -247,6 +252,24 @@ pub async fn execute_streaming_loop(
                     });
                     yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
 
+                    let mut execution_logs = vec![
+                        format!("[ToolsEngine] Invoking {} '{}' (security: {:?})", comp_type, public_call_name, sec_mode),
+                    ];
+                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&execution_result) {
+                        if let Some(cmd) = val.get("command").and_then(|v| v.as_str()) {
+                            execution_logs.push(format!("[Process] Command: {}", cmd));
+                        }
+                        if let Some(exit_code) = val.get("exit_code") {
+                            execution_logs.push(format!("[Process] Exit Code: {}", exit_code));
+                        }
+                        if let Some(stdout) = val.get("stdout").and_then(|v| v.as_str()) {
+                            if !stdout.trim().is_empty() {
+                                execution_logs.push(format!("[Process] Output captured ({} bytes)", stdout.len()));
+                            }
+                        }
+                    }
+                    execution_logs.push(format!("[ToolsEngine] Execution completed in {:.2}ms", latency_ms));
+
                     // 2. Yield rich cluaiz_tool_result status chunk
                     let result_chunk = json!({
                         "id": req_id_stream.clone(),
@@ -265,10 +288,7 @@ pub async fn execute_streaming_loop(
                                     "latency_ms": ((latency_ms * 100.0).round() / 100.0),
                                     "input_payload": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
                                     "output_result": serde_json::from_str::<serde_json::Value>(&execution_result).unwrap_or(serde_json::json!(&execution_result)),
-                                    "logs": [
-                                        format!("[ToolsEngine] Invoking {} '{}' (security: {:?})", comp_type, public_call_name, sec_mode),
-                                        format!("[ToolsEngine] Execution completed in {:.2}ms", latency_ms)
-                                    ],
+                                    "logs": execution_logs,
                                     "result": execution_result.clone()
                                 }
                             }
@@ -432,9 +452,14 @@ pub async fn execute_streaming_loop(
             });
 
             // 🌐 Real-Time Context & Memory Telemetry Breakdown
-            let active_ids = req_session_id.as_deref()
+            let mut active_ids = req_session_id.as_deref()
                 .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
                 .unwrap_or_default();
+            for tid in &ctx.active_tool_ids {
+                if !active_ids.contains(tid) {
+                    active_ids.push(tid.clone());
+                }
+            }
             let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
                 &ctx.resolved_model_name,
                 req_session_id.as_deref().unwrap_or("ephemeral"),

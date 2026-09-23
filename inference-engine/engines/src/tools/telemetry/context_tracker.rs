@@ -172,14 +172,10 @@ impl ContextTracker {
                 match entry.category.as_str() {
                     "mcp" => {
                         deferred_mcp_tokens += estimated_tokens;
-                        mcp_items.push(item);
                     }
-                    "skill" => {
-                        skill_items.push(item);
-                    }
+                    "skill" => {}
                     _ => {
                         deferred_plugins_tokens += estimated_tokens;
-                        plugin_items.push(item);
                     }
                 }
             }
