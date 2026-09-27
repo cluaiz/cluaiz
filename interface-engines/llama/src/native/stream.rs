@@ -62,7 +62,7 @@ pub fn stream_tokens(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_response_length) = if let Ok(envelope) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, req_response_length) = if let Ok(envelope) =
             serde_json::from_str::<serde_json::Value>(&actual_prompt)
         {
             if envelope.is_object()
@@ -90,16 +90,20 @@ pub fn stream_tokens(
                     .get("think_mode")
                     .and_then(|t| t.as_str())
                     .map(|s| s.to_string());
+                let reasoning_effort = envelope
+                    .get("reasoning_effort")
+                    .and_then(|e| e.as_str())
+                    .map(|s| s.to_string());
                 let response_length = envelope
                     .get("response_length")
                     .and_then(|r| r.as_str())
                     .map(|s| s.to_string());
-                (samplers, think_mode, response_length)
+                (samplers, think_mode, reasoning_effort, response_length)
             } else {
-                (None, None, None)
+                (None, None, None, None)
             }
         } else {
-            (None, None, None)
+            (None, None, None, None)
         };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -123,6 +127,14 @@ pub fn stream_tokens(
             .as_deref()
             .unwrap_or(gguf_meta.user_moved_flags.response_length.as_str())
             .to_lowercase();
+
+        let response_length_cap: Option<i32> = match effective_response_length.as_str() {
+            "short" | "concise" => Some(200),
+            "standard" | "medium" => Some(800),
+            "long" | "detailed" => Some(3000),
+            "auto" => None, // Natural stop tokens
+            custom_num => custom_num.parse::<i32>().ok(),
+        };
 
         // 🧬 Primary Authority: Query llama.cpp native common_chat_templates engine using model pointer
         let (native_st, native_et) = crate::native::templater::extract_thinking_tags_native(
@@ -216,23 +228,23 @@ pub fn stream_tokens(
             .unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
             .to_lowercase();
 
-        let (mut suppress_thinking, max_think_tokens) = match tm_str.as_str() {
-            "off" | "false" | "0" => (true, 0),
-            "low" => (false, 512),
-            "medium" => (false, 1024),
-            "high" | "on" | "max" => (false, usize::MAX),
-            "auto" => (false, usize::MAX),
-            custom_num => {
-                if let Ok(budget) = custom_num.parse::<usize>() {
-                    if budget == 0 {
-                        (true, 0)
-                    } else {
-                        (false, budget)
-                    }
-                } else {
-                    (false, usize::MAX)
-                }
-            }
+        let mut suppress_thinking = match tm_str.as_str() {
+            "off" | "false" | "0" | "hide" => true,
+            "on" | "true" | "1" | "show" => false,
+            _ => false, // "auto" lets model natural tags emit
+        };
+
+        let effort_str = req_reasoning_effort
+            .as_deref()
+            .unwrap_or("auto")
+            .to_lowercase();
+
+        let max_think_tokens = match effort_str.as_str() {
+            "low" | "minimal" => 512,
+            "medium" | "standard" => 1024,
+            "high" | "max" | "extreme" => usize::MAX,
+            "auto" => usize::MAX,
+            custom_num => custom_num.parse::<usize>().unwrap_or(usize::MAX),
         };
 
         if formatted_prompt.contains("CRITICAL INSTRUCTION")
@@ -616,10 +628,16 @@ pub fn stream_tokens(
 
             if !in_think_block {
                 n_gen += 1;
+                if let Some(cap) = response_length_cap {
+                    if n_gen >= cap {
+                        tracing::info!("📏 [NativeStream] Response length cap ({} tokens) reached. Gracefully ending generation.", cap);
+                        break;
+                    }
+                }
             } else {
                 suppressed_count += 1;
-                if suppressed_count >= 4096 {
-                    break;
+                if suppressed_count >= max_think_tokens.min(4096) {
+                    in_think_block = false;
                 }
             }
             engine_core::hardware::telemetry::get_pulse()

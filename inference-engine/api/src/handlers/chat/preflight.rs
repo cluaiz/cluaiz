@@ -17,6 +17,7 @@ pub struct PreparedChatContext {
     pub dyn_think_end: Option<String>,
     pub prompt_starts_in_think: bool,
     pub active_think_mode: String,
+    pub active_reasoning_effort: String,
     pub active_response_length: String,
     pub validated_max_tokens: Option<usize>,
     pub skip_brain: bool,
@@ -270,48 +271,48 @@ impl PreparedChatContext {
             }
         }
 
-        // 🧠 REASONING & THINKING BUDGET RESOLUTION
-        let active_think_mode_owned = request.reasoning_effort.as_deref()
-            .map(|re| re.to_string())
-            .or_else(|| {
-                request.think_mode.as_ref().map(|v| {
-                    if let Some(s) = v.as_str() {
-                        s.to_string()
-                    } else if let Some(b) = v.as_bool() {
-                        if b { "high".to_string() } else { "off".to_string() }
-                    } else if let Some(n) = v.as_i64() {
-                        n.to_string()
-                    } else if let Some(n) = v.as_u64() {
-                        n.to_string()
+        // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
+        let active_think_mode = request.think_mode.as_ref().map(|v| {
+            if let Some(s) = v.as_str() {
+                match s.to_lowercase().as_str() {
+                    "off" | "false" | "0" | "hide" => "off".to_string(),
+                    "on" | "true" | "1" | "show" => "on".to_string(),
+                    _ => "auto".to_string(),
+                }
+            } else if let Some(b) = v.as_bool() {
+                if b { "on".to_string() } else { "off".to_string() }
+            } else if let Some(n) = v.as_i64() {
+                if n == 0 { "off".to_string() } else { "on".to_string() }
+            } else {
+                "auto".to_string()
+            }
+        }).unwrap_or_else(|| {
+            let default_tm = gguf_meta.user_moved_flags.think_mode.to_lowercase();
+            if default_tm == "off" || default_tm == "false" {
+                "off".to_string()
+            } else if default_tm == "on" || default_tm == "true" {
+                "on".to_string()
+            } else {
+                "auto".to_string()
+            }
+        });
+
+        // 🧠 2. REASONING EFFORT / COMPUTE INTENSITY (reasoning_effort: "low" | "medium" | "high" | "max" | "auto")
+        let active_reasoning_effort = request.reasoning_effort.as_deref()
+            .map(|re| match re.to_lowercase().as_str() {
+                "low" | "minimal" => "low".to_string(),
+                "medium" | "standard" => "medium".to_string(),
+                "high" => "high".to_string(),
+                "max" | "extreme" => "max".to_string(),
+                custom_num => {
+                    if custom_num.parse::<usize>().is_ok() {
+                        custom_num.to_string()
                     } else {
                         "auto".to_string()
                     }
-                })
-            })
-            .unwrap_or_else(|| gguf_meta.user_moved_flags.think_mode.clone());
-
-        let active_think_mode = match active_think_mode_owned.to_lowercase().as_str() {
-            "off" | "false" | "0" | "minimal" => "off".to_string(),
-            "low" => "low".to_string(),
-            "medium" => "medium".to_string(),
-            "high" | "on" | "max" => "high".to_string(),
-            "auto" => "auto".to_string(),
-            custom_str => {
-                if let Ok(custom_budget) = custom_str.parse::<usize>() {
-                    if custom_budget == 0 {
-                        "off".to_string()
-                    } else {
-                        let max_tok = validated_max_tokens.unwrap_or(2048);
-                        let clamped = custom_budget
-                            .min(n_ctx_limit)
-                            .min(max_tok.saturating_sub(32).max(1));
-                        clamped.to_string()
-                    }
-                } else {
-                    "auto".to_string()
                 }
-            }
-        };
+            })
+            .unwrap_or_else(|| "auto".to_string());
 
         let active_response_length = request.response_length.as_ref().map(|v| {
             if let Some(s) = v.as_str() {
@@ -415,6 +416,7 @@ impl PreparedChatContext {
                 "seed": effective_seed
             },
             "think_mode": &active_think_mode,
+            "reasoning_effort": &active_reasoning_effort,
             "response_length": &active_response_length
         });
 
@@ -460,6 +462,7 @@ impl PreparedChatContext {
             dyn_think_end,
             prompt_starts_in_think,
             active_think_mode,
+            active_reasoning_effort,
             active_response_length,
             validated_max_tokens,
             skip_brain,
