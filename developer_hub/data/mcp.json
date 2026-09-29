@@ -1,13 +1,13 @@
 {
-  "group": "Model Context Protocol",
+  "group": "Model Context Protocol (MCP)",
   "endpoints": [
     {
       "method": "GET",
       "path": "/v1/mcp/list",
-      "desc": "Returns a list of Model Context Protocol (MCP) servers active.",
+      "desc": "Returns all active Model Context Protocol (MCP) server bridges.",
       "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"mcp_servers\": [\n    {\n      \"id\": \"mcp_gh\",\n      \"name\": \"GitHub MCP\",\n      \"url\": \"http://localhost:8080\",\n      \"status\": \"active\",\n      \"latency_ms\": 12\n    }\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"mcp_servers\": [\n    {\n      \"id\": \"sqlite_mcp\",\n      \"name\": \"sqlite_mcp\",\n      \"category\": \"mcp\",\n      \"status\": \"active\"\n    }\n  ]\n}",
       "examples": [
         {
           "language": "curl",
@@ -34,66 +34,78 @@
     {
       "method": "POST",
       "path": "/v1/mcp/install",
-      "desc": "Registers a new MCP server endpoint.",
+      "desc": "Registers and queues an MCP server installation natively.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "mcp_config", "type": "string", "req": true, "desc": "MCP configuration.", "default": "{\"server\": \"github\", \"port\": 8080}" }
+        {
+          "name": "mcp_name",
+          "type": "string",
+          "req": true,
+          "desc": "Name or identifier of the MCP server.",
+          "default": "sqlite_mcp"
+        }
       ],
-      "request_payload": "{\n  \"name\": \"GitHub MCP\",\n  \"url\": \"http://localhost:8080\",\n  \"auth_token\": \"ghp_123456789\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"MCP server registered and connection verified.\",\n  \"mcp_id\": \"mcp_gh\"\n}",
+      "request_payload": "{\n  \"mcp_name\": \"sqlite_mcp\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"MCP server 'sqlite_mcp' installation queued.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/mcp/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"name\": \"GitHub MCP\", \"url\": \"http://localhost:8080\", \"auth_token\": \"ghp_123456789\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/mcp/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"mcp_name\": \"sqlite_mcp\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\npayload = {\n    \"name\": \"GitHub MCP\",\n    \"url\": \"http://localhost:8080\",\n    \"auth_token\": \"ghp_123456789\"\n}\nres = requests.post('http://localhost:8000/v1/mcp/install', json=payload)\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/mcp/install', json={\"mcp_name\": \"sqlite_mcp\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/mcp/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    name: 'GitHub MCP',\n    url: 'http://localhost:8080',\n    auth_token: 'ghp_123456789'\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/mcp/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ mcp_name: 'sqlite_mcp' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/mcp/install\")\n    .json(&serde_json::json!({\n        \"name\": \"GitHub MCP\",\n        \"url\": \"http://localhost:8080\",\n        \"auth_token\": \"ghp_123456789\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/mcp/install\")\n    .json(&serde_json::json!({ \"mcp_name\": \"sqlite_mcp\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
     {
       "method": "DELETE",
       "path": "/v1/mcp/remove",
-      "desc": "Unregisters an MCP server.",
+      "desc": "Removes an MCP server bridge natively.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "mcp_id", "type": "string", "req": true, "desc": "ID of the MCP server.", "default": "mcp_gh" }
+        {
+          "name": "mcp_name",
+          "type": "string",
+          "req": true,
+          "desc": "Name of the MCP server to remove.",
+          "default": "sqlite_mcp"
+        }
       ],
-      "request_payload": "{\n  \"mcp_id\": \"mcp_gh\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"MCP server unregistered.\"\n}",
+      "request_payload": "{\n  \"mcp_name\": \"sqlite_mcp\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"MCP server 'sqlite_mcp' removed natively.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X DELETE http://localhost:8000/v1/mcp/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"mcp_id\": \"mcp_gh\"}'"
+          "code": "curl -X DELETE http://localhost:8000/v1/mcp/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"mcp_name\": \"sqlite_mcp\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/mcp/remove', json={\"mcp_id\": \"mcp_gh\"})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/mcp/remove', json={\"mcp_name\": \"sqlite_mcp\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/mcp/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ mcp_id: 'mcp_gh' })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/mcp/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ mcp_name: 'sqlite_mcp' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/mcp/remove\")\n    .json(&serde_json::json!({ \"mcp_id\": \"mcp_gh\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/mcp/remove\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
@@ -103,61 +115,36 @@
       "desc": "Lists the active caches for MCP servers.",
       "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"caches\": [\n    {\n      \"mcp_id\": \"mcp_gh\",\n      \"cache_files\": [\"github_repo_cache.bin\"],\n      \"total_size_mb\": 5.1\n    }\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"MCP cache report: 0 items.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
           "code": "curl -X GET http://localhost:8000/v1/mcp/cache"
-        },
-        {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/mcp/cache')\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/mcp/cache');\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let res = reqwest::get(\"http://localhost:8000/v1/mcp/cache\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
     {
       "method": "DELETE",
       "path": "/v1/mcp/cache",
-      "desc": "Clears MCP caches.",
+      "desc": "Clears MCP server caches.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "mcp_id", "type": "string", "req": false, "desc": "Target specific MCP cache.", "default": "github" },
-        { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }
+        {
+          "name": "mcp_name",
+          "type": "string",
+          "req": false,
+          "desc": "Target specific MCP server or 'all'.",
+          "default": "all"
+        }
       ],
-      "request_payload": "{\n  \"mcp_id\": \"mcp_gh\",\n  \"all\": false\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"freed_space_mb\": 5.1,\n  \"message\": \"Cache cleared.\"\n}",
+      "request_payload": "{\n  \"mcp_name\": \"all\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Successfully wiped MCP caches.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X DELETE http://localhost:8000/v1/mcp/cache \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"mcp_id\": \"mcp_gh\", \"all\": false}'"
-        },
-        {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/mcp/cache', json={\"mcp_id\": \"mcp_gh\", \"all\": False})\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/mcp/cache', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ mcp_id: 'mcp_gh', all: false })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/mcp/cache\")\n    .json(&serde_json::json!({ \"mcp_id\": \"mcp_gh\", \"all\": false }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "curl -X DELETE http://localhost:8000/v1/mcp/cache \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"mcp_name\": \"all\"}'"
         }
       ]
     }

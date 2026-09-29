@@ -19,24 +19,31 @@ Generates conversational completions, structured outputs, tool / function callin
 
 | Parameter | Type | Required | Default | Allowed Values / Range | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`messages`** | Array | **Yes** | — | Array of message objects | Full dialogue history. Content supports plain text or multimodal arrays. |
-| **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat slot. |
+| **`messages`** | Array | **Yes** | — | Array of message objects | Full dialogue history. Content supports plain text or multimodal arrays (`text`, `image_url`, `audio_url`, `input_audio`). |
+| **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat or vision slot. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
-| **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase creativity. |
-| **`max_tokens`** | Integer | No | `2048` | $\ge 1$ | Maximum number of completion tokens to generate. |
-| **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"low"`, `"medium"`, `"high"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
-| **`reasoning_effort`** | String | No | `"auto"` | `"minimal"`, `"low"`, `"medium"`, `"high"` | OpenAI-compatible alias for reasoning token budget. |
-| **`response_length`** | String / Integer | No | `"auto"` | `"auto"`, `"short"`, `"medium"`, `"long"`, or integer (e.g. `200`) | Logit-level progressive EOS bias for graceful answer completion without mid-sentence chops. |
-| **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling). |
-| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"`, `"required"` | Controls which tool the model must call. |
+| **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
+| **`max_tokens`** | Integer | No | `2048` | $\ge 1$ | Maximum number of completion tokens to generate (alias: `n_predict`). |
+| **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"on"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
+| **`reasoning_effort`** | String | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"` | OpenAI-compatible alias for reasoning token budget. |
+| **`skip_reasoning`** | Boolean | No | `false` | `true`, `false` | Bypasses the reasoning monologue phase entirely for lower latency. |
+| **`temporary_chat`** | String | No | `null` | `"lite"`, `"strict"` | Privacy isolation mode: `"lite"` (no vector write) or `"strict"` (brain and memory bypass). |
+| **`session_id`** | String | No | `null` | String | Session identifier used to preserve conversation tool-call state across multi-turn sessions. |
 | **`top_p`** | Float | No | `0.95` | `0.0 - 1.0` | Nucleus sampling probability mass threshold. |
 | **`top_k`** | Integer | No | `40` | $\ge 1$ | Top-k tokens to sample from at each step. |
 | **`min_p`** | Float | No | `0.05` | `0.0 - 1.0` | Minimum probability threshold relative to the top token. |
-| **`frequency_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on their frequency in the text so far. |
+| **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops (alias: `repeat_penalty`). |
 | **`presence_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on whether they appear in the text so far. |
-| **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops. |
-| **`seed`** | Integer | No | `null` | Integer | Random seed for deterministic generation. |
+| **`frequency_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on their frequency in the text so far. |
+| **`stop`** | Array | No | `null` | Array of strings | Custom token strings that halt generation immediately when matched. |
+| **`seed`** | Integer | No | `null` | Integer | Random seed for deterministic, reproducible generation. |
 | **`keep_alive`** | Integer | No | `null` | Seconds (e.g. `300`) | Inactivity timeout in seconds before unloading model from VRAM. |
+| **`response_format`** | Object | No | `null` | Object | Enforces structured JSON output schema (e.g. `{"type": "json_object"}`). |
+| **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) via `<tool_call>` XML. |
+| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"`, `"required"` | Controls which tool the model must call. |
+| **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
+| **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
+| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). |
 
 > [!NOTE]
 > **BitNet (1-bit / 1.58-bit) Models**:
@@ -74,20 +81,6 @@ Responses include explicit reasoning token counts inside `completion_tokens_deta
   }
 }
 ```
-
----
-
-## 📏 Progressive EOS Logit Bias (`response_length`)
-
-Unlike standard engines (such as Ollama's `num_predict` or crude `max_tokens` cuts) which slice generation abruptly mid-sentence, Cluaiz applies **progressive logit-level EOS bias** to answer tokens (`!in_think_block`):
-
-| Level | Bias Trigger | Mechanism Description |
-|:---|:---:|:---|
-| **`"auto"`** | None | Natural completion based purely on model training. |
-| **`"short"`** | Token 30 | Increments EOS logit score (`+0.15/token` up to `+5.0`) after token 30 to gently guide graceful termination. |
-| **`"medium"`** | Token 150 | Soft EOS bias begins after token 150 for balanced standard responses. |
-| **`"long"`** | Token 500 | Engages soft bias after token 500 for exhaustive answers. |
-| **Custom Integer** (e.g. `200`) | $N - 25\%$ | Soft bias begins in the final 25% of target tokens, ensuring the model finishes smoothly near $N$. |
 
 ---
 

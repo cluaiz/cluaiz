@@ -1,103 +1,97 @@
 {
-  "group": "Fine-Tuning",
+  "group": "Optimization & Hardware Tuning",
   "endpoints": [
     {
-      "method": "POST",
-      "path": "/v1/tuning/start",
-      "desc": "Initiates a LoRA/QLoRA fine-tuning process on the local GPU.",
-      "docs_url": "/docs/reference/api.md",
-      "params": [
-        { "name": "base_model", "type": "string", "req": true, "desc": "The model to fine-tune.", "default": "llama-3-8b" },
-        { "name": "dataset_path", "type": "string", "req": true, "desc": "Path to the JSONL dataset.", "default": "/data/dataset.jsonl" },
-        { "name": "epochs", "type": "integer", "req": false, "desc": "Number of epochs.", "default": 3 }
-      ],
-      "request_payload": "{\n  \"base_model\": \"llama-3-8b-instruct\",\n  \"dataset_path\": \"/workspace/dataset.jsonl\",\n  \"epochs\": 3,\n  \"learning_rate\": 0.0002\n}",
-      "response": "{\n  \"status\": \"queued\",\n  \"job_id\": \"tune-0912\",\n  \"message\": \"Fine-tuning job started in background.\"\n}",
-      "examples": [
-        {
-          "language": "curl",
-          "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/tuning/start \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"base_model\": \"llama-3-8b-instruct\", \"dataset_path\": \"/workspace/dataset.jsonl\", \"epochs\": 3, \"learning_rate\": 0.0002}'"
-        },
-        {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\npayload = {\n    \"base_model\": \"llama-3-8b-instruct\",\n    \"dataset_path\": \"/workspace/dataset.jsonl\",\n    \"epochs\": 3,\n    \"learning_rate\": 0.0002\n}\nres = requests.post('http://localhost:8000/v1/tuning/start', json=payload)\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/tuning/start', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    base_model: 'llama-3-8b-instruct',\n    dataset_path: '/workspace/dataset.jsonl',\n    epochs: 3,\n    learning_rate: 0.0002\n  })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/tuning/start\")\n    .json(&serde_json::json!({\n        \"base_model\": \"llama-3-8b-instruct\",\n        \"dataset_path\": \"/workspace/dataset.jsonl\",\n        \"epochs\": 3,\n        \"learning_rate\": 0.0002\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
-        }
-      ]
-    },
-    {
       "method": "GET",
-      "path": "/v1/tuning/status/{job_id}",
-      "desc": "Check the status of an ongoing fine-tuning job.",
+      "path": "/v1/optimization/status",
+      "desc": "Retrieves the active hardware governor optimization settings including Flash Attention, KV-Cache quantization, memory lock, and safety buffers.",
       "docs_url": "/docs/reference/api.md",
-      "params": [
-        { "name": "job_id", "type": "string", "req": true, "desc": "The fine-tuning job ID.", "default": "tune-0912" }
-      ],
-      "response": "{\n  \"job_id\": \"tune-0912\",\n  \"status\": \"running\",\n  \"progress_percent\": 45,\n  \"current_loss\": 0.81\n}",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"optimization\": {\n    \"flash_attention\": \"on\",\n    \"kv_cache_quantization\": \"auto\",\n    \"hybrid_memory\": \"auto\",\n    \"force_memory_lock\": \"auto\",\n    \"context_shifting\": \"auto\",\n    \"speculative_decoding\": \"off\",\n    \"draft_model_path\": null,\n    \"extreme_moe_streaming\": \"auto\",\n    \"custom_vram_buffer_gb\": null,\n    \"custom_ram_buffer_gb\": null\n  }\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X GET http://localhost:8000/v1/tuning/status/tune-0912"
+          "code": "curl -X GET http://localhost:8000/v1/optimization/status"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/tuning/status/tune-0912')\nprint(res.json())"
+          "code": "import requests\n\nres = requests.get('http://localhost:8000/v1/optimization/status')\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/tuning/status/tune-0912');\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let res = reqwest::get(\"http://localhost:8000/v1/tuning/status/tune-0912\").await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "const response = await fetch('http://localhost:8000/v1/optimization/status');\nconst data = await response.json();\nconsole.log(data);"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/v1/tuning/cancel/{job_id}",
-      "desc": "Cancels an ongoing fine-tuning job.",
+      "path": "/v1/optimization/update",
+      "desc": "Dynamically updates the Hardware Governor optimization controls in real-time without restarting the engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "job_id", "type": "string", "req": true, "desc": "The fine-tuning job ID.", "default": "tune-0912" }
+        {
+          "name": "flash_attention",
+          "type": "string",
+          "req": false,
+          "desc": "Flash Attention acceleration ('auto', 'on', 'off').",
+          "default": "on"
+        },
+        {
+          "name": "kv_cache_quantization",
+          "type": "string",
+          "req": false,
+          "desc": "KV-Cache quantization precision ('auto', 'none', 'kv8', 'kv4', 'kv16').",
+          "default": "auto"
+        },
+        {
+          "name": "force_memory_lock",
+          "type": "string",
+          "req": false,
+          "desc": "Lock process in RAM / mlock to prevent swap lag ('auto', 'on', 'off').",
+          "default": "auto"
+        },
+        {
+          "name": "speculative_decoding",
+          "type": "string",
+          "req": false,
+          "desc": "Speculative token drafting ('auto', 'on', 'off').",
+          "default": "off"
+        },
+        {
+          "name": "custom_vram_buffer_gb",
+          "type": "number",
+          "req": false,
+          "desc": "VRAM safety buffer floor override in gigabytes (null for dynamic auto).",
+          "default": null
+        },
+        {
+          "name": "custom_ram_buffer_gb",
+          "type": "number",
+          "req": false,
+          "desc": "CPU RAM safety buffer floor override in gigabytes (null for dynamic auto).",
+          "default": null
+        }
       ],
-      "request_payload": "{}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Job cancelled.\"\n}",
+      "request_payload": "{\n  \"flash_attention\": \"on\",\n  \"kv_cache_quantization\": \"auto\",\n  \"force_memory_lock\": \"auto\",\n  \"speculative_decoding\": \"off\",\n  \"custom_vram_buffer_gb\": 1.5,\n  \"custom_ram_buffer_gb\": 2.0\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Optimization settings saved successfully.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/tuning/cancel/tune-0912 \\\n  -H 'Content-Type: application/json' \\\n  -d '{}'"
+          "code": "curl -X POST http://localhost:8000/v1/optimization/update \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"flash_attention\": \"on\", \"kv_cache_quantization\": \"auto\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/tuning/cancel/tune-0912', json={})\nprint(res.json())"
+          "code": "import requests\n\npayload = {\"flash_attention\": \"on\", \"kv_cache_quantization\": \"auto\"}\nres = requests.post('http://localhost:8000/v1/optimization/update', json=payload)\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/tuning/cancel/tune-0912', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({})\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/tuning/cancel/tune-0912\")\n    .json(&serde_json::json!({}))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "const response = await fetch('http://localhost:8000/v1/optimization/update', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ flash_attention: 'on', kv_cache_quantization: 'auto' })\n});\nconst data = await response.json();\nconsole.log(data);"
         }
       ]
     }

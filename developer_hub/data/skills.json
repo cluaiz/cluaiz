@@ -4,10 +4,10 @@
     {
       "method": "GET",
       "path": "/v1/skills/list",
-      "desc": "Returns a list of all active skills for the agentic systems.",
+      "desc": "Returns a list of all active WASM skills installed for agentic workflows.",
       "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"skills\": [\n    {\n      \"id\": \"skill_math\",\n      \"name\": \"Math Expert\",\n      \"description\": \"Handles complex algebraic equations.\",\n      \"status\": \"active\"\n    }\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"skills\": [\n    {\n      \"id\": \"code-review\",\n      \"name\": \"code-review\",\n      \"description\": \"Cognitive prompt instructions for deep code review\",\n      \"category\": \"skill\",\n      \"version\": \"1.0.0\"\n    }\n  ]\n}",
       "examples": [
         {
           "language": "curl",
@@ -34,66 +34,109 @@
     {
       "method": "POST",
       "path": "/v1/skills/install",
-      "desc": "Installs a new skill into the agent's brain.",
+      "desc": "Installs a new WASM skill natively into the Engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "skill_uri", "type": "string", "req": true, "desc": "URI of the skill package.", "default": "https://registry.cluaiz.com/skills/math-v1.zip" }
+        {
+          "name": "skill_name",
+          "type": "string",
+          "req": true,
+          "desc": "Unique name or registry identifier of the skill.",
+          "default": "code-review"
+        }
       ],
-      "request_payload": "{\n  \"skill_uri\": \"https://registry.cluaiz.com/skills/math-v1.zip\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Skill Math Expert installed.\",\n  \"skill_id\": \"skill_math\"\n}",
+      "request_payload": "{\n  \"skill_name\": \"code-review\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"WASM skill 'code-review' installation queued natively in Engine.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/skills/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"skill_uri\": \"https://registry.cluaiz.com/skills/math-v1.zip\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/skills/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"skill_name\": \"code-review\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/skills/install', json={\"skill_uri\": \"https://registry.cluaiz.com/skills/math-v1.zip\"})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/skills/install', json={\"skill_name\": \"code-review\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/skills/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ skill_uri: 'https://registry.cluaiz.com/skills/math-v1.zip' })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/skills/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ skill_name: 'code-review' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/skills/install\")\n    .json(&serde_json::json!({ \"skill_uri\": \"https://registry.cluaiz.com/skills/math-v1.zip\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/skills/install\")\n    .json(&serde_json::json!({ \"skill_name\": \"code-review\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
     {
       "method": "DELETE",
       "path": "/v1/skills/remove",
-      "desc": "Removes a skill from the agent's brain.",
+      "desc": "Removes a WASM skill natively from the Engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "skill_id", "type": "string", "req": true, "desc": "ID of the skill to remove.", "default": "skill_math" }
+        {
+          "name": "skill_name",
+          "type": "string",
+          "req": true,
+          "desc": "Name of the skill to remove.",
+          "default": "code-review"
+        }
       ],
-      "request_payload": "{\n  \"skill_id\": \"skill_math\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Skill removed.\"\n}",
+      "request_payload": "{\n  \"skill_name\": \"code-review\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"WASM skill 'code-review' removed natively.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X DELETE http://localhost:8000/v1/skills/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"skill_id\": \"skill_math\"}'"
+          "code": "curl -X DELETE http://localhost:8000/v1/skills/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"skill_name\": \"code-review\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/skills/remove', json={\"skill_id\": \"skill_math\"})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/skills/remove', json={\"skill_name\": \"code-review\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/skills/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ skill_id: 'skill_math' })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/skills/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ skill_name: 'code-review' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/skills/remove\")\n    .json(&serde_json::json!({ \"skill_id\": \"skill_math\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/skills/remove\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/skills/cache",
+      "desc": "Lists the active disk cache footprint for installed skills.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Skill cache: 1.2 MB\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/skills/cache"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/skills/cache",
+      "desc": "Wipes the skill cache clean.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Successfully wiped skill caches.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X DELETE http://localhost:8000/v1/skills/cache"
         }
       ]
     }

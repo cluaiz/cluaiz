@@ -4,33 +4,22 @@
     {
       "method": "POST",
       "path": "/v1/chat/completions",
-      "desc": "OpenAI-compatible conversational dialogue and multimodal VLM endpoint. Supports streaming, system prompts, JSON mode, and image/video inputs.",
+      "desc": "OpenAI-compatible conversational dialogue and multimodal VLM endpoint. Supports streaming, system prompts, JSON mode, reasoning budget control, and image/video inputs.",
       "docs_url": "/docs/api/inference/chat_completions.md",
       "params": [
         {
           "name": "messages",
           "type": "array",
           "req": true,
-          "desc": "Array of message objects (role, content). Content supports text strings or multimodal arrays (text + image_url).",
+          "desc": "Array of conversation turns (system, user, assistant, tool). Content supports plain text string or multimodal array (type: 'text' | 'image_url' | 'audio_url' | 'input_audio').",
           "default": [
             {
               "role": "system",
-              "content": "You are a helpful multimodal AI assistant."
+              "content": "You are a helpful AI assistant."
             },
             {
               "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Describe this image in detail."
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg"
-                  }
-                }
-              ]
+              "content": "Explain quantum computing in simple terms."
             }
           ]
         },
@@ -38,76 +27,286 @@
           "name": "model",
           "type": "string",
           "req": false,
-          "desc": "Model ID to use for generation.",
-          "default": "qwen2.5-7b-instruct"
+          "desc": "Model ID to invoke, or 'auto' to use the active model loaded in the chat or vision slot.",
+          "default": "auto"
         },
         {
           "name": "stream",
           "type": "boolean",
           "req": false,
-          "desc": "Whether to stream tokens in real-time via Server-Sent Events (SSE).",
+          "desc": "Whether to stream tokens incrementally via Server-Sent Events (SSE).",
           "default": true
         },
         {
           "name": "temperature",
           "type": "number",
           "req": false,
-          "desc": "Sampling temperature (0.0 to 2.0).",
+          "desc": "Sampling temperature (0.0 to 2.0). Lower values produce deterministic output; higher values increase variety.",
           "default": 0.7
         },
         {
           "name": "max_tokens",
           "type": "integer",
           "req": false,
-          "desc": "Maximum number of tokens to generate.",
+          "desc": "Maximum number of tokens to generate in response (alias: n_predict).",
           "default": 2048
-        },
-        {
-          "name": "top_p",
-          "type": "number",
-          "req": false,
-          "desc": "Nucleus sampling probability threshold.",
-          "default": 0.95
-        },
-        {
-          "name": "keep_alive",
-          "type": "integer",
-          "req": false,
-          "desc": "How long (in seconds) to keep the model loaded in VRAM after request.",
-          "default": null
         },
         {
           "name": "think_mode",
           "type": "string",
           "req": false,
-          "desc": "Reasoning mode ('auto', 'off', 'low', 'medium', 'high', or integer token budget).",
+          "desc": "Controls Chain-of-Thought reasoning visibility ('auto', 'off', 'on', or exact integer token budget).",
           "default": "auto"
         },
         {
-          "name": "response_length",
+          "name": "reasoning_effort",
           "type": "string",
           "req": false,
-          "desc": "Progressive EOS logit bias ('auto', 'short', 'medium', 'long', or integer target).",
+          "desc": "OpenAI-compatible reasoning budget level ('low', 'medium', 'high', 'max', 'auto').",
           "default": "auto"
+        },
+        {
+          "name": "skip_reasoning",
+          "type": "boolean",
+          "req": false,
+          "desc": "Bypasses the reasoning monologue phase entirely for lower latency.",
+          "default": false
+        },
+        {
+          "name": "top_p",
+          "type": "number",
+          "req": false,
+          "desc": "Nucleus sampling probability mass cutoff threshold (0.0 - 1.0).",
+          "default": 0.95
+        },
+        {
+          "name": "top_k",
+          "type": "integer",
+          "req": false,
+          "desc": "Limits token candidate pool to top K highest probabilities.",
+          "default": 40
+        },
+        {
+          "name": "min_p",
+          "type": "number",
+          "req": false,
+          "desc": "Minimum token probability threshold scaled relative to the most likely token (0.0 - 1.0).",
+          "default": 0.05
+        },
+        {
+          "name": "repetition_penalty",
+          "type": "number",
+          "req": false,
+          "desc": "Penalizes repetitive token sequences (alias: repeat_penalty). 1.0 is neutral.",
+          "default": 1.1
+        },
+        {
+          "name": "presence_penalty",
+          "type": "number",
+          "req": false,
+          "desc": "Penalizes new tokens based on their presence in generated text so far.",
+          "default": 0.0
+        },
+        {
+          "name": "frequency_penalty",
+          "type": "number",
+          "req": false,
+          "desc": "Penalizes new tokens proportionally to their frequency in generated text so far.",
+          "default": 0.0
+        },
+        {
+          "name": "temporary_chat",
+          "type": "string",
+          "req": false,
+          "desc": "Privacy isolation mode: 'lite' (no persistent memory writes) or 'strict' (complete brain and memory bypass).",
+          "default": "lite"
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "req": false,
+          "desc": "Session identifier used to maintain multi-turn chat history and dynamic session tool bindings.",
+          "default": "session-default"
+        },
+        {
+          "name": "seed",
+          "type": "integer",
+          "req": false,
+          "desc": "Random seed for reproducible, deterministic token generation.",
+          "default": null
+        },
+        {
+          "name": "stop",
+          "type": "array",
+          "req": false,
+          "desc": "List of string stop tokens that halt generation immediately when matched.",
+          "default": null
+        },
+        {
+          "name": "keep_alive",
+          "type": "integer",
+          "req": false,
+          "desc": "Inactivity duration in seconds before unloading model weights from VRAM.",
+          "default": null
+        },
+        {
+          "name": "response_format",
+          "type": "object",
+          "req": false,
+          "desc": "Structured JSON output enforcement, e.g. {'type': 'json_object'}.",
+          "default": null
+        },
+        {
+          "name": "tools",
+          "type": "array",
+          "req": false,
+          "desc": "List of available tool definitions (Function Calling) callable via <tool_call> XML.",
+          "default": null
+        },
+        {
+          "name": "tool_choice",
+          "type": "string",
+          "req": false,
+          "desc": "Tool invocation policy: 'auto', 'none', 'required', or specific tool name.",
+          "default": null
+        },
+        {
+          "name": "grammar",
+          "type": "string",
+          "req": false,
+          "desc": "BNF / GBNF formal grammar specification to enforce strict syntactical output constraints.",
+          "default": null
+        },
+        {
+          "name": "chat_template_kwargs",
+          "type": "object",
+          "req": false,
+          "desc": "Additional keyword parameters passed directly into Jinja chat tokenizer templates.",
+          "default": null
+        },
+        {
+          "name": "logit_bias",
+          "type": "object",
+          "req": false,
+          "desc": "Map of token IDs to bias weights (-100 to +100) to adjust token emission probabilities.",
+          "default": null
         }
       ],
-      "request_payload": "{\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful multimodal AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Hello! Explain quantum computing in simple terms.\"\n    }\n  ],\n  \"stream\": true,\n  \"temperature\": 0.7,\n  \"max_tokens\": 2048,\n  \"think_mode\": \"auto\",\n  \"response_length\": \"auto\"\n}",
-      "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"qwen2.5-7b-instruct\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly evolving technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
+      "request_payload": "{\n  \"model\": \"auto\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a helpful AI assistant.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Explain quantum computing in simple terms.\"\n    }\n  ],\n  \"stream\": true,\n  \"temperature\": 0.7,\n  \"max_tokens\": 2048,\n  \"top_p\": 0.95,\n  \"top_k\": 40,\n  \"min_p\": 0.05,\n  \"repetition_penalty\": 1.1,\n  \"presence_penalty\": 0.0,\n  \"frequency_penalty\": 0.0,\n  \"think_mode\": \"auto\",\n  \"reasoning_effort\": \"auto\",\n  \"temporary_chat\": \"lite\",\n  \"session_id\": \"session-default\"\n}",
+      "response": "{\n  \"id\": \"chatcmpl-123e4567-e89b-12d3-a456-426614174000\",\n  \"object\": \"chat.completion\",\n  \"created\": 1718301294,\n  \"model\": \"auto\",\n  \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\": \"assistant\",\n        \"content\": \"Quantum computing is a rapidly evolving technology that harnesses the laws of quantum mechanics to solve problems too complex for classical computers.\"\n      },\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 24,\n    \"completion_tokens\": 21,\n    \"total_tokens\": 45\n  }\n}",
       "examples": [
         {
           "language": "curl",
-          "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"qwen2.5-7b-instruct\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n  }'"
+          "title": "cURL (Text & Streaming)",
+          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"auto\",\n    \"messages\": [\n      {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n      {\"role\": \"user\", \"content\": \"Explain gravity.\"}\n    ],\n    \"stream\": true,\n    \"temperature\": 0.7,\n    \"think_mode\": \"auto\"\n  }'"
+        },
+        {
+          "language": "curl",
+          "title": "cURL (Multimodal Vision)",
+          "code": "curl -X POST http://localhost:8000/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"model\": \"auto\",\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": [\n          {\"type\": \"text\", \"text\": \"Describe this diagram in detail.\"},\n          {\"type\": \"image_url\", \"image_url\": {\"url\": \"https://example.com/architecture.png\"}}\n        ]\n      }\n    ],\n    \"stream\": true\n  }'"
         },
         {
           "language": "python",
-          "title": "Python (OpenAI Client)",
-          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.chat.completions.create(\n    model=\"qwen2.5-7b-instruct\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Explain gravity.\"}\n    ]\n)\nprint(response.choices[0].message.content)"
+          "title": "Python (OpenAI Client & Reasoning)",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\n\nresponse = client.chat.completions.create(\n    model=\"auto\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Explain the P vs NP problem.\"}\n    ],\n    extra_body={\n        \"think_mode\": \"auto\",\n        \"reasoning_effort\": \"medium\",\n        \"min_p\": 0.05\n    }\n)\nprint(response.choices[0].message.content)"
         },
         {
           "language": "javascript",
           "title": "Node.js (OpenAI Client)",
-          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: 'user', content: 'Explain gravity.' }],\n    model: 'qwen2.5-7b-instruct',\n  });\n  console.log(completion.choices[0].message.content);\n}\nmain();"
+          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    messages: [{ role: 'user', content: 'Explain gravity.' }],\n    model: 'auto',\n  });\n  console.log(completion.choices[0].message.content);\n}\nmain();"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat/cancel",
+      "desc": "Cancels an active streaming generation request and triggers hardware interrupt.",
+      "docs_url": "/docs/api/inference/chat_completions.md",
+      "params": [
+        {
+          "name": "stream_id",
+          "type": "string",
+          "req": true,
+          "desc": "The active streaming request ID (e.g. 'chatcmpl-...').",
+          "default": "chatcmpl-sample-id"
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "req": false,
+          "desc": "Optional reason for cancellation.",
+          "default": "user_cancelled"
+        }
+      ],
+      "request_payload": "{\n  \"stream_id\": \"chatcmpl-sample-id\",\n  \"reason\": \"user_cancelled\"\n}",
+      "response": "{\n  \"status\": \"cancelled\",\n  \"stream_id\": \"chatcmpl-sample-id\",\n  \"message\": \"Stream cancellation signal dispatched successfully.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/chat/cancel \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-sample-id\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/chat/skip-reasoning",
+      "desc": "Interrupts the active thinking/reasoning phase of a streaming generation and immediately begins outputting the answer.",
+      "docs_url": "/docs/api/inference/chat_completions.md",
+      "params": [
+        {
+          "name": "stream_id",
+          "type": "string",
+          "req": true,
+          "desc": "The active streaming request ID to skip thinking phase.",
+          "default": "chatcmpl-sample-id"
+        }
+      ],
+      "request_payload": "{\n  \"stream_id\": \"chatcmpl-sample-id\"\n}",
+      "response": "{\n  \"status\": \"skipped\",\n  \"stream_id\": \"chatcmpl-sample-id\",\n  \"message\": \"Reasoning skipped. Transitioning to answer generation.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/chat/skip-reasoning \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-sample-id\"}'"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/chat/context_telemetry",
+      "desc": "Retrieves preflight context telemetry, token budget calculations, and active tool schemas for a model and session.",
+      "docs_url": "/docs/api/inference/chat_completions.md",
+      "params": [
+        {
+          "name": "model",
+          "type": "string",
+          "req": false,
+          "desc": "Target model identifier.",
+          "default": "default"
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "req": false,
+          "desc": "Unique session identifier.",
+          "default": "default"
+        },
+        {
+          "name": "tools",
+          "type": "string",
+          "req": false,
+          "desc": "Comma-separated or JSON list of active tool IDs.",
+          "default": "web_search"
+        }
+      ],
+      "request_payload": "",
+      "response": "{\n  \"model\": \"default\",\n  \"session_id\": \"default\",\n  \"total_tokens\": 0,\n  \"prompt_tokens\": 0,\n  \"completion_tokens\": 0,\n  \"tools\": []\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl http://localhost:8000/v1/chat/context_telemetry?model=default&session_id=default"
         }
       ]
     },
@@ -164,55 +363,42 @@
     },
     {
       "method": "POST",
-      "path": "/v1/rerank",
-      "desc": "Cross-Encoder document scoring and semantic search re-ranking endpoint. Scores query-document pairs with full bidirectional cross-attention.",
-      "docs_url": "/docs/api/inference/rerank.md",
+      "path": "/v1/audio/execute",
+      "desc": "Unified audio processing endpoint for speech-to-text, text-to-speech, and audio task orchestration.",
+      "docs_url": "/docs/api/inference/audio.md",
       "params": [
         {
-          "name": "query",
-          "type": "string",
+          "name": "input_source",
+          "type": "object",
           "req": true,
-          "desc": "The search query string to rank candidate documents against.",
-          "default": "What is the capital of France?"
+          "desc": "Audio input source ({type: 'url' | 'base64' | 'text', data: string}).",
+          "default": {
+            "type": "text",
+            "data": "Hello from Cluaiz Engine audio system."
+          }
         },
         {
-          "name": "documents",
-          "type": "array",
-          "req": true,
-          "desc": "List of candidate text documents to score and rank.",
-          "default": [
-            "Paris is the capital and most populous city of France.",
-            "London is the capital of the United Kingdom.",
-            "Lyon is a major city in south-eastern France."
-          ]
+          "name": "task",
+          "type": "string",
+          "req": false,
+          "desc": "Audio task type ('auto', 'text_to_speech', 'speech_to_text').",
+          "default": "text_to_speech"
         },
         {
           "name": "model",
           "type": "string",
           "req": false,
-          "desc": "Cross-encoder reranker model ID (e.g. bge-reranker-v2-m3).",
-          "default": "bge-reranker-v2-m3"
-        },
-        {
-          "name": "top_n",
-          "type": "integer",
-          "req": false,
-          "desc": "Number of top ranked results to return.",
-          "default": 3
+          "desc": "Model override identifier.",
+          "default": "auto"
         }
       ],
-      "request_payload": "{\n  \"model\": \"bge-reranker-v2-m3\",\n  \"query\": \"What is the capital of France?\",\n  \"documents\": [\n    \"Paris is the capital and most populous city of France.\",\n    \"London is the capital of the United Kingdom.\",\n    \"Lyon is a major city in south-eastern France.\"\n  ],\n  \"top_n\": 3\n}",
-      "response": "{\n  \"model\": \"bge-reranker-v2-m3\",\n  \"results\": [\n    {\n      \"index\": 0,\n      \"relevance_score\": 0.9982,\n      \"document\": \"Paris is the capital and most populous city of France.\"\n    },\n    {\n      \"index\": 2,\n      \"relevance_score\": 0.4512,\n      \"document\": \"Lyon is a major city in south-eastern France.\"\n    },\n    {\n      \"index\": 1,\n      \"relevance_score\": 0.0121,\n      \"document\": \"London is the capital of the United Kingdom.\"\n    }\n  ]\n}",
+      "request_payload": "{\n  \"model\": \"auto\",\n  \"task\": \"text_to_speech\",\n  \"input_source\": {\n    \"type\": \"text\",\n    \"data\": \"Hello from Cluaiz Engine audio system.\"\n  }\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"task\": \"text_to_speech\",\n  \"model\": \"auto\",\n  \"output\": {\n    \"audio_data\": \"UklGRiQAAABXQVZF...\"\n  }\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/rerank \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"query\": \"How does transformer attention work?\",\n    \"documents\": [\"Attention is all you need paper introduced self-attention\", \"Convolutional networks for vision\"],\n    \"top_n\": 1\n  }'"
-        },
-        {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\npayload = {\n    \"query\": \"How does transformer attention work?\",\n    \"documents\": [\"Attention is all you need paper introduced self-attention\", \"Convolutional networks for vision\"],\n    \"top_n\": 1\n}\nres = requests.post('http://localhost:8000/v1/rerank', json=payload)\nprint(res.json())"
+          "code": "curl -X POST http://localhost:8000/v1/audio/execute \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"task\": \"text_to_speech\", \"input_source\": {\"type\": \"text\", \"data\": \"Hello!\"}}'"
         }
       ]
     },
@@ -340,7 +526,7 @@
           "type": "string",
           "req": true,
           "desc": "The text string to synthesize into speech audio.",
-          "default": "Hello, welcome to Cluaiz Sovereign Engine."
+          "default": "Hello, welcome to Cluaiz Engine."
         },
         {
           "name": "model",
@@ -371,7 +557,7 @@
           "default": "mp3"
         }
       ],
-      "request_payload": "{\n  \"model\": \"kokoro-82m\",\n  \"input\": \"Hello, welcome to Cluaiz Sovereign Engine.\",\n  \"voice\": \"alloy\",\n  \"speed\": 1.0,\n  \"response_format\": \"mp3\"\n}",
+      "request_payload": "{\n  \"model\": \"kokoro-82m\",\n  \"input\": \"Hello, welcome to Cluaiz Engine.\",\n  \"voice\": \"alloy\",\n  \"speed\": 1.0,\n  \"response_format\": \"mp3\"\n}",
       "response": "{\n  \"status\": \"success\",\n  \"model\": \"kokoro-82m\",\n  \"output\": {\n    \"audio_data\": \"UklGRiQAAABXQVZFZm10IBAAAAABAAEA...\"\n  }\n}",
       "examples": [
         {

@@ -3,6 +3,31 @@
   "endpoints": [
     {
       "method": "GET",
+      "path": "/v1/models",
+      "desc": "OpenAI-compatible models discovery endpoint. Returns list of installed models with context windows and metadata.",
+      "docs_url": "/docs/api/models/list_models.md",
+      "params": [],
+      "response": "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"id\": \"qwen2.5-7b-instruct\",\n      \"object\": \"model\",\n      \"created\": 1718301294,\n      \"owned_by\": \"cluaiz\",\n      \"permission\": [],\n      \"root\": \"qwen2.5-7b-instruct\",\n      \"parent\": null,\n      \"category\": \"chat\",\n      \"context_window\": \"32768\"\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/models"
+        },
+        {
+          "language": "python",
+          "title": "Python (OpenAI Client)",
+          "code": "from openai import OpenAI\n\nclient = OpenAI(base_url='http://localhost:8000/v1', api_key='sk-no-key-required')\nmodels = client.models.list()\nprint(models)"
+        },
+        {
+          "language": "javascript",
+          "title": "Node.js (OpenAI Client)",
+          "code": "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  baseURL: 'http://localhost:8000/v1',\n  apiKey: 'sk-no-key-required'\n});\n\nconst models = await openai.models.list();\nconsole.log(models);"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/tags",
       "desc": "External compatible endpoint to list all available models.",
       "docs_url": "/docs/api/models/list_models.md",

@@ -4,10 +4,10 @@
     {
       "method": "GET",
       "path": "/v1/plugins/list",
-      "desc": "Returns a list of all active native plugins.",
+      "desc": "Returns a list of all active native plugins installed in the Engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"plugins\": [\n    {\n      \"id\": \"plg_99a\",\n      \"name\": \"Web Scraper\",\n      \"version\": \"1.2.0\",\n      \"status\": \"active\",\n      \"author\": \"Cluaiz Core\"\n    }\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"plugins\": [\n    {\n      \"id\": \"web-scraper\",\n      \"name\": \"web-scraper\",\n      \"version\": \"1.0.0\",\n      \"category\": \"plugin\"\n    }\n  ]\n}",
       "examples": [
         {
           "language": "curl",
@@ -34,66 +34,78 @@
     {
       "method": "POST",
       "path": "/v1/plugins/install",
-      "desc": "Installs a native plugin.",
+      "desc": "Installs a native plugin into the Engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "plugin_uri", "type": "string", "req": true, "desc": "URI of the plugin.", "default": "https://registry.cluaiz.com/plugins/web-scraper-v1.zip" }
+        {
+          "name": "plugin_name",
+          "type": "string",
+          "req": true,
+          "desc": "Name or identifier of the plugin.",
+          "default": "web-scraper"
+        }
       ],
-      "request_payload": "{\n  \"plugin_uri\": \"https://registry.cluaiz.com/plugins/web-scraper-v1.zip\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Plugin Web Scraper installed successfully.\",\n  \"plugin_id\": \"plg_99a\"\n}",
+      "request_payload": "{\n  \"plugin_name\": \"web-scraper\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Plugin 'web-scraper' installation queued natively in Engine.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/plugins/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_uri\": \"https://registry.cluaiz.com/plugins/web-scraper-v1.zip\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/plugins/install \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_name\": \"web-scraper\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/plugins/install', json={\"plugin_uri\": \"https://registry.cluaiz.com/plugins/web-scraper-v1.zip\"})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/plugins/install', json={\"plugin_name\": \"web-scraper\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/plugins/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_uri: 'https://registry.cluaiz.com/plugins/web-scraper-v1.zip' })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/plugins/install', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_name: 'web-scraper' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/plugins/install\")\n    .json(&serde_json::json!({ \"plugin_uri\": \"https://registry.cluaiz.com/plugins/web-scraper-v1.zip\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/plugins/install\")\n    .json(&serde_json::json!({ \"plugin_name\": \"web-scraper\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
     {
       "method": "DELETE",
       "path": "/v1/plugins/remove",
-      "desc": "Removes a native plugin.",
+      "desc": "Removes a native plugin from the Engine.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "plugin_id", "type": "string", "req": true, "desc": "ID of the plugin to remove.", "default": "plg_99a" }
+        {
+          "name": "plugin_name",
+          "type": "string",
+          "req": true,
+          "desc": "Name of the plugin to remove.",
+          "default": "web-scraper"
+        }
       ],
-      "request_payload": "{\n  \"plugin_id\": \"plg_99a\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Plugin removed from the system.\"\n}",
+      "request_payload": "{\n  \"plugin_name\": \"web-scraper\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Plugin 'web-scraper' removed natively.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X DELETE http://localhost:8000/v1/plugins/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_id\": \"plg_99a\"}'"
+          "code": "curl -X DELETE http://localhost:8000/v1/plugins/remove \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_name\": \"web-scraper\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/plugins/remove', json={\"plugin_id\": \"plg_99a\"})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/plugins/remove', json={\"plugin_name\": \"web-scraper\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/plugins/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_id: 'plg_99a' })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/plugins/remove', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_name: 'web-scraper' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/plugins/remove\")\n    .json(&serde_json::json!({ \"plugin_id\": \"plg_99a\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/plugins/remove\")\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     },
@@ -103,7 +115,7 @@
       "desc": "Lists the active caches for plugins.",
       "docs_url": "/docs/reference/api.md",
       "params": [],
-      "response": "{\n  \"caches\": [\n    {\n      \"plugin_id\": \"plg_99a\",\n      \"plugin_name\": \"Web Scraper\",\n      \"cache_files\": [\"cache.bin\", \"temp_data.db\"],\n      \"total_size_mb\": 12.5\n    }\n  ]\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Plugin cache report: 0 items.\"\n}",
       "examples": [
         {
           "language": "curl",
@@ -133,31 +145,36 @@
       "desc": "Clears plugin caches.",
       "docs_url": "/docs/reference/api.md",
       "params": [
-        { "name": "plugin_id", "type": "string", "req": false, "desc": "Target specific plugin cache.", "default": "web-scraper" },
-        { "name": "all", "type": "boolean", "req": false, "desc": "Clear all orphaned caches globally.", "default": false }
+        {
+          "name": "plugin_name",
+          "type": "string",
+          "req": false,
+          "desc": "Target specific plugin name or 'all'.",
+          "default": "all"
+        }
       ],
-      "request_payload": "{\n  \"plugin_id\": \"plg_99a\",\n  \"all\": false\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Cache cleared for plugin plg_99a.\",\n  \"freed_space_mb\": 12.5\n}",
+      "request_payload": "{\n  \"plugin_name\": \"all\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Successfully wiped caches.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X DELETE http://localhost:8000/v1/plugins/cache \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_id\": \"plg_99a\", \"all\": false}'"
+          "code": "curl -X DELETE http://localhost:8000/v1/plugins/cache \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"plugin_name\": \"all\"}'"
         },
         {
           "language": "python",
           "title": "Python",
-          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/plugins/cache', json={\"plugin_id\": \"plg_99a\", \"all\": False})\nprint(res.json())"
+          "code": "import requests\n\nres = requests.delete('http://localhost:8000/v1/plugins/cache', json={\"plugin_name\": \"all\"})\nprint(res.json())"
         },
         {
           "language": "javascript",
           "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/plugins/cache', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_id: 'plg_99a', all: false })\n});\nconst data = await response.json();\nconsole.log(data);"
+          "code": "const response = await fetch('http://localhost:8000/v1/plugins/cache', {\n  method: 'DELETE',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ plugin_name: 'all' })\n});\nconst data = await response.json();\nconsole.log(data);"
         },
         {
           "language": "rust",
           "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/plugins/cache\")\n    .json(&serde_json::json!({ \"plugin_id\": \"plg_99a\", \"all\": false }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "let client = reqwest::Client::new();\nlet res = client.delete(\"http://localhost:8000/v1/plugins/cache\")\n    .json(&serde_json::json!({ \"plugin_name\": \"all\" }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
         }
       ]
     }

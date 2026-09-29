@@ -198,80 +198,78 @@
       ]
     },
     {
-      "method": "POST",
-      "path": "/v1/chat/skip-reasoning",
-      "desc": "Instructs the active chat stream to skip '<think>' reasoning block and stream the direct answer immediately.",
-      "docs_url": "/docs/api/inference/chat_skip_reasoning.md",
-      "params": [
-        {
-          "name": "stream_id",
-          "type": "string",
-          "req": true,
-          "desc": "Unique stream identifier returned in first SSE chunk (e.g., chatcmpl-...).",
-          "default": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"
-        }
-      ],
-      "request_payload": "{\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n}",
-      "response": "{\n  \"status\": \"skipped\",\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\",\n  \"message\": \"Skip reasoning signal dispatched successfully.\"\n}",
+      "method": "GET",
+      "path": "/v1/system/storage/temp_media",
+      "desc": "Inspects temporary media storage cache size and file counts.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"file_count\": 0,\n  \"total_size_bytes\": 0,\n  \"total_size_mb\": \"0.00 MB\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/chat/skip-reasoning \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"}'"
-        },
-        {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/chat/skip-reasoning', json={\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"})\nprint(res.json())"
-        },
-        {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/chat/skip-reasoning', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ stream_id: 'chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1' })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
-        {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/chat/skip-reasoning\")\n    .json(&serde_json::json!({\n        \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "code": "curl -X GET http://localhost:8000/v1/system/storage/temp_media"
         }
       ]
     },
     {
       "method": "POST",
-      "path": "/v1/chat/cancel",
-      "desc": "Cancels an active chat stream mid-generation using its unique stream_id.",
-      "docs_url": "/docs/api/inference/chat_cancel.md",
-      "params": [
-        {
-          "name": "stream_id",
-          "type": "string",
-          "req": true,
-          "desc": "Unique stream identifier returned in first SSE chunk (e.g., chatcmpl-...).",
-          "default": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"
-        }
-      ],
-      "request_payload": "{\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n}",
-      "response": "{\n  \"status\": \"cancelled\",\n  \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\",\n  \"message\": \"Stream cancellation signal dispatched successfully.\"\n}",
+      "path": "/v1/system/storage/temp_media/clean",
+      "desc": "Cleans and flushes temporary media storage cache.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Temporary media storage cleaned successfully.\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/chat/cancel \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"}'"
-        },
+          "code": "curl -X POST http://localhost:8000/v1/system/storage/temp_media/clean"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/storage/settings",
+      "desc": "Retrieves local vault storage controls and location settings.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"storage_dir\": \"~/.cluaiz/models\"\n}",
+      "examples": [
         {
-          "language": "python",
-          "title": "Python",
-          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/chat/cancel', json={\"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"})\nprint(res.json())"
-        },
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/system/storage/settings"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/gguf_config",
+      "desc": "Retrieves global GGUF parser and hardware governor configuration.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
         {
-          "language": "javascript",
-          "title": "Node.js",
-          "code": "const response = await fetch('http://localhost:8000/v1/chat/cancel', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ stream_id: 'chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1' })\n});\nconst data = await response.json();\nconsole.log(data);"
-        },
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/system/gguf_config"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/system/onnx_config",
+      "desc": "Retrieves ONNX runtime session options and execution provider settings.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
         {
-          "language": "rust",
-          "title": "Rust",
-          "code": "let client = reqwest::Client::new();\nlet res = client.post(\"http://localhost:8000/v1/chat/cancel\")\n    .json(&serde_json::json!({\n        \"stream_id\": \"chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1\"\n    }))\n    .send()\n    .await?;\nprintln!(\"{:#?}\", res.json::<serde_json::Value>().await?);"
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/system/onnx_config"
         }
       ]
     },
