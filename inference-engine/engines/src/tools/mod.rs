@@ -290,10 +290,11 @@ impl ToolsEngine {
 
                             if exec_type == "script_runner" {
                                 tracing::info!("⚡ [ToolsEngine] Dispatching '{}' via dynamic DeclarativeScriptRunner", name);
-                                return DeclarativeScriptRunner::execute(
+                                return DeclarativeScriptRunner::execute_with_tool_dir(
                                     &exec_manifest,
                                     payload,
                                     &cwd_path,
+                                    Some(&comp_dir),
                                     sec_mode,
                                 ).await;
                             }

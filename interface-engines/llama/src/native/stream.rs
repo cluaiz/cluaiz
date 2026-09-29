@@ -62,7 +62,7 @@ pub fn stream_tokens(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, req_response_length) = if let Ok(envelope) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar) = if let Ok(envelope) =
             serde_json::from_str::<serde_json::Value>(&actual_prompt)
         {
             if envelope.is_object()
@@ -94,11 +94,11 @@ pub fn stream_tokens(
                     .get("reasoning_effort")
                     .and_then(|e| e.as_str())
                     .map(|s| s.to_string());
-                let response_length = envelope
-                    .get("response_length")
-                    .and_then(|r| r.as_str())
+                let grammar = envelope
+                    .get("grammar")
+                    .and_then(|g| g.as_str())
                     .map(|s| s.to_string());
-                (samplers, think_mode, reasoning_effort, response_length)
+                (samplers, think_mode, reasoning_effort, grammar)
             } else {
                 (None, None, None, None)
             }
@@ -123,19 +123,6 @@ pub fn stream_tokens(
                 .unwrap_or_default();
         let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
 
-        let effective_response_length = req_response_length
-            .as_deref()
-            .unwrap_or(gguf_meta.user_moved_flags.response_length.as_str())
-            .to_lowercase();
-
-        let response_length_cap: Option<i32> = match effective_response_length.as_str() {
-            "short" | "concise" => Some(200),
-            "standard" | "medium" => Some(800),
-            "long" | "detailed" => Some(3000),
-            "auto" => None, // Natural stop tokens
-            custom_num => custom_num.parse::<i32>().ok(),
-        };
-
         // 🧬 Primary Authority: Query llama.cpp native common_chat_templates engine using model pointer
         let (native_st, native_et) = crate::native::templater::extract_thinking_tags_native(
             llama.model_ptr,
@@ -158,6 +145,16 @@ pub fn stream_tokens(
             }
         });
 
+        let tm_str = req_think_mode
+            .as_deref()
+            .unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+            .to_lowercase();
+
+        let enable_thinking = match tm_str.as_str() {
+            "off" | "false" | "0" | "hide" => false,
+            _ => true,
+        };
+
         let mut formatted_prompt = if !structured_messages.is_empty() {
             let msg_refs: Vec<(&str, &str)> = structured_messages
                 .iter()
@@ -168,6 +165,7 @@ pub fn stream_tokens(
                 dna.chat_template.as_deref(),
                 &msg_refs,
                 true,
+                enable_thinking,
             ) {
                 Ok(rendered) if !rendered.trim().is_empty() => {
                     if is_pivot && !think_end_tag.is_empty() {
@@ -200,6 +198,7 @@ pub fn stream_tokens(
                 dna.chat_template.as_deref(),
                 &single_msg,
                 true,
+                enable_thinking,
             ) {
                 Ok(rendered) if !rendered.trim().is_empty() => {
                     if is_pivot && !think_end_tag.is_empty() {
@@ -223,11 +222,6 @@ pub fn stream_tokens(
             }
         };
 
-        let tm_str = req_think_mode
-            .as_deref()
-            .unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
-            .to_lowercase();
-
         let mut suppress_thinking = match tm_str.as_str() {
             "off" | "false" | "0" | "hide" => true,
             "on" | "true" | "1" | "show" => false,
@@ -240,10 +234,10 @@ pub fn stream_tokens(
             .to_lowercase();
 
         let max_think_tokens = match effort_str.as_str() {
-            "low" | "minimal" => 512,
-            "medium" | "standard" => 1024,
-            "high" | "max" | "extreme" => usize::MAX,
-            "auto" => usize::MAX,
+            "low" | "minimal" => 1024,
+            "medium" | "standard" => 4096,
+            "high" => 16384,
+            "max" | "extreme" | "auto" => usize::MAX,
             custom_num => custom_num.parse::<usize>().unwrap_or(usize::MAX),
         };
 
@@ -628,12 +622,6 @@ pub fn stream_tokens(
 
             if !in_think_block {
                 n_gen += 1;
-                if let Some(cap) = response_length_cap {
-                    if n_gen >= cap {
-                        tracing::info!("📏 [NativeStream] Response length cap ({} tokens) reached. Gracefully ending generation.", cap);
-                        break;
-                    }
-                }
             } else {
                 suppressed_count += 1;
                 if suppressed_count >= max_think_tokens.min(4096) {

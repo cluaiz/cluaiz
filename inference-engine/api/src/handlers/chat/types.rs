@@ -40,17 +40,16 @@ pub struct ExternalChatRequest {
     pub temporary_chat: Option<TemporaryChatMode>,
     #[serde(default)]
     pub session_id: Option<String>,
-    // Cluaiz Extension & OpenAI Reasoning Parameters
     pub think_mode: Option<serde_json::Value>,
     pub reasoning_effort: Option<String>,
     pub skip_reasoning: Option<bool>,
-    pub response_length: Option<serde_json::Value>,
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
+    #[serde(alias = "repeat_penalty")]
     pub repetition_penalty: Option<f32>,
 
-    // Standard OpenAI Parameters
     pub temperature: Option<f32>,
+    #[serde(alias = "n_predict")]
     pub max_tokens: Option<usize>,
     pub top_p: Option<f32>,
     pub top_k: Option<i32>,
@@ -58,7 +57,9 @@ pub struct ExternalChatRequest {
     pub presence_penalty: Option<f32>,
     pub stop: Option<Vec<String>>,
     pub seed: Option<i64>,
-    pub response_format: Option<serde_json::Value>,
+    pub response_format: Option<serde_json::Value>, 
+    pub chat_template_kwargs: Option<serde_json::Value>,
+    pub grammar: Option<String>,
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
     pub tools: Option<Vec<serde_json::Value>>,
     pub tool_choice: Option<serde_json::Value>,

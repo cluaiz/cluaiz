@@ -745,7 +745,8 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
         conversationHistory.forEach(m => {
             totalPromptChars += (m.content || '').length;
         });
-        const baseInputTokens = Math.max(1, Math.round(totalPromptChars / 4));
+        const calculatedPromptTokens = Math.max(1, Math.round(totalPromptChars / 4));
+        const baseInputTokens = Math.max(window.lastKnownActiveContext || 0, calculatedPromptTokens);
 
         const response = await fetch(window.getApiBaseUrl() + '/v1/chat/completions', {
             method: 'POST',
@@ -785,6 +786,9 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                         if (parsed.usage && (parsed.usage.tokens_per_second !== undefined || parsed.usage.model_header_info !== undefined || parsed.usage.context_telemetry !== undefined)) {
                             if (parsed.usage.context_telemetry) {
                                 window.latestContextTelemetry = parsed.usage.context_telemetry;
+                                if (parsed.usage.context_telemetry.total_active_tokens) {
+                                    window.lastKnownActiveContext = parsed.usage.context_telemetry.total_active_tokens;
+                                }
                             }
                             if (hasStarted) {
                                 renderTelemetry(aiMsgEl, { ...parsed.usage, model_name: currentModelName }, fullContent);
@@ -827,7 +831,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                                     </summary>
                                     <div style="padding: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
                                         <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Request Arguments</div>
-                                        <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px; overflow-x: auto;"><code class="tool-args-code">${escapeHtml(call.function?.arguments || '')}</code></pre>
+                                        <pre style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); margin-top: 4px; max-height: 180px; overflow-y: auto;" class="custom-scrollbar"><code class="tool-args-code">${escapeHtml(call.function?.arguments || '')}</code></pre>
                                         <div class="tool-result-container" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; color: #9ca3af; font-style: italic;">
                                             Executing in Sandbox...
                                         </div>
@@ -889,7 +893,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                                 resContainer.innerHTML = `
                                     ${logsHtml}
                                     <div style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Output Result</div>
-                                    <pre style="white-space: pre-wrap; margin: 4px 0 0 0; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); color: #a7f3d0; overflow-x: auto;">${escapeHtml(resultText)}</pre>
+                                    <pre style="white-space: pre-wrap; margin: 4px 0 0 0; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); color: #a7f3d0; max-height: 240px; overflow-y: auto;" class="custom-scrollbar">${escapeHtml(resultText)}</pre>
                                 `;
                             }
                             
@@ -898,9 +902,13 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                             const toolKey = (toolResult.name || callId || '').replace(/^call_/, '');
                             window.latestExecutedTools.set(toolKey, toolResult);
 
-                            // Auto-collapse cleanly after brief display
+                            // Auto-collapse cleanly after brief display and smooth scroll
                             setTimeout(() => {
                                 toolBlock.open = false;
+                                const isNear = (container.scrollHeight - container.scrollTop - container.clientHeight) < 250;
+                                if (isNear) {
+                                    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                                }
                             }, 1500);
                         }
                         updateStatus(`Sandbox executed tool successfully.`);
@@ -957,15 +965,24 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                     const usedEl = document.getElementById('live-ctx-used');
                     const pctEl = document.getElementById('live-ctx-pct');
                     const limitEl = document.getElementById('live-ctx-limit');
+                    const popoverTotal = document.getElementById('popover-ctx-total');
                     const currentActiveTokens = baseInputTokens + streamedTokensCount;
+                    window.lastKnownActiveContext = currentActiveTokens;
+
                     if (usedEl) {
                         usedEl.textContent = currentActiveTokens >= 1000 ? (currentActiveTokens / 1000).toFixed(1) + 'k' : currentActiveTokens;
                     }
-                    if (pctEl && limitEl && limitEl.textContent) {
+                    if (limitEl && limitEl.textContent) {
                         const rawLimitText = limitEl.textContent.trim();
                         const rawLimit = rawLimitText.toLowerCase().includes('k') ? parseFloat(rawLimitText) * 1024 : parseFloat(rawLimitText);
                         if (rawLimit && rawLimit > 0) {
-                            pctEl.textContent = `${Math.min(100, Math.round((currentActiveTokens / rawLimit) * 100))}%`;
+                            const calculatedPct = Math.min(100, Math.round((currentActiveTokens / rawLimit) * 100));
+                            if (pctEl) pctEl.textContent = `${calculatedPct}%`;
+                            if (popoverTotal) {
+                                const displayLimit = rawLimit >= 1000 ? (rawLimit / 1000).toFixed(0) + 'k' : rawLimit;
+                                const displayActive = currentActiveTokens >= 1000 ? (currentActiveTokens / 1000).toFixed(1) + 'k' : currentActiveTokens;
+                                popoverTotal.textContent = `${displayActive} / ${displayLimit} (${calculatedPct}%)`;
+                            }
                         }
                     }
 
@@ -1010,7 +1027,7 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
                     }
 
                     if (isNearBottom) {
-                        container.scrollTop = container.scrollHeight;
+                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
                     }
 
                 } catch (_parseErr) {
@@ -1040,6 +1057,11 @@ async function sendToAI(userMessage, think_mode, temperature, system_prompt, too
         if (skipThinking) {
             thinkAccordionEl.style.display = 'none';
         }
+
+        // Smooth scroll to absolute end when generation finishes
+        setTimeout(() => {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }, 80);
 
         if (fullContent.trim()) {
             conversationHistory.push({ role: 'assistant', content: fullContent });

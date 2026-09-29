@@ -574,6 +574,14 @@ impl StreamingReasoningFilter {
         }
     }
 
+    /// Reusable reset for consecutive multi-turn reasoning phases.
+    pub fn reset_turn(&mut self, prompt_starts_in_think: bool) {
+        let has_markers = self.start_tag.is_some() || self.end_tag.is_some();
+        self.think_done = self.disabled || !has_markers;
+        self.in_think_block = !self.disabled && has_markers && prompt_starts_in_think;
+        self.buffer.clear();
+    }
+
     /// Internal DRY helper to handle streaming inside a think block against end_tag.
     /// Returns (content_delta, reasoning_delta).
     fn handle_end_tag_transition(&mut self, end: &str) -> (Option<String>, Option<String>) {

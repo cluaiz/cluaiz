@@ -1301,6 +1301,8 @@ window.updateLiveContextBar = function(usage) {
         const totalActive = breakdown.total_active_tokens || tokens;
         const activePct = breakdown.active_percentage || (usableLimit > 0 ? Math.round((totalActive / usableLimit) * 100) : 0);
 
+        window.lastKnownActiveContext = totalActive;
+
         if (usedEl) usedEl.textContent = formatK(totalActive);
         if (limitEl) limitEl.textContent = formatK(usableLimit);
         if (pctEl) pctEl.textContent = `${activePct}%`;

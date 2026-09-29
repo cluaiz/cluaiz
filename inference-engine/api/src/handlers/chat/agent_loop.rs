@@ -172,14 +172,45 @@ pub async fn execute_streaming_loop(
                     let json_end = clean_token.find("</tool_call>").unwrap_or(clean_token.len());
                     let raw_json = clean_token[json_start..json_end].trim();
 
-                    let parsed_json: serde_json::Value = serde_json::from_str(raw_json).unwrap_or_else(|_| {
-                        json!({ "raw": raw_json })
-                    });
+                    // Strip markdown fences (e.g. ```json ... ```) if model wrapped tool call
+                    let mut sanitized_json = raw_json;
+                    if let Some(stripped) = sanitized_json.strip_prefix("```json") {
+                        sanitized_json = stripped;
+                    } else if let Some(stripped) = sanitized_json.strip_prefix("```") {
+                        sanitized_json = stripped;
+                    }
+                    if let Some(stripped) = sanitized_json.strip_suffix("```") {
+                        sanitized_json = stripped;
+                    }
+                    let sanitized_json = sanitized_json.trim();
 
-                    let raw_fn_name = parsed_json.get("name")
+                    let parsed_json: serde_json::Value = serde_json::from_str(sanitized_json)
+                        .or_else(|_| serde_json::from_str(raw_json))
+                        .unwrap_or_else(|_| {
+                            json!({ "raw": raw_json })
+                        });
+
+                    let mut extracted_name = parsed_json.get("name")
                         .or_else(|| parsed_json.get("function"))
                         .and_then(|v| v.as_str())
-                        .unwrap_or("unknown");
+                        .map(|s| s.to_string());
+
+                    // Fallback key search if json parse failed or key was missing
+                    if extracted_name.is_none() || extracted_name.as_deref() == Some("unknown") {
+                        for key in &["\"name\":", "\"function\":", "\"tool\":"] {
+                            if let Some(pos) = raw_json.find(key) {
+                                let after = raw_json[pos + key.len()..].trim_start();
+                                if let Some(stripped) = after.strip_prefix('"') {
+                                    if let Some(end_quote) = stripped.find('"') {
+                                        extracted_name = Some(stripped[..end_quote].to_string());
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let raw_fn_name = extracted_name.as_deref().unwrap_or("unknown");
 
                     let args_val = parsed_json.get("arguments")
                         .or_else(|| parsed_json.get("parameters"))
@@ -209,7 +240,52 @@ pub async fn execute_streaming_loop(
 
                     let public_call_name = tool_sub_func.as_deref().unwrap_or(&comp_name);
                     tracing::info!("🔍 [API] Market Standard Tool Execution: {} '{}' with payload: {}", comp_type, public_call_name, payload_str);
+
+                    // Resolve tool SVG icon from filesystem/registry
+                    let icon_svg = {
+                        let env = engine_core::environment::EnvironmentManager::current();
+                        let tool_dir = match comp_type.as_str() {
+                            "skill" => env.skills_dir().join(&comp_name),
+                            "plugin" => env.plugins_dir().join(&comp_name),
+                            "mcp" => env.mcp_dir().join(&comp_name),
+                            _ => env.tools_dir().join(&comp_name),
+                        };
+                        let p1 = tool_dir.join("assets").join("icon.svg");
+                        let p2 = tool_dir.join("icon.svg");
+                        if p1.exists() {
+                            std::fs::read_to_string(p1).ok()
+                        } else if p2.exists() {
+                            std::fs::read_to_string(p2).ok()
+                        } else {
+                            None
+                        }
+                    };
                     
+                    // 1. Yield standard OpenAI tool_calls delta chunk EARLY before execution begins!
+                    let tool_calls_chunk = json!({
+                        "id": req_id_stream.clone(),
+                        "object": "chat.completion.chunk",
+                        "created": Utc::now().timestamp(),
+                        "model": request.model.clone(),
+                        "choices": [{
+                            "index": 0,
+                            "delta": {
+                                "tool_calls": [{
+                                    "index": 0,
+                                    "id": format!("call_{}", comp_name),
+                                    "type": "function",
+                                    "icon_svg": icon_svg.clone(),
+                                    "function": {
+                                        "name": public_call_name,
+                                        "arguments": payload_str,
+                                        "icon_svg": icon_svg.clone()
+                                    }
+                                }]
+                            }
+                        }]
+                    });
+                    yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
+
                     let tool_start_time = std::time::Instant::now();
                     let sec_mode = engines::tools::ToolsEngine::get_tool(&comp_name)
                         .ok()
@@ -228,29 +304,6 @@ pub async fn execute_streaming_loop(
                         }
                     };
                     let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
-
-                    // 1. Yield standard OpenAI tool_calls delta chunk
-                    let tool_calls_chunk = json!({
-                        "id": req_id_stream.clone(),
-                        "object": "chat.completion.chunk",
-                        "created": Utc::now().timestamp(),
-                        "model": request.model.clone(),
-                        "choices": [{
-                            "index": 0,
-                            "delta": {
-                                "tool_calls": [{
-                                    "index": 0,
-                                    "id": format!("call_{}", comp_name),
-                                    "type": "function",
-                                    "function": {
-                                        "name": public_call_name,
-                                        "arguments": payload_str
-                                    }
-                                }]
-                            }
-                        }]
-                    });
-                    yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
 
                     let mut execution_logs = vec![
                         format!("[ToolsEngine] Invoking {} '{}' (security: {:?})", comp_type, public_call_name, sec_mode),
@@ -283,6 +336,7 @@ pub async fn execute_streaming_loop(
                                     "id": format!("call_{}", comp_name),
                                     "name": public_call_name,
                                     "category": comp_type,
+                                    "icon_svg": icon_svg.clone(),
                                     "status": "completed",
                                     "security_mode": format!("{:?}", sec_mode).to_lowercase(),
                                     "latency_ms": ((latency_ms * 100.0).round() / 100.0),
@@ -329,8 +383,7 @@ pub async fn execute_streaming_loop(
                             "seed": ctx.effective_seed
                         },
                         "think_mode": &ctx.active_think_mode,
-                        "reasoning_effort": &ctx.active_reasoning_effort,
-                        "response_length": &ctx.active_response_length
+                        "reasoning_effort": &ctx.active_reasoning_effort
                     });
                     current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
 
@@ -377,6 +430,8 @@ pub async fn execute_streaming_loop(
             
             if tool_executed {
                 tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
+                // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
+                think_filter.reset_turn(ctx.prompt_starts_in_think);
                 let new_dispatch = state_clone.dispatcher.dispatch_stream(
                     &current_prompt,
                     ctx.skip_brain,

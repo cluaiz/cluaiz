@@ -10,6 +10,7 @@ pub fn apply_chat_template(
     custom_template: Option<&str>,
     messages: &[(&str, &str)],
     add_generation_prompt: bool,
+    enable_thinking: bool,
 ) -> anyhow::Result<String> {
     if messages.is_empty() {
         return Ok(String::new());
@@ -55,7 +56,7 @@ pub fn apply_chat_template(
             content_ptrs.as_ptr(),
             messages.len(),
             add_generation_prompt,
-            true,
+            enable_thinking,
             std::ptr::null_mut(),
             0,
         )
@@ -71,7 +72,7 @@ pub fn apply_chat_template(
                 content_ptrs.as_ptr(),
                 messages.len(),
                 add_generation_prompt,
-                true,
+                enable_thinking,
                 buf.as_mut_ptr() as *mut std::os::raw::c_char,
                 buf.len(),
             )

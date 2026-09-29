@@ -38,6 +38,17 @@ impl DeclarativeScriptRunner {
         cwd_path: &Path,
         sec_mode: SecurityMode,
     ) -> Result<String> {
+        Self::execute_with_tool_dir(manifest, payload_str, cwd_path, None, sec_mode).await
+    }
+
+    /// Executes a dynamic script with explicit tool_dir interpolation support
+    pub async fn execute_with_tool_dir(
+        manifest: &ExecutionManifest,
+        payload_str: &str,
+        cwd_path: &Path,
+        tool_dir: Option<&Path>,
+        sec_mode: SecurityMode,
+    ) -> Result<String> {
         let parsed_payload: Value = serde_json::from_str(payload_str)
             .unwrap_or_else(|_| serde_json::json!({ "code": payload_str }));
 
@@ -48,13 +59,22 @@ impl DeclarativeScriptRunner {
             .unwrap_or(default_lang)
             .to_lowercase();
 
-        let code = parsed_payload.get("code")
-            .or_else(|| parsed_payload.get("script"))
-            .or_else(|| parsed_payload.get("input"))
-            .and_then(|c| c.as_str())
-            .unwrap_or(payload_str);
+        let (cmd_template, ext, is_custom_cmd) = if let Some(ref explicit_cmd) = manifest.command {
+            (explicit_cmd.clone(), "json".to_string(), true)
+        } else {
+            let (resolved_template, resolved_ext) = Self::resolve_language_config(manifest, &requested_lang);
+            (resolved_template, resolved_ext, false)
+        };
 
-        let (cmd_template, ext) = Self::resolve_language_config(manifest, &requested_lang);
+        let content_to_write = if is_custom_cmd {
+            payload_str
+        } else {
+            parsed_payload.get("code")
+                .or_else(|| parsed_payload.get("script"))
+                .or_else(|| parsed_payload.get("input"))
+                .and_then(|c| c.as_str())
+                .unwrap_or(payload_str)
+        };
 
         let scratch_name = manifest.scratch_dir.as_deref().unwrap_or("scratch");
         let temp_dir = cwd_path.join(scratch_name);
@@ -66,20 +86,22 @@ impl DeclarativeScriptRunner {
             .unwrap_or(0);
 
         let script_file = temp_dir.join(format!("eval_{}.{}", timestamp, ext));
-        std::fs::write(&script_file, code)?;
+        std::fs::write(&script_file, content_to_write)?;
 
         let exe_suffix = std::env::consts::EXE_SUFFIX;
         let bin_file = temp_dir.join(format!("eval_{}{}", timestamp, exe_suffix));
 
+        let tool_dir_str = tool_dir.map(|p| p.display().to_string()).unwrap_or_default();
         let command_line = cmd_template
+            .replace("{tool_dir}", &tool_dir_str)
             .replace("{file}", &script_file.display().to_string())
             .replace("{bin}", &bin_file.display().to_string());
 
-        tracing::info!("🚀 [ScriptRunner] Executing language '{}' via: {}", requested_lang, command_line);
+        tracing::info!("🚀 [ScriptRunner] Executing command: {}", command_line);
 
         let timeout_secs = parsed_payload.get("timeout")
             .and_then(|t| t.as_u64())
-            .or(Some(15));
+            .or(Some(30));
 
         let run_result = SandboxTerminalRunner::execute_advanced(
             &command_line,

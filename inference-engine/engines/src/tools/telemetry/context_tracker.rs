@@ -121,18 +121,55 @@ impl ContextTracker {
                 continue;
             }
 
-            // Real schema token estimation from description + permissions + triggers
-            let schema_chars = entry.description.len() 
-                + entry.permissions.iter().map(|s| s.len()).sum::<usize>()
-                + entry.semantic_triggers.iter().map(|s| s.len()).sum::<usize>();
-            
-            let estimated_tokens = if schema_chars > 0 {
-                (schema_chars / 4).max(4)
-            } else {
-                4
-            };
-
             let is_active = active_tool_ids.contains(id);
+
+            // Real schema / instruction token estimation
+            let estimated_tokens = if entry.category == "skill" {
+                // For skills, calculate actual prompt instructions tokens from SKILL.md
+                let skill_file = std::path::Path::new(&entry.local_dir).join("SKILL.md");
+                let skill_path = if skill_file.exists() {
+                    Some(skill_file)
+                } else {
+                    let env_skill = engine_core::environment::EnvironmentManager::current()
+                        .skills_dir()
+                        .join(id)
+                        .join("SKILL.md");
+                    if env_skill.exists() {
+                        Some(env_skill)
+                    } else {
+                        None
+                    }
+                };
+
+                if let Some(path) = skill_path {
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        if let Some(parsed) = crate::tools::SkillParser::parse_content(&content) {
+                            ((parsed.prompt_instructions.len() + 3) / 4).max(4)
+                        } else {
+                            ((content.len() + 3) / 4).max(4)
+                        }
+                    } else {
+                        let schema_chars = entry.description.len() 
+                            + entry.permissions.iter().map(|s| s.len()).sum::<usize>()
+                            + entry.semantic_triggers.iter().map(|s| s.len()).sum::<usize>();
+                        if schema_chars > 0 { (schema_chars / 4).max(4) } else { 4 }
+                    }
+                } else {
+                    let schema_chars = entry.description.len() 
+                        + entry.permissions.iter().map(|s| s.len()).sum::<usize>()
+                        + entry.semantic_triggers.iter().map(|s| s.len()).sum::<usize>();
+                    if schema_chars > 0 { (schema_chars / 4).max(4) } else { 4 }
+                }
+            } else {
+                let schema_chars = entry.description.len() 
+                    + entry.permissions.iter().map(|s| s.len()).sum::<usize>()
+                    + entry.semantic_triggers.iter().map(|s| s.len()).sum::<usize>();
+                if schema_chars > 0 {
+                    (schema_chars / 4).max(4)
+                } else {
+                    4
+                }
+            };
             let item = ComponentTelemetryItem {
                 name: if entry.name.is_empty() { id.clone() } else { entry.name.clone() },
                 category: entry.category.clone(),
@@ -177,6 +214,42 @@ impl ContextTracker {
                     _ => {
                         deferred_plugins_tokens += estimated_tokens;
                     }
+                }
+            }
+        }
+
+        // Account for any active tool IDs not present in registry.installed_tools (e.g. dynamically resolved from filesystem)
+        for active_id in active_tool_ids {
+            let clean_active_id = active_id.trim();
+            if !clean_active_id.is_empty() && !skill_items.iter().any(|item| item.name == clean_active_id) {
+                let env = engine_core::environment::EnvironmentManager::current();
+                let skill_dir = env.skills_dir().join(clean_active_id);
+                let skill_file = skill_dir.join("SKILL.md");
+                if skill_file.exists() {
+                    let est_tokens = if let Ok(content) = std::fs::read_to_string(&skill_file) {
+                        if let Some(parsed) = crate::tools::SkillParser::parse_content(&content) {
+                            ((parsed.prompt_instructions.len() + 3) / 4).max(4)
+                        } else {
+                            ((content.len() + 3) / 4).max(4)
+                        }
+                    } else {
+                        0
+                    };
+                    skills_tokens += est_tokens;
+                    skill_items.push(ComponentTelemetryItem {
+                        name: clean_active_id.to_string(),
+                        category: "skill".to_string(),
+                        status: "active".to_string(),
+                        security_mode: "sandboxed".to_string(),
+                        tokens: est_tokens,
+                        execution_latency_ms: 0.0,
+                        memory_used_mb: 0.0,
+                        memory_cap_mb: 0.0,
+                        cpu_fuel_consumed: 0,
+                        input_payload: None,
+                        output_result: None,
+                        logs: Vec::new(),
+                    });
                 }
             }
         }

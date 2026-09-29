@@ -18,7 +18,6 @@ pub struct PreparedChatContext {
     pub prompt_starts_in_think: bool,
     pub active_think_mode: String,
     pub active_reasoning_effort: String,
-    pub active_response_length: String,
     pub validated_max_tokens: Option<usize>,
     pub skip_brain: bool,
     pub effective_temp: f64,
@@ -314,18 +313,6 @@ impl PreparedChatContext {
             })
             .unwrap_or_else(|| "auto".to_string());
 
-        let active_response_length = request.response_length.as_ref().map(|v| {
-            if let Some(s) = v.as_str() {
-                s.to_string()
-            } else if let Some(n) = v.as_i64() {
-                n.to_string()
-            } else if let Some(n) = v.as_u64() {
-                n.to_string()
-            } else {
-                "auto".to_string()
-            }
-        }).unwrap_or_else(|| gguf_meta.user_moved_flags.response_length.clone());
-
         // 🧠 Dynamic Pre-Flight Context Shifting
         let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
         let gen_reserve = validated_max_tokens.unwrap_or(1024).clamp(256, (n_ctx_limit / 4).max(512));
@@ -417,7 +404,9 @@ impl PreparedChatContext {
             },
             "think_mode": &active_think_mode,
             "reasoning_effort": &active_reasoning_effort,
-            "response_length": &active_response_length
+            "chat_template_kwargs": request.chat_template_kwargs.as_ref(),
+            "grammar": request.grammar.as_deref(),
+            "response_format": request.response_format.as_ref()
         });
 
         let json_prompt = serde_json::to_string(&payload_envelope).unwrap_or_else(|_| "{}".to_string());
@@ -463,7 +452,6 @@ impl PreparedChatContext {
             prompt_starts_in_think,
             active_think_mode,
             active_reasoning_effort,
-            active_response_length,
             validated_max_tokens,
             skip_brain,
             effective_temp,

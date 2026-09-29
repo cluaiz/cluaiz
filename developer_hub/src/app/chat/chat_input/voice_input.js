@@ -1,4 +1,5 @@
 // ─── Voice & Audio Engine Component (STT & TTS Dynamic Integration) ───
+import { BrowserVoice } from '/components/browser_voice.js';
 
 export let activeSttModel = null;
 export let activeTtsModel = null;
@@ -36,8 +37,10 @@ export function checkAudioModelAndToggleMic(installedModels) {
                 btnMic.style.cursor = 'pointer';
                 btnMic.setAttribute('title', `Voice Input (STT Model: ${activeSttModel.id})`);
             } else {
-                btnMic.style.opacity = '0.5';
-                btnMic.setAttribute('title', 'Speech-to-Text (STT) model not installed in model_registry.json (Click for info)');
+                // Zero-VRAM Browser Voice Extension Fallback
+                btnMic.style.opacity = '1';
+                btnMic.style.cursor = 'pointer';
+                btnMic.setAttribute('title', 'Voice Input (Browser Speech Extension - 0 MB VRAM)');
             }
         }
     }
@@ -218,7 +221,43 @@ export function setupMicVoiceInput(textarea) {
         }
 
         if (!activeSttModel) {
-            showToastNotification("No Speech-to-Text (STT) model found in model_registry.json. Please install a Whisper model.", "warning");
+            const support = BrowserVoice.checkSupport();
+            if (!support.stt) {
+                showToastNotification("Microphone input is not supported by your browser.", "warning");
+                return;
+            }
+
+            if (BrowserVoice.isListening) {
+                BrowserVoice.stopSTT();
+                resetMicUi();
+                return;
+            }
+
+            // Start Browser STT (Zero-VRAM)
+            const baseText = textarea ? textarea.value.trim() : '';
+            isRecording = true;
+            btnMic.style.color = '#ef4444';
+            btnMic.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+            btnMic.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.4)';
+            btnMic.setAttribute('title', 'Listening via Browser Speech... Click to stop.');
+
+            BrowserVoice.startSTT({
+                onResult: ({ final, interim }) => {
+                    if (textarea) {
+                        const current = [baseText, final, interim].filter(Boolean).join(' ');
+                        textarea.value = current;
+                        textarea.dispatchEvent(new Event('input'));
+                        textarea.scrollTop = textarea.scrollHeight;
+                    }
+                },
+                onError: (err) => {
+                    console.warn("Browser STT error:", err);
+                    resetMicUi();
+                },
+                onEnd: () => {
+                    resetMicUi();
+                }
+            });
             return;
         }
 
@@ -429,7 +468,47 @@ export function setupMicVoiceInput(textarea) {
 
 export async function playTtsAudio(text, btnElement) {
     if (!activeTtsModel) {
-        showToastNotification("No Text-to-Speech (TTS) model found in model_registry.json. Please install CosyVoice2 or Kokoro.", "warning");
+        // Fallback to Zero-VRAM Browser Voice Extension (SpeechSynthesis + Karaoke)
+        if (BrowserVoice.isSpeaking && currentPlayingBtn === btnElement) {
+            BrowserVoice.stopTTS();
+            currentPlayingBtn = null;
+            setTtsButtonIcon(btnElement, 'idle');
+            return;
+        }
+
+        const cleanText = text.replace(/<think>[\s\S]*?<\/think>/g, '')
+                              .replace(/```[\s\S]*?```/g, '')
+                              .replace(/<[^>]*>/g, '')
+                              .trim();
+
+        if (!cleanText) return;
+
+        currentPlayingBtn = btnElement;
+        setTtsButtonIcon(btnElement, 'playing');
+
+        BrowserVoice.speak({
+            text: cleanText,
+            onStart: () => setTtsButtonIcon(btnElement, 'playing'),
+            onBoundary: (charIndex, charLength) => {
+                const container = btnElement.closest('.chat-message')?.querySelector('.markdown-body');
+                if (container) {
+                    BrowserVoice.highlightElementKaraoke(container, cleanText, charIndex, charLength);
+                }
+            },
+            onEnd: () => {
+                currentPlayingBtn = null;
+                setTtsButtonIcon(btnElement, 'idle');
+                const container = btnElement.closest('.chat-message')?.querySelector('.markdown-body');
+                if (container && typeof marked !== 'undefined') {
+                    container.innerHTML = marked.parse(text);
+                }
+            },
+            onError: (err) => {
+                console.error("Browser TTS error:", err);
+                currentPlayingBtn = null;
+                setTtsButtonIcon(btnElement, 'idle');
+            }
+        });
         return;
     }
 
