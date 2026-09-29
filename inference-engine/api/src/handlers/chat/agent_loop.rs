@@ -238,8 +238,8 @@ pub async fn execute_streaming_loop(
                         ("plugin".to_string(), raw_fn_name.to_string(), None)
                     };
 
-                    let public_call_name = tool_sub_func.as_deref().unwrap_or(&comp_name);
-                    tracing::info!("🔍 [API] Market Standard Tool Execution: {} '{}' with payload: {}", comp_type, public_call_name, payload_str);
+                    let public_call_name = comp_name.clone();
+                    tracing::info!("🔍 [API] Market Standard Tool Execution: {} '{}' (sub_func: {:?}) with payload: {}", comp_type, public_call_name, tool_sub_func, payload_str);
 
                     // Resolve tool SVG icon from filesystem/registry
                     let icon_svg = {
@@ -273,10 +273,11 @@ pub async fn execute_streaming_loop(
                                 "tool_calls": [{
                                     "index": 0,
                                     "id": format!("call_{}", comp_name),
-                                    "type": "function",
+                                    "type": comp_type.clone(),
                                     "icon_svg": icon_svg.clone(),
                                     "function": {
-                                        "name": public_call_name,
+                                        "name": public_call_name.clone(),
+                                        "sub_function": tool_sub_func.clone(),
                                         "arguments": payload_str,
                                         "icon_svg": icon_svg.clone()
                                     }
@@ -353,7 +354,7 @@ pub async fn execute_streaming_loop(
                     // 🔄 Continuous Multi-Turn Agent Turn Recording
                     let tool_call_xml = format!("<tool_call>\n{}\n</tool_call>", raw_json);
                     let tool_response_xml = engines::tools::ToolsEngine::format_tool_response_raw(
-                        public_call_name,
+                        raw_fn_name,
                         &execution_result,
                     );
                     agent_turn_history.push((tool_call_xml, tool_response_xml));
