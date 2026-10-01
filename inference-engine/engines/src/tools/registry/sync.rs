@@ -36,7 +36,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, triggers, sec_opt, mode, turns) = Self::probe_skill_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or(self.default_security_mode);
+                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Sandboxed);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -64,6 +64,7 @@ impl ToolsRegistry {
                                 permissions: Vec::new(),
                                 semantic_triggers: triggers,
                                 activation_events: Vec::new(),
+                                capabilities: Vec::new(),
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new Skill: {}", tool_id);
@@ -81,7 +82,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, binary, triggers, perms, sec_opt, mode, turns) = Self::probe_plugin_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::FullAccess } else { self.default_security_mode });
+                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::FullAccess } else { SecurityMode::Sandboxed });
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -111,6 +112,7 @@ impl ToolsRegistry {
                                 permissions: perms,
                                 semantic_triggers: triggers,
                                 activation_events: vec![format!("on_command:use plugin::{}", tool_id)],
+                                capabilities: Vec::new(),
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new Plugin: {}", tool_id);
@@ -128,7 +130,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, triggers, perms, sec_opt, mode, turns) = Self::probe_mcp_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or(self.default_security_mode);
+                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Sandboxed);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -157,6 +159,7 @@ impl ToolsRegistry {
                                 permissions: perms,
                                 semantic_triggers: triggers,
                                 activation_events: vec![format!("on_command:use mcp::{}", tool_id)],
+                                capabilities: Vec::new(),
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new MCP: {}", tool_id);

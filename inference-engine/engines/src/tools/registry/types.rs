@@ -142,6 +142,69 @@ pub struct ToolEntry {
     /// Explicit event strings (e.g. "on_command:use plugin::cluaiz-search")
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub activation_events: Vec<String>,
+
+    /// Declared capabilities e.g. ["exec", "fs_write", "network", "fs_read"]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
+}
+
+impl ToolEntry {
+    /// Evaluates if this tool execution requires Human-In-The-Loop approval
+    /// based on master security mode, category, execution mode, and declared capabilities.
+    pub fn requires_approval(&self, master_security_mode: &str) -> bool {
+        match master_security_mode.to_lowercase().as_str() {
+            "full_access" => false,
+            "strict" => true,
+            _ => {
+                // In Sandboxed mode:
+                // 1. External MCP tools always require approval (privilege boundary)
+                if self.category.to_lowercase() == "mcp" {
+                    return true;
+                }
+                // 2. Explicit tool-level strict mode
+                if self.security_mode == SecurityMode::Strict {
+                    return true;
+                }
+                // 3. Execution mode requires confirmation
+                if self.execution_mode == ExecutionMode::Manual
+                    || self.execution_mode == ExecutionMode::ConfirmDestructive
+                {
+                    return true;
+                }
+                // 4. Capability inspection
+                let caps = if !self.capabilities.is_empty() {
+                    &self.capabilities
+                } else {
+                    &self.permissions
+                };
+                // Directive 1: Undeclared tools = approval by default
+                if caps.is_empty() {
+                    return true;
+                }
+                // Sensitive capabilities require approval
+                caps.iter().any(|c| {
+                    let lc = c.to_lowercase();
+                    lc.contains("exec")
+                        || lc.contains("write")
+                        || lc.contains("net")
+                        || lc.contains("shell")
+                        || lc.contains("cmd")
+                        || lc.contains("terminal")
+                })
+            }
+        }
+    }
+
+    /// Returns resolved capabilities (or fallback to permissions or ["undeclared"])
+    pub fn effective_capabilities(&self) -> Vec<String> {
+        if !self.capabilities.is_empty() {
+            self.capabilities.clone()
+        } else if !self.permissions.is_empty() {
+            self.permissions.clone()
+        } else {
+            vec!["undeclared".to_string()]
+        }
+    }
 }
 
 fn default_true() -> bool {
@@ -199,5 +262,40 @@ mod tests {
         let serialized = serde_json::to_string(&parsed).unwrap();
         assert!(serialized.contains(r#""security_mode":"workspace_write""#));
         assert!(serialized.contains(r#""execution_mode":"confirm_destructive""#));
+    }
+
+    #[test]
+    fn test_requires_approval_capabilities() {
+        // 1. Full access always bypasses
+        let mut tool = ToolEntry::default();
+        tool.capabilities = vec!["exec".to_string()];
+        assert!(!tool.requires_approval("full_access"));
+
+        // 2. Strict always prompts
+        tool.capabilities = vec!["fs_read".to_string()];
+        assert!(tool.requires_approval("strict"));
+
+        // 3. Sandboxed: MCP always prompts
+        let mut mcp_tool = ToolEntry::default();
+        mcp_tool.category = "mcp".to_string();
+        assert!(mcp_tool.requires_approval("sandboxed"));
+
+        // 4. Sandboxed: Undeclared capabilities -> default to approval
+        let undeclared_tool = ToolEntry::default();
+        assert!(undeclared_tool.requires_approval("sandboxed"));
+
+        // 5. Sandboxed: Dangerous capability -> prompts
+        let mut exec_tool = ToolEntry::default();
+        exec_tool.capabilities = vec!["exec".to_string()];
+        assert!(exec_tool.requires_approval("sandboxed"));
+
+        let mut write_tool = ToolEntry::default();
+        write_tool.capabilities = vec!["fs_write".to_string()];
+        assert!(write_tool.requires_approval("sandboxed"));
+
+        // 6. Sandboxed: Safe read-only tool -> allowed without approval
+        let mut safe_tool = ToolEntry::default();
+        safe_tool.capabilities = vec!["fs_read".to_string(), "read_only".to_string()];
+        assert!(!safe_tool.requires_approval("sandboxed"));
     }
 }

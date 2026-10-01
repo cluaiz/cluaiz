@@ -126,3 +126,100 @@ pub async fn update_permission(
         "message": "permission.json successfully updated."
     }))
 }
+
+// ─── Real-Time Human-In-The-Loop Approval Endpoints ──────────────────
+#[derive(Debug, serde::Deserialize)]
+pub struct ApprovalActionRequest {
+    pub request_id: String,
+    pub feedback: Option<String>,
+}
+
+pub async fn get_pending_permissions(
+    State(state): State<Arc<AppState>>,
+) -> (axum::http::StatusCode, Json<Value>) {
+    let lock = state.pending_permissions.read().await;
+    let items: Vec<crate::state::PendingPermissionRequest> = lock.values().cloned().collect();
+    (
+        axum::http::StatusCode::OK,
+        Json(json!({
+            "status": "success",
+            "pending": items
+        })),
+    )
+}
+
+pub async fn approve_permission(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ApprovalActionRequest>,
+) -> (axum::http::StatusCode, Json<Value>) {
+    // 1. Signal active streaming task oneshot channel (Real-Time HITL resume)
+    {
+        let mut approvals_lock = state.active_approvals.write().await;
+        if let Some(tx) = approvals_lock.remove(&payload.request_id) {
+            let _ = tx.send(crate::state::ApprovalDecision {
+                approved: true,
+                feedback: payload.feedback.clone(),
+            });
+        }
+    }
+
+    // 2. Update persistent pending_permissions
+    let mut lock = state.pending_permissions.write().await;
+    if let Some(req) = lock.get_mut(&payload.request_id) {
+        req.status = "approved".to_string();
+        (
+            axum::http::StatusCode::OK,
+            Json(json!({
+                "status": "success",
+                "message": "Permission approved",
+                "request": req
+            })),
+        )
+    } else {
+        (
+            axum::http::StatusCode::OK,
+            Json(json!({
+                "status": "success",
+                "message": "Approval signal dispatched"
+            })),
+        )
+    }
+}
+
+pub async fn reject_permission(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ApprovalActionRequest>,
+) -> (axum::http::StatusCode, Json<Value>) {
+    // 1. Signal active streaming task oneshot channel (Real-Time HITL resume)
+    {
+        let mut approvals_lock = state.active_approvals.write().await;
+        if let Some(tx) = approvals_lock.remove(&payload.request_id) {
+            let _ = tx.send(crate::state::ApprovalDecision {
+                approved: false,
+                feedback: payload.feedback.clone(),
+            });
+        }
+    }
+
+    // 2. Update persistent pending_permissions
+    let mut lock = state.pending_permissions.write().await;
+    if let Some(req) = lock.get_mut(&payload.request_id) {
+        req.status = "rejected".to_string();
+        (
+            axum::http::StatusCode::OK,
+            Json(json!({
+                "status": "success",
+                "message": "Permission rejected",
+                "request": req
+            })),
+        )
+    } else {
+        (
+            axum::http::StatusCode::OK,
+            Json(json!({
+                "status": "success",
+                "message": "Rejection signal dispatched"
+            })),
+        )
+    }
+}

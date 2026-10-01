@@ -43,6 +43,9 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
                         let desc = tool_opt.map(|t| t.description.clone()).unwrap_or_default();
                         let enabled = tool_opt.map(|t| t.enabled).unwrap_or(true);
                         let sec_mode = tool_opt.map(|t| format!("{:?}", t.security_mode).to_lowercase()).unwrap_or_else(|| "sandboxed".to_string());
+                        let version = tool_opt.map(|t| t.version.clone()).unwrap_or_else(|| "1.0.0".to_string());
+                        let exec_mode = tool_opt.map(|t| format!("{:?}", t.execution_mode).to_lowercase()).unwrap_or_else(|| "auto".to_string());
+                        let triggers = tool_opt.map(|t| t.semantic_triggers.clone()).unwrap_or_default();
                         let tokens = (desc.len() / 4).max(4);
                         let icon_svg = get_icon_svg(&entry.path())
                             .or_else(|| tool_opt.and_then(|t| get_icon_svg(&std::path::PathBuf::from(&t.local_dir))));
@@ -51,9 +54,12 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
                             "id": id,
                             "name": name,
                             "category": comp_type,
+                            "version": version,
                             "description": desc,
                             "enabled": enabled,
                             "security_mode": sec_mode,
+                            "execution_mode": exec_mode,
+                            "semantic_triggers": triggers,
                             "tokens": tokens,
                             "icon_svg": icon_svg,
                         }));
@@ -72,9 +78,12 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
                     "id": id,
                     "name": tool.name,
                     "category": comp_type,
+                    "version": tool.version,
                     "description": tool.description,
                     "enabled": tool.enabled,
                     "security_mode": format!("{:?}", tool.security_mode).to_lowercase(),
+                    "execution_mode": format!("{:?}", tool.execution_mode).to_lowercase(),
+                    "semantic_triggers": tool.semantic_triggers,
                     "tokens": tokens,
                     "icon_svg": icon_svg,
                 }));
@@ -141,6 +150,15 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
         if let Ok(mode) = serde_json::from_value::<engines::tools::SecurityMode>(serde_json::json!(mode_str)) {
             let _ = engines::tools::ToolsEngine::set_tool_security_mode(comp_id, mode);
         }
+    }
+
+    // Sync execution_mode directly to ToolsRegistry (tools_registry.json)
+    if let Some(exec_str) = settings_map.get("execution_mode").and_then(|v| v.as_str()) {
+        let exec_mode = match exec_str.trim().to_lowercase().as_str() {
+            "manual" => engines::tools::ExecutionMode::Manual,
+            _ => engines::tools::ExecutionMode::Auto,
+        };
+        let _ = engines::tools::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode);
     }
 
     Json(serde_json::json!({"status": "success"}))

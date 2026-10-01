@@ -14,10 +14,6 @@ pub struct ToolsRegistry {
     #[serde(default)]
     pub last_updated: String,
 
-    /// Global default security mode ("full_access" | "sandboxed" | "strict")
-    #[serde(default)]
-    pub default_security_mode: SecurityMode,
-
     /// Map of tool_id -> ToolEntry
     #[serde(default)]
     pub installed_tools: HashMap<String, ToolEntry>,
@@ -93,6 +89,7 @@ impl ToolsRegistry {
                                 permissions: Vec::new(),
                                 semantic_triggers: Vec::new(),
                                 activation_events: Vec::new(),
+                                capabilities: Vec::new(),
                             });
                         }
                     }
@@ -114,6 +111,7 @@ impl ToolsRegistry {
                                 permissions: Vec::new(),
                                 semantic_triggers: Vec::new(),
                                 activation_events: Vec::new(),
+                                capabilities: Vec::new(),
                             });
                         }
                     }
@@ -135,6 +133,7 @@ impl ToolsRegistry {
                                 permissions: Vec::new(),
                                 semantic_triggers: Vec::new(),
                                 activation_events: Vec::new(),
+                                capabilities: Vec::new(),
                             });
                         }
                     }
