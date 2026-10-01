@@ -199,6 +199,83 @@
     },
     {
       "method": "GET",
+      "path": "/v1/system/permission/pending",
+      "desc": "Lists active paused agent operations currently awaiting human approval.",
+      "docs_url": "/docs/api/system/permission.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"pending\": [\n    {\n      \"request_id\": \"7fa419ba-a5a4-441f-8e2b-ffad67a1496a\",\n      \"tool_name\": \"execute_shell\",\n      \"capabilities\": [\"exec\"],\n      \"parameters\": {\"command\": \"git status\"},\n      \"status\": \"pending\"\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/system/permission/pending \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/permission/approve",
+      "desc": "Approves a paused tool invocation or sensitive filesystem operation by its request UUID.",
+      "docs_url": "/docs/api/system/permission.md",
+      "params": [
+        {
+          "name": "request_id",
+          "type": "string",
+          "req": true,
+          "desc": "Unique UUID of the paused permission request.",
+          "default": "7fa419ba-a5a4-441f-8e2b-ffad67a1496a"
+        },
+        {
+          "name": "feedback",
+          "type": "string",
+          "req": false,
+          "desc": "Optional annotation for approval audit log.",
+          "default": "Approved by user in Developer Hub"
+        }
+      ],
+      "request_payload": "{\n  \"request_id\": \"7fa419ba-a5a4-441f-8e2b-ffad67a1496a\",\n  \"feedback\": \"Approved by user in Developer Hub\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Permission approved\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/system/permission/approve \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"request_id\": \"7fa419ba-a5a4-441f-8e2b-ffad67a1496a\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/permission/reject",
+      "desc": "Rejects a paused tool invocation and sends cancellation feedback to the model context.",
+      "docs_url": "/docs/api/system/permission.md",
+      "params": [
+        {
+          "name": "request_id",
+          "type": "string",
+          "req": true,
+          "desc": "Unique UUID of the paused permission request.",
+          "default": "7fa419ba-a5a4-441f-8e2b-ffad67a1496a"
+        },
+        {
+          "name": "feedback",
+          "type": "string",
+          "req": false,
+          "desc": "Optional feedback explaining why the action was declined.",
+          "default": "Declined by user"
+        }
+      ],
+      "request_payload": "{\n  \"request_id\": \"7fa419ba-a5a4-441f-8e2b-ffad67a1496a\",\n  \"feedback\": \"Declined by user\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Permission rejected\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/system/permission/reject \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"request_id\": \"7fa419ba-a5a4-441f-8e2b-ffad67a1496a\", \"feedback\": \"Declined\"}'"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/v1/system/storage/temp_media",
       "desc": "Inspects temporary media storage cache size and file counts.",
       "docs_url": "/docs/reference/api.md",
@@ -270,6 +347,101 @@
           "language": "curl",
           "title": "cURL",
           "code": "curl -X GET http://localhost:8000/v1/system/onnx_config"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/storage/settings",
+      "desc": "Updates local vault storage controls and automatic cache cleanup policy.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [
+        {
+          "name": "cleanup_policy",
+          "type": "string",
+          "req": true,
+          "desc": "Temporary media cleanup policy ('Immediate', 'Deferred', 'Disabled').",
+          "default": "Immediate"
+        }
+      ],
+      "request_payload": "{\n  \"cleanup_policy\": \"Immediate\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Storage settings updated.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/system/storage/settings \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"cleanup_policy\": \"Immediate\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/gguf_config",
+      "desc": "Updates global GGUF parser flags and thinking monologue behavior.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [
+        {
+          "name": "user_moved_flags",
+          "type": "object",
+          "req": false,
+          "desc": "Thinking mode flags and runtime overrides.",
+          "default": {
+            "think_mode": "auto"
+          }
+        }
+      ],
+      "request_payload": "{\n  \"user_moved_flags\": {\n    \"think_mode\": \"auto\"\n  }\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/system/gguf_config \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"user_moved_flags\": {\"think_mode\": \"auto\"}}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/system/onnx_config",
+      "desc": "Updates ONNX runtime execution provider and memory optimization settings.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [
+        {
+          "name": "execution_provider",
+          "type": "string",
+          "req": false,
+          "desc": "ONNX execution provider (e.g. 'CPUExecutionProvider', 'CUDAExecutionProvider').",
+          "default": "CPUExecutionProvider"
+        }
+      ],
+      "request_payload": "{\n  \"execution_provider\": \"CPUExecutionProvider\"\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/system/onnx_config \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"execution_provider\": \"CPUExecutionProvider\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/benchmark/run",
+      "desc": "Executes hardware isolated benchmark suite across CPU, RAM, and GPU/VRAM to measure compute throughput.",
+      "docs_url": "/docs/reference/api.md",
+      "params": [],
+      "request_payload": "{}",
+      "response": "{\n  \"status\": \"success\",\n  \"message\": \"Hardware isolated benchmark stream executed.\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/benchmark/run \\\n  -H 'Content-Type: application/json' \\\n  -d '{}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nres = requests.post('http://localhost:8000/v1/benchmark/run', json={})\nprint(res.json())"
         }
       ]
     },
