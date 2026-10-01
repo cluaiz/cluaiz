@@ -1,0 +1,252 @@
+{
+  "group": "Filesystem & Workspace Jail",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/v1/fs/read",
+      "desc": "Reads file contents inside the active workspace. Automatically supports UTF-8 text strings and Base64-encoded binary payloads.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "req": true,
+          "desc": "File path relative to the active workspace root.",
+          "default": "Cargo.toml"
+        },
+        {
+          "name": "is_binary",
+          "type": "boolean",
+          "req": false,
+          "desc": "If true, returns base64 encoded bytes.",
+          "default": false
+        }
+      ],
+      "request_payload": "{\n  \"path\": \"Cargo.toml\",\n  \"is_binary\": false\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"content\": \"[package]\\nname = \\\"cluaiz\\\"\\nversion = \\\"0.1.0\\\"\",\n  \"is_binary\": false\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/read \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"path\": \"Cargo.toml\"}'"
+        },
+        {
+          "language": "python",
+          "title": "Python",
+          "code": "import requests\n\nheaders = {'Authorization': 'Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351'}\nres = requests.post('http://localhost:8000/v1/fs/read', json={'path': 'Cargo.toml'}, headers=headers)\nprint(res.json())"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/write",
+      "desc": "Writes or overwrites a file inside the active workspace. Creates missing parent directories automatically.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "req": true,
+          "desc": "File path relative to active workspace.",
+          "default": "notes/todo.txt"
+        },
+        {
+          "name": "content",
+          "type": "string",
+          "req": true,
+          "desc": "Plain UTF-8 text string or base64 encoded binary string.",
+          "default": "Hello from Cluaiz Developer Hub!"
+        }
+      ],
+      "request_payload": "{\n  \"path\": \"notes/todo.txt\",\n  \"content\": \"Hello from Cluaiz Developer Hub!\",\n  \"is_binary\": false\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/write \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"path\": \"notes/todo.txt\", \"content\": \"Hello!\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/list",
+      "desc": "Lists files and subdirectories up to 12 levels deep with high-noise folders (node_modules, target, .git) automatically filtered.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "dir_path",
+          "type": "string",
+          "req": false,
+          "desc": "Subdirectory to scan. Defaults to root workspace if omitted.",
+          "default": "."
+        },
+        {
+          "name": "recursive",
+          "type": "boolean",
+          "req": false,
+          "desc": "Scan subdirectories recursively.",
+          "default": true
+        }
+      ],
+      "request_payload": "{\n  \"dir_path\": \".\",\n  \"recursive\": false\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"items\": [\n    {\n      \"path\": \"Cargo.toml\",\n      \"name\": \"Cargo.toml\",\n      \"isFolder\": false,\n      \"length\": 1420,\n      \"modified\": \"SystemTime\"\n    }\n  ]\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/list \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"dir_path\": \".\", \"recursive\": false}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/delete",
+      "desc": "Deletes a file or directory recursively inside workspace. Gated by Human-in-the-Loop approval under sandboxed mode.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "req": true,
+          "desc": "Path to delete.",
+          "default": "temp/test.txt"
+        }
+      ],
+      "request_payload": "{\n  \"path\": \"temp/test.txt\"\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/delete \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"path\": \"temp/test.txt\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/rename",
+      "desc": "Atomically renames or moves a file or directory within the workspace.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "old_path",
+          "type": "string",
+          "req": true,
+          "desc": "Existing path.",
+          "default": "docs/old.md"
+        },
+        {
+          "name": "new_path",
+          "type": "string",
+          "req": true,
+          "desc": "New destination path.",
+          "default": "docs/new.md"
+        }
+      ],
+      "request_payload": "{\n  \"old_path\": \"docs/old.md\",\n  \"new_path\": \"docs/new.md\"\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/rename \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"old_path\": \"docs/old.md\", \"new_path\": \"docs/new.md\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/copy",
+      "desc": "Copies a file or folder recursively to a target path inside the workspace.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "src_path",
+          "type": "string",
+          "req": true,
+          "desc": "Source file or directory.",
+          "default": "template.json"
+        },
+        {
+          "name": "dest_path",
+          "type": "string",
+          "req": true,
+          "desc": "Target destination path.",
+          "default": "config/settings.json"
+        }
+      ],
+      "request_payload": "{\n  \"src_path\": \"template.json\",\n  \"dest_path\": \"config/settings.json\"\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/copy \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"src_path\": \"template.json\", \"dest_path\": \"config/settings.json\"}'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/fs/mkdir",
+      "desc": "Creates a directory and any required parent directories inside the workspace.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "path",
+          "type": "string",
+          "req": true,
+          "desc": "Directory path to create.",
+          "default": "output/logs"
+        }
+      ],
+      "request_payload": "{\n  \"path\": \"output/logs\"\n}",
+      "response": "{\n  \"status\": \"success\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/fs/mkdir \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"path\": \"output/logs\"}'"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/workspace",
+      "desc": "Retrieves the current canonical workspace directory of the engine.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [],
+      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X GET http://localhost:8000/v1/workspace \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351'"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/workspace",
+      "desc": "Dynamically changes the active workspace directory at runtime.",
+      "docs_url": "/docs/api/fs/filesystem.md",
+      "params": [
+        {
+          "name": "workspace",
+          "type": "string",
+          "req": true,
+          "desc": "Absolute path to the new workspace directory.",
+          "default": "C:\\Users\\Aryan\\my\\Cluaiz-workspace"
+        }
+      ],
+      "request_payload": "{\n  \"workspace\": \"C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"\\\\\\\\?\\\\C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
+      "examples": [
+        {
+          "language": "curl",
+          "title": "cURL",
+          "code": "curl -X POST http://localhost:8000/v1/workspace \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"workspace\": \"C:\\\\Projects\\\\Workspace\"}'"
+        }
+      ]
+    }
+  ]
+}

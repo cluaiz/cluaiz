@@ -93,6 +93,7 @@ async function initApp() {
     try {
         const endpoints = [
             'system.json',
+            'filesystem.json',
             'inference.json',
             'tools.json',
             'execution.json',
@@ -397,6 +398,7 @@ function openEndpoint(ep, forceDefault = false) {
     }
 
     switchTab('params');
+    syncAuthHeaders(false);
 
     // Render Snippets
     const snippetsTabs = document.getElementById('snippets-tabs');
@@ -511,22 +513,42 @@ export function initEditor() {
         state.headersEditor = new CodeEditor({
             id: 'headers-body-editor',
             mode: 'application/json',
-            value: '{\n  "Authorization": ""\n}'
+            value: '{\n  "Content-Type": "application/json"\n}'
         });
         headersContainer.appendChild(state.headersEditor.render());
         state.headersEditor.mount();
 
-        // Always fetch active API token directly from permission.json via engine REST API
-        fetch(window.getApiBaseUrl() + '/v1/system/permission')
-            .then(res => res.json())
-            .then(pData => {
-                if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
-                    const activeToken = pData.permission.api_auth.tokens[0].trim();
-                    state.headersEditor.setValue('{\n  "Authorization": "' + activeToken + '"\n}');
-                }
-            })
-            .catch(() => { });
+        // Auto-fetch active Bearer token and populate into Headers editor
+        syncAuthHeaders(true);
     }
+}
+
+export async function syncAuthHeaders(force = false) {
+    try {
+        const res = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
+        if (!res.ok) return null;
+        const pData = await res.json();
+        const apiAuth = pData?.api_auth || pData?.permission?.api_auth;
+        if (apiAuth && apiAuth.tokens && apiAuth.tokens.length > 0) {
+            const rawToken = apiAuth.tokens[0].trim();
+            const bearerToken = rawToken.startsWith('Bearer ') ? rawToken : `Bearer ${rawToken}`;
+            if (state.headersEditor) {
+                let current = {};
+                try {
+                    current = JSON.parse(state.headersEditor.getValue() || '{}');
+                } catch (_) {}
+                if (force || !current['Authorization'] || current['Authorization'] === "") {
+                    current['Content-Type'] = current['Content-Type'] || 'application/json';
+                    current['Authorization'] = bearerToken;
+                    state.headersEditor.setValue(JSON.stringify(current, null, 2));
+                }
+            }
+            return bearerToken;
+        }
+    } catch (e) {
+        console.warn("Could not sync auth headers:", e);
+    }
+    return null;
 }
 
 export function initResizer() {
@@ -990,18 +1012,34 @@ export async function sendRequest() {
         } catch (e) { }
     }
 
-    try {
-        const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
-        if (pRes.ok) {
-            const pData = await pRes.json();
-            if (pData.permission && pData.permission.api_auth && pData.permission.api_auth.tokens && pData.permission.api_auth.tokens.length > 0) {
-                if (!options.headers['Authorization']) {
-                    options.headers['Authorization'] = pData.permission.api_auth.tokens[0].trim();
+    // Ensure Authorization header is present if configured in engine
+    if (!options.headers['Authorization']) {
+        try {
+            const pRes = await fetch(window.getApiBaseUrl() + '/v1/system/permission');
+            if (pRes.ok) {
+                const pData = await pRes.json();
+                const apiAuth = pData?.api_auth || pData?.permission?.api_auth;
+                if (apiAuth && apiAuth.tokens && apiAuth.tokens.length > 0) {
+                    const rawTok = apiAuth.tokens[0].trim();
+                    const bearerTok = rawTok.startsWith('Bearer ') ? rawTok : `Bearer ${rawTok}`;
+                    options.headers['Authorization'] = bearerTok;
+                    
+                    // Auto-sync into editor for UI visibility
+                    if (state.headersEditor) {
+                        try {
+                            const cur = JSON.parse(state.headersEditor.getValue() || '{}');
+                            if (!cur['Authorization']) {
+                                cur['Content-Type'] = cur['Content-Type'] || 'application/json';
+                                cur['Authorization'] = bearerTok;
+                                state.headersEditor.setValue(JSON.stringify(cur, null, 2));
+                            }
+                        } catch (_) {}
+                    }
                 }
             }
+        } catch (e) {
+            console.warn("Could not fetch permissions for auth token");
         }
-    } catch (e) {
-        console.warn("Could not fetch permissions for auth token");
     }
 
     if ((ep.method === 'POST' || ep.method === 'PUT' || ep.method === 'DELETE') && bodyStr.trim() !== '') {
