@@ -3,11 +3,10 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
-use axum::http::Method;
+use tower_http::cors::CorsLayer;
 
 use crate::state::AppState;
-use crate::handlers::{chat, system, models, ingest, embeddings, audio};
+use crate::handlers::{chat, system, models, embeddings, audio};
 
 pub fn build(state: Arc<AppState>) -> Router {
     // ── CORS — Restrict to localhost origins only (Desktop, Mobile apps on localhost) ──
@@ -104,6 +103,21 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/gguf_config", post(crate::handlers::system::update_gguf_config))
         .route("/v1/system/onnx_config", get(crate::handlers::system::get_onnx_config))
         .route("/v1/system/onnx_config", post(crate::handlers::system::update_onnx_config))
+
+        // ── Native High-Speed File System API (Direct NVMe/SSD Syscalls) ──
+        .route("/v1/fs/read", post(crate::handlers::fs::read_file))
+        .route("/v1/fs/write", post(crate::handlers::fs::write_file))
+        .route("/v1/fs/list", post(crate::handlers::fs::list_dir))
+        .route("/v1/fs/delete", post(crate::handlers::fs::delete_path))
+        .route("/v1/fs/rename", post(crate::handlers::fs::rename_path))
+        .route("/v1/fs/copy", post(crate::handlers::fs::copy_path))
+        .route("/v1/fs/mkdir", post(crate::handlers::fs::create_dir))
+        .route("/v1/workspace", get(crate::handlers::fs::get_workspace_dir).post(crate::handlers::fs::set_workspace_dir))
+
+        // ── Agent Security & Approval Gate API ──
+        .route("/v1/system/permission/pending", get(crate::handlers::permission::get_pending_permissions))
+        .route("/v1/system/permission/approve", post(crate::handlers::permission::approve_permission))
+        .route("/v1/system/permission/reject", post(crate::handlers::permission::reject_permission))
 
 
 

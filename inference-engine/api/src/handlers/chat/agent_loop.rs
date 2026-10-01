@@ -288,21 +288,146 @@ pub async fn execute_streaming_loop(
                     yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
 
                     let tool_start_time = std::time::Instant::now();
-                    let sec_mode = engines::tools::ToolsEngine::get_tool(&comp_name)
+                    let tool_entry_opt = engines::tools::ToolsEngine::get_tool(&comp_name)
                         .ok()
-                        .flatten()
+                        .flatten();
+                    let sec_mode = tool_entry_opt
+                        .as_ref()
                         .map(|t| t.security_mode)
                         .unwrap_or(engines::tools::registry::SecurityMode::Sandboxed);
 
-                    let execution_result = match engines::tools::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
-                        Ok(res_str) => {
-                            tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
-                            res_str
-                        },
-                        Err(e) => {
-                            tracing::error!("❌ [API] Failed to execute tool '{}': {}", public_call_name, e);
-                            format!("Error executing {}: {}", public_call_name, e)
+                    // 🛡️ Human-In-The-Loop (HITL) Permission Gate
+                    let global_perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                    let master_mode = global_perms.agent_security_mode.to_lowercase();
+
+                    // Directive 1 & 2: Capability-Based Approval Gate
+                    // - full_access: bypass all prompts
+                    // - strict: prompt for everything
+                    // - sandboxed:
+                    //     * MCP tools always require approval
+                    //     * undeclared tool (not in registry or empty capabilities) = require approval by default
+                    //     * dangerous capabilities ("exec", "fs_write", "network", etc.) = require approval
+                    //     * safe declared tools ("fs_read", "read_only") = run without prompt
+                    let (requires_approval, tool_capabilities) = match master_mode.as_str() {
+                        "full_access" => (false, vec!["full_access_override".to_string()]),
+                        "strict" => {
+                            let caps = tool_entry_opt.as_ref().map(|t| t.effective_capabilities()).unwrap_or_else(|| vec!["undeclared".to_string()]);
+                            (true, caps)
                         }
+                        _ => {
+                            if comp_type == "mcp" {
+                                let caps = tool_entry_opt.as_ref().map(|t| t.effective_capabilities()).unwrap_or_else(|| vec!["mcp:external".to_string()]);
+                                (true, caps)
+                            } else if let Some(ref entry) = tool_entry_opt {
+                                (entry.requires_approval(&master_mode), entry.effective_capabilities())
+                            } else {
+                                // Undeclared tool not found in registry -> default to requiring approval
+                                (true, vec!["undeclared".to_string()])
+                            }
+                        }
+                    };
+
+                    let mut permission_granted = true;
+                    let mut user_denial_feedback: Option<String> = None;
+
+                    if requires_approval {
+                        let req_id = format!("perm_{}", uuid::Uuid::new_v4());
+                        let (tx, rx) = tokio::sync::oneshot::channel::<crate::state::ApprovalDecision>();
+
+                        // 1. Register approval channel
+                        {
+                            let mut lock = state_clone.active_approvals.write().await;
+                            lock.insert(req_id.clone(), tx);
+                        }
+
+                        // 2. Register persistent pending request for UI (storing full script payload)
+                        {
+                            let now_ms = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_millis() as u64)
+                                .unwrap_or(0);
+                            let mut lock = state_clone.pending_permissions.write().await;
+                            lock.insert(req_id.clone(), crate::state::PendingPermissionRequest {
+                                id: req_id.clone(),
+                                action: format!("{}:{}", comp_type, public_call_name),
+                                target: payload_str.clone(),
+                                caller: "agent".to_string(),
+                                timestamp_ms: now_ms,
+                                status: "pending".to_string(),
+                            });
+                        }
+
+                        // 3. Yield Real-Time SSE Permission Request to Client with Full Script Transparency & Capabilities
+                        let perm_chunk = json!({
+                            "id": req_id_stream.clone(),
+                            "object": "chat.completion.chunk",
+                            "created": Utc::now().timestamp(),
+                            "model": request.model.clone(),
+                            "choices": [{
+                                "index": 0,
+                                "delta": {
+                                    "permission_request": {
+                                        "request_id": req_id.clone(),
+                                        "tool_name": public_call_name.clone(),
+                                        "category": comp_type.clone(),
+                                        "capabilities": tool_capabilities,
+                                        "parameters": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
+                                        "status": "pending_approval",
+                                        "timeout_seconds": 120
+                                    }
+                                }
+                            }]
+                        });
+                        yield Ok::<_, Infallible>(Event::default().data(perm_chunk.to_string()));
+
+                        // 4. Real-Time Pause: Await user decision (120s timeout)
+                        match tokio::time::timeout(std::time::Duration::from_secs(120), rx).await {
+                            Ok(Ok(decision)) => {
+                                if decision.approved {
+                                    permission_granted = true;
+                                    tracing::info!("✅ [API] User approved execution of tool '{}'", public_call_name);
+                                } else {
+                                    permission_granted = false;
+                                    user_denial_feedback = decision.feedback;
+                                    tracing::warn!("🛑 [API] User rejected tool '{}': {:?}", public_call_name, user_denial_feedback);
+                                }
+                            }
+                            Ok(Err(_)) => {
+                                permission_granted = false;
+                                user_denial_feedback = Some("Approval channel disconnected".to_string());
+                            }
+                            Err(_) => {
+                                permission_granted = false;
+                                user_denial_feedback = Some("User confirmation timed out after 120 seconds. Operation skipped.".to_string());
+                                tracing::warn!("⏱️ [API] Confirmation timed out for tool '{}'", public_call_name);
+                            }
+                        }
+
+                        // Cleanup channel from active registry
+                        {
+                            let mut lock = state_clone.active_approvals.write().await;
+                            lock.remove(&req_id);
+                        }
+                    }
+
+                    let execution_result = if permission_granted {
+                        match engines::tools::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
+                            Ok(res_str) => {
+                                tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
+                                res_str
+                            },
+                            Err(e) => {
+                                tracing::error!("❌ [API] Failed to execute tool '{}': {}", public_call_name, e);
+                                format!("Error executing {}: {}", public_call_name, e)
+                            }
+                        }
+                    } else {
+                        let reason = user_denial_feedback.unwrap_or_else(|| "User denied permission to execute this tool.".to_string());
+                        json!({
+                            "status": "denied",
+                            "error": format!("Permission Denied: {}", reason),
+                            "message": reason
+                        }).to_string()
                     };
                     let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
 

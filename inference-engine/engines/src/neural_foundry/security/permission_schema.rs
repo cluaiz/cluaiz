@@ -77,6 +77,8 @@ pub struct PermissionSchema {
     pub connection_protocol: String,
     #[serde(default)]
     pub api_auth: ApiAuth,
+    #[serde(default = "default_agent_security_mode")]
+    pub agent_security_mode: String,
 }
 
 impl Default for ModelSelection {
@@ -105,8 +107,13 @@ impl Default for PermissionSchema {
             api_port: default_api_port(),
             connection_protocol: default_connection_protocol(),
             api_auth: ApiAuth::default(),
+            agent_security_mode: default_agent_security_mode(),
         }
     }
+}
+
+fn default_agent_security_mode() -> String {
+    "sandboxed".to_string()
 }
 
 fn default_wasm_firewall() -> String {

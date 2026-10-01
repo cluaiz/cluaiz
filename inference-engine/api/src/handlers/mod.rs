@@ -16,3 +16,5 @@ pub mod embeddings;
 pub mod storage;
 pub mod audio;
 pub mod session_tools;
+pub mod fs;
+pub mod fs_jail;

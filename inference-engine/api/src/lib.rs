@@ -77,8 +77,19 @@ pub async fn run_daemon() {
 
     let embedding_dispatcher = Arc::new(dispatcher::EmbeddingDispatcher::new(None).expect("Failed to initialize embedding engine"));
 
+    // ── Initialize Session Token & Current Workspace Directory (P2/P3 Mandates) ──
+    let session_token = auth::initialize_session_token();
+    let initial_workspace = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
     // ── Create shared state ──
-    let state = Arc::new(AppState { dispatcher, embedding_dispatcher });
+    let state = Arc::new(AppState { 
+        dispatcher, 
+        embedding_dispatcher,
+        pending_permissions: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        active_approvals: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        current_workspace_dir: Arc::new(tokio::sync::RwLock::new(initial_workspace)),
+        session_token: Arc::new(session_token),
+    });
 
     // ── Build API Routes ──
     let app = routes::build(state.clone());

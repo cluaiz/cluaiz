@@ -73,6 +73,7 @@ impl ToolsEngine {
         Ok(())
     }
 
+
     /// Downloads and installs a tool from Cluaiz Tools into `~/.cluaiz/tools/{skills,plugins,mcp}`
     pub async fn install_tool(category: &str, tool_id: &str) -> Result<()> {
         ToolsInstaller::install_component(category, tool_id).await
