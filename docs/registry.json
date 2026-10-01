@@ -42,7 +42,9 @@
         {
           "group": "HTTP API Reference",
           "pages": [
-            { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" }
+            { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" },
+            { "slug": "fs-api", "title": "📁 Filesystem & Jail API", "file_path": "docs/api/fs/filesystem.md" },
+            { "slug": "permission-api", "title": "🔒 Permission & HITL Gate", "file_path": "docs/api/system/permission.md" }
           ]
         },
         {
@@ -169,6 +171,7 @@
       {
         "group": "Core Architecture",
         "pages": [
+          { "slug": "security-and-auth-architecture", "title": "🛡️ Security & Auth Architecture", "file_path": "docs/architecture/security-and-auth-architecture.md" },
           { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
           { "slug": "cel-ffi-api-execution", "title": "🔌 CEL FFI API Execution", "file_path": "docs/architecture/cel-ffi-api-execution.md" },
           { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
