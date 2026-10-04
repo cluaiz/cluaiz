@@ -64,6 +64,20 @@ impl ApiAuth {
         });
     }
 
+    pub fn mask_token(token: &str) -> String {
+        let trimmed = token.trim();
+        if trimmed.len() <= 8 {
+            "sk-••••••••".to_string()
+        } else {
+            let suffix = &trimmed[trimmed.len().saturating_sub(4)..];
+            format!("sk-••••{}", suffix)
+        }
+    }
+
+    pub fn masked_tokens(&self) -> Vec<String> {
+        self.tokens.iter().map(|t| Self::mask_token(t)).collect()
+    }
+
     pub fn ensure_valid_token(&mut self) -> Option<String> {
         self.sanitize_tokens();
         if self.required && self.tokens.is_empty() {
@@ -510,18 +524,33 @@ impl PermissionSchema {
     pub fn merge_patch(&mut self, patch: &serde_json::Value) {
         if let Some(obj) = patch.as_object() {
             if let Some(auth_val) = obj.get("api_auth") {
-                if let Ok(incoming_auth) = serde_json::from_value::<ApiAuth>(auth_val.clone()) {
-                    self.api_auth = incoming_auth;
-                } else if let Some(auth_obj) = auth_val.as_object() {
-                    if let Some(req) = auth_obj.get("required").and_then(|v| v.as_bool()) {
-                        self.api_auth.required = req;
+                let (req_opt, toks_opt) = if let Some(auth_obj) = auth_val.as_object() {
+                    let req = auth_obj.get("required").and_then(|v| v.as_bool());
+                    let toks = auth_obj.get("tokens").and_then(|v| v.as_array().cloned());
+                    (req, toks)
+                } else if let Ok(incoming_auth) = serde_json::from_value::<ApiAuth>(auth_val.clone()) {
+                    let toks = serde_json::to_value(&incoming_auth.tokens).ok().and_then(|v| v.as_array().cloned());
+                    (Some(incoming_auth.required), toks)
+                } else {
+                    (None, None)
+                };
+
+                if let Some(req) = req_opt {
+                    self.api_auth.required = req;
+                }
+                if let Some(toks) = toks_opt {
+                    let mut updated_tokens = Vec::new();
+                    for t in toks.iter().filter_map(|t| t.as_str().map(|s| s.trim())) {
+                        if t.contains('•') || t.contains('*') {
+                            let suffix = t.trim_start_matches(|c| c == '•' || c == '*' || c == '-' || c == 's' || c == 'k');
+                            if let Some(existing) = self.api_auth.tokens.iter().find(|orig| orig.ends_with(suffix)) {
+                                updated_tokens.push(existing.clone());
+                            }
+                        } else if !t.is_empty() && t != "sk-cluaiz-" && t.len() > 10 {
+                            updated_tokens.push(t.to_string());
+                        }
                     }
-                    if let Some(toks) = auth_obj.get("tokens").and_then(|v| v.as_array()) {
-                        self.api_auth.tokens = toks.iter()
-                            .filter_map(|t| t.as_str().map(|s| s.trim().to_string()))
-                            .filter(|s| !s.is_empty() && s != "sk-cluaiz-")
-                            .collect();
-                    }
+                    self.api_auth.tokens = updated_tokens;
                 }
                 self.api_auth.ensure_valid_token();
             }

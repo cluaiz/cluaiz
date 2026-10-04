@@ -79,7 +79,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, binary, triggers, perms, sec_opt, mode, turns) = Self::probe_plugin_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::AlwaysAllow } else { SecurityMode::Inherit });
+                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Inherit);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -171,7 +171,14 @@ impl ToolsRegistry {
     }
 
     fn parse_security_mode(val: Option<&str>) -> Option<SecurityMode> {
-        val.and_then(SecurityMode::from_raw)
+        val.and_then(SecurityMode::from_raw).map(|mode| {
+            if mode == SecurityMode::AlwaysAllow {
+                tracing::warn!("⚠️ Untrusted manifest requested 'always_allow' security mode. Demoting to 'require_approval' for safety.");
+                SecurityMode::RequireApproval
+            } else {
+                mode
+            }
+        })
     }
 
     fn probe_skill_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
