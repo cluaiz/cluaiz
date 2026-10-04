@@ -90,16 +90,26 @@ fn extract_caller<'a>(headers: &'a HeaderMap, body_caller: &'a Option<String>) -
         .or(body_caller.as_deref())
 }
 
+fn strip_verbatim(p: &Path) -> std::path::PathBuf {
+    let s = p.to_string_lossy();
+    if s.starts_with(r"\\?\") {
+        std::path::PathBuf::from(&s[4..])
+    } else {
+        p.to_path_buf()
+    }
+}
+
 // ── Workspace Management Endpoints ────────────────────────────────────────
 pub async fn get_workspace_dir(
     State(state): State<Arc<AppState>>,
 ) -> (StatusCode, Json<Value>) {
     let ws = state.current_workspace_dir.read().await;
+    let clean = strip_verbatim(&ws);
     (
         StatusCode::OK,
         Json(json!({
             "status": "success",
-            "workspace": ws.to_string_lossy()
+            "workspace": clean.to_string_lossy()
         }))
     )
 }
@@ -120,13 +130,14 @@ pub async fn set_workspace_dir(
     }
     match std::fs::canonicalize(path) {
         Ok(canon) => {
+            let clean = strip_verbatim(&canon);
             let mut ws = state.current_workspace_dir.write().await;
-            *ws = canon.clone();
+            *ws = clean.clone();
             (
                 StatusCode::OK,
                 Json(json!({
                     "status": "success",
-                    "workspace": canon.to_string_lossy()
+                    "workspace": clean.to_string_lossy()
                 }))
             )
         }
@@ -326,11 +337,18 @@ pub async fn list_dir(
         return (StatusCode::OK, Json(json!({ "status": "success", "items": [] })));
     }
 
-    let base_root = &ws;
-    let ignored_names = [
-        ".git", "node_modules", "target", "dist", "build", ".cache",
-        "$RECYCLE.BIN", "System Volume Information", "AppData", ".vscode", ".idea"
-    ];
+    let payload_root = payload.root_path.as_deref().map(Path::new);
+    let base_root = payload_root.unwrap_or(&ws);
+
+    let strip_verbatim = |p: &Path| -> std::path::PathBuf {
+        let s = p.to_string_lossy();
+        if s.starts_with(r"\\?\") {
+            std::path::PathBuf::from(&s[4..])
+        } else {
+            p.to_path_buf()
+        }
+    };
+    let clean_base_root = strip_verbatim(base_root);
 
     let mut results: Vec<DiskItemDto> = Vec::new();
 
@@ -338,13 +356,13 @@ pub async fn list_dir(
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let entry_path = entry.path();
+                let clean_entry = strip_verbatim(&entry_path);
                 let file_name = entry.file_name();
                 let name = file_name.to_string_lossy();
-                if ignored_names.iter().any(|&ig| name.eq_ignore_ascii_case(ig)) {
-                    continue;
-                }
 
-                let rel_str = if let Ok(rel) = entry_path.strip_prefix(base_root) {
+                let rel_str = if let Ok(rel) = clean_entry.strip_prefix(&clean_base_root) {
+                    rel.to_string_lossy().replace('\\', "/")
+                } else if let Ok(rel) = entry_path.strip_prefix(base_root) {
                     rel.to_string_lossy().replace('\\', "/")
                 } else {
                     name.to_string()
@@ -381,16 +399,26 @@ pub async fn list_dir(
         if depth > 12 {
             return;
         }
+        let strip_verbatim = |p: &Path| -> std::path::PathBuf {
+            let s = p.to_string_lossy();
+            if s.starts_with(r"\\?\") {
+                std::path::PathBuf::from(&s[4..])
+            } else {
+                p.to_path_buf()
+            }
+        };
+        let clean_root = strip_verbatim(root);
+
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let entry_path = entry.path();
+                let clean_entry = strip_verbatim(&entry_path);
                 let file_name = entry.file_name();
                 let name = file_name.to_string_lossy();
-                if ignored.iter().any(|&ig| name.eq_ignore_ascii_case(ig)) {
-                    continue;
-                }
 
-                let rel_str = if let Ok(rel) = entry_path.strip_prefix(root) {
+                let rel_str = if let Ok(rel) = clean_entry.strip_prefix(&clean_root) {
+                    rel.to_string_lossy().replace('\\', "/")
+                } else if let Ok(rel) = entry_path.strip_prefix(root) {
                     rel.to_string_lossy().replace('\\', "/")
                 } else {
                     name.to_string()
@@ -420,7 +448,7 @@ pub async fn list_dir(
         }
     }
 
-    walk_dir(dir, base_root, &mut results, &ignored_names, 0);
+    walk_dir(dir, base_root, &mut results, &[], 0);
     (StatusCode::OK, Json(json!({ "status": "success", "items": results })))
 }
 
@@ -643,5 +671,3 @@ pub async fn create_dir(
         ),
     }
 }
-
-
