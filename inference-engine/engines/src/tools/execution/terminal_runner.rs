@@ -88,7 +88,7 @@ impl SandboxTerminalRunner {
         let trimmed = command_line.trim();
 
         // 1. Resolve Environment & Credentials
-        let scrub_secrets = matches!(security_mode, SecurityMode::Sandboxed | SecurityMode::Strict);
+        let scrub_secrets = matches!(security_mode, SecurityMode::Inherit | SecurityMode::RequireApproval);
         let env_resolved = EnvironmentResolver::resolve(cwd, venv_dir, scrub_secrets);
 
         // 2. Select Platform Shell (Clean, Standard, Zero Keyword Sniffing)
@@ -238,7 +238,7 @@ mod tests {
 
         let cmd = "echo 'Hello Cluaiz'";
 
-        let result = SandboxTerminalRunner::execute(cmd, &temp_dir, SecurityMode::Sandboxed, Some(cancel_rx))
+        let result = SandboxTerminalRunner::execute(cmd, &temp_dir, SecurityMode::Inherit, Some(cancel_rx))
             .await
             .expect("Command execution should succeed");
 
@@ -250,7 +250,7 @@ mod tests {
     #[test]
     fn test_dangerous_command_blocked() {
         let temp_dir = std::env::temp_dir();
-        let res = SandboxTerminalRunner::validate_command("rm -rf /", &temp_dir, SecurityMode::Sandboxed);
+        let res = SandboxTerminalRunner::validate_command("rm -rf /", &temp_dir, SecurityMode::Inherit);
         assert!(res.is_err(), "Destructive command must be blocked by validation");
     }
 
@@ -269,7 +269,7 @@ mod tests {
             cancel_handle.cancel();
         });
 
-        let result = SandboxTerminalRunner::execute(cmd, &temp_dir, SecurityMode::Sandboxed, Some(cancel_rx))
+        let result = SandboxTerminalRunner::execute(cmd, &temp_dir, SecurityMode::Inherit, Some(cancel_rx))
             .await
             .expect("Execution with cancel should handle gracefully");
 
@@ -288,7 +288,7 @@ mod tests {
         let result = SandboxTerminalRunner::execute_advanced(
             cmd,
             &temp_dir,
-            SecurityMode::Sandboxed,
+            SecurityMode::Inherit,
             None,
             Some("Live Clean Stdin\n"),
             Some(30),
