@@ -29,13 +29,7 @@ impl PathVerificationResult {
     }
 }
 
-pub async fn get_workspace(state: &Arc<AppState>, headers: &HeaderMap) -> PathBuf {
-    if let Some(ws_hdr) = headers.get("x-workspace-root").and_then(|h| h.to_str().ok()) {
-        let p = PathBuf::from(ws_hdr);
-        if p.exists() {
-            return p;
-        }
-    }
+pub async fn get_workspace(state: &Arc<AppState>, _headers: &HeaderMap) -> PathBuf {
     state.current_workspace_dir.read().await.clone()
 }
 
@@ -134,8 +128,14 @@ pub async fn check_permission_gate(
         .unwrap_or("user")
         .to_lowercase();
 
-    let schema = PermissionSchema::load();
-    let mode = schema.agent_security_mode.to_lowercase();
+    // 0. User Sovereignty: Human user owns their machine!
+    // Jail & approvals strictly gate autonomous AI Agent actions, NEVER the human user browsing!
+    if caller != "agent" && caller != "ai" {
+        return Ok(());
+    }
+
+    let global_perms = PermissionSchema::load();
+    let mode = global_perms.agent_security_mode.to_lowercase();
 
     // 1. Full Access Mode: bypasses boundary check and approvals
     if mode == "full_access" {

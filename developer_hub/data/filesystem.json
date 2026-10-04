@@ -215,7 +215,7 @@
       "desc": "Retrieves the current canonical workspace directory of the engine.",
       "docs_url": "/docs/api/fs/filesystem.md",
       "params": [],
-      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"~/.cluaiz/workspace\"\n}",
       "examples": [
         {
           "language": "curl",
@@ -235,16 +235,16 @@
           "type": "string",
           "req": true,
           "desc": "Absolute path to the new workspace directory.",
-          "default": "C:\\Users\\Aryan\\my\\Cluaiz-workspace"
+          "default": "~/.cluaiz/workspace"
         }
       ],
-      "request_payload": "{\n  \"workspace\": \"C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
-      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"\\\\\\\\?\\\\C:\\\\Users\\\\Aryan\\\\my\\\\Cluaiz-workspace\"\n}",
+      "request_payload": "{\n  \"workspace\": \"~/.cluaiz/workspace\"\n}",
+      "response": "{\n  \"status\": \"success\",\n  \"workspace\": \"~/.cluaiz/workspace\"\n}",
       "examples": [
         {
           "language": "curl",
           "title": "cURL",
-          "code": "curl -X POST http://localhost:8000/v1/workspace \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"workspace\": \"C:\\\\Projects\\\\Workspace\"}'"
+          "code": "curl -X POST http://localhost:8000/v1/workspace \\\n  -H 'Authorization: Bearer sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"workspace\": \"/path/to/workspace\"}'"
         }
       ]
     }
