@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
+use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 use anyhow::Result;
 use engine_core::environment::EnvironmentManager;
-use super::types::{ExecutionMode, SecurityMode, ToolEntry};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Master Tools Registry (Single Source of Truth for all Skills, Plugins, and MCP connectors)
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct ToolsRegistry {
-    #[serde(default = "default_version")]
+    #[serde(default)]
     pub version: String,
 
     #[serde(default)]
@@ -17,10 +17,6 @@ pub struct ToolsRegistry {
     /// Map of tool_id -> ToolEntry
     #[serde(default)]
     pub installed_tools: HashMap<String, ToolEntry>,
-}
-
-fn default_version() -> String {
-    "1.0.0".to_string()
 }
 
 impl ToolsRegistry {
@@ -43,8 +39,20 @@ impl ToolsRegistry {
         let json_path = Self::registry_path();
         let env = EnvironmentManager::current();
 
-        // 1. Fast binary cache path
-        if bin_path.exists() {
+        // 1. Fast binary cache path (loads cache if fresh, otherwise falls through to JSON)
+        let bin_is_fresh = if bin_path.exists() && json_path.exists() {
+            match (bin_path.metadata(), json_path.metadata()) {
+                (Ok(bm), Ok(jm)) => match (bm.modified(), jm.modified()) {
+                    (Ok(bt), Ok(jt)) => bt >= jt,
+                    _ => true,
+                },
+                _ => true,
+            }
+        } else {
+            bin_path.exists()
+        };
+
+        if bin_is_fresh && bin_path.exists() {
             if let Ok(bytes) = std::fs::read(&bin_path) {
                 if let Ok(mut reg) = bincode::deserialize::<ToolsRegistry>(&bytes) {
                     let _ = reg.sync_with_filesystem();
@@ -74,73 +82,140 @@ impl ToolsRegistry {
                     // Migrate plugins
                     if let Some(plugins) = legacy_val.get("plugins").and_then(|p| p.as_object()) {
                         for (k, v) in plugins {
-                            reg.installed_tools.insert(k.clone(), ToolEntry {
-                                id: k.clone(),
-                                name: v.get("name").and_then(|n| n.as_str()).unwrap_or(k).to_string(),
-                                category: "plugin".to_string(),
-                                version: v.get("version").and_then(|ver| ver.as_str()).unwrap_or("1.0.0").to_string(),
-                                description: v.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string(),
-                                local_dir: env.plugins_dir().join(k).to_string_lossy().to_string(),
-                                binary_path: v.get("binary").and_then(|b| b.as_str()).map(|s| s.to_string()),
-                                enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
-                                security_mode: SecurityMode::FullAccess,
-                                execution_mode: ExecutionMode::Auto,
-                                default_turns: -1,
-                                permissions: Vec::new(),
-                                semantic_triggers: Vec::new(),
-                                activation_events: Vec::new(),
-                                capabilities: Vec::new(),
-                            });
+                            reg.installed_tools.insert(
+                                k.clone(),
+                                ToolEntry {
+                                    id: k.clone(),
+                                    name: v
+                                        .get("name")
+                                        .and_then(|n| n.as_str())
+                                        .unwrap_or(k)
+                                        .to_string(),
+                                    category: "plugin".to_string(),
+                                    version: v
+                                        .get("version")
+                                        .and_then(|ver| ver.as_str())
+                                        .unwrap_or("1.0.0")
+                                        .to_string(),
+                                    description: v
+                                        .get("description")
+                                        .and_then(|d| d.as_str())
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    local_dir: env
+                                        .plugins_dir()
+                                        .join(k)
+                                        .to_string_lossy()
+                                        .to_string(),
+                                    binary_path: v
+                                        .get("binary")
+                                        .and_then(|b| b.as_str())
+                                        .map(|s| s.to_string()),
+                                    enabled: v
+                                        .get("enabled")
+                                        .and_then(|e| e.as_bool())
+                                        .unwrap_or(true),
+                                    security_mode: SecurityMode::AlwaysAllow,
+                                    execution_mode: ExecutionMode::Auto,
+                                    default_turns: -1,
+                                    permissions: Vec::new(),
+                                    semantic_triggers: Vec::new(),
+                                    activation_events: Vec::new(),
+                                    capabilities: Vec::new(),
+                                },
+                            );
                         }
                     }
                     // Migrate skills
                     if let Some(skills) = legacy_val.get("skills").and_then(|s| s.as_object()) {
                         for (k, v) in skills {
-                            reg.installed_tools.insert(k.clone(), ToolEntry {
-                                id: k.clone(),
-                                name: v.get("name").and_then(|n| n.as_str()).unwrap_or(k).to_string(),
-                                category: "skill".to_string(),
-                                version: v.get("version").and_then(|ver| ver.as_str()).unwrap_or("1.0.0").to_string(),
-                                description: v.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string(),
-                                local_dir: env.skills_dir().join(k).to_string_lossy().to_string(),
-                                binary_path: None,
-                                enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
-                                security_mode: SecurityMode::FullAccess,
-                                execution_mode: ExecutionMode::Auto,
-                                default_turns: -1,
-                                permissions: Vec::new(),
-                                semantic_triggers: Vec::new(),
-                                activation_events: Vec::new(),
-                                capabilities: Vec::new(),
-                            });
+                            reg.installed_tools.insert(
+                                k.clone(),
+                                ToolEntry {
+                                    id: k.clone(),
+                                    name: v
+                                        .get("name")
+                                        .and_then(|n| n.as_str())
+                                        .unwrap_or(k)
+                                        .to_string(),
+                                    category: "skill".to_string(),
+                                    version: v
+                                        .get("version")
+                                        .and_then(|ver| ver.as_str())
+                                        .unwrap_or("1.0.0")
+                                        .to_string(),
+                                    description: v
+                                        .get("description")
+                                        .and_then(|d| d.as_str())
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    local_dir: env
+                                        .skills_dir()
+                                        .join(k)
+                                        .to_string_lossy()
+                                        .to_string(),
+                                    binary_path: None,
+                                    enabled: v
+                                        .get("enabled")
+                                        .and_then(|e| e.as_bool())
+                                        .unwrap_or(true),
+                                    security_mode: SecurityMode::AlwaysAllow,
+                                    execution_mode: ExecutionMode::Auto,
+                                    default_turns: -1,
+                                    permissions: Vec::new(),
+                                    semantic_triggers: Vec::new(),
+                                    activation_events: Vec::new(),
+                                    capabilities: Vec::new(),
+                                },
+                            );
                         }
                     }
                     // Migrate mcp
                     if let Some(mcp) = legacy_val.get("mcp").and_then(|m| m.as_object()) {
                         for (k, v) in mcp {
-                            reg.installed_tools.insert(k.clone(), ToolEntry {
-                                id: k.clone(),
-                                name: v.get("name").and_then(|n| n.as_str()).unwrap_or(k).to_string(),
-                                category: "mcp".to_string(),
-                                version: v.get("version").and_then(|ver| ver.as_str()).unwrap_or("1.0.0").to_string(),
-                                description: v.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string(),
-                                local_dir: env.mcp_dir().join(k).to_string_lossy().to_string(),
-                                binary_path: None,
-                                enabled: v.get("enabled").and_then(|e| e.as_bool()).unwrap_or(true),
-                                security_mode: SecurityMode::Strict,
-                                execution_mode: ExecutionMode::Manual,
-                                default_turns: 3,
-                                permissions: Vec::new(),
-                                semantic_triggers: Vec::new(),
-                                activation_events: Vec::new(),
-                                capabilities: Vec::new(),
-                            });
+                            reg.installed_tools.insert(
+                                k.clone(),
+                                ToolEntry {
+                                    id: k.clone(),
+                                    name: v
+                                        .get("name")
+                                        .and_then(|n| n.as_str())
+                                        .unwrap_or(k)
+                                        .to_string(),
+                                    category: "mcp".to_string(),
+                                    version: v
+                                        .get("version")
+                                        .and_then(|ver| ver.as_str())
+                                        .unwrap_or("1.0.0")
+                                        .to_string(),
+                                    description: v
+                                        .get("description")
+                                        .and_then(|d| d.as_str())
+                                        .unwrap_or("")
+                                        .to_string(),
+                                    local_dir: env.mcp_dir().join(k).to_string_lossy().to_string(),
+                                    binary_path: None,
+                                    enabled: v
+                                        .get("enabled")
+                                        .and_then(|e| e.as_bool())
+                                        .unwrap_or(true),
+                                    security_mode: SecurityMode::RequireApproval,
+                                    execution_mode: ExecutionMode::Manual,
+                                    default_turns: 3,
+                                    permissions: Vec::new(),
+                                    semantic_triggers: Vec::new(),
+                                    activation_events: Vec::new(),
+                                    capabilities: Vec::new(),
+                                },
+                            );
                         }
                     }
 
                     let _ = reg.sync_with_filesystem();
                     let _ = reg.save();
-                    tracing::info!("✅ Successfully migrated legacy registry.yaml into tools_registry.json");
+                    tracing::info!(
+                        "✅ Successfully migrated legacy registry.yaml into tools_registry.json"
+                    );
                     return Ok(reg);
                 }
             }
@@ -198,8 +273,10 @@ impl ToolsRegistry {
         if let Some(tool) = self.installed_tools.get_mut(id) {
             tool.enabled = enabled;
             self.save()?;
+            Ok(())
+        } else {
+            anyhow::bail!("Tool '{}' not found in registry", id)
         }
-        Ok(())
     }
 
     /// Set a tool's execution mode (Auto/Manual) and persist changes
@@ -207,8 +284,21 @@ impl ToolsRegistry {
         if let Some(tool) = self.installed_tools.get_mut(id) {
             tool.execution_mode = mode;
             self.save()?;
+            Ok(())
+        } else {
+            anyhow::bail!("Tool '{}' not found in registry", id)
         }
-        Ok(())
+    }
+
+    /// Set a tool's security mode and persist changes
+    pub fn set_tool_security_mode(&mut self, id: &str, mode: SecurityMode) -> Result<()> {
+        if let Some(tool) = self.installed_tools.get_mut(id) {
+            tool.security_mode = mode;
+            self.save()?;
+            Ok(())
+        } else {
+            anyhow::bail!("Tool '{}' not found in registry", id)
+        }
     }
 
     /// Set a tool's default turns and persist changes
@@ -216,7 +306,9 @@ impl ToolsRegistry {
         if let Some(tool) = self.installed_tools.get_mut(id) {
             tool.default_turns = turns;
             self.save()?;
+            Ok(())
+        } else {
+            anyhow::bail!("Tool '{}' not found in registry", id)
         }
-        Ok(())
     }
 }

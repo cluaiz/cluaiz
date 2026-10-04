@@ -42,7 +42,7 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
                         let name = tool_opt.map(|t| t.name.clone()).unwrap_or_else(|| id.clone());
                         let desc = tool_opt.map(|t| t.description.clone()).unwrap_or_default();
                         let enabled = tool_opt.map(|t| t.enabled).unwrap_or(true);
-                        let sec_mode = tool_opt.map(|t| format!("{:?}", t.security_mode).to_lowercase()).unwrap_or_else(|| "sandboxed".to_string());
+                        let sec_mode = tool_opt.map(|t| t.security_mode.as_str().to_string()).unwrap_or_else(|| "inherit".to_string());
                         let version = tool_opt.map(|t| t.version.clone()).unwrap_or_else(|| "1.0.0".to_string());
                         let exec_mode = tool_opt.map(|t| format!("{:?}", t.execution_mode).to_lowercase()).unwrap_or_else(|| "auto".to_string());
                         let triggers = tool_opt.map(|t| t.semantic_triggers.clone()).unwrap_or_default();
@@ -81,7 +81,7 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
                     "version": tool.version,
                     "description": tool.description,
                     "enabled": tool.enabled,
-                    "security_mode": format!("{:?}", tool.security_mode).to_lowercase(),
+                    "security_mode": tool.security_mode.as_str(),
                     "execution_mode": format!("{:?}", tool.execution_mode).to_lowercase(),
                     "semantic_triggers": tool.semantic_triggers,
                     "tokens": tokens,
@@ -111,12 +111,12 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     // Query tool directly from ToolsRegistry (tools_registry.json)
     if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(&comp_id) {
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
-        current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("sandboxed")));
+        current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("inherit")));
         current_values.insert("execution_mode".to_string(), serde_json::to_value(&tool.execution_mode).unwrap_or(serde_json::json!("auto")));
     } else {
         // Fallback default for discovered components
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(true));
-        current_values.insert("security_mode".to_string(), serde_json::json!("sandboxed"));
+        current_values.insert("security_mode".to_string(), serde_json::json!("inherit"));
         current_values.insert("execution_mode".to_string(), serde_json::json!("auto"));
     }
 
@@ -128,7 +128,7 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
 }
 
 pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
-    let comp_id = payload.get("component_id").and_then(|v| v.as_str()).unwrap_or("");
+    let comp_id = payload.get("component_id").and_then(|v| v.as_str()).unwrap_or("").trim();
     let settings = payload.get("settings").and_then(|v| v.as_object());
 
     if comp_id.is_empty() || settings.is_none() {
@@ -140,28 +140,57 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
 
     let settings_map = settings.unwrap();
 
-    // Sync enabled state directly to ToolsRegistry (tools_registry.json)
+    // 1. Sync enabled state directly to ToolsRegistry (tools_registry.json)
     if let Some(enabled_val) = settings_map.get("enabled").and_then(|v| v.as_bool()) {
-        let _ = engines::tools::ToolsEngine::set_tool_enabled(comp_id, enabled_val);
-    }
-
-    // Sync security_mode directly to ToolsRegistry (tools_registry.json)
-    if let Some(mode_str) = settings_map.get("security_mode").and_then(|v| v.as_str()) {
-        if let Ok(mode) = serde_json::from_value::<engines::tools::SecurityMode>(serde_json::json!(mode_str)) {
-            let _ = engines::tools::ToolsEngine::set_tool_security_mode(comp_id, mode);
+        if let Err(e) = engines::tools::ToolsEngine::set_tool_enabled(comp_id, enabled_val) {
+            tracing::error!("Failed to set tool enabled for '{}': {}", comp_id, e);
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Failed to update enabled status for '{}': {}", comp_id, e)
+            }));
         }
     }
 
-    // Sync execution_mode directly to ToolsRegistry (tools_registry.json)
-    if let Some(exec_str) = settings_map.get("execution_mode").and_then(|v| v.as_str()) {
-        let exec_mode = match exec_str.trim().to_lowercase().as_str() {
-            "manual" => engines::tools::ExecutionMode::Manual,
-            _ => engines::tools::ExecutionMode::Auto,
-        };
-        let _ = engines::tools::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode);
+    // 2. Sync security_mode directly to ToolsRegistry (tools_registry.json)
+    if let Some(mode_str) = settings_map.get("security_mode").and_then(|v| v.as_str()) {
+        if let Some(mode) = engines::tools::SecurityMode::from_raw(mode_str) {
+            if let Err(e) = engines::tools::ToolsEngine::set_tool_security_mode(comp_id, mode) {
+                tracing::error!("Failed to set security_mode for '{}': {}", comp_id, e);
+                return Json(serde_json::json!({
+                    "status": "error",
+                    "message": format!("Failed to update security_mode for '{}': {}", comp_id, e)
+                }));
+            }
+        } else {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Invalid security_mode value: '{}'", mode_str)
+            }));
+        }
     }
 
-    Json(serde_json::json!({"status": "success"}))
+    // 3. Sync execution_mode directly to ToolsRegistry (tools_registry.json)
+    if let Some(exec_str) = settings_map.get("execution_mode").and_then(|v| v.as_str()) {
+        if let Some(exec_mode) = engines::tools::ExecutionMode::from_raw(exec_str) {
+            if let Err(e) = engines::tools::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode) {
+                tracing::error!("Failed to set execution_mode for '{}': {}", comp_id, e);
+                return Json(serde_json::json!({
+                    "status": "error",
+                    "message": format!("Failed to update execution_mode for '{}': {}", comp_id, e)
+                }));
+            }
+        } else {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Invalid execution_mode value: '{}'", exec_str)
+            }));
+        }
+    }
+
+    Json(serde_json::json!({
+        "status": "success",
+        "message": format!("Settings for component '{}' updated successfully", comp_id)
+    }))
 }
 
 pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
