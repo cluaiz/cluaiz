@@ -1,6 +1,6 @@
 # Cluaiz Unified Configuration Reference Manual
 
-This manual details all configurable parameters used inside Cluaiz JSON settings files stored in `~/.cluaiz/engine/`. It consolidates the configuration tables for `system_control.json`, `system_booster.json`, and `Permission.json`.
+This manual details all configurable parameters used inside Cluaiz JSON settings files stored in `~/.cluaiz/engine/`. It consolidates the configuration tables for `system_control.json`, `llm_optimization.json`, and `Permission.json`.
 
 
 ---
@@ -31,13 +31,13 @@ For a deeper dive into the system control implementation and dynamic hardware pr
 
 ---
 
-## 🚀 2. Compute Acceleration & Optimization Profile (`system_booster.json`)
+## 🚀 2. Compute Acceleration & Optimization Profile (`llm_optimization.json`)
 
 ### Architectural Role
 
-The system booster profile controls the lowest-level model compilation limits, layer allocation splits, and memory caching optimizations. It is processed directly by the VRAM Arbiter in the Master Router to govern memory allocation boundaries and balance load between Llama and ONNX backends.
+The optimization profile controls the lowest-level model compilation limits, layer allocation splits, and memory caching optimizations. It is processed directly by the VRAM Arbiter in the Master Router to govern memory allocation boundaries and balance load between Llama and ONNX backends.
 
-For exhaustive parameter implications and physical hardware consequences, see the [System Booster Explanation Guide](../engine/booster.md).
+For exhaustive parameter implications and physical hardware consequences, see the [LLM Optimization Explanation Guide](../engine/llm_optimization.md).
 
 
 ### Configuration Schema Table

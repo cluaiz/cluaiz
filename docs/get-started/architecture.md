@@ -30,7 +30,7 @@ The interactive terminal dashboard drawing widgets via Ratatui.
 ### 🧠 Core Engine Layer (`cluaiz-engine`)
 The system manager built on Axum web server and Tokio async schedulers.
 * **Scheduler Core:** Evaluates pipeline priority constraints, handles KV-cache lifecycle swaps, and coordinates async queues.
-* **Optimization Registry:** Enforces active limits inside `system_booster.json` to prevent GPU memory depletion or driver conflicts.
+* **Optimization Registry:** Enforces active limits inside `llm_optimization.json` to prevent GPU memory depletion or driver conflicts.
 
 ### 🔌 Driver Bridge Layer
 * **Dynamic Silicon Dispatch:** Scans system resources at boot to resolve dynamic driver bindings (`.dll` / `.so`).

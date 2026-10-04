@@ -47,4 +47,4 @@ sequenceDiagram
 
 ## 5. Conflict Management (VRAM Arbiter)
 Because ONNX (managed by `ort`) and Llama (managed by C++ `malloc`) do not inherently share a memory allocator, they could theoretically fight for the same GPU VRAM and crash the system.
-The Master Router's `system_booster` solves this. If a user triggers `BoosterMode::MaxBoost` (`n_gpu_layers: -1`), the engine prioritizes Llama for 100% of the VRAM. The ONNX engine detects this pressure and automatically shifts its embedding workloads to the CPU, guaranteeing that the LLM generation loop never stutters.
+The Master Router's `OptimizationControl` (loaded from `llm_optimization.json`) solves this. If a user triggers `BoosterMode::MaxBoost` (`n_gpu_layers: -1`), the engine prioritizes Llama for 100% of the VRAM. The ONNX engine detects this pressure and automatically shifts its embedding workloads to the CPU, guaranteeing that the LLM generation loop never stutters.

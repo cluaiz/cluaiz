@@ -10,7 +10,7 @@ When the model size exceeds the physical VRAM limit of your GPU, the Operating S
 
 * **Symptom:** Token throughput plummets from 30+ TPS to under 2 TPS. The GPU usage shows 100%, but power draw remains extremely low.
 * **Mitigation:**
-  * Adjust `n_gpu_layers` inside `system_booster.json` to a custom hybrid value (e.g. `16` layers instead of full offload `-1`).
+  * Adjust `n_gpu_layers` inside `llm_optimization.json` to a custom hybrid value (e.g. `16` layers instead of full offload `-1`).
   * Check the model's footprint against available VRAM using `cluaiz status`.
 
 ---

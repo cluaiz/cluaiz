@@ -333,7 +333,7 @@ For a deeper dive into how this relates to model loading and multimodal routing,
 ## ⚙️ 3. Hardware Tuning & Booster Configuration
 
 ### `GET /v1/booster/status`
-*   **Description:** Returns dynamic speed tuning settings loaded in `system_booster.json`. For details on the optimization profiles, see the [System Booster Deep Guide](../engine/booster.md).
+*   **Description:** Returns dynamic speed tuning settings loaded in `llm_optimization.json`. For details on the optimization profiles, see the [Optimization Deep Guide](../engine/llm_optimization.md).
 *   **Request Format:** `GET /v1/booster/status`
 *   **Response Schema (200 OK):**
     ```json
