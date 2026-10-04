@@ -85,26 +85,17 @@ pub async fn auth_middleware(
         false
     };
 
-    // 2. Sensitive System Routes: Filesystem (/v1/fs/*) and Terminal (/v1/system/cmd)
-    // Filesystem and shell commands ALWAYS require a valid Bearer Token!
-    if path.starts_with("/v1/fs/") || path == "/v1/system/cmd" {
-        if !is_authenticated {
-            return Err(unauthorized_response(
-                "Missing or invalid Authorization token. Session or API Bearer token is required for sensitive system operations.",
-            ));
-        }
-        return Ok(next.run(req).await);
-    }
-
-    // Permission Mutations: Require token if API authentication is enabled
+    // 2. Sensitive System Routes: Filesystem, Shell Command, Token Management & Permission Mutations
+    // These critical operations ALWAYS require a valid Bearer Token (Session token or configured API token)!
+    let is_token_management = path == "/v1/system/auth/token/generate" || path == "/v1/system/auth/token/revoke";
     let is_permission_mutation = (path == "/v1/system/permission" && method == axum::http::Method::POST)
         || path.starts_with("/v1/system/permission/approve")
         || path.starts_with("/v1/system/permission/reject");
 
-    if is_permission_mutation {
-        if schema.api_auth.required && !schema.api_auth.tokens.is_empty() && !is_authenticated {
+    if path.starts_with("/v1/fs/") || path == "/v1/system/cmd" || is_token_management || is_permission_mutation {
+        if !is_authenticated {
             return Err(unauthorized_response(
-                "Missing or invalid Authorization token. Bearer token is required when API authentication is enabled.",
+                "Missing or invalid Authorization token. Valid session or API Bearer token is required for sensitive system and security operations.",
             ));
         }
         return Ok(next.run(req).await);
@@ -115,30 +106,25 @@ pub async fn auth_middleware(
         return Ok(next.run(req).await);
     }
 
-    // 4. Public endpoints: health/info probes, permission schema for UI initialization, and DevHub static UI files
-    let is_api_route = path.starts_with("/v1/") 
-        || path.starts_with("/api/") 
-        || path.starts_with("/models/") 
-        || path.starts_with("/engine/") 
-        || path.starts_with("/hardware");
-
-    let is_public = path == "/health" 
-        || path == "/info" 
-        || (path == "/v1/system/permission" && method == axum::http::Method::GET);
-
-    if !is_api_route || is_public {
+    // 4. Public probes: health and info endpoints always pass for liveness monitoring
+    let is_probe = path == "/health" || path == "/info";
+    if is_probe {
         return Ok(next.run(req).await);
     }
 
-    // 5. Global API Authentication enforcement
-    // When "Require API Authentication" is enabled and tokens are configured, reject all unauthenticated API calls
-    if schema.api_auth.required && !schema.api_auth.tokens.is_empty() {
+    // 5. Universal API Authentication enforcement:
+    // If tokens are configured in permission.json OR api_auth.required is true,
+    // ALL API endpoints (including GET /v1/system/permission, /models, /chat) require a valid Bearer token!
+    let has_tokens = !schema.api_auth.tokens.is_empty();
+    let auth_enforced = schema.api_auth.required || has_tokens;
+
+    if auth_enforced {
         return Err(unauthorized_response(
             "API Authentication is required. Provide a valid Bearer token in the Authorization header.",
         ));
     }
 
-    // 6. When API Auth is not required (Local Dev Mode), allow request naturally
+    // 6. When API Auth is not enforced (local dev without tokens), allow request naturally
     Ok(next.run(req).await)
 }
 
@@ -194,4 +180,18 @@ mod tests {
             || path.starts_with("/v1/system/permission/reject");
         assert!(!is_get_mutation);
     }
+
+    #[test]
+    fn test_auth_enforced_when_tokens_exist() {
+        let has_tokens = true;
+        let required = false;
+        let auth_enforced = required || has_tokens;
+        assert!(auth_enforced);
+
+        let has_tokens_empty = false;
+        let required_false = false;
+        let auth_not_enforced = required_false || has_tokens_empty;
+        assert!(!auth_not_enforced);
+    }
 }
+

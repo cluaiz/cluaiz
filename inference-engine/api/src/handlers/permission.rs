@@ -129,7 +129,7 @@ pub async fn update_permission(
             "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
         }));
     }
-    
+
     Json(json!({
         "status": "success",
         "message": "permission.json successfully updated.",
@@ -180,7 +180,12 @@ pub async fn revoke_auth_token(
 ) -> Json<Value> {
     let mut schema = PermissionSchema::load();
     let target = payload.token.trim();
-    schema.api_auth.tokens.retain(|t| t.trim() != target);
+    if target.contains('•') || target.contains('*') {
+        let suffix = target.trim_start_matches(|c| c == '•' || c == '*' || c == '-' || c == 's' || c == 'k');
+        schema.api_auth.tokens.retain(|t| !t.ends_with(suffix));
+    } else {
+        schema.api_auth.tokens.retain(|t| t.trim() != target);
+    }
     schema.api_auth.sanitize_tokens();
     if schema.api_auth.tokens.is_empty() {
         schema.api_auth.required = false;
