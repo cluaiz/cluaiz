@@ -94,13 +94,16 @@ pub async fn run_daemon() {
     // ── Build API Routes ──
     let app = routes::build(state.clone());
 
-    // ── Bind to Dynamic Port (from permission.json or cluaiz_PORT) ──
+    // ── Bind to Dynamic Host & Port (from permission.json or cluaiz_HOST/cluaiz_PORT) ──
     let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
     let port: u16 = env::var("cluaiz_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(perms.api_port);
-    let addr = format!("0.0.0.0:{}", port);
+    let host: String = env::var("cluaiz_HOST")
+        .ok()
+        .unwrap_or_else(|| perms.api_host.clone());
+    let addr = format!("{}:{}", host, port);
 
     println!("\n{}", "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓".bright_blue());
     println!("{} {}", "┃".bright_blue(), "🧬 cluaiz Engine API & FFI".bright_cyan().bold());
@@ -127,8 +130,8 @@ pub async fn run_daemon() {
     tracing::info!("🌐 cluaiz Gateway listening on {}", addr);
 
     // ── Start the FFI/IPC Daemon (Background) ──
-    tracing::info!("🚀 Spawning Native FFI Named Pipe Listener...");
-    tokio::spawn(async move { ffi_bridge::start_named_pipe_server(state.clone()).await; });
+    tracing::info!("🚀 Spawning Native FFI IPC Listener (Named Pipe / Unix Socket)...");
+    tokio::spawn(async move { ffi_bridge::start_ipc_server(state.clone()).await; });
 
 
     // ── Start the HTTP server ──

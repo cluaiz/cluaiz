@@ -63,8 +63,7 @@ pub async fn start_named_pipe_server(state: Arc<AppState>) {
     }
 }
 
-#[cfg(windows)]
-async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
+async fn handle_client<T: AsyncReadExt + AsyncWriteExt + Unpin>(mut pipe: T, state: Arc<AppState>) {
     let mut buf = vec![0; 4096];
     loop {
         match pipe.read(&mut buf).await {
@@ -653,7 +652,58 @@ async fn handle_client(mut pipe: NamedPipeServer, state: Arc<AppState>) {
     }
 }
 
+#[cfg(unix)]
+pub async fn start_unix_socket_server(state: Arc<AppState>) {
+    use tokio::net::UnixListener;
+    let sock_path = dirs::home_dir()
+        .map(|h| h.join(".cluaiz").join("engine.sock"))
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp/cluaiz_engine.sock"));
+
+    if let Some(parent) = sock_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::remove_file(&sock_path);
+
+    match UnixListener::bind(&sock_path) {
+        Ok(listener) => {
+            tracing::info!("🔗 Unix Domain Socket IPC listening on {:?}", sock_path);
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _)) => {
+                        tracing::info!("🔗 Native Client connected to Unix Socket.");
+                        let state_clone = state.clone();
+                        tokio::spawn(async move {
+                            handle_client(stream, state_clone).await;
+                        });
+                    }
+                    Err(e) => {
+                        tracing::error!("❌ [IPC] Unix socket accept error: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("❌ [IPC] Failed to bind Unix socket {:?}: {}", sock_path, e);
+        }
+    }
+}
+
+pub async fn start_ipc_server(state: Arc<AppState>) {
+    #[cfg(windows)]
+    {
+        start_named_pipe_server(state).await;
+    }
+    #[cfg(unix)]
+    {
+        start_unix_socket_server(state).await;
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        tracing::warn!("Native IPC is unsupported on this platform.");
+    }
+}
+
 #[cfg(not(windows))]
-pub async fn start_named_pipe_server(_state: Arc<AppState>) {
-    tracing::warn!("Native Named Pipes are only supported on Windows. IPC Disabled.");
+pub async fn start_named_pipe_server(state: Arc<AppState>) {
+    start_ipc_server(state).await;
 }

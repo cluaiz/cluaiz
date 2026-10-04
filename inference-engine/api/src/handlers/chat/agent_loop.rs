@@ -294,7 +294,7 @@ pub async fn execute_streaming_loop(
                     let sec_mode = tool_entry_opt
                         .as_ref()
                         .map(|t| t.security_mode)
-                        .unwrap_or(engines::tools::registry::SecurityMode::Sandboxed);
+                        .unwrap_or(engines::tools::registry::SecurityMode::Inherit);
 
                     // 🛡️ Human-In-The-Loop (HITL) Permission Gate
                     let global_perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
@@ -308,23 +308,15 @@ pub async fn execute_streaming_loop(
                     //     * undeclared tool (not in registry or empty capabilities) = require approval by default
                     //     * dangerous capabilities ("exec", "fs_write", "network", etc.) = require approval
                     //     * safe declared tools ("fs_read", "read_only") = run without prompt
-                    let (requires_approval, tool_capabilities) = match master_mode.as_str() {
-                        "full_access" => (false, vec!["full_access_override".to_string()]),
-                        "strict" => {
-                            let caps = tool_entry_opt.as_ref().map(|t| t.effective_capabilities()).unwrap_or_else(|| vec!["undeclared".to_string()]);
-                            (true, caps)
-                        }
-                        _ => {
-                            if comp_type == "mcp" {
-                                let caps = tool_entry_opt.as_ref().map(|t| t.effective_capabilities()).unwrap_or_else(|| vec!["mcp:external".to_string()]);
-                                (true, caps)
-                            } else if let Some(ref entry) = tool_entry_opt {
-                                (entry.requires_approval(&master_mode), entry.effective_capabilities())
-                            } else {
-                                // Undeclared tool not found in registry -> default to requiring approval
-                                (true, vec!["undeclared".to_string()])
-                            }
-                        }
+                    let (requires_approval, tool_capabilities) = if let Some(ref entry) = tool_entry_opt {
+                        (entry.requires_approval(&master_mode), entry.effective_capabilities())
+                    } else if comp_type == "mcp" {
+                        (true, vec!["mcp:external".to_string()])
+                    } else if master_mode == "full_access" {
+                        (false, vec!["full_access_override".to_string()])
+                    } else {
+                        // Undeclared tool not found in registry -> default to requiring approval
+                        (true, vec!["undeclared".to_string()])
                     };
 
                     let mut permission_granted = true;
@@ -408,9 +400,51 @@ pub async fn execute_streaming_loop(
                             let mut lock = state_clone.active_approvals.write().await;
                             lock.remove(&req_id);
                         }
+                    } else {
+                        // Stage 1: Auto-approved / Safe inspection -> Tool is queued and authorized
+                        let pending_chunk = json!({
+                            "id": req_id_stream.clone(),
+                            "object": "chat.completion.chunk",
+                            "created": Utc::now().timestamp(),
+                            "model": request.model.clone(),
+                            "choices": [{
+                                "index": 0,
+                                "delta": {
+                                    "tool_status": {
+                                        "id": format!("call_{}", comp_name),
+                                        "name": public_call_name.clone(),
+                                        "category": comp_type.clone(),
+                                        "status": "pending",
+                                        "message": "Authorized. Queued for execution."
+                                    }
+                                }
+                            }]
+                        });
+                        yield Ok::<_, Infallible>(Event::default().data(pending_chunk.to_string()));
                     }
 
                     let execution_result = if permission_granted {
+                        // Stage 2: Tool execution actively running in background process
+                        let running_chunk = json!({
+                            "id": req_id_stream.clone(),
+                            "object": "chat.completion.chunk",
+                            "created": Utc::now().timestamp(),
+                            "model": request.model.clone(),
+                            "choices": [{
+                                "index": 0,
+                                "delta": {
+                                    "tool_status": {
+                                        "id": format!("call_{}", comp_name),
+                                        "name": public_call_name.clone(),
+                                        "category": comp_type.clone(),
+                                        "status": "running",
+                                        "message": "Executing tool in background process"
+                                    }
+                                }
+                            }]
+                        });
+                        yield Ok::<_, Infallible>(Event::default().data(running_chunk.to_string()));
+
                         match engines::tools::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
                             Ok(res_str) => {
                                 tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
@@ -431,6 +465,14 @@ pub async fn execute_streaming_loop(
                     };
                     let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
 
+                    let status_str = if !permission_granted {
+                        "denied"
+                    } else if execution_result.starts_with("Error executing") {
+                        "failed"
+                    } else {
+                        "completed"
+                    };
+
                     let mut execution_logs = vec![
                         format!("[ToolsEngine] Invoking {} '{}' (security: {:?})", comp_type, public_call_name, sec_mode),
                     ];
@@ -447,9 +489,9 @@ pub async fn execute_streaming_loop(
                             }
                         }
                     }
-                    execution_logs.push(format!("[ToolsEngine] Execution completed in {:.2}ms", latency_ms));
+                    execution_logs.push(format!("[ToolsEngine] Execution {} in {:.2}ms", status_str, latency_ms));
 
-                    // 2. Yield rich cluaiz_tool_result status chunk
+                    // Stage 3: Yield rich cluaiz_tool_result status chunk
                     let result_chunk = json!({
                         "id": req_id_stream.clone(),
                         "object": "chat.completion.chunk",
@@ -463,8 +505,8 @@ pub async fn execute_streaming_loop(
                                     "name": public_call_name,
                                     "category": comp_type,
                                     "icon_svg": icon_svg.clone(),
-                                    "status": "completed",
-                                    "security_mode": format!("{:?}", sec_mode).to_lowercase(),
+                                    "status": status_str,
+                                    "security_mode": sec_mode.as_str(),
                                     "latency_ms": ((latency_ms * 100.0).round() / 100.0),
                                     "input_payload": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
                                     "output_result": serde_json::from_str::<serde_json::Value>(&execution_result).unwrap_or(serde_json::json!(&execution_result)),
