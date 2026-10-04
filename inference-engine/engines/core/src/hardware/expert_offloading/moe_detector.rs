@@ -97,13 +97,14 @@ impl GgufMoeDetector {
                                             let layer_count = meta.get("layer_count").and_then(|v| v.as_u64()).unwrap_or(32) as usize;
                                             let expert_bytes = (file_size as f64 * 0.8) as u64;
                                             let dense_bytes = file_size.saturating_sub(expert_bytes);
+                                            let total_model_experts = (expert_count * layer_count).max(1);
                                             return MoeModelInfo {
                                                 is_moe: true,
                                                 expert_count,
                                                 moe_layer_count: layer_count,
                                                 active_experts_per_token: if active_experts > 0 { active_experts } else { (expert_count / 8).max(1) },
                                                 total_expert_bytes: expert_bytes,
-                                                expert_size_bytes: if expert_count > 0 { expert_bytes / expert_count as u64 } else { 0 },
+                                                expert_size_bytes: if expert_count > 0 { expert_bytes / total_model_experts as u64 } else { 0 },
                                                 dense_backbone_bytes: dense_bytes,
                                             };
                                         }
@@ -129,13 +130,14 @@ impl GgufMoeDetector {
                 if header_str.contains(".expert_count") || header_str.contains(".expert_used_count") {
                     let expert_bytes = (file_size as f64 * 0.8) as u64;
                     let dense_bytes = file_size.saturating_sub(expert_bytes);
+                    let total_model_experts = 64 * 32;
                     return MoeModelInfo {
                         is_moe: true,
                         expert_count: 64, // Standard MoE default
                         moe_layer_count: 32,
                         active_experts_per_token: 8,
                         total_expert_bytes: expert_bytes,
-                        expert_size_bytes: expert_bytes / 64,
+                        expert_size_bytes: expert_bytes / total_model_experts as u64,
                         dense_backbone_bytes: dense_bytes,
                     };
                 }

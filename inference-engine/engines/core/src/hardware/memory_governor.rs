@@ -64,7 +64,7 @@ pub fn calculate_safety_buffer(
         }
     }
 
-    (total_vram_gb * 0.05).clamp(min_vram_guard, 1.00)
+    (total_vram_gb * 0.08).clamp(min_vram_guard, 1.00)
 }
 
 /// Calculates the OS safety buffer for CPU RAM in GB based on user settings.
@@ -73,15 +73,19 @@ pub fn calculate_ram_safety_buffer(
     total_ram_gb: f64,
     _available_ram_gb: f64,
 ) -> f64 {
-    let min_ram_guard = 1.00f64;
+    let min_ram_guard = 1.50f64;
 
     if let Some(direct_gb) = opt_control.custom_ram_buffer_gb {
         if direct_gb > 0.0 {
-            return direct_gb.max(min_ram_guard);
+            let max_allowed = (total_ram_gb - 2.0).max(1.0);
+            return direct_gb.max(min_ram_guard).min(max_allowed);
         }
     }
 
-    let auto_buffer = (total_ram_gb * 0.05).clamp(1.00, 1.50);
+    // In Auto mode, dynamically allocate 15% of total RAM, clamped between 3.0 GB (min floor for desktop OS)
+    // and 6.0 GB (upper ceiling for high-capacity systems). For small total_ram (< 12GB), scale gracefully to 2.5 GB.
+    let min_auto_floor = if total_ram_gb <= 12.0 { 2.50 } else { 3.50 };
+    let auto_buffer = (total_ram_gb * 0.15).clamp(min_auto_floor, 6.00);
     auto_buffer
 }
 
