@@ -30,6 +30,10 @@ fn default_connection_protocol() -> String {
     "http".to_string()
 }
 
+fn default_api_host() -> String {
+    "0.0.0.0".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
 pub struct ApiAuth {
@@ -47,6 +51,32 @@ impl Default for ApiAuth {
         }
     }
 }
+
+impl ApiAuth {
+    pub fn generate_token() -> String {
+        format!("sk-cluaiz-{}", uuid::Uuid::new_v4().simple())
+    }
+
+    pub fn sanitize_tokens(&mut self) {
+        self.tokens.retain(|t| {
+            let trimmed = t.trim();
+            !trimmed.is_empty() && trimmed != "sk-cluaiz-" && trimmed.len() > 10
+        });
+    }
+
+    pub fn ensure_valid_token(&mut self) -> Option<String> {
+        self.sanitize_tokens();
+        if self.required && self.tokens.is_empty() {
+            let new_tok = Self::generate_token();
+            self.tokens.push(new_tok.clone());
+            Some(new_tok)
+        } else {
+            None
+        }
+    }
+}
+
+
 
 #[derive(Debug, Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
 #[archive(check_bytes)]
@@ -73,6 +103,8 @@ pub struct PermissionSchema {
     pub model_header_info: bool,
     #[serde(default = "default_api_port")]
     pub api_port: u16,
+    #[serde(default = "default_api_host")]
+    pub api_host: String,
     #[serde(default = "default_connection_protocol")]
     pub connection_protocol: String,
     #[serde(default)]
@@ -105,6 +137,7 @@ impl Default for PermissionSchema {
             enable_kvcache: default_enable_kvcache(),
             model_header_info: default_model_header_info(),
             api_port: default_api_port(),
+            api_host: default_api_host(),
             connection_protocol: default_connection_protocol(),
             api_auth: ApiAuth::default(),
             agent_security_mode: default_agent_security_mode(),
@@ -472,6 +505,80 @@ impl PermissionSchema {
         schema.vector_models.audio = Some(model_id);
         schema.sync_active_slots();
         let _ = schema.save();
+    }
+
+    pub fn merge_patch(&mut self, patch: &serde_json::Value) {
+        if let Some(obj) = patch.as_object() {
+            if let Some(auth_val) = obj.get("api_auth") {
+                if let Ok(incoming_auth) = serde_json::from_value::<ApiAuth>(auth_val.clone()) {
+                    self.api_auth = incoming_auth;
+                } else if let Some(auth_obj) = auth_val.as_object() {
+                    if let Some(req) = auth_obj.get("required").and_then(|v| v.as_bool()) {
+                        self.api_auth.required = req;
+                    }
+                    if let Some(toks) = auth_obj.get("tokens").and_then(|v| v.as_array()) {
+                        self.api_auth.tokens = toks.iter()
+                            .filter_map(|t| t.as_str().map(|s| s.trim().to_string()))
+                            .filter(|s| !s.is_empty() && s != "sk-cluaiz-")
+                            .collect();
+                    }
+                }
+                self.api_auth.ensure_valid_token();
+            }
+
+            if let Some(wf) = obj.get("wasm_firewall").and_then(|v| v.as_str()) {
+                self.wasm_firewall = wf.to_string();
+            }
+            if let Some(asm) = obj.get("agent_security_mode").and_then(|v| v.as_str()) {
+                self.agent_security_mode = asm.to_string();
+            }
+            if let Some(v) = obj.get("vectorize_user_input").and_then(|v| v.as_bool()) {
+                self.vectorize_user_input = v;
+            }
+            if let Some(v) = obj.get("vectorize_ai_response").and_then(|v| v.as_bool()) {
+                self.vectorize_ai_response = v;
+            }
+            if let Some(v) = obj.get("stream_telemetry").and_then(|v| v.as_bool()) {
+                self.stream_telemetry = v;
+            }
+            if let Some(v) = obj.get("lazy_load_model").and_then(|v| v.as_bool()) {
+                self.lazy_load_model = v;
+            }
+            if let Some(v) = obj.get("enable_kvcache").and_then(|v| v.as_bool()) {
+                self.enable_kvcache = v;
+            }
+            if let Some(v) = obj.get("model_header_info").and_then(|v| v.as_bool()) {
+                self.model_header_info = v;
+            }
+            if let Some(v) = obj.get("api_port").and_then(|v| v.as_u64()) {
+                self.api_port = v as u16;
+            }
+            if let Some(v) = obj.get("api_host").and_then(|v| v.as_str()) {
+                let trimmed = v.trim();
+                if !trimmed.is_empty() {
+                    self.api_host = trimmed.to_string();
+                }
+            }
+            if let Some(v) = obj.get("connection_protocol").and_then(|v| v.as_str()) {
+                self.connection_protocol = v.to_string();
+            }
+            if let Some(slots) = obj.get("active_slots") {
+                if let Ok(parsed_slots) = serde_json::from_value::<std::collections::HashMap<String, SlotConfig>>(slots.clone()) {
+                    self.active_slots = parsed_slots;
+                }
+            }
+            if let Some(cm) = obj.get("chat_models") {
+                if let Ok(parsed_cm) = serde_json::from_value::<ModelSelection>(cm.clone()) {
+                    self.chat_models = parsed_cm;
+                }
+            }
+            if let Some(vm) = obj.get("vector_models") {
+                if let Ok(parsed_vm) = serde_json::from_value::<ModelSelection>(vm.clone()) {
+                    self.vector_models = parsed_vm;
+                }
+            }
+        }
+        self.sync_active_slots();
     }
 
     // Removed custom save method. It is now handled by engine_core::define_config!

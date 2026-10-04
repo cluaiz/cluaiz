@@ -117,15 +117,89 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
 // ─── POST /v1/system/permission ──────────────────────────────────────
 pub async fn update_permission(
     State(_state): State<Arc<AppState>>,
-    Json(mut payload): Json<PermissionSchema>,
+    Json(payload): Json<Value>,
 ) -> Json<Value> {
-    payload.sync_active_slots();
-    let _ = payload.save();
+    let mut schema = PermissionSchema::load();
+    schema.merge_patch(&payload);
+    if let Err(e) = schema.save() {
+        tracing::error!("❌ Failed to save permission schema to disk: {:?}", e);
+        return Json(json!({
+            "status": "error",
+            "message": format!("Failed to save permission schema: {}", e),
+            "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
+        }));
+    }
+    
     Json(json!({
         "status": "success",
-        "message": "permission.json successfully updated."
+        "message": "permission.json successfully updated.",
+        "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
     }))
 }
+
+// ─── POST /v1/system/auth/token/generate ─────────────────────────────
+pub async fn generate_auth_token(
+    State(_state): State<Arc<AppState>>,
+) -> (axum::http::StatusCode, Json<Value>) {
+    let mut schema = PermissionSchema::load();
+    if schema.api_auth.tokens.len() >= 5 {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({
+                "status": "error",
+                "message": "Maximum limit of 5 API keys reached. Revoke an existing key to generate a new one.",
+                "tokens": schema.api_auth.tokens
+            })),
+        );
+    }
+    let new_token = engines::neural_foundry::security::permission_schema::ApiAuth::generate_token();
+    schema.api_auth.tokens.push(new_token.clone());
+    schema.api_auth.sanitize_tokens();
+    let _ = schema.save();
+
+    (
+        axum::http::StatusCode::OK,
+        Json(json!({
+            "status": "success",
+            "message": "API token successfully generated.",
+            "token": new_token,
+            "tokens": schema.api_auth.tokens
+        })),
+    )
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct RevokeTokenRequest {
+    pub token: String,
+}
+
+// ─── POST /v1/system/auth/token/revoke ───────────────────────────────
+pub async fn revoke_auth_token(
+    State(_state): State<Arc<AppState>>,
+    Json(payload): Json<RevokeTokenRequest>,
+) -> Json<Value> {
+    let mut schema = PermissionSchema::load();
+    let target = payload.token.trim();
+    schema.api_auth.tokens.retain(|t| t.trim() != target);
+    schema.api_auth.sanitize_tokens();
+    if schema.api_auth.tokens.is_empty() {
+        schema.api_auth.required = false;
+        tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
+    }
+    let _ = schema.save();
+
+    Json(json!({
+        "status": "success",
+        "message": if schema.api_auth.tokens.is_empty() {
+            "API token successfully revoked. API authentication automatically disabled as no keys remain."
+        } else {
+            "API token successfully revoked."
+        },
+        "tokens": schema.api_auth.tokens,
+        "api_auth_required": schema.api_auth.required
+    }))
+}
+
 
 // ─── Real-Time Human-In-The-Loop Approval Endpoints ──────────────────
 #[derive(Debug, serde::Deserialize)]
