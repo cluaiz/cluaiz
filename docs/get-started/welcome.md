@@ -33,7 +33,7 @@ sequenceDiagram
     participant Hardware as SIMD / CUDA / Metal Core
 
     Client->>Engine: Send raw command payload (IPC / Sockets)
-    Note over Engine: Verify limits via system_booster.json
+    Note over Engine: Verify limits via llm_optimization.json
     Engine->>Bridge: Zero-Copy Struct (C-ABI #[repr(C)])
     Bridge->>Hardware: Dynamic symbol execution (dlopen/LoadLibraryW)
     Hardware-->>Bridge: Tensor computations complete
@@ -57,7 +57,7 @@ Navigate through the system specifications based on your development targets:
 
 
 ### ⚙️ 3. Reference Manuals (Configuration & API Contracts)
-*   **[Configuration Registry Index](/docs/reference/engine-configuration)** — Parameters for [system_booster.json](/docs/reference/engine-configuration#2-compute-acceleration--optimization-profile-system_boosterjson), [Permission.json](/docs/reference/engine-configuration#3-security-boundaries--capability-rules-profile-permissionjson), and [system_control.json](/docs/reference/engine-configuration#1-silicon-truth--hardware-governance-profile-system_controljson).
+*   **[Configuration Registry Index](/docs/reference/engine-configuration)** — Parameters for [llm_optimization.json](/docs/reference/engine-configuration#2-compute-acceleration--optimization-profile-llm_optimizationjson), [Permission.json](/docs/reference/engine-configuration#3-security-boundaries--capability-rules-profile-permissionjson), and [system_control.json](/docs/reference/engine-configuration#1-silicon-truth--hardware-governance-profile-system_controljson).
 *   **[Terminal CLI Commands Reference](/docs/reference/terminal-commands)** — Comprehensive command arguments, dynamic options, and local workspace hooks.
 *   **[HTTP API Interface](/docs/reference/api)** — Complete OpenAPI specification, POST endpoints, and schema declarations for server models.
 

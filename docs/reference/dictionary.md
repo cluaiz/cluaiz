@@ -16,7 +16,7 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 | **CEL** | Cluaiz Execution Language — a strict, hardware-accelerated pipeline language for driving the engine. |
 | **Silicon Truth** | The read-only artifact (`system_control.json`) generated at boot from physical hardware probing. Source of truth for all allocation decisions. |
 | **VRAM Arbiter** | Internal subsystem inside the Master Router that enforces GPU memory boundaries and prevents OOM crashes. |
-| **Conflict Manager** | Phase that cross-references `system_booster.json` requests against `system_control.json` constraints before execution. |
+| **Conflict Manager** | Phase that cross-references `llm_optimization.json` requests against `system_control.json` constraints before execution. |
 | **KV-Cache** | Key-Value cache for intermediate transformer attention states. Critical for context continuity and generation speed. |
 | **FFI Bridge** | Foreign Function Interface boundary between the CEL VM and native C/WASM/Rust plugin modules. |
 | **WAL** | Write-Ahead Log — a crash-recovery mechanism that journals all mutations before committing to LMDB storage. |
@@ -88,7 +88,7 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 
 ---
 
-## 🚀 Configuration — `system_booster.json` Fields
+## 🚀 Configuration — `llm_optimization.json` Fields
 
 | Field | Type | Valid Values | Description |
 |---|---|---|---|

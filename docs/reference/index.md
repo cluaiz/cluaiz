@@ -19,7 +19,7 @@ Core language and system specifications:
 * **[Unified API Reference](../reference/api)** — REST endpoint contracts, request/response schemas, and error codes.
 
 ### Configuration Profiles
-* **[Engine Configurations](../reference/engine-configuration)** — `system_booster.json` and `system_control.json` field-level specs.
+* **[Engine Configurations](../reference/engine-configuration)** — `llm_optimization.json` and `system_control.json` field-level specs.
 
 ---
 

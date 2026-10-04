@@ -275,7 +275,7 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 |--------|---------|-------------|
 | `GET_SETTINGS` | `{"action":"GET_SETTINGS"}` | Get all settings (permissions + booster + models) |
 | `UPDATE_PERMISSION` | `{"action":"UPDATE_PERMISSION","payload":{"key":"...","value":"..."}}` | Update one Permission.json field |
-| `UPDATE_BOOSTER` | `{"action":"UPDATE_BOOSTER","payload":{"key":"...","value":"..."}}` | Update one system_booster.json field |
+| `UPDATE_BOOSTER` | `{"action":"UPDATE_BOOSTER","payload":{"key":"...","value":"..."}}` | Update one llm_optimization.json field |
 | `BOOSTER_UPDATE` | `{"action":"BOOSTER_UPDATE","payload":{<full booster obj>}}` | Bulk booster update (CLI/legacy style) |
 | `SYSTEM_BRAIN` | `{"action":"SYSTEM_BRAIN","payload":{"state":true}}` | Toggle brain mode on/off |
 | `CDQL_FETCH_HISTORY` | `{"action":"CDQL_FETCH_HISTORY","session_id":"..."}` | Fetch chat history from LMDB |
@@ -297,7 +297,7 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 | File | Purpose |
 |------|---------|
 | `Permission.json` | Privacy, active models, vectorization settings |
-| `system_booster.json` | Hardware performance optimization profile |
+| `llm_optimization.json` | Hardware performance optimization profile |
 | `system_control.json` | Hardware fingerprint, brain mode, OS identity |
 
 ---

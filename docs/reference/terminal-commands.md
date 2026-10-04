@@ -121,7 +121,7 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 ### `cluaiz booster`
 * **Usage:** `cluaiz booster` (Can accept flags like `--kv-quant`)
 * **Description:** View or configure the system performance booster settings interactively.
-* **Execution Flow:** Interactively configures or injects parameters into `system_booster.json` (e.g. Context Shifting limits, FlashAttention modes, KV Cache quantization). The memory arbiter applies these natively to optimize inference.
+* **Execution Flow:** Interactively configures or injects parameters into `llm_optimization.json` (e.g. Context Shifting limits, FlashAttention modes, KV Cache quantization). The memory arbiter applies these natively to optimize inference.
 * **API Mapping:** `GET /v1/booster/status` and `POST /v1/booster/update` (`booster::update`).
 
 ### `cluaiz permission`

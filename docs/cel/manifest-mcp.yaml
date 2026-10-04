@@ -60,21 +60,21 @@ permissions:
 # [FIXED SCHEMA] Engine will resolve these dot-notation targets at runtime 
 # and inject their current values into the MCP process environment / payload.
 # 
-# AVAILABLE SYSTEM_BOOSTER VARIABLES:
-# - "system_booster.mode_run" (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
-# - "system_booster.turbo_quant" (Auto, On, Off)
-# - "system_booster.flash_attention" (Auto, On, Off)
-# - "system_booster.speculative_decoding" (Auto, On, Off)
-# - "system_booster.auto_round" (Auto, On, Off)
-# - "system_booster.dflash" (Auto, On, Custom)
-# - "system_booster.kv_cache_quantization" (auto, kv16, kv8, kv4)
-# - "system_booster.context_shifting" (auto, off, minimal, standard, aggressive, extreme)
-# - "system_booster.force_vram_reclaim" (Auto, On, Off)
-# - "system_booster.n_gpu_layers" (-1, 0, or Integer)
-# - "system_booster.think_mode" (Auto, On, Off)
-# - "system_booster.response_length" ("auto", "short", "long", or Integer)
-# - "system_booster.enforce_json" (true, false)
-# - "system_booster.force_memory_lock" (Auto, On, Off)
+# AVAILABLE LLM_OPTIMIZATION VARIABLES:
+# - "llm_optimization.mode_run" (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
+# - "llm_optimization.turbo_quant" (Auto, On, Off)
+# - "llm_optimization.flash_attention" (Auto, On, Off)
+# - "llm_optimization.speculative_decoding" (Auto, On, Off)
+# - "llm_optimization.auto_round" (Auto, On, Off)
+# - "llm_optimization.dflash" (Auto, On, Custom)
+# - "llm_optimization.kv_cache_quantization" (auto, kv16, kv8, kv4)
+# - "llm_optimization.context_shifting" (auto, off, minimal, standard, aggressive, extreme)
+# - "llm_optimization.force_vram_reclaim" (Auto, On, Off)
+# - "llm_optimization.n_gpu_layers" (-1, 0, or Integer)
+# - "llm_optimization.think_mode" (Auto, On, Off)
+# - "llm_optimization.response_length" ("auto", "short", "long", or Integer)
+# - "llm_optimization.enforce_json" (true, false)
+# - "llm_optimization.force_memory_lock" (Auto, On, Off)
 #
 # AVAILABLE PERMISSION VARIABLES:
 # - "permission.vector_models.text" (Model string or null)
