@@ -170,6 +170,12 @@ enum CliCommand {
         command: Option<PermissionCommand>,
     },
 
+    /// Manage Security & API Access Tokens directly from host machine
+    Token {
+        #[command(subcommand)]
+        command: Option<TokenCommand>,
+    },
+
     /// Manage Models
     Model {
         #[command(subcommand)]
@@ -204,6 +210,27 @@ pub enum PermissionCommand {
     /// Change the active API Port
     Port {
         number: u16,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TokenCommand {
+    /// Show active API token from permission.json
+    Show {
+        /// Show all configured API tokens in full plaintext
+        #[arg(short, long)]
+        all: bool,
+    },
+    /// Create a new API access token
+    Create,
+    /// List all configured API tokens
+    #[command(alias = "ls")]
+    List,
+    /// Remove an API access token
+    #[command(alias = "rm")]
+    Remove {
+        /// The token or token suffix to remove
+        token: String,
     },
 }
 
@@ -548,6 +575,88 @@ async fn main() -> Result<()> {
         Some(CliCommand::Storage(cli_cmd)) => {
             let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             crate::cli::storage::handle_storage_command(cli_cmd, schema.api_port).await;
+        }
+        Some(CliCommand::Token { command }) => {
+            let mut schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            match command {
+                Some(TokenCommand::Show { all }) => {
+                    schema.api_auth.sanitize_tokens();
+                    if schema.api_auth.tokens.is_empty() {
+                        println!("\n  {} No API tokens configured in permission.json.", "⚠️".yellow());
+                        println!("  {} Run '{}' to create an access token.\n", "💡".cyan(), "cluaiz token create".bold().green());
+                        return Ok(());
+                    }
+                    if all {
+                        println!("\n  {} All Configured API Tokens ({}/5):", "🔐".cyan().bold(), schema.api_auth.tokens.len());
+                        for (idx, token) in schema.api_auth.tokens.iter().enumerate() {
+                            let tag = if idx == 0 { " (primary active)".green() } else { "".normal() };
+                            println!("    {}. {}{}", idx + 1, token.bold().green(), tag);
+                        }
+                        println!("  {} Auth Guard: {}\n", "🛡️".blue(), if schema.api_auth.required { "Enabled".green() } else { "Disabled (Local only)".yellow() });
+                    } else {
+                        let active_token = &schema.api_auth.tokens[0];
+                        println!("\n  {} Active API Token: {}", "🔑".yellow(), active_token.bold().green());
+                        println!("  {} Auth Guard: {}", "🛡️".blue(), if schema.api_auth.required { "Enabled".green() } else { "Disabled (Local only)".yellow() });
+                        println!("  {} Total Configured Tokens: {} (run 'cluaiz token show --all' to see all)\n", "🔢".cyan(), schema.api_auth.tokens.len());
+                    }
+                    return Ok(());
+                }
+                Some(TokenCommand::Create) => {
+                    schema.api_auth.sanitize_tokens();
+                    if schema.api_auth.tokens.len() >= 5 {
+                        eprintln!("\n  {} Maximum limit of 5 API keys reached. Remove an existing key first.\n", "❌".red());
+                        return Ok(());
+                    }
+                    let new_token = engines::neural_foundry::security::permission_schema::ApiAuth::generate_token();
+                    schema.api_auth.tokens.push(new_token.clone());
+                    schema.api_auth.required = true;
+                    let _ = schema.save();
+                    println!("\n  {} New API Token Created Successfully!", "✨".green().bold());
+                    println!("  {} Token: {}", "🔑".yellow(), new_token.bold().green());
+                    println!("  {} Auth Guard: Enabled\n", "🛡️".blue());
+                }
+                Some(TokenCommand::List) => {
+                    schema.api_auth.sanitize_tokens();
+                    println!("\n  {} Configured API Tokens ({}/5):", "🔐".cyan().bold(), schema.api_auth.tokens.len());
+                    if schema.api_auth.tokens.is_empty() {
+                        println!("    No API tokens configured. Run 'cluaiz token create' to add one.");
+                    } else {
+                        for (idx, token) in schema.api_auth.tokens.iter().enumerate() {
+                            let tag = if idx == 0 { " (primary)".green() } else { "".normal() };
+                            println!("    {}. {}{}", idx + 1, token.bold().green(), tag);
+                        }
+                    }
+                    println!();
+                }
+                Some(TokenCommand::Remove { token }) => {
+                    let target = token.trim();
+                    let before_len = schema.api_auth.tokens.len();
+                    if target.contains('•') || target.contains('*') {
+                        let suffix = target.trim_start_matches(|c| c == '•' || c == '*' || c == '-' || c == 's' || c == 'k');
+                        schema.api_auth.tokens.retain(|t| !t.ends_with(suffix));
+                    } else {
+                        schema.api_auth.tokens.retain(|t| t.trim() != target);
+                    }
+                    schema.api_auth.sanitize_tokens();
+                    if schema.api_auth.tokens.is_empty() {
+                        schema.api_auth.required = false;
+                    }
+                    let _ = schema.save();
+                    if schema.api_auth.tokens.len() < before_len {
+                        println!("  {} Token removed successfully.", "✅".green());
+                    } else {
+                        println!("  {} Token not found.", "⚠️".yellow());
+                    }
+                }
+                None => {
+                    println!("\n  {} Cluaiz Token Manager:", "🔐".cyan().bold());
+                    println!("    cluaiz token show                   - View primary active API token");
+                    println!("    cluaiz token show --all             - View all configured API tokens in full plaintext");
+                    println!("    cluaiz token create                 - Create a new API access token");
+                    println!("    cluaiz token list [ls]              - List all configured API tokens");
+                    println!("    cluaiz token remove [rm] <token>    - Remove an API access token\n");
+                }
+            }
         }
         Some(CliCommand::Permission { command }) => {
             let mut schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
