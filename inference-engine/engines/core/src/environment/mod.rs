@@ -49,23 +49,37 @@ impl EnvironmentManager {
             let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
             let mut current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
-            // 🛡️ WORKSPACE ROOT RESOLUTION: Traverse up from test subfolders
-            // to find the master directory containing the `.cluaiz` configuration folder.
+            // 🛡️ WORKSPACE ROOT RESOLUTION: Traverse up from test/app subfolders
+            // to find the master directory containing the canonical `.cluaiz` configuration folder.
             let mut check_dir = current_dir.clone();
-            while !check_dir.join(".cluaiz").exists() {
+            let mut canonical_dir = None;
+
+            loop {
+                // If in Cluaiz-Technologies or parent, check cluaiz/.cluaiz first (primary engine workspace)
+                let sibling_engine = check_dir.join("cluaiz").join(".cluaiz");
+                if sibling_engine.exists() {
+                    canonical_dir = Some(sibling_engine);
+                    break;
+                }
+                // Check direct .cluaiz, ignoring transient desktop subfolders
+                let direct = check_dir.join(".cluaiz");
+                let is_tauri_subfolder = check_dir.ends_with("src-tauri") || check_dir.ends_with("app");
+                if direct.exists() && !is_tauri_subfolder {
+                    canonical_dir = Some(direct);
+                    break;
+                }
                 if let Some(parent) = check_dir.parent() {
                     check_dir = parent.to_path_buf();
                 } else {
                     break;
                 }
             }
-            if check_dir.join(".cluaiz").exists() {
-                current_dir = check_dir;
-            }
+
+            let resolved_local = canonical_dir.unwrap_or_else(|| home_dir.join(".cluaiz"));
 
             return Self {
                 mode: EnvironmentMode::Development,
-                local_dir: current_dir.join(".cluaiz"),
+                local_dir: resolved_local,
                 global_dir: home_dir.join(".cluaiz"),
             };
         }

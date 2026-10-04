@@ -71,6 +71,7 @@ pub async fn auth_middleware(
     }
 
     let path = req.uri().path().to_string();
+    let method = req.method().clone();
 
     // 1. Extract Bearer Token from Authorization header
     let bearer_token = extract_bearer_token(&req);
@@ -84,12 +85,26 @@ pub async fn auth_middleware(
         false
     };
 
-    // 2. Sensitive System Routes: Filesystem (/v1/fs/*) & Terminal (/v1/system/cmd)
-    // Filesystem and shell command operations ALWAYS require a valid Bearer Token (session_token or sk-cluaiz-...)!
+    // 2. Sensitive System Routes: Filesystem (/v1/fs/*) and Terminal (/v1/system/cmd)
+    // Filesystem and shell commands ALWAYS require a valid Bearer Token!
     if path.starts_with("/v1/fs/") || path == "/v1/system/cmd" {
         if !is_authenticated {
             return Err(unauthorized_response(
                 "Missing or invalid Authorization token. Session or API Bearer token is required for sensitive system operations.",
+            ));
+        }
+        return Ok(next.run(req).await);
+    }
+
+    // Permission Mutations: Require token if API authentication is enabled
+    let is_permission_mutation = (path == "/v1/system/permission" && method == axum::http::Method::POST)
+        || path.starts_with("/v1/system/permission/approve")
+        || path.starts_with("/v1/system/permission/reject");
+
+    if is_permission_mutation {
+        if schema.api_auth.required && !schema.api_auth.tokens.is_empty() && !is_authenticated {
+            return Err(unauthorized_response(
+                "Missing or invalid Authorization token. Bearer token is required when API authentication is enabled.",
             ));
         }
         return Ok(next.run(req).await);
@@ -109,15 +124,15 @@ pub async fn auth_middleware(
 
     let is_public = path == "/health" 
         || path == "/info" 
-        || path.starts_with("/v1/system/permission");
+        || (path == "/v1/system/permission" && method == axum::http::Method::GET);
 
     if !is_api_route || is_public {
         return Ok(next.run(req).await);
     }
 
     // 5. Global API Authentication enforcement
-    // When "Require API Authentication" is enabled in settings, reject all unauthenticated API calls
-    if schema.api_auth.required {
+    // When "Require API Authentication" is enabled and tokens are configured, reject all unauthenticated API calls
+    if schema.api_auth.required && !schema.api_auth.tokens.is_empty() {
         return Err(unauthorized_response(
             "API Authentication is required. Provide a valid Bearer token in the Authorization header.",
         ));
@@ -162,5 +177,21 @@ mod tests {
         let invalid = "sk-cluaiz-wrongkey";
         assert!(!constant_time_compare(invalid, session_token));
         assert!(!configured_tokens.iter().any(|t| constant_time_compare(invalid, t)));
+    }
+
+    #[test]
+    fn test_permission_mutation_requires_auth() {
+        let path = "/v1/system/permission";
+        let method_post = axum::http::Method::POST;
+        let is_mutation = (path == "/v1/system/permission" && method_post == axum::http::Method::POST)
+            || path.starts_with("/v1/system/permission/approve")
+            || path.starts_with("/v1/system/permission/reject");
+        assert!(is_mutation);
+
+        let method_get = axum::http::Method::GET;
+        let is_get_mutation = (path == "/v1/system/permission" && method_get == axum::http::Method::POST)
+            || path.starts_with("/v1/system/permission/approve")
+            || path.starts_with("/v1/system/permission/reject");
+        assert!(!is_get_mutation);
     }
 }

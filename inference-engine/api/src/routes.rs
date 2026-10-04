@@ -94,6 +94,8 @@ pub fn build(state: Arc<AppState>) -> Router {
         .route("/v1/system/control", get(crate::handlers::system::get_system_control))
         .route("/v1/system/permission", get(crate::handlers::permission::get_permission))
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
+        .route("/v1/system/auth/token/generate", post(crate::handlers::permission::generate_auth_token))
+        .route("/v1/system/auth/token/revoke", post(crate::handlers::permission::revoke_auth_token))
         
         // ── Storage Control API ──
         .route("/v1/system/storage/temp_media", get(crate::handlers::storage::get_temp_media_status))
