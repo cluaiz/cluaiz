@@ -63,14 +63,10 @@ impl ToolsEngine {
         reg.set_tool_default_turns(id, turns)
     }
 
-    /// Configures security mode (full_access / sandboxed / strict)
+    /// Configures security mode (inherit / require_approval / always_allow)
     pub fn set_tool_security_mode(id: &str, mode: SecurityMode) -> Result<()> {
         let mut reg = Self::registry()?;
-        if let Some(tool) = reg.installed_tools.get_mut(id) {
-            tool.security_mode = mode;
-            reg.save()?;
-        }
-        Ok(())
+        reg.set_tool_security_mode(id, mode)
     }
 
 
@@ -277,7 +273,7 @@ impl ToolsEngine {
             .ok()
             .flatten()
             .map(|t| t.security_mode)
-            .unwrap_or(SecurityMode::Sandboxed);
+            .unwrap_or(SecurityMode::Inherit);
 
         // 1. Declarative Execution Manifest check (dynamic from tool package.json)
         if let Some(comp_dir) = Self::resolve_component_dir(category, name) {
@@ -327,7 +323,7 @@ impl ToolsEngine {
                 .ok()
                 .flatten()
                 .map(|t| t.security_mode)
-                .unwrap_or(SecurityMode::Sandboxed);
+                .unwrap_or(SecurityMode::Inherit);
 
             let stdin_input = parsed_payload.get("stdin")
                 .or_else(|| parsed_payload.get("input"))
