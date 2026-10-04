@@ -215,3 +215,100 @@ Tools registered with the engine declare explicit capabilities. Any capability n
 | `network` | Inbound or outbound network socket access | **Requires Human Approval** |
 | *(None / Empty)* | Read-only calculation or pure memory inspection | Executed automatically |
 | *(MCP Tools)* | Any tool originating from an external Model Context Protocol server | **Requires Human Approval** |
+
+---
+
+## 5. Master Security Matrix (Global `permission.json` × Tool `tools_registry.json`)
+
+The engine resolves every tool invocation through a two-tier evaluation matrix combining **Global Mode** (`agent_security_mode`) and **Tool Policy** (`security_mode`):
+
+| # | Global Mode (`permission.json`) | Tool Policy (`tools_registry.json`) | Workspace Ke Andar (Read / Edit / Build) | Workspace Ke Bahar (Host / System Path) | Harmful / Destructive Action (`rm -rf`, `format`, delete) |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **`full_access`** | **`always_allow`** | ✅ **Direct Auto-Run** (Zero Prompt, Maximum Speed) | ✅ **Allowed Directly** (Read/Write Allowed for automation) | ⛔ **HARD-BLOCKED** (Suicide/OS wipe strictly denied; safe delete prompts) |
+| **2** | **`full_access`** | **`inherit`** | ✅ **Direct Auto-Run** (Follows Global Full Access) | ✅ **Allowed Directly** (Automation loop smooth) | ⛔ **HARD-BLOCKED** (Hardware/OS destruction prohibited) |
+| **3** | **`full_access`** | **`require_approval`** | 🟡 **Prompt User** (Tool level par user ne explicitly approval maanga hai) | 🟡 **Prompt User** (Confirmation required) | ⛔ **HARD-BLOCKED** (Destructive patterns denied; normal delete prompts) |
+| **4** | **`sandboxed`** *(Default)* | **`always_allow`** | ✅ **Direct Auto-Run** (Sandbox ke andar tool ko full trust hai) | 🟡 **Prompt User** (Workspace se bahar ja raha hai, confirmation compulsory) | 🟡 **Prompt User / Block** (Harmful action par prompt aayega, suicide block) |
+| **5** | **`sandboxed`** *(Default)* | **`inherit`** | ✅ **Read-only Auto-Run**<br>🟡 **Mutating/Exec prompts if undeclared** | 🟡 **Prompt User** (Outside boundary requires explicit sign-off) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for recursive delete |
+| **6** | **`sandboxed`** *(Default)* | **`require_approval`** | 🟡 **Prompt User** (Har execution par approval card aayega) | 🟡 **Prompt User** (Bahar jaane par approval zaroori) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
+| **7** | **`strict`** | **`always_allow`** | ✅ **Direct Auto-Run** (Tool trusted by user for workspace tasks) | 🟡 **Prompt User** (Workspace ke bahar 1% bhi sensitive hone par permission) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
+| **8** | **`strict`** | **`inherit`** | 🟡 **Prompt User** (Strict mode forces confirmation on all exec/write) | 🚫 **Access Denied / Prompt** (Strict outside boundary lock) | ⛔ **HARD-BLOCKED** (Zero-tolerance destructive block) |
+| **9** | **`strict`** | **`require_approval`** | 🟡 **Prompt User** (Double-lock: Global bhi Strict, Tool bhi Strict) | 🚫 **Access Denied / Prompt** (Outside workspace strictly gated) | ⛔ **HARD-BLOCKED** (Destructive commands completely rejected) |
+
+### 5.1 Non-Bypassable Hard-Denied Rules (Cross-Platform)
+
+Regardless of whether the global or tool mode is `full_access` or `always_allow`, destructive operations are unconditionally blocked at the kernel policy layer across all 3 major operating systems:
+
+* **POSIX / Linux / macOS**:
+  * Root & Home Directory Destruction: `rm -rf /`, `rm -rf /*`, `rm -rf ~`, `rm -rf $HOME`
+  * Raw Disk Wiping & Partition Formatting: `mkfs`, `mkfs.ext4`, `mkfs.xfs`, `mkfs.btrfs`, `mkfs.vfat`
+  * Raw Device Zeroing & Overwrites: `dd if=/dev/zero`, `dd if=/dev/urandom`, `dd if=/dev/null`, `dd of=/dev/sd*`, `dd of=/dev/nvme*`, `> /dev/sda`
+  * Process Starvation & Fork Bombs: `:(){ :|:& };:`, `:(){ :|: & };:`
+  * Forced Kernel Shutdown & Halts: `shutdown -h`, `shutdown -r`, `init 0`, `init 6`, `poweroff`, `reboot`, `halt`
+  * System Permission Tampering: `chmod -R 777 /`, `chmod -R 000 /`, `chown -R` on `/`
+* **Windows**:
+  * Volume & Disk Formatting: `format c:`, `format d:`, `format /q`
+  * System Drive Wiping: `rmdir /s /q c:\`, `rmdir /s /q c:/`, `rd /s /q c:\`, `rd /s /q c:/`
+  * Windows Directory Deletion: `del /f /s /q c:\windows`, `del /f /s /q c:/windows`, `del /f /s /q c:\*`
+  * Scripted Storage Destruction: `diskpart`, `Clear-Disk`, `Initialize-Disk`, `Remove-Partition`, `Format-Volume`
+  * Host Shutdown & Reboot: `Stop-Computer`, `Restart-Computer`, `shutdown /s`, `shutdown /r`
+* **macOS**:
+  * Volume & Partition Destruction: `diskutil eraseDisk`, `diskutil reformat`, `diskutil unmountDisk force`
+  * Firmware & NVRAM Wiping: `nvram -c`
+  * System Integrity Protection Tampering: `csrutil disable`
+
+---
+
+## 6. Sensitive Path & Host Protection Rules
+
+Under `sandboxed` (Inherit) and `strict` (RequireApproval) modes, access to the following host credential paths is automatically blocked:
+
+| Category | Protected Paths & Key Patterns | Platforms |
+|---|---|---|
+| **SSH & Cryptographic Keys** | `id_rsa`, `id_ed25519`, `id_ecdsa`, `id_dsa`, `id_xmss`, `.ssh/authorized_keys`, `.ssh/known_hosts`, `.ssh/config`, `.ppk`, `putty.ppk` | Windows, Linux, macOS |
+| **Cloud & Cluster Auth** | `~/.aws/credentials`, `~/.aws/config`, `aws_access_key_id`, `~/.azure/`, `accessTokens.json`, `~/.kube/config`, `kubeconfig`, `~/.config/gcloud/`, `~/.docker/config.json`, `~/.vault-token` | Windows, Linux, macOS |
+| **Package Managers & VC** | `.git-credentials`, `.netrc`, `.npmrc`, `.pypirc`, `.cargo/credentials.toml` | Windows, Linux, macOS |
+| **Environment & Secrets** | `.env`, `.env.local`, `.env.production`, `.env.staging` (outside workspace), `private_key.pem`, `server.key`, `secrets.yaml`, `secrets.json` | Windows, Linux, macOS |
+| **Shell & Console History** | `.bash_history`, `.zsh_history`, `.sh_history`, PowerShell `ConsoleHost_history.txt` | Windows, Linux, macOS |
+| **OS Security Hives** | Linux: `/etc/shadow`, `/etc/gshadow`, `/etc/passwd`, `/etc/sudoers`, `/var/log/auth.log`<br>Windows: `System32\config\SAM`, `System32\config\SECURITY`, `System32\config\SYSTEM`, `ntds.dit`<br>macOS: `~/Library/Keychains/`, `login.keychain`, `System.keychain`, `~/Library/Safari/` | Windows, Linux, macOS |
+
+---
+
+## 7. Safe Read-Only Inspection Prefixes
+
+Under `RequireApproval` mode, safe inspection commands are permitted to run without nagging prompts, while state-mutating commands prompt the user:
+
+* **Git Read Inspection**: `git status`, `git log`, `git diff`, `git show`, `git branch`, `git tag`, `git rev-parse`, `git describe`, `git remote`, `git config --get`, `git ls-files`, `git check-ignore`
+* **Filesystem Inspection**: `ls`, `dir`, `cat`, `type`, `head`, `tail`, `more`, `less`, `pwd`, `cd`, `echo`, `printf`, `find`, `where`, `which`, `file`, `stat`, `wc`, `du`, `df`, `grep`, `rg`, `findstr`, `awk`, `sed -n`
+* **PowerShell Inspection Cmdlets**: `Get-ChildItem`, `gci`, `Get-Content`, `gc`, `Get-Item`, `Get-Location`, `gl`, `Select-String`, `sls`, `Test-Path`
+* **Build & Static Analysis (No Side Effects)**: `cargo check`, `cargo test`, `cargo clippy`, `cargo metadata`, `cargo tree`, `npm test`, `npm run lint`, `npx tsc --noEmit`, `yarn test`, `pnpm test`, `pytest`, `python -m unittest`, `go test`, `go vet`
+* **System Diagnostics**: `uname`, `whoami`, `hostname`, `uptime`, `date`, `env`, `printenv`, `free`, `top -b -n 1`, `ps`, `netstat`, `ss`, `systeminfo`, `wmic`, `Get-Process`, `Get-Service`, `sw_vers`, `system_profiler`
+
+---
+
+## 8. 3-Stage Tool Execution Lifecycle
+
+Tool invocations in Cluaiz stream through 3 formal stages:
+
+```
+[Tool Call Dispatched]
+         │
+         ▼
+┌──────────────────┐
+│ STAGE 1: PENDING │ ── (Requires approval? -> yields permission_request event)
+└──────────────────┘    (Auto-approved?    -> yields tool_status: pending event)
+         │
+         ▼
+┌──────────────────┐
+│ STAGE 2: RUNNING │ ── (Yields tool_status: running event with execution timestamp)
+└──────────────────┘
+         │
+         ▼
+┌────────────────────────┐
+│ STAGE 3: COMPLETED/ERR │ ── (Yields tool_result event with stdout, exit code, latency)
+└────────────────────────┘
+```
+
+1. **Stage 1 (Pending)**: Emitted when a tool call is identified. If gated, waits up to 120s for user click; if auto-approved, emits `pending` receipt.
+2. **Stage 2 (Running)**: Emitted as the background process launches (`status: "running"`).
+3. **Stage 3 (Completed / Failed / Denied)**: Captures process completion, status, latency in milliseconds, exit code, and formats XML into the agent turn history.
+

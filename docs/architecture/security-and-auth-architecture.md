@@ -135,3 +135,114 @@ Located in [`inference-engine/engines/core/src/environment/config_manager.rs`](f
 Configuration schemas (`permission.json`, `gguf_config.json`, `system_control.json`) prioritize human-editable JSON with `serde` defaults as the primary source of truth:
 * Prevents binary layout mismatches (`rkyv` offset desync) caused by struct field additions across versions.
 * Eliminates out-of-memory aborts caused by unvalidated binary zero-copy deserialization.
+
+---
+
+## 6. Master Security Matrix & Execution Boundary (Anthropic Parity)
+
+Located in [`inference-engine/engines/src/tools/execution/policy.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/tools/execution/policy.rs) and [`inference-engine/engines/src/tools/registry/types.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/tools/registry/types.rs).
+
+Cluaiz enforces a two-tier security governance model combining **Global Agent Mode** (`permission.json`) with **Tool-Level Policies** (`tools_registry.json`).
+
+### 6.1 Architectural Decision Flow
+
+```mermaid
+flowchart TD
+    Req["Tool / Terminal Request"] --> CheckSuicide{"Destructive Prohibited?\n(format c:, rm -rf /, dd if=)"}
+    CheckSuicide -->|Yes| HardDeny["⛔ HARD-DENIED Across All Modes\n(OS / Hardware Destruction Prohibited)"]
+    
+    CheckSuicide -->|No| CheckMaster{"Master Security Mode\n(permission.json)"}
+    
+    CheckMaster -->|full_access| ToolFullCheck{"Tool Mode == require_approval?"}
+    ToolFullCheck -->|Yes| PromptUser["🟡 Prompt User (HITL Confirmation Card)"]
+    ToolFullCheck -->|No| AutoRun["✅ Direct Auto-Run (Zero Friction Automation)"]
+    
+    CheckMaster -->|strict| ToolStrictCheck{"Tool Mode == always_allow?"}
+    ToolStrictCheck -->|Yes| AutoRun
+    ToolStrictCheck -->|No| PromptUser
+    
+    CheckMaster -->|sandboxed| CheckJail{"Target Path in Workspace Jail?"}
+    CheckJail -->|Outside Workspace| OutsideCheck{"Tool Mode == always_allow?"}
+    OutsideCheck -->|Yes| PromptOutside["🟡 Prompt User (Outside Boundary Alert)"]
+    OutsideCheck -->|No| PromptOutside
+    
+    CheckJail -->|Inside Workspace| ToolSandboxCheck{"Tool Policy"}
+    ToolSandboxCheck -->|always_allow| AutoRun
+    ToolSandboxCheck -->|require_approval| PromptUser
+    ToolSandboxCheck -->|inherit| CapCheck{"Safe Read vs Mutative/Exec?"}
+    CapCheck -->|Safe Read (cat, git diff)| AutoRun
+    CapCheck -->|Mutative / Exec / Shell / MCP| PromptUser
+```
+
+### 6.2 The Complete 3 × 3 = 9 Master Security Matrix
+
+| # | Global Mode (`permission.json`) | Tool Mode (`tools_registry.json`) | Workspace Ke Andar (Read / Edit / Build) | Workspace Ke Bahar (Host / System Path) | Harmful / Destructive Action (`rm -rf`, `format`, delete) |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **`full_access`** | **`always_allow`** | ✅ **Direct Auto-Run** (Zero Prompt, Maximum Speed) | ✅ **Allowed Directly** (Read/Write Allowed for automation) | ⛔ **HARD-BLOCKED** (Suicide/OS wipe strictly denied; safe delete prompts) |
+| **2** | **`full_access`** | **`inherit`** | ✅ **Direct Auto-Run** (Follows Global Full Access) | ✅ **Allowed Directly** (Automation loop smooth) | ⛔ **HARD-BLOCKED** (Hardware/OS destruction prohibited) |
+| **3** | **`full_access`** | **`require_approval`** | 🟡 **Prompt User** (Tool level par user ne explicitly approval maanga hai) | 🟡 **Prompt User** (Confirmation required) | ⛔ **HARD-BLOCKED** (Destructive patterns denied; normal delete prompts) |
+| **4** | **`sandboxed`** *(Default)* | **`always_allow`** | ✅ **Direct Auto-Run** (Sandbox ke andar tool ko full trust hai) | 🟡 **Prompt User** (Workspace se bahar ja raha hai, confirmation compulsory) | 🟡 **Prompt User / Block** (Harmful action par prompt aayega, suicide block) |
+| **5** | **`sandboxed`** *(Default)* | **`inherit`** | ✅ **Read-only Auto-Run**<br>🟡 **Mutating/Exec prompts if undeclared** | 🟡 **Prompt User** (Outside boundary requires explicit sign-off) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for recursive delete |
+| **6** | **`sandboxed`** *(Default)* | **`require_approval`** | 🟡 **Prompt User** (Har execution par approval card aayega) | 🟡 **Prompt User** (Bahar jaane par approval zaroori) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
+| **7** | **`strict`** | **`always_allow`** | ✅ **Direct Auto-Run** (Tool trusted by user for workspace tasks) | 🟡 **Prompt User** (Workspace ke bahar 1% bhi sensitive hone par permission) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
+| **8** | **`strict`** | **`inherit`** | 🟡 **Prompt User** (Strict mode forces confirmation on all exec/write) | 🚫 **Access Denied / Prompt** (Strict outside boundary lock) | ⛔ **HARD-BLOCKED** (Zero-tolerance destructive block) |
+| **9** | **`strict`** | **`require_approval`** | 🟡 **Prompt User** (Double-lock: Global bhi Strict, Tool bhi Strict) | 🚫 **Access Denied / Prompt** (Outside workspace strictly gated) | ⛔ **HARD-BLOCKED** (Destructive commands completely rejected) |
+
+### 6.3 Core Security Doctrines
+
+1. **The Workspace Privilege Boundary:** The workspace root is the default trust zone. Crossing out of the workspace requires human verification in `sandboxed` and `strict` modes.
+2. **Anthropic Safety Net (Non-Bypassable Hard-Deny):** Even when running under `--dangerously-skip-permissions` or `full_access`, catastrophic commands that wipe disks or destroy operating system files (`format c:`, `rm -rf /`, `diskutil eraseDisk`, fork bombs) are unconditionally rejected at the engine level across Windows, Linux, and macOS.
+3. **Sensitive Credential Protection:** Sensitive identity paths (`~/.ssh`, `~/.aws/credentials`, `~/.kube/config`, `/etc/shadow`, `system32/config`, macOS Keychains) are actively protected from unapproved reading or modification.
+
+### 6.4 Cross-Platform Hard-Deny Catalog
+
+The following operations are prohibited unconditionally across all 3 major platforms:
+
+* **POSIX / Linux / macOS**:
+  * Root & Home Directory Destruction: `rm -rf /`, `rm -rf /*`, `rm -rf ~`, `rm -rf $HOME`
+  * Raw Disk Wiping & Partition Formatting: `mkfs`, `mkfs.ext4`, `mkfs.xfs`, `mkfs.btrfs`, `mkfs.vfat`
+  * Raw Device Zeroing & Overwrites: `dd if=/dev/zero`, `dd if=/dev/urandom`, `dd if=/dev/null`, `dd of=/dev/sd*`, `dd of=/dev/nvme*`, `> /dev/sda`
+  * Process Starvation & Fork Bombs: `:(){ :|:& };:`, `:(){ :|: & };:`
+  * Forced Kernel Shutdown & Halts: `shutdown -h`, `shutdown -r`, `init 0`, `init 6`, `poweroff`, `reboot`, `halt`
+  * System Permission Tampering: `chmod -R 777 /`, `chmod -R 000 /`, `chown -R` on `/`
+* **Windows**:
+  * Volume & Disk Formatting: `format c:`, `format d:`, `format /q`
+  * System Drive Wiping: `rmdir /s /q c:\`, `rmdir /s /q c:/`, `rd /s /q c:\`, `rd /s /q c:/`
+  * Windows Directory Deletion: `del /f /s /q c:\windows`, `del /f /s /q c:/windows`, `del /f /s /q c:\*`
+  * Scripted Storage Destruction: `diskpart`, `Clear-Disk`, `Initialize-Disk`, `Remove-Partition`, `Format-Volume`
+  * Host Shutdown & Reboot: `Stop-Computer`, `Restart-Computer`, `shutdown /s`, `shutdown /r`
+* **macOS**:
+  * Volume & Partition Destruction: `diskutil eraseDisk`, `diskutil reformat`, `diskutil unmountDisk force`
+  * Firmware & NVRAM Wiping: `nvram -c`
+  * System Integrity Protection Tampering: `csrutil disable`
+
+### 6.5 3-Stage Tool Execution Lifecycle
+
+Tool invocations in Cluaiz stream through 3 formal stages:
+
+```mermaid
+sequenceDiagram
+    participant LLM as Agent Loop (LLM)
+    participant Engine as Cluaiz Engine
+    participant OS as Subprocess (Host OS)
+    participant UI as Desktop Client / Web UI
+
+    LLM->>Engine: Tool Call Emitted (e.g. run_command)
+    Note over Engine: Stage 1: PENDING
+    alt Approval Required
+        Engine->>UI: SSE permission_request (status: pending_approval)
+        UI-->>Engine: User Decision (Approve / Deny)
+    else Auto-Approved / Safe
+        Engine->>UI: SSE tool_status (status: pending)
+    end
+
+    Note over Engine,OS: Stage 2: RUNNING
+    Engine->>UI: SSE tool_status (status: running)
+    Engine->>OS: Spawn Process with Sandbox Boundary
+
+    Note over OS,Engine: Stage 3: COMPLETED / ERROR
+    OS-->>Engine: Process Exit (Stdout / Stderr / Exit Code)
+    Engine->>UI: SSE tool_result (status: completed | failed, latency_ms)
+    Engine->>LLM: Resume with XML <tool_response>
+```
+
