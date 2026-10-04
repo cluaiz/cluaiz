@@ -136,27 +136,59 @@ cluaiz permission telemetry off
 
 ---
 
-## ⚡ BOOSTER COMMANDS
+## 🔑 TOKEN & API AUTH COMMANDS
 
-> Controls `system_booster.json` — hardware optimization settings.
+> Manages API authorization tokens directly on the host machine from `permission.json`.
 
-| Command | Flag | Values | Description |
-|---------|------|--------|-------------|
-| `cluaiz booster` | _(no args)_ | | Open interactive booster TUI menu |
-| `cluaiz booster --mode <mode>` | `--mode` | `edge / multitasking / balance / max_boost / ultra_max_boost / hyper_cluster` | Set performance profile |
-| `cluaiz booster --kv-quant <level>` | `--kv-quant` | `auto / kv16 / kv8 / kv4` | Set KV-Cache quantization level |
-| `cluaiz booster --context-shift <mode>` | `--context-shift` | `auto / off / minimal / standard / aggressive / extreme` | Set context shifting mode |
-| `cluaiz booster --spec-decode <mode>` | `--spec-decode` | `on / off / auto` | Enable/disable speculative decoding |
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `cluaiz token show` | | View primary active API token and auth guard status |
+| `cluaiz token show --all` | `-a` | View all configured API tokens in full plaintext |
+| `cluaiz token create` | | Create and register a new secure `sk-cluaiz-...` API access token (up to 5 keys) |
+| `cluaiz token list` | `ls` | List all configured API tokens in full plaintext |
+| `cluaiz token remove <token>` | `rm` | Remove an API token by exact string or key suffix |
 
 **Examples:**
 ```bash
-cluaiz booster
-cluaiz booster --mode edge
-cluaiz booster --mode max_boost
-cluaiz booster --kv-quant kv8
-cluaiz booster --context-shift aggressive
-cluaiz booster --spec-decode on
-cluaiz booster --mode edge --kv-quant kv8 --context-shift aggressive
+# View primary active API token
+cluaiz token show
+
+# View all configured tokens in full plaintext
+cluaiz token show --all
+
+# Create a new token
+cluaiz token create
+
+# List all configured tokens
+cluaiz token list
+cluaiz token ls
+
+# Remove a token using its suffix or full key
+cluaiz token remove 7898
+cluaiz token rm sk-cluaiz-758cfa115a9843a89ce03e985cff7898
+```
+
+---
+
+## ⚡ LLM OPTIMIZATION COMMANDS
+
+> Controls LLM execution performance and KV-cache parameters via `cluaiz llm-optimization`.
+
+| Command | Flag | Values | Description |
+|---------|------|--------|-------------|
+| `cluaiz llm-optimization --mode <mode>` | `--mode` | `edge / multitasking / balance / max_boost / ultra_max_boost / hyper_cluster` | Set execution performance profile |
+| `cluaiz llm-optimization --kv-quant <level>` | `--kv-quant` | `auto / kv16 / kv8 / kv4` | Set KV-Cache quantization level |
+| `cluaiz llm-optimization --context-shift <mode>` | `--context-shift` | `auto / off / minimal / standard / aggressive / extreme` | Set context shifting / sliding window mode |
+| `cluaiz llm-optimization --spec-decode <mode>` | `--spec-decode` | `on / off / auto` | Enable/disable speculative decoding |
+
+**Examples:**
+```bash
+cluaiz llm-optimization --mode edge
+cluaiz llm-optimization --mode max_boost
+cluaiz llm-optimization --kv-quant kv8
+cluaiz llm-optimization --context-shift aggressive
+cluaiz llm-optimization --spec-decode on
+cluaiz llm-optimization --mode edge --kv-quant kv8 --context-shift aggressive
 ```
 
 ---
