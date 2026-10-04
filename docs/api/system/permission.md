@@ -57,7 +57,7 @@ Retrieves the active engine permission schema along with dynamically probed mode
   "allowed_paths": [],
   "api_auth": {
     "required": true,
-    "tokens": ["sk-cluaiz-e46c11e877b20afb49c..."]
+    "tokens": ["sk-cluaiz-8180e2bfd7a049efa670570909bd6812"]
   },
   "wasm_firewall": "strict",
   "vectorize_user_input": true,
@@ -73,6 +73,8 @@ Retrieves the active engine permission schema along with dynamically probed mode
 }
 ```
 
+> **Client Security Note:** The API returns authorized tokens to the local developer client UI, which renders them masked by default and enables the user to securely reveal or copy them on demand via client-side controls.
+
 ---
 
 ### 2.2 Update Permission Policy (`POST /v1/system/permission`)
@@ -82,6 +84,7 @@ Updates `permission.json` dynamically and triggers runtime synchronization acros
 * **Path:** `/v1/system/permission`
 * **Method:** `POST`
 * **Content-Type:** `application/json`
+* **Authorization:** `Bearer <token>` (required when `api_auth.required` is `true`)
 
 #### Request Payload
 ```json
@@ -90,7 +93,7 @@ Updates `permission.json` dynamically and triggers runtime synchronization acros
   "workspace_root": "C:\\Users\\Developer\\Workspace",
   "api_auth": {
     "required": true,
-    "tokens": ["sk-cluaiz-custom-key-12345"]
+    "tokens": ["sk-••••a3f9"]
   },
   "wasm_firewall": "strict",
   "vectorize_user_input": true,
@@ -103,7 +106,7 @@ Updates `permission.json` dynamically and triggers runtime synchronization acros
 | `security_mode` | `string` | `"strict"`, `"sandboxed"`, `"full_access"` | Governs filesystem containment and tool execution gates. |
 | `workspace_root` | `string` | Absolute path | Directory path used as the base anchor for all relative filesystem calls. |
 | `api_auth.required` | `boolean` | `true`, `false` | When `true`, all external API calls require a Bearer token. |
-| `api_auth.tokens` | `array[string]` | List of API keys | Authorized API keys accepted by the engine. |
+| `api_auth.tokens` | `array[string]` | List of API keys | Authorized API keys (masked tokens preserved during patch). |
 | `wasm_firewall` | `string` | `"strict"`, `"permissive"` | OS-level syscall isolation for WASM plugins. |
 | `vectorize_user_input` | `boolean` | `true`, `false` | Real-time RAG embedding pipeline toggle. |
 
@@ -112,6 +115,56 @@ Updates `permission.json` dynamically and triggers runtime synchronization acros
 {
   "status": "success",
   "message": "permission.json successfully updated."
+}
+```
+
+---
+
+### 2.3 Generate API Access Token (`POST /v1/system/auth/token/generate`)
+
+Generates a new secure random API access token (`sk-cluaiz-...`), appends it to `permission.json`, and returns the unmasked token in a single-use response. Up to 5 tokens can be active simultaneously.
+
+* **Path:** `/v1/system/auth/token/generate`
+* **Method:** `POST`
+* **Authorization:** `Bearer <token>` (required when `api_auth.required` is `true`)
+
+#### Response (`200 OK`)
+```json
+{
+  "status": "success",
+  "token": "sk-cluaiz-9f8e7d6c5b4a3...",
+  "tokens": [
+    "sk-••••a3f9",
+    "sk-••••b4a3"
+  ]
+}
+```
+
+---
+
+### 2.4 Revoke API Access Token (`POST /v1/system/auth/token/revoke`)
+
+Revokes an existing API access token by its exact key or by its masked suffix (`sk-••••b4a3` or `b4a3`). If all tokens are revoked, `api_auth.required` is automatically disabled.
+
+* **Path:** `/v1/system/auth/token/revoke`
+* **Method:** `POST`
+* **Authorization:** `Bearer <token>` (required when `api_auth.required` is `true`)
+* **Content-Type:** `application/json`
+
+#### Request Payload
+```json
+{
+  "token": "sk-••••b4a3"
+}
+```
+
+#### Response (`200 OK`)
+```json
+{
+  "status": "success",
+  "tokens": [
+    "sk-••••a3f9"
+  ]
 }
 ```
 
