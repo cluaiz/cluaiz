@@ -455,12 +455,14 @@ pub fn stream_tokens(
                 }
                 safe_batch.batch.n_tokens = chunk.len() as i32;
 
-                // 🌊 PCIe Direct DMA MoE Highway Hook (Prefill)
-                if let Some(ref controller_arc) = llama.moe_controller {
-                    if let Ok(mut ctrl) = controller_arc.lock() {
-                        let token_val = *chunk.first().unwrap_or(&0);
-                        let pos_val = start_pos + (chunk_idx * chunk_size as usize) as i32;
-                        ctrl.pipeline_all_offloaded_chunks(token_val, pos_val);
+                // 🌊 PCIe Direct DMA MoE Highway Hook (Prefill) - gated for native GGML streaming bridge
+                if false {
+                    if let Some(ref controller_arc) = llama.moe_controller {
+                        if let Ok(mut ctrl) = controller_arc.lock() {
+                            let token_val = *chunk.first().unwrap_or(&0);
+                            let pos_val = start_pos + (chunk_idx * chunk_size as usize) as i32;
+                            ctrl.pipeline_all_offloaded_chunks(token_val, pos_val);
+                        }
                     }
                 }
 
@@ -646,10 +648,12 @@ pub fn stream_tokens(
             *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
             *safe_batch.batch.logits.add(0) = 1;
 
-            // PCIe Direct DMA MoE Highway Hook if active
-            if let Some(ref controller_arc) = llama.moe_controller {
-                if let Ok(mut ctrl) = controller_arc.lock() {
-                    ctrl.pipeline_all_offloaded_chunks(next_token_id, n_cur);
+            // PCIe Direct DMA MoE Highway Hook (Decode) - gated for native GGML streaming bridge
+            if false {
+                if let Some(ref controller_arc) = llama.moe_controller {
+                    if let Ok(mut ctrl) = controller_arc.lock() {
+                        ctrl.pipeline_all_offloaded_chunks(next_token_id, n_cur);
+                    }
                 }
             }
 

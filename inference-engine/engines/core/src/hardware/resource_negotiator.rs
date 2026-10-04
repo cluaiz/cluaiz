@@ -293,24 +293,32 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             let expert_total_gb = moe_info.total_expert_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
             let layer_count = moe_info.moe_layer_count.max(1) as f64;
 
-            // Accurate MoE layer sizing (Dense Attention + MoE Router + 128 Experts)
+            // Accurate MoE layer sizing (Dense Attention + MoE Router + Active/Cached Experts)
             let dense_per_layer_gb = dense_gb / layer_count;
             let expert_per_layer_gb = expert_total_gb / layer_count;
-            let layer_size = dense_per_layer_gb + expert_per_layer_gb;
 
-            // Single expert size in GB
-            let single_expert_gb = if moe_info.total_expert_bytes > 0 && moe_info.expert_count > 0 {
-                (moe_info.total_expert_bytes as f64 / moe_info.expert_count as f64)
+            // Single expert size in GB (Divide total expert bytes by total experts across all layers)
+            let total_model_experts = (moe_info.expert_count * moe_info.moe_layer_count.max(1)) as f64;
+            let single_expert_gb = if moe_info.total_expert_bytes > 0 && total_model_experts > 0.0 {
+                (moe_info.total_expert_bytes as f64 / total_model_experts)
                     / (1024.0 * 1024.0 * 1024.0)
+            } else if moe_info.expert_size_bytes > 0 {
+                moe_info.expert_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
             } else {
                 0.0
             };
 
-            // Calculate Universal DMA Staging Buffer Reserve (Ping-Pong 4-layer bulk)
-            let active_per_layer_gb = single_expert_gb * moe_info.active_experts_per_token as f64;
-            // 4 Layers per slot for Double Buffer (Ping + Pong)
+            // In MoE streaming mode, VRAM per layer consists of the dense backbone attention
+            // plus active and staged expert slots (double-buffered for smooth ping-pong streaming)
+            let active_experts = moe_info.active_experts_per_token.max(1) as f64;
+            let active_per_layer_gb = single_expert_gb * active_experts;
+            let streamed_layer_vram_gb = dense_per_layer_gb + (single_expert_gb * (active_experts * 2.0));
+            // Layer size clamped safely: at least 120MB, at most full layer size (dense + all experts)
+            let layer_size = streamed_layer_vram_gb.clamp(0.12, (dense_per_layer_gb + expert_per_layer_gb).max(0.15));
+
+            // DMA Staging Buffer Reserve in VRAM (Ping-Pong staging slots)
             let dma_staging_headroom_gb =
-                (2.0 * 4.0 * active_per_layer_gb).clamp(0.20, (total_vram_gb * 0.10).max(0.25));
+                (2.0 * active_per_layer_gb).clamp(0.15, (total_vram_gb * 0.08).max(0.25));
 
             let vram_base_reserve = dense_per_layer_gb.max(0.10);
 
@@ -337,8 +345,8 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let mut allocated_vram = vram_base_reserve + (approx_layers.max(0) as f64 * layer_size);
 
-            // Layer Yielding Loop: Ensure integer headroom > (dma_staging_headroom_gb + 0.10) to prevent VRAM OOM
-            while (live_free_vram_gb - allocated_vram) < (dma_staging_headroom_gb + 0.10)
+            // Layer Yielding Loop: Keep clean headroom above vram_safety to prevent VRAM OOM
+            while (live_free_vram_gb - allocated_vram) < (vram_safety + 0.05)
                 && approx_layers > 0
             {
                 approx_layers -= 1;
@@ -348,16 +356,12 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
 
             let remaining_layers =
                 (moe_info.moe_layer_count as i32).saturating_sub(approx_layers.max(0));
-            let gpu_experts = if moe_info.moe_layer_count > 0 {
-                (moe_info.expert_count * approx_layers.max(0) as usize) / moe_info.moe_layer_count
-            } else {
-                0
-            };
-            let offloaded_layer_experts = moe_info.expert_count.saturating_sub(gpu_experts);
+            let gpu_experts = moe_info.expert_count * approx_layers.max(0) as usize;
+            let offloaded_layer_experts = moe_info.expert_count * remaining_layers.max(0) as usize;
 
             let offloaded_experts_gb = offloaded_layer_experts as f64 * single_expert_gb;
 
-            // Step 2: Optimistic Allocation (Try to fit ALL layers first)
+            // Step 2: Optimistic Allocation (Try to fit ALL offloaded layers in cache first)
             let initial_cache_budget = offloaded_experts_gb;
             let initial_cached_expert_count = offloaded_layer_experts;
             let initial_cached_layers = remaining_layers;
@@ -366,18 +370,15 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 (usable_ram - ram_dense_reserve - ggml_workspace_reserve - dma_staging_headroom_gb)
                     .max(0.0);
 
-            // Step 3: OS Safety Buffer & Pre-Calculated Context Allocation
-            let os_safety_buffer_gb = (total_ram_gb * 0.05).clamp(1.0, 2.0);
-
-            // Step 4: Layer Eviction (Deduct non-cache reserves cleanly including dynamic OS Safety Buffer and DMA Staging)
+            // Step 3: Layer Cache Budget in System RAM
+            // usable_ram already has the OS safety buffer deducted by memory_governor.
+            // Deduct non-cache base reserves cleanly without double-deducting the OS floor.
             let total_non_cache_reserve = ram_dense_reserve
                 + ggml_workspace_reserve
                 + dma_staging_headroom_gb
-                + required_ctx_gb
-                + os_safety_buffer_gb;
+                + required_ctx_gb;
             let ram_for_cache = (usable_ram - total_non_cache_reserve).max(0.0);
             let mut cached_expert_count = initial_cached_expert_count;
-            let experts_per_layer = moe_info.expert_count as f64 / moe_info.moe_layer_count as f64;
 
             if single_expert_gb > 0.0 {
                 let max_experts_fit = (ram_for_cache / single_expert_gb).floor() as usize;
@@ -391,7 +392,11 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             };
 
             let actual_cache_gb = cache_budget;
-            let cached_layers = (cached_expert_count as f64 / experts_per_layer).round() as i32;
+            let cached_layers = if moe_info.expert_count > 0 {
+                (cached_expert_count as f64 / moe_info.expert_count as f64).round() as i32
+            } else {
+                0
+            };
             let cut_layers_for_safety = initial_cached_layers - cached_layers;
             let overflow_layers = initial_cached_layers - cached_layers;
 
