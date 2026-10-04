@@ -42,29 +42,26 @@ impl ExecutionMode {
 #[serde(rename_all = "snake_case")]
 pub enum SecurityMode {
     #[default]
-    Sandboxed,
-    FullAccess,
-    WorkspaceWrite,
-    Strict,
+    Inherit,
+    RequireApproval,
+    AlwaysAllow,
 }
 
 impl SecurityMode {
     pub fn from_raw(s: &str) -> Option<Self> {
         match s.trim().to_lowercase().as_str() {
-            "sandboxed" => Some(Self::Sandboxed),
-            "workspace_write" | "workspacewrite" | "workspace-write" => Some(Self::WorkspaceWrite),
-            "strict" => Some(Self::Strict),
-            "full_access" | "fullaccess" | "full-access" => Some(Self::FullAccess),
+            "inherit" => Some(Self::Inherit),
+            "require_approval" => Some(Self::RequireApproval),
+            "always_allow" => Some(Self::AlwaysAllow),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Sandboxed => "sandboxed",
-            Self::FullAccess => "full_access",
-            Self::WorkspaceWrite => "workspace_write",
-            Self::Strict => "strict",
+            Self::Inherit => "inherit",
+            Self::RequireApproval => "require_approval",
+            Self::AlwaysAllow => "always_allow",
         }
     }
 }
@@ -100,11 +97,11 @@ pub struct ToolEntry {
     pub category: String,
 
     /// Semantic version (optional, read dynamically from package.json)
-    #[serde(default = "default_version", skip_serializing_if = "String::is_empty")]
+    #[serde(default = "default_version")]
     pub version: String,
 
     /// Short description of capabilities
-    #[serde(default, skip_serializing_if = "String::is_empty")]
+    #[serde(default)]
     pub description: String,
 
     /// Absolute or relative local directory on filesystem
@@ -112,7 +109,7 @@ pub struct ToolEntry {
     pub local_dir: String,
 
     /// Path to compiled WASM or native binary (if applicable)
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub binary_path: Option<String>,
 
     /// Master ON/OFF toggle
@@ -128,23 +125,23 @@ pub struct ToolEntry {
     pub execution_mode: ExecutionMode,
 
     /// Default turn duration (-1 = permanent / auto-quiescence)
-    #[serde(default = "default_persistent_turns", skip_serializing_if = "is_default_turn")]
+    #[serde(default = "default_persistent_turns")]
     pub default_turns: i32,
 
     /// Granular permissions e.g. ["net:fetch", "fs:read", "cpu:fuel"]
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub permissions: Vec<String>,
 
     /// Words and phrases that activate this tool in context
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub semantic_triggers: Vec<String>,
 
     /// Explicit event strings (e.g. "on_command:use plugin::cluaiz-search")
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub activation_events: Vec<String>,
 
     /// Declared capabilities e.g. ["exec", "fs_write", "network", "fs_read"]
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub capabilities: Vec<String>,
 }
 
@@ -153,31 +150,42 @@ impl ToolEntry {
     /// based on master security mode, category, execution mode, and declared capabilities.
     pub fn requires_approval(&self, master_security_mode: &str) -> bool {
         match master_security_mode.to_lowercase().as_str() {
-            "full_access" => false,
-            "strict" => true,
+            "full_access" => {
+                // In Full Access: tool executes automatically unless user specifically marked it RequireApproval
+                self.security_mode == SecurityMode::RequireApproval
+            }
+            "strict" => {
+                // In Strict: all executions require approval unless user explicitly gave AlwaysAllow
+                self.security_mode != SecurityMode::AlwaysAllow
+            }
             _ => {
-                // In Sandboxed mode:
-                // 1. External MCP tools always require approval (privilege boundary)
+                // Sandboxed mode:
+                // 1. Tool-level explicit overrides
+                if self.security_mode == SecurityMode::AlwaysAllow {
+                    return false;
+                }
+                if self.security_mode == SecurityMode::RequireApproval {
+                    return true;
+                }
+
+                // 2. Inherit mode:
+                // External MCP tools always require approval (privilege boundary)
                 if self.category.to_lowercase() == "mcp" {
                     return true;
                 }
-                // 2. Explicit tool-level strict mode
-                if self.security_mode == SecurityMode::Strict {
-                    return true;
-                }
-                // 3. Execution mode requires confirmation
+                // Execution mode requires confirmation
                 if self.execution_mode == ExecutionMode::Manual
                     || self.execution_mode == ExecutionMode::ConfirmDestructive
                 {
                     return true;
                 }
-                // 4. Capability inspection
+                // Capability inspection
                 let caps = if !self.capabilities.is_empty() {
                     &self.capabilities
                 } else {
                     &self.permissions
                 };
-                // Directive 1: Undeclared tools = approval by default
+                // Undeclared tools = approval by default
                 if caps.is_empty() {
                     return true;
                 }
@@ -238,12 +246,9 @@ mod tests {
 
     #[test]
     fn test_security_mode_parsing() {
-        assert_eq!(SecurityMode::from_raw("sandboxed"), Some(SecurityMode::Sandboxed));
-        assert_eq!(SecurityMode::from_raw("workspace_write"), Some(SecurityMode::WorkspaceWrite));
-        assert_eq!(SecurityMode::from_raw("workspace-write"), Some(SecurityMode::WorkspaceWrite));
-        assert_eq!(SecurityMode::from_raw("strict"), Some(SecurityMode::Strict));
-        assert_eq!(SecurityMode::from_raw("full_access"), Some(SecurityMode::FullAccess));
-        assert_eq!(SecurityMode::from_raw("full-access"), Some(SecurityMode::FullAccess));
+        assert_eq!(SecurityMode::from_raw("inherit"), Some(SecurityMode::Inherit));
+        assert_eq!(SecurityMode::from_raw("require_approval"), Some(SecurityMode::RequireApproval));
+        assert_eq!(SecurityMode::from_raw("always_allow"), Some(SecurityMode::AlwaysAllow));
         assert_eq!(SecurityMode::from_raw("unknown"), None);
     }
 
@@ -252,50 +257,69 @@ mod tests {
         let entry_json = r#"{
             "id": "test-tool",
             "name": "Test Tool",
-            "security_mode": "workspace_write",
+            "security_mode": "require_approval",
             "execution_mode": "confirm_destructive"
         }"#;
         let parsed: ToolEntry = serde_json::from_str(entry_json).unwrap();
-        assert_eq!(parsed.security_mode, SecurityMode::WorkspaceWrite);
+        assert_eq!(parsed.security_mode, SecurityMode::RequireApproval);
         assert_eq!(parsed.execution_mode, ExecutionMode::ConfirmDestructive);
 
         let serialized = serde_json::to_string(&parsed).unwrap();
-        assert!(serialized.contains(r#""security_mode":"workspace_write""#));
+        assert!(serialized.contains(r#""security_mode":"require_approval""#));
         assert!(serialized.contains(r#""execution_mode":"confirm_destructive""#));
     }
 
     #[test]
-    fn test_requires_approval_capabilities() {
-        // 1. Full access always bypasses
-        let mut tool = ToolEntry::default();
-        tool.capabilities = vec!["exec".to_string()];
-        assert!(!tool.requires_approval("full_access"));
+    fn test_matrix_9_combinations() {
+        // Combination 1: full_access + always_allow -> false (auto-run)
+        let mut tool1 = ToolEntry::default();
+        tool1.security_mode = SecurityMode::AlwaysAllow;
+        assert!(!tool1.requires_approval("full_access"));
 
-        // 2. Strict always prompts
-        tool.capabilities = vec!["fs_read".to_string()];
-        assert!(tool.requires_approval("strict"));
+        // Combination 2: full_access + inherit -> false (auto-run)
+        let mut tool2 = ToolEntry::default();
+        tool2.security_mode = SecurityMode::Inherit;
+        assert!(!tool2.requires_approval("full_access"));
 
-        // 3. Sandboxed: MCP always prompts
-        let mut mcp_tool = ToolEntry::default();
-        mcp_tool.category = "mcp".to_string();
-        assert!(mcp_tool.requires_approval("sandboxed"));
+        // Combination 3: full_access + require_approval -> true (prompt)
+        let mut tool3 = ToolEntry::default();
+        tool3.security_mode = SecurityMode::RequireApproval;
+        assert!(tool3.requires_approval("full_access"));
 
-        // 4. Sandboxed: Undeclared capabilities -> default to approval
-        let undeclared_tool = ToolEntry::default();
-        assert!(undeclared_tool.requires_approval("sandboxed"));
+        // Combination 4: sandboxed + always_allow -> false (auto-run)
+        let mut tool4 = ToolEntry::default();
+        tool4.security_mode = SecurityMode::AlwaysAllow;
+        assert!(!tool4.requires_approval("sandboxed"));
 
-        // 5. Sandboxed: Dangerous capability -> prompts
-        let mut exec_tool = ToolEntry::default();
-        exec_tool.capabilities = vec!["exec".to_string()];
-        assert!(exec_tool.requires_approval("sandboxed"));
+        // Combination 5: sandboxed + inherit -> capability check
+        let mut tool5_safe = ToolEntry::default();
+        tool5_safe.security_mode = SecurityMode::Inherit;
+        tool5_safe.capabilities = vec!["fs_read".to_string(), "read_only".to_string()];
+        assert!(!tool5_safe.requires_approval("sandboxed"));
 
-        let mut write_tool = ToolEntry::default();
-        write_tool.capabilities = vec!["fs_write".to_string()];
-        assert!(write_tool.requires_approval("sandboxed"));
+        let mut tool5_danger = ToolEntry::default();
+        tool5_danger.security_mode = SecurityMode::Inherit;
+        tool5_danger.capabilities = vec!["exec".to_string()];
+        assert!(tool5_danger.requires_approval("sandboxed"));
 
-        // 6. Sandboxed: Safe read-only tool -> allowed without approval
-        let mut safe_tool = ToolEntry::default();
-        safe_tool.capabilities = vec!["fs_read".to_string(), "read_only".to_string()];
-        assert!(!safe_tool.requires_approval("sandboxed"));
+        // Combination 6: sandboxed + require_approval -> true (prompt)
+        let mut tool6 = ToolEntry::default();
+        tool6.security_mode = SecurityMode::RequireApproval;
+        assert!(tool6.requires_approval("sandboxed"));
+
+        // Combination 7: strict + always_allow -> false (auto-run for explicitly trusted tool)
+        let mut tool7 = ToolEntry::default();
+        tool7.security_mode = SecurityMode::AlwaysAllow;
+        assert!(!tool7.requires_approval("strict"));
+
+        // Combination 8: strict + inherit -> true (prompt)
+        let mut tool8 = ToolEntry::default();
+        tool8.security_mode = SecurityMode::Inherit;
+        assert!(tool8.requires_approval("strict"));
+
+        // Combination 9: strict + require_approval -> true (prompt)
+        let mut tool9 = ToolEntry::default();
+        tool9.security_mode = SecurityMode::RequireApproval;
+        assert!(tool9.requires_approval("strict"));
     }
 }

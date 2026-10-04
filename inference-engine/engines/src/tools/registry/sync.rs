@@ -36,16 +36,13 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, triggers, sec_opt, mode, turns) = Self::probe_skill_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Sandboxed);
+                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Inherit);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
                             if !ver.is_empty() && existing.version != ver { existing.version = ver; entry_changed = true; }
                             if !desc.is_empty() && existing.description != desc { existing.description = desc; entry_changed = true; }
                             if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
-                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
-                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
-                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
                             if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
                             if entry_changed { changed = true; }
                         } else {
@@ -82,7 +79,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, binary, triggers, perms, sec_opt, mode, turns) = Self::probe_plugin_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::FullAccess } else { SecurityMode::Sandboxed });
+                        let sec_mode = sec_opt.unwrap_or_else(|| if binary.is_some() { SecurityMode::AlwaysAllow } else { SecurityMode::Inherit });
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -91,9 +88,6 @@ impl ToolsRegistry {
                             if existing.binary_path != binary { existing.binary_path = binary; entry_changed = true; }
                             if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
                             if existing.permissions != perms { existing.permissions = perms; entry_changed = true; }
-                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
-                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
-                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
                             if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
                             if entry_changed { changed = true; }
                         } else {
@@ -130,7 +124,7 @@ impl ToolsRegistry {
                     if path.is_dir() {
                         let tool_id = path.file_name().unwrap_or_default().to_string_lossy().to_string();
                         let (name, ver, desc, triggers, perms, sec_opt, mode, turns) = Self::probe_mcp_metadata(&path);
-                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Sandboxed);
+                        let sec_mode = sec_opt.unwrap_or(SecurityMode::Inherit);
                         if let Some(existing) = self.installed_tools.get_mut(&tool_id) {
                             let mut entry_changed = false;
                             if !name.is_empty() && existing.name != name { existing.name = name; entry_changed = true; }
@@ -138,9 +132,6 @@ impl ToolsRegistry {
                             if !desc.is_empty() && existing.description != desc { existing.description = desc; entry_changed = true; }
                             if existing.semantic_triggers != triggers { existing.semantic_triggers = triggers; entry_changed = true; }
                             if existing.permissions != perms { existing.permissions = perms; entry_changed = true; }
-                            if existing.execution_mode != mode { existing.execution_mode = mode; entry_changed = true; }
-                            if sec_opt.is_some() && existing.security_mode != sec_mode { existing.security_mode = sec_mode; entry_changed = true; }
-                            if existing.default_turns != turns { existing.default_turns = turns; entry_changed = true; }
                             if existing.local_dir != path.to_string_lossy() { existing.local_dir = path.to_string_lossy().to_string(); entry_changed = true; }
                             if entry_changed { changed = true; }
                         } else {
