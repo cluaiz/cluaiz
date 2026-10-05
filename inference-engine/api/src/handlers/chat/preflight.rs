@@ -264,9 +264,24 @@ impl PreparedChatContext {
         let tool_instruction_chars = combined_instructions.len();
 
         if !combined_instructions.is_empty() {
-            if let Some(last_msg) = augmented_messages.last_mut() {
-                let prev_content = last_msg.content.flatten_to_string().await;
-                last_msg.content = MessageContent::Text(format!("{}\n\n{}", combined_instructions, prev_content));
+            if let Some(first_msg) = augmented_messages.first_mut() {
+                if first_msg.role.eq_ignore_ascii_case("system") {
+                    let prev_content = first_msg.content.flatten_to_string().await;
+                    first_msg.content = MessageContent::Text(format!("{}\n\n{}", prev_content, combined_instructions));
+                } else {
+                    augmented_messages.insert(
+                        0,
+                        super::types::ExternalMessage {
+                            role: "system".to_string(),
+                            content: MessageContent::Text(combined_instructions),
+                        },
+                    );
+                }
+            } else {
+                augmented_messages.push(super::types::ExternalMessage {
+                    role: "system".to_string(),
+                    content: MessageContent::Text(combined_instructions),
+                });
             }
         }
 
@@ -367,7 +382,7 @@ impl PreparedChatContext {
             if msg.role == "system" {
                 system_prompt_chars += c_len;
             } else if i == total_msgs.saturating_sub(1) {
-                user_prompt_chars = c_len.saturating_sub(tool_instruction_chars);
+                user_prompt_chars = c_len;
             } else {
                 history_chars += c_len;
             }
@@ -375,10 +390,6 @@ impl PreparedChatContext {
                 "role": msg.role,
                 "content": content_str
             }));
-        }
-
-        if system_prompt_chars == 0 && tool_instruction_chars > 0 {
-            system_prompt_chars = tool_instruction_chars;
         }
 
         let effective_temp = request.temperature.map(|t| t as f64).unwrap_or(gguf_meta.samplers.temp);
