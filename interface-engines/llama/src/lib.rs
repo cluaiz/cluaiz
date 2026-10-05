@@ -154,17 +154,31 @@ impl RuntimeB {
         let mut probed_layers = None;
 
         // 🎯 Single Source of Truth: Query model_registry.json directly if present
-        let reg_path = engine_core::environment::EnvironmentManager::current().model_registry_json_path();
+        let reg_path =
+            engine_core::environment::EnvironmentManager::current().model_registry_json_path();
         if reg_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&reg_path) {
                 if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
+                    if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object())
+                    {
                         let path_norm = self.model_path.to_lowercase().replace('\\', "/");
                         for (_id, entry) in installed {
-                            let local_dir = entry.get("local_dir").and_then(|d| d.as_str()).unwrap_or("").to_lowercase().replace('\\', "/");
-                            let primary_file = entry.get("files")
+                            let local_dir = entry
+                                .get("local_dir")
+                                .and_then(|d| d.as_str())
+                                .unwrap_or("")
+                                .to_lowercase()
+                                .replace('\\', "/");
+                            let primary_file = entry
+                                .get("files")
                                 .and_then(|f| f.as_array())
-                                .and_then(|arr| arr.iter().find(|f| f.get("is_primary").and_then(|p| p.as_bool()).unwrap_or(false)))
+                                .and_then(|arr| {
+                                    arr.iter().find(|f| {
+                                        f.get("is_primary")
+                                            .and_then(|p| p.as_bool())
+                                            .unwrap_or(false)
+                                    })
+                                })
                                 .and_then(|f| f.get("name").and_then(|n| n.as_str()))
                                 .unwrap_or("")
                                 .to_lowercase();
@@ -172,16 +186,24 @@ impl RuntimeB {
                                 || (!primary_file.is_empty() && path_norm.contains(&primary_file));
                             if matches {
                                 if let Some(meta) = entry.get("metadata") {
-                                    if let Some(arch) = meta.get("architecture").and_then(|a| a.as_str()) {
+                                    if let Some(arch) =
+                                        meta.get("architecture").and_then(|a| a.as_str())
+                                    {
                                         self.context.dna.model_identity = arch.to_string();
                                     }
-                                    if let Some(lc) = meta.get("layer_count").and_then(|l| l.as_u64()) {
+                                    if let Some(lc) =
+                                        meta.get("layer_count").and_then(|l| l.as_u64())
+                                    {
                                         probed_layers = Some(lc as usize);
                                     }
-                                    if let Some(ssm) = meta.get("is_ssm_model").and_then(|s| s.as_bool()) {
+                                    if let Some(ssm) =
+                                        meta.get("is_ssm_model").and_then(|s| s.as_bool())
+                                    {
                                         is_ssm_model = ssm;
                                     }
-                                    if let Some(mtp) = meta.get("has_native_mtp").and_then(|m| m.as_bool()) {
+                                    if let Some(mtp) =
+                                        meta.get("has_native_mtp").and_then(|m| m.as_bool())
+                                    {
                                         has_native_mtp = mtp;
                                     }
                                 }
@@ -301,16 +323,12 @@ impl RuntimeB {
 
         ctx_params.swa_full = 0; // Enforce safe SWA cache sizing
 
-        // 🛡️ Dynamic Flash Attention Policy: Flash Attention is strictly a pure-GPU kernel.
-        // If the Negotiator placed the model in Hybrid, CPU, or SSD Streaming, disable Flash Attention
-        // to prevent cross-device numerical divergence (NaNs) in split attention graphs.
-        if grant.tier != engine_core::hardware::PlacementTier::GpuOnly
-            || (model_params.n_gpu_layers >= 0 && model_params.n_gpu_layers < layers as i32)
-        {
+        // ⚡ Dynamic Flash Attention Policy: Upstream llama.cpp runs Flash Attention
+        // natively on all GPU-resident layers even in Hybrid / MoE offload modes.
+        // Only disable if executing in pure CPU-only mode (n_gpu_layers == 0).
+        if model_params.n_gpu_layers == 0 {
             engine_core::dev_info!(
-                "⚖️ [Arbiter] Placement tier is {:?} or layers split across GPU/CPU (n_gpu_layers = {}). Flash Attention disabled for cross-device stability.",
-                grant.tier,
-                model_params.n_gpu_layers
+                "⚖️ [Arbiter] CPU-only placement (n_gpu_layers = 0). Flash Attention disabled."
             );
             ctx_params.flash_attn_type = 0;
         }
@@ -321,7 +339,11 @@ impl RuntimeB {
             engine_core::dev_info!("🛡️ [Architecture Guard] Non-standard attention geometry detected: Disabling Flash Attention to prevent numerical divergence.");
             ctx_params.flash_attn_type = 0;
         }
-        if self.context.dna.requires_fp16_kv() || is_recurrent_ssm || (grant.tier != engine_core::hardware::PlacementTier::GpuOnly && ctx_params.flash_attn_type == 0) {
+        if self.context.dna.requires_fp16_kv()
+            || is_recurrent_ssm
+            || (grant.tier != engine_core::hardware::PlacementTier::GpuOnly
+                && ctx_params.flash_attn_type == 0)
+        {
             engine_core::dev_info!("🛡️ [Architecture Guard] Enforcing F16 KV-cache for mathematical stability across splits.");
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
@@ -361,20 +383,14 @@ impl RuntimeB {
             ctx_params.n_ctx
         );
 
-        // 🚀 BATCH SYNC: Optimized for 4GB hardware by default, scalable via OptimizationConfig.
-        // If running in CPU-only mode (n_gpu_layers == 0), force batch size to 32 to prevent GGML graph allocation limits on large contexts.
+        // 🚀 BATCH SYNC: Standardized to upstream llama.cpp defaults (n_batch=2048, n_ubatch=512)
+        // for instant prompt evaluation (TTFT). Scalable via OptimizationConfig.
         if model_params.n_gpu_layers == 0 {
-            ctx_params.n_batch = 32;
-            ctx_params.n_ubatch = 32;
-        } else if self.moe_controller.is_some() || grant.vram_budget_gb <= 6.0 {
-            // 🛡️ MoE / 4GB-6GB VRAM Stream Decoding: Cap batch to 512 / ubatch to 128
-            // This cuts GGML compute graph workspace from ~880 MB to ~150 MB,
-            // preventing CUDA OOM and graph split allocation failures.
             ctx_params.n_batch = 512;
             ctx_params.n_ubatch = 128;
         } else {
             ctx_params.n_batch = if ctx_params.n_batch == 0 {
-                512
+                2048
             } else {
                 ctx_params.n_batch
             };
@@ -395,6 +411,52 @@ impl RuntimeB {
         }
         if model_params.is_mmap() && self.moe_controller.is_some() {
             engine_core::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
+        }
+
+        // 🧠 MoE Expert CPU Offload: Route expert FFN tensors to CPU buffer via llama.cpp's
+        // tensor_buft_overrides. This keeps only dense attention on GPU VRAM, allowing all
+        // layers to be GPU-offloaded while experts compute on CPU.
+        // Pattern matches: blk.N.ffn_(up|down|gate|gate_up)_(ch|)exps
+        // CString and Vec MUST stay alive until after llama_model_load_from_file returns.
+        let _moe_override_pattern: Option<std::ffi::CString> = None;
+        let _moe_overrides_vec: Option<Vec<ffi::llama_cpp::LlamaModelTensorBuftOverride>> = None;
+        // Shadowing with mut so we can assign below
+        let mut _moe_override_pattern = _moe_override_pattern;
+        let mut _moe_overrides_vec = _moe_overrides_vec;
+
+        if let Some(ref moe_info) = grant.moe_info {
+            if moe_info.is_moe && model_params.n_gpu_layers != 0 {
+                let cpu_buft = unsafe { ffi::llama_cpp::ggml_backend_cpu_buffer_type() };
+                let pattern = std::ffi::CString::new(r"\.ffn_(up|down|gate|gate_up)_(ch|)exps")
+                    .expect("Invalid CString for MoE override pattern");
+
+                let overrides = vec![
+                    ffi::llama_cpp::LlamaModelTensorBuftOverride {
+                        pattern: pattern.as_ptr(),
+                        buft: cpu_buft,
+                    },
+                    // NULL terminator (llama.cpp iterates until pattern == nullptr)
+                    ffi::llama_cpp::LlamaModelTensorBuftOverride {
+                        pattern: std::ptr::null(),
+                        buft: std::ptr::null(),
+                    },
+                ];
+
+                model_params.tensor_buft_overrides = overrides.as_ptr();
+
+                // With experts on CPU, GPU only holds dense attention per layer.
+                // Safe to offload all layers — dense backbone is typically 5-10% of total model size.
+                let total_layers = moe_info.moe_layer_count as i32;
+                model_params.n_gpu_layers = total_layers;
+                eprintln!(
+                    "🧠 [Native-Llama] MoE CPU Expert Override active: experts → CPU buffer, dense attention → GPU. n_gpu_layers set to {} (all layers).",
+                    total_layers
+                );
+
+                // Keep CString and Vec alive through model load
+                _moe_override_pattern = Some(pattern);
+                _moe_overrides_vec = Some(overrides);
+            }
         }
 
         let native = NativeLlama::load(
@@ -635,9 +697,7 @@ impl StreamingInference for RuntimeB {
 
             // Sync settings dynamically
             let optimization_ctx =
-                engine_core::hardware::schema::optimization::OptimizationContext::from(
-                    control,
-                );
+                engine_core::hardware::schema::optimization::OptimizationContext::from(control);
             native.kv_cache_quantization_mode = optimization_ctx.kv_cache_quantization_mode;
             native.context_shifting_mode = optimization_ctx.context_shifting_mode;
 

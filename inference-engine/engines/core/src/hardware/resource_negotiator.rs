@@ -204,9 +204,9 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
         model_gb,
         0.0,
     );
-    let target_ctx_tokens = ctx_resolution.target_ctx_tokens;
+    let mut target_ctx_tokens = ctx_resolution.target_ctx_tokens;
     let ctx_mode_str = ctx_resolution.ctx_mode_str;
-    let required_ctx_gb = ctx_resolution.required_ctx_gb;
+    let mut required_ctx_gb = ctx_resolution.required_ctx_gb;
     let native_max_ctx = ctx_resolution.native_max_ctx;
 
     let n_ctx_reservation_gb = 1.00f64;
@@ -298,7 +298,8 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             let expert_per_layer_gb = expert_total_gb / layer_count;
 
             // Single expert size in GB (Divide total expert bytes by total experts across all layers)
-            let total_model_experts = (moe_info.expert_count * moe_info.moe_layer_count.max(1)) as f64;
+            let total_model_experts =
+                (moe_info.expert_count * moe_info.moe_layer_count.max(1)) as f64;
             let single_expert_gb = if moe_info.total_expert_bytes > 0 && total_model_experts > 0.0 {
                 (moe_info.total_expert_bytes as f64 / total_model_experts)
                     / (1024.0 * 1024.0 * 1024.0)
@@ -308,17 +309,15 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 0.0
             };
 
-            // In MoE streaming mode, VRAM per layer consists of the dense backbone attention
-            // plus active and staged expert slots (double-buffered for smooth ping-pong streaming)
+            // With tensor_buft_overrides routing expert FFN tensors to CPU buffer,
+            // GPU VRAM per layer only holds the dense attention backbone (no experts).
+            // layer_size = dense_per_layer_gb (clamped to minimum 40MB for safety).
             let active_experts = moe_info.active_experts_per_token.max(1) as f64;
             let active_per_layer_gb = single_expert_gb * active_experts;
-            let streamed_layer_vram_gb = dense_per_layer_gb + (single_expert_gb * (active_experts * 2.0));
-            // Layer size clamped safely: at least 120MB, at most full layer size (dense + all experts)
-            let layer_size = streamed_layer_vram_gb.clamp(0.12, (dense_per_layer_gb + expert_per_layer_gb).max(0.15));
+            let layer_size = dense_per_layer_gb.max(0.04);
 
-            // DMA Staging Buffer Reserve in VRAM (Ping-Pong staging slots)
-            let dma_staging_headroom_gb =
-                (2.0 * active_per_layer_gb).clamp(0.15, (total_vram_gb * 0.08).max(0.25));
+            // Minimal VRAM headroom reserve (no DMA staging needed with CPU expert override)
+            let dma_staging_headroom_gb = 0.15_f64.min(total_vram_gb * 0.05);
 
             let vram_base_reserve = dense_per_layer_gb.max(0.10);
 
@@ -331,8 +330,10 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             // Adds ~40MB per 1GB of model weights. Bounded between 500MB and 3GB.
             let ggml_workspace_reserve = (0.25 + (model_gb * 0.04)).clamp(0.50, 3.00);
 
-            // ─── User Rule: In Hybrid/Streaming (Tier 4), Context Window ALWAYS goes to System RAM! ───
-            let ctx_in_vram = false;
+            // ─── Dynamic Context Placement: VRAM First, System RAM Fallback ───
+            // Context Window (KV Cache) in GDDR6 VRAM is 10x-25x faster than System RAM.
+            // If VRAM has sufficient headroom after placing model attention layers, prioritize VRAM placement!
+            let mut ctx_in_vram = false;
             let vram_for_layers = (free_vram - dma_staging_headroom_gb).max(0.0);
 
             let mut is_forced_safety = false;
@@ -346,12 +347,24 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
             let mut allocated_vram = vram_base_reserve + (approx_layers.max(0) as f64 * layer_size);
 
             // Layer Yielding Loop: Keep clean headroom above vram_safety to prevent VRAM OOM
-            while (live_free_vram_gb - allocated_vram) < (vram_safety + 0.05)
-                && approx_layers > 0
-            {
+            while (live_free_vram_gb - allocated_vram) < (vram_safety + 0.05) && approx_layers > 0 {
                 approx_layers -= 1;
                 allocated_vram = vram_base_reserve + (approx_layers.max(0) as f64 * layer_size);
                 is_forced_safety = true;
+            }
+
+            // ⚡ VRAM Context Acceleration:
+            // Check if VRAM has room for the KV cache after all possible GPU layers are allocated.
+            let vram_headroom_after_layers = (live_free_vram_gb - allocated_vram).max(0.0);
+            if vram_headroom_after_layers >= (required_ctx_gb + vram_safety)
+                && required_ctx_gb > 0.0
+            {
+                ctx_in_vram = true;
+                allocated_vram += required_ctx_gb;
+                eprintln!(
+                    "⚡ [Negotiator] VRAM Context Accelerated: Placing {:.2} GB KV cache into GDDR6 VRAM (10x faster memory bandwidth).",
+                    required_ctx_gb
+                );
             }
 
             let remaining_layers =
@@ -371,12 +384,12 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                     .max(0.0);
 
             // Step 3: Layer Cache Budget in System RAM
-            // usable_ram already has the OS safety buffer deducted by memory_governor.
-            // Deduct non-cache base reserves cleanly without double-deducting the OS floor.
+            // Only deduct required_ctx_gb from System RAM if context is NOT in VRAM!
+            let ctx_ram_deduction = if ctx_in_vram { 0.0 } else { required_ctx_gb };
             let total_non_cache_reserve = ram_dense_reserve
                 + ggml_workspace_reserve
                 + dma_staging_headroom_gb
-                + required_ctx_gb;
+                + ctx_ram_deduction;
             let ram_for_cache = (usable_ram - total_non_cache_reserve).max(0.0);
             let mut cached_expert_count = initial_cached_expert_count;
 
@@ -385,27 +398,91 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 cached_expert_count = initial_cached_expert_count.min(max_experts_fit);
             }
 
+            // 🛡️ Weights-First Dynamic Backpressure (No Hardcoded Clamps):
+            // If context is in RAM and offloaded layers would overflow to SSD,
+            // dynamically scale down context window so 100% of layers fit into RAM (0 layers on SSD).
+            if !ctx_in_vram && cached_expert_count < initial_cached_expert_count {
+                let ram_weights_needed = ram_dense_reserve + offloaded_experts_gb;
+                if ram_weights_needed + ggml_workspace_reserve + dma_staging_headroom_gb + 0.25
+                    <= usable_ram
+                {
+                    let ram_for_ctx_adjusted = (usable_ram
+                        - ram_weights_needed
+                        - ggml_workspace_reserve
+                        - dma_staging_headroom_gb)
+                        .max(0.25);
+                    let dyn_tokens = ((ram_for_ctx_adjusted * 1024.0 * 1024.0 * 1024.0)
+                        / (128.0 * 1024.0)) as usize;
+                    let adjusted_tokens = dyn_tokens.clamp(2048, target_ctx_tokens);
+                    if adjusted_tokens < target_ctx_tokens {
+                        eprintln!(
+                            "⚡ [Negotiator] Weights-First Backpressure: Dynamically adjusting context from {} to {} tokens to guarantee 0 layers on SSD.",
+                            target_ctx_tokens, adjusted_tokens
+                        );
+                        target_ctx_tokens = adjusted_tokens;
+                        required_ctx_gb = (target_ctx_tokens as f64 * 128.0 * 1024.0)
+                            / (1024.0 * 1024.0 * 1024.0);
+                        let new_ram_for_cache = (usable_ram
+                            - ram_dense_reserve
+                            - ggml_workspace_reserve
+                            - dma_staging_headroom_gb
+                            - required_ctx_gb)
+                            .max(0.0);
+                        if single_expert_gb > 0.0 {
+                            let max_fit = (new_ram_for_cache / single_expert_gb).floor() as usize;
+                            cached_expert_count = initial_cached_expert_count.min(max_fit);
+                        }
+                    }
+                }
+            }
+
             let cache_budget = if single_expert_gb > 0.0 {
                 (cached_expert_count as f64 * single_expert_gb).min(ram_after_base)
             } else {
                 initial_cache_budget.min(ram_after_base)
             };
 
-            let actual_cache_gb = cache_budget;
-            let cached_layers = if moe_info.expert_count > 0 {
+            let mut actual_cache_gb = cache_budget;
+            let mut cached_layers = if moe_info.expert_count > 0 {
                 (cached_expert_count as f64 / moe_info.expert_count as f64).round() as i32
             } else {
                 0
             };
-            let cut_layers_for_safety = initial_cached_layers - cached_layers;
-            let overflow_layers = initial_cached_layers - cached_layers;
+            let mut cut_layers_for_safety = initial_cached_layers - cached_layers;
+            let mut overflow_layers = initial_cached_layers - cached_layers;
 
-            let overflow_experts = offloaded_layer_experts.saturating_sub(cached_expert_count);
-            let overflow_gb = if single_expert_gb > 0.0 {
+            let mut overflow_experts = offloaded_layer_experts.saturating_sub(cached_expert_count);
+            let mut overflow_gb = if single_expert_gb > 0.0 {
                 single_expert_gb * overflow_experts as f64
             } else {
                 0.0
             };
+
+            // 🛡️ Dynamic Small Spill Absorption Doctrine:
+            // If the model weights overflow RAM by a small margin (<= 2.0 GB or <= 10% of total model),
+            // NEVER trigger SSD swap! Absorb all layers into RAM cache by trimming context window
+            // and keeping all layers in RAM.
+            if overflow_layers > 0 && (overflow_gb <= 2.0 || overflow_gb <= model_gb * 0.10) {
+                let total_weight_need = ram_dense_reserve + offloaded_experts_gb;
+                if total_weight_need + 0.50 <= usable_ram {
+                    eprintln!(
+                        "⚡ [Negotiator] Dynamic Spill Absorption Active: Absorbing {} overflow layers ({:.2} GB) into System RAM to prevent SSD disk thrashing.",
+                        overflow_layers, overflow_gb
+                    );
+                    cached_expert_count = initial_cached_expert_count;
+                    actual_cache_gb = if single_expert_gb > 0.0 {
+                        (cached_expert_count as f64 * single_expert_gb).min(ram_after_base)
+                    } else {
+                        initial_cache_budget.min(ram_after_base)
+                    };
+                    cached_layers = initial_cached_layers;
+                    cut_layers_for_safety = 0;
+                    overflow_layers = 0;
+                    overflow_experts = 0;
+                    overflow_gb = 0.0;
+                }
+            }
+
             eprintln!("🧠 [Negotiator] SsdStreaming budget clamped: Expert LRU Cache = {:.2} GB | Headroom Protection Active.", actual_cache_gb);
 
             let pre_context_vram_headroom = (live_free_vram_gb - allocated_vram).max(0.0);
@@ -516,7 +593,7 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 );
                 eprintln!("        ├── Dynamic Fetch Strategy: On-Demand LRU Swap between Disk ↔ RAM Cache ({:.2} GB)", actual_cache_gb);
                 eprintln!(
-                    "        └── Zero-Freeze Assurance: RAM Cache locked to {:.2} GB limit",
+                    "        └── Stable Memory Target: RAM Cache locked to {:.2} GB limit",
                     actual_cache_gb
                 );
             } else {
@@ -526,13 +603,19 @@ pub fn negotiate_resource(request: &ResourceRequest) -> anyhow::Result<ResourceG
                 );
             }
 
+            let determined_tier = if overflow_layers > 0 {
+                PlacementTier::SsdStreaming
+            } else {
+                PlacementTier::Hybrid
+            };
+
             (
-                PlacementTier::SsdStreaming,
+                determined_tier,
                 approx_layers.max(0),
                 free_vram,
                 usable_ram,
                 Some(moe_info.clone()),
-                cache_budget,
+                actual_cache_gb,
             )
         } else if model_gb <= free_vram {
             (PlacementTier::GpuOnly, -1, model_gb, 0.0, None, 0.0)
@@ -669,7 +752,7 @@ pub fn apply_windows_hard_memory_quota(usable_ram_gb: f64) {
         let ret = SetProcessWorkingSetSizeEx(handle, min_bytes, max_bytes, QUOTA_LIMITS_SOFTWS);
         if ret != 0 {
             eprintln!(
-                "🛡️ [Negotiator] Windows Working Set Quota Applied: Target Process Physical RAM at {:.2} GB (Zero-Thrash Soft Quota)",
+                "🛡️ [Negotiator] Windows Working Set Quota Applied: Target Process Physical RAM at {:.2} GB (Dynamic Soft Quota)",
                 usable_ram_gb
             );
         } else {

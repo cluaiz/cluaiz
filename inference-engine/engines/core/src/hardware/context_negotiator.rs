@@ -36,7 +36,10 @@ pub fn get_model_native_context(model_path: &Path) -> usize {
     if let Ok(content) = std::fs::read_to_string(&reg_path) {
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(installed) = val.get("installed_models").and_then(|m| m.as_object()) {
-                let target_dir_str = model_path.to_string_lossy().to_lowercase().replace('\\', "/");
+                let target_dir_str = model_path
+                    .to_string_lossy()
+                    .to_lowercase()
+                    .replace('\\', "/");
                 for (_id, entry) in installed {
                     let local_dir = entry
                         .get("local_dir")
@@ -51,8 +54,9 @@ pub fn get_model_native_context(model_path: &Path) -> usize {
                             || local_dir.contains(&target_dir_str))
                     {
                         if let Some(meta) = entry.get("metadata") {
-                            if let Some(ctx_val) =
-                                meta.get("context_window").or_else(|| meta.get("context_length"))
+                            if let Some(ctx_val) = meta
+                                .get("context_window")
+                                .or_else(|| meta.get("context_length"))
                             {
                                 if let Some(ctx_u) = ctx_val.as_u64() {
                                     if ctx_u > 0 {
@@ -124,13 +128,17 @@ pub fn resolve_context_window(
         }
         n if n > 0 => {
             let req = n as usize;
-            let safe = req.min(max_possible_tokens).clamp(min_2k_tokens, native_max_ctx);
+            let safe = req
+                .min(max_possible_tokens)
+                .clamp(min_2k_tokens, native_max_ctx);
             let label = if safe == req { "Custom" } else { "Clamped" };
             (safe, format!("{} -> {} Tokens", label, safe))
         }
         _ => {
-            // Auto Mode: Dynamic scaling with min 2048 floor
-            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx);
+            // Auto Mode: 100% Dynamic Scaling.
+            // Directly scales to the maximum tokens that safely fit in the available headroom
+            // up to the model's native context limit (e.g. 8k, 32k, 64k, 128k) with min 2048 floor.
+            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx.max(min_2k_tokens));
             (safe, format!("Auto Dynamic ({} Tokens)", safe))
         }
     };
