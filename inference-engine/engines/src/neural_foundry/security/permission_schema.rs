@@ -88,6 +88,61 @@ impl ApiAuth {
             None
         }
     }
+
+    /// Safely revokes an API token by exact match, 1-based index, or unambiguous masked suffix.
+    /// Guards against empty suffix wiping out all tokens and disabling auth.
+    pub fn remove_token(&mut self, target: &str) -> Result<String, &'static str> {
+        let trimmed = target.trim();
+        if trimmed.is_empty() {
+            return Err("Target token identifier cannot be empty");
+        }
+
+        // 1. Numeric 1-based index (e.g. "1", "2")
+        if let Ok(idx) = trimmed.parse::<usize>() {
+            if idx >= 1 && idx <= self.tokens.len() {
+                let removed = self.tokens.remove(idx - 1);
+                self.sanitize_tokens();
+                return Ok(removed);
+            } else {
+                return Err("Token index out of range");
+            }
+        }
+
+        // 2. Exact plaintext match
+        if let Some(pos) = self.tokens.iter().position(|t| t.trim() == trimmed) {
+            let removed = self.tokens.remove(pos);
+            self.sanitize_tokens();
+            return Ok(removed);
+        }
+
+        // 3. Masked pattern match (e.g. "sk-••••1234" or "••••abcd")
+        if trimmed.contains('•') || trimmed.contains('*') {
+            if let Some((idx, ch)) = trimmed.char_indices().filter(|(_, c)| *c == '•' || *c == '*').last() {
+                let suffix = &trimmed[idx + ch.len_utf8()..];
+                if suffix.len() < 4 {
+                    return Err("Masked token must have at least 4 visible trailing characters");
+                }
+                let matching: Vec<usize> = self.tokens
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.ends_with(suffix))
+                    .map(|(i, _)| i)
+                    .collect();
+
+                if matching.is_empty() {
+                    return Err("No token matches the provided masked suffix");
+                }
+                if matching.len() > 1 {
+                    return Err("Multiple tokens match this masked suffix. Use index or full token instead.");
+                }
+                let removed = self.tokens.remove(matching[0]);
+                self.sanitize_tokens();
+                return Ok(removed);
+            }
+        }
+
+        Err("Token not found")
+    }
 }
 
 
@@ -614,3 +669,58 @@ impl PermissionSchema {
 }
 
 engine_core::define_config!(PermissionSchema, "permission");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_remove_token_exact_and_index() {
+        let mut auth = ApiAuth {
+            required: true,
+            tokens: vec![
+                "sk-cluaiz-111111111111".to_string(),
+                "sk-cluaiz-222222222222".to_string(),
+                "sk-cluaiz-333333333333".to_string(),
+            ],
+        };
+
+        // Test 1-based index removal
+        assert!(auth.remove_token("2").is_ok());
+        assert_eq!(auth.tokens.len(), 2);
+        assert_eq!(auth.tokens[1], "sk-cluaiz-333333333333");
+
+        // Test exact string match removal
+        assert!(auth.remove_token("sk-cluaiz-111111111111").is_ok());
+        assert_eq!(auth.tokens.len(), 1);
+        assert_eq!(auth.tokens[0], "sk-cluaiz-333333333333");
+    }
+
+    #[test]
+    fn test_remove_token_masked_suffix_guards() {
+        let mut auth = ApiAuth {
+            required: true,
+            tokens: vec![
+                "sk-cluaiz-aaa1234".to_string(),
+                "sk-cluaiz-bbb1234".to_string(),
+                "sk-cluaiz-ccc9999".to_string(),
+            ],
+        };
+
+        // Guard 1: Empty or short mask must FAIL, not wipe out all tokens!
+        assert!(auth.remove_token("sk-••••••••").is_err());
+        assert_eq!(auth.tokens.len(), 3);
+
+        assert!(auth.remove_token("••••1").is_err());
+        assert_eq!(auth.tokens.len(), 3);
+
+        // Guard 2: Ambiguous mask matching multiple tokens must FAIL
+        assert!(auth.remove_token("sk-••••1234").is_err());
+        assert_eq!(auth.tokens.len(), 3);
+
+        // Guard 3: Unambiguous mask matching exactly 1 token succeeds
+        assert!(auth.remove_token("sk-••••9999").is_ok());
+        assert_eq!(auth.tokens.len(), 2);
+        assert!(!auth.tokens.iter().any(|t| t.ends_with("9999")));
+    }
+}
