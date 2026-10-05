@@ -629,23 +629,17 @@ async fn main() -> Result<()> {
                     println!();
                 }
                 Some(TokenCommand::Remove { token }) => {
-                    let target = token.trim();
-                    let before_len = schema.api_auth.tokens.len();
-                    if target.contains('•') || target.contains('*') {
-                        let suffix = target.trim_start_matches(|c| c == '•' || c == '*' || c == '-' || c == 's' || c == 'k');
-                        schema.api_auth.tokens.retain(|t| !t.ends_with(suffix));
-                    } else {
-                        schema.api_auth.tokens.retain(|t| t.trim() != target);
-                    }
-                    schema.api_auth.sanitize_tokens();
-                    if schema.api_auth.tokens.is_empty() {
-                        schema.api_auth.required = false;
-                    }
-                    let _ = schema.save();
-                    if schema.api_auth.tokens.len() < before_len {
-                        println!("  {} Token removed successfully.", "✅".green());
-                    } else {
-                        println!("  {} Token not found.", "⚠️".yellow());
+                    match schema.api_auth.remove_token(&token) {
+                        Ok(_) => {
+                            if schema.api_auth.tokens.is_empty() {
+                                schema.api_auth.required = false;
+                            }
+                            let _ = schema.save();
+                            println!("  {} Token removed successfully.", "✅".green());
+                        }
+                        Err(err) => {
+                            println!("  {} {}", "⚠️".yellow(), err);
+                        }
                     }
                 }
                 None => {

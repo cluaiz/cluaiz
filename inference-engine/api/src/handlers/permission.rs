@@ -170,7 +170,8 @@ pub async fn generate_auth_token(
 
 #[derive(Debug, serde::Deserialize)]
 pub struct RevokeTokenRequest {
-    pub token: String,
+    pub token: Option<String>,
+    pub index: Option<usize>,
 }
 
 // ─── POST /v1/system/auth/token/revoke ───────────────────────────────
@@ -179,30 +180,48 @@ pub async fn revoke_auth_token(
     Json(payload): Json<RevokeTokenRequest>,
 ) -> Json<Value> {
     let mut schema = PermissionSchema::load();
-    let target = payload.token.trim();
-    if target.contains('•') || target.contains('*') {
-        let suffix = target.trim_start_matches(|c| c == '•' || c == '*' || c == '-' || c == 's' || c == 'k');
-        schema.api_auth.tokens.retain(|t| !t.ends_with(suffix));
+    let target = if let Some(idx) = payload.index {
+        idx.to_string()
+    } else if let Some(ref tok) = payload.token {
+        tok.trim().to_string()
     } else {
-        schema.api_auth.tokens.retain(|t| t.trim() != target);
-    }
-    schema.api_auth.sanitize_tokens();
-    if schema.api_auth.tokens.is_empty() {
-        schema.api_auth.required = false;
-        tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
-    }
-    let _ = schema.save();
+        return Json(json!({
+            "status": "error",
+            "message": "Either 'token' or 'index' must be provided to revoke.",
+            "tokens": schema.api_auth.tokens,
+            "api_auth_required": schema.api_auth.required
+        }));
+    };
 
-    Json(json!({
-        "status": "success",
-        "message": if schema.api_auth.tokens.is_empty() {
-            "API token successfully revoked. API authentication automatically disabled as no keys remain."
-        } else {
-            "API token successfully revoked."
-        },
-        "tokens": schema.api_auth.tokens,
-        "api_auth_required": schema.api_auth.required
-    }))
+    match schema.api_auth.remove_token(&target) {
+        Ok(removed) => {
+            if schema.api_auth.tokens.is_empty() {
+                schema.api_auth.required = false;
+                tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
+            }
+            let _ = schema.save();
+
+            Json(json!({
+                "status": "success",
+                "message": if schema.api_auth.tokens.is_empty() {
+                    "API token successfully revoked. API authentication automatically disabled as no keys remain."
+                } else {
+                    "API token successfully revoked."
+                },
+                "revoked_token": removed,
+                "tokens": schema.api_auth.tokens,
+                "api_auth_required": schema.api_auth.required
+            }))
+        }
+        Err(err) => {
+            Json(json!({
+                "status": "error",
+                "message": err,
+                "tokens": schema.api_auth.tokens,
+                "api_auth_required": schema.api_auth.required
+            }))
+        }
+    }
 }
 
 
