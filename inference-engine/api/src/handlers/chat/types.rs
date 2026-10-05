@@ -164,8 +164,19 @@ pub struct ExternalMessage {
     pub content: MessageContent,
 }
 
-/// Helper to fetch real model header and hardware slot allocations
+static CACHED_MODEL_HEADER_INFO: LazyLock<RwLock<Option<(std::time::Instant, Vec<Value>)>>> =
+    LazyLock::new(|| RwLock::new(None));
+
+/// Helper to fetch real model header and hardware slot allocations (cached for fast response)
 pub fn generate_model_header_info() -> Vec<Value> {
+    if let Ok(guard) = CACHED_MODEL_HEADER_INFO.read() {
+        if let Some((ts, ref cached)) = *guard {
+            if ts.elapsed().as_secs() < 30 {
+                return cached.clone();
+            }
+        }
+    }
+
     let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
     let mut loaded_models = Vec::new();
     let env = engine_core::environment::EnvironmentManager::current();
@@ -230,6 +241,10 @@ pub fn generate_model_header_info() -> Vec<Value> {
             "raw_header": all_metadata
         }));
     }
-    
+
+    if let Ok(mut guard) = CACHED_MODEL_HEADER_INFO.write() {
+        *guard = Some((std::time::Instant::now(), loaded_models.clone()));
+    }
+
     loaded_models
 }
