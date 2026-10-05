@@ -13,6 +13,8 @@ use raw_cpuid::CpuId;
 
 pub struct HardwareOrchestrator;
 
+static CACHED_SYSTEM_CONTROL: std::sync::OnceLock<SystemControl> = std::sync::OnceLock::new();
+
 impl HardwareOrchestrator {
     /// 🚀 Perform a deep probe of the system and serialize to JSON/Binary
     pub fn start() -> anyhow::Result<SystemControl> {
@@ -22,15 +24,19 @@ impl HardwareOrchestrator {
     }
 
     pub fn probe() -> SystemControl {
-        let mut sys = System::new_all();
-        sys.refresh_all();
+        CACHED_SYSTEM_CONTROL
+            .get_or_init(|| {
+                let mut sys = System::new_all();
+                sys.refresh_all();
 
-        SystemControl {
-            identity: Self::probe_identity(&sys),
-            context: Self::probe_context(),
-            brain: Self::probe_brain(),
-            silicon_truth: Self::probe_silicon(&sys),
-        }
+                SystemControl {
+                    identity: Self::probe_identity(&sys),
+                    context: Self::probe_context(),
+                    brain: Self::probe_brain(),
+                    silicon_truth: Self::probe_silicon(&sys),
+                }
+            })
+            .clone()
     }
 
     fn probe_identity(_sys: &System) -> SovereignIdentity {
