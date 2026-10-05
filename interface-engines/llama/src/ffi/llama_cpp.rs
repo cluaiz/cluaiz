@@ -9,9 +9,16 @@ pub const GGML_TYPE_Q4_0: i32 = 2;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct LlamaModelTensorBuftOverride {
+    pub pattern: *const c_char,
+    pub buft: *const std::ffi::c_void,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct LlamaModelParams {
     pub devices: *const usize, // ggml_backend_dev_t*
-    pub tensor_buft_overrides: *const std::ffi::c_void,
+    pub tensor_buft_overrides: *const LlamaModelTensorBuftOverride,
     pub n_gpu_layers: i32,
     pub split_mode: i32,
     pub load_mode: i32, // enum llama_load_mode (0=none, 1=mmap, 2=mlock, 3=mmap+mlock, 4=direct_io)
@@ -257,6 +264,9 @@ extern "C" {
 
     /// 🛑 Logging: Redirect native library logs to avoid TUI noise.
     pub fn llama_log_set(log_callback: Option<LlamaLogCallback>, user_data: *mut std::ffi::c_void);
+
+    /// 🧠 Backend Buffer Types
+    pub fn ggml_backend_cpu_buffer_type() -> *const std::ffi::c_void;
 
     /// 💾 State Save
     pub fn llama_state_save_file(

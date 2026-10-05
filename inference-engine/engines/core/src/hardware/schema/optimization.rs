@@ -180,7 +180,7 @@ impl OptimizationControl {
             .map(|g| g.vram_available_gb)
             .sum::<f64>();
 
-        // 🛡️ Dynamic Architectural Guard (Zero Hardcoded Model Names)
+        // 🛡️ Architecture-Driven Dynamic Guard
         if !signature.supports_flash_attention(None) {
             self.flash_attention = FeatureState::Off;
             println!("🔒 [Arbiter] Non-standard attention architecture detected. Disabling Flash Attention for numerical stability.");

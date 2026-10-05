@@ -15,7 +15,8 @@ pub struct NativeLlama {
     pub kv_cache_quantization_mode: u8,
     pub context_shifting_mode: u8,
     pub speculative_decoding_mode: u8,
-    pub moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
+    pub moe_controller:
+        Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
 }
 
 fn extract_layer_from_name(name: &str) -> Option<usize> {
@@ -45,7 +46,7 @@ unsafe extern "C" fn ggml_sched_eval_callback(
             let name_cstr = std::ffi::CStr::from_ptr(name_ptr);
             let name_str = name_cstr.to_string_lossy();
             let name_lower = name_str.to_lowercase();
-            
+
             // Dynamic check matching all expert tensor patterns
             let is_expert_tensor = name_lower.contains("ffn_gate_exps")
                 || name_lower.contains("ffn_up_exps")
@@ -55,7 +56,10 @@ unsafe extern "C" fn ggml_sched_eval_callback(
 
             if is_expert_tensor {
                 if let Some(layer_idx) = extract_layer_from_name(&name_str) {
-                    let mutex_ptr = user_data as *const std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>;
+                    let mutex_ptr = user_data
+                        as *const std::sync::Mutex<
+                            crate::expert_offloading::GgufMoeStreamingController,
+                        >;
                     if let Ok(mut controller) = (*mutex_ptr).lock() {
                         let mut should_log = false;
                         LAST_LOGGED_LAYER.with(|cell| {
@@ -66,11 +70,12 @@ unsafe extern "C" fn ggml_sched_eval_callback(
                         });
 
                         if should_log {
-                            let prefetch_status = if layer_idx + 1 < controller.moe_info.moe_layer_count {
-                                format!("Prefetching Layer {}", layer_idx + 1)
-                            } else {
-                                "End of Model".to_string()
-                            };
+                            let prefetch_status =
+                                if layer_idx + 1 < controller.moe_info.moe_layer_count {
+                                    format!("Prefetching Layer {}", layer_idx + 1)
+                                } else {
+                                    "End of Model".to_string()
+                                };
                             let discard_status = if layer_idx > 0 {
                                 format!("Discarding Layer {}", layer_idx - 1)
                             } else {
@@ -116,11 +121,16 @@ extern "C" fn llama_log_callback(
     _user_data: *mut std::ffi::c_void,
 ) {
     unsafe {
-        if text.is_null() { return; }
+        if text.is_null() {
+            return;
+        }
         let c_str = std::ffi::CStr::from_ptr(text);
         let s = c_str.to_string_lossy();
         let trimmed = s.trim();
-        if !trimmed.is_empty() && trimmed != "." && !NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p)) {
+        if !trimmed.is_empty()
+            && trimmed != "."
+            && !NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p))
+        {
             eprintln!("📢 [llama.cpp] {}", trimmed);
         }
     }
@@ -132,7 +142,8 @@ pub fn print_memory_trace(step: &str) {
     let free_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
 
-    let (free_vram_bytes, total_vram_bytes) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
+    let (free_vram_bytes, total_vram_bytes) =
+        crate::dma_streamer::DmaStreamer::get_live_vram_info();
     let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
@@ -152,7 +163,9 @@ impl NativeLlama {
         kv_cache_quantization_mode: u8,
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
-        moe_controller: Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
+        moe_controller: Option<
+            Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>,
+        >,
     ) -> anyhow::Result<Self> {
         // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
         unsafe {
@@ -190,8 +203,8 @@ impl NativeLlama {
         }
 
         // 🛡️ CERD DOCTRINE GPU-FALLBACK (No Hardcoded Strings)
-        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend 
-        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
+        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend
+        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models).
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers > 1 {
             engine_core::dev_info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
@@ -202,14 +215,14 @@ impl NativeLlama {
         }
 
         // 🛡️ CERD DOCTRINE GPU-FALLBACK (No Hardcoded Strings)
-        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend 
-        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models). 
+        // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend
+        // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models).
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
             eprintln!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
-            cpu_params.no_host = false;  // CRITICAL: Must allow host memory allocation for CPU inference!
+            cpu_params.no_host = false; // CRITICAL: Must allow host memory allocation for CPU inference!
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), cpu_params) };
         }
@@ -286,10 +299,16 @@ impl NativeLlama {
         dna.think_tag_schema = native_start.clone().unwrap_or_default();
         dna.think_end_schema = native_end.clone().unwrap_or_default();
         if let Some(st) = native_start {
-            info!("🧠 [Native-Llama] llama.cpp detected native thinking start tag: {:?}", st);
+            info!(
+                "🧠 [Native-Llama] llama.cpp detected native thinking start tag: {:?}",
+                st
+            );
         }
         if let Some(et) = native_end {
-            info!("🧠 [Native-Llama] llama.cpp detected native thinking end tag: {:?}", et);
+            info!(
+                "🧠 [Native-Llama] llama.cpp detected native thinking end tag: {:?}",
+                et
+            );
         }
 
         // Ensure n_ctx is strictly bound by Negotiator's requested limit, preventing 256k token (14.4 GB) KV Cache allocations
@@ -314,11 +333,12 @@ impl NativeLlama {
 
             let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
             let is_hybrid = model_params.n_gpu_layers > 0;
-            let target_graphs = if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 || is_hybrid {
-                "0"
-            } else {
-                "1"
-            };
+            let target_graphs =
+                if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 || is_hybrid {
+                    "0"
+                } else {
+                    "1"
+                };
             if current_graphs != target_graphs {
                 std::env::set_var("GGML_CUDA_USE_GRAPHS", target_graphs);
             }
@@ -350,23 +370,35 @@ impl NativeLlama {
 
         // 🛡️ 99% Dynamic Model Header Truth (Native C++ Engine & Tensor Geometry)
         let is_recurrent_arch = unsafe {
-            llama_cpp::llama_model_is_recurrent(model_ptr) || llama_cpp::llama_model_is_hybrid(model_ptr)
+            llama_cpp::llama_model_is_recurrent(model_ptr)
+                || llama_cpp::llama_model_is_hybrid(model_ptr)
         };
 
         let n_embd = unsafe { llama_cpp::llama_model_n_embd(model_ptr) };
         let n_head = unsafe { llama_cpp::llama_model_n_head(model_ptr) };
-        let head_dim = if n_head > 0 { (n_embd / n_head) as usize } else { 128 };
-        let is_non_standard_attention = is_recurrent_arch || head_dim != 128;
+        let head_dim = if n_head > 0 {
+            (n_embd / n_head) as usize
+        } else {
+            128
+        };
+        // Upstream llama.cpp CUDA kernels support head dimensions 64, 128, and 256 (e.g. Gemma 2/4).
+        let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
+        let is_non_standard_attention = is_recurrent_arch || !head_dim_supported;
 
         info!(
-            "🔍 [Native-Llama] Model Header Truth: is_hybrid_or_recurrent={}, n_embd={}, n_head={}, head_dim={}",
-            is_recurrent_arch, n_embd, n_head, head_dim
+            "🔍 [Native-Llama] Model Header Truth: is_hybrid_or_recurrent={}, n_embd={}, n_head={}, head_dim={}, fa_supported={}",
+            is_recurrent_arch, n_embd, n_head, head_dim, head_dim_supported
         );
 
         if is_non_standard_attention || !dna.supports_flash_attention() {
-            info!("🛡️ [Native-Llama] Non-standard attention / Recurrent / Non-128 head architecture: Disabling Flash Attention.");
+            info!("🛡️ [Native-Llama] Non-standard attention / Recurrent / Unsupported head architecture: Disabling Flash Attention.");
             ctx_params.flash_attn_type = 0;
             speculative_decoding_mode = 0;
+        } else {
+            info!(
+                "⚡ [Native-Llama] Flash Attention validated for head_dim={}: active (type={}).",
+                head_dim, ctx_params.flash_attn_type
+            );
         }
 
         if is_non_standard_attention || dna.requires_fp16_kv() {
@@ -398,7 +430,11 @@ impl NativeLlama {
             ctx_ptr,
             interrupt_signal: Arc::new(AtomicBool::new(false)),
             n_ctx: ctx_params.n_ctx,
-            n_batch: if ctx_params.n_ctx == 0 { ctx_params.n_batch } else { std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch) },
+            n_batch: if ctx_params.n_ctx == 0 {
+                ctx_params.n_batch
+            } else {
+                std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch)
+            },
             kv_cache_quantization_mode,
             context_shifting_mode,
             speculative_decoding_mode,
@@ -411,15 +447,23 @@ impl NativeLlama {
             return Err(anyhow::anyhow!("Cannot resize context: Model not loaded"));
         }
         // 🛡️ Skip redundant context re-allocations if parameters are unchanged
-        if self.n_ctx == ctx_params.n_ctx && self.n_batch == ctx_params.n_batch && !self.ctx_ptr.is_null() {
+        if self.n_ctx == ctx_params.n_ctx
+            && self.n_batch == ctx_params.n_batch
+            && !self.ctx_ptr.is_null()
+        {
             return Ok(());
         }
 
         let n_embd = unsafe { llama_cpp::llama_model_n_embd(self.model_ptr) };
         let n_head = unsafe { llama_cpp::llama_model_n_head(self.model_ptr) };
-        let head_dim = if n_head > 0 { (n_embd / n_head) as usize } else { 128 };
+        let head_dim = if n_head > 0 {
+            (n_embd / n_head) as usize
+        } else {
+            128
+        };
         let is_recurrent_arch = unsafe {
-            llama_cpp::llama_model_is_recurrent(self.model_ptr) || llama_cpp::llama_model_is_hybrid(self.model_ptr)
+            llama_cpp::llama_model_is_recurrent(self.model_ptr)
+                || llama_cpp::llama_model_is_hybrid(self.model_ptr)
         };
 
         if is_recurrent_arch || head_dim != 128 {
@@ -437,12 +481,21 @@ impl NativeLlama {
                 return Err(anyhow::anyhow!("Context Resize Failure"));
             }
             self.n_ctx = ctx_params.n_ctx;
-            self.n_batch = if ctx_params.n_ctx == 0 { ctx_params.n_batch } else { std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch) };
+            self.n_batch = if ctx_params.n_ctx == 0 {
+                ctx_params.n_batch
+            } else {
+                std::cmp::min(ctx_params.n_ctx, ctx_params.n_batch)
+            };
         }
         Ok(())
     }
 
-    pub fn stitch_signal(&mut self, signal_id: i32, offset: i32, length: i32) -> anyhow::Result<()> {
+    pub fn stitch_signal(
+        &mut self,
+        signal_id: i32,
+        offset: i32,
+        length: i32,
+    ) -> anyhow::Result<()> {
         unsafe {
             let memory = llama_cpp::llama_get_memory(self.ctx_ptr);
             llama_cpp::llama_memory_seq_cp(memory, signal_id, 0, 0, length);

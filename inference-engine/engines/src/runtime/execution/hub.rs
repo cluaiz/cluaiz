@@ -95,15 +95,9 @@ impl HardwareOrchestrator {
             let math_supports_flash = !cluaiz_context.dna.signature.is_ssm 
                 && (head_dim == 64 || head_dim == 128 || head_dim == 256);
 
-            // [CERD Doctrine applied]: Llama.cpp CUDA backend critically lacks Flash Attention support 
-            // for Ternary/BitNet tensor layouts (TQ1_0, TQ2_0) on CUDA.
-            // Passing flash_attention=true to these architectures causes a fatal Model Load Failure.
-            // We mathematically filter SSMs above, and filter BitNet via strict boolean property.
-            let is_architecturally_broken = cluaiz_context.dna.signature.is_bitnet;
-
-            if !math_supports_flash || is_architecturally_broken {
+            if !math_supports_flash {
                 optimization_control.flash_attention = engine_core::hardware::schema::optimization::FeatureState::Off;
-                tracing::warn!("⚠️ [Arbiter] Flash Attention disabled: Math anomaly ({}) or Architecture lacks GGML CUDA FA support.", head_dim);
+                tracing::warn!("⚠️ [Arbiter] Flash Attention disabled: SSM or unsupported head dimension ({}).", head_dim);
             }
         }
 
