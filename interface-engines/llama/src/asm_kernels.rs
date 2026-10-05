@@ -186,33 +186,17 @@ mod tests {
     }
 }
 
-/// 🚀 Sovereign Injection Point: Expose the AVX2 BitNet Kernel to C++ (GGML).
-/// This allows `llama.cpp` to route `GGML_TYPE_TQ1_0` math operations to our ultra-fast Rust implementation.
+/// 🚀 Injection Point: Expose the AVX2 BitNet Kernel hook to C++ (GGML).
+/// Note: The custom AVX2 ternary kernel is disabled (-1 fallback) because:
+/// 1. TQ2_0 requires activation bias compensation (- ysum) which this kernel does not compute.
+/// 2. Writing 256-bit registers into single 32-bit scalar output pointers causes a stack buffer overflow.
+/// Returning -1 safely routes all TQ2_0 operations to llama.cpp's native, verified AVX2 implementation in quants.c.
 #[no_mangle]
 pub unsafe extern "C" fn cluaiz_fast_ternary_dot(
-    packed_weights: *const u8,
-    activations: *const i8,
-    output: *mut i32,
-    count: usize,
+    _packed_weights: *const u8,
+    _activations: *const i8,
+    _output: *mut i32,
+    _count: usize,
 ) -> i32 {
-    #[cfg(target_arch = "x86_64")]
-    {
-        // 1. We assume 32-bit containerized alignment for modern BitNet models
-        let result = KernelDispatcher::dispatch_ternary_dot_product(
-            true, // is_32bit_container
-            packed_weights,
-            activations,
-            output,
-            count
-        );
-        match result {
-            Ok(_) => 0, // 0 = Success
-            Err(_) => -1, // -1 = Fallback to GGML default emulation
-        }
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        // Fallback for non-x86_64 architectures (will trigger ggml's emulation)
-        -1
-    }
+    -1
 }
