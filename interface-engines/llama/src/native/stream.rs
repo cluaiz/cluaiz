@@ -674,14 +674,6 @@ pub fn stream_tokens(
             *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
             *safe_batch.batch.logits.add(0) = 1;
 
-            // PCIe Direct DMA MoE Highway Hook (Decode) - gated for native GGML streaming bridge
-            if false {
-                if let Some(ref controller_arc) = llama.moe_controller {
-                    if let Ok(mut ctrl) = controller_arc.lock() {
-                        ctrl.pipeline_all_offloaded_chunks(next_token_id, n_cur);
-                    }
-                }
-            }
 
             if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
                 tracing::error!(

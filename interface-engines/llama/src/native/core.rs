@@ -97,7 +97,7 @@ unsafe extern "C" fn ggml_sched_eval_callback(
     true
 }
 
-/// 🤫 Sovereign Silence: Mute verbose native logs to prevent TUI visual noise.
+/// 🤫 Mute verbose native logs to prevent TUI visual noise.
 #[allow(dead_code)]
 extern "C" fn silent_llama_log(
     _level: i32,
@@ -172,7 +172,7 @@ impl NativeLlama {
             llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
         }
 
-        // ══ SOVEREIGN OPTIMIZATION (Hardware Overrides) ══
+        // ══ HARDWARE OPTIMIZATION (Hardware Overrides) ══
         // We now use llama_log_callback to pipe all logs instead of swallowing them.
 
         // 🚀 Backend Init: Already handled globally by cluaiz_kernel_init() in ffi_exports.rs.
@@ -314,7 +314,7 @@ impl NativeLlama {
         // Ensure n_ctx is strictly bound by Negotiator's requested limit, preventing 256k token (14.4 GB) KV Cache allocations
         ctx_params.n_ctx = requested_n_ctx;
         info!(
-            "🎯 [Native-Llama] SOVEREIGN HANDSHAKE: Context Window strictly locked to: {} tokens",
+            "🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: {} tokens",
             ctx_params.n_ctx
         );
 
@@ -325,30 +325,22 @@ impl NativeLlama {
         }
 
         unsafe {
-            let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
-            let is_hybrid = model_params.n_gpu_layers > 0;
-            let target_graphs =
-                if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 || is_hybrid {
-                    "0"
-                } else {
-                    "1"
-                };
-            if current_graphs != target_graphs {
-                std::env::set_var("GGML_CUDA_USE_GRAPHS", target_graphs);
+            // Note: GGML_CUDA_USE_GRAPHS is a compile-time CMake define in llama.cpp.
+            // Runtime disabling in llama.cpp is controlled via GGML_CUDA_DISABLE_GRAPHS (common.cuh:1258).
+            if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
+                std::env::set_var("GGML_CUDA_DISABLE_GRAPHS", "1");
+            } else {
+                std::env::remove_var("GGML_CUDA_DISABLE_GRAPHS");
             }
         }
 
-        // KV Placement & Operation Offload
+        // KV Placement & Operation Offload (Strictly governed by Unified Resource Negotiator)
         if model_params.n_gpu_layers != 0 {
             ctx_params.op_offload = 1;
-            let (free_vram_bytes, _) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
-            let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-            if free_vram_gb < 0.6 {
-                ctx_params.offload_kqv = 0;
-                info!("🧠 [Native-Llama] Low VRAM headroom ({:.2} GB): KV Cache placed in System RAM.", free_vram_gb);
+            if ctx_params.offload_kqv == 1 {
+                info!("🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).");
             } else {
-                ctx_params.offload_kqv = 1;
-                info!("🧠 [Native-Llama] High-bandwidth GDDR6 VRAM ({:.2} GB free): KV Cache offloaded to GPU.", free_vram_gb);
+                info!("🧠 [Native-Llama] KV Cache placed in System Host RAM (Single Source of Truth).");
             }
         }
 
@@ -531,7 +523,7 @@ impl NativeLlama {
     /// 🧠 Prefill a prompt into the KV cache (Context State) without generating tokens.
     pub fn prefill_prompt(&mut self, prompt: &str) -> anyhow::Result<Vec<i32>> {
         unsafe {
-            // 🧹 Sovereign Flush: Ensure KV cache is clear before starting new prefill
+            // 🧹 KV Cache Flush: Ensure KV cache is clear before starting new prefill
             let mem = llama_cpp::llama_get_memory(self.ctx_ptr);
             llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
 

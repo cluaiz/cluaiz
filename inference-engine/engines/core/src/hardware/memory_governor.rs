@@ -30,6 +30,28 @@ pub fn calculate_usable_vram(
     (live_free_vram_gb - safety).max(0.0)
 }
 
+/// Dynamically calculates the safe maximum system memory utilization ceiling (0.88 - 0.96)
+/// based on real-time background memory load ratio.
+pub fn calculate_dynamic_system_ceiling_pct(total_ram_gb: f64, available_ram_gb: f64) -> f64 {
+    let used_ram_gb = (total_ram_gb - available_ram_gb).max(0.0);
+    let load_ratio = if total_ram_gb > 0.0 {
+        (used_ram_gb / total_ram_gb).clamp(0.0, 1.0)
+    } else {
+        0.5
+    };
+
+    // When background apps are light (< 35%), safe ceiling expands up to 96%.
+    // When moderate (35% - 65%), ceiling smoothly adapts between 92% and 95%.
+    // When heavy (> 65%), ceiling tightens to 88% - 92% to protect existing processes.
+    if load_ratio < 0.35 {
+        0.96
+    } else if load_ratio <= 0.65 {
+        0.95 - ((load_ratio - 0.35) / 0.30) * 0.03
+    } else {
+        0.92 - ((load_ratio - 0.65) / 0.35) * 0.04
+    }
+}
+
 /// Computes the final usable RAM in GB after applying safety buffers and system ceilings.
 pub fn calculate_usable_ram(
     opt_control: &OptimizationControl,
@@ -41,7 +63,8 @@ pub fn calculate_usable_ram(
     if opt_control.custom_ram_buffer_gb.is_some() {
         (available_ram_gb - ram_safety_gb).max(0.0)
     } else {
-        let max_allowed_system_ram = (total_ram_gb - ram_safety_gb).max(0.0);
+        let ceiling_pct = calculate_dynamic_system_ceiling_pct(total_ram_gb, available_ram_gb);
+        let max_allowed_system_ram = total_ram_gb * ceiling_pct;
         let pre_existing_used_ram = (total_ram_gb - available_ram_gb).max(0.0);
         let system_cap_usable_ram = (max_allowed_system_ram - pre_existing_used_ram).max(0.0);
         let raw_usable_ram = (available_ram_gb - ram_safety_gb).max(0.0);
@@ -67,25 +90,41 @@ pub fn calculate_safety_buffer(
     (total_vram_gb * 0.08).clamp(min_vram_guard, 1.00)
 }
 
-/// Calculates the OS safety buffer for CPU RAM in GB based on user settings.
+/// Calculates the OS safety buffer for CPU RAM in GB based on real-time system metrics.
+/// Zero hardcoding: dynamically evaluates current system load ratio and reserves 5% - 15%.
 pub fn calculate_ram_safety_buffer(
     opt_control: &OptimizationControl,
     total_ram_gb: f64,
-    _available_ram_gb: f64,
+    available_ram_gb: f64,
 ) -> f64 {
-    let min_ram_guard = 1.50f64;
-
     if let Some(direct_gb) = opt_control.custom_ram_buffer_gb {
         if direct_gb > 0.0 {
             let max_allowed = (total_ram_gb - 2.0).max(1.0);
-            return direct_gb.max(min_ram_guard).min(max_allowed);
+            return direct_gb.max(1.00).min(max_allowed);
         }
     }
 
-    // In Auto mode, dynamically allocate 6% of total RAM for OS safety,
-    // clamped between 1.25 GB (floor for background desktop stability) and 2.50 GB.
-    let auto_buffer = (total_ram_gb * 0.06).clamp(1.25, 2.50);
-    auto_buffer
+    // Dynamic Real-Time Safety Buffer Calculation (Zero Hardcoding)
+    let used_ram_gb = (total_ram_gb - available_ram_gb).max(0.0);
+    let load_ratio = if total_ram_gb > 0.0 {
+        (used_ram_gb / total_ram_gb).clamp(0.0, 1.0)
+    } else {
+        0.5
+    };
+
+    // Derive dynamic safety percentage:
+    // Light load (< 35% used): 5%
+    // Moderate load (35% - 65% used): scales from 5% to 10%
+    // Heavy load (> 65% used): scales from 10% to 15%
+    let dynamic_pct = if load_ratio < 0.35 {
+        0.05
+    } else if load_ratio <= 0.65 {
+        0.05 + ((load_ratio - 0.35) / 0.30) * 0.05
+    } else {
+        0.10 + ((load_ratio - 0.65) / 0.35) * 0.05
+    };
+
+    (total_ram_gb * dynamic_pct).max(1.00)
 }
 
 /// Computes the final unified `MemoryDecision` based on system hardware stats and user configurations.
@@ -104,7 +143,8 @@ pub fn get_memory_decision(
     let usable_ram_gb = if opt_control.custom_ram_buffer_gb.is_some() {
         (available_ram_gb - ram_safety_gb).max(0.0)
     } else {
-        let max_allowed_system_ram = (total_ram_gb - ram_safety_gb).max(0.0);
+        let ceiling_pct = calculate_dynamic_system_ceiling_pct(total_ram_gb, available_ram_gb);
+        let max_allowed_system_ram = total_ram_gb * ceiling_pct;
         let pre_existing_used_ram = (total_ram_gb - available_ram_gb).max(0.0);
         let system_cap_usable_ram = (max_allowed_system_ram - pre_existing_used_ram).max(0.0);
         let raw_usable_ram = (available_ram_gb - ram_safety_gb).max(0.0);

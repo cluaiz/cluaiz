@@ -101,7 +101,7 @@ pub fn resolve_context_window(
     model_size_gb: f64,
     reserved_non_ctx_gb: f64,
 ) -> ContextResolution {
-    let min_2k_tokens = 2048usize;
+    let min_floor_tokens = 2048usize;
 
     // Load optimization settings for KV cache quantization format
     let opt_control = crate::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
@@ -115,14 +115,14 @@ pub fn resolve_context_window(
     let (kv_bytes_per_token, native_max_ctx) = if model_path.exists() && model_path.is_file() {
         if let Ok(arch_info) = crate::metadata::GgufBinaryProber::probe(model_path) {
             let bytes_per_tok = arch_info.kv_bytes_per_token(element_bytes);
-            let native_ctx = arch_info.context_length.max(min_2k_tokens);
+            let native_ctx = arch_info.context_length.max(min_floor_tokens);
             (bytes_per_tok, native_ctx)
         } else {
-            let native_ctx = get_model_native_context(model_path).max(min_2k_tokens);
+            let native_ctx = get_model_native_context(model_path).max(min_floor_tokens);
             (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
         }
     } else {
-        let native_ctx = get_model_native_context(model_path).max(min_2k_tokens);
+        let native_ctx = get_model_native_context(model_path).max(min_floor_tokens);
         (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
     };
 
@@ -138,7 +138,7 @@ pub fn resolve_context_window(
 
     let (target_ctx_tokens, ctx_mode_str) = match user_n_ctx {
         -1 | i32::MAX => {
-            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx);
+            let safe = max_possible_tokens.clamp(min_floor_tokens, native_max_ctx);
             let label = if safe == native_max_ctx {
                 "Full Window"
             } else {
@@ -150,14 +150,14 @@ pub fn resolve_context_window(
             let req = n as usize;
             let safe = req
                 .min(max_possible_tokens)
-                .clamp(min_2k_tokens, native_max_ctx);
+                .clamp(min_floor_tokens, native_max_ctx);
             let label = if safe == req { "Custom" } else { "Clamped" };
             (safe, format!("{} -> {} Tokens", label, safe))
         }
         _ => {
             // Auto Mode: 100% Dynamic Scaling.
             // Bounded strictly by available physical RAM headroom and model native context length.
-            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx);
+            let safe = max_possible_tokens.clamp(min_floor_tokens, native_max_ctx);
             (safe, format!("Auto Dynamic ({} Tokens)", safe))
         }
     };
