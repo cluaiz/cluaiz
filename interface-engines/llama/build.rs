@@ -98,6 +98,10 @@ fn main() {
 
     // Explicitly disable backends to prevent auto-detection "Bakchodi"
     config.define("GGML_CUDA",     if feature_cuda     { "ON" } else { "OFF" });
+    if feature_cuda {
+        let cuda_arch = env::var("CUDA_ARCHITECTURES").unwrap_or_else(|_| "86".to_string());
+        config.define("CMAKE_CUDA_ARCHITECTURES", cuda_arch);
+    }
     config.define("GGML_METAL",    if feature_metal    { "ON" } else { "OFF" });
     config.define("GGML_VULKAN",   if feature_vulkan   { "ON" } else { "OFF" });
     config.define("GGML_HIPBLAS",  if feature_rocm     { "ON" } else { "OFF" });

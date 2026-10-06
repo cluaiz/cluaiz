@@ -3,6 +3,7 @@ name = "cluaiz-builder"
 version = "0.1.0"
 edition = "2021"
 publish = false
+default-run = "cluaiz-builder"
 
 [dependencies]
 engine-core = { path = "../../inference-engine/engines/core" }

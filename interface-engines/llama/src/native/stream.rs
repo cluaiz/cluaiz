@@ -337,7 +337,13 @@ pub fn stream_tokens(
                 match_len += 1;
             }
 
-            engine_core::dev_info!(
+            eprintln!(
+                "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
+                last_prefilled_tokens.len(),
+                tokens.len(),
+                match_len
+            );
+            tracing::info!(
                 "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
                 last_prefilled_tokens.len(),
                 tokens.len(),
@@ -345,7 +351,8 @@ pub fn stream_tokens(
             );
 
             if match_len < 4 {
-                engine_core::dev_info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
+                eprintln!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
+                tracing::info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
                 let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
                 match_len = 0;
@@ -386,7 +393,12 @@ pub fn stream_tokens(
 
         // 🛡️ Auto-reset KV cache if start_pos is already near context ceiling (prevents GGML stack buffer overrun ops.cpp:3767)
         if start_pos >= (llama.n_ctx as i32 - 16) {
-            engine_core::dev_info!(
+            eprintln!(
+                "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
+                start_pos,
+                llama.n_ctx
+            );
+            tracing::info!(
                 "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
                 start_pos,
                 llama.n_ctx
@@ -405,7 +417,12 @@ pub fn stream_tokens(
             tokens.drain(0..dropped);
         }
 
-        engine_core::dev_info!(
+        eprintln!(
+            "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
+            start_pos,
+            tokens.len()
+        );
+        tracing::info!(
             "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
             start_pos,
             tokens.len()
@@ -420,7 +437,7 @@ pub fn stream_tokens(
         if tokens.is_empty() && effective_cache_len > 0 {
             let last_matched_pos = effective_cache_len as i32 - 1;
             let last_matched_token = full_prompt_tokens[effective_cache_len - 1];
-            engine_core::dev_info!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
+            eprintln!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
 
             // Remove only the last position so we can re-decode it with logits=1
             let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -433,9 +450,11 @@ pub fn stream_tokens(
             *safe_batch.batch.logits.add(0) = 1; // MUST compute logits for sampler
             safe_batch.batch.n_tokens = 1;
 
-            if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                engine_core::dev_info!(
-                    "⚠️ [KV-Fix] Logits refresh decode failed. Falling back to full prefill."
+            let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
+            if rc != 0 {
+                eprintln!(
+                    "⚠️ [KV-Fix] Logits refresh decode failed with code {}. Falling back to full prefill.",
+                    rc
                 );
                 decode_failed = true;
             }
@@ -466,7 +485,9 @@ pub fn stream_tokens(
                     }
                 }
 
-                if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
+                let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
+                if rc != 0 {
+                    eprintln!("⚠️ [Llama-Lib] Delta prefill chunk decode failed with code {} at start_pos {}", rc, start_pos);
                     decode_failed = true;
                     break;
                 }
@@ -474,7 +495,8 @@ pub fn stream_tokens(
         }
 
         if decode_failed {
-            engine_core::dev_info!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
+            eprintln!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
+            tracing::warn!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
 
             // 1. Clear KV cache completely
             let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -537,6 +559,10 @@ pub fn stream_tokens(
 
             // Upstream standard: check if token is end of generation
             if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
+                eprintln!(
+                    "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
+                    next_token_id
+                );
                 tracing::info!(
                     "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
                     next_token_id
