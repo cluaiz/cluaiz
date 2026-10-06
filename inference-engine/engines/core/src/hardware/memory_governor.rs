@@ -82,10 +82,9 @@ pub fn calculate_ram_safety_buffer(
         }
     }
 
-    // In Auto mode, dynamically allocate 15% of total RAM, clamped between 3.0 GB (min floor for desktop OS)
-    // and 6.0 GB (upper ceiling for high-capacity systems). For small total_ram (< 12GB), scale gracefully to 2.5 GB.
-    let min_auto_floor = if total_ram_gb <= 12.0 { 2.50 } else { 3.50 };
-    let auto_buffer = (total_ram_gb * 0.15).clamp(min_auto_floor, 6.00);
+    // In Auto mode, dynamically allocate 6% of total RAM for OS safety,
+    // clamped between 1.25 GB (floor for background desktop stability) and 2.50 GB.
+    let auto_buffer = (total_ram_gb * 0.06).clamp(1.25, 2.50);
     auto_buffer
 }
 

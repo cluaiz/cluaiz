@@ -257,22 +257,24 @@ impl RuntimeB {
         }
         eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: load_mode = {}, n_gpu_layers = {}, tier = {:?}", model_params.load_mode, model_params.n_gpu_layers, grant.tier);
 
-        // Clamp user custom layers setting to negotiator allocated safe GPU budget limit
+        // 🚀 Native GPU Layer Offload:
+        // When running in Hybrid / Split mode (VRAM + RAM split, context in RAM),
+        // cap layers to physical Dedicated VRAM to prevent Windows WDDM Shared GPU Memory allocation.
+        // In non-hybrid mode (e.g. GpuOnly), preserve native -1 (all layers to CUDA).
+        let is_hybrid_split = matches!(
+            grant.tier,
+            engine_core::hardware::PlacementTier::Hybrid
+                | engine_core::hardware::PlacementTier::SsdStreaming
+        );
+
         let target_gpu_layers = if user_n_gpu_layers == 0 {
             0
+        } else if is_hybrid_split && user_n_gpu_layers == -1 {
+            grant.n_gpu_layers
         } else if user_n_gpu_layers == -1 {
-            if grant.n_gpu_layers == -1 {
-                -1
-            } else {
-                grant.n_gpu_layers
-            }
+            -1
         } else {
-            // Custom layers case: honor custom value but bound by negotiator safe allocation limit
-            if grant.n_gpu_layers >= 0 {
-                (user_n_gpu_layers).min(grant.n_gpu_layers)
-            } else {
-                user_n_gpu_layers
-            }
+            user_n_gpu_layers
         };
 
         let original_layers = model_params.n_gpu_layers;
@@ -339,11 +341,7 @@ impl RuntimeB {
             engine_core::dev_info!("🛡️ [Architecture Guard] Non-standard attention geometry detected: Disabling Flash Attention to prevent numerical divergence.");
             ctx_params.flash_attn_type = 0;
         }
-        if self.context.dna.requires_fp16_kv()
-            || is_recurrent_ssm
-            || (grant.tier != engine_core::hardware::PlacementTier::GpuOnly
-                && ctx_params.flash_attn_type == 0)
-        {
+        if self.context.dna.requires_fp16_kv() || is_recurrent_ssm {
             engine_core::dev_info!("🛡️ [Architecture Guard] Enforcing F16 KV-cache for mathematical stability across splits.");
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
@@ -383,23 +381,18 @@ impl RuntimeB {
             ctx_params.n_ctx
         );
 
-        // 🚀 BATCH SYNC: Standardized to upstream llama.cpp defaults (n_batch=2048, n_ubatch=512)
-        // for instant prompt evaluation (TTFT). Scalable via OptimizationConfig.
-        if model_params.n_gpu_layers == 0 {
-            ctx_params.n_batch = 512;
-            ctx_params.n_ubatch = 128;
+        // 🚀 BATCH SYNC: Match upstream llama.cpp defaults (2048 batch / 512 ubatch)
+        // for instant prompt evaluation (TTFT 0-1s).
+        ctx_params.n_batch = if ctx_params.n_batch == 0 {
+            2048
         } else {
-            ctx_params.n_batch = if ctx_params.n_batch == 0 {
-                2048
-            } else {
-                ctx_params.n_batch
-            };
-            ctx_params.n_ubatch = if ctx_params.n_ubatch == 0 {
-                512
-            } else {
-                ctx_params.n_ubatch
-            };
-        }
+            ctx_params.n_batch
+        };
+        ctx_params.n_ubatch = if ctx_params.n_ubatch == 0 {
+            512
+        } else {
+            ctx_params.n_ubatch
+        };
 
         // 🚀 High Memory Pressure Guard: Disable mlock if system memory usage is >= 90% to prevent swap thrashing
         let mut sys = sysinfo::System::new();
@@ -413,51 +406,7 @@ impl RuntimeB {
             engine_core::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
         }
 
-        // 🧠 MoE Expert CPU Offload: Route expert FFN tensors to CPU buffer via llama.cpp's
-        // tensor_buft_overrides. This keeps only dense attention on GPU VRAM, allowing all
-        // layers to be GPU-offloaded while experts compute on CPU.
-        // Pattern matches: blk.N.ffn_(up|down|gate|gate_up)_(ch|)exps
-        // CString and Vec MUST stay alive until after llama_model_load_from_file returns.
-        let _moe_override_pattern: Option<std::ffi::CString> = None;
-        let _moe_overrides_vec: Option<Vec<ffi::llama_cpp::LlamaModelTensorBuftOverride>> = None;
-        // Shadowing with mut so we can assign below
-        let mut _moe_override_pattern = _moe_override_pattern;
-        let mut _moe_overrides_vec = _moe_overrides_vec;
 
-        if let Some(ref moe_info) = grant.moe_info {
-            if moe_info.is_moe && model_params.n_gpu_layers != 0 {
-                let cpu_buft = unsafe { ffi::llama_cpp::ggml_backend_cpu_buffer_type() };
-                let pattern = std::ffi::CString::new(r"\.ffn_(up|down|gate|gate_up)_(ch|)exps")
-                    .expect("Invalid CString for MoE override pattern");
-
-                let overrides = vec![
-                    ffi::llama_cpp::LlamaModelTensorBuftOverride {
-                        pattern: pattern.as_ptr(),
-                        buft: cpu_buft,
-                    },
-                    // NULL terminator (llama.cpp iterates until pattern == nullptr)
-                    ffi::llama_cpp::LlamaModelTensorBuftOverride {
-                        pattern: std::ptr::null(),
-                        buft: std::ptr::null(),
-                    },
-                ];
-
-                model_params.tensor_buft_overrides = overrides.as_ptr();
-
-                // With experts on CPU, GPU only holds dense attention per layer.
-                // Safe to offload all layers — dense backbone is typically 5-10% of total model size.
-                let total_layers = moe_info.moe_layer_count as i32;
-                model_params.n_gpu_layers = total_layers;
-                eprintln!(
-                    "🧠 [Native-Llama] MoE CPU Expert Override active: experts → CPU buffer, dense attention → GPU. n_gpu_layers set to {} (all layers).",
-                    total_layers
-                );
-
-                // Keep CString and Vec alive through model load
-                _moe_override_pattern = Some(pattern);
-                _moe_overrides_vec = Some(overrides);
-            }
-        }
 
         let native = NativeLlama::load(
             &self.model_path,
@@ -496,6 +445,18 @@ impl RuntimeB {
         )?;
         self.native = Some(native);
         tracing::info!("✅ [Llama-Engine] Native Model Loaded & Optimized.");
+
+        // 🧬 Synchronize active allocation with HardwareGovernor single source of truth
+        let model_file_name = std::path::Path::new(&self.model_path)
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_else(|| self.model_path.clone());
+        engine_core::HardwareGovernor::register_allocation(
+            &model_file_name,
+            grant.vram_budget_gb,
+            grant.target_ctx_tokens,
+            "Native Llama",
+        );
 
         // 🚀 DEFERRED DMA INIT: Now that model is loaded and VRAM is occupied,
         // CudaDmaStreamer will see real post-load free VRAM (~250 MB) and allocate

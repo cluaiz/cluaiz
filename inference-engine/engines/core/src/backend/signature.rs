@@ -29,12 +29,12 @@ pub struct KernelSignature {
 impl KernelSignature {
     /// Determines whether the model requires pure F16 KV cache instead of standard quantized Q4/Q8 KV-cache
     pub fn requires_fp16_kv(&self, head_dim: Option<usize>) -> bool {
-        self.is_ssm || head_dim.unwrap_or(128) > 128 || self.head_pattern.contains("softcapping")
+        self.is_ssm || head_dim.unwrap_or(128) > 256
     }
 
     /// Determines whether Flash Attention is mathematically supported on this architecture without divergence
     pub fn supports_flash_attention(&self, head_dim: Option<usize>) -> bool {
-        !self.is_ssm && head_dim.unwrap_or(128) <= 128
+        !self.is_ssm && head_dim.unwrap_or(128) <= 256
     }
 }
 

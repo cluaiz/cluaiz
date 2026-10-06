@@ -202,13 +202,14 @@ impl HardwareGovernor {
         let user_meta = crate::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
         let user_n_ctx = user_meta.hardware_and_execution.n_ctx;
 
+        let min_ram_weights_est = (dna.weights_size_gb as f64 - live_free_vram_gb).max(0.0);
         let res = crate::hardware::context_negotiator::resolve_context_window(
             std::path::Path::new(""),
             user_n_ctx,
             decision.usable_ram_gb,
             total_ram_gb,
             dna.weights_size_gb as f64,
-            0.0,
+            min_ram_weights_est,
         );
 
         let target_ctx = res.target_ctx_tokens;
@@ -258,6 +259,9 @@ impl HardwareGovernor {
 
     pub fn register_allocation(engine_id: &str, vram_gb: f64, context_size: usize, engine: &str) {
         if let Ok(mut arbiter) = ARBITER.lock() {
+            if let Some(prev) = arbiter.active_allocations.remove(engine_id) {
+                arbiter.allocated_vram_gb = (arbiter.allocated_vram_gb - prev.vram_gb).max(0.0);
+            }
             arbiter.allocated_vram_gb += vram_gb;
             arbiter.active_allocations.insert(
                 engine_id.to_string(),

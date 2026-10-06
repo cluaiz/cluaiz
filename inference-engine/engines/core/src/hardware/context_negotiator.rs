@@ -24,6 +24,8 @@ pub struct ContextResolution {
     pub required_ctx_gb: f64,
     /// Native context limit discovered from model registry or defaults
     pub native_max_ctx: usize,
+    /// Exact bytes per token dynamically calculated for the model's KV cache
+    pub kv_bytes_per_token: f64,
 }
 
 /// Discovers the model's native context limit from `model_registry.json`.
@@ -100,17 +102,35 @@ pub fn resolve_context_window(
     reserved_non_ctx_gb: f64,
 ) -> ContextResolution {
     let min_2k_tokens = 2048usize;
-    let kv_bytes_per_token = 128.0 * 1024.0; // Standard 128 KB/token baseline
 
-    let native_max_ctx = get_model_native_context(model_path).max(min_2k_tokens);
+    // Load optimization settings for KV cache quantization format
+    let opt_control = crate::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+    let element_bytes = match opt_control.kv_cache_quantization {
+        crate::hardware::schema::optimization::KvCacheQuantization::Kv4 => 0.5f64,
+        crate::hardware::schema::optimization::KvCacheQuantization::Kv8 => 1.0f64,
+        _ => 2.0f64, // Kv16 or Auto default (FP16)
+    };
+
+    // 🔬 Pure Mathematical Truth: Probe model geometry directly from GGUF binary
+    let (kv_bytes_per_token, native_max_ctx) = if model_path.exists() && model_path.is_file() {
+        if let Ok(arch_info) = crate::metadata::GgufBinaryProber::probe(model_path) {
+            let bytes_per_tok = arch_info.kv_bytes_per_token(element_bytes);
+            let native_ctx = arch_info.context_length.max(min_2k_tokens);
+            (bytes_per_tok, native_ctx)
+        } else {
+            let native_ctx = get_model_native_context(model_path).max(min_2k_tokens);
+            (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
+        }
+    } else {
+        let native_ctx = get_model_native_context(model_path).max(min_2k_tokens);
+        (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
+    };
 
     // Dynamic GGML Workspace Reserve (Scales with model size)
     let ggml_workspace_reserve = (0.25 + (model_size_gb * 0.04)).clamp(0.50, 3.00);
 
-    // Dynamic OS Safety Buffer (5% of total RAM, clamped between 1.0 GB and 2.0 GB)
-    let os_safety_buffer_gb = (total_ram_gb * 0.05).clamp(1.0, 2.0);
-
-    let total_reserved = ggml_workspace_reserve + os_safety_buffer_gb + reserved_non_ctx_gb;
+    // Usable RAM already includes the OS safety buffer deducted centrally by memory_governor.
+    let total_reserved = ggml_workspace_reserve + reserved_non_ctx_gb;
     let ram_for_ctx = (usable_ram_gb - total_reserved).max(0.0);
 
     let max_possible_tokens =
@@ -136,9 +156,8 @@ pub fn resolve_context_window(
         }
         _ => {
             // Auto Mode: 100% Dynamic Scaling.
-            // Directly scales to the maximum tokens that safely fit in the available headroom
-            // up to the model's native context limit (e.g. 8k, 32k, 64k, 128k) with min 2048 floor.
-            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx.max(min_2k_tokens));
+            // Bounded strictly by available physical RAM headroom and model native context length.
+            let safe = max_possible_tokens.clamp(min_2k_tokens, native_max_ctx);
             (safe, format!("Auto Dynamic ({} Tokens)", safe))
         }
     };
@@ -151,5 +170,6 @@ pub fn resolve_context_window(
         ctx_mode_str,
         required_ctx_gb,
         native_max_ctx,
+        kv_bytes_per_token,
     }
 }

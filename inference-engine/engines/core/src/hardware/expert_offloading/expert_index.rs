@@ -54,14 +54,38 @@ impl ExpertOffsetIndex {
     ///
     /// We use the existing GGUFProber to get tensor names + sizes, then compute
     /// per-expert offsets by dividing the stacked expert tensor evenly.
-    pub fn from_gguf(_path: &Path, n_experts: usize) -> anyhow::Result<Self> {
+    pub fn from_gguf(path: &Path, n_experts: usize) -> anyhow::Result<Self> {
         if n_experts == 0 {
             return Err(anyhow::anyhow!("Cannot build ExpertOffsetIndex: n_experts = 0"));
         }
 
-        let n_layers = 32;
-        let total_entries = n_layers * n_experts;
-        let offsets: Vec<Option<ExpertTensorOffset>> = vec![None; total_entries];
+        let (max_layer, raw_offsets) = crate::metadata::GgufBinaryProber::probe_raw_expert_tensors(path)
+            .unwrap_or_else(|_| (0, std::collections::HashMap::new()));
+
+        let n_layers = max_layer.max(1);
+        let mut offsets: Vec<Option<ExpertTensorOffset>> = vec![None; n_layers * n_experts];
+
+        for l in 0..n_layers {
+            for e in 0..n_experts {
+                let gate = raw_offsets.get(&(l, "gate".into()));
+                let up = raw_offsets.get(&(l, "up".into()));
+                let down = raw_offsets.get(&(l, "down".into()));
+
+                if let (Some(&(g_off, g_len)), Some(&(u_off, u_len)), Some(&(d_off, d_len))) = (gate, up, down) {
+                    let g_slice = (g_len / n_experts as u64).max(1);
+                    let u_slice = (u_len / n_experts as u64).max(1);
+                    let d_slice = (d_len / n_experts as u64).max(1);
+
+                    offsets[l * n_experts + e] = Some(ExpertTensorOffset {
+                        layer: l,
+                        expert_id: e,
+                        gate: TensorRange { file_offset: g_off + (e as u64 * g_slice), byte_length: g_slice },
+                        up: TensorRange { file_offset: u_off + (e as u64 * u_slice), byte_length: u_slice },
+                        down: TensorRange { file_offset: d_off + (e as u64 * d_slice), byte_length: d_slice },
+                    });
+                }
+            }
+        }
 
         Ok(Self {
             n_layers,
