@@ -32,8 +32,6 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
             let s = unsafe { std::ffi::CStr::from_ptr(text) }.to_string_lossy();
             eprint!("{}", s);
         }
-        // 🚀 Set default op offload threshold to 1 for dynamic GPU streaming during single-token generation
-        std::env::set_var("GGML_OP_OFFLOAD_MIN_BATCH", "1");
 
         // 🚀 Backend Init: llama_backend_init() internally registers all static
         // and dynamic backend devices (CUDA, CPU) safely without duplicate pointer re-insertion.

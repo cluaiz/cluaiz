@@ -19,7 +19,7 @@ pub struct GgufHardwareExecution {
 impl Default for GgufHardwareExecution {
     fn default() -> Self {
         Self {
-            n_gpu_layers: 0,
+            n_gpu_layers: -1,
             n_ctx: 0,
             no_mmap: false,
             override_tensor: String::new(),

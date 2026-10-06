@@ -325,12 +325,6 @@ impl NativeLlama {
         }
 
         unsafe {
-            // 🚀 Force GGML CUDA to offload RAM tensor operations to GPU even for single-token stream decoding
-            if model_params.n_gpu_layers != 0 {
-                std::env::set_var("GGML_OP_OFFLOAD_MIN_BATCH", "1");
-                std::env::set_var("GGML_CUDA_FORCE_MMQ", "1");
-            }
-
             let current_graphs = std::env::var("GGML_CUDA_USE_GRAPHS").unwrap_or_default();
             let is_hybrid = model_params.n_gpu_layers > 0;
             let target_graphs =
@@ -344,22 +338,17 @@ impl NativeLlama {
             }
         }
 
-        // 🚀 Ensure dynamic host-tensor op offloading to CUDA device
+        // KV Placement & Operation Offload
         if model_params.n_gpu_layers != 0 {
             ctx_params.op_offload = 1;
-            // 🛡️ Dynamic KV Placement: If running MoE Streaming on <=4GB VRAM,
-            // keep KV Cache in System RAM to protect CUDA compute graph workspace from OOM
-            if moe_controller.is_some() {
-                let (free_vram_bytes, _) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
-                let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-                if free_vram_gb < 1.2 {
-                    ctx_params.offload_kqv = 0;
-                    info!("🧠 [Native-Llama] KV Cache kept in System RAM to guarantee CUDA compute graph workspace.");
-                } else {
-                    ctx_params.offload_kqv = 1;
-                }
+            let (free_vram_bytes, _) = crate::dma_streamer::DmaStreamer::get_live_vram_info();
+            let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            if free_vram_gb < 0.6 {
+                ctx_params.offload_kqv = 0;
+                info!("🧠 [Native-Llama] Low VRAM headroom ({:.2} GB): KV Cache placed in System RAM.", free_vram_gb);
             } else {
                 ctx_params.offload_kqv = 1;
+                info!("🧠 [Native-Llama] High-bandwidth GDDR6 VRAM ({:.2} GB free): KV Cache offloaded to GPU.", free_vram_gb);
             }
         }
 
@@ -368,11 +357,8 @@ impl NativeLlama {
         ctx_params.cb_eval = std::ptr::null_mut();
         ctx_params.cb_eval_user_data = std::ptr::null_mut();
 
-        // 🛡️ 99% Dynamic Model Header Truth (Native C++ Engine & Tensor Geometry)
-        let is_recurrent_arch = unsafe {
-            llama_cpp::llama_model_is_recurrent(model_ptr)
-                || llama_cpp::llama_model_is_hybrid(model_ptr)
-        };
+        // 🛡️ Dynamic Model Header Truth (Native C++ Engine & Tensor Geometry)
+        let is_pure_recurrent = unsafe { llama_cpp::llama_model_is_recurrent(model_ptr) };
 
         let n_embd = unsafe { llama_cpp::llama_model_n_embd(model_ptr) };
         let n_head = unsafe { llama_cpp::llama_model_n_head(model_ptr) };
@@ -383,40 +369,38 @@ impl NativeLlama {
         };
         // Upstream llama.cpp CUDA kernels support head dimensions 64, 128, and 256 (e.g. Gemma 2/4).
         let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
-        let is_non_standard_attention = is_recurrent_arch || !head_dim_supported;
+        let is_non_standard_attention = is_pure_recurrent || !head_dim_supported;
 
         info!(
-            "🔍 [Native-Llama] Model Header Truth: is_hybrid_or_recurrent={}, n_embd={}, n_head={}, head_dim={}, fa_supported={}",
-            is_recurrent_arch, n_embd, n_head, head_dim, head_dim_supported
+            "🔍 [Native-Llama] Model Header Truth: is_pure_recurrent={}, n_embd={}, n_head={}, head_dim={}, fa_supported={}",
+            is_pure_recurrent, n_embd, n_head, head_dim, head_dim_supported
         );
 
-        if is_non_standard_attention || !dna.supports_flash_attention() {
-            info!("🛡️ [Native-Llama] Non-standard attention / Recurrent / Unsupported head architecture: Disabling Flash Attention.");
+        if is_pure_recurrent {
+            info!("🛡️ [Native-Llama] Pure recurrent architecture (SSM/Mamba/RWKV): Disabling Flash Attention.");
             ctx_params.flash_attn_type = 0;
             speculative_decoding_mode = 0;
-        } else {
-            info!(
-                "⚡ [Native-Llama] Flash Attention validated for head_dim={}: active (type={}).",
-                head_dim, ctx_params.flash_attn_type
-            );
-        }
-
-        if is_non_standard_attention || dna.requires_fp16_kv() {
-            info!("🛡️ [Native-Llama] Architecture requires pure F16 KV cache (head_dim={} or hybrid/recurrent): Enforcing type_k = 1, type_v = 1.", head_dim);
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
+        } else {
+            ctx_params.flash_attn_type = 1;
+            info!(
+                "⚡ [Native-Llama] Flash Attention active (type=1) for head_dim={}.",
+                head_dim
+            );
         }
 
         print_memory_trace("4. BEFORE CONTEXT CREATION");
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
         print_memory_trace("5. AFTER CONTEXT CREATION");
 
-        // 🛡️ CERD DOCTRINE FA-FALLBACK (No Hardcoded Strings)
-        // If Context Init fails, gracefully retry without Flash Attention while PRESERVING quantized KV cache (no F16 explosion)
+        // 🛡️ CERD DOCTRINE FA-FALLBACK
+        // If Context Init fails with Flash Attention, fallback without Flash Attention (enforcing F16 V-cache as required by llama.cpp)
         if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
-            engine_core::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Initiating Safe Fallback (keeping quantized KV cache)...");
+            engine_core::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Retrying with fallback...");
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
+            fallback_ctx_params.type_v = 1; // Upstream llama.cpp requires F16 V-cache when FA is disabled
             ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, fallback_ctx_params) };
         }
 
@@ -461,15 +445,15 @@ impl NativeLlama {
         } else {
             128
         };
-        let is_recurrent_arch = unsafe {
-            llama_cpp::llama_model_is_recurrent(self.model_ptr)
-                || llama_cpp::llama_model_is_hybrid(self.model_ptr)
-        };
+        let is_pure_recurrent = unsafe { llama_cpp::llama_model_is_recurrent(self.model_ptr) };
+        let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
 
-        if is_recurrent_arch || head_dim != 128 {
+        if is_pure_recurrent {
             ctx_params.flash_attn_type = 0;
             ctx_params.type_k = 1;
             ctx_params.type_v = 1;
+        } else {
+            ctx_params.flash_attn_type = 1;
         }
 
         unsafe {

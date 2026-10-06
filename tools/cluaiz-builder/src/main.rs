@@ -207,7 +207,9 @@ fn main() {
                         for entry in entries.flatten() {
                             let p = entry.path();
                             if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
-                                if fname.contains(d) || (d == "onnx" && fname.contains("cuda")) {
+                                if (d == "llama" && (fname.contains("llama") || fname.contains("cuda")))
+                                    || (d == "onnx" && fname.contains("onnx"))
+                                {
                                     if std::fs::copy(&src_path, &p).is_ok() {
                                         println!("🧬 [cluaiz-builder] Overwrote active driver DLL: {:?}", p);
                                     }
