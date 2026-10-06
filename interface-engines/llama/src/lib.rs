@@ -233,13 +233,11 @@ impl RuntimeB {
 
         let grant = engine_core::hardware::negotiate_resource(&request)?;
 
-        // Apply resource negotiator results
-        eprintln!(
-            "⚖️ [Negotiator] GGUF resource grant: tier = {:?}, GPU layers = {}, VRAM budget = {:.2} GB, RAM budget = {:.2} GB",
-            grant.tier,
-            grant.n_gpu_layers,
-            grant.vram_budget_gb,
-            grant.ram_budget_gb
+        // 🔬 Authoritative Hardware Allocation Telemetry Report (Live in Console)
+        engine_core::hardware::print_negotiator_full_report(
+            &format!("Model Initialized: {}", self.model_path),
+            &request,
+            &grant,
         );
 
         // Extract metadata configuration settings
@@ -251,9 +249,9 @@ impl RuntimeB {
         model_params.set_mmap(!user_no_mmap);
         if grant.tier == engine_core::hardware::PlacementTier::SsdStreaming {
             model_params.set_mmap(true);
-            model_params.use_extra_bufts = true;
+            model_params.use_extra_bufts = false; // Prevent multi-gigabyte duplicate repack RAM buffer!
             eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
-            eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent 11 GB duplicate RAM buffer.");
+            eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent duplicate RAM buffer.");
         }
         eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: load_mode = {}, n_gpu_layers = {}, tier = {:?}", model_params.load_mode, model_params.n_gpu_layers, grant.tier);
 
@@ -324,6 +322,14 @@ impl RuntimeB {
         );
 
         ctx_params.swa_full = 0; // Enforce safe SWA cache sizing
+
+        // Configure op_offload and KV cache placement from Unified Resource Negotiator
+        if model_params.n_gpu_layers != 0 {
+            ctx_params.op_offload = 1;
+            ctx_params.offload_kqv = if grant.kv_on_gpu { 1 } else { 0 };
+        } else {
+            ctx_params.offload_kqv = 0;
+        }
 
         // ⚡ Dynamic Flash Attention Policy: Upstream llama.cpp runs Flash Attention
         // natively on all GPU-resident layers even in Hybrid / MoE offload modes.

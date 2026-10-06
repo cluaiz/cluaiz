@@ -150,6 +150,8 @@ impl GgufMoeDetector {
                 35.0
             } else if path_norm.contains("-12b") {
                 12.0
+            } else if path_norm.contains("-10b") {
+                10.0
             } else if path_norm.contains("-8b") {
                 8.0
             } else if file_size > 0 {

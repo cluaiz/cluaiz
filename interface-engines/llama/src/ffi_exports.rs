@@ -33,8 +33,7 @@ pub extern "C" fn cluaiz_kernel_init() -> *const std::os::raw::c_char {
             eprint!("{}", s);
         }
 
-        // 🚀 Backend Init: llama_backend_init() internally registers all static
-        // and dynamic backend devices (CUDA, CPU) safely without duplicate pointer re-insertion.
+        // Backend Init: Register backend devices with upstream defaults
         ffi::llama_cpp::llama_backend_init();
     }
     tracing::info!("🧬 [Llama.cpp-Kernel] Backend Initialized.");
