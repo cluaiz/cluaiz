@@ -135,9 +135,6 @@ pub fn build(state: Arc<AppState>) -> Router {
 
         // ── Vault Management (Phase 2) ──
         .route("/v1/models/{model_id}", axum::routing::delete(crate::handlers::models::rm_model))
-
-        // ── Developer Hub (Embedded UI) ──
-        .merge(cluaiz_devhub::devhub_routes())
         .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::auth_middleware))
         .layer(cors)
         .with_state(state)

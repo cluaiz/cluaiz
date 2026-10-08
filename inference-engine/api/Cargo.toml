@@ -10,7 +10,6 @@ dispatcher = { path = "../../interface-engines/dispatcher", package = "dispatche
 system-optimization = { path = "../engines/system_optimization" }
 engine-core = { path = "../engines/core" }
 inference-cel = { path = "../../inference-cel" }
-cluaiz_devhub = { path = "../../developer_hub" }
 
 # ── Web Server (The Gateway) ──
 axum       = "0.8"
