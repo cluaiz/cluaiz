@@ -5,12 +5,12 @@ use serde_yaml::Value;
 use engine_core::HardwareGovernor;
 
 pub fn execute_local_ci_for_driver(driver: &str, profile: &str) -> Vec<String> {
-    println!("🔍 [Local-CI] Auditing system_control.json & GitHub Action Workflows for [{}] driver...", driver);
+    println!("🔍 [Local-CI] Auditing system_info.json & GitHub Action Workflows for [{}] driver...", driver);
     
-    let control = match HardwareGovernor::load_system_control() {
+    let control = match HardwareGovernor::load_system_info() {
         Ok(c) => c,
         Err(_) => {
-            println!("⚠️ [Local-CI] Failed to load system_control.json. Skipping local CI workflow step.");
+            println!("⚠️ [Local-CI] Failed to load system_info.json. Skipping local CI workflow step.");
             return Vec::new();
         }
     };

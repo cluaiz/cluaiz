@@ -250,10 +250,10 @@ impl RuntimeB {
         if grant.tier == engine_core::hardware::PlacementTier::SsdStreaming {
             model_params.set_mmap(true);
             model_params.use_extra_bufts = false; // Prevent multi-gigabyte duplicate repack RAM buffer!
-            eprintln!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
-            eprintln!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent duplicate RAM buffer.");
+            tracing::debug!("🧠 [Native-Llama] SSD Streaming Active. Enforcing use_mmap = true for page-cache streaming.");
+            tracing::debug!("🧠 [Native-Llama] SSD Streaming: Disabled CPU_REPACK (use_extra_bufts = false) to prevent duplicate RAM buffer.");
         }
-        eprintln!("🧬 [Native-Llama] Resolved Model Memory Mode: load_mode = {}, n_gpu_layers = {}, tier = {:?}", model_params.load_mode, model_params.n_gpu_layers, grant.tier);
+        tracing::debug!("🧬 [Native-Llama] Resolved Model Memory Mode: load_mode = {}, n_gpu_layers = {}, tier = {:?}", model_params.load_mode, model_params.n_gpu_layers, grant.tier);
 
         // 🚀 Native GPU Layer Offload:
         // When running in Hybrid / Split mode (VRAM + RAM split, context in RAM),
@@ -277,19 +277,60 @@ impl RuntimeB {
 
         let original_layers = model_params.n_gpu_layers;
         model_params.n_gpu_layers = target_gpu_layers;
-        eprintln!(
+        tracing::debug!(
             "🧬 [Native-Llama] Configured n_gpu_layers: {} (negotiated limit applied, original config was {})",
             model_params.n_gpu_layers, original_layers
         );
 
+        // P4: Pin MoE expert tensors to CPU Host RAM via tensor_buft_overrides
+        // When layers are offloaded to GPU, dense backbone & attention stay on GPU,
+        // but expert tensors must reside in System RAM to avoid VRAM OOM and PCIe ping-pong.
+        let mut _tensor_buft_patterns: Vec<std::ffi::CString> = Vec::new();
+        let mut _tensor_buft_overrides: Vec<crate::ffi::llama_cpp::LlamaModelTensorBuftOverride> =
+            Vec::new();
+
+        let is_moe = grant.moe_info.as_ref().map(|m| m.is_moe).unwrap_or(false);
+        if is_moe && model_params.n_gpu_layers != 0 {
+            let cpu_buft = unsafe { crate::ffi::llama_cpp::ggml_backend_cpu_buffer_type() };
+            if !cpu_buft.is_null() {
+                let expert_patterns = [
+                    r".*ffn_.*_exps.*",
+                    r".*ffn_gate_exps.*",
+                    r".*ffn_down_exps.*",
+                    r".*ffn_up_exps.*",
+                ];
+                for pat in &expert_patterns {
+                    if let Ok(c_pat) = std::ffi::CString::new(*pat) {
+                        _tensor_buft_overrides.push(
+                            crate::ffi::llama_cpp::LlamaModelTensorBuftOverride {
+                                pattern: c_pat.as_ptr(),
+                                buft: cpu_buft,
+                            },
+                        );
+                        _tensor_buft_patterns.push(c_pat);
+                    }
+                }
+                // Null-sentinel terminator required by llama.cpp
+                _tensor_buft_overrides.push(crate::ffi::llama_cpp::LlamaModelTensorBuftOverride {
+                    pattern: std::ptr::null(),
+                    buft: std::ptr::null(),
+                });
+                model_params.tensor_buft_overrides = _tensor_buft_overrides.as_ptr();
+                tracing::info!(
+                    "🧠 [Native-Llama] Pinned MoE expert tensors to System RAM CPU buffer via tensor_buft_overrides ({} patterns)",
+                    expert_patterns.len()
+                );
+            }
+        }
+
         // Hook MoE controller if the negotiator verified it is a MoE model
         if let Some(ref moe_info) = grant.moe_info {
-            eprintln!(
+            tracing::debug!(
                 "🧠 [Native-Llama] Grant contains MoE info. checking is_moe = {}",
                 moe_info.is_moe
             );
             if moe_info.is_moe {
-                eprintln!("🧠 [Native-Llama] Loading MoE Streaming Controller. Cache budget: {:.2} GB | GPU offloaded layers: {}", grant.expert_cache_budget_gb, model_params.n_gpu_layers);
+                tracing::debug!("🧠 [Native-Llama] Loading MoE Streaming Controller. Cache budget: {:.2} GB | GPU offloaded layers: {}", grant.expert_cache_budget_gb, model_params.n_gpu_layers);
                 let offloaded_layers = model_params.n_gpu_layers.max(0) as usize;
                 match crate::expert_offloading::GgufMoeStreamingController::new(
                     std::path::Path::new(&self.model_path),
@@ -299,10 +340,10 @@ impl RuntimeB {
                 ) {
                     Ok(controller) => {
                         self.moe_controller = Some(Arc::new(std::sync::Mutex::new(controller)));
-                        eprintln!("🧠 [Native-Llama] ✅ MoE Streaming Controller initialized and pre-warmed.");
+                        tracing::debug!("🧠 [Native-Llama] ✅ MoE Streaming Controller initialized and pre-warmed.");
                     }
                     Err(e) => {
-                        eprintln!(
+                        tracing::warn!(
                             "🧠 [Native-Llama] ❌ Failed to initialize MoE controller: {}",
                             e
                         );
@@ -411,8 +452,6 @@ impl RuntimeB {
         if model_params.is_mmap() && self.moe_controller.is_some() {
             engine_core::hardware::apply_windows_hard_memory_quota(grant.ram_budget_gb);
         }
-
-
 
         let native = NativeLlama::load(
             &self.model_path,
@@ -654,25 +693,13 @@ impl StreamingInference for RuntimeB {
         // 🔄 Sync local optimization state from system
         self.optimization = crate::config::OptimizationConfig::load_from_system();
 
-        // 🌊 Trigger Elastic Resize (VRAM Sovereignty)
+        // 🛡️ Context Sovereignty (Rule 6): Context window is fixed at model load time.
+        // Never call resize_context() mid-stream as it destroys the active KV cache via llama_free.
         if let Some(native) = &mut self.native {
-            let mut ctx_params = self.optimization.to_context_params();
-
-            // Recalculate context window through Governor using the injected control truth
-            let new_ctx = engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&self.context.dna, control);
-            ctx_params.n_ctx = new_ctx as u32;
-
-            // Sync settings dynamically
             let optimization_ctx =
                 engine_core::hardware::schema::optimization::OptimizationContext::from(control);
             native.kv_cache_quantization_mode = optimization_ctx.kv_cache_quantization_mode;
             native.context_shifting_mode = optimization_ctx.context_shifting_mode;
-
-            native.resize_context(ctx_params)?;
-            tracing::info!(
-                "🌊 [Llama-Engine] Elastic Resize Success: Context now {} tokens.",
-                new_ctx
-            );
         }
 
         Ok(())

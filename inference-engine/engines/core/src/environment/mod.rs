@@ -194,13 +194,33 @@ impl EnvironmentManager {
         self.tools_dir().join("mcp")
     }
     pub fn tools_registry_json_path(&self) -> PathBuf {
-        self.config_dir().join("tools_registry.json")
+        let p = self.config_dir().join("tools_registry.json");
+        if p.exists() {
+            p
+        } else {
+            let global_p = self.global_dir.join("engine").join("config").join("tools_registry.json");
+            if global_p.exists() {
+                global_p
+            } else {
+                p
+            }
+        }
     }
     pub fn tools_registry_bin_path(&self) -> PathBuf {
         self.config_dir().join("tools_registry.bin")
     }
     pub fn model_registry_json_path(&self) -> PathBuf {
-        self.config_dir().join("model_registry.json")
+        let p = self.config_dir().join("model_registry.json");
+        if p.exists() {
+            p
+        } else {
+            let global_p = self.global_dir.join("engine").join("config").join("model_registry.json");
+            if global_p.exists() {
+                global_p
+            } else {
+                p
+            }
+        }
     }
     pub fn model_registry_bin_path(&self) -> PathBuf {
         self.config_dir().join("model_registry.bin")
@@ -251,7 +271,7 @@ impl EnvironmentManager {
         let engine_dir = self.engine_dir();
         let legacy_files = vec![
             "permission.json", "permission.bin", 
-            "system_control.json", "system_control.bin",
+            "system_info.json", "system_info.bin",
             "package.json", "package.bin"
         ];
         

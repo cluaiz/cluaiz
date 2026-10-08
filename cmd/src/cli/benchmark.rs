@@ -204,7 +204,7 @@ fn get_benchmark_out_dir() -> PathBuf {
             .join("benchmark")
     };
 
-    if let Ok(control) = HardwareGovernor::load_system_control() {
+    if let Ok(control) = HardwareGovernor::load_system_info() {
         let compute = if control.silicon_truth.accelerators.gpus.is_empty() {
             "CPU_ONLY".to_string()
         } else {

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use libloading::{Library, Symbol};
 use crate::interface_engines::manager::kernel_loader::KernelLoader;
 use crate::interface_engines::manager::driver_bridge::DriverBridge;
-use engine_core::hardware::schema::profiles::SystemControl;
+use engine_core::hardware::schema::profiles::SystemInfo;
 use engine_core::hardware::governor::HardwareGovernor;
 use colored::Colorize;
 
@@ -35,7 +35,7 @@ impl EngineManager {
 
     /// Handshake: Identify the target Hardware and ensure correct kernel/driver presence.
     pub async fn prepare_engine(&self, engine_type: &str) -> Result<PathBuf, String> {
-        let control = HardwareGovernor::load_system_control()
+        let control = HardwareGovernor::load_system_info()
             .map_err(|e| format!("Hardware Config Missing or Corrupt: {}", e))?;
 
         // 🚀 cluaiz Detection Logic: The Triple Handshake

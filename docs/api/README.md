@@ -68,8 +68,12 @@ Authorization: Bearer <TOKEN>
 ### 5. System & Hardware Control
 * [**`GET /health`**](./system/health.md) — Engine health and uptime verification.
 * [**`GET /info`**](./system/info.md) — Architectural pillars and version truth.
+* [**`GET /v1/system/info`**](./system/info_hardware.md) — Calibrated silicon truth, CPU GFLOPS, measured RAM bandwidth, and GPU PCIe specs.
+* [**`GET /v1/system/control`**](./system/info_hardware.md) — Hardware profile probe (alias to `/v1/system/info`).
+* [**`GET /v1/system/live`**](./system/live.md) — Real-time telemetry (Host RAM/VRAM, per-core CPU %, engine process RSS memory).
+* [**`POST /v1/system/plan`**](./system/plan.md) — Autonomous model execution planning engine (evaluates the 5 llama.cpp execution candidates against live probed hardware).
+* [**`POST /v1/system/compare`**](./system/compare.md) — Dynamic latency comparison engine (alias to `/v1/system/plan`).
 * [**`POST /v1/system/cmd`**](./system/cmd.md) — Protected host shell execution bridge (Bearer Token mandatory).
-* [**`GET /v1/system/control`**](./system/control_hardware.md) — Hardware probe (GPU VRAM, CUDA/DirectML/Metal status).
 * [**`POST /v1/system/storage/temp_media/clean`**](./system/storage_clean.md) — Temporary media and cache cleanup.
 * [**`GET/POST /v1/system/gguf_config`**](./system/gguf_config.md) — GGUF metadata and sampler parameters.
 * [**`GET/POST /v1/system/onnx_config`**](./system/onnx_config.md) — ONNX runtime tuning and thread configuration.

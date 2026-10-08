@@ -372,7 +372,7 @@ async fn main() -> Result<()> {
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
-    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
+    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
         if control.brain.is_pure_brain() {
             pure_brain = true;
         }
@@ -394,7 +394,7 @@ async fn main() -> Result<()> {
 
     if cli.legacy_calibrate {
          println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
-         engines::hardware::system_control_manager::detect_hardware();
+         engines::hardware::system_info_manager::detect_hardware();
          println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
         return Ok(());
     }
@@ -442,7 +442,7 @@ async fn main() -> Result<()> {
         }
         Some(CliCommand::Calibrate) => {
              println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
-             engines::hardware::system_control_manager::detect_hardware();
+             engines::hardware::system_info_manager::detect_hardware();
              println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
         }
         Some(CliCommand::Benchmark { model_id, runs }) => {
@@ -489,7 +489,7 @@ async fn main() -> Result<()> {
             std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
             let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
             permissions.auto_assign_defaults();
-            let _ = engine_core::hardware::governor::HardwareGovernor::load_system_control();
+            let _ = engine_core::hardware::governor::HardwareGovernor::load_system_info();
             
             // 🚀 Also seal the local package.json into the global registry
             if let Ok(pkg_data) = std::fs::read_to_string("package.json") {

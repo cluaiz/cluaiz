@@ -174,14 +174,9 @@ impl OptimizationConfig {
                 params.type_v = 2;
             }
             _ => {
-                // "Auto": Select Q4_0 when Flash Attention is enabled, fallback to F16 otherwise
-                if self.flash_attn && !force_disable_fa_for_cpu {
-                    params.type_k = 2; // GGML_TYPE_Q4_0
-                    params.type_v = 2;
-                } else {
-                    params.type_k = 1; // GGML_TYPE_F16
-                    params.type_v = 1;
-                }
+                // "Auto": llama.cpp default F16
+                params.type_k = 1; // GGML_TYPE_F16
+                params.type_v = 1;
             }
         }
         

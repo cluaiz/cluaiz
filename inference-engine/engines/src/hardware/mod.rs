@@ -1,6 +1,6 @@
 
 pub mod models_runner;
-pub mod system_control_manager;
+pub mod system_info_manager;
 
 // Re-exporting from engine_core/hardware/schema
 pub use engine_core::hardware::schema::profiles::{
@@ -22,9 +22,9 @@ impl Default for HardwareDetector {
 impl HardwareDetector {
     pub fn new() -> Self { Self }
 
-    /// 🏛️ Executes the physical hardware detection protocol.
+    /// Executes the physical hardware detection protocol.
     pub fn detect(&self) -> SiliconTruth {
-        system_control_manager::detect_hardware()
+        system_info_manager::detect_hardware()
     }
 }
 

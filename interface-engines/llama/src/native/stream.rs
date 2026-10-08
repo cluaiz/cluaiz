@@ -337,13 +337,7 @@ pub fn stream_tokens(
                 match_len += 1;
             }
 
-            eprintln!(
-                "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
-                last_prefilled_tokens.len(),
-                tokens.len(),
-                match_len
-            );
-            tracing::info!(
+            tracing::debug!(
                 "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
                 last_prefilled_tokens.len(),
                 tokens.len(),
@@ -417,12 +411,7 @@ pub fn stream_tokens(
             tokens.drain(0..dropped);
         }
 
-        eprintln!(
-            "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
-            start_pos,
-            tokens.len()
-        );
-        tracing::info!(
+        tracing::debug!(
             "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
             start_pos,
             tokens.len()

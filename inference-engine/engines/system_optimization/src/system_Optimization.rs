@@ -12,7 +12,7 @@ impl SystemOptimization {
         let mut control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
         
         // Intelligent Orchestration (Boot-time)
-        if let Ok(silicon) = HardwareGovernor::load_system_control().map(|s| s.silicon_truth) {
+        if let Ok(silicon) = HardwareGovernor::load_system_info().map(|s| s.silicon_truth) {
              // 1. Tune "Auto" states based on hardware
              AutoTuner::tune(&mut control, &silicon);
 
@@ -30,7 +30,7 @@ impl SystemOptimization {
 
     /// Dynamic Resolve: Called after model loading to align with specific architecture.
     pub fn align_with_model(control: &mut OptimizationControl, signature: &engine_core::backend::signature::KernelSignature) -> anyhow::Result<()> {
-        let silicon = HardwareGovernor::load_system_control()?.silicon_truth;
+        let silicon = HardwareGovernor::load_system_info()?.silicon_truth;
         
         // Re-resolve based on specific model architecture
         ConflictResolver::resolve_and_apply(control, &silicon, signature);

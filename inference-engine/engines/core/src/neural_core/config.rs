@@ -21,7 +21,7 @@ impl NeuralConfig {
     /// Reconciles model DNA with real-time hardware constraints.
     /// This eliminates hardcoded values in engine implementations.
     pub fn resolve(dna: &StructuralDNA) -> ResolvedNeuralParams {
-        let sys_control = HardwareGovernor::load_system_control();
+        let sys_control = HardwareGovernor::load_system_info();
         
         // 1. Dynamic Context Window (Single Source of Truth)
         let opt_control = HardwareGovernor::load_optimization_settings().unwrap_or_default();

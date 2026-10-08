@@ -5,7 +5,7 @@ use crate::AppState;
 
 // ─── POST /v1/system/profile ──────────────────────────────────────────
 pub async fn configure_profile(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    engines::hardware::system_control_manager::detect_hardware();
+    engines::hardware::system_info_manager::detect_hardware();
     Json(json!({
         "status": "success",
         "message": "Node Identity vector generation & Profile setup completed."

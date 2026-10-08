@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::info;
-use crate::models::types::entities::SlotType;
+use crate::models::types::entities::{SlotType, SlotTypeTasksExt};
 use crate::models::types::manifest::{ModelRegistry, ModelRegistryEntry, RegistryModelFile, RegistryModelMetadata};
 use crate::models::taxonomy::rules::{ModelCapabilities, UniversalTaskRules};
 

@@ -539,7 +539,7 @@ impl CudaDmaStreamer {
             std::ptr::null_mut(),
         );
 
-        eprintln!(
+        tracing::debug!(
             "📊 [SiliconDmaStreamer] Memory Probe Breakdown | Net Staging Free VRAM: {:.2} MB | 1-Layer Active Chunk: {:.2} MB | Allocated Per-Slot Budget: {:.2} MB -> Dynamic Layer Batch Capacity: {} Layers Bulk",
             net_staging_vram_bytes as f64 / (1024.0 * 1024.0),
             layer_active_bytes as f64 / (1024.0 * 1024.0),

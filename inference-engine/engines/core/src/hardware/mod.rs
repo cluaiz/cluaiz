@@ -1,34 +1,37 @@
 //! 🏛️ Sovereign Silicon Kernel: The Architectural Heart
 //! Unified single-file orchestration for hardware Agnosticism.
 
-pub mod memory;
-pub mod schema;
-pub mod system_control;
-pub mod lookup;
-pub mod system_performance;
-pub mod governor;
-pub mod speed_checker;
 pub mod circuit_breaker;
-pub mod resource_negotiator;
 pub mod context_negotiator;
 pub mod expert_offloading;
+pub mod governor;
+pub mod lookup;
+pub mod memory;
 pub mod memory_governor;
+pub mod resource_negotiator;
+pub mod schema;
+pub mod speed_checker;
+pub mod system_info;
+pub mod system_performance;
 
 // ── Re-exports for clean API ──
-pub use system_control::HardwareOrchestrator;
-pub use system_performance::pulse_schema::LivePulse;
-pub use system_performance::get_pulse;
-pub use governor::HardwareGovernor;
-pub use memory_governor::{calculate_safety_buffer, calculate_ram_safety_buffer, calculate_usable_vram, calculate_usable_ram};
 pub use context_negotiator::{resolve_context_window, ContextResolution};
+pub use governor::HardwareGovernor;
+pub use memory_governor::{
+    calculate_ram_safety_buffer, calculate_safety_buffer, calculate_usable_ram,
+    calculate_usable_vram,
+};
 pub use resource_negotiator::{
     apply_windows_hard_memory_quota, negotiate_resource, print_negotiator_full_report, EngineType,
     InferenceMode, PlacementTier, ResourceGrant, ResourceRequest,
 };
+pub use system_info::{HardwareExecutionComparison, HardwareOrchestrator};
+pub use system_performance::get_pulse;
+pub use system_performance::pulse_schema::LivePulse;
 
 /// 📡 Helper: Quick access to the Sovereign Silicon Truth.
 pub fn get_silicon_state() -> schema::profiles::SiliconTruth {
-    system_control::HardwareOrchestrator::start()
+    system_info::HardwareOrchestrator::start()
         .map(|sc| sc.silicon_truth)
         .unwrap_or_default()
 }
@@ -45,9 +48,17 @@ pub fn get_sovereign_profile() -> schema::profiles::SovereignProfile {
         active_drivers: truth.active_drivers.clone(),
         compute: schema::profiles::LegacyCompute {
             has_gpu: !truth.accelerators.gpus.is_empty(),
-            vram_gb: if !truth.accelerators.gpus.is_empty() { truth.accelerators.gpus[0].vram_total_gb } else { 0.0 },
-            primary_driver: if !truth.accelerators.gpus.is_empty() { schema::profiles::BackendDriver::CUDA } else { schema::profiles::BackendDriver::CPU },
-        }
+            vram_gb: if !truth.accelerators.gpus.is_empty() {
+                truth.accelerators.gpus[0].vram_total_gb
+            } else {
+                0.0
+            },
+            primary_driver: if !truth.accelerators.gpus.is_empty() {
+                schema::profiles::BackendDriver::CUDA
+            } else {
+                schema::profiles::BackendDriver::CPU
+            },
+        },
     }
 }
 
@@ -68,7 +79,6 @@ impl schema::profiles::SovereignProfile {
 pub mod telemetry {
     pub use crate::hardware::system_performance::*;
 }
-
 
 impl schema::profiles::SovereignProfile {
     /// 🧬 cluaiz Bridge: Alias for to_silicon_truth() for naming-migration compat.

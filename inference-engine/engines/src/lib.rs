@@ -28,7 +28,7 @@ pub use system_optimization;
 
 // 2. Hardware & Architecture
 pub use hardware::{HardwareDetector, SiliconTruth, SiliconTruth as HardwareInfo, InferenceEngine, InferenceEvent};
-pub use hardware::system_control_manager::{detect_hardware, has_config, read_config, save_config, update_field};
+pub use hardware::system_info_manager::{detect_hardware, has_config, read_config, save_config, update_field};
 
 // 3. Execution & Inference
 pub use runtime::execution::runner::{EngineRunner, ExecutionMetrics};
