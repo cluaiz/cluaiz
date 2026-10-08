@@ -9,54 +9,53 @@ use crate::theme::Theme;
 
 /// Hardware DNA Screen: Displays specs and Identity Card
 pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut Buffer) {
-    let dna_info = if let Ok(raw) = std::fs::read_to_string("src/hardware/system_control.json") {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&raw) {
-            let os = v["system_identity"]["os_target"].as_str().unwrap_or("?");
-            let arch = v["system_identity"]["architecture"].as_str().unwrap_or("?");
+    let dna_info = if let Ok(info) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
+        let os = &info.identity.os_target;
+        let arch = &info.identity.architecture;
 
-            let cpu = v["cpu_brand"].as_str().unwrap_or("?");
-            let cores = v["cpu_cores"].as_u64().unwrap_or(0);
-            let gpu_model = if v["compute"]["has_gpu"].as_bool().unwrap_or(false) { "Accelerator Active" } else { "None" };
-            let vram = v["compute"]["vram_gb"].as_f64().unwrap_or(0.0);
-            let ram = v["memory"]["total_ram_gb"].as_f64().unwrap_or(0.0);
-
-            let mode = "cluaiz Native";
-            let opt = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-            let flash = opt.flash_attention.is_active();
-            let moe = opt.extreme_moe_streaming.is_active();
-
-            let ctx = v["system_context"].clone();
-            let node_id = ctx["machine_id"].as_str().unwrap_or("UNKNOWN");
-            let locale = ctx["system_locale"].as_str().unwrap_or("?");
-            let timezone = ctx["timezone"].as_str().unwrap_or("?");
-
-            format!(
-                " 🧬 cluaiz IDENTITY CARD \n\n\
-                NODE-ID:      {}\n\
-                OS:           {} ({})\n\
-                LOCALE:       {} | TZ: {}\n\n\
-                ── HARDWARE SPECS ───────────────\n\
-                CPU:          {} ({} cores)\n\
-                GPU:          {} ({:.1}GB VRAM)\n\
-                RAM:          {:.1} GB\n\n\
-                ── ENGINE DNA ───────────────────\n\
-                RUN MODE:     {}\n\
-                OPTIMIZATION: FlashAttn: {} | MoE Streaming: {}\n\n\
-                ── CONTROLS ─────────────────────\n\
-                [ R ] RE-DETECT HARDWARE\n\
-                [ ESC ] BACK TO MENU",
-                node_id, os, arch, locale, timezone,
-                cpu, cores,
-                gpu_model, vram, ram,
-                mode.to_uppercase(),
-                if flash { "ON ⚡" } else { "OFF" },
-                if moe { "ON ⚡" } else { "OFF" }
-            )
+        let cpu = &info.silicon_truth.cpu.brand;
+        let cores = info.silicon_truth.cpu.physical_cores;
+        let gpu_model = if let Some(gpu) = info.silicon_truth.accelerators.gpus.first() {
+            gpu.model.as_str()
         } else {
-            "❌ system_control.json parse error".to_string()
-        }
+            "None"
+        };
+        let vram = info.silicon_truth.accelerators.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
+        let ram = info.silicon_truth.memory.total_capacity_gb;
+
+        let mode = "cluaiz Native";
+        let opt = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let flash = opt.flash_attention.is_active();
+        let moe = opt.extreme_moe_streaming.is_active();
+
+        let node_id = "LOCAL-NODE";
+        let locale = "en_US";
+        let timezone = "LOCAL";
+
+        format!(
+            " 🧬 cluaiz IDENTITY CARD \n\n\
+            NODE-ID:      {}\n\
+            OS:           {} ({})\n\
+            LOCALE:       {} | TZ: {}\n\n\
+            ── HARDWARE SPECS ───────────────\n\
+            CPU:          {} ({} cores)\n\
+            GPU:          {} ({:.1}GB VRAM)\n\
+            RAM:          {:.1} GB\n\n\
+            ── ENGINE DNA ───────────────────\n\
+            RUN MODE:     {}\n\
+            OPTIMIZATION: FlashAttn: {} | MoE Streaming: {}\n\n\
+            ── CONTROLS ─────────────────────\n\
+            [ R ] RE-DETECT HARDWARE\n\
+            [ ESC ] BACK TO MENU",
+            node_id, os, arch, locale, timezone,
+            cpu, cores,
+            gpu_model, vram, ram,
+            mode.to_uppercase(),
+            if flash { "ON ⚡" } else { "OFF" },
+            if moe { "ON ⚡" } else { "OFF" }
+        )
     } else {
-        "❌ system_control.json missing".to_string()
+        "❌ system_info.json missing or uncalibrated".to_string()
     };
 
     let widget = Paragraph::new(dna_info)

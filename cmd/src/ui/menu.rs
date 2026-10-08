@@ -241,7 +241,7 @@ pub async fn run_native(
                         }
                         "🔄 Re-calibrate Hardware" => {
                             println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛠️".cyan());
-                            engines::hardware::system_control_manager::detect_hardware();
+                            engines::hardware::system_info_manager::detect_hardware();
                             println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
                         }
                         "⏱️ Run Benchmark" => {

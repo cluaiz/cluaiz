@@ -2,7 +2,7 @@ use engine_core::HardwareGovernor;
 
 fn main() {
     println!("🧪 [Test] Attempting to load cluaiz Truth...");
-    match HardwareGovernor::load_system_control() {
+    match HardwareGovernor::load_system_info() {
         Ok(control) => {
             println!("✅ [Test] Load Success! cluaiz Root: {}", control.context.cluaiz_root);
         },

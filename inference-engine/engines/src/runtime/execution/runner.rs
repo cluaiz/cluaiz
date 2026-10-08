@@ -2,8 +2,8 @@
 //!   Engine: Core Execution Runner
 //! ═══════════════════════════════════════════════════════════════════════
 
-use anyhow::Result;
 use crate::runtime::execution::sampler::CoreSampler;
+use anyhow::Result;
 use engine_core::ModelWeightsWrapper;
 
 #[derive(Debug, Clone)]
@@ -21,12 +21,23 @@ pub struct EngineRunner {
 }
 
 impl EngineRunner {
-    pub fn new(model: ModelWeightsWrapper, sampler: CoreSampler, bos_token_id: Option<u32>) -> Self {
-        Self { model, sampler, bos_token_id }
+    pub fn new(
+        model: ModelWeightsWrapper,
+        sampler: CoreSampler,
+        bos_token_id: Option<u32>,
+    ) -> Self {
+        Self {
+            model,
+            sampler,
+            bos_token_id,
+        }
     }
 
     /// Injects Core kernel signals before generation.
-    pub fn inject_Core_signals(&mut self, signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>) -> Result<()> {
+    pub fn inject_Core_signals(
+        &mut self,
+        signals: Vec<engine_core::hardware::memory::kv_cache::stitching::KernelSignal>,
+    ) -> Result<()> {
         self.model.inject_signals(signals)
     }
 
@@ -37,16 +48,20 @@ impl EngineRunner {
         mut callback: impl FnMut(String) + Send + 'static,
     ) -> Result<ExecutionMetrics> {
         // OPTIMIZATION SYNC: Load truth from Governor before generation
-        let optimization = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+        let optimization =
+            engine_core::hardware::governor::HardwareGovernor::load_optimization_settings()
+                .unwrap_or_default();
         self.model.apply_optimization(&optimization)?;
-        
+
         // 🌊 Liquid Mode Linkage
-        if optimization.kv_cache_quantization != engine_core::hardware::schema::optimization::KvCacheQuantization::Kv16 {
+        if optimization.kv_cache_quantization
+            != engine_core::hardware::schema::optimization::KvCacheQuantization::Kv16
+        {
             self.model.set_liquid_mode(true)?;
         }
 
         let start_time = std::time::Instant::now();
-        
+
         let token_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let count_clone = std::sync::Arc::clone(&token_count);
 
@@ -54,7 +69,6 @@ impl EngineRunner {
         self.model.generate_stream(
             prompt,
             max_tokens,
-
             Box::new(move |t| -> bool {
                 count_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 let _ = callback(t);

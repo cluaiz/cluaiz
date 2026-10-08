@@ -1,6 +1,6 @@
 use crate::hardware::schema::optimization::OptimizationControl;
-use crate::hardware::schema::profiles::SystemControl;
-use crate::hardware::system_control::HardwareOrchestrator;
+use crate::hardware::schema::profiles::SystemInfo;
+use crate::hardware::system_info::HardwareOrchestrator;
 use once_cell::sync::Lazy;
 use rkyv::Deserialize;
 use std::collections::HashMap;
@@ -51,10 +51,10 @@ impl HardwareGovernor {
         Self
     }
 
-    /// 🛡️ Checks if the 'system_control.json' fingerprint exists.
+    /// 🛡️ Checks if the 'system_info.json' fingerprint exists.
     pub fn is_ready(&self) -> bool {
         Self::resolve_engine_path()
-            .join("system_control.json")
+            .join("system_info.json")
             .exists()
     }
 
@@ -98,7 +98,7 @@ impl HardwareGovernor {
 
         // If total_vram is 0, we try to load from the existing System Truth first (Fast)
         if arbiter.total_vram_gb == 0.0 {
-            if let Ok(control) = Self::load_system_control() {
+            if let Ok(control) = Self::load_system_info() {
                 let total = control
                     .silicon_truth
                     .accelerators
@@ -170,7 +170,7 @@ impl HardwareGovernor {
         let total_ram_gb = (sys.total_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
         let available_ram_gb = (sys.available_memory() as f64) / (1024.0 * 1024.0 * 1024.0);
 
-        let control = Self::load_system_control().unwrap_or_default();
+        let control = Self::load_system_info().unwrap_or_default();
         let total_vram_gb: f64 = control
             .silicon_truth
             .accelerators
@@ -334,7 +334,7 @@ impl HardwareGovernor {
         let base = Self::resolve_engine_path().join("config");
         let _ = std::fs::create_dir_all(&base);
         let json_data = serde_json::to_string_pretty(&control)?;
-        std::fs::write(base.join("system_control.json"), json_data)?;
+        std::fs::write(base.join("system_info.json"), json_data)?;
 
         Ok(())
     }
@@ -400,8 +400,8 @@ impl HardwareGovernor {
 
     /// 🏛️ Loads the sovereign hardware fingerprint from the binary truth (.bin).
     /// If missing, it triggers an automatic "Self-Healing" recovery scan.
-    pub fn load_binary_truth() -> anyhow::Result<SystemControl> {
-        let path = Self::resolve_engine_path().join("config").join("system_control.bin");
+    pub fn load_binary_truth() -> anyhow::Result<SystemInfo> {
+        let path = Self::resolve_engine_path().join("config").join("system_info.bin");
 
         if !path.exists() {
             return Err(anyhow::anyhow!("Binary truth missing"));
@@ -416,12 +416,12 @@ impl HardwareGovernor {
             if bytes.len() < 32 {
                 return None;
             }
-            let archived = unsafe { rkyv::archived_root::<SystemControl>(&bytes) };
+            let archived = unsafe { rkyv::archived_root::<SystemInfo>(&bytes) };
             archived.deserialize(&mut rkyv::Infallible).ok()
         });
 
         match result {
-            Ok(Some(control)) => Ok(control),
+            Ok(Some(info)) => Ok(info),
             _ => {
                 let _ = std::fs::remove_file(&path);
                 println!("⚠️ [Self-Healing] Binary Truth Corrupted. Recovering...");
@@ -431,10 +431,10 @@ impl HardwareGovernor {
         }
     }
 
-    pub fn load_system_control() -> anyhow::Result<SystemControl> {
+    pub fn load_system_info() -> anyhow::Result<SystemInfo> {
         let base = Self::resolve_engine_path().join("config");
-        let path = base.join("system_control.json");
-        let bin_path = base.join("system_control.bin");
+        let path = base.join("system_info.json");
+        let bin_path = base.join("system_info.bin");
 
         if !path.exists() {
             if !bin_path.exists() {
@@ -447,30 +447,30 @@ impl HardwareGovernor {
 
         let data =
             std::fs::read_to_string(&path).map_err(|_| anyhow::anyhow!("JSON Load Failed"))?;
-        let control: SystemControl = match serde_json::from_str(&data) {
+        let info: SystemInfo = match serde_json::from_str(&data) {
             Ok(val) => val,
             Err(_) => {
                 println!("⚠️ [Self-Healing] JSON Tampered. Restoring from Binary...");
                 Self::load_binary_truth().unwrap_or_default()
             }
         };
-        Ok(control)
+        Ok(info)
     }
 
-    pub fn save_system_control(control: &SystemControl) -> anyhow::Result<()> {
+    pub fn save_system_info(info: &SystemInfo) -> anyhow::Result<()> {
         let base = Self::resolve_engine_path().join("config");
         std::fs::create_dir_all(&base)?;
 
-        let json_path = base.join("system_control.json");
-        let bin_path = base.join("system_control.bin");
+        let json_path = base.join("system_info.json");
+        let bin_path = base.join("system_info.bin");
         let temp_json = json_path.with_extension("json.tmp");
         let temp_bin = bin_path.with_extension("bin.tmp");
 
         // ✍️ Atomic Write Protocol: Write to Temp -> Sync -> Rename
-        let json_data = serde_json::to_string_pretty(control)?;
+        let json_data = serde_json::to_string_pretty(info)?;
         std::fs::write(&temp_json, json_data)?;
 
-        let bytes = rkyv::to_bytes::<_, 4096>(control)
+        let bytes = rkyv::to_bytes::<_, 4096>(info)
             .map_err(|e| anyhow::anyhow!("Binary Serialization Failed: {}", e))?;
         std::fs::write(&temp_bin, bytes.as_slice())?;
 
@@ -559,12 +559,12 @@ impl RegistryGovernor {
 
     /// 🧠 Resolve Best Backend: Maps real hardware truth to the best available registry backend.
     pub fn resolve_backend(
-        control: &crate::hardware::schema::profiles::SystemControl,
+        info: &crate::hardware::schema::profiles::SystemInfo,
         _registry: &serde_json::Value,
     ) -> String {
-        let os = control.identity.os_target.to_lowercase();
-        let _arch = control.identity.architecture.to_lowercase();
-        let gpu_vendor = control
+        let os = info.identity.os_target.to_lowercase();
+        let _arch = info.identity.architecture.to_lowercase();
+        let gpu_vendor = info
             .silicon_truth
             .accelerators
             .gpus

@@ -244,7 +244,7 @@ impl StructuralDNA {
         use crate::hardware::governor::HardwareGovernor;
 
         let opt_control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
-        let control = HardwareGovernor::load_system_control()?;
+        let control = HardwareGovernor::load_system_info()?;
 
         // 🛡️ Truth Protocol: Prioritize Binary Silicon Truth
         self.vram_headroom_gb = control

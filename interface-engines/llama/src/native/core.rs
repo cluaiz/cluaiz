@@ -147,7 +147,7 @@ pub fn print_memory_trace(step: &str) {
     let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
-    eprintln!(
+    tracing::debug!(
         "🆘 [MEMORY TRACE: {}] Free RAM: {:.2} GB / {:.2} GB | Free VRAM: {:.2} GB / {:.2} GB",
         step, free_ram_gb, total_ram_gb, free_vram_gb, total_vram_gb
     );
@@ -325,13 +325,8 @@ impl NativeLlama {
         }
 
         unsafe {
-            // Note: GGML_CUDA_USE_GRAPHS is a compile-time CMake define in llama.cpp.
-            // Runtime disabling in llama.cpp is controlled via GGML_CUDA_DISABLE_GRAPHS (common.cuh:1258).
-            if speculative_decoding_mode == 1 || speculative_decoding_mode == 2 {
-                std::env::set_var("GGML_CUDA_DISABLE_GRAPHS", "1");
-            } else {
-                std::env::remove_var("GGML_CUDA_DISABLE_GRAPHS");
-            }
+            // Ensure CUDA graphs remain enabled for maximum GPU inference throughput.
+            std::env::remove_var("GGML_CUDA_DISABLE_GRAPHS");
         }
 
         // KV Placement & Operation Offload (Strictly governed by Unified Resource Negotiator)
@@ -375,7 +370,7 @@ impl NativeLlama {
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
         } else {
-            ctx_params.flash_attn_type = 1;
+            ctx_params.flash_attn_type = -1; // Auto (probed per layer by llama.cpp)
             info!(
                 "⚡ [Native-Llama] Flash Attention active (type=1) for head_dim={}.",
                 head_dim
@@ -445,7 +440,7 @@ impl NativeLlama {
             ctx_params.type_k = 1;
             ctx_params.type_v = 1;
         } else {
-            ctx_params.flash_attn_type = 1;
+            ctx_params.flash_attn_type = -1; // Auto (probed per layer by llama.cpp)
         }
 
         unsafe {

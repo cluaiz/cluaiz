@@ -32,7 +32,7 @@ impl Default for SystemPerformanceLive {
 impl SystemPerformanceLive {
     pub fn new() -> Self {
         // 🔗 Sovereign Linkage: Get truth from Orchestrator
-        let control = crate::hardware::system_control::HardwareOrchestrator::probe();
+        let control = crate::hardware::system_info::HardwareOrchestrator::probe();
         let mut gpu_drivers: Vec<Box<dyn HardwareDriver>> = Vec::new();
 
         // 🚀 Dynamic GPU/NPU/TPU Driver Provisioning

@@ -51,6 +51,7 @@ pub fn get_model_native_context(model_path: &Path) -> usize {
                         .replace('\\', "/");
 
                     if !local_dir.is_empty()
+                        && !target_dir_str.is_empty()
                         && (local_dir == target_dir_str
                             || target_dir_str.contains(&local_dir)
                             || local_dir.contains(&target_dir_str))
@@ -90,9 +91,10 @@ pub fn get_model_native_context(model_path: &Path) -> usize {
 
 /// Dynamically calculates the safe target context window (in tokens) for ANY model and tier.
 ///
-/// Single Source of Truth:
-/// - Only 1 static floor: 2048 minimum tokens.
-/// - Dynamic ceiling clamped by native context length and usable memory headroom.
+/// Rules:
+/// - Custom N: exactly N. Never cut.
+/// - Max (-1): model native context. Never cut.
+/// - Auto (0): 4096 floor. If 4096 cannot fit in available RAM, fallback to 2048.
 pub fn resolve_context_window(
     model_path: &Path,
     user_n_ctx: i32,
@@ -101,10 +103,12 @@ pub fn resolve_context_window(
     model_size_gb: f64,
     reserved_non_ctx_gb: f64,
 ) -> ContextResolution {
-    let min_floor_tokens = 2048usize;
+    let auto_floor_tokens = 4096usize;
+    let fallback_floor_tokens = 2048usize;
 
     // Load optimization settings for KV cache quantization format
-    let opt_control = crate::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
+    let opt_control = crate::hardware::governor::HardwareGovernor::load_optimization_settings()
+        .unwrap_or_default();
     let element_bytes = match opt_control.kv_cache_quantization {
         crate::hardware::schema::optimization::KvCacheQuantization::Kv4 => 0.5f64,
         crate::hardware::schema::optimization::KvCacheQuantization::Kv8 => 1.0f64,
@@ -115,14 +119,14 @@ pub fn resolve_context_window(
     let (kv_bytes_per_token, native_max_ctx) = if model_path.exists() && model_path.is_file() {
         if let Ok(arch_info) = crate::metadata::GgufBinaryProber::probe(model_path) {
             let bytes_per_tok = arch_info.kv_bytes_per_token(element_bytes);
-            let native_ctx = arch_info.context_length.max(min_floor_tokens);
+            let native_ctx = arch_info.context_length.max(fallback_floor_tokens);
             (bytes_per_tok, native_ctx)
         } else {
-            let native_ctx = get_model_native_context(model_path).max(min_floor_tokens);
+            let native_ctx = get_model_native_context(model_path).max(fallback_floor_tokens);
             (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
         }
     } else {
-        let native_ctx = get_model_native_context(model_path).max(min_floor_tokens);
+        let native_ctx = get_model_native_context(model_path).max(fallback_floor_tokens);
         (2.0 * 32.0 * 8.0 * 128.0 * element_bytes, native_ctx)
     };
 
@@ -138,27 +142,24 @@ pub fn resolve_context_window(
 
     let (target_ctx_tokens, ctx_mode_str) = match user_n_ctx {
         -1 | i32::MAX => {
-            let safe = max_possible_tokens.clamp(min_floor_tokens, native_max_ctx);
-            let label = if safe == native_max_ctx {
-                "Full Window"
-            } else {
-                "Clamped"
-            };
-            (safe, format!("{} -> {} Tokens", label, safe))
+            // Rule 2: Max (-1) -> exactly the model native context. Never cut.
+            (native_max_ctx, format!("Max Native ({} Tokens)", native_max_ctx))
         }
         n if n > 0 => {
-            let req = n as usize;
-            let safe = req
-                .min(max_possible_tokens)
-                .clamp(min_floor_tokens, native_max_ctx);
-            let label = if safe == req { "Custom" } else { "Clamped" };
-            (safe, format!("{} -> {} Tokens", label, safe))
+            // Rule 1: Custom N -> exactly N. Never cut.
+            let exact = n as usize;
+            (exact, format!("Custom ({} Tokens)", exact))
         }
         _ => {
-            // Auto Mode: 100% Dynamic Scaling.
-            // Bounded strictly by available physical RAM headroom and model native context length.
-            let safe = max_possible_tokens.clamp(min_floor_tokens, native_max_ctx);
-            (safe, format!("Auto Dynamic ({} Tokens)", safe))
+            // Rule 3: Auto (0) -> Auto floor 4096. If 4096 cannot fit in available RAM, fallback to 2048.
+            if max_possible_tokens >= auto_floor_tokens {
+                let safe = auto_floor_tokens.min(native_max_ctx);
+                (safe, format!("Auto Standard ({} Tokens)", safe))
+            } else if max_possible_tokens >= fallback_floor_tokens {
+                (fallback_floor_tokens, format!("Auto Fallback ({} Tokens: tight RAM)", fallback_floor_tokens))
+            } else {
+                (fallback_floor_tokens, format!("Auto Emergency Floor ({} Tokens)", fallback_floor_tokens))
+            }
         }
     };
 

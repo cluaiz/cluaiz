@@ -91,7 +91,10 @@ pub fn build(state: Arc<AppState>) -> Router {
 
         // ── System Control API (Phase 2) ──
         .route("/v1/system/ps", get(crate::handlers::ps::get_processes))
+        .route("/v1/system/info", get(crate::handlers::system::get_system_info))
         .route("/v1/system/control", get(crate::handlers::system::get_system_control))
+        .route("/v1/system/live", get(crate::handlers::system::get_system_live))
+        .route("/v1/system/plan", post(crate::handlers::system::plan_execution))
         .route("/v1/system/permission", get(crate::handlers::permission::get_permission))
         .route("/v1/system/permission", post(crate::handlers::permission::update_permission))
         .route("/v1/system/auth/token/generate", post(crate::handlers::permission::generate_auth_token))

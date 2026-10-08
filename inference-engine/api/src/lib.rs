@@ -32,7 +32,7 @@ pub async fn run_daemon() {
             eprintln!("❌ [Calibration] Failed: {}", e);
             std::process::exit(1);
         }
-        println!("✅ [Calibration] Hardware Fingerprint Sealed. system_control.bin updated.");
+        println!("✅ [Calibration] Hardware Fingerprint Sealed. system_info.bin updated.");
         std::process::exit(0);
     }
 
@@ -55,7 +55,7 @@ pub async fn run_daemon() {
 
     // 🚀 Check Pure Brain Mode
     let mut pure_brain = false;
-    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
+    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
         if control.brain.is_pure_brain() {
             tracing::info!("🧠 Pure Brain Mode Active: LLM Engine loading & VRAM allocation is suspended.");
             pure_brain = true;

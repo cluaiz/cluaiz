@@ -138,7 +138,7 @@ impl Bootstrapper {
     }
 
     async fn sync_neural_stack(master_registry: &serde_json::Value) -> Result<()> {
-        let control_path = HardwareGovernor::resolve_engine_path().join("system_control.json");
+        let control_path = HardwareGovernor::resolve_engine_path().join("system_info.json");
         if !control_path.exists() {
             return Ok(());
         } 

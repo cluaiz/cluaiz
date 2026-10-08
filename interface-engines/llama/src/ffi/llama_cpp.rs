@@ -155,6 +155,9 @@ extern "C" {
         params: LlamaContextParams,
     ) -> *mut std::ffi::c_void;
 
+    /// Context size llama.cpp actually created (after its own padding).
+    pub fn llama_n_ctx(ctx: *const std::ffi::c_void) -> u32;
+
     /// 🗑️ Free model memory.
     pub fn llama_model_free(model: *mut std::ffi::c_void);
 

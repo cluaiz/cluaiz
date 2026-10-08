@@ -93,9 +93,9 @@ async fn handle_client<T: AsyncReadExt + AsyncWriteExt + Unpin>(mut pipe: T, sta
                                         obj.insert("system_optimization".to_string(), serde_json::json!(opt_control));
                                         obj.insert("permission".to_string(), serde_json::json!(perms));
                                         
-                                        // Also inject system_control / silicon_truth
-                                        if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_control() {
-                                            obj.insert("system_control".to_string(), serde_json::json!(control));
+                                        // Also inject system_info / silicon_truth
+                                        if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
+                                            obj.insert("system_info".to_string(), serde_json::json!(control));
                                         }
 
                                         payload = serde_json::to_string(&payload_json).unwrap_or(payload);
@@ -133,7 +133,7 @@ async fn handle_client<T: AsyncReadExt + AsyncWriteExt + Unpin>(mut pipe: T, sta
                                 continue;
                             }
                             "SYSTEM_PROFILE_SETUP" => {
-                                engines::hardware::system_control_manager::detect_hardware();
+                                engines::hardware::system_info_manager::detect_hardware();
                                 let _ = pipe.write_all(b"{\"status\": \"success\", \"message\": \"Profile generated\"}").await;
                                 continue;
                             }
@@ -223,7 +223,7 @@ async fn handle_client<T: AsyncReadExt + AsyncWriteExt + Unpin>(mut pipe: T, sta
                             }
                             "GET_SETTINGS" => {
                                 let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_info().unwrap_or_default();
                                 let brain_mode = "plugin";
                                 
                                 // Load real optimization settings from disk
@@ -470,7 +470,7 @@ async fn handle_client<T: AsyncReadExt + AsyncWriteExt + Unpin>(mut pipe: T, sta
                             }
                             "RESET_OPTIMIZATION" | "RESET_BOOSTER" => {
                                 tracing::info!("🔄 [IPC] Resetting LLM Optimization to hardware-optimal defaults...");
-                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_control().unwrap_or_default();
+                                let control = engine_core::hardware::governor::HardwareGovernor::load_system_info().unwrap_or_default();
                                 let vram_gb: f64 = control.silicon_truth.accelerators.gpus.iter().map(|g| g.vram_total_gb).sum();
                                 let ram_gb = control.silicon_truth.memory.total_capacity_gb;
                                 let has_gpu = !control.silicon_truth.accelerators.gpus.is_empty();

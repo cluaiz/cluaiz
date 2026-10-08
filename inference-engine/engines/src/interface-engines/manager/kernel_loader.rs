@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// This uses the binary truth (`system_control.bin`) as the ultimate source,
 /// exactly as the cluaiz Architecture intends. Zero custom hardcoding.
 fn read_cluaiz_root() -> Option<PathBuf> {
-    match engine_core::HardwareGovernor::load_system_control() {
+    match engine_core::HardwareGovernor::load_system_info() {
         Ok(control) => Some(PathBuf::from(control.context.cluaiz_root)),
         Err(e) => {
             tracing::error!("❌ [KernelLoader] Failed to read System Truth: {}", e);

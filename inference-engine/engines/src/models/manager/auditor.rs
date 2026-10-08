@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use engine_core::hardware::schema::profiles::SystemControl;
+use engine_core::hardware::schema::profiles::SystemInfo;
 
 /// Hardware Health Auditor
 /// Enforces the 5/10 TPS Rule and VRAM safety.
@@ -9,21 +9,21 @@ pub struct HardwareAuditor;
 impl HardwareAuditor {
     /// Audits hardware performance for a model based on manifest specs
     pub fn audit_performance(&self, ram_required: f32, requires_gpu: bool) -> HealthStatus {
-        let config_path = self.get_system_control_path();
+        let config_path = self.get_system_info_path();
         
-        let system_control = if let Ok(content) = std::fs::read_to_string(config_path) {
-            serde_json::from_str::<SystemControl>(&content).ok()
+        let system_info = if let Ok(content) = std::fs::read_to_string(config_path) {
+            serde_json::from_str::<SystemInfo>(&content).ok()
         } else {
             None
         };
 
-        match system_control {
+        match system_info {
             Some(control) => self.evaluate_hardware(&control, ram_required, requires_gpu),
             None => HealthStatus::Suboptimal, // Fallback
         }
     }
 
-    fn evaluate_hardware(&self, control: &SystemControl, req_ram: f32, req_gpu: bool) -> HealthStatus {
+    fn evaluate_hardware(&self, control: &SystemInfo, req_ram: f32, req_gpu: bool) -> HealthStatus {
         // Extract VRAM from the first GPU (Primary)
         let vram_available = control.silicon_truth.accelerators.gpus.first()
             .map(|g| g.vram_available_gb)
@@ -51,8 +51,8 @@ impl HardwareAuditor {
         }
     }
 
-    fn get_system_control_path(&self) -> PathBuf {
-        engine_core::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_control.json")
+    fn get_system_info_path(&self) -> PathBuf {
+        engine_core::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_info.json")
     }
 }
 
