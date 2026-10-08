@@ -1,0 +1,28 @@
+[package]
+name = "onnx-engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+name = "onnx_engine"
+crate-type = ["rlib"]
+
+[dependencies]
+cluaiz-core = { path = "../core" }
+ort = { version = "2.0.0-rc.13", features = ["copy-dylibs", "download-binaries", "cuda", "directml"] }
+anyhow = "1.0"
+tracing = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokenizers = { version = "0.15", default-features = false, features = ["onig"] }
+image = "0.24"
+ndarray = "0.15"
+tokio = { version = "1.0", features = ["rt"] }
+hound = "3.5"
+symphonia = { version = "0.5", features = ["aac", "isomp4", "pcm", "wav", "mp3", "mkv", "flac"] }
+audiopus = "0.2"
+moosicbox_opus = "0.4"
+rustfft = "6"
+rayon = "1.10"
+base64 = "0.22"
