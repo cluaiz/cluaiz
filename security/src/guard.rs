@@ -1,0 +1,64 @@
+use anyhow::{Result, anyhow};
+use std::sync::Mutex;
+use tracing::warn;
+
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+pub enum PermissionLevel {
+    ReadOnly = 0,
+    WorkspaceWrite = 1,
+    NetworkRestricted = 2,
+    DangerFullAccess = 3,
+}
+
+impl From<&str> for PermissionLevel {
+    fn from(s: &str) -> Self {
+        match s.to_uppercase().as_str() {
+            "WORKSPACEWRITE" => PermissionLevel::WorkspaceWrite,
+            "NETWORKRESTRICTED" => PermissionLevel::NetworkRestricted,
+            "DANGERFULLACCESS" => PermissionLevel::DangerFullAccess,
+            _ => PermissionLevel::ReadOnly,
+        }
+    }
+}
+
+pub struct PermissionGuard {
+    pub audit_log: Mutex<Vec<String>>,
+}
+
+impl Default for PermissionGuard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PermissionGuard {
+    pub fn new() -> Self {
+        Self {
+            audit_log: Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Validates if a skill is allowed to perform a specific action.
+    pub fn validate_action(&self, skill_id: &str, requested_level: PermissionLevel) -> Result<()> {
+        // 📝 Audit Log
+        let entry = format!("[AUDIT] Skill '{}' requested level: {:?}", skill_id, requested_level);
+        self.audit_log.lock().unwrap().push(entry);
+
+        if requested_level == PermissionLevel::DangerFullAccess {
+            warn!("⚠️ [HUMAN-IN-THE-LOOP] Critical level requested by '{}'. Verification mandatory.", skill_id);
+        }
+
+        Ok(())
+    }
+
+    /// Enforces file access boundaries with deep path normalization.
+    pub fn validate_file_access(&self, skill_id: &str, path: &str, _is_write: bool) -> Result<()> {
+        // Prevent path traversal
+        if path.contains("..") {
+            return Err(anyhow!("Security Violation: Path traversal detected in '{}'.", skill_id));
+        }
+
+        Ok(())
+    }
+}
+

@@ -1,0 +1,23 @@
+[package]
+name = "cluaiz-models"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+cluaiz-core = { path = "../core" }
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "blocking"] }
+futures-util = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+anyhow = "1.0"
+indicatif = "0.18"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+memmap2 = "0.9"
+safetensors = "0.8.0"
+tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
