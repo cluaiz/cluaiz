@@ -11,8 +11,14 @@ members = [
     "interface-engines/onnx",
     "engine/core",
     "engine/hardware",
+    "engine/models",
     "engine/plan",
+    "engine/llama",
+    "engine/onnx",
     "engine/runtime",
+    "api",
+    "agents",
+    "security",
     "inference-cel", "test/plugin_testing", "test/engine_cel_test", "test/ai_search_e2e_test", "test/comprehensive_e2e_trace", "test/integration"]
 
 resolver = "2"
