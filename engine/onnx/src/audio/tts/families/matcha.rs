@@ -154,7 +154,7 @@ pub fn execute(
     };
 
     // --- Step 3: FM decoder ODE loop ---
-    let mut fm_sess = session;
+    let fm_sess = session;
 
     // Determine which inputs are scalars by name (known LuxTTS interface)
     let scalar_inputs: Vec<String> = fm_sess

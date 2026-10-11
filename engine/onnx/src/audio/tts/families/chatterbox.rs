@@ -19,7 +19,6 @@
 ///    OUT: waveform=[batch, num_samples] float
 
 use anyhow::{anyhow, Result};
-use ort::session::Session;
 use ort::value::Value;
 use std::collections::HashMap;
 

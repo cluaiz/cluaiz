@@ -1,18 +1,17 @@
 use crate::engine::OnnxEngine;
-use neural_core::interfaces::router_contract::EngineError;
-use engine_core::{StreamingInference, UnifiedBackend};
+use cluaiz_core::{StreamingInference, UnifiedBackend, StreamCallback};
 use ort::value::Value;
 use ort::session::SessionOutputs;
 use anyhow::{Result, anyhow};
 use std::io::{Write, Read};
 
 impl UnifiedBackend for OnnxEngine {
-    fn generate(&mut self, prompt: &str, max_tokens: usize) -> std::result::Result<String, String> {
+    fn generate(&mut self, prompt: &str, max_tokens: usize) -> Result<String> {
         let (tx, rx) = std::sync::mpsc::channel();
         self.generate_stream(prompt, max_tokens, Box::new(move |token| {
             let _ = tx.send(token);
             true
-        })).map_err(|e| e.to_string())?;
+        }))?;
         
         let mut final_text = String::new();
         for token in rx {
@@ -31,17 +30,13 @@ impl UnifiedBackend for OnnxEngine {
         Ok(())
     }
 
-    fn evaluate_tps(&self) -> f64 {
-        0.0 // Placeholder
-    }
-
     fn embed(&mut self, text: &str) -> Result<Vec<f32>> {
         self.execute_text_embedding(text).map_err(|e| anyhow!("{:?}", e))
     }
 }
 
-impl StreamingInference for OnnxEngine {
-    fn forward_raw(&mut self, input_ids: &[u32], pos: usize) -> Result<Vec<f32>> {
+impl OnnxEngine {
+    pub fn forward_raw(&mut self, input_ids: &[u32], pos: usize) -> Result<Vec<f32>> {
         let session_arc = self.acquire_session().map_err(|e| anyhow!("{:?}", e))?;
         
         let batch_size = 1;
@@ -119,11 +114,80 @@ impl StreamingInference for OnnxEngine {
         Ok(logits)
     }
 
+    pub fn dump_kv_cache(&mut self, path: &str) -> Result<()> {
+        let cache = self.active_kv_cache.as_ref()
+            .ok_or_else(|| anyhow!("No KV Cache in memory to dump."))?;
+
+        let mut file = std::fs::File::create(path)?;
+        
+        // Write header: number of tensors
+        let num_tensors = cache.len() as u32;
+        file.write_all(&num_tensors.to_le_bytes())?;
+
+        for (shape, data) in cache {
+            // Write shape rank
+            let rank = shape.len() as u32;
+            file.write_all(&rank.to_le_bytes())?;
+            // Write shape
+            for &dim in shape {
+                let d = dim as u64;
+                file.write_all(&d.to_le_bytes())?;
+            }
+            // Write data length
+            let data_len = data.len() as u64;
+            file.write_all(&data_len.to_le_bytes())?;
+            // Write raw f32 bytes
+            let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) };
+            file.write_all(bytes)?;
+        }
+        
+        Ok(())
+    }
+
+    pub fn load_kv_cache(&mut self, path: &str) -> Result<()> {
+        let mut file = std::fs::File::open(path)?;
+        let mut new_cache = Vec::new();
+
+        let mut num_tensors_bytes = [0u8; 4];
+        file.read_exact(&mut num_tensors_bytes)?;
+        let num_tensors = u32::from_le_bytes(num_tensors_bytes);
+
+        for _ in 0..num_tensors {
+            let mut rank_bytes = [0u8; 4];
+            file.read_exact(&mut rank_bytes)?;
+            let rank = u32::from_le_bytes(rank_bytes);
+
+            let mut shape = Vec::with_capacity(rank as usize);
+            for _ in 0..rank {
+                let mut dim_bytes = [0u8; 8];
+                file.read_exact(&mut dim_bytes)?;
+                shape.push(u64::from_le_bytes(dim_bytes) as usize);
+            }
+
+            let mut len_bytes = [0u8; 8];
+            file.read_exact(&mut len_bytes)?;
+            let data_len = u64::from_le_bytes(len_bytes) as usize;
+
+            let mut bytes = vec![0u8; data_len * 4]; // f32 is 4 bytes
+            file.read_exact(&mut bytes)?;
+            
+            let data: Vec<f32> = unsafe {
+                std::slice::from_raw_parts(bytes.as_ptr() as *const f32, data_len)
+            }.to_vec();
+            new_cache.push((shape, std::sync::Arc::new(data)));
+        }
+
+        self.active_kv_cache = Some(new_cache);
+        Ok(())
+    }
+}
+
+impl StreamingInference for OnnxEngine {
     fn generate_stream(
         &mut self,
         prompt: &str,
         max_tokens: usize,
-        mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
+        mut callback: StreamCallback,
     ) -> Result<()> {
         // ── Audio vs Text routing ─────────────────────────────────────────────
         // Route by prompt prefix, NOT by tokenizer presence.
@@ -184,73 +248,6 @@ impl StreamingInference for OnnxEngine {
             current_ids.push(token_id);
         }
 
-        Ok(())
-    }
-
-    fn dump_kv_cache(&mut self, path: &str) -> Result<()> {
-        let cache = self.active_kv_cache.as_ref()
-            .ok_or_else(|| anyhow!("No KV Cache in memory to dump."))?;
-
-        let mut file = std::fs::File::create(path)?;
-        
-        // Write header: number of tensors
-        let num_tensors = cache.len() as u32;
-        file.write_all(&num_tensors.to_le_bytes())?;
-
-        for (shape, data) in cache {
-            // Write shape rank
-            let rank = shape.len() as u32;
-            file.write_all(&rank.to_le_bytes())?;
-            // Write shape
-            for &dim in shape {
-                let d = dim as u64;
-                file.write_all(&d.to_le_bytes())?;
-            }
-            // Write data length
-            let data_len = data.len() as u64;
-            file.write_all(&data_len.to_le_bytes())?;
-            // Write raw f32 bytes
-            let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) };
-            file.write_all(bytes)?;
-        }
-        
-        Ok(())
-    }
-
-    fn load_kv_cache(&mut self, path: &str) -> Result<()> {
-        let mut file = std::fs::File::open(path)?;
-        let mut new_cache = Vec::new();
-
-        let mut num_tensors_bytes = [0u8; 4];
-        file.read_exact(&mut num_tensors_bytes)?;
-        let num_tensors = u32::from_le_bytes(num_tensors_bytes);
-
-        for _ in 0..num_tensors {
-            let mut rank_bytes = [0u8; 4];
-            file.read_exact(&mut rank_bytes)?;
-            let rank = u32::from_le_bytes(rank_bytes);
-
-            let mut shape = Vec::with_capacity(rank as usize);
-            for _ in 0..rank {
-                let mut dim_bytes = [0u8; 8];
-                file.read_exact(&mut dim_bytes)?;
-                shape.push(u64::from_le_bytes(dim_bytes) as usize);
-            }
-
-            let mut len_bytes = [0u8; 8];
-            file.read_exact(&mut len_bytes)?;
-            let data_len = u64::from_le_bytes(len_bytes) as usize;
-
-            let mut bytes = vec![0u8; data_len * 4]; // f32 is 4 bytes
-            file.read_exact(&mut bytes)?;
-            
-            let data: Vec<f32> = unsafe {
-                std::slice::from_raw_parts(bytes.as_ptr() as *const f32, data_len)
-            }.to_vec();
-            new_cache.push((shape, std::sync::Arc::new(data)));
-        }
-
-        self.active_kv_cache = Some(new_cache);
         Ok(())
     }
 }

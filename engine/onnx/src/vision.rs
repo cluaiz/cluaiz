@@ -1,5 +1,5 @@
 use crate::engine::OnnxEngine;
-use neural_core::interfaces::router_contract::EngineError;
+use cluaiz_core::EngineError;
 use image::imageops::FilterType;
 use tracing::info;
 

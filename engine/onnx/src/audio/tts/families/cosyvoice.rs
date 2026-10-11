@@ -2,7 +2,6 @@
 ///
 /// Pipeline: Text + Speaker Embeddings → Flow Matching Estimator → HiFT Vocoder → PCM
 use anyhow::{anyhow, Result};
-use ort::session::Session;
 use ort::value::Value;
 use std::collections::HashMap;
 
@@ -46,7 +45,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
 
     let char_codes: Vec<i64> = text.chars().map(|c| c as i64).collect();
     let seq_len = char_codes.len().max(1);
-    let frame_len = (seq_len * 12).clamp(40, 400);
+    let _frame_len = (seq_len * 12).clamp(40, 400);
     let mut acoustic_mel_features: Vec<f32> = Vec::new();
 
     // Extract real speaker embedding from campplus.onnx if present in model directory
