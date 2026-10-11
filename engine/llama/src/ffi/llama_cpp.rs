@@ -357,6 +357,26 @@ extern "C" {
         buf: *mut c_char,
         buf_size: usize,
     ) -> i32;
+
+    /// Parses the chat templates once (cluaiz fork, common/chat.h). NULL on failure.
+    pub fn llama_chat_templates_handle_init(
+        model: *const std::ffi::c_void,
+        custom_tmpl: *const c_char,
+    ) -> *mut std::ffi::c_void;
+
+    pub fn llama_chat_templates_handle_free(handle: *mut std::ffi::c_void);
+
+    /// Same result as llama_chat_apply_template_native, rendered with an already parsed handle.
+    pub fn llama_chat_apply_template_handle(
+        handle: *const std::ffi::c_void,
+        roles: *const *const c_char,
+        contents: *const *const c_char,
+        n_messages: usize,
+        add_ass: bool,
+        enable_thinking: bool,
+        buf: *mut c_char,
+        buf_size: usize,
+    ) -> i32;
 }
 
 pub type LlamaLogCallback = extern "C" fn(level: i32, text: *const c_char, user_data: *mut std::ffi::c_void);
