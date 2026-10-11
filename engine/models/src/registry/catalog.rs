@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::info;
-use crate::hardware::SiliconTruth;
+use cluaiz_hw::types::SystemInfo;
 use crate::models::fetcher::ModelDownloader;
 use crate::models::registry::vault::ModelVault;
 use crate::models::registry::discovery::AutonomousDiscovery;
@@ -227,7 +227,7 @@ impl ModelCatalog {
     }
 
     /// Evaluates hardware spec and returns available models with recommendation ratings
-    pub fn get_recommendations(hardware: &SiliconTruth, system_ram_gb: f64) -> Vec<ModelRecommendation> {
+    pub fn get_recommendations(hardware: &SystemInfo, system_ram_gb: f64) -> Vec<ModelRecommendation> {
         let models = Self::load_roster();
         let mut recommendations = Vec::new();
 
@@ -247,10 +247,10 @@ impl ModelCatalog {
             let status = if model.is_cloud_api {
                 "Cloud".to_string()
             } else if model.requires_gpu {
-                if hardware.accelerators.gpus.is_empty() {
+                if hardware.gpus.is_empty() {
                     "Incompatible".to_string()
                 } else {
-                    let vram_gb = hardware.accelerators.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
+                    let vram_gb = hardware.gpus.iter().map(|g| g.vram_available_gb).sum::<f64>();
                     if model.ram_required_gb > vram_gb {
                         "Incompatible".to_string()
                     } else {

@@ -44,47 +44,17 @@ impl EnvironmentManager {
             };
         }
 
-        // 3. Development Mode: Traverse up from test/app subfolders to find master .cluaiz
-        if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
-            let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-            let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-
-            let mut check_dir = current_dir.clone();
-            let mut canonical_dir = None;
-
-            loop {
-                let sibling_engine = check_dir.join("cluaiz").join(".cluaiz");
-                if sibling_engine.exists() {
-                    canonical_dir = Some(sibling_engine);
-                    break;
-                }
-                let direct = check_dir.join(".cluaiz");
-                let is_tauri_subfolder = check_dir.ends_with("src-tauri") || check_dir.ends_with("app");
-                if direct.exists() && !is_tauri_subfolder {
-                    canonical_dir = Some(direct);
-                    break;
-                }
-                if let Some(parent) = check_dir.parent() {
-                    check_dir = parent.to_path_buf();
-                } else {
-                    break;
-                }
-            }
-
-            let resolved_local = canonical_dir.unwrap_or_else(|| home_dir.join(".cluaiz"));
-
-            return Self {
-                mode: EnvironmentMode::Development,
-                local_dir: resolved_local,
-                global_dir: home_dir.join(".cluaiz"),
-            };
-        }
-
-        // 4. Installed Mode (Default)
+        // 3. Central System Directory (Single Source of Truth)
         let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         let global_path = home_dir.join(".cluaiz");
+        let mode = if std::env::var("CARGO").is_ok() || std::env::var("CARGO_MANIFEST_DIR").is_ok() {
+            EnvironmentMode::Development
+        } else {
+            EnvironmentMode::Installed
+        };
+
         let mgr = Self {
-            mode: EnvironmentMode::Installed,
+            mode,
             local_dir: global_path.clone(),
             global_dir: global_path,
         };
@@ -204,6 +174,9 @@ impl EnvironmentManager {
             }
         }
     }
+    pub fn model_registry_bin_path(&self) -> PathBuf {
+        self.config_dir().join("model_registry.bin")
+    }
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
     }
@@ -226,6 +199,54 @@ impl EnvironmentManager {
 
     pub fn ensure_models_dir(&self) -> std::io::Result<PathBuf> {
         let dir = self.models_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_tools_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.tools_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_skills_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.skills_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_plugins_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.plugins_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn ensure_mcp_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.mcp_dir();
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        Ok(dir)
+    }
+
+    pub fn tools_registry_bin_path(&self) -> PathBuf {
+        self.config_dir().join("tools_registry.bin")
+    }
+
+    pub fn bin_dir(&self) -> PathBuf {
+        self.local_dir.join("bin")
+    }
+
+    pub fn ensure_bin_dir(&self) -> std::io::Result<PathBuf> {
+        let dir = self.bin_dir();
         if !dir.exists() {
             std::fs::create_dir_all(&dir)?;
         }

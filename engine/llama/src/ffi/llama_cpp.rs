@@ -117,6 +117,19 @@ pub struct LlamaContextParams {
     pub ctx_other: *mut std::ffi::c_void,
 }
 
+/// `struct llama_perf_context_data` (llama.h)
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Default)]
+pub struct LlamaPerfContextData {
+    pub t_start_ms: f64,
+    pub t_load_ms: f64,
+    pub t_p_eval_ms: f64,
+    pub t_eval_ms: f64,
+    pub n_p_eval: i32,
+    pub n_eval: i32,
+    pub n_reused: i32,
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LlamaChatMessage {
@@ -157,6 +170,15 @@ extern "C" {
 
     /// Context size llama.cpp actually created (after its own padding).
     pub fn llama_n_ctx(ctx: *const std::ffi::c_void) -> u32;
+
+    /// Micro-batch size of the context (tokens computed per graph run).
+    pub fn llama_n_ubatch(ctx: *const std::ffi::c_void) -> u32;
+
+    /// llama.cpp's own timing counters (needs context param no_perf = false).
+    pub fn llama_perf_context(ctx: *const std::ffi::c_void) -> LlamaPerfContextData;
+
+    /// Resets the timing counters of `llama_perf_context`.
+    pub fn llama_perf_context_reset(ctx: *mut std::ffi::c_void);
 
     /// 🗑️ Free model memory.
     pub fn llama_model_free(model: *mut std::ffi::c_void);
@@ -349,3 +371,9 @@ pub struct LlamaBatch {
     pub seq_id: *mut *mut i32,
     pub logits: *mut i8,
 }
+
+unsafe impl Send for LlamaModelParams {}
+unsafe impl Sync for LlamaModelParams {}
+unsafe impl Send for LlamaContextParams {}
+unsafe impl Sync for LlamaContextParams {}
+

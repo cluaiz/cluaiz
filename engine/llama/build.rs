@@ -71,6 +71,14 @@ fn main() {
         .define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreadedDLL")
         .profile("Release");
 
+    // cmake-rs replaces CMAKE_<LANG>_FLAGS_RELEASE on MSVC and drops every /O flag, so ggml's CPU code
+    // was compiled unoptimized (/Od). Give it CMake's own Release flags back (what upstream builds use).
+    if env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        for lang in ["C", "CXX"] {
+            config.define(format!("CMAKE_{}_FLAGS_RELEASE", lang), "/MD /O2 /Ob2 /DNDEBUG");
+        }
+    }
+
     // ── Apple Platform Alignment ──────────────────────────────────────
     if target_os == "ios" {
         // Apple arch name is "arm64" NOT "aarch64".

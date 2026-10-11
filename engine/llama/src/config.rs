@@ -4,11 +4,10 @@
 use crate::ffi::llama_cpp::{
     llama_context_default_params, llama_model_default_params, LlamaContextParams, LlamaModelParams,
 };
-use engine_core::hardware::schema::optimization::{
-    OptimizationControl, FeatureState, SmartState, KvCacheQuantization, ContextShiftingMode,
+use cluaiz_core::{
+    ContextShiftingMode, FeatureState, KvCacheQuantization, OptimizationControl, Settings,
 };
 use serde::{Deserialize, Serialize};
-use serde_json;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizationConfig {
@@ -21,6 +20,8 @@ pub struct OptimizationConfig {
     pub n_ctx: u32,
     #[serde(skip_serializing)]
     pub n_threads: i32,
+    pub batch_size: u32,
+    pub ubatch_size: u32,
     pub turbo_quant: String,
     pub speculative_decoding: String,
     pub auto_round: String,
@@ -39,6 +40,8 @@ impl Default for OptimizationConfig {
             use_mmap: true,
             n_ctx: 0,
             n_threads: -1,
+            batch_size: 512,
+            ubatch_size: 512,
             turbo_quant: "Auto".to_string(),
             speculative_decoding: "Off".to_string(),
             auto_round: "Auto".to_string(),
@@ -52,67 +55,54 @@ impl Default for OptimizationConfig {
 }
 
 impl OptimizationConfig {
-    /// 🚀 Load the optimization configuration from the sovereign system control.
+    /// Load optimization configuration from centralized Settings
     pub fn load_from_system() -> Self {
-        // Default to Industrial Auto standards
-        let mut config = Self {
-            flash_attn: true,
-            use_mmap: true,
-            n_gpu_layers: -1, // Full Offload
-            n_ctx: 0,         // Auto-detect from model
-            n_threads: -1,    // Auto-detect CPU cores
+        let control = Settings::current().optimization;
+        Self {
+            flash_attn: control.flash_attention.is_active(),
+            use_mmap: control.resolved_use_mmap(),
+            n_gpu_layers: control.n_gpu_layers.unwrap_or(-1),
+            n_ctx: 0,
+            n_threads: -1,
+            batch_size: control.resolved_batch_size(),
+            ubatch_size: control.resolved_ubatch_size(),
             turbo_quant: "Auto".to_string(),
-            speculative_decoding: "Off".to_string(),
+            speculative_decoding: match control.speculative_decoding {
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            },
             auto_round: "Auto".to_string(),
-            force_vram_reclaim: "Off".to_string(),
-            kv_cache_quantization: "Auto".to_string(),
-            context_shifting: "Auto".to_string(),
-            think_mode: "Auto".to_string(),
-            force_memory_lock: "Auto".to_string(),
-        };
-
-        if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings() {
-            config.flash_attn = control.flash_attention.is_active();
-            config.speculative_decoding = match control.speculative_decoding {
+            force_vram_reclaim: match control.hybrid_memory {
                 FeatureState::On => "On".to_string(),
                 FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
-            };
-            config.force_vram_reclaim = match control.hybrid_memory {
-                FeatureState::On => "On".to_string(),
-                FeatureState::Off => "Off".to_string(),
-                _ => "Auto".to_string(),
-            };
-            config.kv_cache_quantization = match control.kv_cache_quantization {
+            },
+            kv_cache_quantization: match control.kv_cache_quantization {
                 KvCacheQuantization::Auto => "Auto".to_string(),
                 KvCacheQuantization::Kv8 => "Kv8".to_string(),
                 KvCacheQuantization::Kv4 => "Kv4".to_string(),
                 KvCacheQuantization::Kv16 => "Kv16".to_string(),
-            };
-            config.context_shifting = match control.context_shifting {
+            },
+            context_shifting: match control.context_shifting {
                 ContextShiftingMode::Off => "Off".to_string(),
                 ContextShiftingMode::Minimal => "Minimal".to_string(),
                 ContextShiftingMode::Standard => "Standard".to_string(),
                 ContextShiftingMode::Aggressive => "Aggressive".to_string(),
                 ContextShiftingMode::Extreme => "Extreme".to_string(),
                 ContextShiftingMode::Auto => "Auto".to_string(),
-            };
-            config.force_memory_lock = match control.force_memory_lock {
+            },
+            think_mode: match control.think_mode {
                 FeatureState::On => "On".to_string(),
                 FeatureState::Off => "Off".to_string(),
                 _ => "Auto".to_string(),
-            };
+            },
+            force_memory_lock: match control.force_memory_lock {
+                FeatureState::On => "On".to_string(),
+                FeatureState::Off => "Off".to_string(),
+                _ => "Auto".to_string(),
+            },
         }
-        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-        config.n_gpu_layers = gguf_meta.hardware_and_execution.n_gpu_layers;
-        config.n_ctx = if gguf_meta.hardware_and_execution.n_ctx == -1 {
-            u32::MAX // Marker for Max Native
-        } else {
-            gguf_meta.hardware_and_execution.n_ctx.max(0) as u32
-        };
-        config.think_mode = gguf_meta.user_moved_flags.think_mode;
-        config.use_mmap = false; // 🚀 100% FALSE: Prevents 23.7 GB RAM overflow and SSD 100% pagefile thrashing
-        config
     }
     /// 🛠️ Transform high-level config into raw model parameters.
     pub fn to_model_params(&self) -> LlamaModelParams {
@@ -134,6 +124,8 @@ impl OptimizationConfig {
         // We use the requested context directly. The Governor's fitting loop
         // ensures this fits in VRAM before the engine is even initialized.
         params.n_ctx = self.n_ctx;
+        params.n_batch = self.batch_size;
+        params.n_ubatch = self.ubatch_size;
 
         let cores = std::thread::available_parallelism()
             .map(|n| n.get())
@@ -187,7 +179,7 @@ impl OptimizationConfig {
         // We must instead gracefully fallback the KV Cache to F16.
         let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
         if is_quantized_kv && (!self.flash_attn || force_disable_fa_for_cpu) {
-            engine_core::dev_info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
+            tracing::info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");
             params.type_k = 1; // GGML_TYPE_F16
             params.type_v = 1;
             is_quantized_kv = false;
@@ -243,6 +235,13 @@ impl OptimizationConfig {
             } else {
                 FeatureState::Off
             },
+            n_gpu_layers: Some(self.n_gpu_layers),
+            think_mode: FeatureState::Auto,
+            batch_size: Some(self.batch_size),
+            ubatch_size: Some(self.ubatch_size),
+            use_mmap: Some(self.use_mmap),
+            custom_context_window: if self.n_ctx > 0 { Some(self.n_ctx) } else { None },
+            ..OptimizationControl::default()
         }
     }
 }

@@ -1,14 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub use engine_core::metadata::SlotType;
+pub use super::slot::SlotType;
 
 pub trait SlotTypeTasksExt {
-    fn supported_tasks(&self, caps: &crate::models::taxonomy::rules::ModelCapabilities) -> Vec<String>;
+    fn supported_tasks(&self, caps: &crate::taxonomy::rules::ModelCapabilities) -> Vec<String>;
 }
 
 impl SlotTypeTasksExt for SlotType {
-    fn supported_tasks(&self, caps: &crate::models::taxonomy::rules::ModelCapabilities) -> Vec<String> {
+    fn supported_tasks(&self, caps: &crate::taxonomy::rules::ModelCapabilities) -> Vec<String> {
         let mut tasks = Vec::new();
         match self {
             SlotType::Chat => {
