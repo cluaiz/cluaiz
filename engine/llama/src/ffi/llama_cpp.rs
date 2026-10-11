@@ -174,6 +174,14 @@ extern "C" {
     /// Micro-batch size of the context (tokens computed per graph run).
     pub fn llama_n_ubatch(ctx: *const std::ffi::c_void) -> u32;
 
+    pub fn llama_vocab_bos(vocab: *const std::ffi::c_void) -> i32;
+    pub fn llama_model_has_encoder(model: *const std::ffi::c_void) -> bool;
+    /// Clears the KV / recurrent memory (data = true also zeroes the buffers).
+    pub fn llama_memory_clear(mem: *mut std::ffi::c_void, data: bool);
+    pub fn llama_synchronize(ctx: *mut std::ffi::c_void);
+    /// Batch view over `tokens` (positions assigned by llama.cpp); nothing to free.
+    pub fn llama_batch_get_one(tokens: *mut i32, n_tokens: i32) -> LlamaBatch;
+
     /// llama.cpp's own timing counters (needs context param no_perf = false).
     pub fn llama_perf_context(ctx: *const std::ffi::c_void) -> LlamaPerfContextData;
 

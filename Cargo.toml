@@ -1,14 +1,5 @@
 [workspace]
 members = [
-    "inference-engine/api",
-    "inference-engine/engines",
-    "inference-engine/engines/core",
-    "inference-engine/engines/system_optimization",
-    "cmd",
-    "tools/cluaiz-builder",
-    "test/dummy_plugin",
-    "interface-engines/llama",
-    "interface-engines/onnx",
     "engine/core",
     "engine/hardware",
     "engine/models",
@@ -19,7 +10,13 @@ members = [
     "api",
     "agents",
     "security",
-    "inference-cel", "test/plugin_testing", "test/engine_cel_test", "test/ai_search_e2e_test", "test/comprehensive_e2e_trace", "test/integration"]
+    "cmd",
+    "tools/cluaiz-builder",
+    "test/dummy_plugin",
+    "test/plugin_testing",
+    "test/ai_search_e2e_test",
+    "test/comprehensive_e2e_trace",
+]
 
 resolver = "2"
 
