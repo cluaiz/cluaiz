@@ -6,7 +6,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 use crate::state::{AppState, PendingPermissionRequest};
-use engines::neural_foundry::security::permission_schema::PermissionSchema;
 
 // ── Workspace Jail & Canonicalization Engine (Directive 3) ────────────────
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +133,7 @@ pub async fn check_permission_gate(
         return Ok(());
     }
 
-    let global_perms = PermissionSchema::load();
+    let global_perms = state.permission_schema.read().await;
     let mode = global_perms.agent_security_mode.to_lowercase();
 
     // 1. Full Access Mode: bypasses boundary check and approvals
@@ -305,7 +304,7 @@ mod tests {
     async fn test_check_permission_gate_and_verify_zero_disk_mutation_on_block() {
         let ws = TempTestDir::new("cluaiz_test_ws_gate");
         let outside = TempTestDir::new("cluaiz_test_outside");
-        let state = AppState::new_test_state(ws.path.clone());
+        let state = Arc::new(AppState::new_test_state(ws.path.clone()));
 
         let target_file = outside.path.join("unapproved_evil_file.txt");
         assert!(!target_file.exists(), "Target file must not exist before test");
@@ -336,7 +335,7 @@ mod tests {
     #[tokio::test]
     async fn test_approval_resolution_allows_execution() {
         let ws = TempTestDir::new("cluaiz_test_ws_approval");
-        let state = AppState::new_test_state(ws.path.clone());
+        let state = Arc::new(AppState::new_test_state(ws.path.clone()));
 
         let target_file = ws.path.join("approved_file.txt");
         let verification = resolve_workspace_path(target_file.to_str().unwrap(), &ws.path, true).unwrap();
@@ -356,8 +355,7 @@ mod tests {
 
         // 2. User approves permission
         {
-            let mut lock = state.pending_permissions.write().await;
-            if let Some(req) = lock.get_mut(&req_id) {
+            if let Some(req) = state.pending_permissions.write().await.get_mut(&req_id) {
                 req.status = "approved".to_string();
             }
         }

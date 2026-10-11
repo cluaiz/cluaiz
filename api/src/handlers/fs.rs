@@ -80,7 +80,7 @@ pub struct SetWorkspaceRequest {
 }
 
 use crate::handlers::fs_jail::{
-    check_permission_gate, get_workspace, resolve_workspace_path, PathVerificationResult,
+    check_permission_gate, get_workspace, resolve_workspace_path,
 };
 
 fn extract_caller<'a>(headers: &'a HeaderMap, body_caller: &'a Option<String>) -> Option<&'a str> {

@@ -19,8 +19,8 @@ pub async fn cancel_chat_stream(
     };
 
     if signal_found {
-        // 🛑 Dual-Layer Signal: Trigger Deep Hardware Native C++ Llama Engine Interrupt
-        engine_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
+        // 🛑 Dual-Layer Signal: Trigger Deep Hardware Native Llama Engine Interrupt
+        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         tracing::info!("🛑 [StreamControl] Deep cancel signal dispatched for stream '{}'.", payload.stream_id);
         Json(json!({
             "status": "cancelled",
@@ -57,8 +57,8 @@ pub async fn skip_chat_reasoning(
     };
 
     if signal_found {
-        // ⏩ Dual-Layer Signal: Trigger Deep Hardware Native C++ Llama Reasoning Exit
-        engine_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
+        // ⏩ Dual-Layer Signal: Trigger Deep Hardware Native Llama Reasoning Exit
+        cluaiz_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
         tracing::info!("⏩ [StreamControl] Deep skip-reasoning signal dispatched for stream '{}'.", payload.stream_id);
         Json(json!({
             "status": "skipped",

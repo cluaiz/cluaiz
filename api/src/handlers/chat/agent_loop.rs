@@ -1,23 +1,24 @@
 use axum::response::{sse::Event, IntoResponse, Sse};
 use chrono::Utc;
-use dispatcher::EngineResponse;
+use cluaiz_runtime::HostResponse;
 use serde_json::json;
 use std::convert::Infallible;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use crate::state::AppState;
 use super::preflight::PreparedChatContext;
-use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS};
+use super::tool_parser;
+use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS, DEFAULT_MAX_TOKENS};
 
 pub async fn execute_streaming_loop(
     state: Arc<AppState>,
     request: ExternalChatRequest,
     ctx: PreparedChatContext,
-    initial_dispatch: EngineResponse,
+    initial_dispatch: HostResponse,
 ) -> axum::response::Response {
     let initial_rx = match initial_dispatch {
-        EngineResponse::TokenStream(rx) => rx,
-        EngineResponse::FinalResult(res) => {
+        HostResponse::TokenStream(rx) => rx,
+        HostResponse::Completed(res) => {
             let chunk = json!({
                 "id": ctx.request_id.clone(),
                 "choices": [{"delta": {"content": res}}]
@@ -28,7 +29,7 @@ pub async fn execute_streaming_loop(
             };
             return Sse::new(stream).into_response();
         }
-        EngineResponse::Error(err) => {
+        HostResponse::Error(err) => {
             let err_chunk = json!({
                 "id": ctx.request_id.clone(),
                 "choices": [{"delta": {"content": format!("Error: {}", err)}}]
@@ -63,7 +64,7 @@ pub async fn execute_streaming_loop(
         let mut total_generated = String::new();
         let mut overall_token_count = 0;
         let mut reasoning_tokens_count = 0usize;
-        let mut think_filter = engine_core::metadata::dna::StreamingReasoningFilter::new(
+        let mut think_filter = cluaiz_models::StreamingReasoningFilter::new(
             ctx.dyn_think_start.clone(),
             ctx.dyn_think_end.clone(),
             ctx.prompt_starts_in_think,
@@ -73,7 +74,7 @@ pub async fn execute_streaming_loop(
         let mut is_first_token = true;
 
         // 🚀 YIELD MODEL HEADER METADATA EARLY
-        let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let permission = cluaiz_security::PermissionSchema::load();
         if ctx.send_telemetry && permission.model_header_info {
             let loaded_models = super::types::generate_model_header_info();
             let early_header_chunk = json!({
@@ -103,7 +104,7 @@ pub async fn execute_streaming_loop(
             }
         }
 
-        let context_snap = engines::tools::ToolsEngine::compute_telemetry(
+        let context_snap = cluaiz_agents::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
             req_session_id.as_deref().unwrap_or("default"),
             &active_tools_list,
@@ -165,71 +166,16 @@ pub async fn execute_streaming_loop(
                 // 🧩 Token Accumulation & Robust Fragment Parsing for Tool Calls
                 token_accumulator.push_str(&token);
 
-                if token_accumulator.contains("<tool_call>") && token_accumulator.contains("</tool_call>") {
-                    let call_start_idx = token_accumulator.rfind("<tool_call>").unwrap_or(0);
-                    let clean_token = &token_accumulator[call_start_idx..];
-                    let json_start = clean_token.find("<tool_call>").map(|i| i + 11).unwrap_or(0);
-                    let json_end = clean_token.find("</tool_call>").unwrap_or(clean_token.len());
-                    let raw_json = clean_token[json_start..json_end].trim();
-
-                    // Strip markdown fences (e.g. ```json ... ```) if model wrapped tool call
-                    let mut sanitized_json = raw_json;
-                    if let Some(stripped) = sanitized_json.strip_prefix("```json") {
-                        sanitized_json = stripped;
-                    } else if let Some(stripped) = sanitized_json.strip_prefix("```") {
-                        sanitized_json = stripped;
-                    }
-                    if let Some(stripped) = sanitized_json.strip_suffix("```") {
-                        sanitized_json = stripped;
-                    }
-                    let sanitized_json = sanitized_json.trim();
-
-                    let parsed_json: serde_json::Value = serde_json::from_str(sanitized_json)
-                        .or_else(|_| serde_json::from_str(raw_json))
-                        .unwrap_or_else(|_| {
-                            json!({ "raw": raw_json })
-                        });
-
-                    let mut extracted_name = parsed_json.get("name")
-                        .or_else(|| parsed_json.get("function"))
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-
-                    // Fallback key search if json parse failed or key was missing
-                    if extracted_name.is_none() || extracted_name.as_deref() == Some("unknown") {
-                        for key in &["\"name\":", "\"function\":", "\"tool\":"] {
-                            if let Some(pos) = raw_json.find(key) {
-                                let after = raw_json[pos + key.len()..].trim_start();
-                                if let Some(stripped) = after.strip_prefix('"') {
-                                    if let Some(end_quote) = stripped.find('"') {
-                                        extracted_name = Some(stripped[..end_quote].to_string());
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let raw_fn_name = extracted_name.as_deref().unwrap_or("unknown");
-
-                    let args_val = parsed_json.get("arguments")
-                        .or_else(|| parsed_json.get("parameters"))
-                        .cloned()
-                        .unwrap_or(serde_json::Value::Null);
-
-                    let payload_str = if args_val.is_string() {
-                        args_val.as_str().unwrap().to_string()
-                    } else if !args_val.is_null() {
-                        serde_json::to_string(&args_val).unwrap_or_default()
-                    } else {
-                        serde_json::to_string(&parsed_json).unwrap_or_default()
-                    };
+                if let Some(tool_call) = tool_parser::extract_tool_call(&token_accumulator) {
+                    let raw_json = &tool_call.raw_json;
+                    let raw_fn_name = tool_call.raw_fn_name.as_str();
+                    let payload_str = tool_call.payload_str;
 
                     let resolved_target = if let Some(ref sid) = req_session_id {
-                        engines::tools::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
-                            .or_else(|| engines::tools::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
+                        cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
+                            .or_else(|| cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
                     } else {
-                        engines::tools::ToolsEngine::resolve_function_target(raw_fn_name, &[])
+                        cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
                     };
 
                     let (comp_type, comp_name, tool_sub_func) = if let Some(target) = resolved_target {
@@ -243,7 +189,7 @@ pub async fn execute_streaming_loop(
 
                     // Resolve tool SVG icon from filesystem/registry
                     let icon_svg = {
-                        let env = engine_core::environment::EnvironmentManager::current();
+                        let env = cluaiz_core::EnvironmentManager::current();
                         let tool_dir = match comp_type.as_str() {
                             "skill" => env.skills_dir().join(&comp_name),
                             "plugin" => env.plugins_dir().join(&comp_name),
@@ -288,16 +234,16 @@ pub async fn execute_streaming_loop(
                     yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
 
                     let tool_start_time = std::time::Instant::now();
-                    let tool_entry_opt = engines::tools::ToolsEngine::get_tool(&comp_name)
+                    let tool_entry_opt = cluaiz_agents::ToolsEngine::get_tool(&comp_name)
                         .ok()
                         .flatten();
                     let sec_mode = tool_entry_opt
                         .as_ref()
                         .map(|t| t.security_mode)
-                        .unwrap_or(engines::tools::registry::SecurityMode::Inherit);
+                        .unwrap_or(cluaiz_agents::SecurityMode::Inherit);
 
                     // 🛡️ Human-In-The-Loop (HITL) Permission Gate
-                    let global_perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                    let global_perms = cluaiz_security::PermissionSchema::load();
                     let master_mode = global_perms.agent_security_mode.to_lowercase();
 
                     // Directive 1 & 2: Capability-Based Approval Gate
@@ -445,7 +391,7 @@ pub async fn execute_streaming_loop(
                         });
                         yield Ok::<_, Infallible>(Event::default().data(running_chunk.to_string()));
 
-                        match engines::tools::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
+                        match cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
                             Ok(res_str) => {
                                 tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
                                 res_str
@@ -520,7 +466,7 @@ pub async fn execute_streaming_loop(
                     
                     // 🔄 Continuous Multi-Turn Agent Turn Recording
                     let tool_call_xml = format!("<tool_call>\n{}\n</tool_call>", raw_json);
-                    let tool_response_xml = engines::tools::ToolsEngine::format_tool_response_raw(
+                    let tool_response_xml = cluaiz_agents::ToolsEngine::format_tool_response_raw(
                         raw_fn_name,
                         &execution_result,
                     );
@@ -540,16 +486,7 @@ pub async fn execute_streaming_loop(
                             "<user_query>\n{}\n</user_query>\n{}\nReview the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.\n",
                             ctx.initial_user_query, cumulative_history
                         ),
-                        "samplers": {
-                            "temp": ctx.effective_temp,
-                            "top_p": ctx.effective_top_p,
-                            "top_k": ctx.effective_top_k,
-                            "min_p": ctx.effective_min_p,
-                            "presence_penalty": ctx.effective_presence,
-                            "frequency_penalty": ctx.effective_frequency,
-                            "repeat_penalty": ctx.effective_repeat,
-                            "seed": ctx.effective_seed
-                        },
+                        "samplers": ctx.samplers,
                         "think_mode": &ctx.active_think_mode,
                         "reasoning_effort": &ctx.active_reasoning_effort
                     });
@@ -600,13 +537,11 @@ pub async fn execute_streaming_loop(
                 tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
                 // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
                 think_filter.reset_turn(ctx.prompt_starts_in_think);
-                let new_dispatch = state_clone.dispatcher.dispatch_stream(
+                let new_dispatch = state_clone.host.dispatch_stream(
                     &current_prompt,
-                    ctx.skip_brain,
-                    ctx.active_model_path.clone(),
-                    ctx.validated_max_tokens,
+                    ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
                 ).await;
-                if let EngineResponse::TokenStream(new_rx) = new_dispatch {
+                if let HostResponse::TokenStream(new_rx) = new_dispatch {
                     rx = new_rx;
                     continue;
                 } else {
@@ -672,19 +607,20 @@ pub async fn execute_streaming_loop(
                 },
                 "time_to_first_token_ms": first_ttft_ms,
                 "total_time_ms": total_time_ms,
+                "model_load_ms": ctx.model_load_ms,
                 "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
             });
 
             // 🌐 Real-Time Context & Memory Telemetry Breakdown
             let mut active_ids = req_session_id.as_deref()
-                .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
+                .map(cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session)
                 .unwrap_or_default();
             for tid in &ctx.active_tool_ids {
                 if !active_ids.contains(tid) {
                     active_ids.push(tid.clone());
                 }
             }
-            let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
+            let ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
                 &ctx.resolved_model_name,
                 req_session_id.as_deref().unwrap_or("ephemeral"),
                 &active_ids,
@@ -713,12 +649,16 @@ pub async fn execute_streaming_loop(
             yield Ok::<_, Infallible>(Event::default().data(telemetry_chunk.to_string()));
         }
 
-        // 🧠 Save to Engine Brain
-        if let Ok(_vec) = state_clone.embedding_dispatcher.dispatch_embedding(&total_generated) {
-            if let Some(_id) = req_session_id.clone() {
-                // Future contextual vector indexing
-            }
-        }
+        // Engine report (llama.cpp timings + load values) is always sent, like llama-server's "timings"
+        let engine_chunk = json!({
+            "id": req_id_stream.clone(),
+            "object": "chat.completion.chunk",
+            "created": Utc::now().timestamp(),
+            "model": ctx.resolved_model_name.clone(),
+            "choices": [],
+            "engine": super::types::engine_report(&state_clone.host).await
+        });
+        yield Ok::<_, Infallible>(Event::default().data(engine_chunk.to_string()));
 
         yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
 
@@ -733,7 +673,7 @@ pub async fn execute_streaming_loop(
         }
         if keep_alive_val == Some(0) {
             tracing::info!("♻️ [Memory] Unloading model post-generation due to keep_alive: 0");
-            let _ = state_clone.dispatcher.unload_model().await;
+            state_clone.host.unload_model().await;
         } else if let Some(mins) = keep_alive_val {
             if mins > 0 {
                 let secs = (mins as u64) * 60;
@@ -742,7 +682,7 @@ pub async fn execute_streaming_loop(
                 tokio::spawn(async move {
                     tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
                     tracing::info!("♻️ [Memory] Unloading model post keep_alive timeout ({}m)", mins);
-                    let _ = state_timer.dispatcher.unload_model().await;
+                    state_timer.host.unload_model().await;
                 });
             }
         }

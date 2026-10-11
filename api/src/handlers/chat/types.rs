@@ -23,6 +23,10 @@ pub struct StreamControlRequest {
     pub reason: Option<String>,
 }
 
+/// Fallback maximum token generation limit when not explicitly specified
+pub const DEFAULT_MAX_TOKENS: usize = 2048;
+
+
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TemporaryChatMode {
@@ -63,6 +67,10 @@ pub struct ExternalChatRequest {
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
     pub tools: Option<Vec<serde_json::Value>>,
     pub tool_choice: Option<serde_json::Value>,
+    /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).
+    /// A value different from the loaded model's reloads it; n_gpu_layers / n_cpu_moe / offload_kqv bypass the planner.
+    #[serde(default)]
+    pub llama: Option<cluaiz_core::LlamaLoadParams>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -164,6 +172,24 @@ pub struct ExternalMessage {
     pub content: MessageContent,
 }
 
+/// What the engine really did for the last generation: llama.cpp's own timings (same numbers as
+/// llama-cli / llama-server) and the llama.cpp load values of the loaded model.
+pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
+    let plan = host.current_plan.lock().await.clone();
+    json!({
+        "timings": host.last_timings().await,
+        "load": plan.map(|p| json!({
+            "placement": format!("{:?}", p.selected_tier),
+            "n_ctx": p.context_window,
+            "n_gpu_layers": p.n_gpu_layers,
+            "n_cpu_moe": p.n_cpu_moe,
+            "offload_kqv": p.kv_offload,
+            "cache_type": format!("{:?}", p.kv_cache_type),
+            "planner": p.explanation,
+        })),
+    })
+}
+
 static CACHED_MODEL_HEADER_INFO: LazyLock<RwLock<Option<(std::time::Instant, Vec<Value>)>>> =
     LazyLock::new(|| RwLock::new(None));
 
@@ -177,68 +203,28 @@ pub fn generate_model_header_info() -> Vec<Value> {
         }
     }
 
-    let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
+    let installed = cluaiz_models::registry::InstalledStateRegistry::load();
     let mut loaded_models = Vec::new();
-    let env = engine_core::environment::EnvironmentManager::current();
-    let roots = vec![env.local_dir.join("models"), env.global_dir.join("models")];
-    let categories = ["chat", "embedding", "vision", "audio", "code"];
 
-    for info in registry {
-        let mut think_start = String::new();
-        let mut think_close = String::new();
-        let mut all_metadata = json!({});
-        let mut context_window_total = info.context_size;
+    for (model_id, entry) in installed.installed_models {
+        let think_start = entry.metadata.think_start_tag.unwrap_or_default();
+        let think_close = entry.metadata.think_end_tag.unwrap_or_default();
+        let context_window_total = cluaiz_models::StructuralDNA::parse_context_string(&entry.metadata.context_window);
 
-        let mut probed = false;
-        
-        for root in &roots {
-            if probed { break; }
-            for category in &categories {
-                if probed { break; }
-                let cat_dir = root.join(category);
-                if let Ok(dirs) = std::fs::read_dir(&cat_dir) {
-                    for d in dirs.flatten() {
-                        if let Ok(files) = std::fs::read_dir(d.path()) {
-                            for f in files.flatten() {
-                                let p = f.path();
-                                let fname = p.file_name().unwrap_or_default().to_string_lossy();
-                                if fname == info.model_id && p.extension().and_then(|e| e.to_str()) == Some("gguf") {
-                                    if let Ok((meta, _tensors, _count)) = engines::models::GgufProber::probe(&p) {
-                                        let mut meta_map = serde_json::Map::new();
-                                        for (k, v) in meta {
-                                            meta_map.insert(k.clone(), Value::String(v.clone()));
-                                            if k.contains("context_length") {
-                                                if let Ok(ctx) = v.parse::<usize>() {
-                                                    context_window_total = ctx;
-                                                }
-                                            }
-                                            if k.contains("think_start") || k.contains("thought_start") {
-                                                think_start = v.clone();
-                                            }
-                                            if k.contains("think_close") || k.contains("think_end") || k.contains("thought_end") {
-                                                think_close = v.clone();
-                                            }
-                                        }
-                                        all_metadata = Value::Object(meta_map);
-                                        probed = true;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Allocated = what llama.cpp created, only for the model that is loaded (0 otherwise)
+        let is_loaded = cluaiz_core::active_model_path()
+            .map(|p| !entry.local_dir.is_empty() && std::path::Path::new(&p).starts_with(&entry.local_dir))
+            .unwrap_or(false);
+        let allocated_ctx = if is_loaded { cluaiz_core::active_context_tokens().unwrap_or(0) } else { 0 };
 
         loaded_models.push(json!({
-            "model_id": info.model_id,
-            "engine": info.engine,
+            "model_id": model_id,
+            "category": entry.category,
             "context_window_total": context_window_total,
-            "context_window_allocated": info.context_size,
+            "context_window_allocated": allocated_ctx,
             "think_start_tag": think_start,
             "think_close_tag": think_close,
-            "raw_header": all_metadata
+            "local_dir": entry.local_dir
         }));
     }
 

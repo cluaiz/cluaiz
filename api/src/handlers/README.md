@@ -43,6 +43,6 @@ graph LR
 - **The Core Logic:** Routing for WASM Skill installation and CDQL Database execution.
 - **The "Why":** Allows the inference engine to dynamically install new `.wasm` plugins via HTTP POST requests, securely saving them to the `.cluaiz/skills/` directory.
 
-### 5. `cel_handler.rs` (The Hardcore Control Gateway)
-- **The Core Logic:** Handles the `/v1/cel/execute` endpoint. Parses raw CEL (cluaiz Expression Language) strings and routes them directly to the `NativeExecutor` or native Engine Memory Hooks.
-- **The "Why":** Eliminates the need for pre-compiled plugins by allowing external clients (like Docker nodes) to control the engine natively. Enables Direct Memory Control (`kv_cache -> clear`) and Mid-Layer Injection (`mid_layer -> inject`) via pure scripting.
+### 5. `control.rs` (Control Gateway & Dynamic Dispatcher)
+- **The Core Logic:** Handles `/v1/control`, `/v1/control/batch`, `/v1/control/ops`, and `/v1/control/execute`. Routes structured `ControlOp` payloads directly to the `ControlDispatcher` or native engine hooks.
+- **The "Why":** Provides a unified execution gateway for external clients and desktop applications to control runtime functions dynamically, including memory inspections, cache operations, and tool actions.
