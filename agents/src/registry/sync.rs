@@ -1,5 +1,5 @@
 use anyhow::Result;
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 use super::index::ToolsRegistry;
 use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 

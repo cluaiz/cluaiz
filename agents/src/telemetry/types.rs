@@ -1,5 +1,28 @@
 use serde::{Deserialize, Serialize};
-pub use engine_core::telemetry::types::{CategoryTelemetryGroup, ComponentTelemetryItem};
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ComponentTelemetryItem {
+    pub name: String,
+    pub category: String,
+    pub status: String,
+    pub security_mode: String,
+    pub tokens: usize,
+    pub execution_latency_ms: f64,
+    pub memory_used_mb: f64,
+    pub memory_cap_mb: f64,
+    pub cpu_fuel_consumed: u64,
+    pub input_payload: Option<serde_json::Value>,
+    pub output_result: Option<serde_json::Value>,
+    pub logs: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CategoryTelemetryGroup {
+    pub count: usize,
+    pub tokens: usize,
+    pub percent: f64,
+    pub items: Vec<ComponentTelemetryItem>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ContextBreakdown {

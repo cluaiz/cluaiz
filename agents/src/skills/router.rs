@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 use super::parser::{SkillParser, ParsedSkill};
 

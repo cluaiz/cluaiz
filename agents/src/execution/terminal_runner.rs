@@ -72,6 +72,82 @@ impl SandboxTerminalRunner {
         Self::execute_advanced(command_line, cwd, security_mode, None, None, None, cancel_rx).await
     }
 
+    /// Direct process execution with exact argument vector boundary preservation (bypasses shell expansion)
+    pub async fn execute_direct(
+        program: &str,
+        args: &[String],
+        cwd: &Path,
+        security_mode: SecurityMode,
+    ) -> Result<TerminalRunResult> {
+        Self::validate_command(program, cwd, security_mode)?;
+
+        let start_time = Instant::now();
+        let scrub_secrets = matches!(security_mode, SecurityMode::Inherit | SecurityMode::RequireApproval);
+        let env_resolved = EnvironmentResolver::resolve(cwd, None, scrub_secrets);
+
+        let mut cmd = Command::new(program);
+        cmd.args(args)
+            .current_dir(&env_resolved.cwd)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+
+        cmd.env_clear();
+        for (k, v) in &env_resolved.env_vars {
+            cmd.env(k, v);
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        let mut child = cmd.spawn()
+            .map_err(|e| anyhow!("Failed to spawn process '{}': {}", program, e))?;
+
+        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to capture stdout"))?;
+        let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to capture stderr"))?;
+
+        let stdout_handle = tokio::spawn(async move {
+            let mut reader = BufReader::new(stdout);
+            let mut out = String::new();
+            let mut line = String::new();
+            while let Ok(n) = reader.read_line(&mut line).await {
+                if n == 0 { break; }
+                out.push_str(&line);
+                line.clear();
+            }
+            out
+        });
+
+        let stderr_handle = tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr);
+            let mut out = String::new();
+            let mut line = String::new();
+            while let Ok(n) = reader.read_line(&mut line).await {
+                if n == 0 { break; }
+                out.push_str(&line);
+                line.clear();
+            }
+            out
+        });
+
+        let status = child.wait().await?;
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let stdout_str = stdout_handle.await.unwrap_or_default();
+        let stderr_str = stderr_handle.await.unwrap_or_default();
+
+        Ok(TerminalRunResult {
+            exit_code: status.code().unwrap_or(-1),
+            stdout: stdout_str,
+            stderr: stderr_str,
+            duration_ms,
+            cancelled: false,
+            signal_info: None,
+        })
+    }
+
     /// Advanced execution with resolved environment, configurable stdin, timeout, and cancellation
     pub async fn execute_advanced(
         command_line: &str,
