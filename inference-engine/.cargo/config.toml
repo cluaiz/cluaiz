@@ -1,8 +1,0 @@
-[env]
-NVCC_CCBIN = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe"
-CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING = "1"
-CL = "/Zc:preprocessor"
-CMAKE_CUDA_FLAGS = "-allow-unsupported-compiler"
-NVCC_APPEND_FLAGS = "-allow-unsupported-compiler"
-CMAKE_CXX_STANDARD = "17"
-CMAKE_CUDA_STANDARD = "17"
