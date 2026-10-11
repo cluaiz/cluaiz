@@ -1,7 +1,7 @@
 //! 🎭 Native Dynamic Chat Templater: MiniJinja Native Engine with Safe Fallbacks
 
 use std::ffi::{CStr, CString};
-use crate::ffi::llama_cpp::{self, LlamaChatMessage};
+use crate::ffi::llama_cpp;
 
 /// Applies chat template dynamically: Primary MiniJinja rendering directly on GGUF metadata,
 /// ensuring zero alien ChatML token injection for non-ChatML architectures (like Gemma 4).
@@ -66,6 +66,7 @@ pub fn apply_chat_template(
             buf.len(),
         )
     };
+    let started = std::time::Instant::now();
     let mut buf: Vec<u8> = vec![0u8; input_len * 2 + 1];
     let mut written = render(&mut buf);
     if written > 0 && written as usize >= buf.len() {
@@ -77,7 +78,10 @@ pub fn apply_chat_template(
         let c_str = unsafe { CStr::from_ptr(buf.as_ptr() as *const std::os::raw::c_char) };
         let rendered = c_str.to_string_lossy().into_owned();
         if !rendered.trim().is_empty() {
-            tracing::info!("📝 [NativeTemplate] llama.cpp native common template rendered prompt ({} bytes)", rendered.len());
+            tracing::info!(
+                "📝 [NativeTemplate] llama.cpp native common template rendered prompt ({} bytes) in {} ms",
+                rendered.len(), started.elapsed().as_millis()
+            );
             return Ok(rendered);
         }
     }

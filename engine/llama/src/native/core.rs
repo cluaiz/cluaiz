@@ -16,6 +16,8 @@ pub struct NativeLlama {
     pub context_shifting_mode: u8,
     pub speculative_decoding_mode: u8,
     pub moe_controller: Option<Arc<std::sync::Mutex<()>>>,
+    /// n_gpu_layers the model really loaded with (differs from the request when a load fallback ran)
+    pub n_gpu_layers_loaded: i32,
 }
 
 /// Timings of the last generation, measured by llama.cpp itself (the numbers llama-cli and
@@ -160,7 +162,9 @@ impl NativeLlama {
         // If model is targeting CPU (n_gpu_layers == 0) and exceeds physical available RAM,
         // abort immediately. Calling llama.cpp will attempt to allocate a CPU_REPACK buffer
         // triggering Windows pagefile thrashing and 100% SSD lockup.
-        if model_params.n_gpu_layers == 0 && model_size_gb > available_ram_gb {
+        // An mmap load without repack copies nothing into RAM (the planner's disk-read mode), so it passes.
+        let reads_from_disk = model_params.is_mmap() && !model_params.use_extra_bufts;
+        if model_params.n_gpu_layers == 0 && model_size_gb > available_ram_gb && !reads_from_disk {
             eprintln!(
                 "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
                  Refusing CPU load to prevent SSD pagefile thrashing and lockup.",
@@ -178,6 +182,7 @@ impl NativeLlama {
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
         );
+        let mut n_gpu_layers_loaded = model_params.n_gpu_layers;
         let mut model_ptr =
             unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), model_params) };
 
@@ -200,6 +205,7 @@ impl NativeLlama {
             tracing::info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
             let mut half_params = model_params;
             half_params.n_gpu_layers /= 2;
+            n_gpu_layers_loaded = half_params.n_gpu_layers;
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), half_params) };
         }
@@ -222,6 +228,7 @@ impl NativeLlama {
             eprintln!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
+            n_gpu_layers_loaded = 0;
             cpu_params.no_host = false; // CRITICAL: Must allow host memory allocation for CPU inference!
             model_ptr =
                 unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), cpu_params) };
@@ -255,6 +262,7 @@ impl NativeLlama {
             eprintln!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
+            n_gpu_layers_loaded = 0;
             ram_params.no_host = false;
             ram_params.set_mmap(false);
             model_ptr =
@@ -337,20 +345,7 @@ impl NativeLlama {
         // 🛡️ Dynamic Model Header Truth (Native C++ Engine & Tensor Geometry)
         let is_pure_recurrent = unsafe { llama_cpp::llama_model_is_recurrent(model_ptr) };
 
-        let n_embd = unsafe { llama_cpp::llama_model_n_embd(model_ptr) };
-        let n_head = unsafe { llama_cpp::llama_model_n_head(model_ptr) };
-        let head_dim = if n_head > 0 {
-            (n_embd / n_head) as usize
-        } else {
-            128
-        };
-        // Upstream llama.cpp CUDA kernels support head dimensions 64, 128, and 256 (e.g. Gemma 2/4).
-        let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
-
-        info!(
-            "🔍 [Native-Llama] Model Header Truth: is_pure_recurrent={}, n_embd={}, n_head={}, head_dim={}, fa_supported={}",
-            is_pure_recurrent, n_embd, n_head, head_dim, head_dim_supported
-        );
+        info!("🔍 [Native-Llama] Model Header Truth: is_pure_recurrent={}", is_pure_recurrent);
 
         // Flash attention comes from the caller's params (user setting / request); only recurrent models force it off
         if is_pure_recurrent {
@@ -361,8 +356,8 @@ impl NativeLlama {
             ctx_params.type_v = 1; // GGML_TYPE_F16
         }
         info!(
-            "⚡ [Native-Llama] flash_attn_type={} (-1 auto, 0 off, 1 on), head_dim={}, threads {}/{}",
-            ctx_params.flash_attn_type, head_dim, ctx_params.n_threads, ctx_params.n_threads_batch
+            "⚡ [Native-Llama] flash_attn_type={} (-1 auto, 0 off, 1 on), threads {}/{}",
+            ctx_params.flash_attn_type, ctx_params.n_threads, ctx_params.n_threads_batch
         );
 
         print_memory_trace("4. BEFORE CONTEXT CREATION");
@@ -398,6 +393,7 @@ impl NativeLlama {
             context_shifting_mode,
             speculative_decoding_mode,
             moe_controller,
+            n_gpu_layers_loaded,
         };
         llama.warmup();
         Ok(llama)
@@ -444,15 +440,7 @@ impl NativeLlama {
             return Ok(());
         }
 
-        let n_embd = unsafe { llama_cpp::llama_model_n_embd(self.model_ptr) };
-        let n_head = unsafe { llama_cpp::llama_model_n_head(self.model_ptr) };
-        let head_dim = if n_head > 0 {
-            (n_embd / n_head) as usize
-        } else {
-            128
-        };
         let is_pure_recurrent = unsafe { llama_cpp::llama_model_is_recurrent(self.model_ptr) };
-        let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
 
         if is_pure_recurrent {
             ctx_params.flash_attn_type = 0;
@@ -483,7 +471,7 @@ impl NativeLlama {
     pub fn stitch_signal(
         &mut self,
         signal_id: i32,
-        offset: i32,
+        _offset: i32,
         length: i32,
     ) -> anyhow::Result<()> {
         unsafe {

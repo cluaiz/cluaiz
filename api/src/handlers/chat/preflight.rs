@@ -61,6 +61,7 @@ impl PreparedChatContext {
         request: &ExternalChatRequest,
         request_id: &str,
     ) -> Result<Self, axum::response::Response> {
+        let preflight_started = std::time::Instant::now();
         let schema = cluaiz_security::PermissionSchema::load();
         let send_telemetry = schema.stream_telemetry;
 
@@ -150,6 +151,7 @@ impl PreparedChatContext {
         let start_time = std::time::Instant::now();
 
         // 🛡️ Dynamic Context Limit: Resolved from InstalledStateRegistry or active slot (Min 2k Floor)
+        let after_load = std::time::Instant::now();
         let installed_registry = cluaiz_models::registry::InstalledStateRegistry::load();
         let active_model_entry = installed_registry
             .installed_models
@@ -252,6 +254,7 @@ impl PreparedChatContext {
         let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
         let initial_user_query = last_message.flatten_to_string().await;
         let prompt_lower = initial_user_query.to_lowercase();
+        let before_tools = std::time::Instant::now();
         let matched_skills = cluaiz_agents::ToolsEngine::match_skills(&prompt_lower);
         for skill_id in matched_skills {
             if !tool_ids_to_compile.contains(&skill_id) {
@@ -261,6 +264,7 @@ impl PreparedChatContext {
         }
 
         let compiled_tools = cluaiz_agents::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
+        let after_tools = std::time::Instant::now();
 
         let n_ctx_limit = dynamic_context_limit;
         let max_tool_chars = (n_ctx_limit * 4 * 35) / 100;
@@ -470,6 +474,16 @@ impl PreparedChatContext {
         } else {
             false
         };
+
+        // Where the time before the first token goes (model load is reported on its own)
+        tracing::info!(
+            "⏱️ [Preflight] {} ms total | model load {} ms | registry + template + tags {} ms | skills + tools {} ms | rest {} ms",
+            preflight_started.elapsed().as_millis(),
+            model_load_ms,
+            before_tools.duration_since(after_load).as_millis(),
+            after_tools.duration_since(before_tools).as_millis(),
+            after_tools.elapsed().as_millis(),
+        );
 
         Ok(Self {
             request_id: request_id.to_string(),
