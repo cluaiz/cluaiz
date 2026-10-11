@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use std::path::PathBuf;
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 
 pub async fn execute(
     opt_type: Option<String>,

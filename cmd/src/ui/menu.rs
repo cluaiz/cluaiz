@@ -2,7 +2,7 @@ use crate::core::state::AppState;
 use crate::app_enums::Mode;
 use color_eyre::Result;
 use colored::Colorize;
-use engines::DownloadEvent;
+use cluaiz_models::DownloadEvent;
 use inquire::{Select, ui::{RenderConfig, Styled, Color, Attributes}};
 use std::io::{stdout, Write};
 use tokio::sync::mpsc;
@@ -77,9 +77,9 @@ pub async fn run_native(
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match s_ans {
                         "🚀 Start API Daemon" => {
-                            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                            let perms = cluaiz_security::PermissionSchema::load();
                             println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), perms.api_port);
-                            cluaiz_api::run_daemon().await;
+                            let _ = cluaiz_api::run_daemon().await;
                         }
                         "👀 View Active Engines" => {
                             let _ = crate::cli::ps::execute().await;
@@ -99,9 +99,9 @@ pub async fn run_native(
                             }
                         }
                         "🗑️ Delete Downloaded Model" => {
-                            let roster = engines::models::registry::CoreRoster::load_roster();
+                            let roster = cluaiz_models::CoreRoster::load_roster();
                             let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {
-                                m.local_path.is_some() || engines::models::fetch::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
+                                m.local_path.is_some() || cluaiz_models::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
                             }).collect();
                             
                             downloaded.sort_by(|a, b| a.name.cmp(&b.name));
@@ -133,7 +133,7 @@ pub async fn run_native(
                         }
                         "🛡️ Firewall & Permissions" => {
                             loop {
-                                let mut perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                                let mut perms = cluaiz_security::PermissionSchema::load();
                                 let opts = vec![
                                     format!("WASM Firewall (Current: {})", perms.wasm_firewall),
                                     format!("Telemetry (Current: {})", perms.stream_telemetry),
@@ -187,9 +187,9 @@ pub async fn run_native(
                                         }
 
                                         "Active Chat Model" | "Active Vector Model" => {
-                                            let roster = engines::models::registry::CoreRoster::load_roster();
+                                            let roster = cluaiz_models::CoreRoster::load_roster();
                                             let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {
-                                                m.local_path.is_some() || engines::models::fetch::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
+                                                m.local_path.is_some() || cluaiz_models::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
                                             }).collect();
                                             
                                             downloaded.sort_by(|a, b| a.name.cmp(&b.name));
@@ -213,11 +213,11 @@ pub async fn run_native(
                                                     if let Ok(ans) = Select::new("Select Model to Set as Active:", options).with_render_config(config.clone()).prompt() {
                                                         if let Some(model) = filtered.iter().find(|m| m.name == ans) {
                                                             if is_vector {
-                                                                engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.id.clone());
+                                                                cluaiz_security::PermissionSchema::set_active_embedding_model(model.id.clone());
                                                             } else {
-                                                                engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model.id.clone());
+                                                                cluaiz_security::PermissionSchema::set_active_chat_model(model.id.clone());
                                                             }
-                                                            perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                                                            perms = cluaiz_security::PermissionSchema::load();
                                                         }
                                                     }
                                                 }
@@ -237,12 +237,17 @@ pub async fn run_native(
                             }
                         }
                         "📊 Hardware Status & Health" => {
-                            engines::telemetry::health_check::EngineHealthChecker::run_full_benchmark();
+                            let info = cluaiz_hw::HardwareProber::current();
+                            println!("  {} CPU: {} ({} cores)", "📊".cyan(), info.cpu.brand, info.cpu.physical_cores);
+                            println!("  {} RAM: {:.2} GiB total, {:.2} GiB available", "📊".cyan(), info.memory.total_gb, info.memory.available_gb);
+                            if let Some(gpu) = info.gpus.first() {
+                                println!("  {} GPU: {} ({:.2} GiB VRAM)", "📊".cyan(), gpu.name, gpu.vram_total_gb);
+                            }
                         }
                         "🔄 Re-calibrate Hardware" => {
-                            println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛠️".cyan());
-                            engines::hardware::system_info_manager::detect_hardware();
-                            println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
+                            println!("\n  {} Initiating Hardware Re-Scan...", "🛠️".cyan());
+                            let _ = cluaiz_hw::HardwareProber::probe_system();
+                            println!("  {} Hardware profile synchronized.\n", "✅".green());
                         }
                         "⏱️ Run Benchmark" => {
                             let _ = crate::cli::benchmark::execute(None, 1).await;

@@ -1,12 +1,11 @@
 use color_eyre::Result;
 use colored::Colorize;
-use sysinfo::System;
-use engine_core::hardware::governor::HardwareGovernor;
+use cluaiz_security::PermissionSchema;
 
 pub async fn execute() -> Result<()> {
-    println!("\n  {} [cluaiz] Sovereign Process Audit...", "🔍".cyan());
+    println!("\n  {} [cluaiz] Process Audit...", "🔍".cyan());
 
-    let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+    let perms = PermissionSchema::load();
     let port = std::env::var("cluaiz_PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())

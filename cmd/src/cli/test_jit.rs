@@ -1,82 +1,82 @@
 use anyhow::Result;
-use std::path::PathBuf;
+use colored::Colorize;
 
 pub async fn execute() -> Result<()> {
-    println!("🧪 [Test] Starting Dynamic Pipeline Diagnostic...");
+    println!("🧪 [Diagnostics] Starting Native Pipeline Diagnostic...");
 
-    let model_path = engine_core::environment::EnvironmentManager::current().models_dir().join("chat").join("bonsai1-8b").join("Bonsai-8B.gguf");
-    
+    let roster = cluaiz_models::CoreRoster::load_roster();
+    let local_model = roster.iter().find(|m| m.local_path.is_some());
+
+    let (model_id, model_path) = match local_model {
+        Some(m) => (m.id.clone(), std::path::PathBuf::from(m.local_path.as_ref().unwrap())),
+        None => {
+            // Check models directory for any downloaded gguf file
+            let chat_dir = cluaiz_core::EnvironmentManager::current().models_dir().join("chat");
+            let mut found = None;
+            if let Ok(entries) = std::fs::read_dir(&chat_dir) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.is_dir() {
+                        if let Ok(sub) = std::fs::read_dir(&p) {
+                            for f in sub.flatten() {
+                                if f.path().extension().and_then(|s| s.to_str()) == Some("gguf") {
+                                    found = Some((entry.file_name().to_string_lossy().to_string(), f.path()));
+                                    break;
+                                }
+                            }
+                        }
+                    } else if p.extension().and_then(|s| s.to_str()) == Some("gguf") {
+                        found = Some((p.file_name().unwrap_or_default().to_string_lossy().to_string(), p));
+                        break;
+                    }
+                    if found.is_some() {
+                        break;
+                    }
+                }
+            }
+
+            match found {
+                Some(pair) => pair,
+                None => {
+                    println!("ℹ️  No local models installed. Run `cluaiz run <model>` first to download a model.");
+                    return Ok(());
+                }
+            }
+        }
+    };
+
     if !model_path.exists() {
-        println!("❌ Model not found at: {:?}", model_path);
+        println!("❌ Model file not found at: {:?}", model_path);
         return Ok(());
     }
 
-    // Set permission.json text chat model to bonsai1:8b and embedding model dynamically from roster
-    engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model("bonsai1:8b".to_string());
-    let roster = engines::models::registry::CoreRoster::load_roster();
-    if let Some(m) = roster.iter().find(|m| (m.architecture_type == "onnx" || m.category == "embedding") && m.local_path.is_some()) {
-        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(m.id.clone());
-    }
+    println!("⚙️ [Diagnostics] Testing engine pipeline with probed model '{}'...", model_id.cyan());
+    let host = cluaiz_runtime::EngineHost::new();
+    let geometry = cluaiz_models::GgufProber::probe_geometry(&model_path)?;
+    let hardware = cluaiz_hw::HardwareProber::current();
+    let settings = cluaiz_core::Settings::current();
+    let plan = cluaiz_plan::Planner::create_plan(model_path.to_str().unwrap(), &geometry, &hardware, &settings);
+    host.load_model(model_path.to_str().unwrap(), &plan, &settings).await?;
 
+    let prompt = "Explain the fundamental principle of computation in one concise sentence.";
+    println!("🚀 [Diagnostics] Triggering test dispatch with prompt: '{}'", prompt);
 
-
-    let dna = engine_core::StructuralDNA::default();
-    let context = engine_core::EngineContext::boot(dna, engine_core::TemplateManager::default());
-
-    println!("⚙️ [Test] Instantiating Chat Engine (Bonsai)...");
-    let engine = engines::runtime::execution::hub::HardwareOrchestrator::instantiate(
-        model_path.to_str().unwrap(),
-        "llama",
-        context
-    ).await?;
-
-    let prompt = "Make a sad piano instrumental track with slow tempo and emotional vibe";
-    println!("🚀 [Test] Triggering stream with prompt: '{}'", prompt);
-
-    // Load active router
-    let mut router = engines::api::router::CoreRouter::new();
-    let skills_dir = engine_core::environment::EnvironmentManager::current().skills_dir();
-    router.foundry.initialize(&skills_dir.to_string_lossy());
-    router.active_backend = engines::api::router::Backend::Native(engine);
-
-    // Boot router indices
-    if let Ok(mut g_router) = engine_core::skills::router::GLOBAL_SKILL_ROUTER.write() {
-        let _ = g_router.boot_index();
-    }
-
-    let prompt_str = prompt.to_string();
-    let res = tokio::task::block_in_place(|| {
-        router.generate_stream(
-            &prompt_str,
-            5,
-            Box::new(|token| {
+    let resp = host.dispatch_stream(prompt, 32).await;
+    match resp {
+        cluaiz_runtime::HostResponse::TokenStream(mut rx) => {
+            while let Some(token) = rx.recv().await {
                 print!("{}", token);
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                true
-            }),
-        )
-    });
-
-    if res.is_ok() {
-        println!("\n✅ [Test] Generation completed!");
-        
-        let cache_file = engine_core::environment::EnvironmentManager::current().skills_dir().join("minimax-music-gen").join(".cache").join("bonsai1-8b.kvcache.bin");
-        if cache_file.exists() {
-            let meta = std::fs::metadata(&cache_file)?;
-            let size_mb = meta.len() as f64 / 1_048_576.0;
-            println!("✅ [Test] VERIFIED: kvcache.bin was compiled successfully for minimax-music-gen!");
-            println!("📁 Cache file location: {:?}", cache_file);
-            println!("📊 KV Cache Size: {:.2} MB", size_mb);
-            if size_mb > 50.0 {
-                println!("❌ [Test] FAILED: KV Cache size is too large ({:.2} MB)!", size_mb);
-            } else {
-                println!("✅ [Test] PASSED: KV Cache size is minimal ({:.2} MB)!", size_mb);
+                let _ = std::io::Write::flush(&mut std::io::stdout());
             }
-        } else {
-            println!("❌ [Test] FAILED: kvcache.bin was not found!");
+            println!("\n✅ [Diagnostics] Token stream completed successfully!");
         }
-    } else {
-        println!("❌ [Test] Stream generation failed: {:?}", res.err());
+        cluaiz_runtime::HostResponse::Completed(text) => {
+            print!("{}", text);
+            println!("\n✅ [Diagnostics] Generation completed successfully!");
+        }
+        cluaiz_runtime::HostResponse::Error(e) => {
+            println!("❌ [Diagnostics] Generation failed: {:?}", e);
+        }
     }
 
     Ok(())

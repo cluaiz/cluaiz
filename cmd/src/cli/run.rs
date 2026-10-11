@@ -1,29 +1,27 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engines::models::registry::CoreRoster;
+use cluaiz_models::{CoreRoster, ModelManifest, HfVariant, HfTreeItem, AutoHeal, HuggingFaceHub, resolve_model_repo, ModelDownloader, HardwareAuditor, HealthStatus};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use std::io::{self, Write, Read};
 
-const SPINNER_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
 /// `cluaiz run <model-id>` — pulls the model and initiates a native chat session.
 pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<()> {
-    // 🎨 Display the Sovereign Logo
+    // 🎨 Display the Logo
     let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
     println!("{}", logo.cyan());
 
     println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "⚙️".yellow(), model_id.bold());
 
-    let mut manifest: Option<engines::models::registry::ModelManifest> = None;
-    let mut selected_variant_bundle: Option<engines::models::manager::hf_hub::HfVariant> = None;
+    let mut manifest: Option<ModelManifest> = None;
+    let mut selected_variant_bundle: Option<HfVariant> = None;
     let mut is_local = false;
     let mut is_hf = false;
     let mut resolved_id = model_id.to_string();
 
     let roster = CoreRoster::load_roster();
-    let cluaiz_root = engine_core::environment::EnvironmentManager::current().models_dir();
+    let cluaiz_root = cluaiz_core::EnvironmentManager::current().models_dir();
 
     // Extract optional explicit quantization/variant tag if specified with colon (e.g. 'repo/model:IQ3_XXS' or 'model:Q4_K_M')
     let (base_input, explicit_tag) = if let Some((base, tag)) = model_id.rsplit_once(':') {
@@ -52,12 +50,12 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         });
 
         if !local_exists {
-            // Short ID given and not present locally -> Resolve upstream Hugging Face repo from Cluaiz Registry
-            print!("  {} Resolving model ID '{}' via Cluaiz Registry...", "🔍".cyan(), base_input.bold());
+            // Short ID given and not present locally -> Resolve upstream Hugging Face repo from Registry
+            print!("  {} Resolving model ID '{}' via Registry...", "🔍".cyan(), base_input.bold());
             let _ = std::io::Write::flush(&mut std::io::stdout());
-            let resolved_res = match engines::models::fetch::resolve_model_repo(model_id).await {
+            let resolved_res = match resolve_model_repo(model_id).await {
                 Ok(Some(repo)) => Ok(Some(repo)),
-                _ => engines::models::fetch::resolve_model_repo(base_input).await,
+                _ => resolve_model_repo(base_input).await,
             };
 
             if let Ok(Some(hf_repo)) = resolved_res {
@@ -70,7 +68,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
     }
 
     if base_input.contains('/') || target_hf_repo.is_some() {
-        // 🚀 HUGGINGFACE REQUEST (EXPLICIT OR RESOLVED)
+        // HUGGINGFACE REQUEST (EXPLICIT OR RESOLVED)
         is_hf = true;
         resolved_id = target_hf_repo.unwrap_or_else(|| base_input.to_string());
         if !resolved_id.starts_with("hf://") && !resolved_id.starts_with("https://") {
@@ -84,7 +82,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         
         let selected_variant = if _all {
             println!("  {} Fetching full repository file tree for '{}'...", "🌐".cyan(), repo_id);
-            let raw_tree = engines::models::manager::hf_hub::HuggingFaceHub::list_raw_tree(&repo_id).await
+            let raw_tree = HuggingFaceHub::list_raw_tree(&repo_id).await
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
 
             if raw_tree.is_empty() {
@@ -107,7 +105,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                 .sum();
             let size_gb = total_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
-            engines::models::manager::hf_hub::HfVariant {
+            HfVariant {
                 variant_id: "UNFILTERED CUSTOM BUNDLE".to_string(),
                 format_type: if primary_file.ends_with(".onnx") { "onnx".to_string() } else { "gguf".to_string() },
                 quant_tag: "CUSTOM".to_string(),
@@ -117,7 +115,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                 size_gb,
             }
         } else {
-            let variants = engines::models::manager::hf_hub::HuggingFaceHub::list_variants(&repo_id).await
+            let variants = HuggingFaceHub::list_variants(&repo_id).await
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
 
             if variants.is_empty() {
@@ -187,7 +185,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         }
 
         println!("  {} Fetching precise metadata...", "📡".cyan());
-        let hf_manifest = engines::models::HuggingFaceHub::build_manifest(&repo_id, &selected_variant, None);
+        let hf_manifest = HuggingFaceHub::build_manifest(&repo_id, &selected_variant, None);
             
         manifest = Some(hf_manifest);
         selected_variant_bundle = Some(selected_variant);
@@ -209,7 +207,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             m.huggingface_filename = flat_name;
         }
     } else {
-        // 🚀 REGISTRY OR LOCAL ID REQUEST
+        // REGISTRY OR LOCAL ID REQUEST
         if let Some(m) = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase()) {
             let safe_id = m.id.replace(':', "-");
             let model_path = cluaiz_root.join(&m.category).join(&safe_id);
@@ -224,7 +222,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             }
         } else {
             // Not in local vault, fetch from external registry
-            println!("  {} Model missing in local vault. Synchronizing with Neural Registry...", "🌐".yellow());
+            println!("  {} Model missing in local vault. Synchronizing with Registry...", "🌐".yellow());
             let remote_models = CoreRoster::fetch_external_registry(None).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
             manifest = remote_models.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
         }
@@ -232,19 +230,16 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
 
     let mut manifest = manifest.ok_or_else(|| color_eyre::eyre::eyre!("ID '{}' not found in any registry.", model_id))?;
 
-    // 🚀 Update the Engine permission.json with the actively running model so CompilerDaemon knows what to compile
+    // Update the permission.json with the actively running model
     if manifest.architecture_type == "onnx" {
-        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(manifest.id.clone());
+        cluaiz_security::PermissionSchema::set_active_embedding_model(manifest.id.clone());
     } else {
-        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(manifest.id.clone());
+        cluaiz_security::PermissionSchema::set_active_chat_model(manifest.id.clone());
     }
 
-    // 🚀 Trigger Tools Engine to sync and provision tools registry
-    let _ = engines::tools::ToolsEngine::registry();
+    // Trigger Tools Engine to sync and provision tools registry
+    let _ = cluaiz_agents::ToolsEngine::registry();
 
-    // 2. Silicon Audit (Local Probe or HF Metadata)
-    let manager = engines::models::manager::ModelManager::new(engines::models::registry::REGISTRY_URL.to_string(), cluaiz_root.clone());
-    
     let safe_id = manifest.id.replace(':', "-");
     let model_path = cluaiz_root.join(&manifest.category).join(&safe_id);
     let model_file = model_path.join(&manifest.huggingface_filename);
@@ -299,7 +294,21 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             .map(|v| v.all_files.clone())
             .unwrap_or_else(|| vec![manifest.huggingface_filename.clone()]);
 
-        manager.pull_model_bundle_with_manifest(&manifest, &files_to_pull).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
+        let (tx, _rx) = tokio::sync::mpsc::channel(100);
+        let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        for file in &files_to_pull {
+            let download_url = format!("https://huggingface.co/{}/resolve/main/{}", manifest.huggingface_repo, file);
+            let _ = ModelDownloader::download_gguf_async(
+                &manifest.category,
+                &manifest.id,
+                &download_url,
+                file,
+                manifest.assets.clone(),
+                Some(manifest.clone()),
+                tx.clone(),
+                abort.clone()
+            ).await;
+        }
         
         let safe_id = manifest.id.replace(':', "-");
         let local_path = cluaiz_root.join(&manifest.category).join(&safe_id);
@@ -318,17 +327,17 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
     }
 
     if is_local {
-        println!("  {} Local Audit Passed. Preparing Neural Matrix...", "✨".green());
+        println!("  {} Local Audit Passed. Preparing Matrix...", "✨".green());
     }
 
     // Give a small pause for visual feedback before clearing screen for dashboard
     tokio::time::sleep(std::time::Duration::from_millis(800)).await;
 
-    // 4. Launch Dashboard in Sovereign Mode (Pre-loaded with the model)
+    // 4. Launch Dashboard (Pre-loaded with the model)
     use crate::core::state::AppState;
     use tokio::sync::mpsc;
     
-    // 🧬 Load Real Tokenizer from the model folder
+    // Load Tokenizer from the model folder if needed
     let repo_id = if manifest.download_url.contains("huggingface.co/") {
         manifest.download_url
             .split("huggingface.co/")
@@ -341,13 +350,12 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
     } else {
         manifest.id.clone()
     };
-    let _ = engines::utils::healer::AutoHealer::heal_missing_tokenizer(&repo_id, &model_path).await;
-    let tokenizer_path = model_path.join("tokenizer.json");
+    let _ = AutoHeal::auto_heal_missing_asset(&model_path, "tokenizer.json", &[&repo_id]).await;
     let mut state = AppState::new(None);
     state._active_model_id = Some(manifest.id.clone());
 
     if _interactive {
-        let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let perms = cluaiz_security::PermissionSchema::load();
         if !perms.lazy_load_model && !state.is_client_mode {
             state.Core_engine.load_model(model_file.clone()).await
                 .map_err(|e| color_eyre::eyre::eyre!("Model loading failed: {}", e))?;
@@ -355,7 +363,7 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
         let (tx, mut rx) = mpsc::unbounded_channel();
         let mut mode = crate::app_enums::Mode::Running;
 
-        // 🚀 Start the Dashboard UI
+        // Start the Dashboard UI
         crate::core::dashboard::DashboardEngine::run_native(
             &mut state,
             &tx,
@@ -387,54 +395,23 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
             let output_clone = accumulated_output.clone();
             
             struct CLIProgressTracker {
-                current_step: Arc<Mutex<Option<String>>>,
-                handle: Option<JoinHandle<()>>,
+                spinner: crate::ui::spinner::TerminalSpinner,
             }
 
             impl CLIProgressTracker {
                 fn new() -> Self {
-                    let current_step = Arc::new(Mutex::new(None));
-                    let current_step_clone = current_step.clone();
-                    let handle = thread::spawn(move || {
-                        let mut idx = 0;
-                        loop {
-                            if let Ok(lock) = current_step_clone.lock() {
-                                if let Some(msg) = &*lock {
-                                    print!("\r\x1B[K\x1B[33m{} {}\x1B[0m", SPINNER_FRAMES[idx], msg);
-                                    let _ = io::stdout().flush();
-                                } else {
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                            thread::sleep(Duration::from_millis(85));
-                            idx = (idx + 1) % SPINNER_FRAMES.len();
-                        }
-                    });
-                    Self { current_step, handle: Some(handle) }
-                }
-                fn set_step(&self, msg: &str) {
-                    if let Ok(mut lock) = self.current_step.lock() {
-                        *lock = Some(msg.to_string());
+                    Self {
+                        spinner: crate::ui::spinner::TerminalSpinner::new(),
                     }
                 }
-                fn complete_step(&self, msg: &str) {
-                    if let Ok(mut lock) = self.current_step.lock() {
-                        *lock = Some(msg.to_string()); // Temporarily set to prevent race
-                    }
-                    print!("\r\x1B[K\x1B[32m✅ {}\x1B[0m\n", msg);
-                    let _ = io::stdout().flush();
+                fn set_step(&mut self, msg: &str) {
+                    self.spinner.start(msg);
+                }
+                fn complete_step(&mut self, msg: &str) {
+                    self.spinner.stop(Some(&format!("\x1B[32m✅ {}\x1B[0m", msg)));
                 }
                 fn stop(&mut self) {
-                    if let Ok(mut lock) = self.current_step.lock() {
-                        *lock = None;
-                    }
-                    if let Some(h) = self.handle.take() {
-                        let _ = h.join();
-                    }
-                    print!("\r\x1B[K");
-                    let _ = io::stdout().flush();
+                    self.spinner.stop(None);
                 }
             }
 
@@ -604,40 +581,14 @@ pub async fn execute(model_id: &str, _interactive: bool, _all: bool) -> Result<(
                         if let Some(action) = val.get("action").and_then(|v| v.as_str()) {
                             println!("\n⚙️ [CLI REPL] Intercepted JSON ABI tool call: {}", action.bold().cyan());
                             
-                            let mut skill_name = None;
-                            let mut logic_path = None;
-                            let mut is_allowed = false;
-                            
-                            {
-                                if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(action) {
-                                    let router = state.Core_engine.router.lock().await;
-                                    let tool_path = std::path::PathBuf::from(&tool.local_dir);
-                                    skill_name = Some(tool.name.clone());
-                                    logic_path = Some(tool_path.join("logic.wasm"));
-                                    is_allowed = router.foundry.guard.validate_action(&tool.id, engines::neural_foundry::security::guard::PermissionLevel::ReadOnly).is_ok();
+                            match cluaiz_agents::ToolsEngine::execute_tool_by_name("skill", action, None, prompt).await {
+                                Ok(output) => {
+                                    println!("\n💻 [Tool Execution Output]:");
+                                    println!("{}", output.green());
                                 }
-                            }
-                            
-                            if let Some(name) = skill_name {
-                                let l_path = logic_path.unwrap();
-                                if is_allowed && l_path.exists() {
-                                    println!("⚙️ [CLI REPL] Executing WASM Sandbox for: {}", name.green());
-                                    let mut router = state.Core_engine.router.lock().await;
-                                    let wasm_res = router.foundry.wasm_runtime.execute_skill_logic(&l_path, "run", prompt).await;
-                                    match wasm_res {
-                                        Ok(output) => {
-                                            println!("\n💻 [WASM Sandbox Output]:");
-                                            println!("{}", output.green());
-                                        }
-                                        Err(e) => {
-                                            println!("\n❌ [WASM Sandbox Execution Failed]: {}", e);
-                                        }
-                                    }
-                                } else if !l_path.exists() {
-                                    println!("⚠️ [CLI REPL] logic.wasm not found for skill: {}", action);
+                                Err(e) => {
+                                    println!("\n❌ [Tool Execution Failed]: {}", e);
                                 }
-                            } else {
-                                println!("⚠️ [CLI REPL] Skill not found in registry: {}", action);
                             }
                         }
                     }
@@ -667,7 +618,7 @@ enum TreeItemNode {
     },
 }
 
-fn run_directory_tree_picker(repo_id: &str, raw_items: &[engines::models::manager::hf_hub::HfTreeItem]) -> Result<Vec<String>> {
+fn run_directory_tree_picker(repo_id: &str, raw_items: &[HfTreeItem]) -> Result<Vec<String>> {
     use crossterm::event::{self, Event, KeyCode, KeyEventKind};
     use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType};
     use crossterm::cursor::{MoveTo, Hide, Show};

@@ -9,30 +9,30 @@ use crate::theme::Theme;
 
 /// Hardware DNA Screen: Displays specs and Identity Card
 pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut Buffer) {
-    let dna_info = if let Ok(info) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
-        let os = &info.identity.os_target;
-        let arch = &info.identity.architecture;
+    let hw = cluaiz_hw::HardwareProber::current();
+    let os = &hw.os_name;
+    let arch = &hw.os_version;
 
-        let cpu = &info.silicon_truth.cpu.brand;
-        let cores = info.silicon_truth.cpu.physical_cores;
-        let gpu_model = if let Some(gpu) = info.silicon_truth.accelerators.gpus.first() {
-            gpu.model.as_str()
-        } else {
-            "None"
-        };
-        let vram = info.silicon_truth.accelerators.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
-        let ram = info.silicon_truth.memory.total_capacity_gb;
+    let cpu = &hw.cpu.brand;
+    let cores = hw.cpu.physical_cores;
+    let gpu_model = if let Some(gpu) = hw.gpus.first() {
+        gpu.name.as_str()
+    } else {
+        "None"
+    };
+    let vram = hw.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
+    let ram = hw.memory.total_gb;
 
-        let mode = "cluaiz Native";
-        let opt = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-        let flash = opt.flash_attention.is_active();
-        let moe = opt.extreme_moe_streaming.is_active();
+    let mode = "cluaiz Native";
+    let opt = cluaiz_core::Settings::current().optimization;
+    let flash = opt.flash_attention.is_active();
+    let moe = opt.extreme_moe_streaming.is_active();
 
-        let node_id = "LOCAL-NODE";
-        let locale = "en_US";
-        let timezone = "LOCAL";
+    let node_id = "LOCAL-NODE";
+    let locale = "en_US";
+    let timezone = "LOCAL";
 
-        format!(
+    let dna_info = format!(
             " 🧬 cluaiz IDENTITY CARD \n\n\
             NODE-ID:      {}\n\
             OS:           {} ({})\n\
@@ -53,10 +53,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             mode.to_uppercase(),
             if flash { "ON ⚡" } else { "OFF" },
             if moe { "ON ⚡" } else { "OFF" }
-        )
-    } else {
-        "❌ system_info.json missing or uncalibrated".to_string()
-    };
+        );
 
     let widget = Paragraph::new(dna_info)
         .style(Style::default().fg(Color::White))

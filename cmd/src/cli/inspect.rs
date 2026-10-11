@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engines::models::registry::CoreRoster;
+use cluaiz_models::{CoreRoster, GgufProber};
 
 pub async fn execute(model_id: &str) -> Result<()> {
     println!("\n  {} [Probe] Initiating raw SSD header inspection for: {}", "⚡".cyan(), model_id.yellow().bold());
@@ -20,8 +20,8 @@ pub async fn execute(model_id: &str) -> Result<()> {
                 if manifest.huggingface_filename.ends_with(".gguf") {
                     println!("  {} [Probe] Directly analyzing GGUF binary from: {:?}", "🔍".cyan(), model_file);
                     
-                    // Directly use engines::models::GgufProber
-                    if let Ok((metadata, tensor_infos, tensor_count)) = engines::models::GgufProber::probe(&model_file) {
+                    // Directly use cluaiz_models::GgufProber
+                    if let Ok((metadata, tensor_infos, tensor_count)) = GgufProber::probe(&model_file) {
                         println!("\n  {} === GGUF HEADER RAW DATA ===", "📄".cyan());
                         println!("  - Tensor Count: {}", tensor_count);
                         println!("\n  [Metadata KVs]");

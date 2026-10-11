@@ -1,12 +1,11 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engines::neural_foundry::ingestion::DocumentIngestor;
-use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError};
-
-use cluaiz_onnx::engine::OnnxEngine;
+use cluaiz_models::DocumentIngestor;
+use cluaiz_core::{EmbeddingDriver, EngineError};
+use onnx_engine::OnnxEngine;
 
 pub async fn execute(file_path: &str) -> Result<()> {
-    println!("\n  {} [cluaiz] Sovereign Ingestion Pipeline Initiated", "🚀".green());
+    println!("\n  {} [cluaiz] Document Ingestion Pipeline Initiated", "🚀".green());
     println!("  {} Target File: {}\n", "📄".cyan(), file_path.bold());
 
     let ingestor = DocumentIngestor::new();
@@ -24,24 +23,24 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let model_path = current_dir.join("models/library/CLIP/model.onnx");
     let model_path_str = model_path.to_string_lossy();
     
-    println!("  {} Loading Real ONNX Gatekeeper...", "🔮".magenta());
+    println!("  {} Loading ONNX Driver...", "⚙️".cyan());
     if let Err(e) = onnx_driver.load_vision_model(&model_path_str) {
         eprintln!("  {} [WARNING] ONNX Vision weights not found at '{}'. Please ensure the download completed. Error: {}", "⚠️".yellow(), model_path_str, e);
-        eprintln!("  {} Aborting ingestion due to missing brain.", "🛑".red());
+        eprintln!("  {} Aborting ingestion due to missing model weights.", "🛑".red());
         return Ok(());
     }
 
     match ingestor.ingest_and_vectorize(file_path, &onnx_driver, None, 512, None, true, &[]) {
         Ok(results) => {
-            println!("  {} Successfully processed and chunked.", "âœ…".green());
-            println!("  {} Total Semantic Chunks Generated: {}\n", "âœ‚ï¸".cyan(), results.len().to_string().yellow().bold());
+            println!("  {} Successfully processed and chunked.", "✅".green());
+            println!("  {} Total Semantic Chunks Generated: {}\n", "✂️ ".cyan(), results.len().to_string().yellow().bold());
 
             for (i, (text, vector)) in results.iter().enumerate().take(5) {
                 println!("  {} {}:\n{}", "CHUNK".magenta(), (i + 1).to_string().cyan(), text.dimmed());
                 
                 // Show the mathematical representation (Embedding Vector)
                 let vec_preview: Vec<String> = vector.iter().take(5).map(|v| format!("{:.4}", v)).collect();
-                println!("  {} [{}, ...] (Total Dimensions: {})\n", "🧬 MATHEMATICAL SOUL:".blue(), vec_preview.join(", "), vector.len());
+                println!("  {} [{}, ...] (Total Dimensions: {})\n", "🧬 EMBEDDING VECTOR:".blue(), vec_preview.join(", "), vector.len());
             }
 
             if results.len() > 5 {

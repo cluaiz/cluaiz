@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
-use engines::{DownloadEvent, InferenceEvent};
+use cluaiz_models::DownloadEvent;
 
 use crate::core::state::{AppState, OsState, ActivityBlock};
 use crate::theme::Theme;
@@ -19,16 +19,14 @@ pub struct App {
     pub theme: Theme,
     pub tx: mpsc::UnboundedSender<DownloadEvent>,
     pub rx: mpsc::UnboundedReceiver<DownloadEvent>,
-    pub _inf_tx: mpsc::UnboundedSender<InferenceEvent>,
     pub _abort_handle: Option<Arc<AtomicBool>>,
     pub _last_frame_time: Instant,
     pub flow: FlowEngine,
 }
 
 impl App {
-    pub fn new(auto_start_model: Option<engines::models::registry::ModelManifest>, starting_state: Option<OsState>) -> color_eyre::Result<Self> {
+    pub fn new(auto_start_model: Option<cluaiz_models::ModelManifest>, starting_state: Option<OsState>) -> color_eyre::Result<Self> {
         let (tx, rx) = mpsc::unbounded_channel();
-        let (inf_tx, _inf_rx) = mpsc::unbounded_channel();
         let flow = FlowEngine::new()?;
         let mut state = AppState::new(starting_state);
         
@@ -39,7 +37,7 @@ impl App {
             state.activity_stream.push(ActivityBlock::ModelMounted(model_name.clone()));
             
             // Fast-track the model to sorted_models at the top
-            state.sorted_models.insert(0, engines::models::registry::ModelRecommendation {
+            state.sorted_models.insert(0, cluaiz_models::ModelRecommendation {
                 manifest: m,
                 status: "Optimal".to_string(),
                 is_cached: true,
@@ -54,12 +52,10 @@ impl App {
             theme: Theme::default(),
             tx,
             rx,
-            _inf_tx: inf_tx,
             _abort_handle: None,
             _last_frame_time: Instant::now(),
             flow,
         };
-        let _ = _inf_rx;
         Ok(app)
     }
 
@@ -83,11 +79,11 @@ impl App {
                                 }
                             }
     
-                            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                            let perms = cluaiz_security::PermissionSchema::load();
                             if !perms.lazy_load_model {
                                 if let Some(active_id) = &self.state._active_model_id {
                                     if let Some(model) = self.state.sorted_models.iter().find(|m| &m.manifest.id == active_id) {
-                                        if let Some(local_path) = engines::models::fetch::ModelDownloader::get_cached_path(
+                                        if let Some(local_path) = cluaiz_models::ModelDownloader::get_cached_path(
                                             &model.manifest.category,
                                             &model.manifest.id,
                                             &model.manifest.huggingface_filename

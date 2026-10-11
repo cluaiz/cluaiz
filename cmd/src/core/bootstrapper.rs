@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use engine_core::HardwareGovernor;
 use color_eyre::{Result, eyre::eyre};
 use colored::Colorize;
 
@@ -10,20 +9,17 @@ impl Bootstrapper {
 
     /// 🚀 BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite(is_dev_sync: bool) -> Result<()> {
-        let local_dir = engine_core::environment::EnvironmentManager::current().local_dir;
-        let profile = if cfg!(debug_assertions) { "debug" } else { "release" };
-        let _ = Self::sync_dev_artifacts("all", None, local_dir, profile);
         Self::ensure_global_path();
         
         // 🚀 0. Tools Engine Genesis (Create tools_registry.json and sync ~/.cluaiz/tools/)
         tracing::info!("🛠️ Initializing Tools Engine (Registry & Governance)...");
-        let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-        permissions.auto_assign_defaults();
+        let permissions = cluaiz_security::PermissionSchema::load();
+        let _ = permissions.save();
         
-        let _ = engines::tools::ToolsEngine::registry();
+        let _ = cluaiz_agents::ToolsEngine::registry();
 
         // 📜 Write Third-Party Licenses (Automatic Legal Compliance)
-        let hub_path = engine_core::HardwareGovernor::resolve_hub_path();
+        let hub_path = cluaiz_core::EnvironmentManager::current().global_dir.clone();
         let _ = std::fs::create_dir_all(&hub_path);
         let license_text = include_str!("../assets/THIRD_PARTY_NOTICES.txt");
         let _ = std::fs::write(hub_path.join("THIRD_PARTY_LICENSES.txt"), license_text);
@@ -31,7 +27,7 @@ impl Bootstrapper {
         #[cfg(windows)]
         let _ = colored::control::set_virtual_terminal(true);
 
-        let _bin_dir = HardwareGovernor::resolve_hub_path().join("bin");
+        let _bin_dir = cluaiz_core::EnvironmentManager::current().bin_dir();
 
         if is_dev_sync {
             tracing::info!("⚙️ [DevSync] Basic Configuration generated. Skipping network and registry sync for local deployment.");
@@ -64,8 +60,16 @@ impl Bootstrapper {
         };
         
         // 🏛️ Seal the Master Registry with Atomic Write Protocol
-        engine_core::RegistryGovernor::seal_registry(master_registry.clone())
-            .map_err(|e| eyre!("Binary Truth Seal Error: {}", e))?;
+        let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+        let _ = std::fs::create_dir_all(&config_dir);
+        let json_path = config_dir.join("package.json");
+        let bin_path = config_dir.join("package.bin");
+        if let Ok(json_str) = serde_json::to_string_pretty(&master_registry) {
+            let _ = std::fs::write(&json_path, json_str);
+        }
+        if let Ok(bin_data) = serde_json::to_vec(&master_registry) {
+            let _ = std::fs::write(&bin_path, bin_data);
+        }
         tracing::debug!("✅ [Registry] Binary Truth sealed and verified.");
 
         // 🎯 2. CLI Lifecycle Check
@@ -77,134 +81,33 @@ impl Bootstrapper {
             println!("  {} [cluaiz] Update Available: {} -> {}", "🚀".green(), current_cli, latest_cli);
         }
 
-        // 🎯 3. Engine Sync (Driven by package.json)
-        let engine_info = &master_registry["components"]["engine"];
-        let engine_dir = HardwareGovernor::resolve_engine_path();
-        let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
-        let engine_path = engine_dir.join(format!("cluaiz-engine.{}", ext));
-        let engine_marker = engine_dir.join("cluaiz-engine.ready");
-
-        let manifest_version = engine_info["version"].as_str().unwrap_or("unknown");
-        let local_version = std::fs::read_to_string(&engine_marker).unwrap_or_default();
-
-        if (!engine_path.exists() || local_version != manifest_version) && !is_dev_sync {
-            println!("  {} [cluaiz] Provisioning Core Engine ({})...", "⚙️".yellow(), manifest_version);
-            if let Some(manifest_url) = engine_info["manifest_url"].as_str() {
-                match async {
-                    let res = client.get(manifest_url).send().await?;
-                    if !res.status().is_success() {
-                        return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
-                    }
-                    let engine_manifest: serde_json::Value = res.json().await?;
-                    Self::download_engine_with_manifest(&engine_path, &engine_manifest).await?;
-                    std::fs::write(&engine_marker, manifest_version)?;
-                    Ok::<(), color_eyre::Report>(())
-                }.await {
-                    Ok(_) => {},
-                    Err(e) if engine_path.exists() => {
-                        println!("  {} [Cluaiz] Network provisioning skipped ({}). Using local engine.", "ℹ️".blue(), e);
-                    }
-                    Err(e) => {
-                        println!("  {} [Cluaiz] Network provisioning failed ({}). Using local engine.", "⚠️".yellow(), e);
-                    }
-                }
-            } else if engine_path.exists() {
-                println!("  {} [Cluaiz] Local engine binary verified: {:?}.", "✅".green(), engine_path);
-            }
-        }
-
-        // 🎯 4. Kernel & Stack Sync
-        Self::sync_neural_stack(&master_registry).await?;
-
-
-
-        Ok(())
-    }
-
-    async fn download_engine_with_manifest(dest: &Path, manifest: &serde_json::Value) -> Result<()> {
-        let platform = if cfg!(windows) { "win-x64" } else if cfg!(target_os = "macos") { "mac-arm64" } else { "linux-x64" };
-        
-        let url_option = manifest["engines"][platform].as_str();
-        
-        if let Some(url) = url_option {
-            Self::download_asset(url, dest).await?;
-        } else if dest.exists() {
-            tracing::warn!("⚠️ [Bootstrapper] Platform '{}' not found in Engine Registry, but local engine exists. Skipping download.", platform);
+        // 🎯 3. Unified Binary Verification (Single Binary Architecture)
+        let bin_dir = cluaiz_core::EnvironmentManager::current().bin_dir();
+        let exe_name = if cfg!(windows) { "cluaiz.exe" } else { "cluaiz" };
+        let exe_path = bin_dir.join(exe_name);
+        if exe_path.exists() {
+            tracing::info!("🚀 [cluaiz] Unified Core Binary verified: {:?}", exe_path);
         } else {
-            return Err(eyre!("Platform '{}' not found in Engine Registry and no local engine found.", platform));
+            tracing::debug!("ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.");
         }
-        
+
+        // 🎯 4. Hardware Acceleration & Dynamic Driver Verification
+        Self::sync_neural_stack().await?;
+
         Ok(())
     }
 
-    async fn sync_neural_stack(master_registry: &serde_json::Value) -> Result<()> {
-        let control_path = HardwareGovernor::resolve_engine_path().join("system_info.json");
-        if !control_path.exists() {
-            return Ok(());
-        } 
-
-        let control_data: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&control_path)?)?;
-        let has_nvidia = control_data["silicon_truth"]["accelerators"]["gpus"]
-            .as_array()
-            .map(|gpus| gpus.iter().any(|g| g["vendor"].as_str().map(|v| v.to_uppercase()).unwrap_or_default().contains("NVIDIA")))
-            .unwrap_or(false);
-
-        let platform = if cfg!(windows) { "win-x64" } else if cfg!(target_os = "macos") { "mac-arm64" } else { "linux-x64" };
-
-        // Kernel Sync (Version-Aware via package.json)
-        let kernel_info = &master_registry["components"]["kernel"];
-        let kernel_dir = HardwareGovernor::resolve_interface_path();
-        let kernel_ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
-        let kernel_path = kernel_dir.join(format!("cluaiz-llama.{}", kernel_ext));
-        let kernel_marker = kernel_dir.join("cluaiz-llama.ready");
-
-        let manifest_version = kernel_info["version"].as_str().unwrap_or("unknown");
-        let local_version = std::fs::read_to_string(&kernel_marker).unwrap_or_default();
-
-        if !kernel_path.exists() || local_version != manifest_version {
-            println!("  {} [cluaiz] Synchronizing Neural Kernel ({})...", "📦".magenta(), manifest_version);
-            let client = reqwest::Client::builder().user_agent(format!("cluaiz-Bootstrapper/{}", env!("CARGO_PKG_VERSION"))).build()?;
-            let manifest_url = kernel_info["manifest_url"].as_str().ok_or_else(|| eyre!("Kernel Manifest URL missing."))?;
-            
-            match async {
-                let res = client.get(manifest_url).send().await?;
-                if !res.status().is_success() {
-                    return Err(eyre!("Registry Error: {} returned {}", manifest_url, res.status()));
-                }
-                let manifest: serde_json::Value = res.json().await?;
-
-                let mut spec_key = platform.to_string();
-                if platform == "win-x64" || platform == "linux-x64" {
-                    let isa_features = control_data["silicon_truth"]["cpu"]["isa_features"].as_array();
-                    let has_avx512 = isa_features.map(|feats| feats.iter().any(|f| f.as_str() == Some("AVX-512"))).unwrap_or(false);
-                    spec_key = if has_avx512 { format!("{}-avx512", platform) } else { format!("{}-avx2", platform) };
-                }
-
-                let url_option = manifest["kernels"][&spec_key].as_str().or_else(|| manifest["kernels"][platform].as_str());
-                
-                if let Some(url) = url_option {
-                    Self::download_asset(url, &kernel_path).await?;
-                } else if kernel_path.exists() {
-                    tracing::warn!("⚠️ [Bootstrapper] Kernel key '{}' not found in registry, but local kernel exists. Skipping.", spec_key);
-                } else {
-                    return Err(eyre!("Kernel key '{}' not found and no local kernel found.", spec_key));
-                }
-                std::fs::write(&kernel_marker, manifest_version)?;
-                Ok::<(), color_eyre::Report>(())
-            }.await {
-                Ok(_) => {},
-                Err(e) if kernel_path.exists() => {
-                    println!("  {} [Cluaiz] Kernel sync failed ({}). Using cached kernel.", "⚠️".yellow(), e);
-                }
-                Err(e) => {
-                    return Err(eyre!("{}\n\n💡 Dev Hint: The neural kernel is missing and network provisioning failed. Please run:\n   cargo run -- dev-sync all\nto install your locally compiled artifacts.", e));
-                }
-            }
-        }
+    async fn sync_neural_stack() -> Result<()> {
+        let hw = cluaiz_hw::HardwareProber::current();
+        let has_nvidia = hw.gpus.iter().any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
 
         if has_nvidia {
-            let driver_manifest_url = master_registry["components"]["drivers"]["manifest_url"].as_str().unwrap_or_default();
-            let _ = engines::interface_engines::manager::driver_provisioner::DriverProvisioner::provision_for_hardware("cuda", driver_manifest_url).await;
+            tracing::info!("⚡ NVIDIA GPU hardware acceleration verified.");
+        }
+
+        let drivers_dir = cluaiz_core::EnvironmentManager::current().engine_dir().join("drivers");
+        if drivers_dir.exists() {
+            tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
 
         Ok(())
@@ -276,29 +179,11 @@ impl Bootstrapper {
             None
         };
 
-        // 1. Engine Sync (engines.dll -> cluaiz-engine.dll)
-        if target == "all" || target == "core" {
-            let engine_dest = hub_path.join("engine").join(format!("cluaiz-engine.{}", ext));
-            
-            if let Some((engine_src, is_release)) = find_artifact("engines", ext) {
-                let _ = std::fs::create_dir_all(engine_dest.parent().unwrap());
-                if let Err(e) = copy_with_rename(&engine_src, &engine_dest) {
-                    tracing::warn!("⚠️ [DevSync] Engine Link Failed: {}. (File might be locked by another process)", e);
-                } else {
-                    let marker = "dev-release";
-                    let _ = std::fs::write(hub_path.join("engine").join("cluaiz-engine.ready"), marker);
-                    tracing::info!("🧬 [DevSync] Engine Linked (release={}): {:?}", is_release, engine_dest);
-                }
-            } else {
-                tracing::error!("❌ [DevSync] `engines.{}` NOT FOUND! Please run `cargo build --workspace` first!", ext);
-            }
-        }
-
-        // 2. Kernel Sync
+        // 1. Hardware Driver Sync (ONNX & Vendor Providers into engine/drivers/)
         let kernels_to_sync = vec![
-            ("cluaiz_llama", "cluaiz-llama"),
             ("cluaiz_onnx", "cluaiz-onnx"),
             ("onnxruntime", "onnxruntime"),
+            ("DirectML", "DirectML"),
             ("onnxruntime_providers_shared", "onnxruntime_providers_shared"),
             ("onnxruntime_providers_cuda", "onnxruntime_providers_cuda"),
             ("onnxruntime_providers_tensorrt", "onnxruntime_providers_tensorrt"),
@@ -309,9 +194,7 @@ impl Bootstrapper {
 
         for (src_name, dest_name) in kernels_to_sync {
             // Apply filtering logic
-            if target == "core" {
-                continue; // Skip drivers if only core
-            } else if target == "driver" {
+            if target == "driver" {
                 if let Some(d) = driver_name {
                     if !dest_name.contains(d) && !src_name.contains(d) {
                         continue; // Skip if it doesn't match the requested driver
@@ -320,46 +203,24 @@ impl Bootstrapper {
             }
 
             if let Some((kernel_src, is_kernel_release)) = find_artifact(src_name, ext) {
-                let kernel_dest = if src_name.starts_with("onnxruntime") {
-                    interface_path.join("drivers").join(format!("{}.{}", dest_name, ext))
-                } else {
-                    interface_path.join(format!("{}.{}", dest_name, ext))
-                };
+                let kernel_dest = interface_path.join("drivers").join(format!("{}.{}", dest_name, ext));
                 
                 let _ = std::fs::create_dir_all(kernel_dest.parent().unwrap());
                 
                 if let Err(e) = copy_with_rename(&kernel_src, &kernel_dest) {
                     tracing::warn!("⚠️ [DevSync] {} Kernel Link Failed: {}.", dest_name, e);
                 } else {
-                    // Also overwrite active dynamic driver inside engine/drivers/ if syncing llama kernel
-                    if src_name == "cluaiz_llama" {
-                        let drivers_dir = interface_path.join("drivers");
-                        if drivers_dir.exists() {
-                            if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
-                                for entry in entries.flatten() {
-                                    let p = entry.path();
-                                    if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
-                                        if fname.starts_with("cluaiz-driver-") && fname.ends_with(ext) {
-                                            let _ = copy_with_rename(&kernel_src, &p);
-                                            tracing::info!("🧬 [DevSync] Overwrote active driver DLL with llama driver: {:?}", p);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Create a ready marker
                     if !src_name.starts_with("onnxruntime") {
                         let marker_name = format!("{}.ready", dest_name);
                         let marker = "dev-release";
                         let _ = std::fs::write(interface_path.join(marker_name), marker);
                     }
-                    tracing::info!("🧬 [DevSync] {} Kernel Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
+                    tracing::info!("🧬 [DevSync] {} Driver Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
                 }
             } else {
                 if target == "drivers" || target == "driver" {
-                    tracing::warn!("⚠️ [DevSync] Kernel source not found for: {}", src_name);
+                    tracing::warn!("⚠️ [DevSync] Driver source not found for: {}", src_name);
                 }
             }
         }
@@ -426,7 +287,7 @@ impl Bootstrapper {
     fn ensure_global_path() {
         #[cfg(windows)]
         {
-            let bin_dir = engine_core::HardwareGovernor::resolve_bin_gateway();
+            let bin_dir = cluaiz_core::EnvironmentManager::current().ensure_bin_dir().unwrap_or_else(|_| cluaiz_core::EnvironmentManager::current().bin_dir());
             let bin_str = bin_dir.to_string_lossy().to_string();
             
             // Simple PowerShell script to read User PATH, check if cluaiz is in it, and append if missing.

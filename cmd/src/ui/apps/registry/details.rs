@@ -1,12 +1,12 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engines::ModelRecommendation;
+use cluaiz_models::ModelRecommendation;
 use inquire::{
     ui::{Attributes, Color as InqColor, RenderConfig, Styled},
     Select, Confirm,
 };
 use tokio::sync::mpsc;
-use engines::DownloadEvent;
+use cluaiz_models::DownloadEvent;
 use crossterm::event::{self, Event, KeyCode};
 use std::time::Duration;
 use std::io::{stdout, Write};
@@ -150,7 +150,7 @@ pub fn show_details(
                     let (local_tx, mut local_rx) = tokio::sync::mpsc::channel(256);
 
                     tokio::spawn(async move {
-                        let _ = engines::ModelDownloader::download_gguf_async(
+                        let _ = cluaiz_models::ModelDownloader::download_gguf_async(
                             &category, &repo_id, &dl_url, &filename, assets, manifest, local_tx, abort_clone
                         ).await;
                         let _ = tx_clone.send(DownloadEvent::Complete(mid));
@@ -235,7 +235,7 @@ pub fn show_details(
 
                     match confirm {
                         Ok(true) => {
-                            let _ = engines::ModelDownloader::purge_model(&rec.manifest.category, &rec.manifest.id);
+                            let _ = cluaiz_models::ModelDownloader::purge_model(&rec.manifest.category, &rec.manifest.id);
                             rec.is_cached = false;
                             println!("\n  {} {}", "🗑️".red(), "Model purged from local storage.".bold());
                             std::thread::sleep(std::time::Duration::from_millis(1200));

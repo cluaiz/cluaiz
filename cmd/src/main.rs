@@ -326,10 +326,10 @@ pub enum ComponentCacheCommand {
 async fn main() -> Result<()> {
     // 🚀 SOVEREIGN GHOST EXECUTION GUARD
     if let Ok(current_exe) = std::env::current_exe() {
-        let global_bin_dir = engine_core::HardwareGovernor::resolve_bin_gateway();
+        let global_bin_dir = cluaiz_core::EnvironmentManager::current().local_dir.join("bin");
         if !current_exe.starts_with(&global_bin_dir) {
             eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
-            eprintln!("  {} To use the Sovereign System, run the global 'cluaiz' command.\n", "💡".cyan());
+            eprintln!("  {} To use the System, run the global 'cluaiz' command.\n", "💡".cyan());
         }
     }
 
@@ -341,12 +341,6 @@ async fn main() -> Result<()> {
         }
         SetConsoleOutputCP(65001);
     }
-    // ══ SOVEREIGN KERNEL SILENCE ══
-    // These env vars suppress CUDA Graph + ggml verbose logs at the source.
-    // NOTE: We do NOT redirect stderr here because inquire (input box) uses stderr to render.
-    // 🚀 GGML_CUDA_USE_GRAPHS: Default to 0 for stability across hybrid/CPU splits.
-    // NativeLlama enables it dynamically when running 100% on Dedicated GPU.
-    std::env::set_var("GGML_CUDA_USE_GRAPHS", "0");
     std::env::set_var("GGML_LOG_LEVEL", "ERROR");
 
     color_eyre::install()?;
@@ -354,7 +348,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = engine_core::environment::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
+    let log_path = cluaiz_core::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
 
     if let Ok(log_file) = std::fs::File::create(&log_path) {
         let _ = tracing_subscriber::fmt()
@@ -370,18 +364,8 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // 🚀 Check Pure Brain Mode
-    let mut pure_brain = false;
-    if let Ok(control) = engine_core::hardware::governor::HardwareGovernor::load_system_info() {
-        if control.brain.is_pure_brain() {
-            pure_brain = true;
-        }
-    }
-
-    // 🚀 SILICON IGNITION: Optimize hardware before execution
-    if !pure_brain {
-        let _ = engines::system_optimization::SystemOptimization::ignite();
-    }
+    // 🚀 Probing hardware before execution
+    let _ = cluaiz_hw::HardwareProber::current();
 
     // -- Legacy Flag Handlers --
     if cli.legacy_benchmark {
@@ -393,9 +377,9 @@ async fn main() -> Result<()> {
     }
 
     if cli.legacy_calibrate {
-         println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
-         engines::hardware::system_info_manager::detect_hardware();
-         println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
+         println!("\n  {} Initiating Hardware Re-Scan...", "🛰️".cyan());
+         let _ = cluaiz_hw::HardwareProber::probe_system();
+         println!("  {} Hardware profile synchronized.\n", "✅".green());
         return Ok(());
     }
 
@@ -438,12 +422,17 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Status) => {
-            engines::telemetry::health_check::EngineHealthChecker::run_full_benchmark();
+            let info = cluaiz_hw::HardwareProber::current();
+            println!("  {} CPU: {} ({} cores)", "📊".cyan(), info.cpu.brand, info.cpu.physical_cores);
+            println!("  {} RAM: {:.2} GiB total, {:.2} GiB available", "📊".cyan(), info.memory.total_gb, info.memory.available_gb);
+            if let Some(gpu) = info.gpus.first() {
+                println!("  {} GPU: {} ({:.2} GiB VRAM)", "📊".cyan(), gpu.name, gpu.vram_total_gb);
+            }
         }
         Some(CliCommand::Calibrate) => {
-             println!("\n  {} [Silicon] Initiating Hardware Re-Scan...", "🛰️".cyan());
-             engines::hardware::system_info_manager::detect_hardware();
-             println!("  {} [Silicon] SiliconTruth profile synchronized.\n", "✅".green());
+             println!("\n  {} Initiating Hardware Re-Scan...", "🛰️".cyan());
+             let _ = cluaiz_hw::HardwareProber::probe_system();
+             println!("  {} Hardware profile synchronized.\n", "✅".green());
         }
         Some(CliCommand::Benchmark { model_id, runs }) => {
             if let Err(e) = crate::cli::benchmark::execute(model_id, runs).await {
@@ -472,45 +461,38 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::DevSync { target, driver_name, profile }) => {
-            let env_mgr = engine_core::environment::EnvironmentManager::current();
+            let env_mgr = cluaiz_core::EnvironmentManager::current();
             let global_dir = env_mgr.global_dir.clone();
             let local_dir = env_mgr.local_dir.clone();
             println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
-            if let Err(_e) = engine_core::HardwareGovernor::resolve_engine_path().parent().unwrap().symlink_metadata() {
-                let _ = std::fs::create_dir_all(engine_core::HardwareGovernor::resolve_engine_path());
-            }
+            let _ = std::fs::create_dir_all(&global_dir);
             core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
             if local_dir != global_dir {
                 println!("⚙️  [DevSync] Also synchronizing to local workspace {}...", local_dir.display());
                 let _ = core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), local_dir, &profile);
             }
             
-            // 🚀 Force base configuration into the Global Directory so the user doesn't have an empty config!
             std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
-            let mut permissions = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-            permissions.auto_assign_defaults();
-            let _ = engine_core::hardware::governor::HardwareGovernor::load_system_info();
-            
-            // 🚀 Also seal the local package.json into the global registry
-            if let Ok(pkg_data) = std::fs::read_to_string("package.json") {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&pkg_data) {
-                    let _ = engine_core::hardware::governor::RegistryGovernor::seal_registry(json);
-                }
-            }
+            let permissions = cluaiz_security::PermissionSchema::load();
+            let _ = permissions.save();
+            let _ = cluaiz_hw::HardwareProber::current();
             
             std::env::remove_var("cluaiz_HOME");
 
             println!("✅  [DevSync] Synchronization Complete.");
         }
         Some(CliCommand::Serve) => {
-            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let perms = cluaiz_security::PermissionSchema::load();
             let port: u16 = std::env::var("cluaiz_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(perms.api_port);
             println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), port);
-            cluaiz_api::run_daemon().await; 
+            if let Err(e) = cluaiz_api::run_daemon().await {
+                eprintln!("  {} API Daemon error: {}", "❌".red(), e);
+            }
         }
+
         Some(CliCommand::LlmOptimization { kv_quant, context_shift, mode, spec_decode }) => {
             if let Err(e) = crate::cli::llm_optimization::execute(kv_quant, context_shift, mode, spec_decode).await {
                 eprintln!("\n  {} [Cluaiz] LLM Optimization Config Error: {}\n", "❌".red(), e);
@@ -573,11 +555,11 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Storage(cli_cmd)) => {
-            let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let schema = cluaiz_security::PermissionSchema::load();
             crate::cli::storage::handle_storage_command(cli_cmd, schema.api_port).await;
         }
         Some(CliCommand::Token { command }) => {
-            let mut schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let mut schema = cluaiz_security::PermissionSchema::load();
             match command {
                 Some(TokenCommand::Show { all }) => {
                     schema.api_auth.sanitize_tokens();
@@ -607,7 +589,7 @@ async fn main() -> Result<()> {
                         eprintln!("\n  {} Maximum limit of 5 API keys reached. Remove an existing key first.\n", "❌".red());
                         return Ok(());
                     }
-                    let new_token = engines::neural_foundry::security::permission_schema::ApiAuth::generate_token();
+                    let new_token = cluaiz_security::ApiAuth::generate_token();
                     schema.api_auth.tokens.push(new_token.clone());
                     schema.api_auth.required = true;
                     let _ = schema.save();
@@ -653,7 +635,7 @@ async fn main() -> Result<()> {
             }
         }
         Some(CliCommand::Permission { command }) => {
-            let mut schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let mut schema = cluaiz_security::PermissionSchema::load();
             if let Some(cmd) = command {
                 match cmd {
                     PermissionCommand::Firewall { status } => {
@@ -681,7 +663,7 @@ async fn main() -> Result<()> {
             } else {
                 use inquire::Select;
                 loop {
-                    schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                    schema = cluaiz_security::PermissionSchema::load();
                     let opts = vec![
                         format!("WASM Firewall (Current: {})", schema.wasm_firewall),
                         format!("Telemetry (Current: {})", schema.stream_telemetry),
@@ -740,9 +722,9 @@ async fn main() -> Result<()> {
                             }
 
                             "Active Chat Model" | "Active Vector Model" => {
-                                let roster = engines::models::registry::CoreRoster::load_roster();
+                                let roster = cluaiz_models::CoreRoster::load_roster();
                                 let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {
-                                    m.local_path.is_some() || engines::models::fetch::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
+                                    m.local_path.is_some() || cluaiz_models::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
                                 }).collect();
                                 
                                 downloaded.sort_by(|a, b| a.name.cmp(&b.name));
@@ -764,12 +746,12 @@ async fn main() -> Result<()> {
                                         if let Ok(ans) = Select::new("Select Model to Set as Active:", options).prompt() {
                                             if let Some(model) = filtered.iter().find(|m| m.name == ans) {
                                                 if is_vector {
-                                                    engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.id.clone());
+                                                    cluaiz_security::PermissionSchema::set_active_embedding_model(model.id.clone());
                                                 } else {
-                                                    engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model.id.clone());
+                                                    cluaiz_security::PermissionSchema::set_active_chat_model(model.id.clone());
                                                 }
                                                 // We must reload schema because the static function above modified and saved it to disk.
-                                                schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                                                schema = cluaiz_security::PermissionSchema::load();
                                             }
                                         }
                                     }
@@ -788,11 +770,11 @@ async fn main() -> Result<()> {
             if let Some(cmd) = command {
                 match cmd {
                     ModelCommand::SetChat { model_id } => {
-                        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model_id.clone());
+                        cluaiz_security::PermissionSchema::set_active_chat_model(model_id.clone());
                         println!("  {} Active Chat Model set to: {}", "✅".green(), model_id.bold());
                     }
                     ModelCommand::SetVector { model_id } => {
-                        engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model_id.clone());
+                        cluaiz_security::PermissionSchema::set_active_embedding_model(model_id.clone());
                         println!("  {} Active Vector Model set to: {}", "✅".green(), model_id.bold());
                     }
                 }
@@ -812,8 +794,7 @@ async fn main() -> Result<()> {
 }
 
 async fn start_dashboard() -> Result<()> {
-    // 📡 Hardware IGNITION
-    engines::telemetry::ignite_watchtower();
+    let _ = cluaiz_hw::get_pulse();
 
     // 🛡️ Panic Guard: Ensure terminal recovery on crash
     let hook = std::panic::take_hook();
@@ -832,8 +813,7 @@ async fn start_dashboard() -> Result<()> {
 }
 
 async fn start_menu() -> Result<()> {
-    // 📡 Hardware IGNITION
-    engines::telemetry::ignite_watchtower();
+    let _ = cluaiz_hw::get_pulse();
 
     // 🛡️ Panic Guard: Ensure terminal recovery on crash
     let hook = std::panic::take_hook();

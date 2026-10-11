@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 default-run = "cluaiz"
+autobins = false
 
 [[bin]]
 name = "cluaiz"
@@ -11,11 +12,15 @@ path = "src/main.rs"
 
 [dependencies]
 # ── Root Architecture ──
-engines = { path = "../inference-engine/engines" }
-engine-core = { path = "../inference-engine/engines/core" }
-neural-core = { path = "../interface-engines/neural_core" }
-cluaiz_onnx = { package = "onnx", path = "../interface-engines/onnx" }
-cluaiz_api = { path = "../inference-engine/api" }
+cluaiz_api = { package = "cluaiz-api", path = "../api" }
+cluaiz-core = { path = "../engine/core" }
+cluaiz-hw = { path = "../engine/hardware" }
+cluaiz-models = { path = "../engine/models" }
+cluaiz-plan = { path = "../engine/plan" }
+cluaiz-runtime = { path = "../engine/runtime" }
+cluaiz-agents = { path = "../agents" }
+cluaiz-security = { path = "../security" }
+onnx-engine = { path = "../engine/onnx" }
 
 
 # ── Powerhouse Ratatui Framework ──
@@ -53,3 +58,10 @@ uuid = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 winres = "0.1"
+
+[features]
+default = ["cuda"]
+cuda = ["cluaiz-runtime/cuda"]
+metal = ["cluaiz-runtime/metal"]
+vulkan = ["cluaiz-runtime/vulkan"]
+rocm = ["cluaiz-runtime/rocm"]
