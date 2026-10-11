@@ -1,3 +1,0 @@
-[env]
-CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING = "1"
-CL = "/Zc:preprocessor"
