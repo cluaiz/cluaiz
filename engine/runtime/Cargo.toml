@@ -9,8 +9,16 @@ cluaiz-core = { path = "../core" }
 cluaiz-hw = { path = "../hardware" }
 cluaiz-models = { path = "../models" }
 cluaiz-plan = { path = "../plan" }
+llama-engine = { path = "../llama" }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
+
+[features]
+default = ["cuda"]
+cuda = ["llama-engine/cuda"]
+metal = ["llama-engine/metal"]
+vulkan = ["llama-engine/vulkan"]
+rocm = ["llama-engine/rocm"]

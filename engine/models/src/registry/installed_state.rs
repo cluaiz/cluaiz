@@ -14,12 +14,12 @@ pub struct InstalledStateRegistry;
 impl InstalledStateRegistry {
     /// Resolves the absolute path to model_registry.json dynamically via EnvironmentManager
     pub fn get_registry_path() -> PathBuf {
-        engine_core::environment::EnvironmentManager::current().model_registry_json_path()
+        cluaiz_core::EnvironmentManager::current().model_registry_json_path()
     }
 
     /// Resolves the absolute path to fast binary cache model_registry.bin dynamically via EnvironmentManager
     pub fn get_registry_bin_path() -> PathBuf {
-        engine_core::environment::EnvironmentManager::current().model_registry_bin_path()
+        cluaiz_core::EnvironmentManager::current().model_registry_bin_path()
     }
 
     /// Loads the active ModelRegistry (Fast Path: .bin binary cache; Fallback: .json with auto-cache sync)

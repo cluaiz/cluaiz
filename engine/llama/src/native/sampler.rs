@@ -1,5 +1,5 @@
 use crate::ffi::llama_cpp;
-use engine_core::StructuralDNA;
+use cluaiz_models::types::StructuralDNA;
 use tracing::info;
 
 /// 🎲 Builds a dynamic sampler chain based on model DNA (handles BitNet 1-bit logic natively).
@@ -16,32 +16,35 @@ pub unsafe fn build_sampler_chain(
         return Err(anyhow::anyhow!("💀 Failed to initialize sampler chain"));
     }
 
-    let req_temp = req_samplers.and_then(|s| s.get("temp")).and_then(|v| v.as_f64()).map(|t| t as f32);
-    let req_top_p = req_samplers.and_then(|s| s.get("top_p")).and_then(|v| v.as_f64()).map(|p| p as f32);
-    let req_top_k = req_samplers.and_then(|s| s.get("top_k")).and_then(|v| v.as_i64()).map(|k| k as i32);
-    let req_min_p = req_samplers.and_then(|s| s.get("min_p")).and_then(|v| v.as_f64()).map(|mp| mp as f32);
-    let req_presence_penalty = req_samplers.and_then(|s| s.get("presence_penalty")).and_then(|v| v.as_f64()).map(|p| p as f32).unwrap_or(0.0);
-    let req_frequency_penalty = req_samplers.and_then(|s| s.get("frequency_penalty")).and_then(|v| v.as_f64()).map(|p| p as f32).unwrap_or(0.0);
-    let req_repeat_penalty = req_samplers.and_then(|s| s.get("repeat_penalty")).and_then(|v| v.as_f64()).map(|p| p as f32);
-    let req_seed = req_samplers.and_then(|s| s.get("seed")).and_then(|v| v.as_u64()).map(|s| s as u32);
+    // Order: chat request value -> user default (settings) -> model DNA -> llama.cpp default
+    let user = cluaiz_core::Settings::current().samplers;
+    let req_f32 = |k: &str| req_samplers.and_then(|s| s.get(k)).and_then(|v| v.as_f64()).map(|v| v as f32);
+    let req_temp = req_f32("temp").or(user.temp);
+    let req_top_p = req_f32("top_p").or(user.top_p);
+    let req_top_k = req_samplers.and_then(|s| s.get("top_k")).and_then(|v| v.as_i64()).map(|k| k as i32).or(user.top_k);
+    let req_min_p = req_f32("min_p").or(user.min_p);
+    let req_presence_penalty = req_f32("presence_penalty").or(user.presence_penalty).unwrap_or(0.0);
+    let req_frequency_penalty = req_f32("frequency_penalty").or(user.frequency_penalty).unwrap_or(0.0);
+    let req_repeat_penalty = req_f32("repeat_penalty").or(user.repeat_penalty);
+    let req_seed = req_samplers.and_then(|s| s.get("seed")).and_then(|v| v.as_u64()).map(|s| s as u32).or(user.seed);
 
     if !dna.signature.is_bitnet {
         let temp = req_temp
-            .or_else(|| dna.inference_params.get("temperature").and_then(|t| t.parse::<f32>().ok()))
-            .unwrap_or(0.7);
+            .or_else(|| dna.inference_params.get("temperature").and_then(|t: &String| t.parse::<f32>().ok()))
+            .unwrap_or(0.8); // llama.cpp default
         let top_p = req_top_p
-            .or_else(|| dna.inference_params.get("top_p").and_then(|p| p.parse::<f32>().ok()))
+            .or_else(|| dna.inference_params.get("top_p").and_then(|p: &String| p.parse::<f32>().ok()))
             .unwrap_or(0.95);
         let top_k = req_top_k
-            .or_else(|| dna.inference_params.get("top_k").and_then(|k| k.parse::<i32>().ok()))
+            .or_else(|| dna.inference_params.get("top_k").and_then(|k: &String| k.parse::<i32>().ok()))
             .unwrap_or(40);
         let min_p = req_min_p
-            .or_else(|| dna.inference_params.get("min_p").and_then(|mp| mp.parse::<f32>().ok()))
+            .or_else(|| dna.inference_params.get("min_p").and_then(|mp: &String| mp.parse::<f32>().ok()))
             .unwrap_or(0.05);
-        let repeat_last_n = dna.inference_params.get("repeat_last_n").and_then(|n| n.parse::<i32>().ok()).unwrap_or(64);
+        let repeat_last_n = dna.inference_params.get("repeat_last_n").and_then(|n: &String| n.parse::<i32>().ok()).unwrap_or(64);
         let repeat_penalty = req_repeat_penalty
-            .or_else(|| dna.inference_params.get("repeat_penalty").and_then(|p| p.parse::<f32>().ok()))
-            .unwrap_or(1.1);
+            .or_else(|| dna.inference_params.get("repeat_penalty").and_then(|p: &String| p.parse::<f32>().ok()))
+            .unwrap_or(1.0); // llama.cpp default (1.0 = off)
         
         llama_cpp::llama_sampler_chain_add(
             sampler_chain,
@@ -73,9 +76,9 @@ pub unsafe fn build_sampler_chain(
             info!("🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K({}) -> Top-P({}) -> Min-P({}) -> Temp({}) -> Dist): seed={}", top_k, top_p, min_p, temp, seed);
         }
     } else {
-        let repeat_last_n = dna.inference_params.get("repeat_last_n").and_then(|n| n.parse::<i32>().ok()).unwrap_or(64);
+        let repeat_last_n = dna.inference_params.get("repeat_last_n").and_then(|n: &String| n.parse::<i32>().ok()).unwrap_or(64);
         let repeat_penalty = req_repeat_penalty
-            .or_else(|| dna.inference_params.get("repeat_penalty").and_then(|p| p.parse::<f32>().ok()))
+            .or_else(|| dna.inference_params.get("repeat_penalty").and_then(|p: &String| p.parse::<f32>().ok()))
             .unwrap_or(1.1);
         
         llama_cpp::llama_sampler_chain_add(

@@ -15,7 +15,6 @@ pub use catalog::{ModelCatalog, REGISTRY_URL};
 pub use discovery::AutonomousDiscovery;
 pub use auditor::{HardwareAuditor, HealthStatus};
 pub use provisioner::Provisioner;
-pub use engine_core::{KernelSignature, StructuralDNA};
 pub use crate::models::types::{ModelAsset, ModelManifest, ModelRecommendation};
 
 /// Legacy alias for ModelCatalog

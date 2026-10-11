@@ -1,6 +1,6 @@
 use crate::ffi::llama_cpp;
 use crate::native::core::NativeLlama;
-use engine_core::StructuralDNA;
+use cluaiz_models::types::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
@@ -45,6 +45,7 @@ pub fn stream_tokens(
     unsafe {
         // 🛑 ROOT FIX: Reset interrupt signal when entering generation to ensure pivot works!
         llama.interrupt_signal.store(false, Ordering::SeqCst);
+        llama.reset_timings();
         tracing::debug!(
             "🔥 [NativeStream] stream_tokens CALLED! prompt len={}",
             prompt.len()
@@ -118,11 +119,6 @@ pub fn stream_tokens(
             }
         }
 
-        let opt_control =
-            engine_core::hardware::governor::HardwareGovernor::load_optimization_settings()
-                .unwrap_or_default();
-        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-
         // 🧬 Primary Authority: Query llama.cpp native common_chat_templates engine using model pointer
         let (native_st, native_et) = crate::native::templater::extract_thinking_tags_native(
             llama.model_ptr,
@@ -147,7 +143,7 @@ pub fn stream_tokens(
 
         let tm_str = req_think_mode
             .as_deref()
-            .unwrap_or(gguf_meta.user_moved_flags.think_mode.as_str())
+            .unwrap_or("auto")
             .to_lowercase();
 
         let enable_thinking = match tm_str.as_str() {
@@ -450,29 +446,19 @@ pub fn stream_tokens(
         }
 
         if !tokens.is_empty() {
-            for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
+            let step = llama.prompt_chunk_len(tokens.len());
+            for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
                 for (i, token) in chunk.iter().enumerate() {
-                    let cur_pos = (start_pos + (chunk_idx * chunk_size as usize + i) as i32)
+                    let cur_pos = (start_pos + (chunk_idx * step + i) as i32)
                         .min(llama.n_ctx as i32 - 1);
                     *safe_batch.batch.token.add(i) = *token;
                     *safe_batch.batch.pos.add(i) = cur_pos;
                     *safe_batch.batch.n_seq_id.add(i) = 1;
                     *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
-                    let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
+                    let is_last_token = (chunk_idx * step + i) == (tokens.len() - 1);
                     *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
                 }
                 safe_batch.batch.n_tokens = chunk.len() as i32;
-
-                // 🌊 PCIe Direct DMA MoE Highway Hook (Prefill) - gated for native GGML streaming bridge
-                if false {
-                    if let Some(ref controller_arc) = llama.moe_controller {
-                        if let Ok(mut ctrl) = controller_arc.lock() {
-                            let token_val = *chunk.first().unwrap_or(&0);
-                            let pos_val = start_pos + (chunk_idx * chunk_size as usize) as i32;
-                            ctrl.pipeline_all_offloaded_chunks(token_val, pos_val);
-                        }
-                    }
-                }
 
                 let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
                 if rc != 0 {
@@ -496,14 +482,15 @@ pub fn stream_tokens(
             start_pos = 0;
 
             // 3. Re-decode the entire prompt
-            for (chunk_idx, chunk) in tokens.chunks(chunk_size as usize).enumerate() {
+            let step = llama.prompt_chunk_len(tokens.len());
+            for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
                 for (i, token) in chunk.iter().enumerate() {
                     *safe_batch.batch.token.add(i) = *token;
                     *safe_batch.batch.pos.add(i) =
-                        start_pos + (chunk_idx * chunk_size as usize + i) as i32;
+                        start_pos + (chunk_idx * step + i) as i32;
                     *safe_batch.batch.n_seq_id.add(i) = 1;
                     *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
-                    let is_last_token = (chunk_idx * chunk_size as usize + i) == (tokens.len() - 1);
+                    let is_last_token = (chunk_idx * step + i) == (tokens.len() - 1);
                     *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
                 }
                 safe_batch.batch.n_tokens = chunk.len() as i32;
@@ -540,9 +527,7 @@ pub fn stream_tokens(
         );
 
         while n_gen < max_tokens as i32 {
-            if llama.interrupt_signal.load(Ordering::SeqCst)
-                || engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst)
-            {
+            if llama.interrupt_signal.load(Ordering::SeqCst) {
                 break;
             }
 
@@ -559,8 +544,7 @@ pub fn stream_tokens(
                 break;
             }
 
-            // 🎯 Feed generated token back into sampler chain so repetition penalty & penalties work
-            llama_cpp::llama_sampler_accept(safe_sampler.sampler, next_token_id);
+            // llama_sampler_sample already accepted this token into the chain (penalties see it once)
             history.push(next_token_id);
 
             // Convert token to UTF-8 piece (special = true ensures reasoning control tokens like <think> and <|channel> are emitted)
@@ -628,9 +612,6 @@ pub fn stream_tokens(
             unsafe {
                 if !SKIP_PTR.is_null() {
                     should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
-                } else {
-                    should_skip =
-                        engine_core::GLOBAL_SKIP_THINKING_SIGNAL.swap(false, Ordering::SeqCst);
                 }
             }
             if should_skip && in_think_block {
@@ -645,9 +626,6 @@ pub fn stream_tokens(
                     in_think_block = false;
                 }
             }
-            engine_core::hardware::telemetry::get_pulse()
-                .tps_counter
-                .fetch_add(1, Ordering::SeqCst);
 
             // Guard against context ceiling overflow
             if n_cur >= (llama.n_ctx as i32 - 4) {
@@ -678,6 +656,12 @@ pub fn stream_tokens(
             next_token_id =
                 llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         }
+
+        let t = llama.timings();
+        info!(
+            "⏱️ [NativeStream] llama.cpp timings: prompt {} tokens in {:.0} ms ({:.2} t/s) | generation {} tokens in {:.0} ms ({:.2} t/s)",
+            t.prompt_n, t.prompt_ms, t.prompt_per_second, t.predicted_n, t.predicted_ms, t.predicted_per_second
+        );
 
         history.truncate(n_cur as usize);
         Ok(history)

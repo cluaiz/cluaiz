@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use engine_core::hardware::schema::profiles::SystemInfo;
+use cluaiz_hw::types::SystemInfo;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum HealthStatus {
@@ -34,11 +34,11 @@ impl HardwareAuditor {
     }
 
     fn evaluate_hardware(&self, control: &SystemInfo, req_ram: f32, req_gpu: bool) -> HealthStatus {
-        let vram_available = control.silicon_truth.accelerators.gpus.first()
-            .map(|g| g.vram_available_gb)
-            .unwrap_or(0.0) as f32;
+        let vram_available = control.gpus.first()
+            .map(|g| g.vram_available_gb as f32)
+            .unwrap_or(0.0);
         
-        let system_ram = control.silicon_truth.memory.total_capacity_gb as f32;
+        let system_ram = control.memory.total_gb as f32;
 
         if req_gpu {
             if req_ram <= vram_available {
@@ -58,6 +58,6 @@ impl HardwareAuditor {
     }
 
     fn get_system_info_path(&self) -> PathBuf {
-        engine_core::hardware::governor::HardwareGovernor::resolve_engine_path().join("system_info.json")
+        cluaiz_core::EnvironmentManager::current().config_dir().join("system_info.json")
     }
 }

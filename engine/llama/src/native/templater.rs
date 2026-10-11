@@ -87,23 +87,7 @@ pub fn apply_chat_template(
         }
     }
 
-    // 3. Fallback: Render with MiniJinja if llama.cpp C template engine failed
-    if let Some(ref template) = tmpl_str {
-        match engine_core::TemplateManager::render_messages(template, messages, add_generation_prompt) {
-            Ok(rendered) if !rendered.trim().is_empty() => {
-                tracing::info!("🎭 [NativeTemplate] MiniJinja fallback rendered template ({} bytes)", rendered.len());
-                return Ok(rendered);
-            }
-            Ok(_) => {
-                tracing::warn!("⚠️ [NativeTemplate] MiniJinja rendered empty output");
-            }
-            Err(e) => {
-                tracing::warn!("⚠️ [NativeTemplate] MiniJinja render failed ({})", e);
-            }
-        }
-    }
-
-    // 4. Safe Clean Neutral Fallback: Never poison models with alien ChatML tokens
+    // 3. Safe Clean Neutral Fallback: Never poison models with alien ChatML tokens
     let mut out = String::new();
     for (r, c) in messages {
         out.push_str(&format!("{}: {}\n", r, c));

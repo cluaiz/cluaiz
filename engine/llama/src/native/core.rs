@@ -1,5 +1,5 @@
 use crate::ffi::llama_cpp::{self, LlamaContextParams, LlamaModelParams};
-use engine_core::StructuralDNA;
+use cluaiz_models::types::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::AtomicBool;
@@ -15,87 +15,61 @@ pub struct NativeLlama {
     pub kv_cache_quantization_mode: u8,
     pub context_shifting_mode: u8,
     pub speculative_decoding_mode: u8,
-    pub moe_controller:
-        Option<Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>>,
+    pub moe_controller: Option<Arc<std::sync::Mutex<()>>>,
 }
 
-fn extract_layer_from_name(name: &str) -> Option<usize> {
-    let parts: Vec<&str> = name.split('.').collect();
-    for (i, part) in parts.iter().enumerate() {
-        if (*part == "blk" || *part == "layers" || *part == "layer") && i + 1 < parts.len() {
-            if let Ok(idx) = parts[i + 1].parse::<usize>() {
-                return Some(idx);
-            }
+/// Timings of the last generation, measured by llama.cpp itself (the numbers llama-cli and
+/// llama-server print). Field names match llama-server's `timings` object.
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct GenerationTimings {
+    /// Prompt tokens processed (tokens reused from the KV cache are not counted)
+    pub prompt_n: i32,
+    pub prompt_ms: f64,
+    pub prompt_per_second: f64,
+    /// Tokens generated one by one
+    pub predicted_n: i32,
+    pub predicted_ms: f64,
+    pub predicted_per_second: f64,
+}
+
+/// Tokens per llama_decode call so a prompt of `n_tokens` is split into equal chunks of at most `max`.
+/// llama.cpp runs a micro-batch smaller than its op-offload size (a backend setting) on the CPU for
+/// layers kept in RAM, so a 512 + 10 split computes the 10-token tail slowly; 261 + 261 keeps both
+/// chunks on the batched path. Never returns 0 (safe for `slice::chunks`).
+pub fn even_chunk_len(n_tokens: usize, max: usize) -> usize {
+    let max = max.max(1);
+    let chunks = n_tokens.div_ceil(max).max(1);
+    n_tokens.div_ceil(chunks).max(1)
+}
+
+impl NativeLlama {
+    /// Chunk length for prefilling `n_tokens`: at most one micro-batch (and one batch), split evenly.
+    pub fn prompt_chunk_len(&self, n_tokens: usize) -> usize {
+        let n_ubatch = unsafe { llama_cpp::llama_n_ubatch(self.ctx_ptr) };
+        even_chunk_len(n_tokens, n_ubatch.min(self.n_batch) as usize)
+    }
+
+    /// Starts a new timing window (call before a generation).
+    pub fn reset_timings(&mut self) {
+        unsafe { llama_cpp::llama_perf_context_reset(self.ctx_ptr) }
+    }
+
+    /// llama.cpp timing counters since the last `reset_timings`.
+    pub fn timings(&self) -> GenerationTimings {
+        let d = unsafe { llama_cpp::llama_perf_context(self.ctx_ptr) };
+        let per_second = |n: i32, ms: f64| if ms > 0.0 { n as f64 * 1000.0 / ms } else { 0.0 };
+        GenerationTimings {
+            prompt_n: d.n_p_eval,
+            prompt_ms: d.t_p_eval_ms,
+            prompt_per_second: per_second(d.n_p_eval, d.t_p_eval_ms),
+            predicted_n: d.n_eval,
+            predicted_ms: d.t_eval_ms,
+            predicted_per_second: per_second(d.n_eval, d.t_eval_ms),
         }
     }
-    None
 }
 
-std::thread_local! {
-    static LAST_LOGGED_LAYER: std::cell::Cell<Option<usize>> = std::cell::Cell::new(None);
-}
 
-unsafe extern "C" fn ggml_sched_eval_callback(
-    t: *mut std::ffi::c_void,
-    ask: bool,
-    user_data: *mut std::ffi::c_void,
-) -> bool {
-    if !ask && !user_data.is_null() {
-        let name_ptr = crate::ffi::llama_cpp::ggml_get_name(t);
-        if !name_ptr.is_null() {
-            let name_cstr = std::ffi::CStr::from_ptr(name_ptr);
-            let name_str = name_cstr.to_string_lossy();
-            let name_lower = name_str.to_lowercase();
-
-            // Dynamic check matching all expert tensor patterns
-            let is_expert_tensor = name_lower.contains("ffn_gate_exps")
-                || name_lower.contains("ffn_up_exps")
-                || name_lower.contains("ffn_down_exps")
-                || name_lower.contains("ffn_experts")
-                || (name_lower.contains("ffn_") && name_lower.contains("exp"));
-
-            if is_expert_tensor {
-                if let Some(layer_idx) = extract_layer_from_name(&name_str) {
-                    let mutex_ptr = user_data
-                        as *const std::sync::Mutex<
-                            crate::expert_offloading::GgufMoeStreamingController,
-                        >;
-                    if let Ok(mut controller) = (*mutex_ptr).lock() {
-                        let mut should_log = false;
-                        LAST_LOGGED_LAYER.with(|cell| {
-                            if cell.get() != Some(layer_idx) {
-                                cell.set(Some(layer_idx));
-                                should_log = true;
-                            }
-                        });
-
-                        if should_log {
-                            let prefetch_status =
-                                if layer_idx + 1 < controller.moe_info.moe_layer_count {
-                                    format!("Prefetching Layer {}", layer_idx + 1)
-                                } else {
-                                    "End of Model".to_string()
-                                };
-                            let discard_status = if layer_idx > 0 {
-                                format!("Discarding Layer {}", layer_idx - 1)
-                            } else {
-                                "None".to_string()
-                            };
-                            eprintln!(
-                                "🌊 [MoeStreaming] Active CPU Layer: {} | {} | {}",
-                                layer_idx, prefetch_status, discard_status
-                            );
-                        }
-
-                        // Advisory hints are issued on-demand via on_routing_decision per token.
-                        // Per-tensor blanket loops across all 128 experts are disabled to prevent page cache thrashing.
-                    }
-                }
-            }
-        }
-    }
-    true
-}
 
 /// 🤫 Mute verbose native logs to prevent TUI visual noise.
 #[allow(dead_code)]
@@ -142,14 +116,9 @@ pub fn print_memory_trace(step: &str) {
     let free_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
     let total_ram_gb = sys.total_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
 
-    let (free_vram_bytes, total_vram_bytes) =
-        crate::dma_streamer::DmaStreamer::get_live_vram_info();
-    let free_vram_gb = free_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-    let total_vram_gb = total_vram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-
     tracing::debug!(
-        "🆘 [MEMORY TRACE: {}] Free RAM: {:.2} GB / {:.2} GB | Free VRAM: {:.2} GB / {:.2} GB",
-        step, free_ram_gb, total_ram_gb, free_vram_gb, total_vram_gb
+        "🆘 [MEMORY TRACE: {}] Free RAM: {:.2} GB / {:.2} GB",
+        step, free_ram_gb, total_ram_gb
     );
 }
 
@@ -159,13 +128,11 @@ impl NativeLlama {
         model_path: &str,
         model_params: LlamaModelParams,
         mut ctx_params: LlamaContextParams,
-        dna: &mut engine_core::metadata::dna::StructuralDNA,
+        dna: &mut StructuralDNA,
         kv_cache_quantization_mode: u8,
         context_shifting_mode: u8,
         speculative_decoding_mode: u8,
-        moe_controller: Option<
-            Arc<std::sync::Mutex<crate::expert_offloading::GgufMoeStreamingController>>,
-        >,
+        moe_controller: Option<Arc<std::sync::Mutex<()>>>,
     ) -> anyhow::Result<Self> {
         // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
         unsafe {
@@ -181,6 +148,29 @@ impl NativeLlama {
         // because #[cfg(feature = "cuda")] is compile-time, not runtime.
 
         let c_path = CString::new(model_path)?;
+
+        let model_size_bytes = std::fs::metadata(model_path).map(|m| m.len()).unwrap_or(0);
+        let model_size_gb = model_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+
+        let mut sys = sysinfo::System::new();
+        sys.refresh_memory();
+        let available_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
+
+        // 🛡️ Fail-Fast Pre-Allocation Gate:
+        // If model is targeting CPU (n_gpu_layers == 0) and exceeds physical available RAM,
+        // abort immediately. Calling llama.cpp will attempt to allocate a CPU_REPACK buffer
+        // triggering Windows pagefile thrashing and 100% SSD lockup.
+        if model_params.n_gpu_layers == 0 && model_size_gb > available_ram_gb {
+            eprintln!(
+                "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
+                 Refusing CPU load to prevent SSD pagefile thrashing and lockup.",
+                model_size_gb, available_ram_gb
+            );
+            return Err(anyhow::anyhow!(
+                "Insufficient RAM to load model on CPU. Model: {:.2} GB, Available RAM: {:.2} GB. SSD thrashing prevented.",
+                model_size_gb, available_ram_gb
+            ));
+        }
 
         print_memory_trace("1. BEFORE MODEL LOAD");
         eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, load_mode = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.load_mode, ctx_params.n_threads, ctx_params.n_threads_batch);
@@ -207,7 +197,7 @@ impl NativeLlama {
         // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models).
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers > 1 {
-            engine_core::dev_info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
+            tracing::info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
             let mut half_params = model_params;
             half_params.n_gpu_layers /= 2;
             model_ptr =
@@ -217,8 +207,18 @@ impl NativeLlama {
         // 🛡️ CERD DOCTRINE GPU-FALLBACK (No Hardcoded Strings)
         // If Model Load fails with n_gpu_layers != 0 (e.g. -1 for all layers, or >0), the CUDA backend
         // likely doesn't support the tensor format (e.g., TQ1_0 or TQ2_0 BitNet models).
-        // We must gracefully fallback to CPU-only.
+        // We must gracefully fallback to CPU-only if RAM allows.
         if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
+            if model_size_gb > available_ram_gb {
+                eprintln!(
+                    "❌ [Native-Llama] Model load failed on GPU and model size ({:.2} GB) exceeds available RAM ({:.2} GB). Refusing CPU fallback to prevent SSD thrashing.",
+                    model_size_gb, available_ram_gb
+                );
+                return Err(anyhow::anyhow!(
+                    "Model failed on GPU and exceeds available RAM ({:.2} GB > {:.2} GB). CPU fallback aborted to prevent SSD thrashing.",
+                    model_size_gb, available_ram_gb
+                ));
+            }
             eprintln!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
@@ -265,20 +265,10 @@ impl NativeLlama {
             return Err(anyhow::anyhow!("Model Load Failure: {}", model_path));
         }
 
-        // 🌊 POST-LOAD MEMORY PURGE & PRE-CONTEXT DMA STREAMER LOCK:
-        // Initialize DMA Streamer immediately post-load when Free VRAM is high (~1.07 GB)
-        // so that the 4-Layer Bulk double-buffer (204.96 MB) is locked before context allocation.
-        if let Some(ref controller) = moe_controller {
-            if let Ok(mut ctrl) = controller.lock() {
-                ctrl.purge_all_experts_except(0);
-                ctrl.init_dma_streamer();
-            }
-        }
-
         let model_dir = std::path::Path::new(model_path)
             .parent()
             .unwrap_or(std::path::Path::new("."));
-        engine_core::dev_info!(
+        tracing::info!(
             "🧬 [Native-Llama] Starting DNA Discovery for: {:?}",
             model_dir
         );
@@ -289,7 +279,7 @@ impl NativeLlama {
         let requested_n_ctx = ctx_params.n_ctx;
 
         if let Err(e) = dna.discover_from_path(model_dir) {
-            engine_core::dev_info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
+            tracing::info!("⚠️ [Native-Llama] DNA Discovery Failed: {}", e);
         }
 
         let (native_start, native_end) = crate::native::templater::extract_thinking_tags_native(
@@ -363,19 +353,18 @@ impl NativeLlama {
             is_pure_recurrent, n_embd, n_head, head_dim, head_dim_supported
         );
 
+        // Flash attention comes from the caller's params (user setting / request); only recurrent models force it off
         if is_pure_recurrent {
             info!("🛡️ [Native-Llama] Pure recurrent architecture (SSM/Mamba/RWKV): Disabling Flash Attention.");
             ctx_params.flash_attn_type = 0;
             speculative_decoding_mode = 0;
             ctx_params.type_k = 1; // GGML_TYPE_F16
             ctx_params.type_v = 1; // GGML_TYPE_F16
-        } else {
-            ctx_params.flash_attn_type = -1; // Auto (probed per layer by llama.cpp)
-            info!(
-                "⚡ [Native-Llama] Flash Attention active (type=1) for head_dim={}.",
-                head_dim
-            );
         }
+        info!(
+            "⚡ [Native-Llama] flash_attn_type={} (-1 auto, 0 off, 1 on), head_dim={}, threads {}/{}",
+            ctx_params.flash_attn_type, head_dim, ctx_params.n_threads, ctx_params.n_threads_batch
+        );
 
         print_memory_trace("4. BEFORE CONTEXT CREATION");
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
@@ -384,7 +373,7 @@ impl NativeLlama {
         // 🛡️ CERD DOCTRINE FA-FALLBACK
         // If Context Init fails with Flash Attention, fallback without Flash Attention (enforcing F16 V-cache as required by llama.cpp)
         if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
-            engine_core::dev_info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Retrying with fallback...");
+            tracing::info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Retrying with fallback...");
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
             fallback_ctx_params.type_v = 1; // Upstream llama.cpp requires F16 V-cache when FA is disabled
@@ -532,7 +521,7 @@ impl NativeLlama {
             let c_prompt = std::ffi::CString::new(prompt.to_string())?;
 
             // 1. Tokenize
-            engine_core::dev_info!(
+            tracing::info!(
                 "🧠 [Native-Llama] Starting tokenization of prompt (len: {})...",
                 prompt.len()
             );
@@ -566,10 +555,10 @@ impl NativeLlama {
             let mut batch = llama_cpp::llama_batch_init(chunk_size, 0, 1);
 
             let mut tokens_processed = 0;
+            let step = self.prompt_chunk_len(tokens.len());
 
             while tokens_processed < tokens.len() {
-                let current_chunk =
-                    std::cmp::min(chunk_size as usize, tokens.len() - tokens_processed);
+                let current_chunk = std::cmp::min(step, tokens.len() - tokens_processed);
 
                 for i in 0..current_chunk {
                     let global_i = tokens_processed + i;
@@ -648,3 +637,29 @@ impl Drop for NativeLlama {
 //    concurrent threads cannot invoke mutating FFI calls on the underlying llama_context simultaneously.
 unsafe impl Send for NativeLlama {}
 unsafe impl Sync for NativeLlama {}
+
+#[cfg(test)]
+mod tests {
+    use super::even_chunk_len;
+
+    #[test]
+    fn prompt_chunks_are_even_and_never_exceed_the_micro_batch() {
+        // the case from the benchmark: 522 tokens, ubatch 512 -> 261 + 261 instead of 512 + 10
+        assert_eq!(even_chunk_len(522, 512), 261);
+        // fits in one micro-batch -> one chunk; exact multiples stay full
+        assert_eq!(even_chunk_len(300, 512), 300);
+        assert_eq!(even_chunk_len(1024, 512), 512);
+        // never 0, even for empty input or a broken max
+        assert_eq!(even_chunk_len(0, 512), 1);
+        assert_eq!(even_chunk_len(10, 0), 1);
+        for n in 1..3000usize {
+            for max in [1usize, 7, 32, 256, 512, 2048] {
+                let len = even_chunk_len(n, max);
+                assert!(len >= 1 && len <= max, "n {} max {} -> {}", n, max, len);
+                let chunks = n.div_ceil(len);
+                assert_eq!(chunks, n.div_ceil(max), "n {} max {}: chunk count must not grow", n, max);
+                assert!(n - (chunks - 1) * len >= len.saturating_sub(chunks), "n {} max {}: uneven tail", n, max);
+            }
+        }
+    }
+}
