@@ -24,9 +24,9 @@ impl AudioConfig {
         let mut max_frames = 3000;
 
         let mut start_of_transcript = 50258;
-        let mut transcribe_token = 50360;
-        let mut translate_token = 50359;
-        let mut no_timestamps_token = 50364;
+        let transcribe_token = 50360;
+        let translate_token = 50359;
+        let no_timestamps_token = 50364;
         let mut end_of_text_token = 50257;
 
         let mut max_target_positions: Option<usize> = None;

@@ -30,7 +30,7 @@ pub struct OnnxEngine {
 impl OnnxEngine {
     pub fn new() -> Result<Self> {
         // Prepend drivers directory to PATH so ONNX Runtime loads CUDA/TensorRT DLLs
-        let drivers_dir = engine_core::environment::EnvironmentManager::current()
+        let drivers_dir = cluaiz_core::EnvironmentManager::current()
             .engine_dir()
             .join("drivers");
         if drivers_dir.exists() {
@@ -61,11 +61,11 @@ impl OnnxEngine {
 
     pub fn acquire_session(
         &self,
-    ) -> Result<Arc<std::sync::Mutex<Session>>, neural_core::interfaces::router_contract::EngineError>
+    ) -> Result<Arc<std::sync::Mutex<Session>>, cluaiz_core::EngineError>
     {
         if self.session_pool.is_empty() {
             return Err(
-                neural_core::interfaces::router_contract::EngineError::Internal(
+                cluaiz_core::EngineError::Internal(
                     "No ONNX sessions available in pool".to_string(),
                 ),
             );
@@ -75,33 +75,32 @@ impl OnnxEngine {
     }
 
     pub fn build_session(&self, path: &std::path::Path) -> Result<Session> {
-        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
         
         let model_size_gb = std::fs::metadata(path)
             .map(|m| (m.len() as f64) / (1024.0 * 1024.0 * 1024.0))
             .unwrap_or(0.5);
 
-        let req = engine_core::hardware::ResourceRequest {
-            engine_type: engine_core::hardware::EngineType::ONNX,
-            inference_mode: engine_core::hardware::InferenceMode::Embedding,
-            model_size_gb,
-            model_path: path.to_path_buf(),
+        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
+        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
+        let use_gpu = if onnx_meta.n_gpu_layers == 0 {
+            false
+        } else if onnx_meta.n_gpu_layers > 0 {
+            true
+        } else {
+            // Auto: use GPU if free VRAM exceeds model size with 20% margin
+            free_vram_gb > (model_size_gb * 1.2)
         };
-
-        let grant = engine_core::hardware::negotiate_resource(&req).ok();
-        let use_gpu = grant
-            .as_ref()
-            .map(|g| g.tier != engine_core::hardware::PlacementTier::CpuOnly)
-            .unwrap_or(onnx_meta.n_gpu_layers != 0);
 
         let mut builder = Session::builder()?;
         let cpu_ep = ort::ep::CPU::default().with_arena_allocator(onnx_meta.enable_cpu_mem_arena).build();
         if use_gpu {
             let mut cuda_ep = ort::ep::CUDA::default();
-            let mem_limit = grant.as_ref()
-                .map(|g| (g.vram_budget_gb * 1024.0 * 1024.0 * 1024.0) as usize)
-                .filter(|&l| l > 0)
-                .unwrap_or(onnx_meta.gpu_mem_limit_bytes);
+            let mem_limit = if onnx_meta.gpu_mem_limit_bytes > 0 {
+                onnx_meta.gpu_mem_limit_bytes
+            } else {
+                (vram_free as usize).saturating_sub(512 * 1024 * 1024)
+            };
             if mem_limit > 0 {
                 cuda_ep = cuda_ep.with_memory_limit(mem_limit);
             }
@@ -182,30 +181,28 @@ impl OnnxEngine {
             }
         }
 
-        let pulse_state = engine_core::hardware::system_performance::get_pulse();
+        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
+        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
         let mut use_gpu = true;
 
-        if let Ok(state) = pulse_state.pulse.read() {
-            let free_vram = state.vram_total_gb - state.vram_used_gb;
-            let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
-                let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                file_size_gb * (pool_size as f64) * 1.2
-            } else {
-                1.0
-            };
+        let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
+            let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
+            file_size_gb * (pool_size as f64) * 1.2
+        } else {
+            1.0
+        };
 
-            if free_vram > required_vram && state.vram_pressure_pct < 90 {
-                tracing::info!(
-                    "📡 [Telemetry] High VRAM available ({:.1}GB free, {:.1}GB req). GPU active.",
-                    free_vram,
-                    required_vram
-                );
-            } else {
-                tracing::info!("📡 [Telemetry] Moderate VRAM pressure ({:.1}GB free, {:.1}GB req). Attempting CUDA GPU allocation.", free_vram, required_vram);
-            }
+        if free_vram_gb > required_vram {
+            tracing::info!(
+                "📡 [Telemetry] VRAM available ({:.1}GB free, {:.1}GB req). GPU active.",
+                free_vram_gb,
+                required_vram
+            );
+        } else {
+            tracing::info!("📡 [Telemetry] Moderate VRAM pressure ({:.1}GB free, {:.1}GB req). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user config.");
@@ -448,30 +445,28 @@ impl OnnxEngine {
         }
         tracing::info!("📦 [ONNX Encoder] Loading encoder from: {}", encoder_path);
 
-        let pulse_state = engine_core::hardware::system_performance::get_pulse();
+        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
+        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
         let mut use_gpu = true;
 
-        if let Ok(state) = pulse_state.pulse.read() {
-            let free_vram = state.vram_total_gb - state.vram_used_gb;
-            let required_vram = if let Ok(meta) = std::fs::metadata(encoder_path) {
-                let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                file_size_gb * 1.5
-            } else {
-                0.5
-            };
+        let required_vram = if let Ok(meta) = std::fs::metadata(encoder_path) {
+            let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
+            file_size_gb * 1.5
+        } else {
+            0.5
+        };
 
-            if free_vram > required_vram && state.vram_pressure_pct < 95 {
-                tracing::info!(
-                    "📡 [Telemetry] Safe VRAM levels for Encoder (Free: {:.1}GB, Req: {:.1}GB).",
-                    free_vram,
-                    required_vram
-                );
-            } else {
-                tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram, required_vram);
-            }
+        if free_vram_gb > required_vram {
+            tracing::info!(
+                "📡 [Telemetry] Safe VRAM levels for Encoder (Free: {:.1}GB, Req: {:.1}GB).",
+                free_vram_gb,
+                required_vram
+            );
+        } else {
+            tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Encoder.");
@@ -585,30 +580,28 @@ impl OnnxEngine {
     pub fn load_vision_model(&mut self, model_path: &str) -> Result<()> {
         tracing::info!("📦 [ONNX Vision] Loading vision model from: {}", model_path);
 
-        let pulse_state = engine_core::hardware::system_performance::get_pulse();
+        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
+        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
         let mut use_gpu = true;
 
-        if let Ok(state) = pulse_state.pulse.read() {
-            let free_vram = state.vram_total_gb - state.vram_used_gb;
-            let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
-                let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-                file_size_gb * 1.5
-            } else {
-                0.5
-            };
+        let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
+            let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
+            file_size_gb * 1.5
+        } else {
+            0.5
+        };
 
-            if free_vram > required_vram && state.vram_pressure_pct < 95 {
-                tracing::info!(
-                    "📡 [Telemetry] Safe VRAM levels for Vision (Free: {:.1}GB, Req: {:.1}GB).",
-                    free_vram,
-                    required_vram
-                );
-            } else {
-                tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Vision (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram, required_vram);
-            }
+        if free_vram_gb > required_vram {
+            tracing::info!(
+                "📡 [Telemetry] Safe VRAM levels for Vision (Free: {:.1}GB, Req: {:.1}GB).",
+                free_vram_gb,
+                required_vram
+            );
+        } else {
+            tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Vision (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Vision.");
@@ -719,7 +712,7 @@ impl OnnxEngine {
     }
 }
 
-use neural_core::interfaces::router_contract::{EmbeddingDriver, EngineError, Modality};
+use cluaiz_core::{EmbeddingDriver, EngineError, Modality};
 
 impl EmbeddingDriver for OnnxEngine {
     fn gen_embedding(&self, text: &str) -> std::result::Result<Vec<f32>, EngineError> {

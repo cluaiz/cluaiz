@@ -294,7 +294,7 @@ impl FamilyAdapter {
 
     /// Read model_registry.json config file to resolve tts_family
     fn detect_from_model_registry(model_dir: &Path) -> Option<TtsFamily> {
-        let reg_path = engine_core::environment::EnvironmentManager::current().config_dir().join("model_registry.json");
+        let reg_path = cluaiz_core::EnvironmentManager::current().model_registry_json_path();
         let content = std::fs::read_to_string(&reg_path).ok()?;
         let val = serde_json::from_str::<serde_json::Value>(&content).ok()?;
         let installed = val.get("installed_models")?.as_object()?;
