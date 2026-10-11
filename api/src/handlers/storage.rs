@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn get_temp_media_dir() -> PathBuf {
-    engine_core::environment::EnvironmentManager::current().local_dir.join("temp_media")
+    cluaiz_core::EnvironmentManager::current().local_dir.join("temp_media")
 }
 
 pub async fn get_temp_media_status() -> Json<Value> {
@@ -52,17 +52,9 @@ pub async fn clean_temp_media() -> Json<Value> {
 }
 
 pub async fn get_storage_settings() -> Json<Value> {
-    let settings_path = engine_core::environment::EnvironmentManager::current().config_dir().join("StorageControl.json");
-    if settings_path.exists() {
-        if let Ok(contents) = fs::read_to_string(&settings_path) {
-            if let Ok(json) = serde_json::from_str::<Value>(&contents) {
-                return Json(json);
-            }
-        }
-    }
-    
+    let settings = cluaiz_core::Settings::current();
     Json(json!({
-        "cleanup_policy": "Immediate"
+        "cleanup_policy": settings.storage_cleanup_policy
     }))
 }
 
@@ -72,13 +64,9 @@ pub struct StorageSettingsPayload {
 }
 
 pub async fn update_storage_settings(axum::Json(payload): axum::Json<StorageSettingsPayload>) -> Json<Value> {
-    let settings_path = engine_core::environment::EnvironmentManager::current().config_dir().join("StorageControl.json");
-    
-    let json_val = json!({
-        "cleanup_policy": payload.cleanup_policy
-    });
-    
-    let _ = fs::write(settings_path, serde_json::to_string_pretty(&json_val).unwrap());
+    let mut current = cluaiz_core::Settings::current();
+    current.storage_cleanup_policy = payload.cleanup_policy;
+    let _ = cluaiz_core::Settings::update(current);
     
     Json(json!({
         "status": "success",

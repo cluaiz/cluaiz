@@ -4,7 +4,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use engines::tools::{SessionToolBinding, ToolsEngine};
+use cluaiz_agents::{SessionToolBinding, ToolsEngine};
 
 /// Request payload to attach, update, or detach tools for a session
 #[derive(Debug, Serialize, Deserialize)]

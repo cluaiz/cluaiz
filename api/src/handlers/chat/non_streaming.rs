@@ -1,17 +1,18 @@
 use axum::response::{IntoResponse, Json};
 use chrono::Utc;
-use dispatcher::EngineResponse;
+use cluaiz_runtime::HostResponse;
 use serde_json::json;
 use std::sync::Arc;
 use crate::state::AppState;
 use super::preflight::PreparedChatContext;
-use super::types::ExternalChatRequest;
+use super::tool_parser;
+use super::types::{ExternalChatRequest, DEFAULT_MAX_TOKENS};
 
 pub async fn execute_non_streaming(
     state: Arc<AppState>,
     request: ExternalChatRequest,
     ctx: PreparedChatContext,
-    mut dispatch_result: EngineResponse,
+    mut dispatch_result: HostResponse,
 ) -> axum::response::Response {
     let keep_alive_val = request.keep_alive;
     let req_session_id = request.session_id.clone();
@@ -25,7 +26,7 @@ pub async fn execute_non_streaming(
         max_iters -= 1;
         
         let turn_content = match dispatch_result {
-            EngineResponse::TokenStream(mut rx) => {
+            HostResponse::TokenStream(mut rx) => {
                 let mut full_text = String::new();
                 while let Some(token) = rx.recv().await {
                     if token.trim() == "[DONE]" {
@@ -35,45 +36,21 @@ pub async fn execute_non_streaming(
                 }
                 full_text
             }
-            EngineResponse::FinalResult(res) => res,
-            EngineResponse::Error(err) => format!("Error: {}", err),
+            HostResponse::Completed(res) => res,
+            HostResponse::Error(err) => format!("Error: {}", err),
         };
 
         // Check if this turn called a tool
-        if turn_content.contains("<tool_call>") && turn_content.contains("</tool_call>") {
-            let call_start_idx = turn_content.rfind("<tool_call>").unwrap_or(0);
-            let clean_token = &turn_content[call_start_idx..];
-            let json_start = clean_token.find("<tool_call>").map(|i| i + 11).unwrap_or(0);
-            let json_end = clean_token.find("</tool_call>").unwrap_or(clean_token.len());
-            let raw_json = clean_token[json_start..json_end].trim();
-
-            let parsed_json: serde_json::Value = serde_json::from_str(raw_json).unwrap_or_else(|_| {
-                json!({ "raw": raw_json })
-            });
-
-            let raw_fn_name = parsed_json.get("name")
-                .or_else(|| parsed_json.get("function"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown");
-
-            let args_val = parsed_json.get("arguments")
-                .or_else(|| parsed_json.get("parameters"))
-                .cloned()
-                .unwrap_or(serde_json::Value::Null);
-
-            let payload_str = if args_val.is_string() {
-                args_val.as_str().unwrap().to_string()
-            } else if !args_val.is_null() {
-                serde_json::to_string(&args_val).unwrap_or_default()
-            } else {
-                serde_json::to_string(&parsed_json).unwrap_or_default()
-            };
+        if let Some(tool_call) = tool_parser::extract_tool_call(&turn_content) {
+            let raw_json = &tool_call.raw_json;
+            let raw_fn_name = tool_call.raw_fn_name.as_str();
+            let payload_str = tool_call.payload_str;
 
             let resolved_target = if let Some(ref sid) = req_session_id {
-                engines::tools::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
-                    .or_else(|| engines::tools::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
+                cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
+                    .or_else(|| cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
             } else {
-                engines::tools::ToolsEngine::resolve_function_target(raw_fn_name, &[])
+                cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
             };
 
             let (comp_type, comp_name, tool_sub_func) = if let Some(target) = resolved_target {
@@ -85,7 +62,7 @@ pub async fn execute_non_streaming(
             let public_call_name = tool_sub_func.as_deref().unwrap_or(&comp_name);
             tracing::info!("🔍 [API/NonStreaming] Tool Execution: {} '{}' with payload: {}", comp_type, public_call_name, payload_str);
             
-            let execution_result = match engines::tools::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
+            let execution_result = match cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
                 Ok(res_str) => {
                     tracing::info!("✅ [API/NonStreaming] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
                     res_str
@@ -97,7 +74,7 @@ pub async fn execute_non_streaming(
             };
 
             let tool_call_xml = format!("<tool_call>\n{}\n</tool_call>", raw_json);
-            let tool_response_xml = engines::tools::ToolsEngine::format_tool_response_raw(
+            let tool_response_xml = cluaiz_agents::ToolsEngine::format_tool_response_raw(
                 public_call_name,
                 &execution_result,
             );
@@ -116,27 +93,16 @@ pub async fn execute_non_streaming(
                     "<user_query>\n{}\n</user_query>\n{}\nReview the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.\n",
                     ctx.initial_user_query, cumulative_history
                 ),
-                "samplers": {
-                    "temp": ctx.effective_temp,
-                    "top_p": ctx.effective_top_p,
-                    "top_k": ctx.effective_top_k,
-                    "min_p": ctx.effective_min_p,
-                    "presence_penalty": ctx.effective_presence,
-                    "frequency_penalty": ctx.effective_frequency,
-                    "repeat_penalty": ctx.effective_repeat,
-                    "seed": ctx.effective_seed
-                },
+                "samplers": ctx.samplers,
                 "think_mode": &ctx.active_think_mode,
                 "reasoning_effort": &ctx.active_reasoning_effort
             });
             let current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
 
             tracing::info!("🔄 [API/NonStreaming] Resuming autonomous multi-turn generation with tool result...");
-            dispatch_result = state.dispatcher.dispatch_stream(
+            dispatch_result = state.host.dispatch_stream(
                 &current_prompt,
-                ctx.skip_brain,
-                ctx.active_model_path.clone(),
-                ctx.validated_max_tokens,
+                ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
             ).await;
             continue;
         } else {
@@ -145,8 +111,8 @@ pub async fn execute_non_streaming(
         }
     }
 
-    // Extract reasoning and clean answer conforming to OpenAI / DeepSeek standard
-    let (reasoning_opt, final_content, reasoning_toks) = engine_core::metadata::dna::StructuralDNA::separate_reasoning(
+    // Extract reasoning and clean answer conforming to standard
+    let (reasoning_opt, final_content, reasoning_toks) = cluaiz_models::StructuralDNA::separate_reasoning(
         &final_raw_text,
         ctx.dyn_think_start.as_deref(),
         ctx.dyn_think_end.as_deref(),
@@ -172,13 +138,6 @@ pub async fn execute_non_streaming(
         }]
     });
 
-    // 🧠 Save to Engine Brain
-    if let Ok(_vec) = state.embedding_dispatcher.dispatch_embedding(&final_content) {
-        if let Some(_id) = req_session_id.clone() {
-            // Future contextual vector indexing
-        }
-    }
-
     if ctx.send_telemetry {
         let total_time_ms = start_time.elapsed().as_millis();
         let comp_tok_est = if !final_content.is_empty() {
@@ -199,19 +158,20 @@ pub async fn execute_non_streaming(
             "completion_tokens_details": {
                 "reasoning_tokens": reasoning_toks
             },
-            "total_time_ms": total_time_ms
+            "total_time_ms": total_time_ms,
+            "model_load_ms": ctx.model_load_ms
         });
         
         // 🌐 Real-Time Context & Memory Telemetry Breakdown
         let mut active_ids = req_session_id.as_deref()
-            .map(engines::tools::ToolsEngine::get_active_tool_ids_for_session)
+            .map(cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session)
             .unwrap_or_default();
         for tid in &ctx.active_tool_ids {
             if !active_ids.contains(tid) {
                 active_ids.push(tid.clone());
             }
         }
-        let ctx_telemetry = engines::tools::ToolsEngine::compute_telemetry(
+        let ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
             req_session_id.as_deref().unwrap_or("ephemeral"),
             &active_ids,
@@ -222,7 +182,7 @@ pub async fn execute_non_streaming(
         );
         usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
         
-        let permission = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let permission = cluaiz_security::PermissionSchema::load();
         if permission.model_header_info {
             let loaded_models = super::types::generate_model_header_info();
             usage_json["model_header_info"] = json!({
@@ -232,6 +192,8 @@ pub async fn execute_non_streaming(
         
         response["usage"] = usage_json;
     }
+    // Engine report (llama.cpp timings + load values) is always sent, like llama-server's "timings"
+    response["engine"] = super::types::engine_report(&state.host).await;
 
     // ⏳ Decrement session tool turns & purge expired ephemeral tools
     if let Some(ref sid) = req_session_id {
@@ -241,7 +203,7 @@ pub async fn execute_non_streaming(
     // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
     if keep_alive_val == Some(0) {
         tracing::info!("♻️ [Memory] Unloading model post-generation (non-streaming) due to keep_alive: 0");
-        let _ = state.dispatcher.unload_model().await;
+        state.host.unload_model().await;
     } else if let Some(mins) = keep_alive_val {
         if mins > 0 {
             let secs = (mins as u64) * 60;
@@ -250,7 +212,7 @@ pub async fn execute_non_streaming(
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
                 tracing::info!("♻️ [Memory] Unloading model post keep_alive timeout ({}m)", mins);
-                let _ = state_timer.dispatcher.unload_model().await;
+                state_timer.host.unload_model().await;
             });
         }
     }

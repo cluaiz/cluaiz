@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::convert::Infallible;
 use futures::stream::Stream;
 use crate::state::AppState;
-use dispatcher::EngineResponse;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct InputSource {
@@ -71,7 +70,7 @@ pub async fn execute_audio(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AudioExecuteRequest>,
 ) -> impl IntoResponse {
-    let registry = engines::models::InstalledStateRegistry::load();
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
 
     let input_type = payload.input_source.source_type.to_lowercase();
     let raw_data = payload.input_source.data.trim();
@@ -136,13 +135,13 @@ pub async fn execute_audio(
             }
         }
         _ => {
-            let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let schema = cluaiz_security::PermissionSchema::load();
             let mut resolved_id = String::new();
 
             // Check active slot in permission.json if available
             if let Some(slot) = schema.active_slots.get("audio_slot") {
                 if let Some(ref active_id) = slot.model_id {
-                    if let Some(entry) = registry.installed_models.get(active_id) {
+                    if let Some(entry) = registry.installed_models.get(active_id.as_str()) {
                         if entry
                             .supported_tasks
                             .iter()
@@ -354,30 +353,12 @@ pub async fn execute_audio(
 
     let should_stream = payload.stream.unwrap_or(true);
 
-    // Attempt execution on primary ONNX file, falling back to secondary candidates if graph loading/rank errors occur
-    let mut execution_res = state
-        .dispatcher
-        .dispatch_stream(&prompt, true, Some(model_path.clone()), None)
-        .await;
+    use cluaiz_runtime::HostResponse;
 
-    if let EngineResponse::Error(ref err_msg) = execution_res {
-        if err_msg.contains("Invalid rank") || err_msg.contains("failed") || err_msg.contains("Graph") || err_msg.contains("No text prompt") {
-            for candidate in onnx_candidates.iter().skip(1) {
-                tracing::warn!("⚠️ [Audio Handler] ONNX execution failed on {:?}. Attempting fallback probe to {:?}", model_path, candidate);
-                let fallback_res = state
-                    .dispatcher
-                    .dispatch_stream(&prompt, true, Some(candidate.clone()), None)
-                    .await;
-                if !matches!(fallback_res, EngineResponse::Error(_)) {
-                    execution_res = fallback_res;
-                    break;
-                }
-            }
-        }
-    }
+    let execution_res = state.host.dispatch_stream(&prompt, 2048).await;
 
     if should_stream {
-        if let EngineResponse::TokenStream(rx) = execution_res {
+        if let HostResponse::TokenStream(rx) = execution_res {
             let stream_start = std::time::Instant::now();
             let stream = async_stream::stream! {
                 let mut rx = rx;
@@ -386,65 +367,45 @@ pub async fn execute_audio(
                     if first_token_time.is_none() && !chunk.is_empty() {
                         first_token_time = Some(stream_start.elapsed().as_secs_f64() * 1000.0);
                     }
-                    if chunk.contains("\n[DONE]\n") {
-                        let text_before = chunk.replace("\n[DONE]\n", "");
-                        if !text_before.is_empty() {
-                            let data = json!({ "token": text_before, "status": "chunk" }).to_string();
-                            yield Ok::<Event, Infallible>(Event::default().data(data));
-                        }
-                        let total_elapsed = stream_start.elapsed();
-                        let ttft = first_token_time.unwrap_or_else(|| total_elapsed.as_secs_f64() * 1000.0);
-                        let done_data = json!({
-                            "token": "",
-                            "status": "done",
-                            "metrics": {
-                                "ttft_ms": (ttft * 10.0).round() / 10.0,
-                                "total_execution_time_ms": (total_elapsed.as_secs_f64() * 1000.0 * 10.0).round() / 10.0,
-                                "total_execution_time_sec": format!("{:.2}s", total_elapsed.as_secs_f64())
-                            }
-                        }).to_string();
-                        yield Ok::<Event, Infallible>(Event::default().data(done_data));
-                        break;
-                    }
                     if !chunk.is_empty() {
                         let data = json!({ "token": chunk, "status": "chunk" }).to_string();
                         yield Ok::<Event, Infallible>(Event::default().data(data));
                     }
                 }
+                let total_elapsed = stream_start.elapsed();
+                let ttft = first_token_time.unwrap_or_else(|| total_elapsed.as_secs_f64() * 1000.0);
+                let done_data = json!({
+                    "token": "",
+                    "status": "done",
+                    "metrics": {
+                        "ttft_ms": (ttft * 10.0).round() / 10.0,
+                        "total_execution_time_ms": (total_elapsed.as_secs_f64() * 1000.0 * 10.0).round() / 10.0,
+                        "total_execution_time_sec": format!("{:.2}s", total_elapsed.as_secs_f64())
+                    }
+                }).to_string();
+                yield Ok::<Event, Infallible>(Event::default().data(done_data));
             };
             return Sse::new(stream).into_response();
         }
     }
 
     let (execution_error, output_text, extracted_segments): (Option<String>, String, Vec<AudioSegment>) = match execution_res {
-        EngineResponse::FinalResult(txt) if !txt.trim().is_empty() && !txt.starts_with("Error:") => (None, txt, vec![]),
-        EngineResponse::TokenStream(mut rx) => {
+        HostResponse::Completed(txt) => (None, txt, vec![]),
+        HostResponse::TokenStream(mut rx) => {
             let mut collected = String::with_capacity(256);
             while let Some(chunk) = rx.recv().await {
-                if chunk.contains("\n[DONE]\n") {
-                    let text_before = chunk.replace("\n[DONE]\n", "");
-                    collected.push_str(&text_before);
-                    break;
-                }
                 collected.push_str(&chunk);
             }
             let cleaned = collected.trim().to_string();
-            if cleaned.starts_with("Error:") {
-                (Some(cleaned), String::new(), vec![])
-            } else if !cleaned.is_empty() {
-                (None, cleaned, vec![])
-            } else {
-                (Some("Error: Audio Kernel produced empty output.".to_string()), String::new(), vec![])
-            }
+            (None, cleaned, vec![])
         }
-        EngineResponse::Error(err_msg) => (Some(err_msg), String::new(), vec![]),
-        _ => (Some("Execution failed to produce output.".to_string()), String::new(), vec![]),
+        HostResponse::Error(err_msg) => (Some(err_msg), String::new(), vec![]),
     };
 
     let keep_alive_val = payload.keep_alive;
     if keep_alive_val == Some(0) {
         tracing::info!("♻️ [Memory] Unloading audio model post-execution due to keep_alive: 0");
-        let _ = state.dispatcher.unload_model().await;
+        let _ = state.host.unload_model().await;
     } else if let Some(mins) = keep_alive_val {
         if mins > 0 {
             let secs = (mins as u64) * 60;
@@ -453,7 +414,7 @@ pub async fn execute_audio(
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
                 tracing::info!("♻️ [Memory] Unloading audio model post keep_alive timeout ({}m)", mins);
-                let _ = state_clone.dispatcher.unload_model().await;
+                let _ = state_clone.host.unload_model().await;
             });
         }
     }
@@ -506,125 +467,6 @@ pub async fn execute_audio(
         StatusCode::OK,
         Json(serde_json::to_value(&response).unwrap()),
     ).into_response()
-}
-
-fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
-    const CHARSET: &[u8; 256] = &{
-        let mut map = [255u8; 256];
-        let alphabet = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let mut i = 0;
-        while i < 64 {
-            map[alphabet[i] as usize] = i as u8;
-            i += 1;
-        }
-        map
-    };
-
-    let clean_str: String = input.chars().filter(|c| !c.is_whitespace()).collect();
-    let bytes = clean_str.as_bytes();
-    let mut buf = Vec::with_capacity((bytes.len() * 3) / 4);
-
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'=' {
-            break;
-        }
-        let b0 = CHARSET[bytes[i] as usize];
-        let b1 = if i + 1 < bytes.len() && bytes[i + 1] != b'=' { CHARSET[bytes[i + 1] as usize] } else { 0 };
-        let b2 = if i + 2 < bytes.len() && bytes[i + 2] != b'=' { CHARSET[bytes[i + 2] as usize] } else { 0 };
-        let b3 = if i + 3 < bytes.len() && bytes[i + 3] != b'=' { CHARSET[bytes[i + 3] as usize] } else { 0 };
-
-        if b0 == 255 || b1 == 255 {
-            break;
-        }
-
-        let triple = ((b0 as u32) << 18) | ((b1 as u32) << 12) | ((b2 as u32) << 6) | (b3 as u32);
-        buf.push(((triple >> 16) & 255) as u8);
-        if i + 2 < bytes.len() && bytes[i + 2] != b'=' {
-            buf.push(((triple >> 8) & 255) as u8);
-        }
-        if i + 3 < bytes.len() && bytes[i + 3] != b'=' {
-            buf.push((triple & 255) as u8);
-        }
-
-        i += 4;
-    }
-
-    Ok(buf)
-}
-
-
-
-
-fn base64_encode(bytes: &[u8]) -> String {
-    const CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut buf = String::with_capacity((bytes.len() + 2) / 3 * 4);
-    for chunk in bytes.chunks(3) {
-        let b0 = chunk[0] as u32;
-        let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
-        let b2 = if chunk.len() > 2 { chunk[2] as u32 } else { 0 };
-        let triple = (b0 << 16) | (b1 << 8) | b2;
-        buf.push(CHARSET[((triple >> 18) & 63) as usize] as char);
-        buf.push(CHARSET[((triple >> 12) & 63) as usize] as char);
-        if chunk.len() > 1 {
-            buf.push(CHARSET[((triple >> 6) & 63) as usize] as char);
-        } else {
-            buf.push('=');
-        }
-        if chunk.len() > 2 {
-            buf.push(CHARSET[(triple & 63) as usize] as char);
-        } else {
-            buf.push('=');
-        }
-    }
-    buf
-}
-
-fn generate_tts_audio_base64(text: &str) -> String {
-    let sample_rate = 22050u32;
-    let duration_secs = ((text.len() as f32) * 0.12).max(1.0).min(10.0);
-    let num_samples = (sample_rate as f32 * duration_secs) as u32;
-    let num_channels = 1u16;
-    let bits_per_sample = 16u16;
-    let byte_rate = sample_rate * (num_channels as u32) * (bits_per_sample as u32 / 8);
-    let block_align = num_channels * (bits_per_sample / 8);
-    let data_size = num_samples * (block_align as u32);
-    let chunk_size = 36 + data_size;
-
-    let mut wav = Vec::with_capacity((44 + data_size) as usize);
-
-    // RIFF header
-    wav.extend_from_slice(b"RIFF");
-    wav.extend_from_slice(&chunk_size.to_le_bytes());
-    wav.extend_from_slice(b"WAVE");
-
-    // fmt subchunk
-    wav.extend_from_slice(b"fmt ");
-    wav.extend_from_slice(&16u32.to_le_bytes());
-    wav.extend_from_slice(&1u16.to_le_bytes());
-    wav.extend_from_slice(&num_channels.to_le_bytes());
-    wav.extend_from_slice(&sample_rate.to_le_bytes());
-    wav.extend_from_slice(&byte_rate.to_le_bytes());
-    wav.extend_from_slice(&block_align.to_le_bytes());
-    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
-
-    // data subchunk
-    wav.extend_from_slice(b"data");
-    wav.extend_from_slice(&data_size.to_le_bytes());
-
-    // Synthesize speech waveform audio samples
-    let freq = 220.0;
-    for i in 0..num_samples {
-        let t = i as f32 / sample_rate as f32;
-        let sample_val = (2.0 * std::f32::consts::PI * freq * t).sin()
-            + 0.5 * (2.0 * std::f32::consts::PI * (freq * 1.5) * t).sin();
-        let envelope = (t / duration_secs * std::f32::consts::PI).sin();
-        let pcm_val = (sample_val * envelope * 10000.0) as i16;
-        wav.extend_from_slice(&pcm_val.to_le_bytes());
-    }
-
-    let encoded = base64_encode(&wav);
-    format!("data:audio/wav;base64,{}", encoded)
 }
 
 // ─── POST /v1/audio/speech ──────────────────────────────────────────

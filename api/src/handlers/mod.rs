@@ -1,20 +1,22 @@
-pub mod chat;
-pub mod system;
-pub mod models;
-pub mod skills;
-pub mod ingest;
-pub mod permission;
-pub mod ps;
-pub mod setup;
-pub mod optimization;
-pub mod benchmark;
-pub mod plugins;
-pub mod mcp;
-pub mod cel_handler;
-pub mod components;
-pub mod embeddings;
-pub mod storage;
+//! 📦 API Handlers Subsystem (`api/src/handlers/mod.rs`)
+//! Modular domain controllers for Cluaiz API gateway.
+
 pub mod audio;
-pub mod session_tools;
+pub mod chat;
+pub mod components;
+pub mod control;
+pub mod embeddings;
 pub mod fs;
 pub mod fs_jail;
+pub mod ingest;
+pub mod mcp;
+pub mod models;
+pub mod optimization;
+pub mod permission;
+pub mod plugins;
+pub mod ps;
+pub mod session_tools;
+pub mod setup;
+pub mod skills;
+pub mod storage;
+pub mod system;

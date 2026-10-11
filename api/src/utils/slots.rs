@@ -1,8 +1,7 @@
 use std::path::PathBuf;
-use axum::{response::Response, http::StatusCode};
-use serde_json::json;
-use engines::neural_foundry::security::permission_schema::PermissionSchema;
-use engine_core::environment::EnvironmentManager;
+use axum::response::Response;
+use cluaiz_security::PermissionSchema;
+use cluaiz_core::EnvironmentManager;
 
 /// Permissive Pre-Flight Guidance: Log informational capabilities and allow execution to proceed to engine
 pub fn require_capability(schema: &PermissionSchema, slot_name: &str, required_tasks: &[&str]) -> Result<(), Response> {
@@ -34,7 +33,6 @@ pub fn resolve_model_path(schema: &PermissionSchema, slot_name: &str) -> Option<
                     for entry in entries.flatten() {
                         let p = entry.path();
                         if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                            // Support multiple formats as per our MoE architecture
                             if ext == "gguf" || ext == "onnx" || ext == "safetensors" {
                                 return Some(p);
                             }
@@ -51,7 +49,7 @@ pub fn resolve_model_path(schema: &PermissionSchema, slot_name: &str) -> Option<
 /// Dynamically resolve the absolute PathBuf of a specific model by its ID
 pub fn resolve_model_by_id(model_id: &str) -> Option<PathBuf> {
     // 1. Primary: Check InstalledStateRegistry first!
-    let installed_reg = engines::models::InstalledStateRegistry::load();
+    let installed_reg = cluaiz_models::registry::InstalledStateRegistry::load();
     let clean_target = model_id.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
 
     for (id, entry) in &installed_reg.installed_models {
@@ -89,7 +87,6 @@ pub fn resolve_model_by_id(model_id: &str) -> Option<PathBuf> {
                     for entry in entries.flatten() {
                         let p = entry.path();
                         if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                            // Support multiple formats as per our MoE architecture
                             if ext == "gguf" || ext == "onnx" || ext == "safetensors" {
                                 return Some(p);
                             }

@@ -2,21 +2,15 @@ use axum::{Json, extract::State};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
-use engine_core::hardware::governor::HardwareGovernor;
-use engine_core::hardware::schema::optimization::OptimizationControl;
+use cluaiz_core::settings::{OptimizationControl, Settings};
 
 // ─── GET /v1/optimization/status ──────────────────────────────────────────
 pub async fn status(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    match HardwareGovernor::load_optimization_settings() {
-        Ok(settings) => Json(json!({
-            "status": "success",
-            "optimization": settings
-        })),
-        Err(e) => Json(json!({
-            "status": "error",
-            "message": format!("Failed to load optimization settings: {}", e)
-        })),
-    }
+    let settings = Settings::current();
+    Json(json!({
+        "status": "success",
+        "optimization": settings.optimization
+    }))
 }
 
 // ─── POST /v1/optimization/update ─────────────────────────────────────────
@@ -24,7 +18,9 @@ pub async fn update(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<OptimizationControl>,
 ) -> Json<Value> {
-    match HardwareGovernor::save_optimization_settings(&payload) {
+    let mut current = Settings::current();
+    current.optimization = payload;
+    match Settings::update(current) {
         Ok(_) => Json(json!({
             "status": "success",
             "message": "Optimization settings saved successfully."

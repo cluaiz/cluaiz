@@ -2,7 +2,7 @@ use axum::{Json, extract::State};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
-use engines::neural_foundry::security::permission_schema::PermissionSchema;
+use cluaiz_security::permission_schema::PermissionSchema;
 
 fn get_local_ip() -> Option<String> {
     use std::net::UdpSocket;
@@ -22,11 +22,9 @@ fn get_local_ip() -> Option<String> {
 // ─── GET /v1/system/permission ───────────────────────────────────────
 pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let schema = PermissionSchema::load();
-    let models_root = engine_core::environment::EnvironmentManager::current()
-        .ensure_models_dir()
-        .unwrap_or_else(|_| engine_core::environment::EnvironmentManager::current().models_dir());
+    let _models_root = cluaiz_core::EnvironmentManager::current().models_dir();
 
-    let registry = engines::models::InstalledStateRegistry::load();
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
 
     let mut available_chat_models: Vec<String> = Vec::new();
     let mut available_vector_models: Vec<String> = Vec::new();
@@ -72,7 +70,7 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
     let mut changed = false;
     let mut active_slots = schema.active_slots.clone();
     
-    for (slot_name, slot_config) in active_slots.iter_mut() {
+    for (_slot_name, slot_config) in active_slots.iter_mut() {
         if let Some(ref model_id) = slot_config.model_id {
             if !registry.installed_models.contains_key(model_id) {
                 // Model was manually deleted or unregistered. Reset slot safely.
@@ -116,10 +114,10 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
 
 // ─── POST /v1/system/permission ──────────────────────────────────────
 pub async fn update_permission(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Json<Value> {
-    let mut schema = PermissionSchema::load();
+    let mut schema = state.permission_schema.read().await.clone();
     schema.merge_patch(&payload);
     if let Err(e) = schema.save() {
         tracing::error!("❌ Failed to save permission schema to disk: {:?}", e);
@@ -129,6 +127,7 @@ pub async fn update_permission(
             "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
         }));
     }
+    *state.permission_schema.write().await = schema.clone();
 
     Json(json!({
         "status": "success",
@@ -139,9 +138,9 @@ pub async fn update_permission(
 
 // ─── POST /v1/system/auth/token/generate ─────────────────────────────
 pub async fn generate_auth_token(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> (axum::http::StatusCode, Json<Value>) {
-    let mut schema = PermissionSchema::load();
+    let mut schema = state.permission_schema.read().await.clone();
     if schema.api_auth.tokens.len() >= 5 {
         return (
             axum::http::StatusCode::BAD_REQUEST,
@@ -152,10 +151,11 @@ pub async fn generate_auth_token(
             })),
         );
     }
-    let new_token = engines::neural_foundry::security::permission_schema::ApiAuth::generate_token();
+    let new_token = cluaiz_security::permission_schema::ApiAuth::generate_token();
     schema.api_auth.tokens.push(new_token.clone());
     schema.api_auth.sanitize_tokens();
     let _ = schema.save();
+    *state.permission_schema.write().await = schema.clone();
 
     (
         axum::http::StatusCode::OK,
@@ -176,10 +176,10 @@ pub struct RevokeTokenRequest {
 
 // ─── POST /v1/system/auth/token/revoke ───────────────────────────────
 pub async fn revoke_auth_token(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<RevokeTokenRequest>,
 ) -> Json<Value> {
-    let mut schema = PermissionSchema::load();
+    let mut schema = state.permission_schema.read().await.clone();
     let target = if let Some(idx) = payload.index {
         idx.to_string()
     } else if let Some(ref tok) = payload.token {
@@ -200,6 +200,7 @@ pub async fn revoke_auth_token(
                 tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
             }
             let _ = schema.save();
+            *state.permission_schema.write().await = schema.clone();
 
             Json(json!({
                 "status": "success",

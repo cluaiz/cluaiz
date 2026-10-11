@@ -4,8 +4,8 @@ use crate::state::AppState;
 use serde_json::Value;
 
 pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let env = engine_core::environment::EnvironmentManager::current();
-    let registry = engines::tools::ToolsEngine::registry().unwrap_or_default();
+    let env = cluaiz_core::EnvironmentManager::current();
+    let registry = cluaiz_agents::ToolsEngine::registry().unwrap_or_default();
     let mut results = serde_json::Map::new();
     let mut rich_map = serde_json::Map::new();
     
@@ -70,7 +70,8 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
 
         // 2. Also merge any tools registered in ToolsRegistry for this category
         for (id, tool) in &registry.installed_tools {
-            if tool.category == comp_type && !names.iter().any(|v| v.as_str() == Some(id.as_str())) {
+            let id_str: &str = id.as_str();
+            if tool.category.as_str() == comp_type && !names.iter().any(|v: &serde_json::Value| v.as_str() == Some(id_str)) {
                 names.push(serde_json::Value::String(id.clone()));
                 let tokens = (tool.description.len() / 4).max(4);
                 let icon_svg = get_icon_svg(&std::path::PathBuf::from(&tool.local_dir));
@@ -109,7 +110,7 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     let mut current_values = serde_json::Map::new();
 
     // Query tool directly from ToolsRegistry (tools_registry.json)
-    if let Ok(Some(tool)) = engines::tools::ToolsEngine::get_tool(&comp_id) {
+    if let Ok(Some(tool)) = cluaiz_agents::ToolsEngine::get_tool(&comp_id) {
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
         current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("inherit")));
         current_values.insert("execution_mode".to_string(), serde_json::to_value(&tool.execution_mode).unwrap_or(serde_json::json!("auto")));
@@ -142,7 +143,7 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
 
     // 1. Sync enabled state directly to ToolsRegistry (tools_registry.json)
     if let Some(enabled_val) = settings_map.get("enabled").and_then(|v| v.as_bool()) {
-        if let Err(e) = engines::tools::ToolsEngine::set_tool_enabled(comp_id, enabled_val) {
+        if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_enabled(comp_id, enabled_val) {
             tracing::error!("Failed to set tool enabled for '{}': {}", comp_id, e);
             return Json(serde_json::json!({
                 "status": "error",
@@ -153,8 +154,8 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
 
     // 2. Sync security_mode directly to ToolsRegistry (tools_registry.json)
     if let Some(mode_str) = settings_map.get("security_mode").and_then(|v| v.as_str()) {
-        if let Some(mode) = engines::tools::SecurityMode::from_raw(mode_str) {
-            if let Err(e) = engines::tools::ToolsEngine::set_tool_security_mode(comp_id, mode) {
+        if let Some(mode) = cluaiz_agents::SecurityMode::from_raw(mode_str) {
+            if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_security_mode(comp_id, mode) {
                 tracing::error!("Failed to set security_mode for '{}': {}", comp_id, e);
                 return Json(serde_json::json!({
                     "status": "error",
@@ -171,8 +172,8 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
 
     // 3. Sync execution_mode directly to ToolsRegistry (tools_registry.json)
     if let Some(exec_str) = settings_map.get("execution_mode").and_then(|v| v.as_str()) {
-        if let Some(exec_mode) = engines::tools::ExecutionMode::from_raw(exec_str) {
-            if let Err(e) = engines::tools::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode) {
+        if let Some(exec_mode) = cluaiz_agents::ExecutionMode::from_raw(exec_str) {
+            if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode) {
                 tracing::error!("Failed to set execution_mode for '{}': {}", comp_id, e);
                 return Json(serde_json::json!({
                     "status": "error",
@@ -205,7 +206,7 @@ pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Jso
         }));
     }
 
-    let env = engine_core::environment::EnvironmentManager::current();
+    let env = cluaiz_core::EnvironmentManager::current();
     let base_dir = env.global_dir.join(format!("{}s", comp_type));
     let comp_dir = base_dir.join(comp_id);
     let file_path = if comp_type == "skill" {
@@ -239,7 +240,7 @@ pub struct GetFileQuery {
 }
 
 pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
-    let env = engine_core::environment::EnvironmentManager::current();
+    let env = cluaiz_core::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
     let target_dir = match comp_type {
         "skill" => env.skills_dir().join(&query.component_id),
@@ -317,15 +318,15 @@ pub async fn open_component_in_editor(State(_state): State<Arc<AppState>>, Query
 }
 
 async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuery) -> Json<Value> {
-    let env = engine_core::environment::EnvironmentManager::current();
+    let env = cluaiz_core::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
     
-    let file_path = if comp_type == "model" {
+    let file_path: Option<std::path::PathBuf> = if comp_type == "model" {
         // Resolve model from models directory across categories (chat, embedding, vision, audio)
         let models_base = env.models_dir();
         let relative = query.file_path.as_deref().unwrap_or("");
         
-        let mut found_path = None;
+        let mut found_path: Option<std::path::PathBuf> = None;
         let categories = ["embedding", "chat", "vision", "audio", "image_gen"];
         for cat in &categories {
             let candidate = models_base.join(cat).join(&query.component_id).join(relative);
@@ -357,7 +358,7 @@ async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuer
         }
     };
 
-    let target_file = match file_path {
+    let target_file: std::path::PathBuf = match file_path {
         Some(p) if p.exists() => p,
         _ => return Json(serde_json::json!({"status": "error", "message": "File not found"})),
     };
@@ -375,13 +376,18 @@ pub struct ClearCachePayload {
 
 pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> Json<Value> {
     let comp_type = payload.component_type.trim_end_matches('s');
-    match engines::tools::ToolsInstaller::clear_component_cache(
+    let target = if payload.component_id.is_empty() || payload.all {
+        None
+    } else {
+        Some(payload.component_id)
+    };
+    match cluaiz_agents::installer::ToolsInstaller::clear_component_cache(
         comp_type,
-        Some(payload.component_id.clone()),
+        target,
         payload.all,
-        true
+        payload.all,
     ) {
-        Ok(wiped) => Json(serde_json::json!({"status": "success", "message": format!("Successfully wiped {} caches.", wiped)})),
-        Err(e) => Json(serde_json::json!({"status": "error", "message": format!("Failed to clear cache: {}", e)}))
+        Ok(count) => Json(serde_json::json!({"status": "success", "message": format!("Cleared {} items from cache", count)})),
+        Err(e) => Json(serde_json::json!({"status": "error", "message": e.to_string()})),
     }
 }

@@ -1,57 +1,50 @@
+//! 📊 Process & Active Model Telemetry Handler (`api/src/handlers/ps.rs`)
+//! Modern single-source process tracking using cluaiz-hw and active execution plans.
+
 use axum::{
     extract::State,
-    http::{HeaderMap, header},
+    http::{header, HeaderMap},
     response::{IntoResponse, Response, Sse, sse::Event},
     Json,
 };
 use serde_json::{json, Value};
 use std::{convert::Infallible, sync::Arc, time::Duration};
 use crate::AppState;
-use engine_core::hardware::governor::HardwareGovernor;
 
-fn gather_ps_data() -> Value {
-    let active_processes = HardwareGovernor::get_active_allocations();
-    let roster = engines::CoreRoster::load_roster();
+fn gather_ps_data(plan_opt: Option<cluaiz_plan::ExecutionPlan>) -> Value {
     let mut processes = Vec::new();
-    for info in active_processes {
-        let original_ctx = roster.iter()
-            .find(|m| m.id == info.model_id || m.huggingface_filename == info.model_id || m.id.contains(&info.model_id))
-            .map(|m| m.context_window.clone())
-            .unwrap_or_else(|| "Unknown".to_string());
-
+    if let Some(plan) = plan_opt {
         processes.push(json!({
-            "pid": info.pid.to_string(),
-            "model_id": info.model_id,
-            "vram_gb": info.vram_gb,
-            "context_size": info.context_size,
-            "original_context": original_ctx,
-            "engine": info.engine
+            "pid": std::process::id().to_string(),
+            "model_id": plan.model_id,
+            "vram_gb": plan.vram_budget_gb,
+            "context_size": plan.context_window,
+            "tier": format!("{:?}", plan.selected_tier),
+            "n_gpu_layers": plan.n_gpu_layers,
+            "engine": "llama-engine (static rlib)"
         }));
     }
 
-    let mut pulse_json = json!({});
-    if let Ok(lock) = engine_core::hardware::telemetry::get_pulse().pulse.read() {
-        pulse_json = serde_json::to_value(&*lock).unwrap_or(json!({}));
-    }
-
-    // Include full hardware snapshot alongside processes
+    let hw = cluaiz_hw::HardwareProber::current();
     json!({
         "status": "success",
         "active_processes": processes,
-        "hardware_snapshot": pulse_json
+        "hardware_snapshot": hw
     })
 }
 
-// ─── GET /v1/system/ps ────────────────────────────────────────────────
+/// GET /v1/system/ps
 pub async fn get_processes(
     headers: HeaderMap,
-    State(state): State<Arc<AppState>>
+    State(state): State<Arc<AppState>>,
 ) -> Response {
+    let plan = state.host.current_plan.lock().await.clone();
+
     if let Some(accept) = headers.get(header::ACCEPT) {
         if accept == "text/event-stream" {
             let stream = async_stream::stream! {
                 loop {
-                    let data = gather_ps_data();
+                    let data = gather_ps_data(plan.clone());
                     yield Ok::<_, Infallible>(Event::default().json_data(data).unwrap());
                     tokio::time::sleep(Duration::from_secs(2)).await;
                 }
@@ -59,7 +52,6 @@ pub async fn get_processes(
             return Sse::new(stream).into_response();
         }
     }
-    
-    // FFI & standard fallback: Static JSON response
-    Json(gather_ps_data()).into_response()
+
+    Json(gather_ps_data(plan)).into_response()
 }
