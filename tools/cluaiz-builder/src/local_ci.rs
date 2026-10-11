@@ -2,18 +2,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use serde_yaml::Value;
-use engine_core::HardwareGovernor;
+use cluaiz_hw::HardwareProber;
 
 pub fn execute_local_ci_for_driver(driver: &str, profile: &str) -> Vec<String> {
     println!("🔍 [Local-CI] Auditing system_info.json & GitHub Action Workflows for [{}] driver...", driver);
     
-    let control = match HardwareGovernor::load_system_info() {
-        Ok(c) => c,
-        Err(_) => {
-            println!("⚠️ [Local-CI] Failed to load system_info.json. Skipping local CI workflow step.");
-            return Vec::new();
-        }
-    };
+    let hw = HardwareProber::current();
 
     // 1. Locate workflow YAML file dynamically: .github/workflows/cluaize-<driver>-driver.yml
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string()));
@@ -58,7 +52,7 @@ pub fn execute_local_ci_for_driver(driver: &str, profile: &str) -> Vec<String> {
     };
 
     let mut detected_backend = "cpu";
-    for gpu in &control.silicon_truth.accelerators.gpus {
+    for gpu in &hw.gpus {
         let vendor = gpu.vendor.to_uppercase();
         if vendor.contains("NVIDIA") {
             detected_backend = "cuda";
