@@ -346,7 +346,6 @@ impl NativeLlama {
         };
         // Upstream llama.cpp CUDA kernels support head dimensions 64, 128, and 256 (e.g. Gemma 2/4).
         let head_dim_supported = head_dim == 64 || head_dim == 128 || head_dim == 256;
-        let is_non_standard_attention = is_pure_recurrent || !head_dim_supported;
 
         info!(
             "🔍 [Native-Llama] Model Header Truth: is_pure_recurrent={}, n_embd={}, n_head={}, head_dim={}, fa_supported={}",
@@ -385,7 +384,7 @@ impl NativeLlama {
             return Err(anyhow::anyhow!("Context Init Failure"));
         }
 
-        Ok(Self {
+        let mut llama = Self {
             model_ptr,
             ctx_ptr,
             interrupt_signal: Arc::new(AtomicBool::new(false)),
@@ -399,7 +398,38 @@ impl NativeLlama {
             context_shifting_mode,
             speculative_decoding_mode,
             moe_controller,
-        })
+        };
+        llama.warmup();
+        Ok(llama)
+    }
+
+    /// llama.cpp's own load-time warmup (`common_init_from_params`): one decode of BOS + EOS, then the
+    /// memory is cleared. Weights get paged in and GPU kernels initialised during load instead of on
+    /// the user's first message. A failure only logs: the model itself is loaded and usable.
+    fn warmup(&mut self) {
+        unsafe {
+            // Encoder-decoder models need an encode pass first (llama.cpp does that); not used for chat here
+            if llama_cpp::llama_model_has_encoder(self.model_ptr) {
+                return;
+            }
+            let vocab = llama_cpp::llama_model_get_vocab(self.model_ptr);
+            // LLAMA_TOKEN_NULL (-1) = the model has no such token
+            let mut tokens: Vec<i32> = [llama_cpp::llama_vocab_bos(vocab), llama_cpp::llama_vocab_eos(vocab)]
+                .into_iter()
+                .filter(|t| *t >= 0)
+                .collect();
+            if tokens.is_empty() {
+                tokens.push(0);
+            }
+            tokens.truncate(self.n_batch.max(1) as usize);
+            let batch = llama_cpp::llama_batch_get_one(tokens.as_mut_ptr(), tokens.len() as i32);
+            if llama_cpp::llama_decode(self.ctx_ptr, batch) != 0 {
+                warn!("⚠️ [Native-Llama] Warmup decode failed; the first message will pay the warmup cost");
+            }
+            llama_cpp::llama_memory_clear(llama_cpp::llama_get_memory(self.ctx_ptr), true);
+            llama_cpp::llama_synchronize(self.ctx_ptr);
+            llama_cpp::llama_perf_context_reset(self.ctx_ptr);
+        }
     }
 
     pub fn resize_context(&mut self, mut ctx_params: LlamaContextParams) -> anyhow::Result<()> {
