@@ -69,3 +69,9 @@ desktop.ini
 .cluaiz/
 /models/
 deps_tool/
+
+# --- Diagnostic Logs & Scratch ---
+new-folder-tree-now.md
+old-folder-tree
+test/*.txt
+x/
