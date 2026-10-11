@@ -67,7 +67,8 @@ pub async fn execute_streaming_loop(
         let mut think_filter = cluaiz_models::StreamingReasoningFilter::new(
             ctx.dyn_think_start.clone(),
             ctx.dyn_think_end.clone(),
-            ctx.prompt_starts_in_think,
+            // The engine sends the start tag itself when the rendered prompt opened the block
+            false,
             ctx.active_think_mode == "off",
         );
         let mut first_ttft_ms = 0;
@@ -536,7 +537,7 @@ pub async fn execute_streaming_loop(
             if tool_executed {
                 tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
                 // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
-                think_filter.reset_turn(ctx.prompt_starts_in_think);
+                think_filter.reset_turn(false);
                 let new_dispatch = state_clone.host.dispatch_stream(
                     &current_prompt,
                     ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
