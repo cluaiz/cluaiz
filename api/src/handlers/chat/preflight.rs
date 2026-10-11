@@ -15,7 +15,6 @@ pub struct PreparedChatContext {
     pub chat_tmpl: Option<String>,
     pub dyn_think_start: Option<String>,
     pub dyn_think_end: Option<String>,
-    pub prompt_starts_in_think: bool,
     pub active_think_mode: String,
     pub active_reasoning_effort: String,
     pub validated_max_tokens: Option<usize>,
@@ -446,35 +445,6 @@ impl PreparedChatContext {
 
         let json_prompt = serde_json::to_string(&payload_envelope).unwrap_or_else(|_| "{}".to_string());
 
-        let prompt_starts_in_think = if active_think_mode == "off" {
-            false
-        } else if let (Some(ref st), Some(ref et)) = (&dyn_think_start, &dyn_think_end) {
-            if st.is_empty() || et.is_empty() {
-                false
-            } else if let Some(ref tmpl) = chat_tmpl {
-                if let Some(idx) = tmpl.rfind("add_generation_prompt") {
-                    if tmpl.is_char_boundary(idx) {
-                        let gen_part = &tmpl[idx..];
-                        let last_st = gen_part.rfind(st);
-                        let last_et = gen_part.rfind(et);
-                        match (last_st, last_et) {
-                            (Some(s_idx), Some(e_idx)) => s_idx > e_idx,
-                            (Some(_), None) => true,
-                            _ => false,
-                        }
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-
         // Where the time before the first token goes (model load is reported on its own)
         tracing::info!(
             "⏱️ [Preflight] {} ms total | model load {} ms | registry + template + tags {} ms | skills + tools {} ms | rest {} ms",
@@ -495,7 +465,6 @@ impl PreparedChatContext {
             chat_tmpl,
             dyn_think_start,
             dyn_think_end,
-            prompt_starts_in_think,
             active_think_mode,
             active_reasoning_effort,
             validated_max_tokens,

@@ -120,12 +120,9 @@ pub fn stream_tokens(
         }
 
         // Thinking tags: llama.cpp's template engine read them once at load (NativeLlama::load stores
-        // them in the DNA for this exact template); re-parsing the template here cost time on every message
-        let usable_tag = |tag: &str| {
-            if !tag.is_empty() && tag != "none" && !tag.contains("tool") { tag.to_string() } else { String::new() }
-        };
-        let think_start_tag = usable_tag(&dna.think_tag_schema);
-        let think_end_tag = usable_tag(&dna.think_end_schema);
+        // exactly its result in the DNA, empty when the template has none); no name-based filtering
+        let think_start_tag = dna.think_tag_schema.clone();
+        let think_end_tag = dna.think_end_schema.clone();
 
         let tm_str = req_think_mode
             .as_deref()
@@ -167,14 +164,9 @@ pub fn stream_tokens(
                     return Err(e);
                 }
             }
-        } else if actual_prompt.contains("<|im_start|>")
-            || actual_prompt.contains("<|user|>")
-            || actual_prompt.contains("<start_of_turn>")
-            || actual_prompt.contains("<|turn>")
-            || actual_prompt.contains("[INST]")
-        {
-            actual_prompt.clone()
         } else {
+            // Plain text (CLI / TUI): one user message through the model's own template.
+            // No caller sends pre-formatted prompts, so the text is never guessed to be one by its markers.
             let single_msg = [("user", actual_prompt.as_str())];
             match crate::native::templater::apply_chat_template(
                 llama.model_ptr,
@@ -206,7 +198,7 @@ pub fn stream_tokens(
             }
         };
 
-        let mut suppress_thinking = match tm_str.as_str() {
+        let suppress_thinking = match tm_str.as_str() {
             "off" | "false" | "0" | "hide" => true,
             "on" | "true" | "1" | "show" => false,
             _ => false, // "auto" lets model natural tags emit
@@ -225,14 +217,23 @@ pub fn stream_tokens(
             custom_num => custom_num.parse::<usize>().unwrap_or(usize::MAX),
         };
 
-        if formatted_prompt.contains("CRITICAL INSTRUCTION")
-            || (formatted_prompt.contains("<system>") && formatted_prompt.contains("\"skill\""))
-        {
-            suppress_thinking = true;
-        }
-
         let mut in_think_block = false;
         let mut think_tokens_count = 0usize;
+
+        // Does the rendered prompt itself end inside an open thinking block (the template wrote the start
+        // tag)? Then the model never prints that tag, so it is sent first and every reader (API stream
+        // filter, non-streaming split) sees the block start where it really is. Decided from the rendered
+        // prompt, not from the template's source, so it holds for any template.
+        let last_tag = |tag: &str| if tag.is_empty() { None } else { formatted_prompt.rfind(tag) };
+        let prompt_opens_thinking = !is_pivot
+            && match (last_tag(&think_start_tag), last_tag(&think_end_tag)) {
+                (Some(start), Some(end)) => start > end,
+                (Some(_), None) => true,
+                _ => false,
+            };
+        // Recent output text: a tag can arrive split over several tokens (Gemma 4: "<|channel>" + "thought")
+        let mut tag_window = String::new();
+        let tag_window_len = think_start_tag.len().max(think_end_tag.len());
         let mut suppressed_count = 0;
 
         let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
@@ -505,6 +506,13 @@ pub fn stream_tokens(
         let mut n_gen = 0;
 
         // Sample the first token from the prompt prefill logits
+        if prompt_opens_thinking {
+            in_think_block = true;
+            if !suppress_thinking {
+                let _ = callback(think_start_tag.clone());
+            }
+        }
+
         let mut next_token_id =
             llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         eprintln!(
@@ -567,12 +575,22 @@ pub fn stream_tokens(
                 if !piece.is_empty() {
                     let emit_str = piece.as_str();
 
-                    // Dynamic thinking tag state tracking
-                    if !think_start_tag.is_empty() && emit_str.contains(&think_start_tag) {
+                    // Dynamic thinking tag state tracking over the recent text (tags may span tokens)
+                    tag_window.push_str(emit_str);
+                    if !think_start_tag.is_empty() && tag_window.contains(&think_start_tag) {
                         in_think_block = true;
+                        tag_window.clear();
                     }
-                    if !think_end_tag.is_empty() && emit_str.contains(&think_end_tag) {
+                    if !think_end_tag.is_empty() && tag_window.contains(&think_end_tag) {
                         in_think_block = false;
+                        tag_window.clear();
+                    }
+                    if tag_window.len() > tag_window_len {
+                        let mut cut = tag_window.len() - tag_window_len;
+                        while !tag_window.is_char_boundary(cut) {
+                            cut += 1;
+                        }
+                        tag_window.drain(..cut);
                     }
 
                     if in_think_block && suppress_thinking {
