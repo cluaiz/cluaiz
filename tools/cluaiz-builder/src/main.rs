@@ -90,43 +90,33 @@ fn main() {
             let mut ws_cmd = vec!["build", "--workspace"];
             if profile == "release" { ws_cmd.push("--release"); }
             commands_to_run.push(("Workspace", ws_cmd));
-
-            let mut llama_cmd = vec!["build", "--manifest-path", "interface-engines/llama/Cargo.toml"];
-            if profile == "release" { llama_cmd.push("--release"); }
-            commands_to_run.push(("Driver: Llama", llama_cmd));
-
-            let mut onnx_cmd = vec!["build", "--manifest-path", "interface-engines/onnx/Cargo.toml"];
-            if profile == "release" { onnx_cmd.push("--release"); }
-            commands_to_run.push(("Driver: ONNX", onnx_cmd));
         }
         "core" => {
-            println!("⚙️  Building Core Engine & CLI...");
-            let mut cmd = vec!["build", "-p", "cmd", "-p", "engines"];
+            println!("⚙️  Building Core Unified Server & CLI Binary...");
+            let mut cmd = vec!["build", "-p", "cmd"];
             if profile == "release" { cmd.push("--release"); }
-            commands_to_run.push(("Core", cmd));
+            commands_to_run.push(("Core Binary (cmd)", cmd));
         }
         "drivers" => {
-            println!("⚙️  Building All Drivers...");
-            let mut llama_cmd = vec!["build", "--manifest-path", "interface-engines/llama/Cargo.toml"];
+            println!("⚙️  Building Engine Crates...");
+            let mut llama_cmd = vec!["build", "-p", "llama-engine"];
             if profile == "release" { llama_cmd.push("--release"); }
-            commands_to_run.push(("Driver: Llama", llama_cmd));
+            commands_to_run.push(("Engine: LLaMA", llama_cmd));
 
-            let mut onnx_cmd = vec!["build", "--manifest-path", "interface-engines/onnx/Cargo.toml"];
+            let mut onnx_cmd = vec!["build", "-p", "cluaiz-onnx"];
             if profile == "release" { onnx_cmd.push("--release"); }
-            commands_to_run.push(("Driver: ONNX", onnx_cmd));
+            commands_to_run.push(("Engine: ONNX", onnx_cmd));
         }
         "driver" => {
-            println!("⚙️  Building Specific Driver: {} ...", driver_name);
-            let manifest_path = format!("interface-engines/{}/Cargo.toml", driver_name);
-            // Verify path exists to avoid confusing errors
-            if !std::path::Path::new(&manifest_path).exists() {
-                eprintln!("❌ Error: Driver manifest not found at {}", manifest_path);
-                std::process::exit(1);
-            }
-            let manifest_path_static = Box::leak(manifest_path.into_boxed_str());
-            let mut cmd = vec!["build", "--manifest-path", manifest_path_static];
+            let crate_name = match driver_name.as_str() {
+                "llama" => "llama-engine",
+                "onnx" => "cluaiz-onnx",
+                other => other,
+            };
+            println!("⚙️  Building Specific Crate: {} ...", crate_name);
+            let mut cmd = vec!["build", "-p", crate_name];
             if profile == "release" { cmd.push("--release"); }
-            commands_to_run.push(("Driver", cmd));
+            commands_to_run.push(("Engine Crate", cmd));
         }
         _ => unreachable!(),
     }
@@ -162,65 +152,5 @@ fn main() {
         }
     }
 
-    // Auto-sync compiled driver DLLs directly to .cluaiz runtime folders (both workspace and home)
-    let root = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let mut candidate_engine_dirs = vec![root.join(".cluaiz").join("engine")];
-    if let Some(home) = dirs::home_dir() {
-        let home_engine = home.join(".cluaiz").join("engine");
-        if !candidate_engine_dirs.contains(&home_engine) {
-            candidate_engine_dirs.push(home_engine);
-        }
-    }
-    let target_dir = if profile == "release" { root.join("target").join("release") } else { root.join("target").join("debug") };
-
-    let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
-
-    for engine_dir in candidate_engine_dirs {
-        if engine_dir.exists() {
-            let drivers_dir = engine_dir.join("drivers");
-            let drivers_to_sync = if !driver_name.is_empty() {
-                vec![driver_name.clone()]
-            } else {
-                vec!["onnx".to_string(), "llama".to_string()]
-            };
-
-            for d in &drivers_to_sync {
-                let src_name = format!("cluaiz_{}.{}", d, ext);
-                let alt_src_name = format!("{}.{}", d, ext);
-                let src_path = if target_dir.join(&src_name).exists() {
-                    target_dir.join(&src_name)
-                } else if target_dir.join(&alt_src_name).exists() {
-                    target_dir.join(&alt_src_name)
-                } else {
-                    continue;
-                };
-
-                let dest_name = format!("cluaiz-{}.{}", d, ext);
-                let dest_path = engine_dir.join(&dest_name);
-                
-                if std::fs::copy(&src_path, &dest_path).is_ok() {
-                    println!("🧬 [cluaiz-builder] Auto-synced engine: {:?}", dest_path);
-                }
-
-                if drivers_dir.exists() {
-                    if let Ok(entries) = std::fs::read_dir(&drivers_dir) {
-                        for entry in entries.flatten() {
-                            let p = entry.path();
-                            if let Some(fname) = p.file_name().and_then(|n| n.to_str()) {
-                                if (d == "llama" && (fname.contains("llama") || fname.contains("cuda")))
-                                    || (d == "onnx" && fname.contains("onnx"))
-                                {
-                                    if std::fs::copy(&src_path, &p).is_ok() {
-                                        println!("🧬 [cluaiz-builder] Overwrote active driver DLL: {:?}", p);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    println!("✅ Build & Sync Successful!");
+    println!("✅ Build Successful! Binary located at target/{}/cluaiz.exe", profile);
 }

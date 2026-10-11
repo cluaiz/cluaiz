@@ -6,7 +6,8 @@ publish = false
 default-run = "cluaiz-builder"
 
 [dependencies]
-engine-core = { path = "../../inference-engine/engines/core" }
+cluaiz-core = { path = "../../engine/core" }
+cluaiz-hw = { path = "../../engine/hardware" }
 dirs = "6.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
