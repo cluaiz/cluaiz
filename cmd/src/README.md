@@ -33,7 +33,7 @@ Contains all the highly customized, dynamic Ratatui components.
 
 ### `cli/` (Headless Commands)
 Code for executing specific command-line arguments without starting the TUI.
-* Example: `ps.rs` (process status), `test_jit.rs` (cache benchmarks).
+* Example: `ps.rs` (process status), `benchmark.rs` (model benchmarks).
 
 ---
 
