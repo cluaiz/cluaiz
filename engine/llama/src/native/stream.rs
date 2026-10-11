@@ -119,27 +119,13 @@ pub fn stream_tokens(
             }
         }
 
-        // 🧬 Primary Authority: Query llama.cpp native common_chat_templates engine using model pointer
-        let (native_st, native_et) = crate::native::templater::extract_thinking_tags_native(
-            llama.model_ptr,
-            dna.chat_template.as_deref(),
-        );
-
-        let think_start_tag = native_st.unwrap_or_else(|| {
-            if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" && !dna.think_tag_schema.contains("tool") {
-                dna.think_tag_schema.clone()
-            } else {
-                String::new()
-            }
-        });
-
-        let think_end_tag = native_et.unwrap_or_else(|| {
-            if !dna.think_end_schema.is_empty() && dna.think_end_schema != "none" && !dna.think_end_schema.contains("tool") {
-                dna.think_end_schema.clone()
-            } else {
-                String::new()
-            }
-        });
+        // Thinking tags: llama.cpp's template engine read them once at load (NativeLlama::load stores
+        // them in the DNA for this exact template); re-parsing the template here cost time on every message
+        let usable_tag = |tag: &str| {
+            if !tag.is_empty() && tag != "none" && !tag.contains("tool") { tag.to_string() } else { String::new() }
+        };
+        let think_start_tag = usable_tag(&dna.think_tag_schema);
+        let think_end_tag = usable_tag(&dna.think_end_schema);
 
         let tm_str = req_think_mode
             .as_deref()
