@@ -46,6 +46,14 @@ impl EngineHost {
     /// Dynamically resolves thinking start and end markers directly from llama.cpp's native template engine
     pub async fn get_thinking_tags(&self, custom_tmpl: Option<&str>) -> (Option<String>, Option<String>) {
         let llama_guard = self.active_llama.lock().await;
+        if llama_guard.is_some() {
+            // Read once at load for the loaded model's template: reuse instead of re-parsing it per message
+            let dna = self.dna.lock().await;
+            if custom_tmpl == dna.chat_template.as_deref() {
+                let tag = |t: &str| Some(t.to_string()).filter(|t| !t.is_empty());
+                return (tag(&dna.think_tag_schema), tag(&dna.think_end_schema));
+            }
+        }
         let model_ptr = llama_guard.as_ref().map(|l| l.model_ptr as *const std::ffi::c_void).unwrap_or(std::ptr::null());
         extract_thinking_tags_native(model_ptr, custom_tmpl)
     }

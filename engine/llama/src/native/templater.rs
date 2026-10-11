@@ -48,7 +48,12 @@ pub fn apply_chat_template(
     let role_ptrs: Vec<*const std::os::raw::c_char> = c_roles.iter().map(|c| c.as_ptr()).collect();
     let content_ptrs: Vec<*const std::os::raw::c_char> = c_contents.iter().map(|c| c.as_ptr()).collect();
 
-    let required_len = unsafe {
+    // Each call parses the whole template in llama.cpp, so render once into a buffer sized from the
+    // inputs (the prompt is the template's text plus the messages) and only retry when it was too small.
+    // The call returns the full prompt length either way.
+    let input_len = tmpl_str.as_ref().map_or(0, |t| t.len())
+        + messages.iter().map(|(r, c)| r.len() + c.len()).sum::<usize>();
+    let render = |buf: &mut Vec<u8>| unsafe {
         llama_cpp::llama_chat_apply_template_native(
             model_ptr,
             custom_ptr,
@@ -57,33 +62,23 @@ pub fn apply_chat_template(
             messages.len(),
             add_generation_prompt,
             enable_thinking,
-            std::ptr::null_mut(),
-            0,
+            buf.as_mut_ptr() as *mut std::os::raw::c_char,
+            buf.len(),
         )
     };
+    let mut buf: Vec<u8> = vec![0u8; input_len * 2 + 1];
+    let mut written = render(&mut buf);
+    if written > 0 && written as usize >= buf.len() {
+        buf = vec![0u8; written as usize + 1];
+        written = render(&mut buf);
+    }
 
-    if required_len > 0 {
-        let mut buf: Vec<u8> = vec![0u8; (required_len as usize) + 64];
-        let written = unsafe {
-            llama_cpp::llama_chat_apply_template_native(
-                model_ptr,
-                custom_ptr,
-                role_ptrs.as_ptr(),
-                content_ptrs.as_ptr(),
-                messages.len(),
-                add_generation_prompt,
-                enable_thinking,
-                buf.as_mut_ptr() as *mut std::os::raw::c_char,
-                buf.len(),
-            )
-        };
-        if written > 0 {
-            let c_str = unsafe { CStr::from_ptr(buf.as_ptr() as *const std::os::raw::c_char) };
-            let rendered = c_str.to_string_lossy().into_owned();
-            if !rendered.trim().is_empty() {
-                tracing::info!("📝 [NativeTemplate] llama.cpp native common template rendered prompt ({} bytes)", rendered.len());
-                return Ok(rendered);
-            }
+    if written > 0 {
+        let c_str = unsafe { CStr::from_ptr(buf.as_ptr() as *const std::os::raw::c_char) };
+        let rendered = c_str.to_string_lossy().into_owned();
+        if !rendered.trim().is_empty() {
+            tracing::info!("📝 [NativeTemplate] llama.cpp native common template rendered prompt ({} bytes)", rendered.len());
+            return Ok(rendered);
         }
     }
 
