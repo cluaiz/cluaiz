@@ -4,7 +4,7 @@ use cluaiz_models::types::StructuralDNA;
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
-use tracing::{error, info, warn};
+use tracing::info;
 
 pub static mut SKIP_PTR: *const std::sync::atomic::AtomicBool = std::ptr::null();
 
@@ -137,7 +137,7 @@ pub fn stream_tokens(
             _ => true,
         };
 
-        let mut formatted_prompt = if !structured_messages.is_empty() {
+        let formatted_prompt = if !structured_messages.is_empty() {
             let msg_refs: Vec<(&str, &str)> = structured_messages
                 .iter()
                 .map(|(r, c)| (r.as_str(), c.as_str()))
@@ -248,16 +248,10 @@ pub fn stream_tokens(
         let c_prompt = CString::new(formatted_prompt.clone())?;
         let mut tokens = vec![0i32; formatted_prompt.len() + 8];
 
-        // Dynamic BOS handling: Only add special BOS token if model explicitly requests it
-        // and the formatted prompt doesn't already begin with a special token sequence.
-        let add_special = if is_pivot {
-            false
-        } else {
-            llama_cpp::llama_vocab_get_add_bos(vocab)
-                && !formatted_prompt.starts_with("<|")
-                && !formatted_prompt.starts_with("<start_of_turn")
-                && !formatted_prompt.starts_with("<s>")
-        };
+        // BOS the llama.cpp way: its chat template engine strips the BOS text from the rendered prompt and
+        // the tokenizer adds the BOS token when the model asks for it (llama_vocab_get_add_bos).
+        // A continuation (pivot) is appended to the existing context, so it gets none.
+        let add_special = !is_pivot && llama_cpp::llama_vocab_get_add_bos(vocab);
 
         let mut n_tokens = llama_cpp::llama_tokenize(
             vocab,
@@ -289,6 +283,11 @@ pub fn stream_tokens(
             ));
         }
         tokens.truncate(n_tokens as usize);
+        // A prompt that already carried the BOS text now holds it twice: keep one (compared by token id)
+        let bos = llama_cpp::llama_vocab_bos(vocab);
+        if add_special && bos >= 0 && tokens.len() >= 2 && tokens[0] == bos && tokens[1] == bos {
+            tokens.remove(0);
+        }
         let full_prompt_tokens = tokens.clone(); // 🛡️ Save FULL prompt tokens BEFORE any trimming for correct return
         eprintln!(
             "🔢 [NativeStream] Tokenized prompt into {} tokens: {:?}",
@@ -331,7 +330,6 @@ pub fn stream_tokens(
                 tracing::info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
                 let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-                match_len = 0;
                 tokens = full_prompt_tokens.clone();
                 has_loaded_cache = false;
                 effective_cache_len = 0;
@@ -595,10 +593,8 @@ pub fn stream_tokens(
 
             // ⚡ Check global UI interrupt signal to skip thinking via pointer
             let mut should_skip = false;
-            unsafe {
-                if !SKIP_PTR.is_null() {
-                    should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
-                }
+            if !SKIP_PTR.is_null() {
+                should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
             }
             if should_skip && in_think_block {
                 in_think_block = false;

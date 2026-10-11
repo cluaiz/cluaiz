@@ -25,7 +25,11 @@ pub struct EngineHost {
     pub last_prefilled_tokens: Arc<Mutex<Vec<i32>>>,
     /// llama.cpp timings of the last finished generation
     pub last_timings: Arc<Mutex<Option<GenerationTimings>>>,
+    /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
+    thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
 }
+
+type ThinkingTags = (Option<String>, Option<String>);
 
 impl EngineHost {
     pub fn new() -> Self {
@@ -40,11 +44,13 @@ impl EngineHost {
             dna: Arc::new(Mutex::new(StructuralDNA::default())),
             last_prefilled_tokens: Arc::new(Mutex::new(Vec::new())),
             last_timings: Arc::new(Mutex::new(None)),
+            thinking_tags_cache: Arc::new(Mutex::new(None)),
         }
     }
 
     /// Dynamically resolves thinking start and end markers directly from llama.cpp's native template engine
-    pub async fn get_thinking_tags(&self, custom_tmpl: Option<&str>) -> (Option<String>, Option<String>) {
+    /// Each lookup parses the whole template in llama.cpp, so the result is kept per template for the loaded model.
+    pub async fn get_thinking_tags(&self, custom_tmpl: Option<&str>) -> ThinkingTags {
         let llama_guard = self.active_llama.lock().await;
         if llama_guard.is_some() {
             // Read once at load for the loaded model's template: reuse instead of re-parsing it per message
@@ -53,9 +59,19 @@ impl EngineHost {
                 let tag = |t: &str| Some(t.to_string()).filter(|t| !t.is_empty());
                 return (tag(&dna.think_tag_schema), tag(&dna.think_end_schema));
             }
+            drop(dna);
+            if let Some((tmpl, tags)) = self.thinking_tags_cache.lock().await.as_ref() {
+                if tmpl.as_deref() == custom_tmpl {
+                    return tags.clone();
+                }
+            }
         }
         let model_ptr = llama_guard.as_ref().map(|l| l.model_ptr as *const std::ffi::c_void).unwrap_or(std::ptr::null());
-        extract_thinking_tags_native(model_ptr, custom_tmpl)
+        let tags = extract_thinking_tags_native(model_ptr, custom_tmpl);
+        if llama_guard.is_some() {
+            *self.thinking_tags_cache.lock().await = Some((custom_tmpl.map(str::to_string), tags.clone()));
+        }
+        tags
     }
 
     /// Checks if a model at the specified path is currently resident in memory
@@ -107,7 +123,7 @@ impl EngineHost {
             plan.print_telemetry_banner(&geometry, &hw, settings);
             return Err(anyhow::anyhow!("{}", plan.explanation));
         }
-        self.load_model(&path_str, &plan, settings).await?;
+        let plan = self.load_model(&path_str, &plan, settings).await?;
         *self.current_plan.lock().await = Some(plan.clone());
         Ok(plan)
     }
@@ -145,8 +161,10 @@ impl EngineHost {
         plan
     }
 
-    /// Loads model into unified process memory using calculated ExecutionPlan
-    pub async fn load_model(&self, model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSettings) -> anyhow::Result<()> {
+    /// Loads model into unified process memory using calculated ExecutionPlan.
+    /// Returns the plan as loaded: if llama.cpp had to fall back (fewer GPU layers / CPU), the returned
+    /// plan carries the real n_gpu_layers and says so, so the UI and API never show a placement that did not happen.
+    pub async fn load_model(&self, model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSettings) -> anyhow::Result<ExecutionPlan> {
         let geometry = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path))?;
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
 
@@ -159,7 +177,7 @@ impl EngineHost {
             let llama_guard = self.active_llama.lock().await;
             let fp_guard = self.active_fingerprint.lock().await;
             if llama_guard.is_some() && fp_guard.as_deref() == Some(&target_fp) {
-                return Ok(());
+                return Ok(plan.clone());
             }
         }
 
@@ -178,6 +196,22 @@ impl EngineHost {
         let mut dna_guard = self.dna.lock().await;
         let llama = load_with_plan(model_path, plan, settings, &hw, &mut dna_guard)?;
         drop(dna_guard);
+
+        let mut loaded_plan = plan.clone();
+        if llama.n_gpu_layers_loaded != plan.n_gpu_layers {
+            tracing::warn!(
+                "⚠️ [EngineHost] llama.cpp could not load the planned n_gpu_layers {}; loaded with {} instead",
+                plan.n_gpu_layers, llama.n_gpu_layers_loaded
+            );
+            loaded_plan.n_gpu_layers = llama.n_gpu_layers_loaded;
+            if llama.n_gpu_layers_loaded == 0 {
+                loaded_plan.selected_tier = cluaiz_plan::PlacementTier::CpuOnly;
+            }
+            loaded_plan.explanation = format!(
+                "{} | load fallback: planned n_gpu_layers {} failed in llama.cpp, running with {} (memory numbers above are the plan's)",
+                plan.explanation, plan.n_gpu_layers, llama.n_gpu_layers_loaded
+            );
+        }
 
         let actual_n_ctx = llama.n_ctx;
         cluaiz_core::set_active_context(Some((model_path.to_string(), actual_n_ctx)));
@@ -218,7 +252,7 @@ impl EngineHost {
         tokens_guard.clear();
 
         tracing::info!("✅ [EngineHost] Model successfully loaded into unified process space: {}", model_path);
-        Ok(())
+        Ok(loaded_plan)
     }
 
     /// Safely unloads the active model from unified process memory
@@ -227,6 +261,7 @@ impl EngineHost {
         *llama_guard = None;
         cluaiz_core::set_active_context(None);
         *self.current_plan.lock().await = None;
+        *self.thinking_tags_cache.lock().await = None;
         let mut path_guard = self.active_model_path.lock().await;
         *path_guard = None;
         let mut fp_guard = self.active_fingerprint.lock().await;

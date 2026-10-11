@@ -107,7 +107,6 @@ impl OptimizationConfig {
     /// 🛠️ Transform high-level config into raw model parameters.
     pub fn to_model_params(&self) -> LlamaModelParams {
         let mut params = unsafe { llama_model_default_params() };
-        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
         params.n_gpu_layers = self.n_gpu_layers;
         params.set_mmap(self.use_mmap);
         params.set_mlock(self.force_memory_lock == "On");
@@ -149,7 +148,6 @@ impl OptimizationConfig {
         };
         params.n_threads_batch = params.n_threads;
 
-        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
 
         // 🚀 KV-Cache Quantization Config:
         match self.kv_cache_quantization.to_lowercase().as_str() {
@@ -177,6 +175,7 @@ impl OptimizationConfig {
         // HOWEVER, if the Sovereign Arbiter explicitly disabled Flash Attention (self.flash_attn == false)
         // or if we are forcing CPU mode (which disables FA), we MUST NOT force it back on.
         // We must instead gracefully fallback the KV Cache to F16.
+        let force_disable_fa_for_cpu = self.n_gpu_layers == 0;
         let mut is_quantized_kv = params.type_k == 8 || params.type_k == 2;
         if is_quantized_kv && (!self.flash_attn || force_disable_fa_for_cpu) {
             tracing::info!("⚠️ [Optimization] KV Cache Quantization requires Flash Attention, but FA is disabled (or CPU mode forced). Falling back to F16 KV cache to prevent crash.");

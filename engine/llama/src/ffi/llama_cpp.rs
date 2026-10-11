@@ -1,7 +1,7 @@
 //! 🏛️ Sovereign FFI: Industrial Llama.cpp Bindings
 //! This module provides direct access to the core llama.cpp parameters and lifecycle functions.
 
-use std::os::raw::{c_char, c_int, c_float};
+use std::os::raw::{c_char, c_float};
 
 pub const GGML_TYPE_F16: i32 = 1;
 pub const GGML_TYPE_Q8_0: i32 = 8;
