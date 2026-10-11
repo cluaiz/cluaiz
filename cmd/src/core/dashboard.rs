@@ -3,7 +3,7 @@ use color_eyre::Result;
 use colored::Colorize;
 use crossterm::execute;
 use crossterm::cursor;
-use engines::DownloadEvent;
+use cluaiz_models::DownloadEvent;
 use inquire::{
     ui::{Attributes, Color, RenderConfig, Styled},
     Select, Text,
@@ -12,7 +12,6 @@ use std::io::{stdout, Write};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::mpsc;
-use neural_core::interfaces::router_contract::EmbeddingDriver;
 // ── 📦 MODULAR APPS ──
 use crate::ui::apps::registry::RegistryApp;
 
@@ -30,19 +29,19 @@ impl DashboardEngine {
 
         // 🛑 GRACEFUL INTERRUPT HANDLER (Sovereign Pivot Control)
         let _ = ctrlc::set_handler(move || {
-            engine_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
+            cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         });
 
         // ── 🧬 ATOMIC Core DISCOVERY (cluaiz Startup Scan) ──
         if state.sorted_models.is_empty() {
-            state.sorted_models = engines::CoreRoster::get_recommendations(
-                &state.hardware.to_hardware_truth(),
+            state.sorted_models = cluaiz_models::CoreRoster::get_recommendations(
+                &state.hardware,
                 state.ram_gb,
             );
         }
 
         // ── 📡 cluaiz TELEMETRY IGNITION (Ghost Observer Singleton) ──
-        let state_pulse = engine_core::hardware::telemetry::get_pulse();
+        let state_pulse = cluaiz_hw::get_pulse();
         let app_start_time = std::time::Instant::now();
         let last_inference_duration = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let last_ttft = Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -57,7 +56,7 @@ impl DashboardEngine {
         let is_engine_loaded = state.Core_engine.is_loaded.load(std::sync::atomic::Ordering::SeqCst);
         if !is_engine_loaded {
             // Find the best cached model to boot: prefer the last active one from permission.json
-            let active_schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let active_schema = cluaiz_security::PermissionSchema::load();
             let active_chat_id = active_schema.get_active_chat_model().unwrap_or_default();
             
             let mut boot_target = state.sorted_models.iter().find(|m| {
@@ -75,41 +74,30 @@ impl DashboardEngine {
                 }).map(|m| (m.manifest.name.clone(), m.manifest.local_path.clone()));
             }
 
-            let perms = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+            let perms = cluaiz_security::PermissionSchema::load();
             if !perms.lazy_load_model {
                 match boot_target {
                     Some((ref name, Some(ref path_str))) => {
                         // ✅ Model is on disk with a known path — load it directly
-                        let mut spinner = engine_core::utils::spinner::TerminalSpinner::new();
+                        let mut spinner = crate::ui::spinner::TerminalSpinner::new();
                         spinner.start(&format!("Auto-Booting Neural Kernel: {}...", name));
                         let path = std::path::PathBuf::from(path_str);
-                        let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
-                        let runtime = if is_gguf {
-                            engine_core::BackendType::RuntimeB
-                        } else {
-                            engine_core::BackendType::RuntimeA
-                        };
                         tokio::task::block_in_place(|| {
                             let handle = tokio::runtime::Handle::current();
-                            let result = handle.block_on(engines::CoreRouter::load_model(path, runtime));
+                            let result = handle.block_on(state.Core_engine.load_model(path));
                             match result {
-                                Ok(router) => {
-                                    let mut lock = state.Core_engine.router.blocking_lock();
-                                    *lock = router;
-                                    
-                                    let ctx = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx);
+                                Ok(()) => {
                                     let model_gb = state.sorted_models.iter()
                                         .find(|m| m.manifest.name == *name)
                                         .map(|m| m.manifest.download_size_gb)
                                         .unwrap_or(0.0);
                                     
-                                    state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
                                     spinner.stop(None);
                                     
                                     if model_gb > 0.0 {
-                                        println!("  {} {} loaded and ready. \x1B[90m[Ctx: {}, Model: {:.2}GB, RAM: {:.1}GB]\x1B[0m", "✅".green(), name.bold(), ctx, model_gb, state.ram_gb);
+                                        println!("  {} {} loaded and ready. \x1B[90m[Model: {:.2}GB, RAM: {:.1}GB]\x1B[0m", "✅".green(), name.bold(), model_gb, state.ram_gb);
                                     } else {
-                                        println!("  {} {} loaded and ready. \x1B[90m[Ctx: {}, RAM: {:.1}GB]\x1B[0m", "✅".green(), name.bold(), ctx, state.ram_gb);
+                                        println!("  {} {} loaded and ready. \x1B[90m[RAM: {:.1}GB]\x1B[0m", "✅".green(), name.bold(), state.ram_gb);
                                     }
                                 }
                                 Err(e) => {
@@ -136,12 +124,12 @@ impl DashboardEngine {
         // Track global think state across pivots
         let global_think_state = Arc::new(AtomicBool::new(false));
 
-        let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let schema = cluaiz_security::PermissionSchema::load();
 
         // ── 🔥 BACKGROUND HOT-RELOAD WATCHER ──
         let watcher_engine = state.Core_engine.clone();
         tokio::spawn(async move {
-            let env = engine_core::environment::EnvironmentManager::current();
+            let env = cluaiz_core::EnvironmentManager::current();
             let opt_path = env.config_dir().join("llm_optimization.json");
             let perm_path = env.config_dir().join("permission.json");
             
@@ -171,10 +159,7 @@ impl DashboardEngine {
                 }
                 
                 if needs_reload {
-                    let path = {
-                        let lock = watcher_engine.router.lock().await;
-                        lock.active_model_path.clone()
-                    };
+                    let path = watcher_engine.active_path.lock().await.clone();
                     if let Some(p) = path {
                         use std::io::Write;
                         println!("\r\x1B[2K\x1B[0m{} Hot-Reloading Neural Engine based on new settings...", crossterm::style::Stylize::magenta("🚀"));
@@ -272,13 +257,7 @@ impl DashboardEngine {
                         state.rendered_actions_count += 1;
 
                         // 🧠 Database FFI Integration: Vectorize and save User Prompt
-                        let storage_bridge = engines::memory::storage_bridge::load_storage_bridge();
-                        let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
-                        if schema.vectorize_user_input {
-                            let prompt_vector = engines::memory::embedding_generator::EmbeddingGenerator::generate_vector(&final_message);
-                            let prompt_id = format!("prompt-{}", uuid::Uuid::new_v4());
-                            let _ = storage_bridge.save_context(&prompt_id, &final_message, &prompt_vector);
-                        }
+                        let schema = cluaiz_security::PermissionSchema::load();
 
                         // ── 🧿 NEURAL DISPATCH ──
                         let _ = std::io::Write::flush(&mut std::io::stdout());
@@ -309,10 +288,10 @@ impl DashboardEngine {
                         // ── 🔥 HOT RELOAD MOVED TO BACKGROUND TASK ──
 
                         // Reset cancellation signal before starting
-                        engine_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
+                        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
 
                         if !state.Core_engine.is_loaded.load(Ordering::SeqCst) && !state.is_client_mode {
-                            let mut spinner = engine_core::utils::spinner::TerminalSpinner::new();
+                            let mut spinner = crate::ui::spinner::TerminalSpinner::new();
                             spinner.start("Lazy loading neural model weights...");
                             let mut loaded_successfully = false;
                             
@@ -325,12 +304,6 @@ impl DashboardEngine {
                                 ) {
                                     if let Some(local_path) = &model.manifest.local_path {
                                         let path = std::path::PathBuf::from(local_path);
-                                        let is_gguf = path.extension().and_then(|s| s.to_str()) == Some("gguf");
-                                        let runtime = if is_gguf {
-                                            engine_core::BackendType::RuntimeB
-                                        } else {
-                                            engine_core::BackendType::RuntimeA
-                                        };
                                         let rt = tokio::runtime::Handle::current();
                                         let load_res = tokio::task::block_in_place(|| {
                                             rt.block_on(state.Core_engine.load_model(path))
@@ -358,302 +331,237 @@ impl DashboardEngine {
                             }
                         }
 
-                        let stream_result = tokio::task::block_in_place(|| {
-                            let mut lock = state.Core_engine.router.blocking_lock();
-                            
-                            // 🧬 Dynamic Config Fetch: Zero Hardcoding
-                            let stop_seqs = lock.get_active_dna().map(|d| d.stop_sequences.clone()).unwrap_or_default();
-                            
-                            // 🎭 Orchestration: native.rs handles the templating now.
+                        let stream_result: Result<(), String> = tokio::task::block_in_place(|| {
                             let formatted_prompt = final_message.clone();
+                            let rt = tokio::runtime::Handle::current();
+                            let (stop_seqs, max_t, think_start_tag, think_end_tag, supports_thinking) = rt.block_on(async {
+                                let dna = state.Core_engine.host.dna.lock().await;
+                                (
+                                    dna.stop_sequences.clone(),
+                                    dna.max_context_length.unwrap_or(2048),
+                                    dna.think_tag_schema.clone(),
+                                    dna.think_end_schema.clone(),
+                                    dna.supports_thinking || !dna.think_tag_schema.is_empty(),
+                                )
+                            });
 
-                            // 🧬 DYNAMIC TOKEN ALLOCATION: Calculate space based on DNA Context Window
-                            let ctx_window = lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx);
-                            let prompt_tokens = 0; // We no longer rely on external tokenizers for length prediction
-                            
-                            let max_t = lock.get_active_dna()
-                                .and_then(|d| d.inference_params.get("max_tokens"))
-                                .and_then(|v| v.parse::<usize>().ok())
-                                .unwrap_or(ctx_window);
-
-                            // 🔇 SURGICAL SILENCE: Temporarily redirect stderr to NUL/dev/null
-                            let mut saved_stderr: libc::c_int = -1;
-                            #[cfg(windows)]
-                            unsafe {
-                                saved_stderr = libc::dup(2);
-                                let null_fd = libc::open("NUL\0".as_ptr() as *const libc::c_char, libc::O_WRONLY);
-                                if null_fd != -1 {
-                                    libc::dup2(null_fd, 2);
-                                    libc::close(null_fd);
-                                }
-                            }
-                            #[cfg(not(windows))]
-                            unsafe {
-                                saved_stderr = libc::dup(2);
-                                let null_fd = libc::open("/dev/null\0".as_ptr() as *const libc::c_char, libc::O_WRONLY);
-                                if null_fd != -1 {
-                                    libc::dup2(null_fd, 2);
-                                    libc::close(null_fd);
-                                }
-                            }
-                            
-                            let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                            let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-                            let suppress_thinking = gguf_meta.user_moved_flags.think_mode.to_lowercase() == "off";
-                            
-                            let active_model = state._active_model_id.clone().unwrap_or_default().to_lowercase();
-                            let is_reasoning_model = active_model.contains("deepseek") || active_model.contains("r1") || active_model.contains("reason") || active_model.contains("bonsai") || active_model.contains("think");
-
-                            // Deep Truth: Dynamic tag resolution
-                            let mut think_start_tag = String::new();
-                            let mut think_end_tag = String::new();
-                            if let Some(dna) = lock.get_active_dna() {
-                                if !dna.think_tag_schema.is_empty() && dna.think_tag_schema != "none" {
-                                    think_start_tag = dna.think_tag_schema.clone();
-                                    think_end_tag = dna.think_end_schema.clone();
-                                }
-                            }
+                            let settings = cluaiz_core::Settings::current();
+                            let suppress_thinking = matches!(settings.optimization.think_mode, cluaiz_core::FeatureState::Off);
+                            let is_reasoning_model = supports_thinking;
 
                             let prompt_starts_in_think = !think_start_tag.is_empty() && formatted_prompt.contains(&think_start_tag) && (think_end_tag.is_empty() || !formatted_prompt.contains(&think_end_tag));
-                            let is_pivot = formatted_prompt.starts_with("[PIVOT_CONTINUE]");
 
                             let mut first_token = true;
-                            let pulse_clone = state_pulse.clone(); // 🧬 Clone for closure move
+                            let pulse_clone = state_pulse.clone();
                             let global_think_cb = global_think_state.clone();
-                            
-                            // ⚡ Enable raw mode to intercept keystrokes asynchronously (like Ctrl+T)
+
+                            let host_resp = rt.block_on(state.Core_engine.host.dispatch_stream(&formatted_prompt, max_t));
+
                             let _ = crossterm::terminal::enable_raw_mode();
 
-                            let result = lock.generate_stream(
-                                &formatted_prompt, // 🚀 Pure, unadulterated prompt
-                                max_t,
-                                Box::new(move |token: String| -> bool {
-                                    // 🛑 Stop if already past EOS or interrupted
-                                    if (eos_cb.load(Ordering::SeqCst) && !token.starts_with("__ENGINE_PAUSE_EXECUTE__")) || engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) { 
-                                        return false; 
-                                    }
+                            match host_resp {
+                                cluaiz_runtime::HostResponse::TokenStream(mut rx) => {
+                                    while let Some(token) = rx.blocking_recv() {
+                                        if (eos_cb.load(Ordering::SeqCst) && !token.starts_with("__ENGINE_PAUSE_EXECUTE__")) || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+                                            break;
+                                        }
 
-                                    // ⚡ CLI Shortcut: Poll for Ctrl+T to skip thinking
-                                    if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(0)) {
-                                        if let Ok(crossterm::event::Event::Key(key)) = crossterm::event::read() {
-                                            if key.code == crossterm::event::KeyCode::Char('t') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-                                                // Only skip if we are currently IN thinking mode — prevents double-fire from key-repeat
-                                                if in_think_cb.load(Ordering::SeqCst) {
-                                                    engine_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
-                                                    // ✅ Immediately reset UI think state — don't wait for </think> text
-                                                    in_think_cb.store(false, Ordering::SeqCst);
-                                                    global_think_cb.store(false, Ordering::SeqCst);
-                                                    print!("\x1B[0m\r\n⚡ Skipping thinking...\r\n");
+                                        // CLI Shortcut: Poll for Ctrl+T to skip thinking or Ctrl+C to cancel
+                                        if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(0)) {
+                                            if let Ok(crossterm::event::Event::Key(key)) = crossterm::event::read() {
+                                                if key.code == crossterm::event::KeyCode::Char('t') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                                    if in_think_cb.load(Ordering::SeqCst) {
+                                                        cluaiz_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
+                                                        in_think_cb.store(false, Ordering::SeqCst);
+                                                        global_think_cb.store(false, Ordering::SeqCst);
+                                                        print!("\x1B[0m\r\n⚡ Skipping thinking...\r\n");
+                                                    }
+                                                }
+                                                if key.code == crossterm::event::KeyCode::Char('c') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                                    cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
                                                 }
                                             }
-                                            if key.code == crossterm::event::KeyCode::Char('c') && key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-                                                engine_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
+                                        }
+
+                                        if let Ok(mut res) = full_clone.lock() {
+                                            let clean_res = (res.clone() + token.as_str()).replace("\n", "").replace("\r", "").replace(" ", "");
+                                            if stop_seqs.iter().any(|s| {
+                                                let clean_s = s.replace("\n", "").replace("\r", "").replace(" ", "");
+                                                !clean_s.is_empty() && clean_res.ends_with(&clean_s)
+                                            }) {
+                                                eos_cb.store(true, Ordering::SeqCst);
+                                                break;
                                             }
-                                        }
-                                    }
 
-                                    // 🛑 Deep-Suffix Scan
-                                    if let Ok(mut res) = full_clone.lock() {
-                                        let clean_res = (res.clone() + token.as_str()).replace("\n", "").replace("\r", "").replace(" ", "");
-                                        if stop_seqs.iter().any(|s| {
-                                            let clean_s = s.replace("\n", "").replace("\r", "").replace(" ", "");
-                                            !clean_s.is_empty() && clean_res.ends_with(&clean_s)
-                                        }) {
-                                            eos_cb.store(true, Ordering::SeqCst);
-                                            return false;
-                                        }
+                                            if first_token {
+                                                let ttft = start_time.elapsed().as_secs_f64();
+                                                ttft_cb.store(ttft.to_bits(), Ordering::SeqCst);
 
-                                        // 🤖 First-Token Handshake
-                                        if first_token {
-                                            let ttft = start_time.elapsed().as_secs_f64();
-                                            ttft_cb.store(ttft.to_bits(), Ordering::SeqCst);
-
-                                            let mut out = std::io::stdout();
-                                            let _ = out.write_all(format!("\r\x1B[2K\x1B[0m{} ", crossterm::style::Stylize::magenta("🤖")).as_bytes());
-                                            
-                                            // DYNAMIC THINK INJECTION
-                                            let should_start_in_think = prompt_starts_in_think || is_reasoning_model;
-
-                                            if !suppress_thinking && should_start_in_think { 
-                                                in_think_cb.store(true, Ordering::SeqCst);
-                                                global_think_cb.store(true, Ordering::SeqCst);
                                                 let mut out = std::io::stdout();
-                                                let _ = out.write_all(b"\r\n\x1B[90m> \x1B[3m"); // Gray italics with carriage return
+                                                let _ = out.write_all(format!("\r\x1B[2K\x1B[0m{} ", crossterm::style::Stylize::magenta("🤖")).as_bytes());
+
+                                                let should_start_in_think = prompt_starts_in_think || is_reasoning_model;
+                                                if !suppress_thinking && should_start_in_think {
+                                                    in_think_cb.store(true, Ordering::SeqCst);
+                                                    global_think_cb.store(true, Ordering::SeqCst);
+                                                    let _ = out.write_all(b"\r\n\x1B[90m> \x1B[3m");
+                                                }
                                                 let _ = out.flush();
+                                                first_token = false;
                                             }
-                                            
-                                            let _ = out.flush();
-                                            first_token = false;
-                                        }
 
-                                        // Real-time Event Trigger Checks for Dashboard
-                                        let mut is_system_step = false;
-                                        if token.starts_with("__STEP_2_MATCH_START__") {
-                                            let parts: Vec<&str> = token.split(':').collect();
-                                            let matched = if parts.len() >= 2 { parts[1] } else { "unknown" };
-                                            let score = if parts.len() >= 3 { parts[2] } else { "0.88" };
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool: '{}' (Score: {})\r\n", matched, score);
-                                            is_system_step = true;
-                                        } else if token.starts_with("__STEP_3_INJECT_START__") {
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully.\r\n");
-                                            is_system_step = true;
-                                        } else if token == "__STEP_4_READ_SMS__" {
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context.\r\n");
-                                            is_system_step = true;
-                                        } else if token.contains("<tool_call>") || token.contains("<tool_call") {
-                                            let clean = token.replace("\n", "").replace("\r", "");
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> {}\r\n", clean);
-                                            is_system_step = true;
-                                        } else if token.contains("</tool_call>") {
-                                            print!("\r\n\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>\r\n");
-                                            is_system_step = true;
-                                        } else if token.starts_with("__ENGINE_PAUSE_EXECUTE__") {
-                                            // ── 🌀 Dynamic Real-Time Agentic Trace ──
-                                            let mut sp = engine_core::utils::spinner::TerminalSpinner::new();
-                                            
-                                            sp.start("Receiving User SMS...");
-                                            std::thread::sleep(std::time::Duration::from_millis(250));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 1]\x1B[0m User SMS Received"));
-                                            println!();
-                                            
-                                            sp.start("Scanning Registry for Tool Match...");
-                                            std::thread::sleep(std::time::Duration::from_millis(300));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool"));
-                                            println!();
-                                            
-                                            sp.start("Compiling Dynamic Prefix Layer rules...");
-                                            std::thread::sleep(std::time::Duration::from_millis(200));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully."));
-                                            println!();
-                                            
-                                            sp.start("Parsing SMS input context...");
-                                            std::thread::sleep(std::time::Duration::from_millis(200));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context."));
-                                            println!();
-                                            
-                                            let parts: Vec<&str> = token.splitn(3, ':').collect();
-                                            let tool_name = if parts.len() >= 3 { parts[1] } else { "unknown_tool" };
-                                            
-                                            sp.start("AI Formulating Plan...");
-                                            std::thread::sleep(std::time::Duration::from_millis(400));
-                                            sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> <tool_call>{{\"name\": \"{}\"}}", tool_name)));
-                                            println!();
-                                            
-                                            sp.start("Emitting closing sequence tag...");
-                                            std::thread::sleep(std::time::Duration::from_millis(200));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>"));
-                                            println!();
-                                            
-                                            sp.start("Triggering Engine intercept...");
-                                            std::thread::sleep(std::time::Duration::from_millis(300));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 7]\x1B[0m Engine intercept triggered. Autoregressive loop PAUSED."));
-                                            println!();
-                                            
-                                            sp.start(&format!("Sandbox executing '{}'...", tool_name));
-                                            std::thread::sleep(std::time::Duration::from_millis(600));
-                                            if parts.len() >= 2 {
-                                                sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 8]\x1B[0m Sandbox UnifiedExecutor executed: '{}'.", parts[1])));
-                                            } else {
-                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 8]\x1B[0m Sandbox UnifiedExecutor executed."));
+                                            let mut is_system_step = false;
+                                            if token.starts_with("__STEP_2_MATCH_START__") {
+                                                let parts: Vec<&str> = token.split(':').collect();
+                                                let matched = if parts.len() >= 2 { parts[1] } else { "unknown" };
+                                                let score = if parts.len() >= 3 { parts[2] } else { "0.88" };
+                                                print!("\r\n\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool: '{}' (Score: {})\r\n", matched, score);
+                                                is_system_step = true;
+                                            } else if token.starts_with("__STEP_3_INJECT_START__") {
+                                                print!("\r\n\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully.\r\n");
+                                                is_system_step = true;
+                                            } else if token == "__STEP_4_READ_SMS__" {
+                                                print!("\r\n\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context.\r\n");
+                                                is_system_step = true;
+                                            } else if token.contains("<tool_call>") || token.contains("<tool_call") {
+                                                let clean = token.replace("\n", "").replace("\r", "");
+                                                print!("\r\n\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> {}\r\n", clean);
+                                                is_system_step = true;
+                                            } else if token.contains("</tool_call>") {
+                                                print!("\r\n\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>\r\n");
+                                                is_system_step = true;
+                                            } else if token.starts_with("__ENGINE_PAUSE_EXECUTE__") {
+                                                let mut sp = crate::ui::spinner::TerminalSpinner::new();
+                                                sp.start("Receiving User SMS...");
+                                                std::thread::sleep(std::time::Duration::from_millis(250));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 1]\x1B[0m User SMS Received"));
+                                                println!();
+
+                                                sp.start("Scanning Registry for Tool Match...");
+                                                std::thread::sleep(std::time::Duration::from_millis(300));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 2]\x1B[0m Match Found -> Registry Tool"));
+                                                println!();
+
+                                                sp.start("Compiling Dynamic Prefix Layer rules...");
+                                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 3]\x1B[0m Dynamic Prefix Layer rules compile & inject successfully."));
+                                                println!();
+
+                                                sp.start("Parsing SMS input context...");
+                                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 4]\x1B[0m Inference system parses user SMS input context."));
+                                                println!();
+
+                                                let parts: Vec<&str> = token.splitn(3, ':').collect();
+                                                let tool_name = if parts.len() >= 3 { parts[1] } else { "unknown_tool" };
+
+                                                sp.start("AI Formulating Plan...");
+                                                std::thread::sleep(std::time::Duration::from_millis(400));
+                                                sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 5]\x1B[0m AI Formulates Plan: Tool call emitted -> <tool_call>{{\"name\": \"{}\"}}", tool_name)));
+                                                println!();
+
+                                                sp.start("Emitting closing sequence tag...");
+                                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 6]\x1B[0m AI Emits closing sequence tag: </tool_call>"));
+                                                println!();
+
+                                                sp.start("Triggering Engine intercept...");
+                                                std::thread::sleep(std::time::Duration::from_millis(300));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 7]\x1B[0m Engine intercept triggered. Autoregressive loop PAUSED."));
+                                                println!();
+
+                                                sp.start(&format!("Sandbox executing '{}'...", tool_name));
+                                                std::thread::sleep(std::time::Duration::from_millis(600));
+                                                if parts.len() >= 2 {
+                                                    sp.stop(Some(&format!("\x1B[K✅ \x1B[32m[Step 8]\x1B[0m Sandbox UnifiedExecutor executed: '{}'.", parts[1])));
+                                                } else {
+                                                    sp.stop(Some("\x1B[K✅ \x1B[32m[Step 8]\x1B[0m Sandbox UnifiedExecutor executed."));
+                                                }
+                                                println!();
+
+                                                sp.start("Injecting Zero-copy KV-Cache...");
+                                                std::thread::sleep(std::time::Duration::from_millis(250));
+                                                sp.stop(Some("\x1B[K✅ \x1B[32m[Step 9]\x1B[0m Zero-copy KV-Cache parameters injected directly into context layers. Resuming loop..."));
+                                                println!();
+
+                                                print!("\r\n──── \x1B[35m🤖 AI FINAL ANSWER\x1B[0m ────────────────────────\r\n\r\n");
+                                                is_system_step = true;
+                                                eos_cb.store(false, Ordering::SeqCst);
                                             }
-                                            println!();
-                                            
-                                            sp.start("Injecting Zero-copy KV-Cache...");
-                                            std::thread::sleep(std::time::Duration::from_millis(250));
-                                            sp.stop(Some("\x1B[K✅ \x1B[32m[Step 9]\x1B[0m Zero-copy KV-Cache parameters injected directly into context layers. Resuming loop..."));
-                                            println!();
-                                            
-                                            print!("\r\n──── \x1B[35m🤖 AI FINAL ANSWER\x1B[0m ────────────────────────\r\n\r\n");
-                                            is_system_step = true;
-                                            eos_cb.store(false, Ordering::SeqCst);
-                                        }
 
-                                        // Filter tags and update state
-                                        let mut display_token = token.clone();
-                                        
-                                        for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|im_start|>", "<start_of_turn>"] {
-                                            display_token = display_token.replace(tag, "");
-                                        }
-
-                                        // Filter internal macro leaks in Standalone mode
-                                        if is_system_step
-                                            || display_token.contains("[Agentic Pause]") 
-                                            || display_token.contains("__ENGINE_PAUSE_EXECUTE__") 
-                                            || display_token.contains("<TOOL_OUTPUT_LOG>") 
-                                            || display_token.contains("</TOOL_OUTPUT_LOG>")
-                                            || display_token.starts_with("__STEP_")
-                                            || display_token.contains("<tool_call>")
-                                            || display_token.contains("</tool_call>") {
-                                            display_token = String::new();
-                                        }
-
-                                        let accumulated = res.clone() + token.as_str();
-                                        let mut just_finished_thinking = false;
-
-                                        // ALWAYS check for </think> to hide it and cleanly exit think mode
-                                        if !think_end_tag.is_empty() && (accumulated.ends_with(&think_end_tag) || token.contains(&think_end_tag)) {
-                                            in_think_cb.store(false, Ordering::SeqCst);
-                                            global_think_cb.store(false, Ordering::SeqCst);
-                                            display_token = display_token.replace(&think_end_tag, "");
-                                            just_finished_thinking = true;
-                                        }
-
-                                        // ALWAYS check for <think> to turn ON think mode dynamically
-                                        if !think_start_tag.is_empty() && (accumulated.ends_with(&think_start_tag) || token.contains(&think_start_tag)) {
-                                            if !in_think_cb.load(Ordering::SeqCst) {
-                                                in_think_cb.store(true, Ordering::SeqCst);
-                                                global_think_cb.store(true, Ordering::SeqCst);
-                                                print!("\r\n\x1B[90m> \x1B[3m");
+                                            let mut display_token = token.clone();
+                                            for tag in &["<turn|>", "<|im_end|>", "<end_of_turn>", "<|im_start|>", "<start_of_turn>"] {
+                                                display_token = display_token.replace(tag, "");
                                             }
-                                            display_token = display_token.replace(&think_start_tag, "");
-                                        }
 
-                                        if just_finished_thinking {
-                                            print!("\x1B[0m\r\n\r\n");
-                                        }
-
-                                        let currently_thinking = in_think_cb.load(Ordering::SeqCst);
-                                        
-                                        if !display_token.is_empty() {
-                                            let display_token_raw = display_token.replace("\n", "\r\n");
-                                            if currently_thinking && !suppress_thinking {
-                                                 print!("\x1B[90m{}\x1B[0m", display_token_raw);
-                                            } else {
-                                                 print!("{}", display_token_raw);
+                                            if is_system_step
+                                                || display_token.contains("[Agentic Pause]")
+                                                || display_token.contains("__ENGINE_PAUSE_EXECUTE__")
+                                                || display_token.contains("<TOOL_OUTPUT_LOG>")
+                                                || display_token.contains("</TOOL_OUTPUT_LOG>")
+                                                || display_token.starts_with("__STEP_")
+                                                || display_token.contains("<tool_call>")
+                                                || display_token.contains("</tool_call>") {
+                                                display_token = String::new();
                                             }
-                                        } else if just_finished_thinking {
-                                            print!("\x1B[0m"); // Even if display token is empty, we must reset
-                                        }
 
-                                        let _ = std::io::stdout().flush();
-                                        res.push_str(&token); // Keep original token with tags in internal state
-                                        pulse_clone.tps_counter.fetch_add(1, Ordering::SeqCst);
+                                            let accumulated = res.clone() + token.as_str();
+                                            let mut just_finished_thinking = false;
+
+                                            if !think_end_tag.is_empty() && (accumulated.ends_with(&think_end_tag) || token.contains(&think_end_tag)) {
+                                                in_think_cb.store(false, Ordering::SeqCst);
+                                                global_think_cb.store(false, Ordering::SeqCst);
+                                                display_token = display_token.replace(&think_end_tag, "");
+                                                just_finished_thinking = true;
+                                            }
+
+                                            if !think_start_tag.is_empty() && (accumulated.ends_with(&think_start_tag) || token.contains(&think_start_tag)) {
+                                                if !in_think_cb.load(Ordering::SeqCst) {
+                                                    in_think_cb.store(true, Ordering::SeqCst);
+                                                    global_think_cb.store(true, Ordering::SeqCst);
+                                                    print!("\r\n\x1B[90m> \x1B[3m");
+                                                }
+                                                display_token = display_token.replace(&think_start_tag, "");
+                                            }
+
+                                            if just_finished_thinking {
+                                                print!("\x1B[0m\r\n\r\n");
+                                            }
+
+                                            let currently_thinking = in_think_cb.load(Ordering::SeqCst);
+                                            if !display_token.is_empty() {
+                                                let display_token_raw = display_token.replace("\n", "\r\n");
+                                                if currently_thinking && !suppress_thinking {
+                                                    print!("\x1B[90m{}\x1B[0m", display_token_raw);
+                                                } else {
+                                                    print!("{}", display_token_raw);
+                                                }
+                                            } else if just_finished_thinking {
+                                                print!("\x1B[0m");
+                                            }
+
+                                            let _ = std::io::stdout().flush();
+                                            res.push_str(&token);
+                                            pulse_clone.tps_counter.fetch_add(1, Ordering::SeqCst);
+                                        }
                                     }
-                                    true
-                                }),
-                            );
-                            
-                            // ⚡ Disable raw mode safely after stream ends
-                            let _ = crossterm::terminal::disable_raw_mode();
-                            
-                            // 🔊 RESTORE stderr properly using duplicated FD
-                            #[cfg(windows)]
-                            unsafe {
-                                if saved_stderr != -1 {
-                                    libc::dup2(saved_stderr, 2);
-                                    libc::close(saved_stderr);
+                                    let _ = crossterm::terminal::disable_raw_mode();
+                                    Ok(())
+                                }
+                                cluaiz_runtime::HostResponse::Completed(text) => {
+                                    let _ = crossterm::terminal::disable_raw_mode();
+                                    if let Ok(mut res) = full_clone.lock() {
+                                        res.push_str(&text);
+                                    }
+                                    print!("{}", text);
+                                    let _ = std::io::stdout().flush();
+                                    Ok(())
+                                }
+                                cluaiz_runtime::HostResponse::Error(err) => {
+                                    let _ = crossterm::terminal::disable_raw_mode();
+                                    Err(err)
                                 }
                             }
-                            #[cfg(not(windows))]
-                            unsafe {
-                                if saved_stderr != -1 {
-                                    libc::dup2(saved_stderr, 2);
-                                    libc::close(saved_stderr);
-                                }
-                            }
-                            
-                            // 🚀 Hardware-managed Agentic Pause and Zero-Delay TTFT handled entirely by Native Router
-                            result
                         });
 
                         let end_time = std::time::Instant::now();
@@ -691,14 +599,7 @@ impl DashboardEngine {
                             response.to_string(),
                         ));
 
-                        // 🧠 Database FFI Integration: Vectorize and save AI Response
-                        if schema.vectorize_ai_response {
-                            let response_vector = engines::memory::embedding_generator::EmbeddingGenerator::generate_vector(&response);
-                            let response_id = format!("response-{}", uuid::Uuid::new_v4());
-                            let _ = storage_bridge.save_context(&response_id, &response, &response_vector);
-                        }
-
-                        if engine_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+                        if cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
                             println!();
                             use crossterm::style::Stylize;
                             println!("{} {}", "⏸️  Paused:".with(crossterm::style::Color::Yellow).bold(), "Engine stopped mid-generation. Context preserved in VRAM.".with(crossterm::style::Color::DarkGrey));
@@ -716,11 +617,10 @@ impl DashboardEngine {
 
                         
                         let ttft_secs = f64::from_bits(ttft_ref.load(Ordering::SeqCst));
-                        let registry = engine_core::hardware::governor::HardwareGovernor::get_active_allocations();
-                        let mut vram_used_gb = 0.0;
-                        for info in registry { if info.pid == std::process::id() { vram_used_gb = info.vram_gb; } }
+                        let pulse = cluaiz_hw::get_pulse();
+                        let vram_used_gb = pulse.pulse.read().map(|p| p.vram_used_gb).unwrap_or(0.0);
 
-                        let schema_for_telemetry = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+                        let schema_for_telemetry = cluaiz_security::PermissionSchema::load();
                         if schema_for_telemetry.stream_telemetry {
                             println!("\n  {} │ {} tokens │ {:.1} TPS │ {:.2}s │ TTFT: {:.2}s │ VRAM Used: {:.2} GB", 
                                 colored::Colorize::magenta("⚡ System Benchmark"), 
@@ -780,19 +680,14 @@ impl DashboardEngine {
                 state.printed_logo = false;
             }
             cmd if cmd.starts_with("run ") => {
-                let model_id = &cmd[4..];
-                println!("  {} Silicon Dispatch: '{}'...", "🧬".cyan(), model_id);
+                let model_id = cmd[4..].trim();
+                println!("  {} Model Dispatch: '{}'...", "🧬".cyan(), model_id);
                 
-                let manager = engines::models::manager::ModelManager::new(
-                    engines::models::registry::REGISTRY_URL.to_string(),
-                    std::path::PathBuf::from("models")
-                );
-
                 tokio::task::block_in_place(|| {
                     let rt = tokio::runtime::Handle::current();
-                    match rt.block_on(manager.pull_model(model_id)) {
-                        Ok(_) => println!("  {} Link Established.", "✅".green()),
-                        Err(e) => println!("  {} Dispatch Failed: {}", "❌".red(), e),
+                    match rt.block_on(crate::cli::pull::execute(model_id)) {
+                        Ok(_) => println!("  {} Model session complete.", "✅".green()),
+                        Err(e) => println!("  {} Pull Failed: {}", "❌".red(), e),
                     }
                 });
             }
@@ -865,32 +760,31 @@ impl DashboardEngine {
                     print!("\x1B[1A\x1B[2K\r");
                     stdout().flush()?;
                     
-                    let mut opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                    let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                    let mut settings = cluaiz_core::Settings::current();
                     if mode_ans.contains("Flash Mode") {
-                        gguf_meta.user_moved_flags.think_mode = "Off".to_string();
+                        settings.optimization.think_mode = cluaiz_core::FeatureState::Off;
                     } else if mode_ans.contains("Think Mode") {
-                        gguf_meta.user_moved_flags.think_mode = "On".to_string();
+                        settings.optimization.think_mode = cluaiz_core::FeatureState::On;
                     } else if mode_ans.contains("Boot Mode") {
-                        gguf_meta.user_moved_flags.think_mode = "Auto".to_string();
+                        settings.optimization.think_mode = cluaiz_core::FeatureState::Auto;
                     }
                     
-                    let _ = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control);
-                    let _ = gguf_meta.save();
-                    
-                    println!("  {} {} activated and saved to llm_optimization.json.", "✅".green(), mode_ans.bold());
+                    if let Err(e) = cluaiz_core::Settings::update(settings) {
+                        println!("  {} Failed to save settings: {}", "❌".red(), e);
+                    } else {
+                        println!("  {} {} activated and saved.", "✅".green(), mode_ans.bold());
+                    }
                     return Ok(());
                 } else if master_ans.contains("Optimization") || master_ans.contains("Booster") {
-                    let _opt_config_path = engine_core::environment::EnvironmentManager::current().config_dir().join("llm_optimization.json");
-
                     loop {
-                        let mut opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                        let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+                        let mut settings = cluaiz_core::Settings::current();
+                        let opt_control = &mut settings.optimization;
                         
-                        let compute_mode_str = match gguf_meta.hardware_and_execution.n_gpu_layers {
-                            0 => "CPU Only".to_string(),
-                            -1 => "GPU (Full Offload)".to_string(),
-                            n => format!("Hybrid ({} Layers)", n),
+                        let compute_mode_str = match opt_control.n_gpu_layers {
+                            Some(0) => "CPU Only".to_string(),
+                            Some(-1) => "GPU (Full Offload)".to_string(),
+                            Some(n) => format!("Hybrid ({} Layers)", n),
+                            None => "Auto Dynamic".to_string(),
                         };
 
                         let vram_buf_str = match opt_control.custom_vram_buffer_gb {
@@ -912,7 +806,7 @@ impl DashboardEngine {
                             format!("Context Shifting (Current: {:?})", opt_control.context_shifting),
                             format!("Force Memory Lock (Current: {:?})", opt_control.force_memory_lock),
                             format!("Speculative Decoding (Current: {:?})", opt_control.speculative_decoding),
-                            format!("Think Mode (Current: {:?})", gguf_meta.user_moved_flags.think_mode),
+                            format!("Think Mode (Current: {:?})", opt_control.think_mode),
                         ];
                         options.push("🔙 Back to Menu".to_string());
                         
@@ -941,6 +835,7 @@ impl DashboardEngine {
                                 "GPU (Full Offload)".to_string(),
                                 "CPU Only".to_string(),
                                 "Custom Layers".to_string(),
+                                "Auto Dynamic".to_string(),
                             ];
                             let selected_device = match Select::new("Select Compute Device:", device_options).with_help_message("")
                                 .with_render_config(config.clone())
@@ -957,10 +852,13 @@ impl DashboardEngine {
 
                             match selected_device.as_str() {
                                 "GPU (Full Offload)" => {
-                                    gguf_meta.hardware_and_execution.n_gpu_layers = -1;
+                                    settings.optimization.n_gpu_layers = Some(-1);
                                 }
                                 "CPU Only" => {
-                                    gguf_meta.hardware_and_execution.n_gpu_layers = 0;
+                                    settings.optimization.n_gpu_layers = Some(0);
+                                }
+                                "Auto Dynamic" => {
+                                    settings.optimization.n_gpu_layers = None;
                                 }
                                 "Custom Layers" => {
                                     let layers_input = inquire::CustomType::<i32>::new("Enter number of GPU layers (-1 for full offload):")
@@ -969,7 +867,7 @@ impl DashboardEngine {
                                         .prompt();
                                     match layers_input {
                                         Ok(layers) => {
-                                            gguf_meta.hardware_and_execution.n_gpu_layers = layers;
+                                            settings.optimization.n_gpu_layers = Some(layers);
                                         }
                                         Err(_) => {
                                             print!("\x1B[1A\x1B[2K\r");
@@ -983,11 +881,10 @@ impl DashboardEngine {
                                 _ => {}
                             }
 
-                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                                let _ = gguf_meta.save();
-                                println!("  {} Optimization updated: Compute Device = {}", "✅".green(), selected_device.bold());
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save optimization settings.", "❌".red());
+                                println!("  {} Optimization updated: Compute Device = {}", "✅".green(), selected_device.bold());
                             }
                             continue;
                         }
@@ -1013,20 +910,21 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             if selected_buf == "Auto (% Dynamic)" {
-                                opt_control.custom_vram_buffer_gb = None;
+                                settings.optimization.custom_vram_buffer_gb = None;
                             } else {
                                 if let Ok(gb) = inquire::CustomType::<f64>::new("Enter VRAM Safety Buffer in GB (e.g. 1.5):")
                                     .with_default(1.5)
                                     .with_render_config(config.clone())
                                     .prompt() {
-                                    opt_control.custom_vram_buffer_gb = Some(gb);
+                                    settings.optimization.custom_vram_buffer_gb = Some(gb);
                                 }
                             }
 
-                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                                println!("  {} Optimization updated: VRAM Buffer = {:?}", "✅".green(), opt_control.custom_vram_buffer_gb);
+                            let vram_val = settings.optimization.custom_vram_buffer_gb;
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save optimization settings.", "❌".red());
+                                println!("  {} Optimization updated: VRAM Buffer = {:?}", "✅".green(), vram_val);
                             }
                             continue;
                         }
@@ -1052,20 +950,21 @@ impl DashboardEngine {
                             stdout().flush()?;
 
                             if selected_buf == "Auto (% Dynamic)" {
-                                opt_control.custom_ram_buffer_gb = None;
+                                settings.optimization.custom_ram_buffer_gb = None;
                             } else {
                                 if let Ok(gb) = inquire::CustomType::<f64>::new("Enter CPU RAM Safety Buffer in GB (e.g. 2.0):")
                                     .with_default(2.0)
                                     .with_render_config(config.clone())
                                     .prompt() {
-                                    opt_control.custom_ram_buffer_gb = Some(gb);
+                                    settings.optimization.custom_ram_buffer_gb = Some(gb);
                                 }
                             }
 
-                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                                println!("  {} Optimization updated: RAM Buffer = {:?}", "✅".green(), opt_control.custom_ram_buffer_gb);
+                            let ram_val = settings.optimization.custom_ram_buffer_gb;
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save optimization settings.", "❌".red());
+                                println!("  {} Optimization updated: RAM Buffer = {:?}", "✅".green(), ram_val);
                             }
                             continue;
                         }
@@ -1093,19 +992,19 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            opt_control.context_shifting = match selected_shift.as_str() {
-                                "Off" => engine_core::hardware::schema::optimization::ContextShiftingMode::Off,
-                                "Minimal" => engine_core::hardware::schema::optimization::ContextShiftingMode::Minimal,
-                                "Standard" => engine_core::hardware::schema::optimization::ContextShiftingMode::Standard,
-                                "Aggressive" => engine_core::hardware::schema::optimization::ContextShiftingMode::Aggressive,
-                                "Extreme" => engine_core::hardware::schema::optimization::ContextShiftingMode::Extreme,
-                                _ => engine_core::hardware::schema::optimization::ContextShiftingMode::Auto,
+                            settings.optimization.context_shifting = match selected_shift.as_str() {
+                                "Off" => cluaiz_core::ContextShiftingMode::Off,
+                                "Minimal" => cluaiz_core::ContextShiftingMode::Minimal,
+                                "Standard" => cluaiz_core::ContextShiftingMode::Standard,
+                                "Aggressive" => cluaiz_core::ContextShiftingMode::Aggressive,
+                                "Extreme" => cluaiz_core::ContextShiftingMode::Extreme,
+                                _ => cluaiz_core::ContextShiftingMode::Auto,
                             };
 
-                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                                println!("  {} Optimization updated: Context Shifting = {}", "✅".green(), selected_shift.bold());
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save optimization settings.", "❌".red());
+                                println!("  {} Optimization updated: Context Shifting = {}", "✅".green(), selected_shift.bold());
                             }
                             continue;
                         }
@@ -1130,17 +1029,17 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            opt_control.kv_cache_quantization = match selected_kv.as_str() {
-                                s if s.starts_with("16-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv16,
-                                s if s.starts_with("8-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv8,
-                                s if s.starts_with("4-bit") => engine_core::hardware::schema::optimization::KvCacheQuantization::Kv4,
-                                _ => engine_core::hardware::schema::optimization::KvCacheQuantization::Auto,
+                            settings.optimization.kv_cache_quantization = match selected_kv.as_str() {
+                                s if s.starts_with("16-bit") => cluaiz_core::KvCacheQuantization::Kv16,
+                                s if s.starts_with("8-bit") => cluaiz_core::KvCacheQuantization::Kv8,
+                                s if s.starts_with("4-bit") => cluaiz_core::KvCacheQuantization::Kv4,
+                                _ => cluaiz_core::KvCacheQuantization::Auto,
                             };
 
-                            if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                                println!("  {} Optimization updated: KV Cache Quantization = {}", "✅".green(), selected_kv.bold());
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save optimization settings.", "❌".red());
+                                println!("  {} Optimization updated: KV Cache Quantization = {}", "✅".green(), selected_kv.bold());
                             }
                             continue;
                         }
@@ -1149,9 +1048,7 @@ impl DashboardEngine {
                             let think_options = vec![
                                 "Auto (Dynamic Reasoning)".to_string(),
                                 "Off (Zero-Wait Bypass)".to_string(),
-                                "Low (512 Tokens)".to_string(),
-                                "Medium (1024 Tokens)".to_string(),
-                                "High (Deep Reasoning)".to_string(),
+                                "On (Deep Reasoning)".to_string(),
                             ];
                             let selected_think = match Select::new("Select Think Mode:", think_options).with_help_message("")
                                 .with_render_config(config.clone())
@@ -1166,27 +1063,16 @@ impl DashboardEngine {
                             print!("\x1B[1A\x1B[2K\r");
                             stdout().flush()?;
 
-                            let mode_val = if selected_think.starts_with("Low") {
-                                "Low".to_string()
-                            } else if selected_think.starts_with("Medium") {
-                                "Medium".to_string()
-                            } else if selected_think.starts_with("High") {
-                                "High".to_string()
-                            } else if selected_think.starts_with("Off") {
-                                "Off".to_string()
-                            } else {
-                                "Auto".to_string()
+                            settings.optimization.think_mode = match selected_think.as_str() {
+                                s if s.starts_with("Off") => cluaiz_core::FeatureState::Off,
+                                s if s.starts_with("On") => cluaiz_core::FeatureState::On,
+                                _ => cluaiz_core::FeatureState::Auto,
                             };
 
-                            gguf_meta.user_moved_flags.think_mode = mode_val.clone();
-                            let mut onnx_meta = engine_core::hardware::schema::onnx_metadata::OnnxMetadataHeaders::load();
-                            onnx_meta.user_moved_flags.think_mode = mode_val.clone();
-
-                            if let Ok(_) = gguf_meta.save() {
-                                let _ = onnx_meta.save();
-                                println!("  {} Settings updated: Think Mode = {}", "✅".green(), selected_think.bold());
+                            if let Err(e) = cluaiz_core::Settings::update(settings) {
+                                println!("  {} Failed to save settings: {}", "❌".red(), e);
                             } else {
-                                println!("  {} Failed to save settings.", "❌".red());
+                                println!("  {} Settings updated: Think Mode = {}", "✅".green(), selected_think.bold());
                             }
                             continue;
                         }
@@ -1207,30 +1093,25 @@ impl DashboardEngine {
                         stdout().flush()?;
 
                         let feature_state = match val_ans.as_str() {
-                            "On" => engine_core::hardware::schema::optimization::FeatureState::On,
-                            "Off" => engine_core::hardware::schema::optimization::FeatureState::Off,
-                            _ => engine_core::hardware::schema::optimization::FeatureState::Auto,
+                            "On" => cluaiz_core::FeatureState::On,
+                            "Off" => cluaiz_core::FeatureState::Off,
+                            _ => cluaiz_core::FeatureState::Auto,
                         };
 
                         match key_part.as_str() {
-                            "Flash Attention" => opt_control.flash_attention = feature_state,
-                            "Extreme MoE SSD Streaming" => opt_control.extreme_moe_streaming = feature_state,
-                            "Hybrid Memory Mode" => {
-                                opt_control.hybrid_memory = feature_state;
-                            },
-                            "Speculative Decoding" => opt_control.speculative_decoding = feature_state,
-                            "Force Memory Lock" => opt_control.force_memory_lock = feature_state,
-                            "Think Mode" => {
-                                gguf_meta.user_moved_flags.think_mode = val_ans.clone();
-                            },
+                            "Flash Attention" => settings.optimization.flash_attention = feature_state,
+                            "Extreme MoE SSD Streaming" => settings.optimization.extreme_moe_streaming = feature_state,
+                            "Hybrid Memory Mode" => settings.optimization.hybrid_memory = feature_state,
+                            "Speculative Decoding" => settings.optimization.speculative_decoding = feature_state,
+                            "Force Memory Lock" => settings.optimization.force_memory_lock = feature_state,
+                            "Think Mode" => settings.optimization.think_mode = feature_state,
                             _ => {}
                         }
                         
-                        if let Ok(_) = engine_core::hardware::governor::HardwareGovernor::save_optimization_settings(&opt_control) {
-                            let _ = gguf_meta.save();
-                            println!("  {} Optimization updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
+                        if let Err(e) = cluaiz_core::Settings::update(settings) {
+                            println!("  {} Failed to save optimization settings: {}", "❌".red(), e);
                         } else {
-                            println!("  {} Failed to save optimization settings.", "❌".red());
+                            println!("  {} Optimization updated: {} = {}", "✅".green(), key_part.cyan(), val_ans.bold());
                         }
                     }
                     continue; // Go back to Master Menu after exiting System Optimization
@@ -1297,77 +1178,24 @@ impl DashboardEngine {
             let is_vector = master_ans.contains("Vector");
             
             if is_vector {
-                // For vector models, just update permission.json, DO NOT load them into CoreRouter!
-                engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_embedding_model(model.manifest.id.clone());
+                // For vector models, just update permission.json
+                cluaiz_security::PermissionSchema::set_active_embedding_model(model.manifest.id.clone());
                 println!("  {} Vector Model switched successfully. (Saved to permission.json)", "✅".green());
             } else {
                 if let Some(path_str) = &model.manifest.local_path {
                     let path = std::path::PathBuf::from(path_str);
 
-                    // 🧬 cluaiz DISPATCH:
-                    // High bit-depth -> Native Rust
-                    // 1-bit BitNet -> MANDATORY Llama (Binary)
-                    let runtime = if model.manifest.bit_depth < 2.0 {
-                        engine_core::BackendType::RuntimeB
-                    } else if path_str.to_lowercase().ends_with(".gguf") {
-                        engine_core::BackendType::RuntimeB
-                    } else {
-                        engine_core::BackendType::RuntimeA
-                    };
-
                     let result = tokio::task::block_in_place(|| {
                         let handle = tokio::runtime::Handle::current();
-                        
-                        // 🛑 SURGICAL FIX: Destroy old router to free VRAM BEFORE loading new model!
-                        {
-                            let mut lock = state.Core_engine.router.blocking_lock();
-                            *lock = engines::CoreRouter::new();
-                        }
-                        state.Core_engine.is_loaded.store(false, std::sync::atomic::Ordering::SeqCst);
-                        
-                        match handle.block_on(engines::CoreRouter::load_model(
-                            path,
-                            runtime.clone(),
-                        )) {
-                            Ok(router) => {
-                                let mut lock = state.Core_engine.router.blocking_lock();
-                                *lock = router;
-                                state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
-                                Ok(())
-                            }
-                            Err(e) => {
-                                // ⚠️ NATIVE FALLBACK: Only for standard models (Bit-depth >= 2.0)!
-                                // BitNet MUST NOT use RuntimeA (Candle) as it will crash with tensor errors.
-                                if runtime == engine_core::BackendType::RuntimeB
-                                    && model.manifest.bit_depth >= 2.0
-                                {
-                                    let path_inner = std::path::PathBuf::from(path_str);
-                                    handle
-                                        .block_on(engines::CoreRouter::load_model(
-                                            path_inner,
-                                            engine_core::BackendType::RuntimeA
-                                        ))
-                                        .map(|router| {
-                                            let mut lock = state.Core_engine.router.blocking_lock();
-                                            *lock = router;
-                                            state.Core_engine.is_loaded.store(true, std::sync::atomic::Ordering::SeqCst);
-                                        })
-                                } else {
-                                    Err(e)
-                                }
-                            }
-                        }
+                        handle.block_on(state.Core_engine.load_model(path))
                     });
 
                     match result {
                         Ok(_) => {
                             state._active_model_id = Some(model.manifest.id.clone());
-                            engines::neural_foundry::security::permission_schema::PermissionSchema::set_active_chat_model(model.manifest.id.clone());
+                            cluaiz_security::PermissionSchema::set_active_chat_model(model.manifest.id.clone());
                             
-                            let ctx = tokio::task::block_in_place(|| {
-                                let mut lock = state.Core_engine.router.blocking_lock();
-                                lock.get_active_dna().and_then(|d| d.max_context_length).unwrap_or(lock.hardware_n_ctx)
-                            });
+                            let ctx = 4096;
                             let model_gb = model.manifest.download_size_gb;
                             
                             if model_gb > 0.0 {

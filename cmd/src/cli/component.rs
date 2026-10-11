@@ -1,7 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
 use crate::ComponentCommand;
-use engines::tools::{ToolsInstaller, ToolsEngine};
+use cluaiz_agents::{ToolsInstaller, ToolsEngine};
 
 pub async fn execute(component_type: &str, command: ComponentCommand) -> Result<()> {
     match command {

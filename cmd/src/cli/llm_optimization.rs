@@ -1,8 +1,7 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engine_core::hardware::governor::HardwareGovernor;
-use engine_core::hardware::schema::optimization::{
-    KvCacheQuantization, ContextShiftingMode, FeatureState
+use cluaiz_core::{
+    Settings, KvCacheQuantization, ContextShiftingMode, FeatureState,
 };
 
 pub async fn execute(
@@ -11,7 +10,8 @@ pub async fn execute(
     mode: Option<String>,
     spec_decode: Option<String>,
 ) -> Result<()> {
-    let mut control = HardwareGovernor::load_optimization_settings().unwrap_or_default();
+    let mut settings = Settings::current();
+    let mut control = settings.optimization.clone();
     let mut modified = false;
 
     // Check if any arguments were provided
@@ -74,12 +74,16 @@ pub async fn execute(
             };
             modified = true;
         }
+
+        if modified {
+            settings.optimization = control.clone();
+            let _ = Settings::update(settings.clone());
+        }
     } else {
         // Loop-based Interactive configuration
         println!("\n  {} {}", "🚀".cyan(), "LLM Optimization - Interactive Performance Setup".bold());
         
         loop {
-            let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
             println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
             println!("    ├─ Flash Attention:   {:?}", control.flash_attention);
             println!("    ├─ KV Cache Quant:    {:?}", control.kv_cache_quantization);
@@ -96,7 +100,12 @@ pub async fn execute(
                 Some(gb) => format!("{:.2} GB (Direct GB)", gb),
                 None => "Auto (% Mode)".to_string(),
             });
-            println!("    └─ N GPU Layers:      {}", gguf_meta.hardware_and_execution.n_gpu_layers);
+            println!("    └─ N GPU Layers:      {}", match control.n_gpu_layers {
+                Some(0) => "CPU Only (0 layers)".to_string(),
+                Some(-1) => "GPU Full Offload (All layers)".to_string(),
+                Some(n) => format!("Hybrid ({} layers)", n),
+                None => "Auto Dynamic".to_string(),
+            });
 
             let options = vec![
                 "Flash Attention",
@@ -133,7 +142,8 @@ pub async fn execute(
                                 }
                             }
                         }
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
                 "CPU RAM Safety Buffer (Auto / Custom GB)" => {
@@ -153,7 +163,8 @@ pub async fn execute(
                                 }
                             }
                         }
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
                 "KV Cache Quantization" => {
@@ -166,7 +177,8 @@ pub async fn execute(
                             "Kv4" => KvCacheQuantization::Kv4,
                             _ => control.kv_cache_quantization,
                         };
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
                 "Context Shifting" => {
@@ -181,32 +193,31 @@ pub async fn execute(
                             "Extreme" => ContextShiftingMode::Extreme,
                             _ => control.context_shifting,
                         };
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
                 "N GPU Layers" => {
                     let gpu_opts = vec!["GPU Only (Max Acceleration)", "CPU Only (No GPU)", "Hybrid (Custom Layers)"];
                     if let Ok(g_ans) = inquire::Select::new("Compute Architecture:", gpu_opts).with_help_message("").prompt() {
-                        let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
                         match g_ans {
                             "GPU Only (Max Acceleration)" => {
-                                gguf_meta.hardware_and_execution.n_gpu_layers = -1;
-                                let _ = gguf_meta.save();
+                                control.n_gpu_layers = Some(-1);
                             }
                             "CPU Only (No GPU)" => {
-                                gguf_meta.hardware_and_execution.n_gpu_layers = 0;
-                                let _ = gguf_meta.save();
+                                control.n_gpu_layers = Some(0);
                             }
                             "Hybrid (Custom Layers)" => {
                                 if let Ok(val) = inquire::Text::new("Enter N GPU Layers (e.g. 10):").with_help_message("").prompt() {
                                     if let Ok(num) = val.parse::<i32>() {
-                                        gguf_meta.hardware_and_execution.n_gpu_layers = num;
-                                        let _ = gguf_meta.save();
+                                        control.n_gpu_layers = Some(num);
                                     }
                                 }
                             }
                             _ => {}
                         }
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
                 "💾 Save & Exit" => break,
@@ -230,7 +241,8 @@ pub async fn execute(
                             "Speculative Decoding" => control.speculative_decoding = state,
                             _ => {}
                         }
-                        let _ = HardwareGovernor::save_optimization_settings(&control);
+                        settings.optimization = control.clone();
+                        let _ = Settings::update(settings.clone());
                     }
                 }
             }
@@ -239,3 +251,4 @@ pub async fn execute(
 
     Ok(())
 }
+

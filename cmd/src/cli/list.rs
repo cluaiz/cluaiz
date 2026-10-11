@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use colored::Colorize;
-use engines::models::registry::CoreRoster;
+use cluaiz_models::CoreRoster;
 
 pub async fn execute() -> Result<()> {
     println!("\n  {} [cluaiz] Scanning Vault for Neural Weights...\n", "🔍".cyan());

@@ -1,11 +1,10 @@
-use engine_core::backend::traits::{StreamingInference, UnifiedBackend};
-use engine_core::hardware::governor::HardwareGovernor;
-use engine_core::hardware::schema::optimization::FeatureState;
-use engine_core::{EngineContext, StructuralDNA, TemplateManager};
+use cluaiz_core::{Settings, FeatureState, EnvironmentManager};
+use cluaiz_hw::HardwareProber;
+use cluaiz_models::{CoreRoster, GgufProber, StructuralDNA};
+use cluaiz_plan::Planner;
+use cluaiz_runtime::{EngineHost, HostResponse};
 use color_eyre::Result;
 use colored::Colorize;
-use engines::models::registry::CoreRoster;
-use engines::runtime::execution::hub::HardwareOrchestrator;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -53,7 +52,7 @@ pub async fn execute(target_model_id: Option<String>, runs: usize) -> Result<()>
             local_path.clone()
         } else {
             let folder_name = model.id.replace(':', "-");
-            let models_dir = engine_core::environment::EnvironmentManager::current()
+            let models_dir = EnvironmentManager::current()
                 .models_dir()
                 .join("chat");
             models_dir.join(&folder_name).to_string_lossy().to_string()
@@ -78,117 +77,84 @@ pub async fn execute(target_model_id: Option<String>, runs: usize) -> Result<()>
             .filter(|m| m.id == id)
             .collect::<Vec<_>>()
     } else {
-        // Interactive Selection Prompt
-        let mut options = vec!["All Downloaded Models".to_string()];
-        for m in &roster {
-            options.push(m.id.clone());
-        }
-
-        let choice = inquire::Select::new("Select model to benchmark:", options).prompt()?;
-        
-        if choice == "All Downloaded Models" {
-            roster
-        } else {
-            roster
-                .into_iter()
-                .filter(|m| m.id == choice)
-                .collect::<Vec<_>>()
-        }
+        roster
     };
 
     if targets.is_empty() {
-        println!(
-            "     {} Selected model not found in the vault.",
-            "⚠️ ".yellow()
-        );
+        println!("⚠️ No matching models found for benchmarking.");
         return Ok(());
     }
 
-    let mode_choice = inquire::Select::new(
-        "Select Benchmark Mode:",
-        vec![
-            "🚀 Auto Suite (Run all predefined prompts)",
-            "✍️ Custom Prompt (Enter your own prompt)"
-        ]
-    ).prompt()?;
+    println!("Found {} model(s) to benchmark.", targets.len());
 
-    let custom_prompt_val = if mode_choice.contains("Custom Prompt") {
-        let p = inquire::Text::new("Enter your custom prompt:").prompt()?;
-        Some(p)
-    } else {
-        None
-    };
+    let current_exe = std::env::current_exe()?;
 
-    let out_dir = get_benchmark_out_dir();
-    fs::create_dir_all(&out_dir).unwrap_or_default();
-
-    println!(
-        "  {} Found {} models in the vault. Preparing benchmark orchestrator...\n",
-        "📊".blue(),
-        targets.len()
-    );
-
-    let current_exe = std::env::current_exe().expect("Failed to get current executable path");
-
-    for model in &targets {
-        println!("=======================================================");
+    for model in targets {
         println!(
-            "🧪 Spawning Isolated Process for Model: {}",
-            model.id.green()
+            "\n════════════════════════════════════════════════════════════════════"
         );
-        println!("=======================================================");
+        println!(
+            "  🔬 Preparing Isolation Benchmark for: {}",
+            model.name.cyan().bold()
+        );
+        println!(
+            "════════════════════════════════════════════════════════════════════"
+        );
 
-        let folder_arg = if let Some(local_path) = &model.local_path {
-            local_path.clone()
+        let mut child = std::process::Command::new(&current_exe);
+        child.arg("benchmark");
+        child.env("BENCHMARK_MODEL_ID", &model.id);
+        child.env("BENCHMARK_RUNS", runs.to_string());
+
+        let folder_name = model.id.replace(':', "-");
+        let models_dir = EnvironmentManager::current()
+            .models_dir()
+            .join("chat");
+        let path = if let Some(p) = &model.local_path {
+            p.clone()
         } else {
-            model.id.replace(':', "-")
+            models_dir.join(&folder_name).to_string_lossy().to_string()
+        };
+        child.env("BENCHMARK_FOLDER_NAME", path);
+
+        child.stdout(std::process::Stdio::inherit());
+        child.stderr(std::process::Stdio::inherit());
+
+        let mut spawned = match child.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                println!(
+                    "❌ Failed to spawn isolated benchmark process for {}: {:?}",
+                    model.name, e
+                );
+                continue;
+            }
         };
 
-        let mut cmd = std::process::Command::new(&current_exe);
-        cmd.args(["benchmark"])
-            .env("BENCHMARK_MODEL_ID", &model.id)
-            .env("BENCHMARK_FOLDER_NAME", folder_arg)
-            .env("BENCHMARK_RUNS", runs.to_string());
-            
-        if let Some(ref p) = custom_prompt_val {
-            cmd.env("BENCHMARK_CUSTOM_PROMPT", p);
+        let status = spawned.wait()?;
+        if !status.success() {
+            println!(
+                "⚠️ Benchmark process for {} exited with error: {:?}",
+                model.name,
+                status.code()
+            );
         }
-
-        let status = cmd.status();
-
-        match status {
-            Ok(s) if s.success() => {
-                println!("✅ Model {} completed successfully.", model.id);
-            }
-            Ok(s) if s.code() == Some(2) => {
-                println!("⏭️ Model {} skipped (Missing GGUF weights).", model.id);
-            }
-            Ok(s) => {
-                println!("❌ Model {} failed with exit code: {}", model.id, s);
-            }
-            Err(e) => {
-                println!("❌ Failed to spawn process for {}: {}", model.id, e);
-            }
-        }
-
-        println!("🧹 Parent process waiting 3s for OS to absolutely flush VRAM...");
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
     }
 
     println!(
-        "\n  {} All benchmarks completed! Reports are in {:?}\n",
-        "🎉".green(),
-        out_dir
+        "\n  {} [Performance] All Benchmarks Completed! Check reports directory.\n",
+        "✅".green()
     );
+
     Ok(())
 }
 
 fn get_benchmark_out_dir() -> PathBuf {
     let base = if cfg!(debug_assertions) {
-        // Development Environment
+        // Workspace root for development
         let mut path = std::env::current_dir().unwrap_or_default();
-        while let Some(name) = path.file_name() {
-            if name.to_string_lossy() == "cluaiz" {
+        loop {
+            if path.join("Cargo.lock").exists() {
                 break;
             }
             if !path.pop() {
@@ -198,37 +164,26 @@ fn get_benchmark_out_dir() -> PathBuf {
         path.join("test").join("benchmark")
     } else {
         // Production Environment
-        engine_core::environment::EnvironmentManager::current()
+        EnvironmentManager::current()
             .local_dir
             .join("reports")
             .join("benchmark")
     };
 
-    if let Ok(control) = HardwareGovernor::load_system_info() {
-        let compute = if control.silicon_truth.accelerators.gpus.is_empty() {
-            "CPU_ONLY".to_string()
-        } else {
-            "GPU".to_string()
-        };
-
-        let hardware_name = if compute == "GPU" {
-            control.silicon_truth.accelerators.gpus[0]
-                .model
-                .replace(" ", "_")
-                .replace("/", "_")
-        } else {
-            control
-                .silicon_truth
-                .cpu
-                .brand
-                .replace(" ", "_")
-                .replace("/", "_")
-        };
-
-        base.join(compute).join(hardware_name)
+    let hardware = HardwareProber::current();
+    let compute = if hardware.gpus.is_empty() {
+        "CPU_ONLY".to_string()
     } else {
-        base.join("Unknown_Hardware")
-    }
+        "GPU".to_string()
+    };
+
+    let hardware_name = if compute == "GPU" {
+        hardware.gpus[0].name.replace(" ", "_").replace("/", "_")
+    } else {
+        hardware.cpu.brand.replace(" ", "_").replace("/", "_")
+    };
+
+    base.join(compute).join(hardware_name)
 }
 
 fn find_gguf_file(dir: &Path) -> Option<PathBuf> {
@@ -250,7 +205,7 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
     let path_str = if folder_name.contains('/') || folder_name.contains('\\') {
         folder_name.clone()
     } else {
-        let models_dir = engine_core::environment::EnvironmentManager::current()
+        let models_dir = EnvironmentManager::current()
             .models_dir()
             .join("chat");
         models_dir.join(&folder_name).to_string_lossy().to_string()
@@ -316,46 +271,35 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
         think_end_tag = dna.think_end_schema.clone();
     }
 
-    // Allow HardwareGovernor to negotiate context length dynamically based on VRAM
-    // dna.max_context_length is left untouched to represent the model's true architecture limit.
-
-    let context = EngineContext::boot(dna.clone(), TemplateManager::default());
-
-    // Model Params Guess (for prompt filtering)
-    let approx_params_b = (dna.weights_size_gb * 1.0) as usize; // Roughly 1GB = 1B params for q4/q8. Simple heuristic.
+    let approx_params_b = (dna.weights_size_gb * 1.0) as usize;
 
     println!("🔥 Booting Engine in Process Isolation...");
-    let mut engine = match engines::runtime::execution::hub::HardwareOrchestrator::instantiate(
-        gguf_file.to_str().unwrap(),
-        "llama",
-        context,
-    ).await {
-            Ok(engine) => engine,
-            Err(e) => {
-                println!(
-                    "❌ Failed to instantiate engine for {}: {:?}",
-                    model_name, e
-                );
-                std::process::exit(1);
-            }
-        };
+    let host = EngineHost::new();
+    let geometry = match GgufProber::probe_geometry(&gguf_file) {
+        Ok(g) => g,
+        Err(e) => {
+            println!("❌ Failed to probe model geometry for {}: {:?}", model_name, e);
+            std::process::exit(1);
+        }
+    };
+    let hardware = HardwareProber::current();
+    let settings = Settings::current();
+    let plan = Planner::create_plan(gguf_file.to_str().unwrap(), &geometry, &hardware, &settings);
+
+    if let Err(e) = host.load_model(gguf_file.to_str().unwrap(), &plan, &settings).await {
+        println!("❌ Failed to instantiate engine for {}: {:?}", model_name, e);
+        std::process::exit(1);
+    }
 
     println!("🔥 Warming up {}...", model_name);
     let warmup_prompts = vec!["Hello", "Test"];
-
     for prompt in warmup_prompts {
-        let _ = engine.generate_stream(prompt, 5, Box::new(|_| { true }));
+        let _ = host.dispatch_stream(prompt, 5).await;
     }
 
     println!("⚡ Warmup complete. Running main benchmark...");
-    
-    let registry = HardwareGovernor::get_active_allocations();
-    let my_pid = std::process::id();
-    let (vram_used_gb, context_size) = if let Some(info) = registry.iter().find(|i| i.pid == my_pid) {
-        (info.vram_gb, info.context_size)
-    } else {
-        (approx_params_b as f64 * 0.8, dna.max_context_length.unwrap_or(2048))
-    };
+    let vram_used_gb = plan.vram_budget_gb;
+    let context_size = plan.context_window;
 
     // Create report directory early
     let safe_folder_name = model_name.replace(':', "-").replace('/', "_");
@@ -405,14 +349,14 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
                 if think_mode { "ON" } else { "OFF" }
             );
 
-            // Reconfigure booster
-            let mut gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
-            gguf_meta.user_moved_flags.think_mode = if think_mode {
-                "On".to_string()
+            // Reconfigure settings
+            let mut settings = Settings::current();
+            settings.optimization.think_mode = if think_mode {
+                FeatureState::On
             } else {
-                "Off".to_string()
+                FeatureState::Off
             };
-            let _ = gguf_meta.save();
+            let _ = Settings::update(settings);
 
             let mut highest_tps = 0.0;
             let mut best_run_output = String::new();
@@ -431,23 +375,25 @@ async fn run_single_model_isolated(model_name: &str, runs: usize) {
                 let token_count = Arc::new(AtomicUsize::new(0));
                 let token_count_clone = token_count.clone();
 
-                let result = engine.generate_stream(
-                    &prompt_def.text,
-                    2048,
-                    Box::new(move |token| {
-                        let mut lock = first_token_time_clone.lock().unwrap();
-                        if lock.is_none() {
-                            *lock = Some(start.elapsed().as_secs_f64());
+                let resp = host.dispatch_stream(&prompt_def.text, 2048).await;
+                match resp {
+                    HostResponse::TokenStream(mut token_rx) => {
+                        while let Some(token) = token_rx.recv().await {
+                            let mut lock = first_token_time_clone.lock().unwrap();
+                            if lock.is_none() {
+                                *lock = Some(start.elapsed().as_secs_f64());
+                            }
+                            token_count_clone.fetch_add(1, Ordering::Relaxed);
+                            let _ = tx.send(token);
                         }
-                        token_count_clone.fetch_add(1, Ordering::Relaxed);
-                        let _ = tx.send(token);
-                        true
-                    }),
-                );
-
-                if let Err(ref e) = result {
-                    println!("        ❌ [Run {}/{}] FAILED: {:?}", i, runs, e);
-                    continue;
+                    }
+                    HostResponse::Completed(text) => {
+                        let _ = tx.send(text);
+                    }
+                    HostResponse::Error(e) => {
+                        println!("        ❌ [Run {}/{}] FAILED: {:?}", i, runs, e);
+                        continue;
+                    }
                 }
 
                 while let Ok(token) = rx.try_recv() {

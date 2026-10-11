@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use tokio::sync::mpsc;
-use engines::{DownloadEvent};
+use cluaiz_models::DownloadEvent;
 use crate::core::state::AppState;
 use inquire::{Select, ui::{Attributes, RenderConfig, Styled, Color}};
 use colored::Colorize;
@@ -14,7 +14,7 @@ pub struct RegistryApp;
 impl RegistryApp {
     pub fn show(state: &mut AppState, tx: &mpsc::UnboundedSender<DownloadEvent>) -> Result<()> {
         if state.sorted_models.is_empty() {
-            state.sorted_models = engines::CoreRoster::get_recommendations(&state.hardware.to_hardware_truth(), state.ram_gb);
+            state.sorted_models = cluaiz_models::CoreRoster::get_recommendations(&state.hardware, state.ram_gb);
         }
 
         let total_ram = state.ram_gb;
@@ -97,7 +97,7 @@ impl RegistryApp {
                         let action = details::show_details(idx, rec, total_ram, &base_path, tx)?;
 
                         // ── 🔄 STATE SYNC: Refresh model list after returning from details ──
-                        state.sorted_models = engines::CoreRoster::get_recommendations(&state.hardware.to_hardware_truth(), state.ram_gb);
+                        state.sorted_models = cluaiz_models::CoreRoster::get_recommendations(&state.hardware, state.ram_gb);
                         state.sorted_models.sort_by(|a, b| {
                             let (_, score_a, _) = RegistryTable::calculate_health(a, &state.hardware);
                             let (_, score_b, _) = RegistryTable::calculate_health(b, &state.hardware);

@@ -43,41 +43,41 @@ use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct CoreEngine {
-    pub router: Arc<Mutex<engines::CoreRouter>>,
+    pub host: Arc<cluaiz_runtime::EngineHost>,
     pub is_loaded: Arc<AtomicBool>,
     pub loading_error: Arc<Mutex<Option<String>>>,
+    pub active_path: Arc<Mutex<Option<std::path::PathBuf>>>,
 }
 
 impl CoreEngine {
     pub fn new() -> Self {
         Self { 
-            router: Arc::new(tokio::sync::Mutex::new(engines::CoreRouter::new())),
+            host: Arc::new(cluaiz_runtime::EngineHost::new()),
             is_loaded: Arc::new(AtomicBool::new(false)),
             loading_error: Arc::new(Mutex::new(None)),
+            active_path: Arc::new(Mutex::new(None)),
         }
     }
 
     pub async fn load_model(&self, path: std::path::PathBuf) -> Result<(), String> {
-        let backend = engines::BackendType::RuntimeB;
-
-        // 🔄 Reset Linker State
         self.is_loaded.store(false, Ordering::SeqCst);
         {
             let mut err_lock = self.loading_error.lock().await;
             *err_lock = None;
         }
-        
-        match engines::CoreRouter::load_model(path, backend).await {
-            Ok(router) => {
-                let mut lock = self.router.lock().await;
-                *lock = router;
+
+        let model_id = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        match self.host.ensure_loaded(&model_id, &path, &cluaiz_core::Settings::current()).await {
+            Ok(_) => {
                 self.is_loaded.store(true, Ordering::SeqCst);
+                *self.active_path.lock().await = Some(path);
                 Ok(())
             }
             Err(e) => {
+                let err_msg = e.to_string();
                 let mut err_lock = self.loading_error.lock().await;
-                *err_lock = Some(e.clone());
-                Err(e)
+                *err_lock = Some(err_msg.clone());
+                Err(err_msg)
             }
         }
     }
@@ -134,9 +134,9 @@ pub struct AppState {
     pub _active_tab: Tab,
     pub active_app: MenuApp,
     pub _menu_app: MenuApp,
-    pub hardware: ::engine_core::hardware::schema::profiles::SovereignProfile,
+    pub hardware: cluaiz_hw::SystemInfo,
     pub ram_gb: f64,
-    pub sorted_models: Vec<engines::ModelRecommendation>,
+    pub sorted_models: Vec<cluaiz_models::ModelRecommendation>,
     pub roster_state: TableState,
     pub menu_state: ListState,
     pub roster_h_scroll: u16,
@@ -164,7 +164,7 @@ pub struct AppState {
     pub _generation_tps: f64,
     pub cpu_usage: f32,
     pub mem_usage_gb: f32,
-    pub live_pulse: Arc<::engine_core::hardware::telemetry::ObservableHardwareState>,
+    pub live_pulse: Arc<cluaiz_hw::ObservableHardwareState>,
 
     // ── UI State ──
     pub is_dirty: bool,
@@ -262,7 +262,7 @@ impl AppState {
     }
 
     pub fn new(starting_state: Option<OsState>) -> Self {
-        let hardware = ::engine_core::hardware::get_sovereign_profile();
+        let hardware = cluaiz_hw::HardwareProber::current();
 
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
@@ -278,7 +278,7 @@ impl AppState {
         // Initialize state
         let os_state = starting_state.unwrap_or(OsState::Dashboard);
 
-        let live_pulse = ::engine_core::hardware::telemetry::get_pulse();
+        let live_pulse = cluaiz_hw::get_pulse();
         // ── Detect if Native IPC daemon is already running via Named Pipe probe ──
         // The daemon uses Windows Named Pipe, NOT a TCP socket.
         let _is_client_mode: bool = {
@@ -292,7 +292,7 @@ impl AppState {
             }
         };
 
-        let schema = engines::neural_foundry::security::permission_schema::PermissionSchema::load();
+        let schema = cluaiz_security::PermissionSchema::load();
         let mut _active_model_id = schema.chat_models.text.clone();
 
         Self {
@@ -353,16 +353,16 @@ impl AppState {
         }
     }
 
-    pub fn handle_events(&mut self, rx: &mut tokio::sync::mpsc::UnboundedReceiver<engines::DownloadEvent>) {
+    pub fn handle_events(&mut self, rx: &mut tokio::sync::mpsc::UnboundedReceiver<cluaiz_models::DownloadEvent>) {
         while let Ok(event) = rx.try_recv() {
             match event {
-                engines::DownloadEvent::Progress(prog, _current, _total, _speed, _eta) => {
+                cluaiz_models::DownloadEvent::Progress(prog, _current, _total, _speed, _eta) => {
                     self.download_progress = prog as f64;
                 }
-                engines::DownloadEvent::Complete(id) => {
+                cluaiz_models::DownloadEvent::Complete(id) => {
                     if id == "INITIAL_LOAD" {
-                        self.sorted_models = engines::CoreRoster::get_recommendations(
-                            &self.hardware.to_hardware_truth(), self.ram_gb
+                        self.sorted_models = cluaiz_models::CoreRoster::get_recommendations(
+                            &self.hardware, self.ram_gb
                         );
                     } else if self.downloading_id.as_ref() == Some(&id) {
                         let name = self.sorted_models.iter()
@@ -372,8 +372,8 @@ impl AppState {
 
                         self.downloading_id = None;
                         self.activity_stream.push(ActivityBlock::DownloadComplete(name));
-                        self.sorted_models = engines::CoreRoster::get_recommendations(
-                            &self.hardware.to_hardware_truth(), self.ram_gb
+                        self.sorted_models = cluaiz_models::CoreRoster::get_recommendations(
+                            &self.hardware, self.ram_gb
                         );
                     }
                 }

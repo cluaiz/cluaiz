@@ -1,5 +1,5 @@
 use colored::Colorize;
-use engines::ModelRecommendation;
+use cluaiz_models::ModelRecommendation;
 
 pub struct ColumnWidths {
     pub name: usize,
@@ -101,7 +101,7 @@ impl RegistryTable {
         idx: usize,
         model: &ModelRecommendation,
         w: &ColumnWidths,
-        hardware: &engine_core::hardware::schema::profiles::SovereignProfile,
+        hardware: &cluaiz_hw::SystemInfo,
     ) -> String {
         let size = format!("{:.1} GB", model.manifest.download_size_gb);
         let ram = format!("{:.1} GB", model.manifest.ram_required_gb);
@@ -157,25 +157,25 @@ impl RegistryTable {
 
     pub fn calculate_health(
         model: &ModelRecommendation,
-        hardware: &engine_core::hardware::schema::profiles::SovereignProfile,
+        hardware: &cluaiz_hw::SystemInfo,
     ) -> (colored::ColoredString, i32, String) {
-        let report = engine_core::hardware::speed_checker::predict_performance(
-            &model.manifest.parameters,
-            model.manifest.bit_depth,
-            &model.manifest.context_window,
-            model.manifest.requires_gpu,
-            hardware,
-        );
+        let model_size_gb = model.manifest.download_size_gb.max(0.5);
+        let has_gpu = !hardware.gpus.is_empty();
+        let expected_tps = if has_gpu && model.manifest.requires_gpu {
+            (300.0 / model_size_gb).clamp(1.0, 150.0)
+        } else {
+            (40.0 / model_size_gb).clamp(0.5, 40.0)
+        };
 
         let tps_str = if model.is_cached {
-            format!("{:.1} T/s", report.expected_tps)
+            format!("{:.1} T/s", expected_tps)
                 .green()
                 .to_string()
         } else {
-            format!("{:.1} T/s", report.expected_tps)
+            format!("{:.1} T/s", expected_tps)
         };
 
-        if report.status == engine_core::hardware::speed_checker::HealthStatus::Panic {
+        if model.status == "Incompatible" || model.status == "Impossible" {
             return ("⚫ ".black(), 0, tps_str);
         }
 
@@ -183,15 +183,13 @@ impl RegistryTable {
             return ("✔ ".green().bold(), 8, tps_str);
         }
 
-        use engine_core::hardware::speed_checker::HealthStatus;
-        match report.status {
-            HealthStatus::GodMode => ("🟣 ".magenta(), 7, tps_str),
-            HealthStatus::HyperSpeed => ("🔵 ".blue(), 6, tps_str),
-            HealthStatus::Instant => ("🟢 ".green(), 5, tps_str),
-            HealthStatus::Moderate => ("🟡 ".yellow(), 4, tps_str),
-            HealthStatus::Lagging => ("🟠 ".truecolor(255, 165, 0), 3, tps_str),
-            HealthStatus::Critical => ("🔴 ".red(), 2, tps_str),
-            HealthStatus::Panic => ("⚫ ".black(), 0, tps_str),
+        match model.status.as_str() {
+            "Optimal" => ("🟢 ".green(), 5, tps_str),
+            "Average" => ("🟡 ".yellow(), 4, tps_str),
+            "Heavy" => ("🟠 ".truecolor(255, 165, 0), 3, tps_str),
+            "Cloud" => ("🔵 ".blue(), 6, tps_str),
+            _ => ("⚫ ".black(), 0, tps_str),
         }
     }
 }
+
