@@ -8,7 +8,6 @@ pub mod llm_optimization;
 pub mod benchmark;
 pub mod component;
 pub mod ingest;
-pub mod test_jit;
 pub mod setup;
 pub mod config_cmd;
 pub mod storage;
