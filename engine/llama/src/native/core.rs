@@ -18,6 +18,10 @@ pub struct NativeLlama {
     pub moe_controller: Option<Arc<std::sync::Mutex<()>>>,
     /// n_gpu_layers the model really loaded with (differs from the request when a load fallback ran)
     pub n_gpu_layers_loaded: i32,
+    /// Chat templates parsed once at load (null if llama.cpp could not parse them); freed before the model
+    chat_templates: *mut std::ffi::c_void,
+    /// The custom template the parsed handle was built from (`dna.chat_template` at load)
+    chat_templates_src: Option<String>,
 }
 
 /// Timings of the last generation, measured by llama.cpp itself (the numbers llama-cli and
@@ -45,6 +49,16 @@ pub fn even_chunk_len(n_tokens: usize, max: usize) -> usize {
 }
 
 impl NativeLlama {
+    /// Parsed chat templates when `custom_template` is the one they were built from, else null
+    /// (the caller then renders with a one-off parse, the previous behaviour).
+    pub fn chat_templates_for(&self, custom_template: Option<&str>) -> *const std::ffi::c_void {
+        if custom_template == self.chat_templates_src.as_deref() {
+            self.chat_templates
+        } else {
+            std::ptr::null()
+        }
+    }
+
     /// Chunk length for prefilling `n_tokens`: at most one micro-batch (and one batch), split evenly.
     pub fn prompt_chunk_len(&self, n_tokens: usize) -> usize {
         let n_ubatch = unsafe { llama_cpp::llama_n_ubatch(self.ctx_ptr) };
@@ -394,6 +408,8 @@ impl NativeLlama {
             speculative_decoding_mode,
             moe_controller,
             n_gpu_layers_loaded,
+            chat_templates: crate::native::templater::parse_templates(model_ptr, dna.chat_template.as_deref()),
+            chat_templates_src: dna.chat_template.clone(),
         };
         llama.warmup();
         Ok(llama)
@@ -636,6 +652,10 @@ impl NativeLlama {
 impl Drop for NativeLlama {
     fn drop(&mut self) {
         unsafe {
+            // Parsed templates reference the model's vocab: free them first
+            if !self.chat_templates.is_null() {
+                llama_cpp::llama_chat_templates_handle_free(self.chat_templates);
+            }
             if !self.ctx_ptr.is_null() {
                 llama_cpp::llama_free(self.ctx_ptr);
             }

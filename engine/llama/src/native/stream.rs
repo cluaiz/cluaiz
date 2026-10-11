@@ -144,6 +144,7 @@ pub fn stream_tokens(
                 .collect();
             match crate::native::templater::apply_chat_template(
                 llama.model_ptr,
+                llama.chat_templates_for(dna.chat_template.as_deref()),
                 dna.chat_template.as_deref(),
                 &msg_refs,
                 true,
@@ -177,6 +178,7 @@ pub fn stream_tokens(
             let single_msg = [("user", actual_prompt.as_str())];
             match crate::native::templater::apply_chat_template(
                 llama.model_ptr,
+                llama.chat_templates_for(dna.chat_template.as_deref()),
                 dna.chat_template.as_deref(),
                 &single_msg,
                 true,

@@ -3,10 +3,35 @@
 use std::ffi::{CStr, CString};
 use crate::ffi::llama_cpp;
 
+/// Template text llama.cpp renders with: the custom one when set, else the GGUF's own.
+pub fn resolve_template(model_ptr: *const std::ffi::c_void, custom_template: Option<&str>) -> Option<String> {
+    if let Some(custom) = custom_template.filter(|s| !s.trim().is_empty()) {
+        return Some(custom.to_string());
+    }
+    if model_ptr.is_null() {
+        return None;
+    }
+    let tmpl_ptr = unsafe { llama_cpp::llama_model_chat_template(model_ptr, std::ptr::null()) };
+    if tmpl_ptr.is_null() {
+        return None;
+    }
+    unsafe { CStr::from_ptr(tmpl_ptr) }.to_str().ok().map(|s| s.to_string())
+}
+
+/// Parses the chat templates once for a loaded model (see `apply_chat_template`). Null on failure;
+/// the caller frees it with `llama_chat_templates_handle_free` before freeing the model.
+pub fn parse_templates(model_ptr: *const std::ffi::c_void, custom_template: Option<&str>) -> *mut std::ffi::c_void {
+    let tmpl = resolve_template(model_ptr, custom_template).and_then(|t| CString::new(t).ok());
+    let tmpl_ptr = tmpl.as_ref().map_or(std::ptr::null(), |c| c.as_ptr());
+    unsafe { llama_cpp::llama_chat_templates_handle_init(model_ptr, tmpl_ptr) }
+}
+
 /// Applies chat template dynamically: Primary MiniJinja rendering directly on GGUF metadata,
 /// ensuring zero alien ChatML token injection for non-ChatML architectures (like Gemma 4).
+/// `templates`: handle from `parse_templates` for this same template, or null to parse it for this call.
 pub fn apply_chat_template(
     model_ptr: *const std::ffi::c_void,
+    templates: *const std::ffi::c_void,
     custom_template: Option<&str>,
     messages: &[(&str, &str)],
     add_generation_prompt: bool,
@@ -21,17 +46,7 @@ pub fn apply_chat_template(
     }
 
     // 1. Resolve template string from GGUF binary in RAM or custom override
-    let tmpl_str: Option<String> = if let Some(custom) = custom_template.filter(|s| !s.trim().is_empty()) {
-        Some(custom.to_string())
-    } else {
-        let tmpl_ptr = unsafe { llama_cpp::llama_model_chat_template(model_ptr, std::ptr::null()) };
-        if !tmpl_ptr.is_null() {
-            let c_str = unsafe { CStr::from_ptr(tmpl_ptr) };
-            c_str.to_str().ok().map(|s| s.to_string())
-        } else {
-            None
-        }
-    };
+    let tmpl_str = resolve_template(model_ptr, custom_template);
 
     
     // 2. Primary: Native llama.cpp common chat templates engine (supports ALL models natively)
@@ -48,23 +63,24 @@ pub fn apply_chat_template(
     let role_ptrs: Vec<*const std::os::raw::c_char> = c_roles.iter().map(|c| c.as_ptr()).collect();
     let content_ptrs: Vec<*const std::os::raw::c_char> = c_contents.iter().map(|c| c.as_ptr()).collect();
 
-    // Each call parses the whole template in llama.cpp, so render once into a buffer sized from the
-    // inputs (the prompt is the template's text plus the messages) and only retry when it was too small.
-    // The call returns the full prompt length either way.
+    // Without a parsed handle each call parses the whole template in llama.cpp, so render once into a
+    // buffer sized from the inputs (the template's text plus the messages) and only retry when it was
+    // too small. Both calls return the full prompt length either way.
     let input_len = tmpl_str.as_ref().map_or(0, |t| t.len())
         + messages.iter().map(|(r, c)| r.len() + c.len()).sum::<usize>();
     let render = |buf: &mut Vec<u8>| unsafe {
-        llama_cpp::llama_chat_apply_template_native(
-            model_ptr,
-            custom_ptr,
-            role_ptrs.as_ptr(),
-            content_ptrs.as_ptr(),
-            messages.len(),
-            add_generation_prompt,
-            enable_thinking,
-            buf.as_mut_ptr() as *mut std::os::raw::c_char,
-            buf.len(),
-        )
+        let out = buf.as_mut_ptr() as *mut std::os::raw::c_char;
+        if templates.is_null() {
+            llama_cpp::llama_chat_apply_template_native(
+                model_ptr, custom_ptr, role_ptrs.as_ptr(), content_ptrs.as_ptr(), messages.len(),
+                add_generation_prompt, enable_thinking, out, buf.len(),
+            )
+        } else {
+            llama_cpp::llama_chat_apply_template_handle(
+                templates, role_ptrs.as_ptr(), content_ptrs.as_ptr(), messages.len(),
+                add_generation_prompt, enable_thinking, out, buf.len(),
+            )
+        }
     };
     let started = std::time::Instant::now();
     let mut buf: Vec<u8> = vec![0u8; input_len * 2 + 1];

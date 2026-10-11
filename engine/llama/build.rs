@@ -14,6 +14,10 @@ fn main() {
     let local_cache_path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("llama.cpp");
     if local_cache_path.exists() {
         println!("cargo:warning=🔩 Found local cached llama.cpp at {:?}", local_cache_path);
+        // Rebuild when the fork's sources change, not only when this script does
+        for dir in ["include", "src", "common", "ggml/include", "ggml/src", "CMakeLists.txt"] {
+            println!("cargo:rerun-if-changed={}", local_cache_path.join(dir).display());
+        }
         llama_path = local_cache_path;
     } else if !llama_path.exists() {
         println!("cargo:warning=🔩 Cloning official cluaiz/llama.cpp engine...");
