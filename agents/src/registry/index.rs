@@ -1,6 +1,6 @@
 use super::types::{ExecutionMode, SecurityMode, ToolEntry};
 use anyhow::Result;
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;

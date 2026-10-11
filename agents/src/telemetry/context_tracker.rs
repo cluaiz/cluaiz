@@ -1,5 +1,5 @@
 use super::types::{CategoryTelemetryGroup, ComponentTelemetryItem, ContextBreakdown, SystemContextTelemetry};
-use crate::tools::registry::ToolsRegistry;
+use crate::registry::ToolsRegistry;
 
 pub struct ContextTracker;
 
@@ -15,99 +15,23 @@ impl ContextTracker {
         generated_tokens: usize,
     ) -> SystemContextTelemetry {
         let registry = ToolsRegistry::load().unwrap_or_default();
-        let gguf_meta = engine_core::hardware::schema::gguf_metadata::GgufMetadataHeaders::load();
+        let perm = cluaiz_security::PermissionSchema::load();
         
-        // 🎯 Dynamic Model Native Context from InstalledStateRegistry / model_registry.json
-        let installed_reg = crate::models::InstalledStateRegistry::load();
-        let mut model_native_limit = 0;
+        // Native limit: the model's own context length from the registry (0 = unknown)
+        let slot_model = perm.active_slots.get("chat_slot").and_then(|s| s.model_id.clone()).unwrap_or_default();
+        let model_key = if !active_model_id.is_empty() && active_model_id != "default" { active_model_id.to_string() } else { slot_model };
+        let model_native_limit = cluaiz_models::registry::InstalledStateRegistry::load()
+            .installed_models
+            .get(&model_key)
+            .map(|m| cluaiz_models::StructuralDNA::parse_context_string(&m.metadata.context_window))
+            .unwrap_or(0);
 
-        let clean_target = active_model_id.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-        let target_entry = installed_reg.installed_models.get(active_model_id)
-            .or_else(|| {
-                installed_reg.installed_models.values().find(|m| {
-                    if clean_target.is_empty() {
-                        return false;
-                    }
-                    let clean_id = m.id.to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-                    clean_id == clean_target || clean_id.contains(&clean_target) || clean_target.contains(&clean_id)
-                })
-            })
-            .or_else(|| {
-                // Fallback to active chat model in permission schema
-                let perm = crate::neural_foundry::security::permission_schema::PermissionSchema::load();
-                let perm_id_opt: Option<String> = perm.active_slots.get("chat_slot").and_then(|s| s.model_id.clone())
-                    .or(perm.chat_models.text);
-                if let Some(pid) = perm_id_opt {
-                    let clean_pid = pid.to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-                    installed_reg.installed_models.get(&pid).or_else(|| {
-                        installed_reg.installed_models.values().find(|m| {
-                            let clean_id = m.id.to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-                            clean_id == clean_pid || clean_id.contains(&clean_pid) || clean_pid.contains(&clean_id)
-                        })
-                    })
-                } else {
-                    None
-                }
-            })
-            .or_else(|| installed_reg.installed_models.values().next());
-
-        if let Some(model_entry) = target_entry {
-            let ctx_str = &model_entry.metadata.context_window;
-            if ctx_str.ends_with('k') || ctx_str.ends_with('K') {
-                if let Ok(k_val) = ctx_str[..ctx_str.len() - 1].parse::<usize>() {
-                    model_native_limit = k_val * 1024;
-                }
-            } else if let Ok(exact) = ctx_str.parse::<usize>() {
-                model_native_limit = exact;
-            }
-        }
-
-        // Query live active context calculated by HardwareGovernor for active model
-        let live_active_ctx = engine_core::hardware::governor::HardwareGovernor::get_active_allocations()
-            .iter()
-            .find(|p| p.context_size > 0)
-            .map(|p| p.context_size);
-
-        if model_native_limit == 0 {
-            model_native_limit = live_active_ctx.unwrap_or_else(|| {
-                if gguf_meta.hardware_and_execution.n_ctx > 0 {
-                    gguf_meta.hardware_and_execution.n_ctx as usize
-                } else {
-                    let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                    let mut dna = engine_core::metadata::dna::StructuralDNA::default();
-                    if let Some(entry) = target_entry {
-                        let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
-                        dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
-                    }
-                    engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control)
-                }
-            });
-        }
-        
-        // Usable Context Limit (hardware safety clamped from live allocation)
-        let usable_limit = live_active_ctx.unwrap_or_else(|| {
-            if gguf_meta.hardware_and_execution.n_ctx > 0 {
-                gguf_meta.hardware_and_execution.n_ctx as usize
-            } else {
-                let opt_control = engine_core::hardware::governor::HardwareGovernor::load_optimization_settings().unwrap_or_default();
-                let mut dna = engine_core::metadata::dna::StructuralDNA::default();
-                if let Some(entry) = target_entry {
-                    let total_bytes: u64 = entry.files.iter().map(|f| f.size_bytes).sum();
-                    dna.weights_size_gb = (total_bytes as f64 / (1024.0 * 1024.0 * 1024.0)) as f32;
-                }
-                let target = engine_core::hardware::governor::HardwareGovernor::negotiate_vram_envelope_with_optimization(&dna, &opt_control);
-                if model_native_limit > 0 {
-                    target.min(model_native_limit)
-                } else {
-                    target
-                }
-            }
-        }).max(2048);
+        // Usable limit: the context llama.cpp created for the loaded model; 0 until a model is loaded
+        let usable_limit = cluaiz_core::active_context_tokens().map(|n| n as usize).unwrap_or(0);
 
         let mut skills_tokens = 0;
         let mut plugins_tokens = 0;
         let mut mcp_tools_tokens = 0;
-        
         let mut deferred_mcp_tokens = 0;
         let mut deferred_plugins_tokens = 0;
         let mut deferred_saved = 0;
@@ -125,12 +49,11 @@ impl ContextTracker {
 
             // Real schema / instruction token estimation
             let estimated_tokens = if entry.category == "skill" {
-                // For skills, calculate actual prompt instructions tokens from SKILL.md
                 let skill_file = std::path::Path::new(&entry.local_dir).join("SKILL.md");
                 let skill_path = if skill_file.exists() {
                     Some(skill_file)
                 } else {
-                    let env_skill = engine_core::environment::EnvironmentManager::current()
+                    let env_skill = cluaiz_core::EnvironmentManager::current()
                         .skills_dir()
                         .join(id)
                         .join("SKILL.md");
@@ -143,7 +66,7 @@ impl ContextTracker {
 
                 if let Some(path) = skill_path {
                     if let Ok(content) = std::fs::read_to_string(&path) {
-                        if let Some(parsed) = crate::tools::SkillParser::parse_content(&content) {
+                        if let Some(parsed) = crate::skills::SkillParser::parse_content(&content) {
                             ((parsed.prompt_instructions.len() + 3) / 4).max(4)
                         } else {
                             ((content.len() + 3) / 4).max(4)
@@ -170,6 +93,7 @@ impl ContextTracker {
                     4
                 }
             };
+
             let item = ComponentTelemetryItem {
                 name: if entry.name.is_empty() { id.clone() } else { entry.name.clone() },
                 category: entry.category.clone(),
@@ -218,16 +142,16 @@ impl ContextTracker {
             }
         }
 
-        // Account for any active tool IDs not present in registry.installed_tools (e.g. dynamically resolved from filesystem)
+        // Account for any active tool IDs not present in registry.installed_tools
         for active_id in active_tool_ids {
             let clean_active_id = active_id.trim();
             if !clean_active_id.is_empty() && !skill_items.iter().any(|item| item.name == clean_active_id) {
-                let env = engine_core::environment::EnvironmentManager::current();
+                let env = cluaiz_core::EnvironmentManager::current();
                 let skill_dir = env.skills_dir().join(clean_active_id);
                 let skill_file = skill_dir.join("SKILL.md");
                 if skill_file.exists() {
                     let est_tokens = if let Ok(content) = std::fs::read_to_string(&skill_file) {
-                        if let Some(parsed) = crate::tools::SkillParser::parse_content(&content) {
+                        if let Some(parsed) = crate::skills::SkillParser::parse_content(&content) {
                             ((parsed.prompt_instructions.len() + 3) / 4).max(4)
                         } else {
                             ((content.len() + 3) / 4).max(4)
@@ -254,7 +178,7 @@ impl ContextTracker {
             }
         }
 
-        // Real token calculation from character lengths (1 token ~= 3.8 to 4 chars)
+        // Real token calculation from character lengths (1 token ~= 4 chars)
         let system_prompt_tokens = if system_prompt_len > 0 {
             (system_prompt_len / 4).max(1)
         } else {
@@ -271,7 +195,6 @@ impl ContextTracker {
             0
         };
         
-        // Total active conversation tokens includes input prompt, chat history, AND generated output tokens in KV cache
         let messages_tokens = user_prompt_tokens + chat_history_tokens + generated_tokens;
         let active_tools_tokens = skills_tokens + plugins_tokens + mcp_tools_tokens;
         
@@ -334,7 +257,6 @@ impl ContextTracker {
                 deferred_mcp_tokens,
                 deferred_plugins_tokens,
                 deferred_tools_tokens_saved: deferred_saved,
-                // Backward-compatibility aliases
                 system_tools_tokens: plugins_tokens,
                 system_tools_percentage: pct(plugins_tokens),
                 deferred_system_tools_tokens: deferred_plugins_tokens,

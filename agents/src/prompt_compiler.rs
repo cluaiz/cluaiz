@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 use crate::tools::lifecycle::SessionToolManager;
 use crate::tools::mcp::McpClient;
 use crate::tools::registry::ToolsRegistry;

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::io::Write;
 use anyhow::Result;
-use engine_core::environment::EnvironmentManager;
+use cluaiz_core::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 
 pub struct ToolsInstaller;
@@ -192,7 +192,7 @@ impl ToolsInstaller {
 
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
-            let outpath = match file.enclosed_name() {
+            let outpath: PathBuf = match file.enclosed_name() {
                 Some(path) => component_dir.join(path),
                 None => continue,
             };
@@ -301,11 +301,12 @@ impl ToolsInstaller {
     fn get_registry_url() -> Option<String> {
         let env = EnvironmentManager::current();
 
-        for p in [
+        let candidates: [PathBuf; 3] = [
             env.config_dir().join("package.json"),
             PathBuf::from("package.json"),
-            PathBuf::from(".cluaiz/engine/config/package.json")
-        ] {
+            PathBuf::from(".cluaiz/engine/config/package.json"),
+        ];
+        for p in &candidates {
             if p.exists() {
                 if let Ok(content) = std::fs::read_to_string(&p) {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
