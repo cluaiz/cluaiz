@@ -328,7 +328,12 @@ impl PreparedChatContext {
             } else {
                 "auto".to_string()
             }
-        }).unwrap_or_else(|| "auto".to_string());
+        }).unwrap_or_else(|| match settings.optimization.think_mode {
+            // no think_mode in the request: the user's saved default
+            cluaiz_core::FeatureState::On => "on".to_string(),
+            cluaiz_core::FeatureState::Off => "off".to_string(),
+            cluaiz_core::FeatureState::Auto => "auto".to_string(),
+        });
 
         // 🧠 2. Thinking budget ("Effort"): the request's value, else the user's default setting
         let active_reasoning_effort = request.reasoning_effort.unwrap_or(settings.optimization.reasoning_effort);

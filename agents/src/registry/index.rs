@@ -55,8 +55,8 @@ impl ToolsRegistry {
         if bin_is_fresh && bin_path.exists() {
             if let Ok(bytes) = std::fs::read(&bin_path) {
                 if let Ok(mut reg) = bincode::deserialize::<ToolsRegistry>(&bytes) {
+                    // sync saves .json and .bin together when something changed
                     let _ = reg.sync_with_filesystem();
-                    let _ = reg.save_bin_cache();
                     return Ok(reg);
                 }
             }
