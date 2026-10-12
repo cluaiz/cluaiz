@@ -343,6 +343,8 @@ impl Planner {
             kv_ram_gb: selected.kv_ram_gb,
             disk_stream_gb: selected.disk_stream_gb,
             kv_offload: selected.kv_offload,
+            // llama.cpp default unless the user set it
+            op_offload: opt.op_offload.unwrap_or(true),
             kv_cache_type: kv,
             vram_buffer_gb: bytes_to_gib(vram_buffer),
             ram_budget_limit_gb: bytes_to_gib(ram_budget),

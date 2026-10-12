@@ -341,9 +341,9 @@ impl NativeLlama {
             std::env::remove_var("GGML_CUDA_DISABLE_GRAPHS");
         }
 
-        // KV Placement & Operation Offload (Strictly governed by Unified Resource Negotiator)
+        // KV placement and op offload come from the plan (caller's params); only logged here
         if model_params.n_gpu_layers != 0 {
-            ctx_params.op_offload = 1;
+            info!("🧠 [Native-Llama] op_offload = {}", ctx_params.op_offload);
             if ctx_params.offload_kqv == 1 {
                 info!("🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).");
             } else {

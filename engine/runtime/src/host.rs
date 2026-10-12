@@ -18,6 +18,8 @@ pub enum HostResponse {
 
 pub struct EngineHost {
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
+    /// Settings the loaded model was loaded with (user settings + request llama params)
+    pub loaded_settings: Arc<Mutex<Option<ActiveUserSettings>>>,
     pub active_llama: Arc<Mutex<Option<NativeLlama>>>,
     pub active_model_path: Arc<Mutex<Option<String>>>,
     pub active_fingerprint: Arc<Mutex<Option<String>>>,
@@ -38,6 +40,7 @@ impl EngineHost {
         }
         Self {
             current_plan: Arc::new(Mutex::new(None)),
+            loaded_settings: Arc::new(Mutex::new(None)),
             active_llama: Arc::new(Mutex::new(None)),
             active_model_path: Arc::new(Mutex::new(None)),
             active_fingerprint: Arc::new(Mutex::new(None)),
@@ -125,6 +128,7 @@ impl EngineHost {
         }
         let plan = self.load_model(&path_str, &plan, settings).await?;
         *self.current_plan.lock().await = Some(plan.clone());
+        *self.loaded_settings.lock().await = Some(settings.clone());
         Ok(plan)
     }
 
@@ -261,6 +265,7 @@ impl EngineHost {
         *llama_guard = None;
         cluaiz_core::set_active_context(None);
         *self.current_plan.lock().await = None;
+        *self.loaded_settings.lock().await = None;
         *self.thinking_tags_cache.lock().await = None;
         let mut path_guard = self.active_model_path.lock().await;
         *path_guard = None;
@@ -369,7 +374,7 @@ fn load_with_plan(
     };
     // KV next to its GPU layers, except CTX rule 5B (weights on GPU, whole KV in RAM)
     ctx_params.offload_kqv = if n_gpu_layers != 0 && plan.kv_offload { 1 } else { 0 };
-    ctx_params.op_offload = if n_gpu_layers != 0 { 1 } else { 0 };
+    ctx_params.op_offload = if n_gpu_layers != 0 && plan.op_offload { 1 } else { 0 };
     // Same default as llama.cpp's CLI (physical cores); llama_context_default_params alone gives 4
     let (n_threads, n_threads_batch) = settings.optimization.resolved_threads(hw.cpu.physical_cores);
     ctx_params.n_threads = n_threads;

@@ -81,6 +81,8 @@ pub struct ExecutionPlan {
     pub disk_stream_gb: f64,
     /// llama.cpp offload_kqv: true = KV next to its GPU layers, false = whole KV in RAM (CTX rule 5B)
     pub kv_offload: bool,
+    /// llama.cpp op_offload: large batches of CPU-held weights are computed on the GPU
+    pub op_offload: bool,
     /// KV cache type chosen by the CTX rules (Auto tries F16, then Q8_0); the engine uses exactly this.
     pub kv_cache_type: cluaiz_core::KvCacheQuantization,
     /// VRAM kept free by the BUFFER rules for this plan
@@ -172,8 +174,8 @@ impl ExecutionPlan {
             hardware.memory.available_gb, hardware.memory.total_gb, self.ram_budget_limit_gb));
         out.push_str(&format!("╠{}╣\n║ [PLACEMENT]\n", line));
         out.push_str(&format!("║   • Mode            : {}\n", mode));
-        out.push_str(&format!("║   • llama.cpp       : n_gpu_layers = {} | n_cpu_moe = {} | n_ctx = {} | KV {:?} | offload_kqv = {}\n",
-            self.n_gpu_layers, self.n_cpu_moe, self.context_window, self.kv_cache_type, self.kv_offload as u8));
+        out.push_str(&format!("║   • llama.cpp       : n_gpu_layers = {} | n_cpu_moe = {} | n_ctx = {} | KV {:?} | offload_kqv = {} | op_offload = {}\n",
+            self.n_gpu_layers, self.n_cpu_moe, self.context_window, self.kv_cache_type, self.kv_offload as u8, self.op_offload as u8));
         out.push_str(&format!("║   • Blocks          : {} on GPU, {} in RAM (of {})\n", gpu_blocks, ram_blocks, self.total_layers));
         out.push_str(&format!("║   • VRAM            : {:.2} GB (weights + KV {:.2} + logits)\n", self.vram_budget_gb, self.kv_gpu_gb));
         out.push_str(&format!("║   • RAM             : {:.2} GB (incl. KV {:.2})\n", self.ram_budget_gb, self.kv_ram_gb));
@@ -227,6 +229,7 @@ mod tests {
             kv_ram_gb: 0.0,
             disk_stream_gb: 0.0,
             kv_offload: true,
+            op_offload: true,
             kv_cache_type: cluaiz_core::KvCacheQuantization::Kv16,
             vram_buffer_gb: 1.0,
             ram_budget_limit_gb: 10.0,
