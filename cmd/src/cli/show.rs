@@ -35,8 +35,10 @@ pub async fn execute(args: ShowArgs, verbose: bool) -> Result<()> {
         return Ok(());
     }
 
+    let _spin = crate::ui::spinner::Spinner::start("Reading model file…");
     let geometry = GgufProber::probe_geometry(&path).map_err(|e| eyre!("{}: {}", path.display(), e))?;
     let (metadata, tensors, _) = GgufProber::probe(&path).map_err(|e| eyre!("{}: {}", path.display(), e))?;
+    drop(_spin);
     let meta = |k: &str| metadata.get(k).cloned();
 
     section("Model");

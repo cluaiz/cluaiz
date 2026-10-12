@@ -61,7 +61,9 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
     args.load.apply(&mut settings.optimization).map_err(|e| eyre!(e))?;
 
     let host = Arc::new(cluaiz_runtime::EngineHost::new());
+    let _spin = crate::ui::spinner::Spinner::start("Loading model…");
     let plan = host.ensure_loaded(&id, &path, &settings).await.map_err(|e| eyre!("{}", e))?;
+    drop(_spin);
     if verbose {
         for line in plan.summary().lines() {
             eprintln!("  {}", line);

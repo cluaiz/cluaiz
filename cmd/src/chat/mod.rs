@@ -91,7 +91,9 @@ impl Session {
     pub async fn open(host: Arc<EngineHost>, model_path: PathBuf, model_id: String, options: ChatOptions) -> Result<Self> {
         let settings = options.settings()?;
         let started = std::time::Instant::now();
+        let _spin = crate::ui::spinner::Spinner::start("Loading model…");
         let plan = host.ensure_loaded(&model_id, &model_path, &settings).await.map_err(|e| eyre!("{}", e))?;
+        drop(_spin);
         Ok(Self { host, model_id, model_path, plan, load_ms: started.elapsed().as_millis(), options, history: Vec::new() })
     }
 
@@ -99,7 +101,9 @@ impl Session {
     pub async fn switch(&mut self, model_path: PathBuf, model_id: String) -> Result<()> {
         let settings = self.options.settings()?;
         let started = std::time::Instant::now();
+        let _spin = crate::ui::spinner::Spinner::start("Switching model…");
         self.plan = self.host.ensure_loaded(&model_id, &model_path, &settings).await.map_err(|e| eyre!("{}", e))?;
+        drop(_spin);
         self.load_ms = started.elapsed().as_millis();
         self.model_id = model_id;
         self.model_path = model_path;
