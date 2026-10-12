@@ -1,14 +1,14 @@
 //! 🗺️ Central Single-Page Master Routing Map (`api/src/routes.rs`)
 //! All Cluaiz endpoints unified in one master routing table with zero omissions.
 
+use crate::handlers;
+use crate::AppState;
 use axum::{
     routing::{delete, get, post},
     Router,
 };
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
-use crate::AppState;
-use crate::handlers;
 
 pub fn build_api_router(state: Arc<AppState>) -> Router {
     let cors = CorsLayer::new()
@@ -34,36 +34,62 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/health", get(handlers::system::health_check))
         .route("/info", get(handlers::system::system_info))
         .route("/v1/system/cmd", post(handlers::system::execute_cmd))
-        .route("/v1/system/profile", post(handlers::setup::configure_profile))
-
+        .route(
+            "/v1/system/profile",
+            post(handlers::setup::configure_profile),
+        )
         // ── 2. External Streaming, Embeddings & Audio API ──
-        .route("/v1/chat/completions", post(handlers::chat::chat_completions))
+        .route(
+            "/v1/chat/completions",
+            post(handlers::chat::chat_completions),
+        )
         .route("/api/chat", post(handlers::chat::chat_completions))
-        .route("/v1/chat/context_telemetry", get(handlers::chat::get_context_telemetry))
+        .route(
+            "/v1/chat/context_telemetry",
+            get(handlers::chat::get_context_telemetry),
+        )
         .route("/v1/chat/cancel", post(handlers::chat::cancel_chat_stream))
-        .route("/v1/chat/skip-reasoning", post(handlers::chat::skip_chat_reasoning))
-        .route("/v1/embeddings", post(handlers::embeddings::generate_embeddings))
+        .route(
+            "/v1/chat/skip-reasoning",
+            post(handlers::chat::skip_chat_reasoning),
+        )
+        .route(
+            "/v1/embeddings",
+            post(handlers::embeddings::generate_embeddings),
+        )
         .route("/v1/audio/speech", post(handlers::audio::speech))
-        .route("/v1/audio/transcriptions", post(handlers::audio::transcriptions))
+        .route(
+            "/v1/audio/transcriptions",
+            post(handlers::audio::transcriptions),
+        )
         .route("/v1/audio/execute", post(handlers::audio::execute_audio))
-
         // ── 3. External Compatible & Legacy Models API ──
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
         .route("/api/pull", post(handlers::models::pull_model))
         .route("/models/available", get(handlers::models::list_models))
-        .route("/v1/models/installed", get(handlers::models::list_installed_models))
+        .route(
+            "/v1/models/installed",
+            get(handlers::models::list_installed_models),
+        )
         .route("/hardware", get(handlers::models::hardware_status))
         .route("/models/download", post(handlers::models::download_model))
         .route("/models/load", post(handlers::models::load_model))
-        .route("/v1/models/{model_id}/inspect_raw_header", get(handlers::models::inspect_raw_header))
+        .route(
+            "/v1/models/{model_id}/inspect_raw_header",
+            get(handlers::models::inspect_raw_header),
+        )
         .route("/v1/models/{model_id}", delete(handlers::models::rm_model))
         .route("/v1/hardware/calibrate", post(handlers::models::calibrate))
-
         // ── 4. Optimization & Hardware Tuning API ──
-        .route("/v1/optimization/status", get(handlers::optimization::status))
-        .route("/v1/optimization/update", post(handlers::optimization::update))
-
+        .route(
+            "/v1/optimization/status",
+            get(handlers::optimization::status),
+        )
+        .route(
+            "/v1/optimization/update",
+            post(handlers::optimization::update),
+        )
         // ── 5. Unified Tools & Session Governance API ──
         .route("/v1/tools", get(handlers::session_tools::get_all_tools))
         .route(
@@ -71,7 +97,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::session_tools::get_session_tools)
                 .post(handlers::session_tools::update_session_tools),
         )
-
         // ── 6. WASM Skills API ──
         .route("/v1/skills/list", get(handlers::skills::list_skills))
         .route("/v1/skills/install", post(handlers::skills::install_skill))
@@ -80,16 +105,20 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/skills/cache",
             get(handlers::skills::list_cache).delete(handlers::skills::clear_cache),
         )
-
         // ── 7. Plugins API ──
         .route("/v1/plugins/list", get(handlers::plugins::list_plugins))
-        .route("/v1/plugins/install", post(handlers::plugins::install_plugin))
-        .route("/v1/plugins/remove", delete(handlers::plugins::remove_plugin))
+        .route(
+            "/v1/plugins/install",
+            post(handlers::plugins::install_plugin),
+        )
+        .route(
+            "/v1/plugins/remove",
+            delete(handlers::plugins::remove_plugin),
+        )
         .route(
             "/v1/plugins/cache",
             get(handlers::plugins::list_cache).delete(handlers::plugins::clear_cache),
         )
-
         // ── 8. MCP API & Native MCP Server ──
         .route("/mcp", post(handlers::mcp::handle_mcp_rpc))
         .route("/v1/mcp/rpc", post(handlers::mcp::handle_mcp_rpc))
@@ -100,9 +129,11 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/mcp/cache",
             get(handlers::mcp::list_cache).delete(handlers::mcp::clear_cache),
         )
-
         // ── 9. Components API (Dashboard) ──
-        .route("/api/components/list", get(handlers::components::list_components))
+        .route(
+            "/api/components/list",
+            get(handlers::components::list_components),
+        )
         .route(
             "/api/components/settings",
             get(handlers::components::get_settings).post(handlers::components::update_settings),
@@ -111,44 +142,79 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/api/components/file",
             get(handlers::components::get_specific_file).post(handlers::components::update_file),
         )
-        .route("/api/components/files", get(handlers::components::get_files))
-        .route("/api/components/cache", post(handlers::components::clear_cache))
-
+        .route(
+            "/api/components/files",
+            get(handlers::components::get_files),
+        )
+        .route(
+            "/api/components/cache",
+            post(handlers::components::clear_cache),
+        )
         // ── 10. Dynamic Ecosystem & Control Execution ──
-        .route("/v1/execute/{component_name}/{function_name}", post(handlers::control::execute_dynamic))
-        .route("/v1/control/execute", post(handlers::control::execute_script))
-
+        .route(
+            "/v1/execute/{component_name}/{function_name}",
+            post(handlers::control::execute_dynamic),
+        )
+        .route(
+            "/v1/control/execute",
+            post(handlers::control::execute_script),
+        )
         // ── 11. Typed Agent Control (z-plan) ──
         .route("/v1/control", post(handlers::control::handle_control_op))
-        .route("/v1/control/batch", post(handlers::control::handle_control_batch))
+        .route(
+            "/v1/control/batch",
+            post(handlers::control::handle_control_batch),
+        )
         .route("/v1/control/ops", get(handlers::control::list_control_ops))
-
         // ── 12. Vector Ingest API ──
         .route("/v1/ingest", post(handlers::ingest::file_ingest))
         .route("/v1/ingest/file", post(handlers::ingest::file_ingest))
-
         // ── 13. System Control, Telemetry & Processes ──
         .route("/v1/system/ps", get(handlers::ps::get_processes))
         .route("/v1/system/info", get(handlers::system::get_system_info))
-        .route("/v1/system/control", get(handlers::system::get_system_control))
+        .route(
+            "/v1/system/control",
+            get(handlers::system::get_system_control),
+        )
         .route("/v1/system/live", get(handlers::system::get_system_live))
         .route("/v1/system/plan", post(handlers::system::plan_execution))
         .route(
             "/v1/system/permission",
             get(handlers::permission::get_permission).post(handlers::permission::update_permission),
         )
-        .route("/v1/system/auth/token/generate", post(handlers::permission::generate_auth_token))
-        .route("/v1/system/auth/token/revoke", post(handlers::permission::revoke_auth_token))
-        .route("/v1/system/permission/pending", get(handlers::permission::get_pending_permissions))
-        .route("/v1/system/permission/approve", post(handlers::permission::approve_permission))
-        .route("/v1/system/permission/reject", post(handlers::permission::reject_permission))
-
+        .route(
+            "/v1/system/auth/token/generate",
+            post(handlers::permission::generate_auth_token),
+        )
+        .route(
+            "/v1/system/auth/token/revoke",
+            post(handlers::permission::revoke_auth_token),
+        )
+        .route(
+            "/v1/system/permission/pending",
+            get(handlers::permission::get_pending_permissions),
+        )
+        .route(
+            "/v1/system/permission/approve",
+            post(handlers::permission::approve_permission),
+        )
+        .route(
+            "/v1/system/permission/reject",
+            post(handlers::permission::reject_permission),
+        )
         // ── 15. Storage Control API ──
-        .route("/v1/system/storage/temp_media", get(handlers::storage::get_temp_media_status))
-        .route("/v1/system/storage/temp_media/clean", post(handlers::storage::clean_temp_media))
+        .route(
+            "/v1/system/storage/temp_media",
+            get(handlers::storage::get_temp_media_status),
+        )
+        .route(
+            "/v1/system/storage/temp_media/clean",
+            post(handlers::storage::clean_temp_media),
+        )
         .route(
             "/v1/system/storage/settings",
-            get(handlers::storage::get_storage_settings).post(handlers::storage::update_storage_settings),
+            get(handlers::storage::get_storage_settings)
+                .post(handlers::storage::update_storage_settings),
         )
         .route(
             "/v1/system/gguf_config",
@@ -158,7 +224,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/system/onnx_config",
             get(handlers::system::get_onnx_config).post(handlers::system::update_onnx_config),
         )
-
         // ── 16. Native High-Speed File System API ──
         .route("/v1/fs/read", post(handlers::fs::read_file))
         .route("/v1/fs/write", post(handlers::fs::write_file))
@@ -167,12 +232,15 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/fs/rename", post(handlers::fs::rename_path))
         .route("/v1/fs/copy", post(handlers::fs::copy_path))
         .route("/v1/fs/mkdir", post(handlers::fs::create_dir))
+        .route("/v1/fs/pick_folder", post(handlers::fs::pick_folder))
         .route(
             "/v1/workspace",
             get(handlers::fs::get_workspace_dir).post(handlers::fs::set_workspace_dir),
         )
-
-        .layer(axum::middleware::from_fn_with_state(state.clone(), crate::auth::auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            crate::auth::auth_middleware,
+        ))
         .layer(cors)
         .with_state(state)
 }
