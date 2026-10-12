@@ -8,7 +8,7 @@ use cluaiz_hw::SystemInfo;
 use cluaiz_models::ModelGeometry;
 use cluaiz_models::types::StructuralDNA;
 use cluaiz_plan::{ExecutionPlan, Planner};
-use llama_engine::{GenerationTimings, NativeLlama, stream_tokens, extract_thinking_tags_native};
+use llama_engine::{GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};
 
 pub enum HostResponse {
     TokenStream(mpsc::Receiver<String>),
@@ -27,6 +27,8 @@ pub struct EngineHost {
     pub last_prefilled_tokens: Arc<Mutex<Vec<i32>>>,
     /// llama.cpp timings of the last finished generation
     pub last_timings: Arc<Mutex<Option<GenerationTimings>>>,
+    /// Thinking budget and use of the last finished generation
+    pub last_thinking: Arc<Mutex<Option<ThinkingReport>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
 }
@@ -47,6 +49,7 @@ impl EngineHost {
             dna: Arc::new(Mutex::new(StructuralDNA::default())),
             last_prefilled_tokens: Arc::new(Mutex::new(Vec::new())),
             last_timings: Arc::new(Mutex::new(None)),
+            last_thinking: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
         }
     }
@@ -285,6 +288,7 @@ impl EngineHost {
         let dna_arc = self.dna.clone();
         let tokens_arc = self.last_prefilled_tokens.clone();
         let timings_arc = self.last_timings.clone();
+        let thinking_arc = self.last_thinking.clone();
 
         tokio::task::spawn_blocking(move || {
             let mut llama_guard = llama_arc.blocking_lock();
@@ -313,6 +317,7 @@ impl EngineHost {
                         *tokens_guard = new_tokens;
                         // Stored before the sender drops, so it is ready when the stream ends
                         *timings_arc.blocking_lock() = Some(llama.timings());
+                        *thinking_arc.blocking_lock() = llama.last_thinking.clone();
                     }
                     Err(e) => {
                         let _ = tx.blocking_send(format!("[ERROR: {}]", e));
@@ -329,6 +334,11 @@ impl EngineHost {
     /// llama.cpp timings of the last finished generation (None before the first one)
     pub async fn last_timings(&self) -> Option<GenerationTimings> {
         *self.last_timings.lock().await
+    }
+
+    /// Thinking budget and use of the last finished generation (None when the model did not think)
+    pub async fn last_thinking(&self) -> Option<ThinkingReport> {
+        self.last_thinking.lock().await.clone()
     }
 }
 

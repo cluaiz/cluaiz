@@ -63,7 +63,7 @@ pub fn stream_tokens(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar) = if let Ok(envelope) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message) = if let Ok(envelope) =
             serde_json::from_str::<serde_json::Value>(&actual_prompt)
         {
             if envelope.is_object()
@@ -93,18 +93,23 @@ pub fn stream_tokens(
                     .map(|s| s.to_string());
                 let reasoning_effort = envelope
                     .get("reasoning_effort")
-                    .and_then(|e| e.as_str())
-                    .map(|s| s.to_string());
+                    .cloned()
+                    .and_then(|e| serde_json::from_value::<cluaiz_core::ThinkingBudget>(e).ok());
                 let grammar = envelope
                     .get("grammar")
                     .and_then(|g| g.as_str())
                     .map(|s| s.to_string());
-                (samplers, think_mode, reasoning_effort, grammar)
+                let budget_message = envelope
+                    .get("reasoning_budget_message")
+                    .and_then(|m| m.as_str())
+                    .filter(|m| !m.is_empty())
+                    .map(|m| m.to_string());
+                (samplers, think_mode, reasoning_effort, grammar, budget_message)
             } else {
-                (None, None, None, None)
+                (None, None, None, None, None)
             }
         } else {
-            (None, None, None, None)
+            (None, None, None, None, None)
         };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -204,18 +209,8 @@ pub fn stream_tokens(
             _ => false, // "auto" lets model natural tags emit
         };
 
-        let effort_str = req_reasoning_effort
-            .as_deref()
-            .unwrap_or("auto")
-            .to_lowercase();
-
-        let max_think_tokens = match effort_str.as_str() {
-            "low" | "minimal" => 1024,
-            "medium" | "standard" => 4096,
-            "high" => 16384,
-            "max" | "extreme" | "auto" => usize::MAX,
-            custom_num => custom_num.parse::<usize>().unwrap_or(usize::MAX),
-        };
+        // Thinking budget ("Effort"); the token count is known once the prompt length is
+        let thinking_budget = req_reasoning_effort.unwrap_or_default();
 
         let mut in_think_block = false;
         let mut think_tokens_count = 0usize;
@@ -234,7 +229,6 @@ pub fn stream_tokens(
         // Recent output text: a tag can arrive split over several tokens (Gemma 4: "<|channel>" + "thought")
         let mut tag_window = String::new();
         let tag_window_len = think_start_tag.len().max(think_end_tag.len());
-        let mut suppressed_count = 0;
 
         let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
@@ -505,6 +499,26 @@ pub fn stream_tokens(
         let mut n_cur = start_pos + tokens.len() as i32;
         let mut n_gen = 0;
 
+        // Room for thinking = context left after the prompt minus the answer's reserve, so whatever budget
+        // was chosen, the answer still fits; Low/Medium/High are shares of it (settings, Auto = High)
+        let room = (llama.n_ctx as i32 - n_cur - gen_reserve).max(0) as usize;
+        let presets = cluaiz_core::Settings::current().optimization.thinking_presets;
+        let limit = thinking_budget.limit(room, &presets);
+        let max_think_tokens = limit.tokens;
+        if limit.capped {
+            info!(
+                "🧠 [NativeStream] Thinking budget {:?} lowered to {} tokens so the answer fits the context",
+                thinking_budget, limit.tokens
+            );
+        }
+        let mut ended_by = "model";
+        let mut thought = false;
+        // What is written to close thinking early: the optional budget message, then the end tag
+        let close_text = match &req_budget_message {
+            Some(message) => format!("{}{}", message, think_end_tag),
+            None => think_end_tag.clone(),
+        };
+
         // Sample the first token from the prompt prefill logits
         if prompt_opens_thinking {
             in_think_block = true;
@@ -594,10 +608,7 @@ pub fn stream_tokens(
                     }
 
                     if in_think_block && suppress_thinking {
-                        think_tokens_count += 1;
-                        if think_tokens_count >= max_think_tokens {
-                            in_think_block = false;
-                        }
+                        // hidden thinking: not sent, still counted below
                     } else if !emit_str.is_empty() {
                         tracing::debug!(
                             "📤 [NativeStream] Emitting token_id {}: {:?}",
@@ -616,18 +627,18 @@ pub fn stream_tokens(
             if !SKIP_PTR.is_null() {
                 should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
             }
-            if should_skip && in_think_block {
-                in_think_block = false;
-            }
 
-            if !in_think_block {
-                n_gen += 1;
+            if in_think_block {
+                think_tokens_count += 1;
+                thought = true;
             } else {
-                suppressed_count += 1;
-                if suppressed_count >= max_think_tokens.min(4096) {
-                    in_think_block = false;
-                }
+                n_gen += 1;
             }
+            // Budget used up, or the user pressed "skip thinking": close the block for the model
+            // (after this token is decoded below), so it moves on to the answer
+            let close_thinking = in_think_block
+                && !think_end_tag.is_empty()
+                && (should_skip || think_tokens_count >= max_think_tokens);
 
             // Guard against context ceiling overflow
             if n_cur >= (llama.n_ctx as i32 - 4) {
@@ -654,10 +665,41 @@ pub fn stream_tokens(
 
             n_cur += 1;
 
+            if close_thinking {
+                ended_by = if think_tokens_count >= max_think_tokens { "budget" } else { "skip" };
+                match close_thinking_block(llama, vocab, &close_text, n_cur, &mut safe_batch.batch) {
+                    Ok(end_tokens) => {
+                        n_cur += end_tokens.len() as i32;
+                        history.extend_from_slice(&end_tokens);
+                        in_think_block = false;
+                        tag_window.clear();
+                        info!(
+                            "🧠 [NativeStream] Thinking closed after {} tokens ({}); continuing with the answer",
+                            think_tokens_count, ended_by
+                        );
+                        if !suppress_thinking && !callback(close_text.clone()) {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("❌ [NativeStream] Could not close the thinking block: {}", e);
+                        break;
+                    }
+                }
+            }
+
             // Sample next token
             next_token_id =
                 llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         }
+
+        llama.last_thinking = thought.then(|| crate::native::core::ThinkingReport {
+            effort: thinking_budget,
+            budget_tokens: max_think_tokens,
+            capped: limit.capped,
+            used_tokens: think_tokens_count,
+            ended_by,
+        });
 
         let t = llama.timings();
         info!(
@@ -668,4 +710,46 @@ pub fn stream_tokens(
         history.truncate(n_cur as usize);
         Ok(history)
     }
+}
+
+/// Feeds `text` (optional budget message + the thinking end tag) into the context at `pos`, as the model
+/// would have written it, and leaves the logits of its last token ready, so the next sampled token starts
+/// the answer (llama.cpp `--reasoning-budget` does the same). Returns the tokens fed.
+unsafe fn close_thinking_block(
+    llama: &mut NativeLlama,
+    vocab: *const std::ffi::c_void,
+    text: &str,
+    pos: i32,
+    batch: &mut crate::ffi::llama_cpp::LlamaBatch,
+) -> anyhow::Result<Vec<i32>> {
+    let c_text = CString::new(text)?;
+    let mut tokens = vec![0i32; text.len() + 4];
+    let n = llama_cpp::llama_tokenize(
+        vocab,
+        c_text.as_ptr(),
+        text.len() as i32,
+        tokens.as_mut_ptr(),
+        tokens.len() as i32,
+        false,
+        true, // parse special: the tag is a control token for most models
+    );
+    if n <= 0 {
+        return Err(anyhow::anyhow!("{:?} does not tokenize", text));
+    }
+    tokens.truncate(n as usize);
+    if pos + n >= llama.n_ctx as i32 || n > llama.n_batch as i32 {
+        return Err(anyhow::anyhow!("no room in the context to close the thinking block"));
+    }
+    for (i, token) in tokens.iter().enumerate() {
+        *batch.token.add(i) = *token;
+        *batch.pos.add(i) = pos + i as i32;
+        *batch.n_seq_id.add(i) = 1;
+        *(*batch.seq_id.add(i)).add(0) = 0;
+        *batch.logits.add(i) = if i + 1 == tokens.len() { 1 } else { 0 };
+    }
+    batch.n_tokens = n;
+    if llama_cpp::llama_decode(llama.ctx_ptr, *batch) != 0 {
+        return Err(anyhow::anyhow!("llama_decode failed while closing the thinking block"));
+    }
+    Ok(tokens)
 }

@@ -16,7 +16,8 @@ pub struct PreparedChatContext {
     pub dyn_think_start: Option<String>,
     pub dyn_think_end: Option<String>,
     pub active_think_mode: String,
-    pub active_reasoning_effort: String,
+    pub active_reasoning_effort: cluaiz_core::ThinkingBudget,
+    pub reasoning_budget_message: Option<String>,
     pub validated_max_tokens: Option<usize>,
     pub skip_brain: bool,
     /// Request sampler values (llama.cpp names, null = not sent): the engine falls back to
@@ -329,22 +330,10 @@ impl PreparedChatContext {
             }
         }).unwrap_or_else(|| "auto".to_string());
 
-        // 🧠 2. REASONING EFFORT / COMPUTE INTENSITY (reasoning_effort: "low" | "medium" | "high" | "max" | "auto")
-        let active_reasoning_effort = request.reasoning_effort.as_deref()
-            .map(|re| match re.to_lowercase().as_str() {
-                "low" | "minimal" => "low".to_string(),
-                "medium" | "standard" => "medium".to_string(),
-                "high" => "high".to_string(),
-                "max" | "extreme" => "max".to_string(),
-                custom_num => {
-                    if custom_num.parse::<usize>().is_ok() {
-                        custom_num.to_string()
-                    } else {
-                        "auto".to_string()
-                    }
-                }
-            })
-            .unwrap_or_else(|| "auto".to_string());
+        // 🧠 2. Thinking budget ("Effort"): the request's value, else the user's default setting
+        let active_reasoning_effort = request.reasoning_effort.unwrap_or(settings.optimization.reasoning_effort);
+        let reasoning_budget_message = request.reasoning_budget_message.clone()
+            .or_else(|| settings.optimization.reasoning_budget_message.clone());
 
         // 🧠 Dynamic Pre-Flight Context Shifting
         let opt_control = &settings.optimization;
@@ -438,6 +427,7 @@ impl PreparedChatContext {
             "samplers": samplers,
             "think_mode": &active_think_mode,
             "reasoning_effort": &active_reasoning_effort,
+            "reasoning_budget_message": &reasoning_budget_message,
             "chat_template_kwargs": request.chat_template_kwargs.as_ref(),
             "grammar": request.grammar.as_deref(),
             "response_format": request.response_format.as_ref()
@@ -467,6 +457,7 @@ impl PreparedChatContext {
             dyn_think_end,
             active_think_mode,
             active_reasoning_effort,
+            reasoning_budget_message,
             validated_max_tokens,
             skip_brain,
             samplers,

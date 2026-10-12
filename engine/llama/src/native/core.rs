@@ -22,6 +22,23 @@ pub struct NativeLlama {
     chat_templates: *mut std::ffi::c_void,
     /// The custom template the parsed handle was built from (`dna.chat_template` at load)
     chat_templates_src: Option<String>,
+    /// Thinking budget and use of the last generation (None when the model did not think)
+    pub last_thinking: Option<ThinkingReport>,
+}
+
+/// What the thinking budget did in one generation (sent to the client in the engine report).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ThinkingReport {
+    /// Effort asked for (auto, low, ..., or a number)
+    pub effort: cluaiz_core::ThinkingBudget,
+    /// Tokens thinking was allowed after the room limit
+    pub budget_tokens: usize,
+    /// The asked budget did not fit the context and was lowered so the answer fits
+    pub capped: bool,
+    /// Thinking tokens the model used
+    pub used_tokens: usize,
+    /// "model" = the model ended it, "budget" / "skip" = the engine closed it
+    pub ended_by: &'static str,
 }
 
 /// Timings of the last generation, measured by llama.cpp itself (the numbers llama-cli and
@@ -410,6 +427,7 @@ impl NativeLlama {
             n_gpu_layers_loaded,
             chat_templates: crate::native::templater::parse_templates(model_ptr, dna.chat_template.as_deref()),
             chat_templates_src: dna.chat_template.clone(),
+            last_thinking: None,
         };
         llama.warmup();
         Ok(llama)
