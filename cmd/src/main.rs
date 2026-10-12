@@ -1,146 +1,105 @@
+//! `cluaiz`: run, serve and manage local models from a plain terminal (stdin / stdout, no screen
+//! takeover), with llama.cpp's flag names for loading and sampling.
 
+use std::io::IsTerminal;
+
+use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use colored::Colorize;
-use clap::{Parser, Subcommand, CommandFactory};
 
+mod assets;
+mod chat;
+mod cli;
 mod core;
 mod ui;
-mod assets;
-mod theme;
-mod app_enums;
-
-mod cli;
 
 use crate::core::bootstrapper::Bootstrapper;
 
-// ── Cluaiz CLI Definition ──────────────────────────────────────────────────
-
 #[derive(Parser)]
-#[command(name = "cluaiz", about = "Cluaiz-OS: Sovereign Neural Kernel", version = env!("CARGO_PKG_VERSION"), disable_help_subcommand = true)]
+#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version, arg_required_else_help = true)]
 pub struct Cli {
+    /// Engine logs on stderr: -v info (with the full plan), -vv debug. The log file always has them.
+    #[arg(short, long, global = true, action = clap::ArgAction::Count)]
+    verbose: u8,
+
     #[command(subcommand)]
-    command: Option<CliCommand>,
-
-    /// Run a full hardware performance benchmark (legacy flag)
-    #[arg(long = "benchmark")]
-    legacy_benchmark: bool,
-
-    /// Re-scan hardware and synchronize SiliconTruth profile (legacy flag)
-    #[arg(long = "calibrate")]
-    legacy_calibrate: bool,
+    command: CliCommand,
 }
 
 #[derive(Subcommand)]
 enum CliCommand {
-    /// Manage Sovereign AI Skills
-    Skill {
-        #[command(subcommand)]
-        command: Option<crate::ComponentCommand>,
-    },
-    /// Manage cluaiz Plugins
-    Plugin {
-        #[command(subcommand)]
-        command: Option<crate::ComponentCommand>,
-    },
-    /// Manage Model Context Protocol (MCP) integrations
-    Mcp {
-        #[command(subcommand)]
-        command: Option<crate::ComponentCommand>,
-    },
-    /// Universal Configuration Manager
-    Config {
-        #[command(subcommand)]
-        command: ConfigCommand,
-    },
-    /// Pull & run a model. Downloads if not cached.
-    Run {
-        /// Model ID (e.g. gemma2:2b, bonsai:8b)
-        #[arg(default_value = "")]
-        model_id: String,
-        
-        /// Enter interactive chat mode (Default: true)
-        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
-        interactive: bool,
-
-        /// Show/download all files bypassing allowed formats
-        #[arg(short = 'a', long = "all")]
-        all: bool,
-    },
-
-    /// Open the cluaiz Main Menu.
-    Menu,
-
-    /// List all downloaded models in the vault.
-    #[command(alias = "ls")]
+    /// Chat with a model, or answer one prompt (`cluaiz run <model> "<prompt>"`)
+    Run(cli::run::RunArgs),
+    /// Show a model's details and the plan it would get on this machine
+    Show(cli::show::ShowArgs),
+    /// List installed models
+    #[command(visible_alias = "ls")]
     List,
-
-    /// Directly read and inspect a model's raw binary header from disk.
-    #[command(alias = "probe")]
-    Inspect {
-        /// Model ID to inspect (e.g. gemma2:2b)
-        model_id: String,
-    },
-
     /// Download and register a model into the local vault.
     #[command(alias = "install", alias = "i")]
     Pull {
         /// Model ID (e.g. gemma2:2b, unsloth/Qwen3.5-4B-GGUF)
         model_id: String,
     },
-
     /// Remove a model from the local vault.
     #[command(alias = "remove", alias = "delete")]
     Rm {
         /// Model ID to remove
         model_id: String,
     },
-
-    /// Show hardware status and silicon health.
-    Status,
-
-    /// Re-scan hardware and synchronize SiliconTruth profile.
-    Calibrate,
-
-    /// Run a full hardware performance benchmark.
-    Benchmark {
-        /// Optional model ID to benchmark (runs all if omitted)
-        model_id: Option<String>,
-
-        /// Number of times to run each prompt.
-        #[arg(short, long, default_value_t = 1)]
-        runs: usize,
-    },
-
-    /// Show the dynamic help screen.
-    Help,
-
-    /// Show active neural engines in memory.
+    /// Show the model the running server has loaded
     Ps,
-
-    /// Start the background API Daemon (Server mode).
+    /// Start the API server
     Serve,
-
-    /// View or configure the LLM optimization settings.
-    LlmOptimization {
-        /// Set KV-Cache Quantization level (auto, kv16, kv8, kv4)
-        #[arg(long)]
-        kv_quant: Option<String>,
-
-        /// Set Context Shifting / Sliding Window mode (auto, off, minimal, standard, aggressive, extreme)
-        #[arg(long)]
-        context_shift: Option<String>,
-
-        /// Set the VRAM safety buffer: 'auto' or a number of GB (e.g. 1.5)
-        #[arg(long)]
-        mode: Option<String>,
+    /// Measure prompt and generation speed (llama-bench)
+    Bench(cli::bench::BenchArgs),
+    /// View and change engine settings (settings.json)
+    Config {
+        #[command(subcommand)]
+        command: cli::config_cmd::ConfigCommand,
     },
-
-    /// Ingest a document natively for semantic chunking and RAG.
+    /// Show the hardware the planner sees
+    Status,
+    /// Re-scan the hardware (after a hardware or driver change)
+    Calibrate,
+    /// Choose the default chat / vector model
+    Model {
+        #[command(subcommand)]
+        command: ModelCommand,
+    },
+    /// View and change engine permissions (permission.json)
+    Permission {
+        #[command(subcommand)]
+        command: Option<PermissionCommand>,
+    },
+    /// Manage API access tokens
+    Token {
+        #[command(subcommand)]
+        command: TokenCommand,
+    },
+    /// Manage skills
+    Skill {
+        #[command(subcommand)]
+        command: ComponentCommand,
+    },
+    /// Manage plugins
+    Plugin {
+        #[command(subcommand)]
+        command: ComponentCommand,
+    },
+    /// Manage Model Context Protocol (MCP) integrations
+    Mcp {
+        #[command(subcommand)]
+        command: ComponentCommand,
+    },
+    /// Ingest a document for semantic chunking and RAG
     Ingest {
         /// The file path to ingest
         file_path: String,
     },
-
+    /// Manage temporary storage and media of the running server
+    #[command(alias = "store")]
+    Storage(cli::storage::StorageCli),
     /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
     DevSync {
         /// Target to sync (all, core, driver)
@@ -154,56 +113,24 @@ enum CliCommand {
         #[arg(long, default_value = "release")]
         profile: String,
     },
-
-
-
-    /// Manage Engine Permissions
-    Permission {
-        #[command(subcommand)]
-        command: Option<PermissionCommand>,
-    },
-
-    /// Manage Security & API Access Tokens directly from host machine
-    Token {
-        #[command(subcommand)]
-        command: Option<TokenCommand>,
-    },
-
-    /// Manage Models
-    Model {
-        #[command(subcommand)]
-        command: Option<ModelCommand>,
-    },
-
-    /// Setup Cluaiz Node Profile and Identity
-    Setup {
-        #[command(subcommand)]
-        command: SetupCommand,
-    },
-    
-    /// Manage Temporary Storage and Media
-    #[command(alias = "store")]
-    Storage(crate::cli::storage::StorageCli),
 }
 
 #[derive(Subcommand)]
 pub enum PermissionCommand {
-    /// Change the WASM firewall status (auto, strict, off)
-    Firewall {
-        status: String,
-    },
-    /// Change the Telemetry status (on, off)
-    Telemetry {
-        status: String,
-    },
-    /// Toggle KV Cache generation (on, off)
-    Kvcache {
-        status: String,
-    },
-    /// Change the active API Port
-    Port {
-        number: u16,
-    },
+    /// WASM firewall: auto, strict or off
+    Firewall { status: String },
+    /// Usage telemetry in chat responses: on or off
+    Telemetry { status: String },
+    /// KV cache generation: on or off
+    Kvcache { status: String },
+    /// Vectorize user messages: on or off
+    VectorizeInput { status: String },
+    /// Vectorize AI responses: on or off
+    VectorizeResponse { status: String },
+    /// Load the chat model on first use instead of at server start: on or off
+    LazyLoad { status: String },
+    /// API server port
+    Port { number: u16 },
 }
 
 #[derive(Subcommand)]
@@ -230,22 +157,10 @@ pub enum TokenCommand {
 #[derive(Subcommand)]
 pub enum ModelCommand {
     /// Set active chat model
-    SetChat {
-        model_id: String,
-    },
+    SetChat { model_id: String },
     /// Set active vector model
-    SetVector {
-        model_id: String,
-    },
+    SetVector { model_id: String },
 }
-
-#[derive(Subcommand)]
-pub enum SetupCommand {
-    /// Generate and register Purpose Vectorization for the Node Profile
-    Profile,
-}
-
-
 
 #[derive(Subcommand)]
 pub enum ComponentCommand {
@@ -277,19 +192,13 @@ pub enum ComponentCommand {
         plugin_name: String,
         skill_name: String,
     },
-}
-
-#[derive(Subcommand)]
-pub enum ConfigCommand {
-    /// Modify component configuration
-    Set {
-        /// Type of component (extension, plugin, skill, mcp)
-        component_type: Option<String>,
-        /// ID of the component
+    /// View or change a component's settings (asks for missing values)
+    Config {
+        /// Component id
         component_id: Option<String>,
-        /// Path to the key (e.g., settings.search_api_type)
-        key_path: Option<String>,
-        /// Value to set
+        /// Setting name
+        key: Option<String>,
+        /// New value
         value: Option<String>,
     },
 }
@@ -302,18 +211,61 @@ pub enum ComponentCacheCommand {
     Clear {
         /// The cache ID to target (optional)
         component_id: Option<String>,
-        
+
         /// Clear all caches globally
         #[arg(long)]
         all: bool,
-        
+
         /// Force deletion even if active
         #[arg(short = 'f', long)]
         force: bool,
     },
 }
 
-// ──────────────────────────────────────────────────────────────────────────
+/// Log file in the local Cluaiz folder; appended (a CLI call never wipes a running server's log),
+/// started over once it passes 20 MiB.
+fn open_log_file() -> Option<std::fs::File> {
+    let path = cluaiz_core::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
+    if std::fs::metadata(&path).map(|m| m.len() > 20 * 1024 * 1024).unwrap_or(false) {
+        let _ = std::fs::rename(&path, path.with_extension("log.old"));
+    }
+    std::fs::OpenOptions::new().create(true).append(true).open(path).ok()
+}
+
+/// Engine logs (tracing) go to the log file, and to stderr with -v / for `serve`. stdout stays the
+/// command's own output.
+fn init_logging(verbose: u8, serving: bool) {
+    use tracing_subscriber::{filter::LevelFilter, prelude::*};
+    let console = match (verbose, serving) {
+        (0, false) => LevelFilter::OFF,
+        (0, true) | (1, _) => LevelFilter::INFO,
+        _ => LevelFilter::DEBUG,
+    };
+    let file_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::INFO };
+    let file_layer = open_log_file().map(|f| {
+        tracing_subscriber::fmt::layer().with_writer(std::sync::Mutex::new(f)).with_ansi(false).with_filter(file_level)
+    });
+    let console_layer = tracing_subscriber::fmt::layer()
+        .with_writer(std::io::stderr)
+        .with_ansi(std::io::stderr().is_terminal())
+        .with_target(false)
+        .with_filter(console);
+    let _ = tracing_subscriber::registry().with(file_layer).with(console_layer).try_init();
+}
+
+fn on_off(value: &str) -> Result<bool> {
+    match value.to_lowercase().as_str() {
+        "on" | "true" | "1" => Ok(true),
+        "off" | "false" | "0" => Ok(false),
+        _ => Err(color_eyre::eyre::eyre!("'{}': use on or off", value)),
+    }
+}
+
+/// Prints the error the way every command reports one, and exits with status 1.
+fn fail(context: &str, error: impl std::fmt::Display) -> ! {
+    eprintln!("{} {}: {}", "error:".red().bold(), context, error);
+    std::process::exit(1);
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -335,20 +287,15 @@ async fn main() -> Result<()> {
         SetConsoleOutputCP(65001);
     }
     std::env::set_var("GGML_LOG_LEVEL", "ERROR");
-
     color_eyre::install()?;
 
-    let cli = Cli::parse();
-
-    // 🚀 SILENCE THE VOID: Redirect all logs to file at the project root
-    let log_path = cluaiz_core::EnvironmentManager::current().local_dir.join("cluaiz_Core.log");
-
-    if let Ok(log_file) = std::fs::File::create(&log_path) {
-        let _ = tracing_subscriber::fmt()
-            .with_writer(log_file)
-            .with_ansi(false)
-            .try_init();
+    // Colours only on a terminal (NO_COLOR is honoured by `colored` itself)
+    if !std::io::stdout().is_terminal() {
+        colored::control::set_override(false);
     }
+
+    let cli = Cli::parse_from(cli::args::normalize_llama_flags(std::env::args()));
+    init_logging(cli.verbose, matches!(cli.command, CliCommand::Serve));
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");
@@ -357,198 +304,134 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // 🚀 Probing hardware before execution
-    let _ = cluaiz_hw::HardwareProber::current();
-
-    // -- Legacy Flag Handlers --
-    if cli.legacy_benchmark {
-        if let Err(e) = crate::cli::benchmark::execute(None, 1).await {
-            eprintln!("\n  {} [Cluaiz] Benchmark Error: {}\n", "❌".red(), e);
-            std::process::exit(1);
-        }
-        return Ok(());
-    }
-
-    if cli.legacy_calibrate {
-         println!("\n  {} Initiating Hardware Re-Scan...", "🛰️".cyan());
-         let _ = cluaiz_hw::HardwareProber::probe_system();
-         println!("  {} Hardware profile synchronized.\n", "✅".green());
-        return Ok(());
-    }
+    let verbose = cli.verbose > 0;
 
     match cli.command {
-        Some(CliCommand::Menu) => {
-            start_menu().await?;
-        }
-        Some(CliCommand::Run { model_id, interactive, all }) => {
-            if model_id.trim().is_empty() {
-                start_dashboard().await?;
-            } else {
-                if let Err(e) = crate::cli::run::execute(&model_id, interactive, all).await {
-                    eprintln!("\n  {} [Cluaiz] Run Error: {}\n", "❌".red(), e);
-                    std::process::exit(1);
-                }
+        CliCommand::Run(args) => {
+            if let Err(e) = cli::run::execute(args, verbose).await {
+                fail("run", e);
             }
         }
-        Some(CliCommand::Pull { model_id }) => {
+        CliCommand::Show(args) => {
+            if let Err(e) = cli::show::execute(args, verbose).await {
+                fail("show", e);
+            }
+        }
+        CliCommand::List => {
+            if let Err(e) = cli::list::execute().await {
+                fail("list", e);
+            }
+        }
+        CliCommand::Pull { model_id } => {
             if let Err(e) = crate::cli::pull::execute(&model_id).await {
                 eprintln!("\n  {} [Cluaiz] Pull Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }
-        Some(CliCommand::List) => {
-            if let Err(e) = crate::cli::list::execute().await {
-                eprintln!("\n  {} [Cluaiz] List Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::Inspect { model_id }) => {
-            if let Err(e) = crate::cli::inspect::execute(&model_id).await {
-                eprintln!("\n  {} [Cluaiz] Inspect Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::Rm { model_id }) => {
+        CliCommand::Rm { model_id } => {
             if let Err(e) = crate::cli::rm::execute(&model_id).await {
                 eprintln!("\n  {} [Cluaiz] Removal Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }
         }
-        Some(CliCommand::Status) => {
-            let info = cluaiz_hw::HardwareProber::current();
-            println!("  {} CPU: {} ({} cores)", "📊".cyan(), info.cpu.brand, info.cpu.physical_cores);
-            println!("  {} RAM: {:.2} GiB total, {:.2} GiB available", "📊".cyan(), info.memory.total_gb, info.memory.available_gb);
-            if let Some(gpu) = info.gpus.first() {
-                println!("  {} GPU: {} ({:.2} GiB VRAM)", "📊".cyan(), gpu.name, gpu.vram_total_gb);
+        CliCommand::Ps => {
+            if let Err(e) = cli::ps::execute().await {
+                fail("ps", e);
             }
         }
-        Some(CliCommand::Calibrate) => {
-             println!("\n  {} Initiating Hardware Re-Scan...", "🛰️".cyan());
-             let _ = cluaiz_hw::HardwareProber::probe_system();
-             println!("  {} Hardware profile synchronized.\n", "✅".green());
-        }
-        Some(CliCommand::Benchmark { model_id, runs }) => {
-            if let Err(e) = crate::cli::benchmark::execute(model_id, runs).await {
-                eprintln!("\n  {} [Cluaiz] Benchmark Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::Help) => {
-            if let Ok(reg) = crate::core::commands::CommandRegistry::load() {
-                reg.generate_help();
-            } else {
-                println!("  {} Error loading commands.json", "❌".red());
-            }
-        }
-        Some(CliCommand::Ps) => {
-            if let Err(e) = crate::cli::ps::execute().await {
-                eprintln!("\n  {} [Cluaiz] Process Status Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::Config { command: ConfigCommand::Set { component_type, component_id, key_path, value } }) => {
-            if let Err(e) = crate::cli::config_cmd::execute(component_type.clone(), component_id.clone(), key_path.clone(), value.clone()).await {
-                use colored::Colorize;
-                eprintln!("\n  {} [Cluaiz] Config Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::DevSync { target, driver_name, profile }) => {
-            let env_mgr = cluaiz_core::EnvironmentManager::current();
-            let global_dir = env_mgr.global_dir.clone();
-            let local_dir = env_mgr.local_dir.clone();
-            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
-            let _ = std::fs::create_dir_all(&global_dir);
-            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
-            if local_dir != global_dir {
-                println!("⚙️  [DevSync] Also synchronizing to local workspace {}...", local_dir.display());
-                let _ = core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), local_dir, &profile);
-            }
-            
-            std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
-            let permissions = cluaiz_security::PermissionSchema::load();
-            let _ = permissions.save();
-            let _ = cluaiz_hw::HardwareProber::current();
-            
-            std::env::remove_var("cluaiz_HOME");
-
-            println!("✅  [DevSync] Synchronization Complete.");
-        }
-        Some(CliCommand::Serve) => {
+        CliCommand::Serve => {
             let perms = cluaiz_security::PermissionSchema::load();
-            let port: u16 = std::env::var("cluaiz_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(perms.api_port);
-            println!("  {} Starting cluaiz API Daemon on http://localhost:{} ...", "🚀".green(), port);
+            eprintln!("Starting the Cluaiz API server on http://localhost:{} ...", cluaiz_api::api_port(&perms));
             if let Err(e) = cluaiz_api::run_daemon().await {
-                eprintln!("  {} API Daemon error: {}", "❌".red(), e);
+                fail("serve", e);
             }
         }
-
-        Some(CliCommand::LlmOptimization { kv_quant, context_shift, mode }) => {
-            if let Err(e) = crate::cli::llm_optimization::execute(kv_quant, context_shift, mode).await {
-                eprintln!("\n  {} [Cluaiz] LLM Optimization Config Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
+        CliCommand::Bench(args) => {
+            if let Err(e) = cli::bench::execute(args, verbose).await {
+                fail("bench", e);
             }
         }
-        Some(CliCommand::Skill { command }) => {
-            if let Some(cmd) = command {
-                if let Err(e) = crate::cli::component::execute("skill", cmd).await {
-                    eprintln!("\n  {} [Cluaiz] Skill Manager Error: {}\n", "❌".red(), e);
-                    std::process::exit(1);
-                }
-            } else {
-                let mut cmd = crate::Cli::command();
-                let _ = cmd.print_help();
-                std::process::exit(2);
+        CliCommand::Config { command } => {
+            if let Err(e) = cli::config_cmd::execute(command) {
+                fail("config", e);
             }
         }
-        Some(CliCommand::Plugin { command }) => {
-            if let Some(cmd) = command {
-                if let Err(e) = crate::cli::component::execute("plugin", cmd).await {
-                    eprintln!("\n  {} [Cluaiz] Plugin Manager Error: {}\n", "❌".red(), e);
-                    std::process::exit(1);
-                }
-            } else {
-                let mut cmd = crate::Cli::command();
-                let _ = cmd.print_help();
-                std::process::exit(2);
+        CliCommand::Status => cli::status::execute(),
+        CliCommand::Calibrate => {
+            let _ = cluaiz_hw::HardwareProber::calibrate();
+            println!("Hardware profile re-scanned.");
+            cli::status::execute();
+        }
+        CliCommand::Model { command } => match command {
+            ModelCommand::SetChat { model_id } => {
+                cluaiz_security::PermissionSchema::set_active_chat_model(model_id.clone());
+                println!("Active chat model: {}", model_id);
+            }
+            ModelCommand::SetVector { model_id } => {
+                cluaiz_security::PermissionSchema::set_active_embedding_model(model_id.clone());
+                println!("Active vector model: {}", model_id);
+            }
+        },
+        CliCommand::Permission { command } => {
+            let mut schema = cluaiz_security::PermissionSchema::load();
+            let Some(cmd) = command else {
+                let row = |k: &str, v: String| println!("{:<20}{}", k, v);
+                row("firewall", schema.wasm_firewall.clone());
+                row("telemetry", schema.stream_telemetry.to_string());
+                row("kvcache", schema.enable_kvcache.to_string());
+                row("vectorize-input", schema.vectorize_user_input.to_string());
+                row("vectorize-response", schema.vectorize_ai_response.to_string());
+                row("lazy-load", schema.lazy_load_model.to_string());
+                row("port", schema.api_port.to_string());
+                row("chat model", schema.get_active_chat_model().unwrap_or_else(|| "none".into()));
+                row("vector model", schema.get_active_embedding_model().unwrap_or_else(|| "none".into()));
+                eprintln!("{}", "Change one with `cluaiz permission <name> <value>`.".dimmed());
+                return Ok(());
+            };
+            let result: Result<String> = (|| {
+                Ok(match cmd {
+                    PermissionCommand::Firewall { status } => {
+                        schema.wasm_firewall = match status.to_lowercase().as_str() {
+                            s @ ("auto" | "strict" | "off") => s.to_string(),
+                            _ => return Err(color_eyre::eyre::eyre!("'{}': use auto, strict or off", status)),
+                        };
+                        format!("firewall = {}", schema.wasm_firewall)
+                    }
+                    PermissionCommand::Telemetry { status } => {
+                        schema.stream_telemetry = on_off(&status)?;
+                        format!("telemetry = {}", schema.stream_telemetry)
+                    }
+                    PermissionCommand::Kvcache { status } => {
+                        schema.enable_kvcache = on_off(&status)?;
+                        format!("kvcache = {}", schema.enable_kvcache)
+                    }
+                    PermissionCommand::VectorizeInput { status } => {
+                        schema.vectorize_user_input = on_off(&status)?;
+                        format!("vectorize-input = {}", schema.vectorize_user_input)
+                    }
+                    PermissionCommand::VectorizeResponse { status } => {
+                        schema.vectorize_ai_response = on_off(&status)?;
+                        format!("vectorize-response = {}", schema.vectorize_ai_response)
+                    }
+                    PermissionCommand::LazyLoad { status } => {
+                        schema.lazy_load_model = on_off(&status)?;
+                        format!("lazy-load = {}", schema.lazy_load_model)
+                    }
+                    PermissionCommand::Port { number } => {
+                        schema.api_port = number;
+                        format!("port = {}", schema.api_port)
+                    }
+                })
+            })();
+            match result.and_then(|msg| schema.save().map(|_| msg).map_err(|e| color_eyre::eyre::eyre!("{}", e))) {
+                Ok(msg) => println!("{}", msg),
+                Err(e) => fail("permission", e),
             }
         }
-        Some(CliCommand::Mcp { command }) => {
-            if let Some(cmd) = command {
-                if let Err(e) = crate::cli::component::execute("mcp", cmd).await {
-                    eprintln!("\n  {} [Cluaiz] MCP Manager Error: {}\n", "❌".red(), e);
-                    std::process::exit(1);
-                }
-            } else {
-                let mut cmd = crate::Cli::command();
-                let _ = cmd.print_help();
-                std::process::exit(2);
-            }
-        }
-        Some(CliCommand::Ingest { file_path }) => {
-            if let Err(e) = crate::cli::ingest::execute(&file_path).await {
-                eprintln!("\n  {} [Cluaiz] Ingestion Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-
-        Some(CliCommand::Setup { command }) => {
-            if let Err(e) = crate::cli::setup::execute(command).await {
-                eprintln!("\n  {} [Cluaiz] Setup Error: {}\n", "❌".red(), e);
-                std::process::exit(1);
-            }
-        }
-        Some(CliCommand::Storage(cli_cmd)) => {
-            let schema = cluaiz_security::PermissionSchema::load();
-            crate::cli::storage::handle_storage_command(cli_cmd, schema.api_port).await;
-        }
-        Some(CliCommand::Token { command }) => {
+        CliCommand::Token { command } => {
             let mut schema = cluaiz_security::PermissionSchema::load();
             match command {
-                Some(TokenCommand::Show { all }) => {
+                TokenCommand::Show { all } => {
                     schema.api_auth.sanitize_tokens();
                     if schema.api_auth.tokens.is_empty() {
                         println!("\n  {} No API tokens configured in permission.json.", "⚠️".yellow());
@@ -568,23 +451,23 @@ async fn main() -> Result<()> {
                         println!("  {} Auth Guard: {}", "🛡️".blue(), if schema.api_auth.required { "Enabled".green() } else { "Disabled (Local only)".yellow() });
                         println!("  {} Total Configured Tokens: {} (run 'cluaiz token show --all' to see all)\n", "🔢".cyan(), schema.api_auth.tokens.len());
                     }
-                    return Ok(());
                 }
-                Some(TokenCommand::Create) => {
+                TokenCommand::Create => {
                     schema.api_auth.sanitize_tokens();
                     if schema.api_auth.tokens.len() >= 5 {
-                        eprintln!("\n  {} Maximum limit of 5 API keys reached. Remove an existing key first.\n", "❌".red());
-                        return Ok(());
+                        fail("token", "maximum of 5 API keys reached; remove one first");
                     }
                     let new_token = cluaiz_security::ApiAuth::generate_token();
                     schema.api_auth.tokens.push(new_token.clone());
                     schema.api_auth.required = true;
-                    let _ = schema.save();
+                    if let Err(e) = schema.save() {
+                        fail("token", e);
+                    }
                     println!("\n  {} New API Token Created Successfully!", "✨".green().bold());
                     println!("  {} Token: {}", "🔑".yellow(), new_token.bold().green());
                     println!("  {} Auth Guard: Enabled\n", "🛡️".blue());
                 }
-                Some(TokenCommand::List) => {
+                TokenCommand::List => {
                     schema.api_auth.sanitize_tokens();
                     println!("\n  {} Configured API Tokens ({}/5):", "🔐".cyan().bold(), schema.api_auth.tokens.len());
                     if schema.api_auth.tokens.is_empty() {
@@ -597,224 +480,63 @@ async fn main() -> Result<()> {
                     }
                     println!();
                 }
-                Some(TokenCommand::Remove { token }) => {
-                    match schema.api_auth.remove_token(&token) {
-                        Ok(_) => {
-                            if schema.api_auth.tokens.is_empty() {
-                                schema.api_auth.required = false;
-                            }
-                            let _ = schema.save();
-                            println!("  {} Token removed successfully.", "✅".green());
+                TokenCommand::Remove { token } => match schema.api_auth.remove_token(&token) {
+                    Ok(_) => {
+                        if schema.api_auth.tokens.is_empty() {
+                            schema.api_auth.required = false;
                         }
-                        Err(err) => {
-                            println!("  {} {}", "⚠️".yellow(), err);
+                        if let Err(e) = schema.save() {
+                            fail("token", e);
                         }
+                        println!("  {} Token removed successfully.", "✅".green());
                     }
-                }
-                None => {
-                    println!("\n  {} Cluaiz Token Manager:", "🔐".cyan().bold());
-                    println!("    cluaiz token show                   - View primary active API token");
-                    println!("    cluaiz token show --all             - View all configured API tokens in full plaintext");
-                    println!("    cluaiz token create                 - Create a new API access token");
-                    println!("    cluaiz token list [ls]              - List all configured API tokens");
-                    println!("    cluaiz token remove [rm] <token>    - Remove an API access token\n");
-                }
+                    Err(err) => fail("token", err),
+                },
             }
         }
-        Some(CliCommand::Permission { command }) => {
-            let mut schema = cluaiz_security::PermissionSchema::load();
-            if let Some(cmd) = command {
-                match cmd {
-                    PermissionCommand::Firewall { status } => {
-                        schema.wasm_firewall = match status.to_lowercase().as_str() {
-                            "strict" => "strict".to_string(),
-                            "off" => "off".to_string(),
-                            _ => "auto".to_string(),
-                        };
-                        println!("  {} Firewall updated to: {}", "✅".green(), schema.wasm_firewall.bold());
-                    }
-                    PermissionCommand::Telemetry { status } => {
-                        schema.stream_telemetry = status.to_lowercase() == "on";
-                        println!("  {} Telemetry updated to: {}", "✅".green(), schema.stream_telemetry);
-                    }
-                    PermissionCommand::Kvcache { status } => {
-                        schema.enable_kvcache = status.to_lowercase() == "on";
-                        println!("  {} KV Cache generation updated to: {}", "✅".green(), schema.enable_kvcache);
-                    }
-                    PermissionCommand::Port { number } => {
-                        schema.api_port = number;
-                        println!("  {} API Port updated to: {}", "✅".green(), schema.api_port);
-                    }
-                }
-                schema.save();
-            } else {
-                use inquire::Select;
-                loop {
-                    schema = cluaiz_security::PermissionSchema::load();
-                    let opts = vec![
-                        format!("WASM Firewall (Current: {})", schema.wasm_firewall),
-                        format!("Telemetry (Current: {})", schema.stream_telemetry),
-                        format!("Vectorize User Input (Current: {})", schema.vectorize_user_input),
-                        format!("Vectorize AI Response (Current: {})", schema.vectorize_ai_response),
-                        format!("Enable KV Cache (Current: {})", schema.enable_kvcache),
-                        format!("API Port (Current: {})", schema.api_port),
-                        format!("Active Chat Model (Current: {})", schema.get_active_chat_model().unwrap_or_else(|| "None".to_string())),
-                        format!("Active Vector Model (Current: {})", schema.get_active_embedding_model().unwrap_or_else(|| "None".to_string())),
-                        "Quit".to_string()
-                    ];
-                    if let Ok(ans) = Select::new("Permission Control:", opts).prompt() {
-                        if ans == "Quit" { break; }
-                        let key = ans.split(" (").next().unwrap_or("");
-                        let mut changed = false;
-                        match key {
-                            "WASM Firewall" => {
-                                if let Ok(v) = Select::new("Set WASM Firewall:", vec!["auto", "strict", "off"]).prompt() {
-                                    schema.wasm_firewall = v.to_string();
-                                    changed = true;
-                                }
-                            }
-                            "Telemetry" => {
-                                if let Ok(v) = Select::new("Set Telemetry:", vec!["true", "false"]).prompt() {
-                                    schema.stream_telemetry = v == "true";
-                                    changed = true;
-                                }
-                            }
-                            "Enable KV Cache" => {
-                                if let Ok(v) = Select::new("Set Enable KV Cache:", vec!["true", "false"]).prompt() {
-                                    schema.enable_kvcache = v == "true";
-                                    changed = true;
-                                }
-                            }
-                            "API Port" => {
-                                if let Ok(v) = inquire::Text::new("Enter new API Port:").with_default(&schema.api_port.to_string()).prompt() {
-                                    if let Ok(port) = v.parse::<u16>() {
-                                        schema.api_port = port;
-                                        changed = true;
-                                    } else {
-                                        println!("Invalid port number.");
-                                    }
-                                }
-                            }
-                            "Vectorize User Input" => {
-                                if let Ok(v) = Select::new("Set Vectorize User Input:", vec!["true", "false"]).prompt() {
-                                    schema.vectorize_user_input = v == "true";
-                                    changed = true;
-                                }
-                            }
-                            "Vectorize AI Response" => {
-                                if let Ok(v) = Select::new("Set Vectorize AI Response:", vec!["true", "false"]).prompt() {
-                                    schema.vectorize_ai_response = v == "true";
-                                    changed = true;
-                                }
-                            }
+        CliCommand::Skill { command } => {
+            if let Err(e) = cli::component::execute("skill", command).await {
+                fail("skill", e);
+            }
+        }
+        CliCommand::Plugin { command } => {
+            if let Err(e) = cli::component::execute("plugin", command).await {
+                fail("plugin", e);
+            }
+        }
+        CliCommand::Mcp { command } => {
+            if let Err(e) = cli::component::execute("mcp", command).await {
+                fail("mcp", e);
+            }
+        }
+        CliCommand::Ingest { file_path } => {
+            if let Err(e) = cli::ingest::execute(&file_path).await {
+                fail("ingest", e);
+            }
+        }
+        CliCommand::Storage(cli_cmd) => cli::storage::handle_storage_command(cli_cmd).await,
+        CliCommand::DevSync { target, driver_name, profile } => {
+            let env_mgr = cluaiz_core::EnvironmentManager::current();
+            let global_dir = env_mgr.global_dir.clone();
+            let local_dir = env_mgr.local_dir.clone();
+            println!("⚙️  [DevSync] Manually synchronizing '{}' development artifacts to {}...", target, global_dir.display());
+            let _ = std::fs::create_dir_all(&global_dir);
+            core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), global_dir.clone(), &profile)?;
+            if local_dir != global_dir {
+                println!("⚙️  [DevSync] Also synchronizing to local workspace {}...", local_dir.display());
+                let _ = core::bootstrapper::Bootstrapper::sync_dev_artifacts(&target, driver_name.as_deref(), local_dir, &profile);
+            }
 
-                            "Active Chat Model" | "Active Vector Model" => {
-                                let roster = cluaiz_models::CoreRoster::load_roster();
-                                let mut downloaded: Vec<_> = roster.into_iter().filter(|m| {
-                                    m.local_path.is_some() || cluaiz_models::ModelDownloader::get_cached_path(&m.category, &m.id, &m.huggingface_filename).is_some()
-                                }).collect();
-                                
-                                downloaded.sort_by(|a, b| a.name.cmp(&b.name));
-                                downloaded.dedup_by(|a, b| a.name == b.name);
-                                
-                                if downloaded.is_empty() {
-                                    println!("  {} No downloaded models found.", "ℹ️".blue());
-                                } else {
-                                    let is_vector = key == "Active Vector Model";
-                                    let filtered: Vec<_> = downloaded.into_iter().filter(|m| {
-                                        let is_model_vector = m.architecture_type == "onnx" || m.category == "embedding";
-                                        if is_vector { is_model_vector } else { !is_model_vector }
-                                    }).collect();
-                                    
-                                    if filtered.is_empty() {
-                                        println!("  {} No downloaded {} found.", "ℹ️".blue(), if is_vector { "Vector Models" } else { "Chat Models" });
-                                    } else {
-                                        let options: Vec<String> = filtered.iter().map(|m| m.name.clone()).collect();
-                                        if let Ok(ans) = Select::new("Select Model to Set as Active:", options).prompt() {
-                                            if let Some(model) = filtered.iter().find(|m| m.name == ans) {
-                                                if is_vector {
-                                                    cluaiz_security::PermissionSchema::set_active_embedding_model(model.id.clone());
-                                                } else {
-                                                    cluaiz_security::PermissionSchema::set_active_chat_model(model.id.clone());
-                                                }
-                                                // We must reload schema because the static function above modified and saved it to disk.
-                                                schema = cluaiz_security::PermissionSchema::load();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                        if changed { schema.save(); println!("  {} permission.json updated.", "✅".green()); }
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-        Some(CliCommand::Model { command }) => {
-            if let Some(cmd) = command {
-                match cmd {
-                    ModelCommand::SetChat { model_id } => {
-                        cluaiz_security::PermissionSchema::set_active_chat_model(model_id.clone());
-                        println!("  {} Active Chat Model set to: {}", "✅".green(), model_id.bold());
-                    }
-                    ModelCommand::SetVector { model_id } => {
-                        cluaiz_security::PermissionSchema::set_active_embedding_model(model_id.clone());
-                        println!("  {} Active Vector Model set to: {}", "✅".green(), model_id.bold());
-                    }
-                }
-            } else {
-                let mut cmd = crate::Cli::command();
-                let _ = cmd.print_help();
-                std::process::exit(2);
-            }
-        }
-        None => {
-            // Default to Menu if no command provided
-            start_menu().await?;
+            std::env::set_var("cluaiz_HOME", global_dir.to_string_lossy().to_string());
+            let permissions = cluaiz_security::PermissionSchema::load();
+            let _ = permissions.save();
+            let _ = cluaiz_hw::HardwareProber::current();
+
+            std::env::remove_var("cluaiz_HOME");
+
+            println!("✅  [DevSync] Synchronization Complete.");
         }
     }
 
     Ok(())
 }
-
-async fn start_dashboard() -> Result<()> {
-    let _ = cluaiz_hw::get_pulse();
-
-    // 🛡️ Panic Guard: Ensure terminal recovery on crash
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        let _ = crate::core::flow::FlowEngine::restore();
-        let _ = ratatui::restore();
-        hook(info);
-    }));
-
-    // ── Cluaiz PRIMARY FLOW ──
-    let app = crate::core::app::App::new(None, Some(crate::core::state::OsState::Dashboard))?;
-    app.run().await?;
-
-    let _ = crate::core::flow::FlowEngine::restore();
-    Ok(())
-}
-
-async fn start_menu() -> Result<()> {
-    let _ = cluaiz_hw::get_pulse();
-
-    // 🛡️ Panic Guard: Ensure terminal recovery on crash
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        let _ = crate::core::flow::FlowEngine::restore();
-        let _ = ratatui::restore();
-        hook(info);
-    }));
-
-    // ── Cluaiz PRIMARY FLOW ──
-    let app = crate::core::app::App::new(None, Some(crate::core::state::OsState::MainMenu))?;
-    app.run().await?;
-
-    let _ = crate::core::flow::FlowEngine::restore();
-    Ok(())
-}
-
