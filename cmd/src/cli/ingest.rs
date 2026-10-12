@@ -22,14 +22,19 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let model_path = current_dir.join("models/library/CLIP/model.onnx");
     let model_path_str = model_path.to_string_lossy();
     
-    println!("  {} Loading ONNX Driver...", "⚙️".cyan());
-    if let Err(e) = onnx_driver.load_vision_model(&model_path_str) {
+    let spin = crate::ui::spinner::Spinner::start("Loading ONNX driver…");
+    let load_ok = onnx_driver.load_vision_model(&model_path_str);
+    spin.stop();
+    if let Err(e) = load_ok {
         eprintln!("  {} [WARNING] ONNX Vision weights not found at '{}'. Please ensure the download completed. Error: {}", "⚠️".yellow(), model_path_str, e);
         eprintln!("  {} Aborting ingestion due to missing model weights.", "🛑".red());
         return Ok(());
     }
 
-    match ingestor.ingest_and_vectorize(file_path, &onnx_driver, None, 512, None, true, &[]) {
+    let spin = crate::ui::spinner::Spinner::start("Processing document…");
+    let ingest_result = ingestor.ingest_and_vectorize(file_path, &onnx_driver, None, 512, None, true, &[]);
+    spin.stop();
+    match ingest_result {
         Ok(results) => {
             println!("  {} Successfully processed and chunked.", "✅".green());
             println!("  {} Total Semantic Chunks Generated: {}\n", "✂️ ".cyan(), results.len().to_string().yellow().bold());
