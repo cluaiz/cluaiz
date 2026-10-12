@@ -176,16 +176,31 @@ pub struct ExternalMessage {
 /// llama-cli / llama-server) and the llama.cpp load values of the loaded model.
 pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
     let plan = host.current_plan.lock().await.clone();
+    let settings = host.loaded_settings.lock().await.clone();
+    let physical_cores = cluaiz_hw::HardwareProber::current().cpu.physical_cores;
     json!({
         "timings": host.last_timings().await,
         "load": plan.map(|p| json!({
             "placement": format!("{:?}", p.selected_tier),
             "n_ctx": p.context_window,
             "n_gpu_layers": p.n_gpu_layers,
+            "total_layers": p.total_layers,
             "n_cpu_moe": p.n_cpu_moe,
             "offload_kqv": p.kv_offload,
+            "op_offload": p.op_offload,
             "cache_type": format!("{:?}", p.kv_cache_type),
             "planner": p.explanation,
+            "settings": settings.as_ref().map(|s| {
+                let (n_threads, n_threads_batch) = s.optimization.resolved_threads(physical_cores);
+                json!({
+                    "n_batch": s.optimization.resolved_batch_size(),
+                    "n_ubatch": s.optimization.resolved_ubatch_size(),
+                    "n_threads": n_threads,
+                    "n_threads_batch": n_threads_batch,
+                    "flash_attn": format!("{:?}", s.optimization.flash_attention),
+                    "use_mmap": p.use_mmap(s),
+                })
+            }),
         })),
     })
 }
