@@ -95,7 +95,8 @@ pub async fn execute_non_streaming(
                 ),
                 "samplers": ctx.samplers,
                 "think_mode": &ctx.active_think_mode,
-                "reasoning_effort": &ctx.active_reasoning_effort
+                "reasoning_effort": &ctx.active_reasoning_effort,
+                "reasoning_budget_message": &ctx.reasoning_budget_message
             });
             let current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
 

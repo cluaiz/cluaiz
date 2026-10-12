@@ -7,6 +7,6 @@ pub mod sampler;
 pub mod context;
 pub mod templater;
 
-pub use core::{GenerationTimings, NativeLlama};
+pub use core::{GenerationTimings, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;
 pub use templater::extract_thinking_tags_native;

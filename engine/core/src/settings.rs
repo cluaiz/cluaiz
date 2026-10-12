@@ -136,6 +136,127 @@ pub struct OptimizationControl {
     /// copied to the GPU to compute there. None = llama.cpp default (on when any layer is on the GPU).
     #[serde(default)]
     pub op_offload: Option<bool>,
+    /// Default thinking budget ("Effort") for chats that do not send `reasoning_effort`.
+    /// Per request, not a load setting: changing it does not reload the model.
+    #[serde(default)]
+    pub reasoning_effort: ThinkingBudget,
+    /// Share of the room and maximum tokens for Low / Medium / High (Auto = High)
+    #[serde(default)]
+    pub thinking_presets: ThinkingPresets,
+    /// Text written before the end-of-thinking tag when the budget runs out (llama.cpp
+    /// `--reasoning-budget-message`), so the model wraps up instead of stopping mid-thought. None = no text.
+    #[serde(default)]
+    pub reasoning_budget_message: Option<String>,
+}
+
+/// Thinking token budget ("Effort" in the app): how many tokens a reasoning model may think before it must
+/// answer. Accepts the names below or a number of tokens (as a JSON number or a numeric string).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ThinkingBudget {
+    /// Same as High
+    #[default]
+    Auto,
+    Low,
+    Medium,
+    High,
+    /// All of the room (see `ThinkingBudget::limit`)
+    Max,
+    /// This many thinking tokens, never more than the room (0 = answer without thinking)
+    Tokens(u32),
+}
+
+/// One effort level: a share of the room for thinking, never more than `max_tokens`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ThinkingShare {
+    /// 0.0 - 1.0 of the room
+    pub share: f64,
+    pub max_tokens: u32,
+}
+
+/// What Low / Medium / High mean (Auto uses High). User-editable defaults, not fixed in the engine.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct ThinkingPresets {
+    pub low: ThinkingShare,
+    pub medium: ThinkingShare,
+    pub high: ThinkingShare,
+}
+
+impl Default for ThinkingPresets {
+    fn default() -> Self {
+        Self {
+            low: ThinkingShare { share: 0.25, max_tokens: 2048 },
+            medium: ThinkingShare { share: 0.50, max_tokens: 8192 },
+            high: ThinkingShare { share: 0.75, max_tokens: 32768 },
+        }
+    }
+}
+
+/// Thinking budget for one generation, after the room limit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct ThinkingLimit {
+    pub tokens: usize,
+    /// The chosen budget was bigger than the room and was lowered so the answer still fits
+    pub capped: bool,
+}
+
+impl ThinkingBudget {
+    /// Thinking tokens for one generation. `room` = context left after the prompt minus the tokens kept
+    /// for the answer, so whatever is chosen, the answer still fits (room 0 = no thinking).
+    pub fn limit(&self, room: usize, presets: &ThinkingPresets) -> ThinkingLimit {
+        let of_room = |p: &ThinkingShare| {
+            ((room as f64 * p.share.clamp(0.0, 1.0)) as usize).min(p.max_tokens as usize)
+        };
+        match self {
+            ThinkingBudget::Auto | ThinkingBudget::High => ThinkingLimit { tokens: of_room(&presets.high), capped: false },
+            ThinkingBudget::Low => ThinkingLimit { tokens: of_room(&presets.low), capped: false },
+            ThinkingBudget::Medium => ThinkingLimit { tokens: of_room(&presets.medium), capped: false },
+            ThinkingBudget::Max => ThinkingLimit { tokens: room, capped: false },
+            ThinkingBudget::Tokens(n) => ThinkingLimit { tokens: (*n as usize).min(room), capped: *n as usize > room },
+        }
+    }
+
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value.trim().to_lowercase().as_str() {
+            "auto" | "" => Ok(ThinkingBudget::Auto),
+            "low" | "minimal" => Ok(ThinkingBudget::Low),
+            "medium" | "standard" => Ok(ThinkingBudget::Medium),
+            "high" => Ok(ThinkingBudget::High),
+            "max" | "extreme" => Ok(ThinkingBudget::Max),
+            n => n.parse::<u32>().map(ThinkingBudget::Tokens).map_err(|_| {
+                format!("reasoning_effort '{}': use auto, low, medium, high, max or a number of tokens", value)
+            }),
+        }
+    }
+}
+
+impl Serialize for ThinkingBudget {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            ThinkingBudget::Auto => s.serialize_str("auto"),
+            ThinkingBudget::Low => s.serialize_str("low"),
+            ThinkingBudget::Medium => s.serialize_str("medium"),
+            ThinkingBudget::High => s.serialize_str("high"),
+            ThinkingBudget::Max => s.serialize_str("max"),
+            ThinkingBudget::Tokens(n) => s.serialize_u32(*n),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ThinkingBudget {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        match serde_json::Value::deserialize(d)? {
+            serde_json::Value::String(s) => ThinkingBudget::parse(&s).map_err(serde::de::Error::custom),
+            serde_json::Value::Number(n) => n
+                .as_u64()
+                .and_then(|n| u32::try_from(n).ok())
+                .map(ThinkingBudget::Tokens)
+                .ok_or_else(|| serde::de::Error::custom("reasoning_effort must be a whole number of tokens >= 0")),
+            serde_json::Value::Null => Ok(ThinkingBudget::Auto),
+            other => Err(serde::de::Error::custom(format!(
+                "reasoning_effort {}: use auto, low, medium, high, max or a number of tokens", other
+            ))),
+        }
+    }
 }
 
 /// Context window setting, same meaning as llama.cpp `n_ctx`: 0 = Auto, -1 = Max (native), N = exactly N.
@@ -384,6 +505,9 @@ impl Default for OptimizationControl {
             n_threads: None,
             n_threads_batch: None,
             op_offload: None,
+            reasoning_effort: ThinkingBudget::Auto,
+            thinking_presets: ThinkingPresets::default(),
+            reasoning_budget_message: None,
         }
     }
 }
@@ -582,6 +706,48 @@ mod tests {
         let mut b = ActiveUserSettings::default();
         b.optimization.set_context_setting(ContextSetting::Custom(8192));
         assert_ne!(b.optimization.load_fingerprint(), base, "context change must reload the model");
+    }
+
+    #[test]
+    fn thinking_budget_names_numbers_and_auto() {
+        let parse = |v: serde_json::Value| serde_json::from_value::<ThinkingBudget>(v);
+        assert_eq!(parse(serde_json::json!("low")).unwrap(), ThinkingBudget::Low);
+        assert_eq!(parse(serde_json::json!("High")).unwrap(), ThinkingBudget::High);
+        assert_eq!(parse(serde_json::json!(2500)).unwrap(), ThinkingBudget::Tokens(2500));
+        assert_eq!(parse(serde_json::json!("2500")).unwrap(), ThinkingBudget::Tokens(2500));
+        assert_eq!(parse(serde_json::json!(null)).unwrap(), ThinkingBudget::Auto);
+        assert!(parse(serde_json::json!("sometimes")).is_err());
+        assert!(parse(serde_json::json!(-5)).is_err());
+        // round trip keeps the user's choice (names stay names, numbers stay numbers)
+        assert_eq!(serde_json::to_value(ThinkingBudget::Medium).unwrap(), serde_json::json!("medium"));
+        assert_eq!(serde_json::to_value(ThinkingBudget::Tokens(800)).unwrap(), serde_json::json!(800));
+        // room = n_ctx - prompt (1000) - answer reserve (n_ctx / 4, 256..2048)
+        let p = ThinkingPresets::default();
+        let room = |n_ctx: usize| n_ctx - 1000 - (n_ctx / 4).clamp(256, 2048);
+        let t = |b: ThinkingBudget, n_ctx: usize| b.limit(room(n_ctx), &p).tokens;
+        use ThinkingBudget::*;
+        for (n_ctx, low, medium, high, max) in [
+            (4096, 518, 1036, 1554, 2072),
+            (32768, 2048, 8192, 22290, 29720),
+            (65536, 2048, 8192, 32768, 62488),
+            (131072, 2048, 8192, 32768, 128024),
+            (262144, 2048, 8192, 32768, 259096),
+            (1048576, 2048, 8192, 32768, 1045528),
+        ] {
+            assert_eq!((t(Low, n_ctx), t(Medium, n_ctx), t(High, n_ctx), t(Max, n_ctx)), (low, medium, high, max), "n_ctx {}", n_ctx);
+            assert_eq!(t(Auto, n_ctx), high, "auto = high at n_ctx {}", n_ctx);
+        }
+        // a user number bigger than the room is lowered so the answer still fits
+        assert_eq!(Tokens(100_000).limit(2072, &p), ThinkingLimit { tokens: 2072, capped: true });
+        assert_eq!(Tokens(500).limit(2072, &p), ThinkingLimit { tokens: 500, capped: false });
+        // no room: no thinking, straight to the answer
+        assert_eq!(High.limit(0, &p).tokens, 0);
+        // default effort is saved with the settings and is not a reload reason
+        let mut opt = OptimizationControl::default();
+        let fp = opt.load_fingerprint();
+        opt = opt.merged_with(&serde_json::json!({ "reasoning_effort": 3000 })).unwrap();
+        assert_eq!(opt.reasoning_effort, ThinkingBudget::Tokens(3000));
+        assert_eq!(opt.load_fingerprint(), fp);
     }
 
     #[test]

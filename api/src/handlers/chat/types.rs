@@ -45,7 +45,11 @@ pub struct ExternalChatRequest {
     #[serde(default)]
     pub session_id: Option<String>,
     pub think_mode: Option<serde_json::Value>,
-    pub reasoning_effort: Option<String>,
+    /// Thinking budget: auto, low, medium, high, max or a number of tokens. Missing = the user's default setting.
+    pub reasoning_effort: Option<cluaiz_core::ThinkingBudget>,
+    /// Text written before the end-of-thinking tag when the budget runs out (llama.cpp
+    /// --reasoning-budget-message). Missing = the user's default setting; "" = no text.
+    pub reasoning_budget_message: Option<String>,
     pub skip_reasoning: Option<bool>,
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
@@ -180,6 +184,7 @@ pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
     let physical_cores = cluaiz_hw::HardwareProber::current().cpu.physical_cores;
     json!({
         "timings": host.last_timings().await,
+        "thinking": host.last_thinking().await,
         "load": plan.map(|p| json!({
             "placement": format!("{:?}", p.selected_tier),
             "n_ctx": p.context_window,
