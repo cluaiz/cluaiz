@@ -19,83 +19,42 @@ pub fn require_capability(schema: &PermissionSchema, slot_name: &str, required_t
 /// Dynamically resolve the absolute PathBuf of the currently active model in a slot
 pub fn resolve_model_path(schema: &PermissionSchema, slot_name: &str) -> Option<PathBuf> {
     let config = schema.active_slots.get(slot_name)?;
-    let model_id = config.model_id.as_ref()?.replace(':', "-");
-    
-    let env = EnvironmentManager::current();
-    let roots = [env.local_dir.join("models"), env.global_dir.join("models")];
-    let categories = ["chat", "embedding", "vision", "audio", "code"];
-    
-    for root in &roots {
-        for category in &categories {
-            let model_dir = root.join(category).join(&model_id);
-            if model_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&model_dir) {
-                    for entry in entries.flatten() {
-                        let p = entry.path();
-                        if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                            if ext == "gguf" || ext == "onnx" || ext == "safetensors" {
-                                return Some(p);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    None
+    resolve_model_by_id(config.model_id.as_ref()?)
 }
 
 /// Dynamically resolve the absolute PathBuf of a specific model by its ID
 pub fn resolve_model_by_id(model_id: &str) -> Option<PathBuf> {
-    // 1. Primary: Check InstalledStateRegistry first!
+    // 1. Primary: the installed registry (exact id first; a partial id only when it names one model)
     let installed_reg = cluaiz_models::registry::InstalledStateRegistry::load();
-    let clean_target = model_id.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-
-    for (id, entry) in &installed_reg.installed_models {
-        let clean_id = id.to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
-        if id == model_id || clean_id == clean_target || (!clean_target.is_empty() && (clean_id.contains(&clean_target) || clean_target.contains(&clean_id))) {
-            let dir = std::path::Path::new(&entry.local_dir);
-            if dir.exists() {
-                if let Some(primary) = entry.files.iter().find(|f| f.is_primary) {
-                    let full = dir.join(&primary.name);
-                    if full.exists() {
-                        return Some(full);
-                    }
-                }
-                for f in &entry.files {
-                    let full = dir.join(&f.name);
-                    if full.exists() {
-                        return Some(full);
-                    }
-                }
-            }
+    if let [entry] = installed_reg.find(model_id).as_slice() {
+        if let Some(path) = entry.primary_path() {
+            return Some(path);
         }
     }
 
     // 2. Secondary fallback: Search directory tree
     let normalized_id = model_id.replace(':', "-");
+    find_in_model_folders(&normalized_id)
+}
+
+/// Weight file in `<models>/<category>/<folder>` under the local or global models root, any category.
+fn find_in_model_folders(folder: &str) -> Option<PathBuf> {
     let env = EnvironmentManager::current();
     let roots = [env.local_dir.join("models"), env.global_dir.join("models")];
-    let categories = ["chat", "embedding", "vision", "audio", "code"];
-    
     for root in &roots {
-        for category in &categories {
-            let model_dir = root.join(category).join(&normalized_id);
-            if model_dir.is_dir() {
-                if let Ok(entries) = std::fs::read_dir(&model_dir) {
-                    for entry in entries.flatten() {
-                        let p = entry.path();
-                        if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                            if ext == "gguf" || ext == "onnx" || ext == "safetensors" {
-                                return Some(p);
-                            }
-                        }
+        let Ok(categories) = std::fs::read_dir(root) else { continue };
+        for category in categories.flatten() {
+            let model_dir = category.path().join(folder);
+            let Ok(entries) = std::fs::read_dir(&model_dir) else { continue };
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
+                    if ext == "gguf" || ext == "onnx" || ext == "safetensors" {
+                        return Some(p);
                     }
                 }
             }
         }
     }
-    
     None
 }

@@ -1,5 +1,6 @@
+//! `cluaiz skill|plugin|mcp config <id> [key] [value]`: settings declared in a component's manifest.
+
 use anyhow::{Result, anyhow};
-use std::path::PathBuf;
 use cluaiz_core::EnvironmentManager;
 
 pub async fn execute(

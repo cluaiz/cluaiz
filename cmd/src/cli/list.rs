@@ -1,31 +1,28 @@
+//! `cluaiz list`: installed models (the registry `run`, `show` and the API resolve ids from).
+
 use color_eyre::Result;
 use colored::Colorize;
-use cluaiz_models::CoreRoster;
 
 pub async fn execute() -> Result<()> {
-    println!("\n  {} [cluaiz] Scanning Vault for Neural Weights...\n", "🔍".cyan());
-
-    let roster = CoreRoster::load_roster();
-    
-    if roster.is_empty() {
-        println!("     {} No models found in the vault.", "⚠️".yellow());
-        println!("     {} Use 'cluaiz run <id>' to download your first model.\n", "💡".cyan());
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    if registry.installed_models.is_empty() {
+        println!("No models installed. Download one with `cluaiz pull <id>`.");
         return Ok(());
     }
+    let active = crate::cli::models::default_chat_model();
+    let mut entries: Vec<_> = registry.installed_models.values().collect();
+    entries.sort_by(|a, b| a.category.cmp(&b.category).then(a.id.cmp(&b.id)));
 
-    println!("  {:<20} {:<15} {:<10} {:<10}", "ID".bold(), "NAME".bold(), "SIZE".bold(), "ARCH".bold());
-    println!("  {}", "-".repeat(60).dimmed());
-
-    for model in &roster {
-        println!("  {:<20} {:<15} {:<10} {:<10}", 
-            model.id.green(), 
-            model.name, 
-            format!("{:.1} GB", model.ram_required_gb).dimmed(),
-            model.architecture.dimmed()
-        );
+    let id_width = entries.iter().map(|e| e.id.len() + 2).max().unwrap_or(2);
+    let header = format!("{:<id_width$}  {:<10}  {:<6}  {:>10}", "ID", "CATEGORY", "FORMAT", "SIZE", id_width = id_width);
+    println!("{}", header.bold());
+    for e in entries {
+        let size = format!("{:.2} GiB", e.size_bytes() as f64 / cluaiz_core::GIB_F64);
+        let id = if active.as_deref() == Some(e.id.as_str()) { format!("{} *", e.id) } else { e.id.clone() };
+        println!("{:<id_width$}  {:<10}  {:<6}  {:>10}", id, e.category, e.format_type, size, id_width = id_width);
     }
-
-    println!("\n  {} Total models: {}\n", "📊".blue(), roster.len());
-
+    if active.is_some() {
+        eprintln!("{}", "* active chat model (used by `cluaiz run` without a model)".dimmed());
+    }
     Ok(())
 }

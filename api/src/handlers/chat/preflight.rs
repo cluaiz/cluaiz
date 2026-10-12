@@ -22,7 +22,7 @@ pub struct PreparedChatContext {
     pub skip_brain: bool,
     /// Request sampler values (llama.cpp names, null = not sent): the engine falls back to
     /// user settings, then model defaults, then llama.cpp defaults
-    pub samplers: serde_json::Value,
+    pub samplers: cluaiz_core::SamplerDefaults,
     pub system_prompt_chars: usize,
     pub history_chars: usize,
     pub user_prompt_chars: usize,
@@ -328,80 +328,38 @@ impl PreparedChatContext {
             } else {
                 "auto".to_string()
             }
-        }).unwrap_or_else(|| match settings.optimization.think_mode {
-            // no think_mode in the request: the user's saved default
-            cluaiz_core::FeatureState::On => "on".to_string(),
-            cluaiz_core::FeatureState::Off => "off".to_string(),
-            cluaiz_core::FeatureState::Auto => "auto".to_string(),
-        });
+        }).unwrap_or_else(|| settings.optimization.think_mode.name().to_string()); // no think_mode: the user's default
 
         // 🧠 2. Thinking budget ("Effort"): the request's value, else the user's default setting
         let active_reasoning_effort = request.reasoning_effort.unwrap_or(settings.optimization.reasoning_effort);
         let reasoning_budget_message = request.reasoning_budget_message.clone()
             .or_else(|| settings.optimization.reasoning_budget_message.clone());
 
-        // 🧠 Dynamic Pre-Flight Context Shifting
-        let opt_control = &settings.optimization;
-        let gen_reserve = validated_max_tokens.unwrap_or(1024).clamp(256, (n_ctx_limit / 4).max(512));
-        
-        let mut msg_lengths = Vec::new();
-        for m in augmented_messages.iter() {
-            let content_str = m.content.flatten_to_string().await;
-            let est_tokens = (content_str.len() / 4).max(1);
-            msg_lengths.push(est_tokens);
+        let mut chat_messages = Vec::with_capacity(augmented_messages.len());
+        for m in &augmented_messages {
+            chat_messages.push(cluaiz_core::ChatMessage::new(m.role.clone(), m.content.flatten_to_string().await));
         }
 
-        if augmented_messages.len() > 2 {
-            let prompt_token_budget = n_ctx_limit.saturating_sub(gen_reserve).max(512);
-            let total_est: usize = msg_lengths.iter().sum();
-            if total_est > prompt_token_budget && opt_control.context_shifting != cluaiz_core::ContextShiftingMode::Off {
-                let tokens_to_drop = total_est.saturating_sub(prompt_token_budget);
-                let target_drop = match opt_control.context_shifting {
-                    cluaiz_core::ContextShiftingMode::Minimal => ((n_ctx_limit as f32) * 0.05) as usize,
-                    cluaiz_core::ContextShiftingMode::Standard => ((n_ctx_limit as f32) * 0.10) as usize,
-                    cluaiz_core::ContextShiftingMode::Aggressive => ((n_ctx_limit as f32) * 0.25) as usize,
-                    cluaiz_core::ContextShiftingMode::Extreme => ((n_ctx_limit as f32) * 0.50) as usize,
-                    _ => tokens_to_drop,
-                }.max(tokens_to_drop);
-
-                let has_system = augmented_messages.first().map(|m| m.role.eq_ignore_ascii_case("system")).unwrap_or(false);
-                let keep_start = if has_system { 1 } else { 0 };
-                let mut dropped = 0;
-                while augmented_messages.len() > (keep_start + 1) && dropped < target_drop {
-                    let turn_tokens = msg_lengths.get(keep_start).copied().unwrap_or(1);
-                    augmented_messages.remove(keep_start);
-                    if keep_start < msg_lengths.len() {
-                        msg_lengths.remove(keep_start);
-                    }
-                    dropped += turn_tokens;
-                }
-                tracing::info!(
-                    "🌊 [ContextShifting] Pre-flight sliding window pruned historical turns (~{} tokens). Remaining prompt fits safely within {} budget.",
-                    dropped, prompt_token_budget
-                );
-            }
+        // 🧠 Pre-flight context shifting (shared rule with the CLI)
+        let reserve = cluaiz_core::answer_reserve(validated_max_tokens, n_ctx_limit);
+        let dropped = cluaiz_core::trim_history(&mut chat_messages, n_ctx_limit, reserve, settings.optimization.context_shifting);
+        if dropped > 0 {
+            tracing::info!(
+                "🌊 [ContextShifting] Pre-flight sliding window pruned historical turns (~{} tokens) to fit {} tokens of context.",
+                dropped, n_ctx_limit
+            );
         }
 
-        // 🎯 Dynamic Per-Request Token Budgeting (z-plan / resource_negotiator rule):
-        // free = n_ctx - prompt_tokens; answer_budget = min(max_tokens, free)
-        let prompt_tokens_est: usize = msg_lengths.iter().sum();
-        let free_tokens = n_ctx_limit.saturating_sub(prompt_tokens_est).max(32);
-        let dynamic_answer_budget = match request.max_tokens {
-            Some(req_tokens) => req_tokens.min(dynamic_context_limit).min(free_tokens),
-            None => free_tokens,
-        };
-        let validated_max_tokens = Some(dynamic_answer_budget);
+        // 🎯 Per-request answer budget: what the prompt leaves of the context, capped by max_tokens
+        let prompt_tokens_est: usize = chat_messages.iter().map(cluaiz_core::ChatMessage::estimated_tokens).sum();
+        let validated_max_tokens = Some(cluaiz_core::answer_budget(n_ctx_limit, prompt_tokens_est, request.max_tokens));
 
-        // 🚀 In-Memory Payload & Sampler Dispatch
-        let mut serialized_messages = Vec::new();
         let mut system_prompt_chars = 0;
         let mut history_chars = 0;
         let mut user_prompt_chars = 0;
-        let total_msgs = augmented_messages.len();
-
-        for (i, msg) in augmented_messages.iter().enumerate() {
-            let content_str = msg.content.flatten_to_string().await;
-            let c_len = content_str.len();
+        let total_msgs = chat_messages.len();
+        for (i, msg) in chat_messages.iter().enumerate() {
+            let c_len = msg.content.len();
             if msg.role == "system" {
                 system_prompt_chars += c_len;
             } else if i == total_msgs.saturating_sub(1) {
@@ -409,36 +367,31 @@ impl PreparedChatContext {
             } else {
                 history_chars += c_len;
             }
-            serialized_messages.push(json!({
-                "role": msg.role,
-                "content": content_str
-            }));
         }
 
         // Only what the request sent; missing values stay null so the engine's fallback order applies
-        let samplers = json!({
-            "temp": request.temperature,
-            "top_p": request.top_p,
-            "top_k": request.top_k,
-            "min_p": request.min_p,
-            "presence_penalty": request.presence_penalty,
-            "frequency_penalty": request.frequency_penalty,
-            "repeat_penalty": request.repetition_penalty,
-            "seed": request.seed
-        });
+        let samplers = cluaiz_core::SamplerDefaults {
+            temp: request.temperature,
+            top_p: request.top_p,
+            top_k: request.top_k,
+            min_p: request.min_p,
+            presence_penalty: request.presence_penalty,
+            frequency_penalty: request.frequency_penalty,
+            repeat_penalty: request.repetition_penalty,
+            seed: request.seed.and_then(|s| u32::try_from(s).ok()),
+        };
 
-        let payload_envelope = json!({
-            "messages": serialized_messages,
-            "samplers": samplers,
-            "think_mode": &active_think_mode,
-            "reasoning_effort": &active_reasoning_effort,
-            "reasoning_budget_message": &reasoning_budget_message,
-            "chat_template_kwargs": request.chat_template_kwargs.as_ref(),
-            "grammar": request.grammar.as_deref(),
-            "response_format": request.response_format.as_ref()
-        });
-
-        let json_prompt = serde_json::to_string(&payload_envelope).unwrap_or_else(|_| "{}".to_string());
+        let json_prompt = cluaiz_core::ChatEnvelope {
+            messages: chat_messages,
+            samplers: samplers.clone(),
+            think_mode: active_think_mode.clone(),
+            reasoning_effort: active_reasoning_effort,
+            reasoning_budget_message: reasoning_budget_message.clone(),
+            chat_template_kwargs: request.chat_template_kwargs.clone(),
+            grammar: request.grammar.clone(),
+            response_format: request.response_format.clone(),
+        }
+        .to_prompt();
 
         // Where the time before the first token goes (model load is reported on its own)
         tracing::info!(

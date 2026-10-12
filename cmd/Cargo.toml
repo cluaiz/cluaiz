@@ -23,38 +23,23 @@ cluaiz-security = { path = "../security" }
 onnx-engine = { path = "../engine/onnx" }
 
 
-# ── Powerhouse Ratatui Framework ──
-ratatui = "0.30.0"
-tachyonfx = "0.7"
+# ── Terminal ──
 crossterm = { version = "0.28", features = ["event-stream"] }
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
 clap = { version = "4", features = ["derive"] }
 inquire = "0.7"
-indicatif = "0.17"
 colored = "2.1"
 reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls", "stream"] }
-sysinfo = "0.30"
-figlet-rs = "1.0.0"
-strum = { version = "0.26", features = ["derive"] }
-itertools = "0.13"
 anyhow = "1.0"
 color-eyre = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chrono = "0.4"
 tracing-subscriber = "0.3.19"
 tracing = "0.1.44"
 rand = "0.8"
-unicode-width = "0.1"
-tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
 serde_yaml = "0.9"
-libc = "0.2"
 
-# ── Sovereign Security ──
-dirs = "5"
 ctrlc = "3.5.2"
-uuid = { version = "1", features = ["v4"] }
 
 [build-dependencies]
 winres = "0.1"

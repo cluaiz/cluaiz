@@ -1,7 +1,5 @@
 use clap::{Parser, Subcommand};
-use reqwest::Client;
 use std::process::exit;
-use std::time::Duration;
 
 #[derive(Parser)]
 pub struct StorageCli {
@@ -17,18 +15,10 @@ pub enum StorageCommand {
     TempClean,
 }
 
-pub async fn handle_storage_command(cli: StorageCli, api_port: u16) {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .unwrap();
-
-    let base_url = format!("http://localhost:{}", api_port);
-
+pub async fn handle_storage_command(cli: StorageCli) {
     match cli.command {
         StorageCommand::TempStatus => {
-            let url = format!("{}/v1/system/storage/temp_media", base_url);
-            match client.get(&url).send().await {
+            match crate::cli::server::request(reqwest::Method::GET, "/v1/system/storage/temp_media").send().await {
                 Ok(response) => {
                     if response.status().is_success() {
                         if let Ok(data) = response.json::<serde_json::Value>().await {
@@ -49,8 +39,7 @@ pub async fn handle_storage_command(cli: StorageCli, api_port: u16) {
             }
         }
         StorageCommand::TempClean => {
-            let url = format!("{}/v1/system/storage/temp_media/clean", base_url);
-            match client.post(&url).send().await {
+            match crate::cli::server::request(reqwest::Method::POST, "/v1/system/storage/temp_media/clean").send().await {
                 Ok(response) => {
                     if response.status().is_success() {
                         println!("Temporary media storage cleaned successfully.");

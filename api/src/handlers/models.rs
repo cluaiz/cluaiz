@@ -199,23 +199,27 @@ pub async fn inspect_raw_header(
 
 /// DELETE /v1/models/{model_id}
 pub async fn rm_model(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
 ) -> Json<Value> {
-    let env = EnvironmentManager::current();
-    let model_path = env.models_dir().join(format!("{}.gguf", model_id));
-
-    if model_path.exists() {
-        let _ = std::fs::remove_file(&model_path);
-        Json(json!({
+    // A loaded model keeps its file open (Windows cannot delete it): unload it first
+    let model_dir = InstalledStateRegistry::load().installed_models.get(&model_id).map(|e| std::path::PathBuf::from(&e.local_dir));
+    let loaded = state.host.active_model_path.lock().await.clone();
+    if let (Some(dir), Some(loaded)) = (model_dir, loaded) {
+        if std::path::Path::new(&loaded).starts_with(&dir) {
+            state.host.unload_model().await;
+        }
+    }
+    // Same delete as `cluaiz rm`: the model's folder and its model_registry.json entry
+    match cluaiz_models::ModelDownloader::uninstall(&model_id) {
+        Ok(dir) => Json(json!({
             "status": "success",
-            "message": format!("Vault physical deletion for '{}' completed.", model_id)
-        }))
-    } else {
-        Json(json!({
+            "message": format!("Model '{}' deleted ({}).", model_id, dir.display())
+        })),
+        Err(e) => Json(json!({
             "status": "error",
-            "message": format!("Model '{}' not found in vault.", model_id)
-        }))
+            "message": e
+        })),
     }
 }
 

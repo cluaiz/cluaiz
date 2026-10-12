@@ -1,61 +1,65 @@
-# 🧠 cluaiz Source Architecture (`cmd/src`)
+# `cmd/src`: the `cluaiz` command-line interface
 
-Welcome to the central nervous system of the cluaiz ecosystem. This directory contains the sovereign source code for the Command Line Interface (CLI) and the immersive Ratatui-based Terminal User Interface (TUI). 
+A plain terminal program: it reads stdin and writes stdout / stderr, with no full-screen UI, so it behaves
+the same in Windows cmd / PowerShell, macOS Terminal and Linux shells. Load and sampling flags use
+llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run`.
 
-The `cmd` package is **NOT** just a wrapper. It acts as the OS-level orchestrator, managing boot lifecycles, hardware verification, background engine daemons, and user interactions.
+## Commands
 
----
+| Command | What it does |
+| --- | --- |
+| `cluaiz run [model] ["prompt"]` | Chat, or answer one prompt and exit. `model` = installed id, a `.gguf` path, or an id to download. No model = the active chat model. |
+| `cluaiz show <model>` | GGUF details, thinking tags, and the plan the model would get now (`-v`: full planner banner, all metadata, tensors) |
+| `cluaiz list` | Installed models (`*` = active chat model) |
+| `cluaiz bench <model>` | llama-bench's test (`pp512`, `tg128`, mean ± sd); `-p`, `-n`, `-r`, `-o md` or `-o json` |
+| `cluaiz config list / get / set / reset / path` | Engine settings in `settings.json` (same merge rules as the API) |
+| `cluaiz serve`, `cluaiz ps` | API server, and the model it has loaded |
+| `cluaiz status`, `cluaiz calibrate` | Hardware the planner sees; re-scan it after a hardware or driver change |
+| `cluaiz pull <id>`, `cluaiz rm <id>` | Download + register a model (ends with the command to run it); delete it (folder + registry, exact id) |
+| `cluaiz dev-sync`, `skill/plugin/mcp install` | Development sync and component installation |
 
-## 📂 Directory Structure & Modules
+`-v` on any command shows engine logs on stderr (`-vv` debug). The full log is always in
+`~/.cluaiz/cluaiz_Core.log` (appended; restarted after 20 MiB).
 
-### `main.rs`
-The absolute entry point of the entire system.
-- **Sovereign Ghost Execution Guard:** Ensures the binary is running from the master `~/.cluaiz/bin` path.
-- **CLI Argument Parser:** Uses `clap` to handle one-off commands (e.g. `cluaiz dev-sync`, `cluaiz brain on`).
-- **TUI Initialization:** If no CLI args are provided, it mounts the terminal canvas and launches the `App` flow.
+## `run`
 
-### `core/` (The Brainstem)
-This module dictates state management and system lifecycle.
-* **`bootstrapper.rs`**: The heartbeat of cluaiz. 
-  * Checks for missing components.
-  * Handles artifact synchronization (e.g., `dev-sync`).
-  * Fetches `package.json` to verify engine versions.
-  * *Law of the Engine:* cluaiz cannot launch until the bootstrapper successfully seals the registry.
-* **`app.rs`**: The main Ratatui loop. Handles terminal event ticks (keyboard inputs) and orchestrates view rendering.
-* **`state.rs`**: Contains the global `OsState` machine (Onboarding -> MainMenu -> Dashboard, etc) and User states.
-* **`dashboard.rs` / `onboarding.rs`**: High-level page orchestrators for the UI logic.
-* **`flow.rs`**: Manages terminal context switching (raw mode, screen clearing, crash recovery).
+```sh
+cluaiz run qwen3-4b-gguf-Q4_K_M "Why is the sky blue?"     # one answer
+cat notes.txt | cluaiz run qwen3 --system-prompt "Summarize" > summary.txt  # stdin is the prompt
+cluaiz run ./model.gguf -ngl 20 -c 8192 -fa on --temp 0.6    # llama.cpp flags
+cluaiz run qwen3 --think on --reasoning-effort low            # or --reasoning-budget N (llama.cpp)
+cluaiz run qwen3                                              # chat
+```
 
-### `ui/` (The Presentation Layer)
-Contains all the highly customized, dynamic Ratatui components.
-* Uses glassmorphism effects, dynamic colors, and smooth micro-animations (via `tachyonfx`).
-* Components are modularized so `dashboard.rs` can plug and play elements like the Side Menu, Chat Interface, or Hardware Monitors.
+- stdout carries only the answer. Thinking is printed (dimmed) only when stdout is a terminal;
+  `--hide-thinking` hides it there too. Plan summary and speed go to stderr.
+- Load flags: `-c`, `-ngl`, `--n-cpu-moe`, `-ctk`, `-ctv`, `-fa`, `-b`, `-ub`, `-t`, `-tb`, `--mmap`,
+  `--no-mmap`, `-nkvo`, `--no-op-offload`, `--vram-buffer`. They are applied over `settings.json` exactly
+  like an API request's `"llama"` object (`LlamaLoadParams`). A missing flag = settings / planner.
+- Sampling: `--temp`, `--top-k`, `--top-p`, `--min-p`, `--repeat-penalty`, `--presence-penalty`,
+  `--frequency-penalty`, `-s/--seed`, `-n/--n-predict`, `-sys/--system-prompt`.
 
-### `cli/` (Headless Commands)
-Code for executing specific command-line arguments without starting the TUI.
-* Example: `ps.rs` (process status), `benchmark.rs` (model benchmarks).
+### Chat commands
 
----
+`/set parameter <name> <value>`, `/set system`, `/set think`, `/set effort`, `/set budget-message`,
+`/set verbose|quiet`, `/set showthinking|hidethinking`, `/show info|plan|parameters|system`,
+`/load <model>`, `/models` (browse / download / delete), `/save <file>`, `/clear`, `/bye`, `/?`.
+`"""` starts and ends a multi-line message. Ctrl+C stops an answer; at the prompt it exits.
+`cluaiz run <model> -i < messages.txt` runs the chat with one message per stdin line.
 
-## ⚙️ How Booting Works (The cluaiz Lifecycle)
+## Layout
 
-When you type `cluaiz` in your terminal:
+| Path | Contents |
+| --- | --- |
+| `main.rs` | clap definitions, logging setup, dispatch |
+| `cli/args.rs` | Shared load / sampling / thinking flags and llama.cpp short-flag names (`-ngl`, `-fa`, ...) |
+| `cli/models.rs` | Model name → file (path, or the installed registry the API also uses) |
+| `cli/keys.rs` | Dotted keys over JSON (`config`, `/set parameter`) |
+| `cli/server.rs` | Requests to a running `cluaiz serve` (port + session token) |
+| `chat/` | Chat session (`mod.rs`), terminal output (`print.rs`), interactive loop (`repl.rs`) |
+| `cli/install.rs` | Download flow shared by `pull`, `run` and the model list: resolve, confirm, `ModelDownloader::install` |
+| `core/` | `bootstrapper.rs` (start-up checks, dev-sync), `state.rs` (model list state) |
+| `ui/apps/registry/` | Model list with download / delete (unchanged) |
 
-1. **Ignition (`main.rs`)**: 
-   The CLI checks if it's running from the correct global path. It then parses args.
-2. **Bootstrapper Validation**:
-   `Bootstrapper::ignite()` verifies that the Neural Foundry (permissions) and Skills exist. It ensures `~/.cluaiz/engine` is populated.
-3. **Flow Engine Engaged**:
-   The terminal enters Raw Mode. Alternate screens are prepared.
-4. **App Mount**:
-   `App::new()` is called, state is restored from local storage. If it's a first-time launch, you are sent to `OsState::Onboarding`. Otherwise, you land in the `Dashboard`.
-5. **Render Loop**:
-   The program runs an asynchronous `tokio` event loop. It listens for `crossterm` events (key presses) and updates the UI state at 60 FPS.
-
----
-
-## 🛠️ Development Rules for `cmd/src`
-
-1. **Never block the event loop:** Any heavy task (like loading a model or talking to the API) MUST be done asynchronously using `tokio::spawn` or background channels.
-2. **Graceful Crashes:** If something panics, the `FlowEngine::restore()` must be called via the panic hook in `main.rs` to prevent the user's terminal from breaking.
-3. **No Direct Hardware Calls here:** The CLI should always use `engine-core` or the `engines` API crate to talk to the GPU/Drivers. The UI must remain decoupled from the hardware execution logic.
+Chat turns are sent with `cluaiz_core::ChatEnvelope` and the same context rules (`trim_history`,
+`answer_budget`) as the API's `/v1/chat/completions`, so the CLI and the API behave the same.

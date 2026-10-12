@@ -136,22 +136,18 @@ pub fn show_details(
                     // ── 📥 INTERNAL DOWNLOAD BLOCK ──
                     let m = &rec.manifest;
                     let mid = m.id.clone();
-                    let dl_url = m.download_url.clone();
-                    let filename = m.huggingface_filename.clone();
                     let tx_clone = tx.clone();
 
-                    let assets = m.assets.clone();
-                    let manifest = Some(m.clone());
-                    let category = m.category.clone();
-                    let repo_id = m.id.clone();
                     let abort = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
                     let abort_clone = abort.clone();
 
                     let (local_tx, mut local_rx) = tokio::sync::mpsc::channel(256);
 
+                    let install_manifest = m.clone();
                     tokio::spawn(async move {
-                        let _ = cluaiz_models::ModelDownloader::download_gguf_async(
-                            &category, &repo_id, &dl_url, &filename, assets, manifest, local_tx, abort_clone
+                        // Same download + registration as `cluaiz pull`
+                        let _ = cluaiz_models::ModelDownloader::install(
+                            &install_manifest, &[install_manifest.huggingface_filename.clone()], local_tx, abort_clone
                         ).await;
                         let _ = tx_clone.send(DownloadEvent::Complete(mid));
                     });
@@ -190,7 +186,7 @@ pub fn show_details(
                                 if let DownloadEvent::Progress(_prog, current, total, speed, _eta) = event {
                                     let current_mb = current as f64 / 1_048_576.0;
                                     let total_mb = total as f64 / 1_048_576.0;
-                                    let speed_mb = speed / 1_048_576.0;
+                                    let speed_mb = speed; // the downloader reports MB/s
                                     let elapsed_secs = start.elapsed().as_secs();
                                     let time_str = format!("[{:02}:{:02}]", elapsed_secs / 60, elapsed_secs % 60);
 
