@@ -75,7 +75,7 @@ impl OnnxEngine {
     }
 
     pub fn build_session(&self, path: &std::path::Path) -> Result<Session> {
-        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = cluaiz_core::Settings::current().onnx;
         
         let model_size_gb = std::fs::metadata(path)
             .map(|m| (m.len() as f64) / (1024.0 * 1024.0 * 1024.0))
@@ -202,7 +202,7 @@ impl OnnxEngine {
             tracing::info!("📡 [Telemetry] Moderate VRAM pressure ({:.1}GB free, {:.1}GB req). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = cluaiz_core::Settings::current().onnx;
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user config.");
@@ -466,7 +466,7 @@ impl OnnxEngine {
             tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = cluaiz_core::Settings::current().onnx;
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Encoder.");
@@ -601,7 +601,7 @@ impl OnnxEngine {
             tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Vision (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = crate::metadata::OnnxMetadataHeaders::load();
+        let onnx_meta = cluaiz_core::Settings::current().onnx;
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Vision.");

@@ -84,18 +84,8 @@ pub struct OptimizationControl {
     pub flash_attention: FeatureState,
     #[serde(default)]
     pub kv_cache_quantization: KvCacheQuantization,
-    #[serde(default, alias = "force_vram_reclaim")]
-    pub hybrid_memory: FeatureState,
-    #[serde(default)]
-    pub force_memory_lock: FeatureState,
     #[serde(default)]
     pub context_shifting: ContextShiftingMode,
-    #[serde(default)]
-    pub speculative_decoding: FeatureState,
-    #[serde(default)]
-    pub draft_model_path: Option<String>,
-    #[serde(default)]
-    pub extreme_moe_streaming: FeatureState,
     /// Direct GB safety buffer override for VRAM. None = dynamic auto mode.
     #[serde(default)]
     pub custom_vram_buffer_gb: Option<f64>,
@@ -258,6 +248,14 @@ impl<'de> Deserialize<'de> for ThinkingBudget {
         }
     }
 }
+
+/// Field names of `OptimizationControl` (checked against serde's output by a unit test).
+const OPTIMIZATION_FIELDS: &[&str] = &[
+    "flash_attention", "kv_cache_quantization", "context_shifting", "custom_vram_buffer_gb",
+    "custom_ram_buffer_gb", "n_gpu_layers", "think_mode", "batch_size", "ubatch_size", "use_mmap",
+    "custom_context_window", "n_cpu_moe", "offload_kqv", "n_threads", "n_threads_batch", "op_offload",
+    "reasoning_effort", "thinking_presets", "reasoning_budget_message",
+];
 
 /// Context window setting, same meaning as llama.cpp `n_ctx`: 0 = Auto, -1 = Max (native), N = exactly N.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -430,6 +428,11 @@ impl OptimizationControl {
     pub fn merged_with(&self, patch: &serde_json::Value) -> Result<Self, String> {
         let patch = patch.as_object().ok_or("settings update must be a JSON object")?;
         let mut merged = serde_json::to_value(self).map_err(|e| e.to_string())?;
+        // Only settings that exist: an unknown key is a typo or a removed setting, never silently ignored
+        let known = Self::default().merged_keys_with_aliases();
+        if let Some(unknown) = patch.keys().find(|k| !known.contains(&k.as_str())) {
+            return Err(format!("unknown setting `{}`", unknown));
+        }
         let fields = merged.as_object_mut().ok_or("settings are not a JSON object")?;
         for (key, value) in patch {
             fields.insert(key.clone(), value.clone());
@@ -459,6 +462,13 @@ impl OptimizationControl {
         Err("settings update could not be applied".into())
     }
 
+    /// Every key a settings update may use: the field names plus their serde aliases.
+    fn merged_keys_with_aliases(&self) -> Vec<&'static str> {
+        let mut keys: Vec<&'static str> = OPTIMIZATION_FIELDS.to_vec();
+        keys.extend_from_slice(&["custom_n_ctx", "n_ctx"]); // aliases of custom_context_window
+        keys
+    }
+
     /// (n_threads, n_threads_batch) like llama.cpp's CLI: physical cores, batch = generation threads.
     pub fn resolved_threads(&self, physical_cores: usize) -> (i32, i32) {
         let n_threads = self.n_threads.filter(|n| *n > 0).unwrap_or(physical_cores.max(1) as i32);
@@ -486,12 +496,7 @@ impl Default for OptimizationControl {
         Self {
             flash_attention: FeatureState::Auto,
             kv_cache_quantization: KvCacheQuantization::Auto,
-            hybrid_memory: FeatureState::Auto,
-            force_memory_lock: FeatureState::Auto,
             context_shifting: ContextShiftingMode::Auto,
-            speculative_decoding: FeatureState::Off,
-            draft_model_path: None,
-            extreme_moe_streaming: FeatureState::Auto,
             custom_vram_buffer_gb: None,
             custom_ram_buffer_gb: None,
             n_gpu_layers: None,
@@ -625,6 +630,61 @@ pub struct ActiveUserSettings {
     /// User default samplers (llama.cpp names); a chat request's own values override these.
     #[serde(default)]
     pub samplers: SamplerDefaults,
+    /// ONNX engine settings (speech, TTS, vision encoders)
+    #[serde(default)]
+    pub onnx: OnnxSettings,
+}
+
+/// ONNX Runtime session settings. Every field is read by the ONNX engine (engine/onnx).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct OnnxSettings {
+    /// -1 = GPU when available, 0 = CPU only
+    #[serde(default = "OnnxSettings::default_n_gpu_layers")]
+    pub n_gpu_layers: i32,
+    /// 0 = ONNX Runtime decides
+    #[serde(default)]
+    pub intra_op_num_threads: usize,
+    #[serde(default = "OnnxSettings::default_true")]
+    pub enable_cpu_mem_arena: bool,
+    /// 0 = no limit
+    #[serde(default)]
+    pub gpu_mem_limit_bytes: usize,
+    #[serde(default = "OnnxSettings::default_arena_strategy")]
+    pub arena_extend_strategy: String,
+    #[serde(default)]
+    pub use_deterministic_compute: bool,
+}
+
+impl OnnxSettings {
+    fn default_n_gpu_layers() -> i32 { -1 }
+    fn default_true() -> bool { true }
+    fn default_arena_strategy() -> String { "kNextPowerOfTwo".to_string() }
+
+    /// Applies a partial update (only the keys a client changed); unknown keys are an error.
+    pub fn merged_with(&self, patch: &serde_json::Value) -> Result<Self, String> {
+        let patch = patch.as_object().ok_or("ONNX settings update must be a JSON object")?;
+        let mut merged = serde_json::to_value(self).map_err(|e| e.to_string())?;
+        if let Some(fields) = merged.as_object_mut() {
+            for (key, value) in patch {
+                fields.insert(key.clone(), value.clone());
+            }
+        }
+        serde_json::from_value(merged).map_err(|e| e.to_string())
+    }
+}
+
+impl Default for OnnxSettings {
+    fn default() -> Self {
+        Self {
+            n_gpu_layers: Self::default_n_gpu_layers(),
+            intra_op_num_threads: 0,
+            enable_cpu_mem_arena: true,
+            gpu_mem_limit_bytes: 0,
+            arena_extend_strategy: Self::default_arena_strategy(),
+            use_deterministic_compute: false,
+        }
+    }
 }
 
 fn default_cleanup_policy() -> String {
@@ -639,6 +699,7 @@ impl Default for ActiveUserSettings {
             telemetry_enabled: true,
             storage_cleanup_policy: default_cleanup_policy(),
             samplers: SamplerDefaults::default(),
+            onnx: OnnxSettings::default(),
         }
     }
 }
@@ -751,6 +812,30 @@ mod tests {
     }
 
     #[test]
+    fn onnx_settings_partial_update() {
+        let saved = OnnxSettings::default();
+        let updated = saved.merged_with(&serde_json::json!({ "n_gpu_layers": 0 })).unwrap();
+        assert_eq!(updated.n_gpu_layers, 0);
+        assert_eq!(updated.arena_extend_strategy, saved.arena_extend_strategy);
+        assert!(saved.merged_with(&serde_json::json!({ "graph_optimization_level": "ORT_ENABLE_ALL" })).is_err());
+        assert!(saved.merged_with(&serde_json::json!({ "n_gpu_layers": "many" })).is_err());
+    }
+
+    #[test]
+    fn field_list_matches_the_struct() {
+        let serialized = serde_json::to_value(OptimizationControl::default()).unwrap();
+        let mut fields: Vec<&str> = serialized.as_object().unwrap().keys().map(|k| k.as_str()).collect();
+        let mut listed = OPTIMIZATION_FIELDS.to_vec();
+        fields.sort_unstable();
+        listed.sort_unstable();
+        assert_eq!(fields, listed, "OPTIMIZATION_FIELDS must list every OptimizationControl field");
+        // an old settings.json that still has removed keys loads (they are dropped on the next save)
+        let old: OptimizationControl =
+            serde_json::from_value(serde_json::json!({ "speculative_decoding": "On", "think_mode": "On" })).unwrap();
+        assert_eq!(old.think_mode, FeatureState::On);
+    }
+
+    #[test]
     fn partial_update_keeps_other_settings() {
         let mut saved = OptimizationControl::default();
         saved.kv_cache_quantization = KvCacheQuantization::Kv8;
@@ -765,13 +850,13 @@ mod tests {
         assert_eq!(updated.custom_vram_buffer_gb, Some(0.5));
 
         // a key given by its alias replaces the saved field
-        let updated = saved.merged_with(&serde_json::json!({ "force_vram_reclaim": "Off" })).unwrap();
-        assert_eq!(updated.hybrid_memory, FeatureState::Off);
         let updated = saved.merged_with(&serde_json::json!({ "n_ctx": 8192 })).unwrap();
         assert_eq!(updated.context_setting(), ContextSetting::Custom(8192));
 
-        // bad values are an error, not a silent reset
+        // bad values and unknown or removed settings are an error, not silently ignored
         assert!(saved.merged_with(&serde_json::json!({ "think_mode": "sometimes" })).is_err());
+        assert!(saved.merged_with(&serde_json::json!({ "speculative_decoding": "On" })).is_err());
+        assert!(saved.merged_with(&serde_json::json!({ "flash_atention": "On" })).is_err());
         assert!(saved.merged_with(&serde_json::json!(["think_mode"])).is_err());
     }
 

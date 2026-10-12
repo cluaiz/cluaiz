@@ -26,7 +26,6 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
     let mode = "cluaiz Native";
     let opt = cluaiz_core::Settings::current().optimization;
     let flash = opt.flash_attention.is_active();
-    let moe = opt.extreme_moe_streaming.is_active();
 
     let node_id = "LOCAL-NODE";
     let locale = "en_US";
@@ -43,7 +42,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             RAM:          {:.1} GB\n\n\
             ── ENGINE DNA ───────────────────\n\
             RUN MODE:     {}\n\
-            OPTIMIZATION: FlashAttn: {} | MoE Streaming: {}\n\n\
+            OPTIMIZATION: FlashAttn: {}\n\n\
             ── CONTROLS ─────────────────────\n\
             [ R ] RE-DETECT HARDWARE\n\
             [ ESC ] BACK TO MENU",
@@ -51,8 +50,7 @@ pub fn render_widget(_app: &mut AppState, _theme: &Theme, area: Rect, buf: &mut 
             cpu, cores,
             gpu_model, vram, ram,
             mode.to_uppercase(),
-            if flash { "ON ⚡" } else { "OFF" },
-            if moe { "ON ⚡" } else { "OFF" }
+            if flash { "ON ⚡" } else { "OFF" }
         );
 
     let widget = Paragraph::new(dna_info)

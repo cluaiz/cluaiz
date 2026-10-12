@@ -130,13 +130,9 @@ enum CliCommand {
         #[arg(long)]
         context_shift: Option<String>,
 
-        /// Set execution performance mode (edge, multitasking, balance, max_boost, ultra_max_boost, hyper_cluster)
+        /// Set the VRAM safety buffer: 'auto' or a number of GB (e.g. 1.5)
         #[arg(long)]
         mode: Option<String>,
-
-        /// Enable/Disable Hybrid Speculative Decoding (on, off, auto)
-        #[arg(long)]
-        spec_decode: Option<String>,
     },
 
     /// Ingest a document natively for semantic chunking and RAG.
@@ -490,8 +486,8 @@ async fn main() -> Result<()> {
             }
         }
 
-        Some(CliCommand::LlmOptimization { kv_quant, context_shift, mode, spec_decode }) => {
-            if let Err(e) = crate::cli::llm_optimization::execute(kv_quant, context_shift, mode, spec_decode).await {
+        Some(CliCommand::LlmOptimization { kv_quant, context_shift, mode }) => {
+            if let Err(e) = crate::cli::llm_optimization::execute(kv_quant, context_shift, mode).await {
                 eprintln!("\n  {} [Cluaiz] LLM Optimization Config Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
             }

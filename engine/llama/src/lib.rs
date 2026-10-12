@@ -4,9 +4,7 @@
 
 pub mod ffi;
 pub mod native;
-pub mod config;
 pub mod sampling;
 pub mod moe_override;
 
 pub use native::{GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};
-pub use config::OptimizationConfig;

@@ -3,12 +3,13 @@
 
 use axum::{
     extract::State,
+    http::StatusCode,
     response::Json,
 };
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
-use cluaiz_core::{ActiveUserSettings, Settings};
+use cluaiz_core::Settings;
 use cluaiz_hw::HardwareProber;
 
 // ─── Health Check ────────────────────────────────────────────────────
@@ -179,7 +180,6 @@ pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<
             "batch_size": settings.optimization.resolved_batch_size(),
             "ubatch_size": settings.optimization.resolved_ubatch_size(),
             "flash_attention": format!("{:?}", settings.optimization.flash_attention),
-            "hybrid_memory": format!("{:?}", settings.optimization.hybrid_memory),
             "kv_cache_quantization": format!("{:?}", settings.optimization.kv_cache_quantization),
             "kv_cache_type_used": format!("{:?}", plan.kv_cache_type),
             "n_ctx": plan.context_window,
@@ -275,193 +275,129 @@ pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<
     }))
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct GgufHardwareExecution {
-    #[serde(default = "default_neg_one")]
-    pub n_gpu_layers: i32,
-    #[serde(default)]
-    pub n_ctx: i32,
-    #[serde(default)]
-    pub no_mmap: bool,
-    #[serde(default)]
-    pub override_tensor: String,
-    #[serde(default = "default_512")]
-    pub batch_size: usize,
-    #[serde(default = "default_512")]
-    pub ubatch_size: usize,
-    #[serde(default = "default_one")]
-    pub parallel: usize,
-    #[serde(default)]
-    pub spec_type: String,
-    #[serde(default)]
-    pub spec_draft_n_max: usize,
-}
-
-fn default_neg_one() -> i32 { -1 }
-fn default_512() -> usize { 512 }
-fn default_one() -> usize { 1 }
-
+/// GGUF settings page payload. Every field maps to a real engine setting in settings.json;
+/// a missing field keeps the saved value. llama.cpp meanings: n_gpu_layers -1 = Auto, n_ctx 0 = Auto / -1 = Max.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
-pub struct GgufTemplatingFlags {
-    #[serde(default)]
-    pub chat_template_file: String,
-    #[serde(default)]
-    pub chat_template_kwargs: String,
-    #[serde(default)]
-    pub jinja: bool,
-    #[serde(default)]
-    pub fit: String,
+pub struct GgufHardwareExecution {
+    pub n_gpu_layers: Option<i32>,
+    pub n_ctx: Option<i64>,
+    pub no_mmap: Option<bool>,
+    pub batch_size: Option<u32>,
+    pub ubatch_size: Option<u32>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+/// Default samplers; null = the model's own default (then llama.cpp's).
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct GgufSamplers {
-    #[serde(default = "default_temp")]
-    pub temp: f64,
-    #[serde(default = "default_top_p")]
-    pub top_p: f64,
-    #[serde(default = "default_top_k")]
-    pub top_k: usize,
-    #[serde(default = "default_min_p")]
-    pub min_p: f64,
-    #[serde(default)]
-    pub presence_penalty: f64,
-    #[serde(default)]
-    pub frequency_penalty: f64,
-    #[serde(default = "default_repeat")]
-    pub repeat_penalty: f64,
-    #[serde(default)]
-    pub seed: Option<u64>,
+    pub temp: Option<f32>,
+    pub top_p: Option<f32>,
+    pub top_k: Option<i32>,
+    pub min_p: Option<f32>,
+    pub presence_penalty: Option<f32>,
+    pub frequency_penalty: Option<f32>,
+    pub repeat_penalty: Option<f32>,
+    pub seed: Option<u32>,
 }
-
-fn default_temp() -> f64 { 0.7 }
-fn default_top_p() -> f64 { 0.95 }
-fn default_top_k() -> usize { 40 }
-fn default_min_p() -> f64 { 0.05 }
-fn default_repeat() -> f64 { 1.1 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct UserMovedFlags {
-    #[serde(default)]
-    pub think_mode: String,
-    #[serde(default)]
-    pub response_length: String,
+    pub think_mode: Option<cluaiz_core::FeatureState>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct GgufMetadataHeadersPayload {
     pub hardware_and_execution: Option<GgufHardwareExecution>,
-    pub templating_flags: Option<GgufTemplatingFlags>,
     pub samplers: Option<GgufSamplers>,
     pub user_moved_flags: Option<UserMovedFlags>,
 }
 
 // ─── GET /v1/system/gguf_config & POST /v1/system/gguf_config ────────
+// Only settings the engine uses; all of them live in settings.json.
 pub async fn get_gguf_config() -> Json<Value> {
     let settings = Settings::current();
-    // UI uses llama.cpp meanings: n_gpu_layers -1 = Auto, n_ctx 0 = Auto / -1 = Max / N
-    let n_gpu = settings.optimization.n_gpu_layers.unwrap_or(-1);
-    let n_ctx = settings.optimization.context_setting().to_llama_n_ctx();
-    let sm = &settings.samplers;
-    let no_mmap = !settings.optimization.resolved_use_mmap();
-    let batch = settings.optimization.resolved_batch_size() as usize;
-    let ubatch = settings.optimization.resolved_ubatch_size() as usize;
-
+    let opt = &settings.optimization;
     Json(json!({
         "status": "success",
-        "optimization": settings.optimization,
-        "hardware_preset": settings.hardware_preset,
+        // The saved values, null = automatic (not the resolved defaults: saving the page back must not turn
+        // "automatic" into fixed numbers)
         "hardware_and_execution": {
-            "n_gpu_layers": n_gpu,
-            "n_ctx": n_ctx,
-            "no_mmap": no_mmap,
-            "override_tensor": "",
-            "batch_size": batch,
-            "ubatch_size": ubatch,
-            "parallel": 1,
-            "spec_type": "",
-            "spec_draft_n_max": 0
+            "n_gpu_layers": opt.n_gpu_layers.unwrap_or(-1),
+            "n_ctx": opt.context_setting().to_llama_n_ctx(),
+            "no_mmap": opt.use_mmap.map(|m| !m),
+            "batch_size": opt.batch_size,
+            "ubatch_size": opt.ubatch_size
         },
-        "templating_flags": {
-            "chat_template_file": "",
-            "chat_template_kwargs": "",
-            "jinja": false,
-            "fit": "off"
-        },
-        "samplers": {
-            "temp": sm.temp,
-            "top_p": sm.top_p,
-            "top_k": sm.top_k,
-            "min_p": sm.min_p,
-            "presence_penalty": sm.presence_penalty,
-            "frequency_penalty": sm.frequency_penalty,
-            "repeat_penalty": sm.repeat_penalty,
-            "seed": sm.seed
-        },
+        "samplers": settings.samplers,
         "user_moved_flags": {
-            "think_mode": match settings.optimization.think_mode {
-                cluaiz_core::FeatureState::On => "On",
-                cluaiz_core::FeatureState::Off => "Off",
-                cluaiz_core::FeatureState::Auto => "Auto",
-            },
-            "response_length": "auto"
+            "think_mode": opt.think_mode
         }
     }))
 }
 
-pub async fn update_gguf_config(Json(payload): Json<Value>) -> Json<Value> {
-    match tokio::task::spawn_blocking(move || {
+pub async fn update_gguf_config(Json(payload): Json<Value>) -> (StatusCode, Json<Value>) {
+    match tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
         let mut current = Settings::current();
-        if payload.get("hardware_and_execution").is_some() {
-            let parsed: GgufMetadataHeadersPayload = serde_json::from_value(payload)?;
-            if let Some(hw) = parsed.hardware_and_execution {
+        let parsed: GgufMetadataHeadersPayload = serde_json::from_value(payload)?;
+        if let Some(hw) = parsed.hardware_and_execution {
+            let opt = &mut current.optimization;
+            if let Some(n) = hw.n_gpu_layers {
                 // -1 = Auto (planner decides), 0 = CPU only, N = exactly N layers
-                current.optimization.n_gpu_layers = if hw.n_gpu_layers < 0 { None } else { Some(hw.n_gpu_layers) };
-                current.optimization.set_context_setting(cluaiz_core::ContextSetting::from_llama_n_ctx(hw.n_ctx as i64));
-                current.optimization.batch_size = Some(hw.batch_size as u32);
-                current.optimization.ubatch_size = Some(hw.ubatch_size as u32);
-                current.optimization.use_mmap = Some(!hw.no_mmap);
+                opt.n_gpu_layers = if n < 0 { None } else { Some(n) };
             }
-            if let Some(sp) = parsed.samplers {
-                current.samplers = cluaiz_core::SamplerDefaults {
-                    temp: Some(sp.temp as f32),
-                    top_p: Some(sp.top_p as f32),
-                    top_k: Some(sp.top_k as i32),
-                    min_p: Some(sp.min_p as f32),
-                    presence_penalty: Some(sp.presence_penalty as f32),
-                    frequency_penalty: Some(sp.frequency_penalty as f32),
-                    repeat_penalty: Some(sp.repeat_penalty as f32),
-                    seed: sp.seed.map(|v| v as u32),
-                };
+            if let Some(n_ctx) = hw.n_ctx {
+                opt.set_context_setting(cluaiz_core::ContextSetting::from_llama_n_ctx(n_ctx));
             }
-            if let Some(umf) = parsed.user_moved_flags {
-                current.optimization.think_mode = match umf.think_mode.to_lowercase().as_str() {
-                    "on" => cluaiz_core::FeatureState::On,
-                    "off" => cluaiz_core::FeatureState::Off,
-                    _ => cluaiz_core::FeatureState::Auto,
-                };
+            if let Some(no_mmap) = hw.no_mmap {
+                opt.use_mmap = Some(!no_mmap);
             }
-            Settings::update(current)?;
-        } else if payload.get("optimization").is_some() {
-            let active: ActiveUserSettings = serde_json::from_value(payload)?;
-            Settings::update(active)?;
-        } else {
-            anyhow::bail!("Unrecognized configuration format. Expected GgufMetadataHeaders or ActiveUserSettings.");
+            if let Some(b) = hw.batch_size {
+                opt.batch_size = Some(b);
+            }
+            if let Some(ub) = hw.ubatch_size {
+                opt.ubatch_size = Some(ub);
+            }
         }
-        Ok(())
+        if let Some(sp) = parsed.samplers {
+            current.samplers = cluaiz_core::SamplerDefaults {
+                temp: sp.temp,
+                top_p: sp.top_p,
+                top_k: sp.top_k,
+                min_p: sp.min_p,
+                presence_penalty: sp.presence_penalty,
+                frequency_penalty: sp.frequency_penalty,
+                repeat_penalty: sp.repeat_penalty,
+                seed: sp.seed,
+            };
+        }
+        if let Some(think_mode) = parsed.user_moved_flags.and_then(|f| f.think_mode) {
+            current.optimization.think_mode = think_mode;
+        }
+        Ok(Settings::update(current)?)
     }).await {
-        Ok(Ok(_)) => Json(json!({ "status": "success" })),
-        Ok(Err(e)) => Json(json!({ "status": "error", "message": e.to_string() })),
-        Err(e) => Json(json!({ "status": "error", "message": format!("Blocking task failed: {}", e) })),
+        Ok(Ok(())) => (StatusCode::OK, Json(json!({ "status": "success" }))),
+        Ok(Err(e)) => (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({ "status": "error", "message": e.to_string() }))),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "status": "error", "message": format!("Blocking task failed: {}", e) }))),
     }
 }
 
 // ─── GET /v1/system/onnx_config & POST /v1/system/onnx_config ────────
 pub async fn get_onnx_config() -> Json<Value> {
-    get_gguf_config().await
+    Json(serde_json::to_value(Settings::current().onnx).unwrap_or_default())
 }
 
-pub async fn update_onnx_config(payload: Json<Value>) -> Json<Value> {
-    update_gguf_config(payload).await
+/// Partial update of the ONNX section of settings.json; unknown keys are rejected
+pub async fn update_onnx_config(Json(patch): Json<Value>) -> (StatusCode, Json<Value>) {
+    let mut current = Settings::current();
+    current.onnx = match current.onnx.merged_with(&patch) {
+        Ok(onnx) => onnx,
+        Err(e) => {
+            return (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({ "status": "error", "message": format!("Invalid ONNX setting: {}", e) })));
+        }
+    };
+    match Settings::update(current) {
+        Ok(_) => (StatusCode::OK, Json(json!({ "status": "success" }))),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "status": "error", "message": e.to_string() }))),
+    }
 }
 
 // ─── POST /v1/system/cmd (Secure Local Terminal Execution) ───────────

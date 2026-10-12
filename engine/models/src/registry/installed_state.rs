@@ -25,7 +25,14 @@ impl InstalledStateRegistry {
     /// Loads the active ModelRegistry (Fast Path: .bin binary cache; Fallback: .json with auto-cache sync)
     pub fn load() -> ModelRegistry {
         let bin_path = Self::get_registry_bin_path();
-        if bin_path.exists() {
+        // The .json is the source; the .bin is only a cache of it, used while it is not older than the .json
+        let modified = |p: &Path| p.metadata().and_then(|m| m.modified()).ok();
+        let bin_is_fresh = match (modified(&bin_path), modified(&Self::get_registry_path())) {
+            (Some(bin), Some(json)) => bin >= json,
+            (Some(_), None) => true,
+            _ => false,
+        };
+        if bin_is_fresh {
             if let Ok(bytes) = std::fs::read(&bin_path) {
                 if let Ok(reg) = bincode::deserialize::<ModelRegistry>(&bytes) {
                     return reg;

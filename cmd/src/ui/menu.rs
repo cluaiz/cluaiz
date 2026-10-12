@@ -129,7 +129,7 @@ pub async fn run_native(
                     print!("\x1B[1A\x1B[2K\r"); stdout().flush()?;
                     match h_ans {
                         "⚙️ LLM Optimization Config" => {
-                            let _ = crate::cli::llm_optimization::execute(None, None, None, None).await;
+                            let _ = crate::cli::llm_optimization::execute(None, None, None).await;
                         }
                         "🛡️ Firewall & Permissions" => {
                             loop {

@@ -8,14 +8,13 @@ pub async fn execute(
     kv_quant: Option<String>,
     context_shift: Option<String>,
     mode: Option<String>,
-    spec_decode: Option<String>,
 ) -> Result<()> {
     let mut settings = Settings::current();
     let mut control = settings.optimization.clone();
     let mut modified = false;
 
     // Check if any arguments were provided
-    let has_args = kv_quant.is_some() || context_shift.is_some() || mode.is_some() || spec_decode.is_some();
+    let has_args = kv_quant.is_some() || context_shift.is_some() || mode.is_some();
 
     if has_args {
         if let Some(m) = mode {
@@ -62,19 +61,6 @@ pub async fn execute(
             modified = true;
         }
 
-        if let Some(sd) = spec_decode {
-            control.speculative_decoding = match sd.to_lowercase().as_str() {
-                "auto" => FeatureState::Auto,
-                "on" => FeatureState::On,
-                "off" => FeatureState::Off,
-                _ => {
-                    println!("⚠️  Invalid speculative decoding mode '{}'. Keeping current value.", sd);
-                    control.speculative_decoding
-                }
-            };
-            modified = true;
-        }
-
         if modified {
             settings.optimization = control.clone();
             let _ = Settings::update(settings.clone());
@@ -87,11 +73,7 @@ pub async fn execute(
             println!("\n  {} {}", "📊".cyan(), "Current LLM Optimization Settings:".bold());
             println!("    ├─ Flash Attention:   {:?}", control.flash_attention);
             println!("    ├─ KV Cache Quant:    {:?}", control.kv_cache_quantization);
-            println!("    ├─ MoE SSD Streaming: {:?}", control.extreme_moe_streaming);
-            println!("    ├─ Hybrid Memory:     {:?}", control.hybrid_memory);
             println!("    ├─ Context Shifting:  {:?}", control.context_shifting);
-            println!("    ├─ Memory Lock:       {:?}", control.force_memory_lock);
-            println!("    ├─ Spec. Decoding:    {:?}", control.speculative_decoding);
             println!("    ├─ VRAM Safety Buffer: {}", match control.custom_vram_buffer_gb {
                 Some(gb) => format!("{:.2} GB (Direct GB)", gb),
                 None => "Auto (% Mode)".to_string(),
@@ -110,11 +92,7 @@ pub async fn execute(
             let options = vec![
                 "Flash Attention",
                 "KV Cache Quantization",
-                "Extreme MoE SSD Streaming",
-                "Hybrid Memory Mode",
                 "Context Shifting",
-                "Force Memory Lock",
-                "Speculative Decoding",
                 "VRAM Safety Buffer (Auto / Custom GB)",
                 "CPU RAM Safety Buffer (Auto / Custom GB)",
                 "N GPU Layers",
@@ -233,12 +211,6 @@ pub async fn execute(
                         };
                         match other {
                             "Flash Attention" => control.flash_attention = state,
-                            "Extreme MoE SSD Streaming" => control.extreme_moe_streaming = state,
-                            "Hybrid Memory Mode" => {
-                                control.hybrid_memory = state;
-                            },
-                            "Force Memory Lock" => control.force_memory_lock = state,
-                            "Speculative Decoding" => control.speculative_decoding = state,
                             _ => {}
                         }
                         settings.optimization = control.clone();

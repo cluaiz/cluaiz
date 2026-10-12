@@ -5,8 +5,6 @@ pub mod audio;
 pub mod text;
 pub mod vision;
 pub mod chat;
-pub mod metadata;
 pub mod engine;
 
 pub use engine::OnnxEngine;
-pub use metadata::OnnxMetadataHeaders;

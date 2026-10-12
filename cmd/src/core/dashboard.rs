@@ -130,7 +130,7 @@ impl DashboardEngine {
         let watcher_engine = state.Core_engine.clone();
         tokio::spawn(async move {
             let env = cluaiz_core::EnvironmentManager::current();
-            let opt_path = env.config_dir().join("llm_optimization.json");
+            let opt_path = env.config_dir().join("settings.json");
             let perm_path = env.config_dir().join("permission.json");
             
             let mut last_opt_modified = std::fs::metadata(&opt_path).and_then(|m| m.modified()).ok();
@@ -801,11 +801,7 @@ impl DashboardEngine {
                             format!("Compute Device (Current: {})", compute_mode_str),
                             format!("Flash Attention (Current: {:?})", opt_control.flash_attention),
                             format!("KV Cache Quantization (Current: {:?})", opt_control.kv_cache_quantization),
-                            format!("Extreme MoE SSD Streaming (Current: {:?})", opt_control.extreme_moe_streaming),
-                            format!("Hybrid Memory Mode (Current: {:?})", opt_control.hybrid_memory),
                             format!("Context Shifting (Current: {:?})", opt_control.context_shifting),
-                            format!("Force Memory Lock (Current: {:?})", opt_control.force_memory_lock),
-                            format!("Speculative Decoding (Current: {:?})", opt_control.speculative_decoding),
                             format!("Think Mode (Current: {:?})", opt_control.think_mode),
                         ];
                         options.push("🔙 Back to Menu".to_string());
@@ -1100,10 +1096,6 @@ impl DashboardEngine {
 
                         match key_part.as_str() {
                             "Flash Attention" => settings.optimization.flash_attention = feature_state,
-                            "Extreme MoE SSD Streaming" => settings.optimization.extreme_moe_streaming = feature_state,
-                            "Hybrid Memory Mode" => settings.optimization.hybrid_memory = feature_state,
-                            "Speculative Decoding" => settings.optimization.speculative_decoding = feature_state,
-                            "Force Memory Lock" => settings.optimization.force_memory_lock = feature_state,
                             "Think Mode" => settings.optimization.think_mode = feature_state,
                             _ => {}
                         }
