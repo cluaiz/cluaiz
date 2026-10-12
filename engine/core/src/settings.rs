@@ -8,9 +8,12 @@ use crate::env::EnvironmentManager;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum FeatureState {
+    #[serde(alias = "on")]
     On,
+    #[serde(alias = "off")]
     Off,
     #[default]
+    #[serde(alias = "auto")]
     Auto,
 }
 
@@ -129,6 +132,10 @@ pub struct OptimizationControl {
     /// CPU threads for prompt processing. None = same as `n_threads` (llama.cpp CLI default).
     #[serde(default)]
     pub n_threads_batch: Option<i32>,
+    /// llama.cpp `op_offload` (`--no-op-offload` = false): large batches of CPU-held weights are
+    /// copied to the GPU to compute there. None = llama.cpp default (on when any layer is on the GPU).
+    #[serde(default)]
+    pub op_offload: Option<bool>,
 }
 
 /// Context window setting, same meaning as llama.cpp `n_ctx`: 0 = Auto, -1 = Max (native), N = exactly N.
@@ -274,11 +281,12 @@ impl OptimizationControl {
     /// When this string changes, the model must be reloaded; sampler settings are not part of it.
     pub fn load_fingerprint(&self) -> String {
         format!(
-            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}",
+            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}",
             self.context_setting(),
             self.n_gpu_layers,
             self.n_cpu_moe,
             self.offload_kqv,
+            self.op_offload,
             self.kv_cache_quantization,
             self.flash_attention,
             self.resolved_batch_size(),
@@ -294,6 +302,40 @@ impl OptimizationControl {
     /// the planner then uses exactly these values instead of choosing a candidate.
     pub fn is_manual_placement(&self) -> bool {
         self.n_gpu_layers.is_some() || self.n_cpu_moe.is_some() || self.offload_kqv.is_some()
+    }
+
+    /// Applies a partial update (only the keys a client changed) on top of these settings.
+    /// Keys may use a field's serde alias; the patch value then replaces the saved one.
+    pub fn merged_with(&self, patch: &serde_json::Value) -> Result<Self, String> {
+        let patch = patch.as_object().ok_or("settings update must be a JSON object")?;
+        let mut merged = serde_json::to_value(self).map_err(|e| e.to_string())?;
+        let fields = merged.as_object_mut().ok_or("settings are not a JSON object")?;
+        for (key, value) in patch {
+            fields.insert(key.clone(), value.clone());
+        }
+        // An alias in the patch and the saved canonical key are the same field to serde ("duplicate
+        // field `x`"): drop the saved key named in that error and retry; serde decides, no alias list here.
+        for _ in 0..=patch.len() {
+            match serde_json::from_value::<Self>(merged.clone()) {
+                Ok(settings) => return Ok(settings),
+                Err(e) => {
+                    let msg = e.to_string();
+                    let duplicate = msg
+                        .strip_prefix("duplicate field `")
+                        .and_then(|rest| rest.split('`').next())
+                        .filter(|field| !patch.contains_key(*field))
+                        .map(str::to_string);
+                    let removed = match (duplicate, merged.as_object_mut()) {
+                        (Some(field), Some(fields)) => fields.remove(&field).is_some(),
+                        _ => false,
+                    };
+                    if !removed {
+                        return Err(msg);
+                    }
+                }
+            }
+        }
+        Err("settings update could not be applied".into())
     }
 
     /// (n_threads, n_threads_batch) like llama.cpp's CLI: physical cores, batch = generation threads.
@@ -341,6 +383,7 @@ impl Default for OptimizationControl {
             offload_kqv: None,
             n_threads: None,
             n_threads_batch: None,
+            op_offload: None,
         }
     }
 }
@@ -367,6 +410,7 @@ pub struct LlamaLoadParams {
     pub n_threads_batch: Option<i32>,
     pub use_mmap: Option<bool>,
     pub offload_kqv: Option<bool>,
+    pub op_offload: Option<bool>,
     /// VRAM kept free in GB (replaces the 1024 / 512 MiB rule)
     pub vram_buffer_gb: Option<f64>,
 }
@@ -422,6 +466,9 @@ impl LlamaLoadParams {
         }
         if let Some(o) = self.offload_kqv {
             opt.offload_kqv = Some(o);
+        }
+        if let Some(o) = self.op_offload {
+            opt.op_offload = Some(o);
         }
         if let Some(b) = self.vram_buffer_gb {
             opt.custom_vram_buffer_gb = Some(b);
@@ -535,6 +582,31 @@ mod tests {
         let mut b = ActiveUserSettings::default();
         b.optimization.set_context_setting(ContextSetting::Custom(8192));
         assert_ne!(b.optimization.load_fingerprint(), base, "context change must reload the model");
+    }
+
+    #[test]
+    fn partial_update_keeps_other_settings() {
+        let mut saved = OptimizationControl::default();
+        saved.kv_cache_quantization = KvCacheQuantization::Kv8;
+        saved.flash_attention = FeatureState::On;
+        saved.custom_vram_buffer_gb = Some(0.5);
+
+        // what the app sends: one key, lowercase value
+        let updated = saved.merged_with(&serde_json::json!({ "think_mode": "on" })).unwrap();
+        assert_eq!(updated.think_mode, FeatureState::On);
+        assert_eq!(updated.kv_cache_quantization, KvCacheQuantization::Kv8, "other settings must stay");
+        assert_eq!(updated.flash_attention, FeatureState::On);
+        assert_eq!(updated.custom_vram_buffer_gb, Some(0.5));
+
+        // a key given by its alias replaces the saved field
+        let updated = saved.merged_with(&serde_json::json!({ "force_vram_reclaim": "Off" })).unwrap();
+        assert_eq!(updated.hybrid_memory, FeatureState::Off);
+        let updated = saved.merged_with(&serde_json::json!({ "n_ctx": 8192 })).unwrap();
+        assert_eq!(updated.context_setting(), ContextSetting::Custom(8192));
+
+        // bad values are an error, not a silent reset
+        assert!(saved.merged_with(&serde_json::json!({ "think_mode": "sometimes" })).is_err());
+        assert!(saved.merged_with(&serde_json::json!(["think_mode"])).is_err());
     }
 
     #[test]
