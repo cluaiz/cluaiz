@@ -206,3 +206,43 @@ pub struct ModelRegistryEntry {
 pub struct ModelRegistry {
     pub installed_models: HashMap<String, ModelRegistryEntry>,
 }
+
+impl ModelRegistryEntry {
+    /// Weight file to load: the file marked primary, else the first listed file that exists.
+    pub fn primary_path(&self) -> Option<std::path::PathBuf> {
+        let dir = std::path::Path::new(&self.local_dir);
+        self.files
+            .iter()
+            .filter(|f| f.is_primary)
+            .chain(self.files.iter().filter(|f| !f.is_primary))
+            .map(|f| dir.join(&f.name))
+            .find(|p| p.exists())
+    }
+
+    /// Bytes of all listed files
+    pub fn size_bytes(&self) -> u64 {
+        self.files.iter().map(|f| f.size_bytes).sum()
+    }
+}
+
+impl ModelRegistry {
+    /// Installed models matching `query`: the exact id (ignoring case and `- _ . :` and spaces) when
+    /// there is one, else every id that contains the query (sorted). More than one = ambiguous.
+    pub fn find(&self, query: &str) -> Vec<&ModelRegistryEntry> {
+        let norm = |s: &str| s.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
+        let target = norm(query);
+        if target.is_empty() {
+            return Vec::new();
+        }
+        if let Some(exact) = self.installed_models.get(query.trim()) {
+            return vec![exact];
+        }
+        let exact: Vec<_> = self.installed_models.values().filter(|e| norm(&e.id) == target).collect();
+        if !exact.is_empty() {
+            return exact;
+        }
+        let mut partial: Vec<_> = self.installed_models.values().filter(|e| norm(&e.id).contains(&target)).collect();
+        partial.sort_by(|a, b| a.id.cmp(&b.id));
+        partial
+    }
+}

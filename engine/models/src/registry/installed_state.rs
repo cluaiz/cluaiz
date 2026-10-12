@@ -2,12 +2,10 @@
 //!   Registry: Live Installed State & Slot Manager (.cluaiz/engine/config/model_registry.json)
 //! ═══════════════════════════════════════════════════════════════════════
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::info;
 use crate::models::types::entities::{SlotType, SlotTypeTasksExt};
-use crate::models::types::manifest::{ModelRegistry, ModelRegistryEntry, RegistryModelFile, RegistryModelMetadata};
-use crate::models::taxonomy::rules::{ModelCapabilities, UniversalTaskRules};
+use crate::models::types::manifest::{ModelRegistry, ModelRegistryEntry, RegistryModelFile};
 
 pub struct InstalledStateRegistry;
 
@@ -34,7 +32,10 @@ impl InstalledStateRegistry {
         };
         if bin_is_fresh {
             if let Ok(bytes) = std::fs::read(&bin_path) {
-                if let Ok(reg) = bincode::deserialize::<ModelRegistry>(&bytes) {
+                if let Ok(mut reg) = bincode::deserialize::<ModelRegistry>(&bytes) {
+                    if Self::drop_missing(&mut reg) {
+                        let _ = Self::save(&reg);
+                    }
                     return reg;
                 }
             }
@@ -55,26 +56,7 @@ impl InstalledStateRegistry {
             Err(_) => return ModelRegistry::default(),
         };
 
-        let mut to_remove = Vec::new();
-        for (id, entry) in &reg.installed_models {
-            let dir_path = Path::new(&entry.local_dir);
-            if !dir_path.exists() {
-                to_remove.push(id.clone());
-                continue;
-            }
-
-            if let Some(primary) = entry.files.iter().find(|f| f.is_primary) {
-                let primary_file_path = dir_path.join(&primary.name);
-                if !primary_file_path.exists() {
-                    to_remove.push(id.clone());
-                }
-            }
-        }
-
-        if !to_remove.is_empty() {
-            for id in to_remove {
-                reg.installed_models.remove(&id);
-            }
+        if Self::drop_missing(&mut reg) {
             let _ = Self::save(&reg);
         } else {
             // Save fast binary cache for subsequent 0-ms reads
@@ -82,6 +64,18 @@ impl InstalledStateRegistry {
         }
 
         reg
+    }
+
+    /// Removes entries whose folder or primary weight file is gone (deleted outside Cluaiz).
+    /// Returns true when something was removed.
+    fn drop_missing(reg: &mut ModelRegistry) -> bool {
+        let before = reg.installed_models.len();
+        reg.installed_models.retain(|_, entry| {
+            let dir = Path::new(&entry.local_dir);
+            dir.exists()
+                && entry.files.iter().find(|f| f.is_primary).map(|p| dir.join(&p.name).exists()).unwrap_or(true)
+        });
+        reg.installed_models.len() != before
     }
 
     /// Persists the active ModelRegistry to disk (.json and .bin)
@@ -137,115 +131,96 @@ impl InstalledStateRegistry {
             .collect()
     }
 
-    /// Scans the 5 sovereign model directories and synchronizes model_registry.json
-    pub fn sync_from_disk(models_root: &Path) -> ModelRegistry {
-        let mut reg = Self::load();
-        let mut changes_made = false;
-
-        let categories = ["chat", "embedding", "ingest", "tts", "stt"];
-        for cat in &categories {
-            let cat_dir = models_root.join(cat);
-            if !cat_dir.exists() {
+    /// Registry entry for one model folder. The primary weight file is `primary` when given, else the
+    /// `huggingface_filename` of the folder's model_manifest.json (written at download), else the first
+    /// .gguf / .onnx file by name. None when the folder holds no weight file.
+    pub fn entry_for_folder(category: &str, dir: &Path, primary: Option<&str>, huggingface_repo: &str) -> Option<ModelRegistryEntry> {
+        let id = dir.file_name()?.to_string_lossy().to_string();
+        let mut weight_files = Vec::new();
+        let mut extra_files_list = Vec::new();
+        for f in std::fs::read_dir(dir).ok()?.filter_map(|e| e.ok()) {
+            let fname = f.file_name().to_string_lossy().to_string();
+            if fname.starts_with('.') || fname == "cluaiz-engine.ready" {
                 continue;
             }
+            let fpath = f.path();
+            if fpath.is_dir() {
+                let subfolder_files: Vec<serde_json::Value> = std::fs::read_dir(&fpath)
+                    .map(|deep| {
+                        deep.filter_map(|e| e.ok())
+                            .map(|df| serde_json::Value::String(df.file_name().to_string_lossy().to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                let mut sub_map = serde_json::Map::new();
+                sub_map.insert(fname, serde_json::Value::Array(subfolder_files));
+                extra_files_list.push(serde_json::Value::Object(sub_map));
+            } else if fname.ends_with(".gguf") || fname.ends_with(".onnx") {
+                let size = f.metadata().map(|m| m.len()).unwrap_or(0);
+                weight_files.push((fpath, fname, size));
+            } else {
+                extra_files_list.push(serde_json::Value::String(fname));
+            }
+        }
+        weight_files.sort_by(|a, b| a.1.cmp(&b.1));
 
-            if let Ok(entries) = std::fs::read_dir(&cat_dir) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    if let Ok(ft) = entry.file_type() {
-                        if ft.is_dir() {
-                            let id = entry.file_name().to_string_lossy().to_string();
-                            let mut all_weight_files = Vec::new();
-                            let mut extra_files_list = Vec::new();
+        let from_manifest = || -> Option<String> {
+            let text = std::fs::read_to_string(dir.join("model_manifest.json")).ok()?;
+            let value: serde_json::Value = serde_json::from_str(&text).ok()?;
+            let name = value.get("huggingface_filename")?.as_str()?;
+            Path::new(name).file_name().map(|n| n.to_string_lossy().to_string())
+        };
+        let wanted = primary.map(str::to_string).or_else(from_manifest);
+        let (p_path, p_name, _) = wanted
+            .and_then(|w| weight_files.iter().find(|(_, n, _)| *n == w))
+            .or_else(|| weight_files.first())?
+            .clone();
 
-                            if let Ok(sub_entries) = std::fs::read_dir(entry.path()) {
-                                for f in sub_entries.filter_map(|e| e.ok()) {
-                                    let fname = f.file_name().to_string_lossy().to_string();
-                                    if !fname.starts_with('.') && fname != "cluaiz-engine.ready" {
-                                        let size = f.metadata().map(|m| m.len()).unwrap_or(0);
-                                        let fpath = f.path();
+        let format_type = if p_name.ends_with(".gguf") { "gguf" } else { "onnx" };
+        let (slot_type, caps, metadata, requires_gpu) = crate::models::prober::ModelProber::discover(&p_path, dir, category);
+        let files = weight_files
+            .iter()
+            .map(|(_, name, size)| RegistryModelFile { name: name.clone(), size_bytes: *size, is_primary: *name == p_name })
+            .collect();
 
-                                        if fpath.is_dir() {
-                                            let mut subfolder_files = Vec::new();
-                                            if let Ok(deep_entries) = std::fs::read_dir(&fpath) {
-                                                for df in deep_entries.filter_map(|e| e.ok()) {
-                                                    let dfname = df.file_name().to_string_lossy().to_string();
-                                                    subfolder_files.push(serde_json::Value::String(dfname));
-                                                }
-                                            }
-                                            let mut sub_map = serde_json::Map::new();
-                                            sub_map.insert(fname, serde_json::Value::Array(subfolder_files));
-                                            extra_files_list.push(serde_json::Value::Object(sub_map));
-                                        } else if fname.ends_with(".gguf") || fname.ends_with(".onnx") {
-                                            all_weight_files.push((fpath, fname, size));
-                                        } else {
-                                            extra_files_list.push(serde_json::Value::String(fname));
-                                        }
-                                    }
-                                }
-                            }
-                            let extra_files = serde_json::Value::Array(extra_files_list);
+        Some(ModelRegistryEntry {
+            id,
+            category: slot_type.as_str().to_string(),
+            format_type: format_type.to_string(),
+            huggingface_repo: huggingface_repo.to_string(),
+            local_dir: dir.to_string_lossy().to_string(),
+            files,
+            extra_files: serde_json::Value::Array(extra_files_list),
+            supported_tasks: slot_type.supported_tasks(&caps),
+            requires_gpu,
+            metadata,
+        })
+    }
 
-                            if all_weight_files.is_empty() {
-                                continue;
-                            }
-
-                            let (p_path, p_name, _) = &all_weight_files[0];
-                            let p_path_clone = p_path.clone();
-                            let p_name_clone = p_name.clone();
-
-                            let format_type = if p_name_clone.ends_with(".gguf") {
-                                "gguf"
-                            } else {
-                                "onnx"
-                            };
-
-                            let (slot_type, final_caps, mut metadata, requires_gpu) =
-                                crate::models::prober::ModelProber::discover(
-                                    &p_path_clone,
-                                    &entry.path(),
-                                    cat,
-                                );
-
-                            let mut files = Vec::new();
-                            for (_fpath, fname, fsize) in &all_weight_files {
-                                files.push(RegistryModelFile {
-                                    name: fname.clone(),
-                                    size_bytes: *fsize,
-                                    is_primary: fname == &p_name_clone,
-                                });
-                            }
-
-                            let hf_repo = reg
-                                .installed_models
-                                .get(&id)
-                                .map(|e| e.huggingface_repo.clone())
-                                .unwrap_or_default();
-
-                            let registry_entry = ModelRegistryEntry {
-                                id: id.clone(),
-                                category: slot_type.as_str().to_string(),
-                                format_type: format_type.to_string(),
-                                huggingface_repo: hf_repo,
-                                local_dir: entry.path().to_string_lossy().to_string(),
-                                files,
-                                extra_files,
-                                supported_tasks: slot_type.supported_tasks(&final_caps),
-                                requires_gpu,
-                                metadata,
-                            };
-
-                            reg.installed_models.insert(id, registry_entry);
-                            changes_made = true;
-                        }
-                    }
+    /// Registers every model folder in the category folders that is not in the registry yet (models
+    /// copied in by hand, or downloaded while registration was missing). Registered models are left as
+    /// they are, so a server start only probes new folders.
+    pub fn sync_from_disk(models_root: &Path) -> ModelRegistry {
+        let mut reg = Self::load();
+        let mut added = Vec::new();
+        for (category, _) in crate::models::registry::ModelVault::category_dirs() {
+            let Ok(entries) = std::fs::read_dir(models_root.join(category)) else { continue };
+            for entry in entries.filter_map(|e| e.ok()) {
+                let dir = entry.path();
+                let id = entry.file_name().to_string_lossy().to_string();
+                if !dir.is_dir() || reg.installed_models.contains_key(&id) {
+                    continue;
+                }
+                if let Some(registry_entry) = Self::entry_for_folder(category, &dir, None, "") {
+                    added.push(id.clone());
+                    reg.installed_models.insert(id, registry_entry);
                 }
             }
         }
-
-        if changes_made {
+        if !added.is_empty() {
+            info!("📦 [Registry] Registered model folders found on disk: {}", added.join(", "));
             let _ = Self::save(&reg);
         }
-
         reg
     }
 }

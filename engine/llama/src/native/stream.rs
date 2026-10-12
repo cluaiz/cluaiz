@@ -286,7 +286,7 @@ pub fn stream_tokens(
             tokens.remove(0);
         }
         let full_prompt_tokens = tokens.clone(); // 🛡️ Save FULL prompt tokens BEFORE any trimming for correct return
-        eprintln!(
+        tracing::debug!(
             "🔢 [NativeStream] Tokenized prompt into {} tokens: {:?}",
             full_prompt_tokens.len(),
             &full_prompt_tokens[..full_prompt_tokens.len().min(16)]
@@ -323,7 +323,6 @@ pub fn stream_tokens(
             );
 
             if match_len < 4 {
-                eprintln!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
                 tracing::info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
                 let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
@@ -364,7 +363,7 @@ pub fn stream_tokens(
 
         // 🛡️ Auto-reset KV cache if start_pos is already near context ceiling (prevents GGML stack buffer overrun ops.cpp:3767)
         if start_pos >= (llama.n_ctx as i32 - 16) {
-            eprintln!(
+            tracing::debug!(
                 "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
                 start_pos,
                 llama.n_ctx
@@ -403,7 +402,7 @@ pub fn stream_tokens(
         if tokens.is_empty() && effective_cache_len > 0 {
             let last_matched_pos = effective_cache_len as i32 - 1;
             let last_matched_token = full_prompt_tokens[effective_cache_len - 1];
-            eprintln!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
+            tracing::debug!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
 
             // Remove only the last position so we can re-decode it with logits=1
             let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -418,7 +417,7 @@ pub fn stream_tokens(
 
             let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
             if rc != 0 {
-                eprintln!(
+                tracing::warn!(
                     "⚠️ [KV-Fix] Logits refresh decode failed with code {}. Falling back to full prefill.",
                     rc
                 );
@@ -443,7 +442,7 @@ pub fn stream_tokens(
 
                 let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
                 if rc != 0 {
-                    eprintln!("⚠️ [Llama-Lib] Delta prefill chunk decode failed with code {} at start_pos {}", rc, start_pos);
+                    tracing::warn!("⚠️ [Llama-Lib] Delta prefill chunk decode failed with code {} at start_pos {}", rc, start_pos);
                     decode_failed = true;
                     break;
                 }
@@ -451,7 +450,6 @@ pub fn stream_tokens(
         }
 
         if decode_failed {
-            eprintln!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
             tracing::warn!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
 
             // 1. Clear KV cache completely
@@ -529,7 +527,7 @@ pub fn stream_tokens(
 
         let mut next_token_id =
             llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
-        eprintln!(
+        tracing::debug!(
             "🎲 [NativeStream] Initial sampled token_id: {}",
             next_token_id
         );
@@ -541,10 +539,6 @@ pub fn stream_tokens(
 
             // Upstream standard: check if token is end of generation
             if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
-                eprintln!(
-                    "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
-                    next_token_id
-                );
                 tracing::info!(
                     "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
                     next_token_id

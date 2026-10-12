@@ -226,6 +226,8 @@ extern "C" {
     pub fn llama_model_is_hybrid(model: *const std::ffi::c_void) -> bool;
     pub fn llama_model_n_expert(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_desc(model: *const std::ffi::c_void, buf: *mut c_char, buf_size: usize) -> i32;
+    pub fn llama_model_size(model: *const std::ffi::c_void) -> u64;
+    pub fn llama_model_n_params(model: *const std::ffi::c_void) -> u64;
     pub fn llama_model_meta_val_str(
         model: *const std::ffi::c_void,
         key: *const c_char,

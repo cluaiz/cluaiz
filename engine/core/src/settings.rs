@@ -21,6 +21,15 @@ impl FeatureState {
     pub fn is_active(&self) -> bool {
         matches!(self, FeatureState::On | FeatureState::Auto)
     }
+
+    /// Lowercase name ("on", "off", "auto"): the form chat requests and the CLI use
+    pub fn name(&self) -> &'static str {
+        match self {
+            FeatureState::On => "on",
+            FeatureState::Off => "off",
+            FeatureState::Auto => "auto",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]

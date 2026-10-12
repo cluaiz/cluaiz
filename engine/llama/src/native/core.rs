@@ -87,6 +87,88 @@ impl NativeLlama {
         unsafe { llama_cpp::llama_perf_context_reset(self.ctx_ptr) }
     }
 
+    /// (description, size in bytes, parameter count) as llama.cpp reports them, like llama-bench's
+    /// "model", "size" and "params" columns.
+    pub fn describe(&self) -> (String, u64, u64) {
+        unsafe {
+            let mut buf = vec![0u8; 256];
+            let n = llama_cpp::llama_model_desc(self.model_ptr, buf.as_mut_ptr() as *mut c_char, buf.len());
+            buf.truncate(n.clamp(0, 255) as usize);
+            (
+                String::from_utf8_lossy(&buf).into_owned(),
+                llama_cpp::llama_model_size(self.model_ptr),
+                llama_cpp::llama_model_n_params(self.model_ptr),
+            )
+        }
+    }
+
+    /// llama-bench's test on this context: one warmup, then `reps` runs of `n_prompt` random tokens
+    /// decoded in `n_batch` chunks followed by `n_gen` single-token decodes, the memory cleared
+    /// before each run. Returns the wall time of each run in nanoseconds (same clock window as llama-bench).
+    pub fn bench(&mut self, n_prompt: usize, n_gen: usize, reps: usize) -> anyhow::Result<Vec<u64>> {
+        if n_prompt + n_gen > self.n_ctx as usize {
+            return Err(anyhow::anyhow!(
+                "{} prompt + {} generated tokens do not fit the context of {} tokens", n_prompt, n_gen, self.n_ctx
+            ));
+        }
+        unsafe {
+            let vocab = llama_cpp::llama_model_get_vocab(self.model_ptr);
+            let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab).max(1) as u64;
+            let bos = llama_cpp::llama_vocab_get_add_bos(vocab).then(|| llama_cpp::llama_vocab_bos(vocab));
+            let mut rng = 0x2545_F491_4F6C_DD1D_u64;
+            let mut random_token = || {
+                rng ^= rng << 13;
+                rng ^= rng >> 7;
+                rng ^= rng << 17;
+                (rng % n_vocab) as i32
+            };
+            let ctx = self.ctx_ptr;
+            let n_batch = self.n_batch.max(1) as usize;
+            let decode = |tokens: &mut [i32]| -> anyhow::Result<()> {
+                let batch = llama_cpp::llama_batch_get_one(tokens.as_mut_ptr(), tokens.len() as i32);
+                match llama_cpp::llama_decode(ctx, batch) {
+                    0 => Ok(()),
+                    rc => Err(anyhow::anyhow!("llama_decode failed with code {}", rc)),
+                }
+            };
+            let mut run = |n_prompt: usize, n_gen: usize| -> anyhow::Result<()> {
+                let mut done = 0;
+                while done < n_prompt {
+                    let n = n_batch.min(n_prompt - done);
+                    let mut tokens: Vec<i32> = (0..n).map(|_| random_token()).collect();
+                    if done == 0 {
+                        if let Some(b) = bos { tokens[0] = b; }
+                    }
+                    decode(&mut tokens)?;
+                    done += n;
+                }
+                if n_prompt > 0 {
+                    llama_cpp::llama_synchronize(ctx);
+                }
+                let mut token = bos.unwrap_or_else(|| random_token());
+                for _ in 0..n_gen {
+                    decode(std::slice::from_mut(&mut token))?;
+                    llama_cpp::llama_synchronize(ctx);
+                    token = random_token();
+                }
+                Ok(())
+            };
+            let mem = llama_cpp::llama_get_memory(ctx);
+            // Warmup like llama-bench: a short prompt and one generated token
+            llama_cpp::llama_memory_clear(mem, false);
+            run(n_prompt.min(n_batch).min(32), n_gen.min(1))?;
+            let mut samples = Vec::with_capacity(reps);
+            for _ in 0..reps.max(1) {
+                llama_cpp::llama_memory_clear(mem, false);
+                let started = std::time::Instant::now();
+                run(n_prompt, n_gen)?;
+                samples.push(started.elapsed().as_nanos() as u64);
+            }
+            llama_cpp::llama_memory_clear(mem, true);
+            Ok(samples)
+        }
+    }
+
     /// llama.cpp timing counters since the last `reset_timings`.
     pub fn timings(&self) -> GenerationTimings {
         let d = unsafe { llama_cpp::llama_perf_context(self.ctx_ptr) };
@@ -122,8 +204,10 @@ const NOISE_PATTERNS: &[&str] = &[
     ".",
 ];
 
+/// llama.cpp / ggml log lines go to the engine log (tracing), never straight to the terminal.
+/// ggml_log_level: 4 = error, 3 = warn, everything else (info, debug, line continuation) = debug.
 extern "C" fn llama_log_callback(
-    _level: std::ffi::c_int,
+    level: std::ffi::c_int,
     text: *const std::ffi::c_char,
     _user_data: *mut std::ffi::c_void,
 ) {
@@ -134,12 +218,22 @@ extern "C" fn llama_log_callback(
         let c_str = std::ffi::CStr::from_ptr(text);
         let s = c_str.to_string_lossy();
         let trimmed = s.trim();
-        if !trimmed.is_empty()
-            && trimmed != "."
-            && !NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p))
-        {
-            eprintln!("📢 [llama.cpp] {}", trimmed);
+        if trimmed.is_empty() || trimmed == "." || NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p)) {
+            return;
         }
+        match level {
+            4 => tracing::error!("[llama.cpp] {}", trimmed),
+            3 => tracing::warn!("[llama.cpp] {}", trimmed),
+            _ => tracing::debug!("[llama.cpp] {}", trimmed),
+        }
+    }
+}
+
+/// Sends llama.cpp / ggml logs to tracing. Call before `llama_backend_init` so backend start-up lines
+/// (e.g. `ggml_cuda_init`) do not go straight to the terminal.
+pub fn route_llama_logs() {
+    unsafe {
+        llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
     }
 }
 
@@ -167,10 +261,7 @@ impl NativeLlama {
         speculative_decoding_mode: u8,
         moe_controller: Option<Arc<std::sync::Mutex<()>>>,
     ) -> anyhow::Result<Self> {
-        // 🛡️ INTERCEPT INTERNAL LOGS TO SEE FATAL ERRORS
-        unsafe {
-            llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
-        }
+        route_llama_logs();
 
         // ══ HARDWARE OPTIMIZATION (Hardware Overrides) ══
         // We now use llama_log_callback to pipe all logs instead of swallowing them.
@@ -196,7 +287,7 @@ impl NativeLlama {
         // An mmap load without repack copies nothing into RAM (the planner's disk-read mode), so it passes.
         let reads_from_disk = model_params.is_mmap() && !model_params.use_extra_bufts;
         if model_params.n_gpu_layers == 0 && model_size_gb > available_ram_gb && !reads_from_disk {
-            eprintln!(
+            tracing::error!(
                 "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
                  Refusing CPU load to prevent SSD pagefile thrashing and lockup.",
                 model_size_gb, available_ram_gb
@@ -208,7 +299,7 @@ impl NativeLlama {
         }
 
         print_memory_trace("1. BEFORE MODEL LOAD");
-        eprintln!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, load_mode = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.load_mode, ctx_params.n_threads, ctx_params.n_threads_batch);
+        tracing::info!("📊 [Native-Llama] FFI Parameters: n_gpu_layers = {}, load_mode = {}, n_threads = {}, n_threads_batch = {}", model_params.n_gpu_layers, model_params.load_mode, ctx_params.n_threads, ctx_params.n_threads_batch);
         info!(
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
@@ -247,7 +338,7 @@ impl NativeLlama {
         // We must gracefully fallback to CPU-only if RAM allows.
         if model_ptr.is_null() && model_params.n_gpu_layers != 0 {
             if model_size_gb > available_ram_gb {
-                eprintln!(
+                tracing::error!(
                     "❌ [Native-Llama] Model load failed on GPU and model size ({:.2} GB) exceeds available RAM ({:.2} GB). Refusing CPU fallback to prevent SSD thrashing.",
                     model_size_gb, available_ram_gb
                 );
@@ -256,7 +347,7 @@ impl NativeLlama {
                     model_size_gb, available_ram_gb
                 ));
             }
-            eprintln!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
+            tracing::warn!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
             n_gpu_layers_loaded = 0;
@@ -277,7 +368,7 @@ impl NativeLlama {
             let available_ram_gb = sys.available_memory() as f64 / (1024.0 * 1024.0 * 1024.0);
 
             if model_size_gb > available_ram_gb {
-                eprintln!(
+                tracing::error!(
                     "❌ [Native-Llama] Model size ({:.2} GB) exceeds available system RAM ({:.2} GB). \
                      Refusing to fall back to use_mmap = false to prevent SSD pagefile thrashing and lockup.",
                     model_size_gb,
@@ -290,7 +381,7 @@ impl NativeLlama {
                 ));
             }
 
-            eprintln!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
+            tracing::warn!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
             n_gpu_layers_loaded = 0;
@@ -589,18 +680,18 @@ impl NativeLlama {
             );
 
             if n_tokens < 0 {
-                println!("❌ [Native-Llama] Tokenization failed!");
+                tracing::error!("❌ [Native-Llama] Tokenization failed!");
                 return Err(anyhow::anyhow!("Tokenization failed"));
             }
             tokens.truncate(n_tokens as usize);
-            println!(
+            tracing::debug!(
                 "🧠 [Native-Llama] Tokenization successful: {} tokens",
                 tokens.len()
             );
 
             // 2. Initial Batch Decode (Prefill) with Chunking
             let chunk_size = self.n_batch as i32;
-            println!(
+            tracing::debug!(
                 "🧠 [Native-Llama] Initializing llama batch of size {}...",
                 chunk_size
             );
@@ -622,26 +713,26 @@ impl NativeLlama {
                 }
                 batch.n_tokens = current_chunk as i32;
 
-                println!(
+                tracing::debug!(
                     "🧠 [Native-Llama] Prefilling chunk of {} tokens ({} / {})...",
                     current_chunk,
                     tokens_processed + current_chunk,
                     tokens.len()
                 );
                 if llama_cpp::llama_decode(self.ctx_ptr, batch) != 0 {
-                    println!("❌ [Native-Llama] llama_decode failed!");
+                    tracing::error!("❌ [Native-Llama] llama_decode failed!");
                     llama_cpp::llama_batch_free(batch);
                     return Err(anyhow::anyhow!(
                         "Prefill decode failed at chunk starting at {}",
                         tokens_processed
                     ));
                 }
-                println!("🧠 [Native-Llama] Decoded chunk successfully");
+                tracing::debug!("🧠 [Native-Llama] Decoded chunk successfully");
 
                 tokens_processed += current_chunk;
             }
 
-            println!("🧠 [Native-Llama] Prefill complete, freeing batch...");
+            tracing::debug!("🧠 [Native-Llama] Prefill complete, freeing batch...");
             llama_cpp::llama_batch_free(batch);
 
             Ok(tokens)

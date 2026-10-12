@@ -3,4 +3,5 @@
 
 pub mod host;
 
-pub use host::{EngineHost, HostResponse};
+pub use host::{stream_error, EngineHost, HostResponse, ModelDescription};
+pub use llama_engine::{GenerationTimings, ThinkingReport};
