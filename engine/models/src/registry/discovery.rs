@@ -4,15 +4,13 @@
 
 use std::fs;
 use std::path::Path;
-use tracing::info;
 use crate::models::types::manifest::ModelManifest;
-use crate::models::taxonomy::classifier::UniversalModelClassifier;
 
 pub struct AutonomousDiscovery;
 
 impl AutonomousDiscovery {
     /// Deep-scans the models directory for local units and DNA skeletons
-    pub fn index_Cluaiz_models(base_path: &Path) -> Vec<ModelManifest> {
+    pub fn index_models(base_path: &Path) -> Vec<ModelManifest> {
         let mut models = Vec::new();
         if !base_path.exists() {
             return models;

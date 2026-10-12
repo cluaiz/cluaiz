@@ -43,7 +43,7 @@ impl ModelCatalog {
         let base_dir = ModelVault::root_dir();
         if base_dir.exists() && base_dir.is_dir() {
             info!("🔍 [Catalog] Scanning model vault: {}", base_dir.display());
-            let local_units = AutonomousDiscovery::index_Cluaiz_models(&base_dir);
+            let local_units = AutonomousDiscovery::index_models(&base_dir);
             for unit in local_units {
                 info!("✅ [Catalog] Discovered local unit: {}", unit.id);
                 registry.insert(unit.id.to_lowercase(), unit);

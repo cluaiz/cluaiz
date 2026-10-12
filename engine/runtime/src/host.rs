@@ -16,6 +16,25 @@ pub enum HostResponse {
     Error(String),
 }
 
+/// A failed generation ends its token stream with one token in this form (see `stream_error`).
+fn error_token(message: impl std::fmt::Display) -> String {
+    format!("[ERROR: {}]", message)
+}
+
+/// The error message when `token` is the stream's error token, else None.
+pub fn stream_error(token: &str) -> Option<&str> {
+    token.strip_prefix("[ERROR: ").and_then(|t| t.strip_suffix(']'))
+}
+
+/// llama.cpp's description of the loaded model, the values llama-bench prints.
+#[derive(Debug, Clone)]
+pub struct ModelDescription {
+    /// e.g. "qwen3 4B Q4_K - Medium" (llama_model_desc)
+    pub desc: String,
+    pub size_bytes: u64,
+    pub n_params: u64,
+}
+
 pub struct EngineHost {
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
     /// Settings the loaded model was loaded with (user settings + request llama params)
@@ -31,12 +50,15 @@ pub struct EngineHost {
     pub last_thinking: Arc<Mutex<Option<ThinkingReport>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
+    /// Full plan banner of the last load (also written to the log)
+    pub plan_report: Arc<Mutex<Option<String>>>,
 }
 
 type ThinkingTags = (Option<String>, Option<String>);
 
 impl EngineHost {
     pub fn new() -> Self {
+        llama_engine::route_llama_logs();
         unsafe {
             llama_engine::ffi::llama_cpp::llama_backend_init();
         }
@@ -51,6 +73,7 @@ impl EngineHost {
             last_timings: Arc::new(Mutex::new(None)),
             last_thinking: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
+            plan_report: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -125,8 +148,8 @@ impl EngineHost {
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         let plan = Planner::create_plan(model_id, &geometry, &hw, settings);
         if !plan.is_feasible() {
-            // Still print why, so the user sees the numbers behind the refusal
-            plan.print_telemetry_banner(&geometry, &hw, settings);
+            // Still report why, so the user sees the numbers behind the refusal
+            self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings)).await;
             return Err(anyhow::anyhow!("{}", plan.explanation));
         }
         let plan = self.load_model(&path_str, &plan, settings).await?;
@@ -188,8 +211,8 @@ impl EngineHost {
             }
         }
 
-        // 📊 Print Rich Real-Time Resource Execution Telemetry
-        plan.print_telemetry_banner(&geometry, &hw, settings);
+        // Plan banner: kept for the CLI's plan view and written to the log
+        self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings)).await;
 
         if !plan.is_feasible() {
             return Err(anyhow::anyhow!("{}", plan.explanation));
@@ -262,6 +285,11 @@ impl EngineHost {
         Ok(loaded_plan)
     }
 
+    async fn record_plan_report(&self, banner: String) {
+        tracing::info!("{}", banner);
+        *self.plan_report.lock().await = Some(banner);
+    }
+
     /// Safely unloads the active model from unified process memory
     pub async fn unload_model(&self) {
         let mut llama_guard = self.active_llama.lock().await;
@@ -320,11 +348,11 @@ impl EngineHost {
                         *thinking_arc.blocking_lock() = llama.last_thinking.clone();
                     }
                     Err(e) => {
-                        let _ = tx.blocking_send(format!("[ERROR: {}]", e));
+                        let _ = tx.blocking_send(error_token(e));
                     }
                 }
             } else {
-                let _ = tx.blocking_send("[ERROR: No model loaded in EngineHost]".to_string());
+                let _ = tx.blocking_send(error_token("No model loaded in EngineHost"));
             }
         });
 
@@ -339,6 +367,30 @@ impl EngineHost {
     /// Thinking budget and use of the last finished generation (None when the model did not think)
     pub async fn last_thinking(&self) -> Option<ThinkingReport> {
         self.last_thinking.lock().await.clone()
+    }
+
+    /// llama.cpp's description of the loaded model (None when nothing is loaded)
+    pub async fn model_description(&self) -> Option<ModelDescription> {
+        let guard = self.active_llama.lock().await;
+        guard.as_ref().map(|l| {
+            let (desc, size_bytes, n_params) = l.describe();
+            ModelDescription { desc, size_bytes, n_params }
+        })
+    }
+
+    /// llama-bench's measurement on the loaded model: `n_prompt` random tokens decoded in batches,
+    /// then `n_gen` tokens one by one, `reps` times after one warmup. Returns nanoseconds per rep.
+    /// The KV cache is cleared, so the next chat message prefills from scratch.
+    pub async fn bench(&self, n_prompt: usize, n_gen: usize, reps: usize) -> anyhow::Result<Vec<u64>> {
+        let llama_arc = self.active_llama.clone();
+        let tokens_arc = self.last_prefilled_tokens.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut guard = llama_arc.blocking_lock();
+            let llama = guard.as_mut().ok_or_else(|| anyhow::anyhow!("No model loaded in EngineHost"))?;
+            tokens_arc.blocking_lock().clear();
+            llama.bench(n_prompt, n_gen, reps)
+        })
+        .await?
     }
 }
 

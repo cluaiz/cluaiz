@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use color_eyre::{Result, eyre::eyre};
+use color_eyre::Result;
 use colored::Colorize;
 
 pub struct Bootstrapper;
@@ -34,8 +34,11 @@ impl Bootstrapper {
             return Ok(());
         }
         
+        // Every command runs this: a slow or missing network must not hold the command up
         let client = reqwest::Client::builder()
             .user_agent(format!("cluaiz-Bootstrapper/{}", env!("CARGO_PKG_VERSION")))
+            .connect_timeout(std::time::Duration::from_secs(2))
+            .timeout(std::time::Duration::from_secs(3))
             .build()?;
 
         // 🎯 1. Fetch Master Registry (package.json)
@@ -48,13 +51,13 @@ impl Bootstrapper {
                 match res.json().await {
                     Ok(json) => json,
                     Err(_) => {
-                        println!("  {} [Cluaiz] Network sync skipped (invalid registry format).", "⚠️".yellow());
+                        tracing::warn!("⚠️ [Cluaiz] Network sync skipped (invalid registry format).");
                         return Ok(());
                     }
                 }
             },
             _ => {
-                println!("  {} [Cluaiz] Network sync skipped (offline mode).", "⚠️".yellow());
+                tracing::info!("[Cluaiz] Network sync skipped (offline or slow network).");
                 return Ok(());
             }
         };
@@ -77,8 +80,11 @@ impl Bootstrapper {
         let latest_cli = cli_info["version"].as_str().unwrap_or("");
         let current_cli = env!("CARGO_PKG_VERSION");
         
-        if latest_cli != current_cli && !latest_cli.is_empty() {
-            println!("  {} [cluaiz] Update Available: {} -> {}", "🚀".green(), current_cli, latest_cli);
+        // Only a real newer release (x.y.z above this build); stderr, so command output stays clean
+        if is_newer_version(latest_cli, current_cli) {
+            eprintln!("  {} [cluaiz] Update Available: {} -> {}", "🚀".green(), current_cli, latest_cli);
+        } else if latest_cli != current_cli {
+            tracing::debug!("[cluaiz] Registry CLI version '{}' (this build {})", latest_cli, current_cli);
         }
 
         // 🎯 3. Unified Binary Verification (Single Binary Architecture)
@@ -110,16 +116,6 @@ impl Bootstrapper {
             tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
 
-        Ok(())
-    }
-
-    async fn download_asset(url: &str, dest: &Path) -> Result<()> {
-        if let Some(parent) = dest.parent() { std::fs::create_dir_all(parent)?; }
-        let client = reqwest::Client::builder().user_agent(format!("cluaiz-Bootstrapper/{}", env!("CARGO_PKG_VERSION"))).build()?;
-        let response = client.get(url).send().await.map_err(|e| eyre!("Registry Link Error: {}", e))?;
-        if !response.status().is_success() { return Err(eyre!("Registry Error: {} returned {}", url, response.status())); }
-        let content = response.bytes().await?;
-        std::fs::write(dest, content)?;
         Ok(())
     }
 
@@ -289,6 +285,18 @@ impl Bootstrapper {
         {
             let bin_dir = cluaiz_core::EnvironmentManager::current().ensure_bin_dir().unwrap_or_else(|_| cluaiz_core::EnvironmentManager::current().bin_dir());
             let bin_str = bin_dir.to_string_lossy().to_string();
+
+            // Already on this process's PATH (inherited from the user PATH): nothing to do, no PowerShell
+            let on_path = std::env::var_os("PATH")
+                .map(|p| {
+                    // Windows paths: case and a trailing separator do not matter
+                    let norm = |d: &std::path::Path| d.to_string_lossy().trim_end_matches(['\\', '/']).to_lowercase();
+                    std::env::split_paths(&p).any(|d| norm(&d) == norm(&bin_dir))
+                })
+                .unwrap_or(false);
+            if on_path {
+                return;
+            }
             
             // Simple PowerShell script to read User PATH, check if cluaiz is in it, and append if missing.
             let script = format!(
@@ -304,5 +312,29 @@ impl Bootstrapper {
                 .args(&["-NoProfile", "-Command", &script])
                 .output();
         }
+    }
+}
+
+/// True when `latest` is a higher x.y.z version than `current`. Anything that is not a plain version
+/// number (e.g. a dev build tag) is never "newer".
+fn is_newer_version(latest: &str, current: &str) -> bool {
+    let parse = |v: &str| -> Option<Vec<u64>> { v.trim().trim_start_matches('v').split('.').map(|p| p.parse().ok()).collect() };
+    match (parse(latest), parse(current)) {
+        (Some(l), Some(c)) => l > c,
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_newer_version;
+
+    #[test]
+    fn only_real_newer_versions_count() {
+        assert!(is_newer_version("0.2.0", "0.1.0"));
+        assert!(is_newer_version("v0.1.1", "0.1.0"));
+        assert!(!is_newer_version("0.1.0", "0.1.0"));
+        assert!(!is_newer_version("dev-release", "0.1.0"));
+        assert!(!is_newer_version("0.0.9", "0.1.0"));
     }
 }

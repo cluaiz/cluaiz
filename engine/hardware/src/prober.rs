@@ -13,7 +13,9 @@ static CACHED_HARDWARE: Lazy<RwLock<Option<SystemInfo>>> = Lazy::new(|| RwLock::
 pub struct HardwareProber;
 
 impl HardwareProber {
-    /// Returns cached hardware snapshot or performs initial probe.
+    /// Returns the cached hardware snapshot. The deep probe (seconds: memory benchmark, WMI, disks) runs
+    /// once and is kept in `hardware_profile.json`; later processes read that file and only measure free
+    /// RAM / VRAM again. `calibrate()` re-runs the deep probe.
     pub fn current() -> SystemInfo {
         {
             let guard = CACHED_HARDWARE.read().unwrap();
@@ -21,16 +23,55 @@ impl HardwareProber {
                 return info.clone();
             }
         }
+        let info = match Self::load_profile() {
+            Some(mut saved) => {
+                Self::apply_live_memory(&mut saved);
+                saved
+            }
+            None => {
+                let fresh = Self::probe_system();
+                Self::save_profile(&fresh);
+                fresh
+            }
+        };
+        *CACHED_HARDWARE.write().unwrap() = Some(info.clone());
+        info
+    }
+
+    /// Runs the deep probe again and stores it (`cluaiz calibrate`, e.g. after a hardware change).
+    pub fn calibrate() -> SystemInfo {
         let fresh = Self::probe_system();
-        let mut guard = CACHED_HARDWARE.write().unwrap();
-        *guard = Some(fresh.clone());
+        Self::save_profile(&fresh);
+        *CACHED_HARDWARE.write().unwrap() = Some(fresh.clone());
         fresh
+    }
+
+    fn profile_path() -> std::path::PathBuf {
+        cluaiz_core::EnvironmentManager::current().config_dir().join("hardware_profile.json")
+    }
+
+    fn load_profile() -> Option<SystemInfo> {
+        let data = std::fs::read_to_string(Self::profile_path()).ok()?;
+        serde_json::from_str(&data).ok()
+    }
+
+    fn save_profile(info: &SystemInfo) {
+        if cluaiz_core::EnvironmentManager::current().ensure_config_dir().is_ok() {
+            if let Ok(data) = serde_json::to_string_pretty(info) {
+                let _ = std::fs::write(Self::profile_path(), data);
+            }
+        }
     }
 
     /// Cached static hardware facts with free RAM / free VRAM measured right now.
     /// Use this for planning and load verification; `current()` keeps startup memory numbers.
     pub fn with_live_memory() -> SystemInfo {
         let mut info = Self::current();
+        Self::apply_live_memory(&mut info);
+        info
+    }
+
+    fn apply_live_memory(info: &mut SystemInfo) {
         let (ram_free, vram_free) = Self::probe_live_memory();
         if ram_free > 0 {
             info.memory.available_bytes = ram_free;
@@ -41,7 +82,6 @@ impl HardwareProber {
             gpu.vram_free_bytes = vram_free;
             gpu.vram_available_gb = vram_free as f64 / (1024.0 * 1024.0 * 1024.0);
         }
-        info
     }
 
     /// Live query of available RAM and VRAM (fast <5ms path).

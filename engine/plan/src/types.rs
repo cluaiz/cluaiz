@@ -116,6 +116,38 @@ impl ExecutionPlan {
         (gpu, self.total_layers - gpu)
     }
 
+    /// Placement in words (same text in the banner and in the CLI)
+    pub fn placement_label(&self) -> &'static str {
+        match self.selected_tier {
+            PlacementTier::GpuOnly => "Full GPU",
+            PlacementTier::MoeSplit => "MoE split (attention on GPU, experts in RAM)",
+            PlacementTier::Hybrid if !self.kv_offload => "Weights on GPU, KV in RAM (attention on CPU)",
+            PlacementTier::Hybrid => "GPU + RAM split",
+            PlacementTier::CpuOnly => "CPU only",
+            PlacementTier::SsdStreaming => "CPU only, experts read from disk",
+            PlacementTier::Infeasible => "Rejected",
+        }
+    }
+
+    /// Short plan report (plan values only): what a terminal shows after a load. The full banner,
+    /// with hardware and every candidate, is `format_telemetry_banner`.
+    pub fn summary(&self) -> String {
+        let (gpu_blocks, ram_blocks) = self.block_split();
+        let kv_place = if self.kv_offload && self.n_gpu_layers != 0 { "next to its layers" } else { "in RAM" };
+        let mut out = format!(
+            "placement  {} | {} of {} blocks on GPU, {} in RAM | n_gpu_layers {}{}\n",
+            self.placement_label(), gpu_blocks, self.total_layers, ram_blocks, self.n_gpu_layers,
+            if self.n_cpu_moe > 0 { format!(" | n_cpu_moe {}", self.n_cpu_moe) } else { String::new() },
+        );
+        out.push_str(&format!("context    {} tokens | KV {:?} {}\n", self.context_window, self.kv_cache_type, kv_place));
+        out.push_str(&format!("memory     VRAM {:.2} GB | RAM {:.2} GB", self.vram_budget_gb, self.ram_budget_gb));
+        if self.disk_stream_gb > 0.0 {
+            out.push_str(&format!(" | {:.2} GB of experts read from disk", self.disk_stream_gb));
+        }
+        out.push_str(&format!("\nreason     {}", self.explanation));
+        out
+    }
+
     /// Formats the resource execution banner printed once per model load
     pub fn format_telemetry_banner(
         &self,
@@ -134,15 +166,7 @@ impl ExecutionPlan {
             format!("{:.0} MiB rule", self.vram_buffer_gb * 1024.0)
         };
         let (gpu_blocks, ram_blocks) = self.block_split();
-        let mode = match self.selected_tier {
-            PlacementTier::GpuOnly => "Full GPU",
-            PlacementTier::MoeSplit => "MoE split (attention on GPU, experts in RAM)",
-            PlacementTier::Hybrid if !self.kv_offload => "Weights on GPU, KV in RAM (attention on CPU)",
-            PlacementTier::Hybrid => "GPU + RAM split",
-            PlacementTier::CpuOnly => "CPU only",
-            PlacementTier::SsdStreaming => "CPU only, experts read from disk",
-            PlacementTier::Infeasible => "Rejected",
-        };
+        let mode = self.placement_label();
         let moe_line = if geometry.is_moe() {
             format!("{} experts, {} active | experts {:.2} GB",
                 geometry.expert_count.unwrap_or(0), geometry.expert_used_count.unwrap_or(0), gib(w.experts_total()))
@@ -199,15 +223,6 @@ impl ExecutionPlan {
         out
     }
 
-    /// Prints the banner to standard output
-    pub fn print_telemetry_banner(
-        &self,
-        geometry: &cluaiz_models::ModelGeometry,
-        hardware: &cluaiz_hw::SystemInfo,
-        settings: &cluaiz_core::ActiveUserSettings,
-    ) {
-        println!("{}", self.format_telemetry_banner(geometry, hardware, settings));
-    }
 }
 
 #[cfg(test)]
