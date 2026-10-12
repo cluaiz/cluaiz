@@ -1,35 +1,21 @@
-use color_eyre::Result;
+//! `cluaiz rm <id>`: delete an installed model (its folder and its registry entry).
+
+use color_eyre::{eyre::eyre, Result};
 use colored::Colorize;
-use cluaiz_models::CoreRoster;
-use std::fs;
 
 pub async fn execute(model_id: &str) -> Result<()> {
-    println!("\n  {} [cluaiz] Preparing for Neural Deletion: '{}'...", "🗑️".red(), model_id.bold());
-
-    let roster = CoreRoster::load_roster();
-    let model = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
-
-    if let Some(m) = model {
-        // Resolve path to the model file
-        let vault_path = cluaiz_core::EnvironmentManager::current()
-            .ensure_models_dir()
-            .unwrap_or_else(|_| cluaiz_core::EnvironmentManager::current().models_dir());
-        
-        // This is a simplification; a real manager should handle the specific file naming
-        let model_file = vault_path.join(format!("{}.gguf", m.id)); // Assuming GGUF for now
-        
-        if model_file.exists() {
-            fs::remove_file(&model_file)?;
-            println!("  {} Model weights successfully purged.", "✅".green());
-        } else {
-            println!("  {} Weights file not found in vault, but metadata was present. Cleaning metadata...", "⚠️".yellow());
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    // Deleting needs the exact id (case aside); a partial name only gets suggestions
+    let matches = registry.find(model_id);
+    let id = match matches.iter().find(|e| e.id.eq_ignore_ascii_case(model_id.trim())) {
+        Some(entry) => entry.id.clone(),
+        None if matches.is_empty() => return Err(eyre!("model '{}' is not installed (see `cluaiz list`)", model_id)),
+        None => {
+            let ids: Vec<_> = matches.iter().map(|e| e.id.as_str()).collect();
+            return Err(eyre!("no installed model is called '{}'. Did you mean: {}?", model_id, ids.join(", ")));
         }
-        
-        // Note: In a real system, we'd also update the local roster cache
-        println!("  {} Model '{}' has been removed from the registry.\n", "🛡️".green(), model_id.cyan());
-    } else {
-        println!("  {} Model ID '{}' not found in the local vault.\n", "❌".red(), model_id.bold());
-    }
-
+    };
+    let dir = cluaiz_models::ModelDownloader::uninstall(&id).map_err(|e| eyre!(e))?;
+    println!("  {} Removed '{}' ({})", "🗑️".red(), id.bold(), dir.display());
     Ok(())
 }

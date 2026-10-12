@@ -301,20 +301,43 @@ graph TD
 | **SYCL**     | Intel     | oneAPI / XMX         | 🧪 Experimental |
 | **CANN**     | Huawei    | Ascend NPU           | 🧪 Experimental |
 
-### Local Hardware Benchmark
+### Local Hardware Benchmark (Empirical Results: 2026-10-12)
 
-*Empirical data measured on an **RTX 3050 (Laptop)** running Cluaiz Alpha:*
+*Empirical regression test data measured on **AMD Ryzen 7 7435HS (8C/16T), 24 GB RAM, NVIDIA GeForce RTX 3050 A Laptop (4 GB VRAM), Windows 11, CUDA 13.2**:*
 
-| **Metric**         | **Bonsai1 8B** | **Gemma 4B**  | **Gemma 2B**  | **Qwen 4B**   | **Qwen 2B**   |
-| :----------------- | :------------- | :------------ | :------------ | :------------ | :------------ |
-| **Speed (TPS)**    | 48.6           | 19.4          | 31.6          | 21.2          | 32.7          |
-| **TTFT (s)**       | 0.05s          | 0.08s         | 0.06s         | 0.08s         | 0.05s         |
-| **Total Time (s)** | ~39.3s         | ~53.5s        | ~46.4s        | ~90.2s        | ~62.6s        |
-| **Tokens Out**     | 1911           | 1038          | 1465          | 1913          | 2048          |
-| **Memory (VRAM)**  | 2.82 GB        | ~2.5 GB       | 1.90 GB       | ~2.6 GB       | ~1.8 GB       |
-| **Power Used**     | ~52W           | ~45W          | ~31W          | ~45W          | ~35W          |
+#### 1. Generation Speed (Tokens / Second)
 
-> **Note**: For exhaustive automated reports across all supported architectures, see `test/benchmark/`.
+| Model (Quantization) | Mode | Placement | Cluaiz | Upstream llama.cpp | Delta |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Bonsai 4B (Q1_0)** | auto / gpu | Full GPU | **111.0 t/s** | 106.3 t/s | +4% |
+| | split | 18 of 36 blocks on GPU | **27.6 t/s** | 28.2 t/s | -2% |
+| **Bonsai 8B** | auto / gpu | Full GPU | **72.7 t/s** | 71.9 t/s | +1% |
+| | split | 18 of 36 blocks on GPU | **17.7 t/s** | 18.1 t/s | -2% |
+| **Llama 3.2 3B (Q4_K_M)** | auto / gpu | Full GPU | **51.9 t/s** | 51.8 t/s | same |
+| | split | 14 of 28 blocks on GPU | **23.4 t/s** | 24.9 t/s | -6% |
+| **Qwen3 4B (Q4_K_M)** | auto / gpu | Full GPU | **39.3 t/s** | 38.7 t/s | +2% |
+| | split | 18 of 36 blocks on GPU | **15.9 t/s** | 14.9 t/s | +7% |
+| **Gemma 4 E4B (Q4_K_M)** | gpu | Full GPU | **32.3 t/s** | 32.0 t/s | +1% |
+| | split | 21 of 42 blocks on GPU | **14.5 t/s** | 14.6 t/s | same |
+| **Gemma 4 26B MoE (13.3 GB)** | auto (split) | Attention GPU + RAM/SSD Experts | **16.0 - 18.0 t/s** | OOM / ~4.4 t/s | Runs on 4 GB VRAM |
+
+#### 2. Prompt Processing Speed (~530 tokens prompt)
+
+| Model | Full GPU (Cluaiz vs llama.cpp) | Split GPU + RAM (Cluaiz vs llama.cpp) | Split Speedup |
+| :--- | :---: | :---: | :---: |
+| **Llama 3.2 3B** | 2578 vs 2446 t/s | **1111 vs 810 t/s** | **1.4x faster** |
+| **Qwen3 4B** | 1863 vs 1744 t/s | **810 vs 529 t/s** | **1.5x faster** |
+| **Gemma 4 E4B** | 1666 vs 1605 t/s | **705 vs 452 t/s** | **1.6x faster** |
+| **Bonsai 8B** | 1352 vs 1334 t/s | **769 vs 385 t/s** | **2.0x faster** |
+| **Bonsai 4B** | 2270 vs 2129 t/s | **1186 vs 692 t/s** | **1.7x faster** |
+| **Bonsai 27B** | 47 vs 30 t/s (shared mem) | **230 vs 110 t/s** | **2.1x faster** |
+
+> [!NOTE]
+> **Why Split Prompt is 1.4x–2.2x Faster**: Upstream llama.cpp chunks prompts into fixed 512-token batches (leaving trailing tokens under 32 to run on CPU). Cluaiz balances chunk sizes evenly (e.g. 265 + 265), keeping all prompt chunks on the accelerated path.
+> 
+> **Time To First Token (TTFT)**: **0.09s - 0.10s** (warm prompt with persistent template caching, down from 0.31s).
+> 
+> **Complete Reproducible Benchmark**: Full test tables, methodology, and reproduction scripts (`python test/engine_regression/run.py`) are documented in [`test/engine_regression/RESULTS.md`](test/engine_regression/RESULTS.md).
 >
 ### Hardware & Performance Troubleshooting
 

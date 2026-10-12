@@ -1,7 +1,6 @@
 use color_eyre::Result;
 use colored::Colorize;
 use cluaiz_models::DocumentIngestor;
-use cluaiz_core::{EmbeddingDriver, EngineError};
 use onnx_engine::OnnxEngine;
 
 pub async fn execute(file_path: &str) -> Result<()> {

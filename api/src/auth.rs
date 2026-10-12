@@ -27,13 +27,19 @@ pub fn constant_time_compare(a: &str, b: &str) -> bool {
     diff == 0
 }
 
+/// Where the running server keeps its session token (~/.cluaiz/session.token); local clients such as the
+/// CLI read it to authenticate.
+pub fn session_token_path() -> Option<std::path::PathBuf> {
+    dirs::home_dir().map(|home| home.join(".cluaiz").join("session.token"))
+}
+
 /// Generates a session token on engine boot and writes it to ~/.cluaiz/session.token
 pub fn initialize_session_token() -> String {
     let token = format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple());
-    if let Some(home) = dirs::home_dir() {
-        let token_dir = home.join(".cluaiz");
-        let _ = std::fs::create_dir_all(&token_dir);
-        let token_file = token_dir.join("session.token");
+    if let Some(token_file) = session_token_path() {
+        if let Some(token_dir) = token_file.parent() {
+            let _ = std::fs::create_dir_all(token_dir);
+        }
         if let Ok(_) = std::fs::write(&token_file, &token) {
             #[cfg(unix)]
             {

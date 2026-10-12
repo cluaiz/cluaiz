@@ -1,62 +1,34 @@
-use color_eyre::Result;
+//! `cluaiz ps`: the model a running `cluaiz serve` has loaded.
+
+use color_eyre::{eyre::eyre, Result};
 use colored::Colorize;
-use cluaiz_security::PermissionSchema;
 
 pub async fn execute() -> Result<()> {
-    println!("\n  {} [cluaiz] Process Audit...", "🔍".cyan());
-
-    let perms = PermissionSchema::load();
-    let port = std::env::var("cluaiz_PORT")
-        .ok()
-        .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(perms.api_port);
-    let url = format!("{}://localhost:{}/v1/system/ps", perms.connection_protocol, port);
-
-    let client = reqwest::Client::new(); 
-    let res = match client.get(&url).send().await {
-        Ok(r) => r,
-        Err(_) => {
-            println!("  {} No active daemon found. Please run `cluaiz serve` first.", "❌".red());
-            return Ok(());
-        }
-    };
-
-    let data: serde_json::Value = res.json().await?;
-    let active_processes = data["active_processes"].as_array().unwrap_or(&vec![]).clone();
-
-    if active_processes.is_empty() {
-        println!("  {} No active neural engines running.", "💤".yellow());
+    let response = crate::cli::server::request(reqwest::Method::GET, "/v1/system/ps")
+        .send()
+        .await
+        .map_err(|_| eyre!("no server is running at {} (start one with `cluaiz serve`)", crate::cli::server::base_url()))?;
+    if !response.status().is_success() {
+        return Err(eyre!("server answered {}", response.status()));
+    }
+    let data: serde_json::Value = response.json().await?;
+    let processes = data["active_processes"].as_array().cloned().unwrap_or_default();
+    if processes.is_empty() {
+        println!("No model loaded.");
         return Ok(());
     }
-
-    // Print table header
-    println!("\n  {0:<15} | {1:<6} | {2:<12} | {3:<10} | {4:<15}", 
-        "MODEL ID".bold(), 
-        "PID".bold(), 
-        "VRAM LOAD".bold(), 
-        "CONTEXT".bold(), 
-        "ENGINE".bold()
-    );
-    println!("  {0:-<15}-+-{0:-<6}-+-{0:-<12}-+-{0:-<10}-+-{0:-<15}", "");
-
-    // Print rows
-    for info in active_processes {
-        let model_id = info["model_id"].as_str().unwrap_or("Unknown");
-        let pid = info["pid"].as_str().unwrap_or("Unknown");
-        let vram_gb = info["vram_gb"].as_f64().unwrap_or(0.0);
-        let context_size = info["context_size"].as_i64().unwrap_or(0);
-        let engine = info["engine"].as_str().unwrap_or("Unknown");
-
-        let vram_str = format!("{:.2} GB", vram_gb);
-        println!("  {0:<15} | {1:<6} | {2:<12} | {3:<10} | {4:<15}", 
-            model_id.cyan(), 
-            pid.yellow(), 
-            vram_str.magenta(), 
-            context_size.to_string().green(), 
-            engine
+    let header = format!("{:<40}  {:<10}  {:>5}  {:>8}  {:>10}  {}", "MODEL", "PLACEMENT", "NGL", "CONTEXT", "VRAM", "PID");
+    println!("{}", header.bold());
+    for p in processes {
+        println!(
+            "{:<40}  {:<10}  {:>5}  {:>8}  {:>10}  {}",
+            p["model_id"].as_str().unwrap_or("?"),
+            p["tier"].as_str().unwrap_or("?"),
+            p["n_gpu_layers"].as_i64().unwrap_or(0),
+            p["context_size"].as_i64().unwrap_or(0),
+            format!("{:.2} GB", p["vram_gb"].as_f64().unwrap_or(0.0)),
+            p["pid"].as_str().unwrap_or("?"),
         );
     }
-
-    println!();
     Ok(())
 }

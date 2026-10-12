@@ -19,6 +19,8 @@ pub fn create_router(state: AppState) -> Router {
 
 /// Boots and runs the unified HTTP/SSE daemon server.
 pub async fn run_daemon() -> anyhow::Result<()> {
+    // Register model folders that are on disk but not in model_registry.json (as the server did before)
+    cluaiz_models::registry::InstalledStateRegistry::sync_from_disk(&cluaiz_models::registry::ModelVault::root_dir());
     let host = Arc::new(cluaiz_runtime::EngineHost::new());
     let perms = cluaiz_security::PermissionSchema::load();
     let state = AppState::new(host.clone());
@@ -38,10 +40,7 @@ pub async fn run_daemon() -> anyhow::Result<()> {
             }
         });
     }
-    let port: u16 = std::env::var("CLUAIZ_PORT")
-        .ok()
-        .and_then(|p| p.parse().ok())
-        .unwrap_or(perms.api_port);
+    let port = api_port(&perms);
     let host_ip = std::env::var("CLUAIZ_HOST")
         .unwrap_or_else(|_| perms.api_host.clone());
     let addr = format!("{}:{}", host_ip, port);
@@ -50,4 +49,9 @@ pub async fn run_daemon() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+/// Port the API server listens on: `CLUAIZ_PORT`, else permission.json `api_port`.
+pub fn api_port(perms: &cluaiz_security::PermissionSchema) -> u16 {
+    std::env::var("CLUAIZ_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(perms.api_port)
 }

@@ -20,6 +20,11 @@ pub async fn execute(component_type: &str, command: ComponentCommand) -> Result<
         ComponentCommand::Start { component_name } => {
             println!("  {} [Cluaiz {}] Starting daemon for: {}", "🚀".cyan(), component_type.to_uppercase(), component_name.bold());
         }
+        ComponentCommand::Config { component_id, key, value } => {
+            crate::cli::component_config::execute(Some(component_type.to_string()), component_id, key, value)
+                .await
+                .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+        }
         ComponentCommand::Link { plugin_name, skill_name } => {
             println!("  {} [Cluaiz Plugin] Linking {} to {}", "🔗".cyan(), plugin_name.bold(), skill_name.bold());
         }

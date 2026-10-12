@@ -45,6 +45,47 @@ graph TD
 
 ---
 
+## 🧪 Empirical Hardware Benchmarks (Regression Matrix: 2026-10-12)
+
+*Empirical test results measured against upstream `llama.cpp` (`llama-bench`) using the exact same placement, model files, and compilation on **AMD Ryzen 7 7435HS (8C/16T), 24 GB RAM, NVIDIA GeForce RTX 3050 A (4 GB VRAM), Windows 11, CUDA 13.2**:*
+
+### 1. Generation Throughput (tokens/sec)
+
+| Model (Quantization) | Placement | Cluaiz | Upstream llama.cpp | Match / Delta |
+| :--- | :--- | :---: | :---: | :---: |
+| **Bonsai 4B (Q1_0)** | Full GPU | **111.0 t/s** | 106.3 t/s | +4% |
+| | Split (18/36 blocks GPU) | **27.6 t/s** | 28.2 t/s | -2% |
+| **Bonsai 8B** | Full GPU | **72.7 t/s** | 71.9 t/s | +1% |
+| | Split (18/36 blocks GPU) | **17.7 t/s** | 18.1 t/s | -2% |
+| **Llama 3.2 3B (Q4_K_M)** | Full GPU | **51.9 t/s** | 51.8 t/s | parity |
+| | Split (14/28 blocks GPU) | **23.4 t/s** | 24.9 t/s | -6% |
+| **Qwen3 4B (Q4_K_M)** | Full GPU | **39.3 t/s** | 38.7 t/s | +2% |
+| | Split (18/36 blocks GPU) | **15.9 t/s** | 14.9 t/s | +7% |
+| **Gemma 4 E4B (Q4_K_M)** | Full GPU | **32.3 t/s** | 32.0 t/s | +1% |
+| | Split (21/42 blocks GPU) | **14.5 t/s** | 14.6 t/s | parity |
+| **Gemma 4 26B MoE (13.3 GB)** | Hybrid Split (Attn on GPU, Experts in RAM/SSD) | **16.0 - 18.0 t/s** | OOM / ~4.4 t/s | Stable on 4 GB VRAM |
+
+### 2. Prompt Processing Acceleration (~530 tokens prompt)
+
+| Model | Full GPU (Cluaiz vs llama.cpp) | Split GPU + RAM (Cluaiz vs llama.cpp) | Speedup Ratio |
+| :--- | :---: | :---: | :---: |
+| **Llama 3.2 3B** | 2578 vs 2446 t/s | **1111 vs 810 t/s** | **1.4x faster** |
+| **Qwen3 4B** | 1863 vs 1744 t/s | **810 vs 529 t/s** | **1.5x faster** |
+| **Gemma 4 E4B** | 1666 vs 1605 t/s | **705 vs 452 t/s** | **1.6x faster** |
+| **Bonsai 8B** | 1352 vs 1334 t/s | **769 vs 385 t/s** | **2.0x faster** |
+| **Bonsai 4B** | 2270 vs 2129 t/s | **1186 vs 692 t/s** | **1.7x faster** |
+| **Bonsai 27B** | 47 vs 30 t/s (shared VRAM) | **230 vs 110 t/s** | **2.1x faster** |
+
+*Prompt Chunking Note*: Cluaiz splits prompts into equal chunks (e.g. 265 + 265 tokens) instead of fixed 512 chunks, avoiding slow sub-32 token CPU fallback execution on hybrid RAM layers.
+
+### 3. Latency & TTFT Optimizations
+
+* **Time To First Token (TTFT)**: **0.09s - 0.10s** (warm prompt with persistent MiniJinja template cache, reduced from 0.31s).
+* **Control Token Safety**: 0 leaked control tokens (`<|...|>`) across all 18 regression test runs.
+* **Full Benchmark Reference**: Exhaustive metrics and automated testing scripts are located at [`test/engine_regression/RESULTS.md`](test/engine_regression/RESULTS.md).
+
+---
+
 ## 🎙️ Supported Audio & TTS Model Families
 
 The Cluaiz Engine implements strict package validation contracts across 8 core TTS architectural families and 1 core STT family:
