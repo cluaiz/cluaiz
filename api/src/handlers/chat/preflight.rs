@@ -1,9 +1,10 @@
+use super::types::{ExternalChatRequest, MessageContent, TemporaryChatMode};
+use crate::state::AppState;
+use crate::utils::prepare_authorized_media;
 use axum::response::IntoResponse;
 use serde_json::json;
 use std::path::PathBuf;
 use std::sync::Arc;
-use crate::state::AppState;
-use super::types::{ExternalChatRequest, MessageContent, TemporaryChatMode};
 
 pub struct PreparedChatContext {
     pub request_id: String,
@@ -28,6 +29,9 @@ pub struct PreparedChatContext {
     pub user_prompt_chars: usize,
     pub active_tool_ids: Vec<String>,
     pub json_prompt: String,
+    pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
+    pub request_settings: cluaiz_core::ActiveUserSettings,
+    pub cancel_signal: Arc<std::sync::atomic::AtomicBool>,
     pub initial_user_query: String,
     pub send_telemetry: bool,
     /// When the model was ready (after any load): TTFT and total time count from here
@@ -37,22 +41,54 @@ pub struct PreparedChatContext {
 }
 
 /// Error reply in the shape the client asked for (SSE chunk + [DONE] when streaming, JSON otherwise).
-fn error_response(request: &ExternalChatRequest, request_id: &str, message: String, error_type: &str, code: Option<&str>) -> axum::response::Response {
+pub(super) fn error_response(
+    request: &ExternalChatRequest,
+    request_id: &str,
+    message: String,
+    error_type: &str,
+    code: Option<&str>,
+) -> axum::response::Response {
+    let details = if error_type == "permission_error" {
+        serde_json::from_str::<serde_json::Value>(&message).ok()
+    } else {
+        None
+    };
+    let message = details
+        .as_ref()
+        .and_then(|value| value.get("message"))
+        .and_then(|value| value.as_str())
+        .unwrap_or(&message)
+        .to_owned();
+    let mut error = json!({ "message": message, "type": error_type, "code": code });
+    if let Some(details) = details {
+        error["details"] = details;
+    }
     if request.stream {
         let err_id = request_id.to_string();
         let stream = async_stream::stream! {
             let err_chunk = json!({
                 "id": err_id,
-                "choices": [{"delta": {"content": format!("Error: {}", message)}}]
+                "error": error
             });
             yield Ok::<_, std::convert::Infallible>(axum::response::sse::Event::default().data(err_chunk.to_string()));
             yield Ok::<_, std::convert::Infallible>(axum::response::sse::Event::default().data("[DONE]"));
         };
         return axum::response::sse::Sse::new(stream).into_response();
     }
-    axum::response::Json(json!({
-        "error": { "message": message, "type": error_type, "code": code }
-    })).into_response()
+    let status = if error_type == "permission_error" {
+        axum::http::StatusCode::FORBIDDEN
+    } else if error_type == "engine_error" || error_type == "engine_load_error" {
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+    } else {
+        axum::http::StatusCode::BAD_REQUEST
+    };
+    (
+        status,
+        axum::response::Json(json!({
+            "error": error
+        })),
+    )
+        .into_response()
 }
 
 impl PreparedChatContext {
@@ -60,35 +96,29 @@ impl PreparedChatContext {
         state: &Arc<AppState>,
         request: &ExternalChatRequest,
         request_id: &str,
+        headers: &axum::http::HeaderMap,
     ) -> Result<Self, axum::response::Response> {
         let preflight_started = std::time::Instant::now();
         let schema = cluaiz_security::PermissionSchema::load();
         let send_telemetry = schema.stream_telemetry;
 
-        // 🛡️ STRICT PRE-FLIGHT TASK GUARDRAIL
-        // Check if multimodal image exists to route to vision slot
-        let mut target_slot = "chat_slot";
-        let has_image = request.messages.iter().any(|m| {
-            match &m.content {
-                MessageContent::Array(parts) => {
-                    parts.iter().any(|p| matches!(p, super::types::ContentPart::ImageUrl { .. }))
-                },
-                _ => false
-            }
-        });
+        // The selected chat model owns its multimodal inputs; an image does not substitute a slot model.
+        let target_slot = "chat_slot";
+        let has_media = request
+            .messages
+            .iter()
+            .any(|message| message.content.has_media());
 
-        if has_image && schema.active_slots.contains_key("vision_slot") {
-            target_slot = "vision_slot";
-        }
-
-        if let Err(err_response) = crate::utils::slots::require_capability(
-            &schema, 
-            target_slot, 
-            &["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]
-        ) {
-            tracing::error!("Blocked chat request: Active slot '{}' does not support chat completions.", target_slot);
-            return Err(err_response);
-        }
+        crate::utils::slots::log_capability_guidance(
+            &schema,
+            target_slot,
+            &[
+                "chat-completion",
+                "text-generation",
+                "vision-chat",
+                "multimodal-vision",
+            ],
+        );
 
         let mut active_model_path = crate::utils::slots::resolve_model_path(&schema, target_slot);
         let mut resolved_model_name = "default-system-model".to_string();
@@ -96,19 +126,32 @@ impl PreparedChatContext {
         if let Some(ref m_id) = request.model {
             if !m_id.trim().is_empty() {
                 if let Some(explicit_path) = crate::utils::slots::resolve_model_by_id(m_id) {
-                    tracing::info!("🤖 [API] Model override requested. Resolved '{}' to {:?}", m_id, explicit_path);
+                    tracing::info!(
+                        "🤖 [API] Model override requested. Resolved '{}' to {:?}",
+                        m_id,
+                        explicit_path
+                    );
                     active_model_path = Some(explicit_path);
                     resolved_model_name = m_id.clone();
                 } else {
-                    tracing::warn!("⚠️ [API] Requested model '{}' not found in registry. Falling back to default slot model.", m_id);
+                    return Err(error_response(
+                        request,
+                        request_id,
+                        format!("Requested model '{}' was not found", m_id),
+                        "invalid_request_error",
+                        Some("model_not_found"),
+                    ));
                 }
             }
         } else {
-            tracing::info!("🤖 [API] No model specified (null). Falling back to default '{}' model.", target_slot);
+            tracing::info!(
+                "🤖 [API] No model specified (null). Falling back to default '{}' model.",
+                target_slot
+            );
         }
-        
+
         // Ensure we actually have a path to load (Auto-heal fallback)
-        if active_model_path.is_none() {
+        if active_model_path.is_none() && !has_media {
             let installed = cluaiz_models::registry::InstalledStateRegistry::load();
             for (id, entry) in &installed.installed_models {
                 if entry.category == "chat" {
@@ -123,28 +166,115 @@ impl PreparedChatContext {
         }
 
         if active_model_path.is_none() {
-            let err_msg = format!("No model is currently loaded in slot '{}' and no valid override was provided.", target_slot);
-            return Err(error_response(request, request_id, err_msg, "invalid_request_error", Some("model_not_found")));
+            let err_msg = format!(
+                "No model is currently loaded in slot '{}' and no valid override was provided.",
+                target_slot
+            );
+            return Err(error_response(
+                request,
+                request_id,
+                err_msg,
+                "invalid_request_error",
+                Some("model_not_found"),
+            ));
         }
 
         // Load settings for this request: the user's settings + the request's "llama" params on top
         let mut settings = cluaiz_core::Settings::current();
         if let Some(params) = &request.llama {
             if let Err(e) = params.apply_to(&mut settings.optimization) {
-                return Err(error_response(request, request_id, format!("Invalid \"llama\" params: {}", e), "invalid_request_error", Some("invalid_llama_params")));
+                return Err(error_response(
+                    request,
+                    request_id,
+                    format!("Invalid \"llama\" params: {}", e),
+                    "invalid_request_error",
+                    Some("invalid_llama_params"),
+                ));
             }
         }
 
         // Load (or reuse) the model now, so every token budget below uses the context llama.cpp really created
-        let is_gguf = active_model_path.as_ref()
-            .and_then(|p| p.extension()).and_then(|e| e.to_str())
-            .map(|e| e.eq_ignore_ascii_case("gguf")).unwrap_or(false);
+        let is_gguf = active_model_path
+            .as_ref()
+            .and_then(|p| p.extension())
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("gguf"))
+            .unwrap_or(false);
+        if has_media {
+            let capability_check = (|| -> anyhow::Result<()> {
+                if !is_gguf {
+                    anyhow::bail!("Typed ONNX chat media dispatch is not implemented yet");
+                }
+                let model = active_model_path
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("No selected model"))?;
+                let package = cluaiz_models::capabilities::PackageCapabilities::inspect(model)?;
+                let supported = package.supported_inputs();
+                let mut requires_projector = false;
+                for message in &request.messages {
+                    for part in message.content.input_parts()? {
+                        let input = match part {
+                            cluaiz_core::media::InputPart::Image { .. }
+                            | cluaiz_core::media::InputPart::Video { .. } => {
+                                cluaiz_core::Modality::Image
+                            }
+                            cluaiz_core::media::InputPart::Audio { .. } => {
+                                cluaiz_core::Modality::Audio
+                            }
+                            _ => cluaiz_core::Modality::Text,
+                        };
+                        requires_projector |= input != cluaiz_core::Modality::Text;
+                        if matches!(
+                            part,
+                            cluaiz_core::media::InputPart::Video {
+                                include_audio: true,
+                                ..
+                            }
+                        ) && !supported.contains(&cluaiz_core::Modality::Audio)
+                        {
+                            anyhow::bail!(
+                                "Video soundtrack requires selected model audio input support"
+                            );
+                        }
+                        if !supported.contains(&input) {
+                            anyhow::bail!(
+                                "Selected model does not declare {:?} input support",
+                                input
+                            );
+                        }
+                    }
+                }
+                if requires_projector && package.projector.is_none() {
+                    anyhow::bail!("Media projector is missing or ambiguous");
+                }
+                Ok(())
+            })();
+            if let Err(error) = capability_check {
+                return Err(error_response(
+                    request,
+                    request_id,
+                    error.to_string(),
+                    "invalid_request_error",
+                    Some("unsupported_media"),
+                ));
+            }
+        }
         let load_started = std::time::Instant::now();
         if let (Some(model_path), true) = (active_model_path.as_ref(), is_gguf) {
-            if let Err(e) = state.host.ensure_loaded(&resolved_model_name, model_path, &settings).await {
+            if let Err(e) = state
+                .host
+                .ensure_loaded(&resolved_model_name, model_path, &settings)
+                .await
+            {
                 let err_msg = format!("Model could not be loaded: {}", e);
                 tracing::error!("❌ [API] {}", err_msg);
-                return Err(error_response(request, request_id, err_msg, "engine_load_error", None));
+                return Err(error_response(
+                    request,
+                    request_id,
+                    err_msg,
+                    "engine_load_error",
+                    None,
+                ));
             }
         }
         let model_load_ms = load_started.elapsed().as_millis();
@@ -157,7 +287,9 @@ impl PreparedChatContext {
             .installed_models
             .get(&resolved_model_name)
             .or_else(|| {
-                schema.active_slots.get(target_slot)
+                schema
+                    .active_slots
+                    .get(target_slot)
                     .and_then(|slot| slot.model_id.as_deref())
                     .and_then(|id| installed_registry.installed_models.get(id))
             })
@@ -177,7 +309,9 @@ impl PreparedChatContext {
             }
             // Unchanged ONNX behaviour (registry value, 2048 floor) — not part of the GGUF planner
             (false, _) => active_model_entry
-                .map(|m| cluaiz_models::StructuralDNA::parse_context_string(&m.metadata.context_window))
+                .map(|m| {
+                    cluaiz_models::StructuralDNA::parse_context_string(&m.metadata.context_window)
+                })
                 .unwrap_or(2048)
                 .max(2048),
         };
@@ -188,9 +322,9 @@ impl PreparedChatContext {
             .or_else(|| {
                 active_model_path.as_ref().and_then(|path: &PathBuf| {
                     if path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()) == Some("gguf") {
-                        cluaiz_models::GgufProber::probe_file(path).ok().and_then(|probe| {
-                            probe.chat_template
-                        })
+                        cluaiz_models::GgufProber::probe_file(path)
+                            .ok()
+                            .and_then(|probe| probe.chat_template)
                     } else {
                         None
                     }
@@ -198,24 +332,29 @@ impl PreparedChatContext {
             });
 
         // 🧬 Resolve Dynamic Model Thinking Markers Directly from llama.cpp Native Engine (Zero Hardcoding)
-        let (dyn_think_start, dyn_think_end): (Option<String>, Option<String>) = {
-            let native_tags = state.host.get_thinking_tags(chat_tmpl.as_deref()).await;
-            if native_tags.0.is_some() || native_tags.1.is_some() {
-                native_tags
-            } else if let Some(entry) = active_model_entry {
-                let st = entry.metadata.think_start_tag.clone().filter(|s| !s.is_empty() && !s.contains("tool") && !s.contains("important"));
-                let et = entry.metadata.think_end_tag.clone().filter(|s| !s.is_empty() && !s.contains("tool") && !s.contains("important"));
-                (st, et)
-            } else {
-                (None, None)
-            }
-        };
+        let (dyn_think_start, dyn_think_end): (Option<String>, Option<String>) =
+            {
+                let native_tags = state.host.get_thinking_tags(chat_tmpl.as_deref()).await;
+                if native_tags.0.is_some() || native_tags.1.is_some() {
+                    native_tags
+                } else if let Some(entry) = active_model_entry {
+                    let st = entry.metadata.think_start_tag.clone().filter(|s| {
+                        !s.is_empty() && !s.contains("tool") && !s.contains("important")
+                    });
+                    let et = entry.metadata.think_end_tag.clone().filter(|s| {
+                        !s.is_empty() && !s.contains("tool") && !s.contains("important")
+                    });
+                    (st, et)
+                } else {
+                    (None, None)
+                }
+            };
 
         let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
         let skip_brain = matches!(request.temporary_chat, Some(TemporaryChatMode::Strict));
 
         let mut augmented_messages = request.messages.clone();
- 
+
         // 🚀 RESOLVE ACTIVE SESSION TOOLS & COMPILE MARKET-STANDARD PROMPT SCHEMAS
         let mut tool_ids_to_compile: Vec<String> = Vec::new();
 
@@ -230,7 +369,8 @@ impl PreparedChatContext {
 
         if let Some(ref tools_vec) = request.tools {
             for tool_val in tools_vec {
-                let tid_opt = tool_val.as_str()
+                let tid_opt = tool_val
+                    .as_str()
                     .or_else(|| tool_val.get("id").and_then(|v| v.as_str()))
                     .or_else(|| tool_val.get("name").and_then(|v| v.as_str()));
                 if let Some(tool_id) = tid_opt {
@@ -244,15 +384,23 @@ impl PreparedChatContext {
                                 id: tid,
                                 turns: turns_val as i32,
                             };
-                            cluaiz_agents::SessionToolManager::update_session_tools(sid, vec![binding], vec![]);
+                            cluaiz_agents::SessionToolManager::update_session_tools(
+                                sid,
+                                vec![binding],
+                                vec![],
+                            );
                         }
                     }
                 }
             }
         }
 
-        let last_message = request.messages.last().map(|m| m.content.clone()).unwrap_or_default();
-        let initial_user_query = last_message.flatten_to_string().await;
+        let last_message = request
+            .messages
+            .last()
+            .map(|m| m.content.clone())
+            .unwrap_or_default();
+        let initial_user_query = last_message.text_content();
         let prompt_lower = initial_user_query.to_lowercase();
         let before_tools = std::time::Instant::now();
         let matched_skills = cluaiz_agents::ToolsEngine::match_skills(&prompt_lower);
@@ -263,7 +411,8 @@ impl PreparedChatContext {
             }
         }
 
-        let compiled_tools = cluaiz_agents::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
+        let compiled_tools =
+            cluaiz_agents::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
         let after_tools = std::time::Instant::now();
 
         let n_ctx_limit = dynamic_context_limit;
@@ -294,8 +443,17 @@ impl PreparedChatContext {
         if !combined_instructions.is_empty() {
             if let Some(first_msg) = augmented_messages.first_mut() {
                 if first_msg.role.eq_ignore_ascii_case("system") {
-                    let prev_content = first_msg.content.flatten_to_string().await;
-                    first_msg.content = MessageContent::Text(format!("{}\n\n{}", prev_content, combined_instructions));
+                    match &mut first_msg.content {
+                        MessageContent::Text(text) => {
+                            text.push_str("\n\n");
+                            text.push_str(&combined_instructions);
+                        }
+                        MessageContent::Array(parts) => {
+                            parts.push(super::types::ContentPart::Text {
+                                text: combined_instructions,
+                            })
+                        }
+                    }
                 } else {
                     augmented_messages.insert(
                         0,
@@ -314,35 +472,63 @@ impl PreparedChatContext {
         }
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
-        let active_think_mode = request.think_mode.as_ref().map(|v| {
-            if let Some(s) = v.as_str() {
-                match s.to_lowercase().as_str() {
-                    "off" | "false" | "0" | "hide" => "off".to_string(),
-                    "on" | "true" | "1" | "show" => "on".to_string(),
-                    _ => "auto".to_string(),
+        let active_think_mode = request
+            .think_mode
+            .as_ref()
+            .map(|v| {
+                if let Some(s) = v.as_str() {
+                    match s.to_lowercase().as_str() {
+                        "off" | "false" | "0" | "hide" => "off".to_string(),
+                        "on" | "true" | "1" | "show" => "on".to_string(),
+                        _ => "auto".to_string(),
+                    }
+                } else if let Some(b) = v.as_bool() {
+                    if b {
+                        "on".to_string()
+                    } else {
+                        "off".to_string()
+                    }
+                } else if let Some(n) = v.as_i64() {
+                    if n == 0 {
+                        "off".to_string()
+                    } else {
+                        "on".to_string()
+                    }
+                } else {
+                    "auto".to_string()
                 }
-            } else if let Some(b) = v.as_bool() {
-                if b { "on".to_string() } else { "off".to_string() }
-            } else if let Some(n) = v.as_i64() {
-                if n == 0 { "off".to_string() } else { "on".to_string() }
-            } else {
-                "auto".to_string()
-            }
-        }).unwrap_or_else(|| settings.optimization.think_mode.name().to_string()); // no think_mode: the user's default
+            })
+            .unwrap_or_else(|| settings.optimization.think_mode.name().to_string()); // no think_mode: the user's default
 
         // 🧠 2. Thinking budget ("Effort"): the request's value, else the user's default setting
-        let active_reasoning_effort = request.reasoning_effort.unwrap_or(settings.optimization.reasoning_effort);
-        let reasoning_budget_message = request.reasoning_budget_message.clone()
+        let active_reasoning_effort = request
+            .reasoning_effort
+            .unwrap_or(settings.optimization.reasoning_effort);
+        let reasoning_budget_message = request
+            .reasoning_budget_message
+            .clone()
             .or_else(|| settings.optimization.reasoning_budget_message.clone());
 
         let mut chat_messages = Vec::with_capacity(augmented_messages.len());
         for m in &augmented_messages {
-            chat_messages.push(cluaiz_core::ChatMessage::new(m.role.clone(), m.content.flatten_to_string().await));
+            chat_messages.push(cluaiz_core::ChatMessage::new(
+                m.role.clone(),
+                m.content.text_content(),
+            ));
         }
 
         // 🧠 Pre-flight context shifting (shared rule with the CLI)
         let reserve = cluaiz_core::answer_reserve(validated_max_tokens, n_ctx_limit);
-        let dropped = cluaiz_core::trim_history(&mut chat_messages, n_ctx_limit, reserve, settings.optimization.context_shifting);
+        let dropped = if has_media {
+            0
+        } else {
+            cluaiz_core::trim_history(
+                &mut chat_messages,
+                n_ctx_limit,
+                reserve,
+                settings.optimization.context_shifting,
+            )
+        };
         if dropped > 0 {
             tracing::info!(
                 "🌊 [ContextShifting] Pre-flight sliding window pruned historical turns (~{} tokens) to fit {} tokens of context.",
@@ -351,8 +537,18 @@ impl PreparedChatContext {
         }
 
         // 🎯 Per-request answer budget: what the prompt leaves of the context, capped by max_tokens
-        let prompt_tokens_est: usize = chat_messages.iter().map(cluaiz_core::ChatMessage::estimated_tokens).sum();
-        let validated_max_tokens = Some(cluaiz_core::answer_budget(n_ctx_limit, prompt_tokens_est, request.max_tokens));
+        let prompt_tokens_est: usize = chat_messages
+            .iter()
+            .map(cluaiz_core::ChatMessage::estimated_tokens)
+            .sum();
+        let validated_max_tokens = Some(if has_media {
+            request
+                .max_tokens
+                .unwrap_or(super::types::DEFAULT_MAX_TOKENS)
+                .min(n_ctx_limit.saturating_sub(16))
+        } else {
+            cluaiz_core::answer_budget(n_ctx_limit, prompt_tokens_est, request.max_tokens)
+        });
 
         let mut system_prompt_chars = 0;
         let mut history_chars = 0;
@@ -381,7 +577,7 @@ impl PreparedChatContext {
             seed: request.seed.and_then(|s| u32::try_from(s).ok()),
         };
 
-        let json_prompt = cluaiz_core::ChatEnvelope {
+        let envelope = cluaiz_core::ChatEnvelope {
             messages: chat_messages,
             samplers: samplers.clone(),
             think_mode: active_think_mode.clone(),
@@ -390,8 +586,55 @@ impl PreparedChatContext {
             chat_template_kwargs: request.chat_template_kwargs.clone(),
             grammar: request.grammar.clone(),
             response_format: request.response_format.clone(),
-        }
-        .to_prompt();
+        };
+        let cancel_signal = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let prepared_media = if has_media {
+            let typed = envelope
+                .clone()
+                .try_map_messages(|_| async {
+                    augmented_messages
+                        .iter()
+                        .map(|message| {
+                            Ok(cluaiz_core::ChatMessage {
+                                role: message.role.clone(),
+                                content: message.content.input_parts()?,
+                            })
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()
+                })
+                .await
+                .map_err(|error| {
+                    error_response(
+                        request,
+                        request_id,
+                        error.to_string(),
+                        "invalid_request_error",
+                        Some("invalid_media"),
+                    )
+                })?;
+            Some(
+                prepare_authorized_media(
+                    state,
+                    headers,
+                    typed,
+                    &settings,
+                    Some(cancel_signal.clone()),
+                )
+                .await
+                .map_err(|(kind, error)| {
+                    error_response(
+                        request,
+                        request_id,
+                        error,
+                        kind,
+                        Some("media_preparation_failed"),
+                    )
+                })?,
+            )
+        } else {
+            None
+        };
+        let json_prompt = envelope.to_prompt();
 
         // Where the time before the first token goes (model load is reported on its own)
         tracing::info!(
@@ -424,10 +667,81 @@ impl PreparedChatContext {
             user_prompt_chars,
             active_tool_ids: tool_ids_to_compile,
             json_prompt,
+            prepared_media,
+            request_settings: settings,
+            cancel_signal,
             initial_user_query,
             send_telemetry,
             start_time,
             model_load_ms,
         })
     }
+
+    /// Both streaming modes and tool continuations use this typed dispatch boundary.
+    pub async fn dispatch(
+        &self,
+        host: &cluaiz_runtime::EngineHost,
+        pivot: Option<&str>,
+        max_tokens: usize,
+    ) -> cluaiz_runtime::HostResponse {
+        if let Some(prepared) = &self.prepared_media {
+            let prepared = match media_continuation(prepared, pivot) {
+                Ok(prepared) => prepared,
+                Err(error) => return cluaiz_runtime::HostResponse::Error(error.to_string()),
+            };
+            let Some(path) = &self.active_model_path else {
+                return cluaiz_runtime::HostResponse::Error(
+                    "Selected media model identity is missing".into(),
+                );
+            };
+            host.dispatch_prepared(
+                prepared,
+                max_tokens,
+                path,
+                &self.request_settings,
+                Some(Arc::clone(&self.cancel_signal)),
+            )
+            .await
+        } else {
+            let Some(path) = &self.active_model_path else {
+                return cluaiz_runtime::HostResponse::Error(
+                    "Selected model identity is missing".into(),
+                );
+            };
+            host.dispatch_chat_text(
+                pivot.unwrap_or(&self.json_prompt),
+                max_tokens,
+                path,
+                &self.request_settings,
+                Arc::clone(&self.cancel_signal),
+            )
+            .await
+        }
+    }
+}
+
+/// Regenerate full multimodal context; text-only KV pivot reuse cannot represent media embeddings.
+pub fn media_continuation(
+    prepared: &cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>,
+    pivot: Option<&str>,
+) -> anyhow::Result<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>> {
+    use anyhow::Context;
+    let mut continued = prepared.clone();
+    if let Some(pivot) = pivot {
+        let value: serde_json::Value =
+            serde_json::from_str(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot))?;
+        let text = value
+            .get("pivot_prompt")
+            .and_then(|value| value.as_str())
+            .context("Missing media tool continuation prompt")?;
+        continued
+            .messages
+            .last_mut()
+            .context("Media continuation has no messages")?
+            .content
+            .push(cluaiz_core::media::PreparedPart::Text {
+                text: format!("\n{text}"),
+            });
+    }
+    Ok(continued)
 }

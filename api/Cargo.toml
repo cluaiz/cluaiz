@@ -9,7 +9,8 @@ cluaiz-core = { path = "../engine/core" }
 cluaiz-hw = { path = "../engine/hardware" }
 cluaiz-models = { path = "../engine/models" }
 cluaiz-plan = { path = "../engine/plan" }
-cluaiz-runtime = { path = "../engine/runtime" }
+cluaiz-runtime = { path = "../engine/runtime", default-features = false }
+cluaiz-media = { path = "../engine/media" }
 cluaiz-agents = { path = "../agents" }
 cluaiz-security = { path = "../security" }
 
@@ -29,3 +30,20 @@ sysinfo = "0.33"
 dirs = "5.0"
 rfd = "0.15"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[features]
+default = ["cuda"]
+cuda = ["cluaiz-runtime/cuda"]
+metal = ["cluaiz-runtime/metal"]
+vulkan = ["cluaiz-runtime/vulkan"]
+rocm = ["cluaiz-runtime/rocm"]
+
+[dev-dependencies]
+tempfile = "3"
+image = "0.24"
+tower = { version = "0.5", features = ["util"] }
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
+
+[[test]]
+name = "artifact_acceptance"
+path = "../test/media_regression/artifact_acceptance.rs"

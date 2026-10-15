@@ -112,8 +112,8 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     // Query tool directly from ToolsRegistry (tools_registry.json)
     if let Ok(Some(tool)) = cluaiz_agents::ToolsEngine::get_tool(&comp_id) {
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
-        current_values.insert("security_mode".to_string(), serde_json::to_value(&tool.security_mode).unwrap_or(serde_json::json!("inherit")));
-        current_values.insert("execution_mode".to_string(), serde_json::to_value(&tool.execution_mode).unwrap_or(serde_json::json!("auto")));
+        current_values.insert("security_mode".to_string(), serde_json::to_value(tool.security_mode).unwrap_or(serde_json::json!("inherit")));
+        current_values.insert("execution_mode".to_string(), serde_json::to_value(tool.execution_mode).unwrap_or(serde_json::json!("auto")));
     } else {
         // Fallback default for discovered components
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(true));

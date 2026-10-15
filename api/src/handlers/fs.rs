@@ -92,8 +92,8 @@ fn extract_caller<'a>(headers: &'a HeaderMap, body_caller: &'a Option<String>) -
 
 fn strip_verbatim(p: &Path) -> std::path::PathBuf {
     let s = p.to_string_lossy();
-    if s.starts_with(r"\\?\") {
-        std::path::PathBuf::from(&s[4..])
+    if let Some(path) = s.strip_prefix(r"\\?\") {
+        std::path::PathBuf::from(path)
     } else {
         p.to_path_buf()
     }
@@ -340,14 +340,6 @@ pub async fn list_dir(
     let payload_root = payload.root_path.as_deref().map(Path::new);
     let base_root = payload_root.unwrap_or(&ws);
 
-    let strip_verbatim = |p: &Path| -> std::path::PathBuf {
-        let s = p.to_string_lossy();
-        if s.starts_with(r"\\?\") {
-            std::path::PathBuf::from(&s[4..])
-        } else {
-            p.to_path_buf()
-        }
-    };
     let clean_base_root = strip_verbatim(base_root);
 
     let mut results: Vec<DiskItemDto> = Vec::new();
@@ -393,20 +385,11 @@ pub async fn list_dir(
         dir: &Path,
         root: &Path,
         results: &mut Vec<DiskItemDto>,
-        ignored: &[&str],
         depth: usize,
     ) {
         if depth > 12 {
             return;
         }
-        let strip_verbatim = |p: &Path| -> std::path::PathBuf {
-            let s = p.to_string_lossy();
-            if s.starts_with(r"\\?\") {
-                std::path::PathBuf::from(&s[4..])
-            } else {
-                p.to_path_buf()
-            }
-        };
         let clean_root = strip_verbatim(root);
 
         if let Ok(entries) = fs::read_dir(dir) {
@@ -442,13 +425,13 @@ pub async fn list_dir(
                 });
 
                 if is_dir {
-                    walk_dir(&entry_path, root, results, ignored, depth + 1);
+                    walk_dir(&entry_path, root, results, depth + 1);
                 }
             }
         }
     }
 
-    walk_dir(dir, base_root, &mut results, &[], 0);
+    walk_dir(dir, base_root, &mut results, 0);
     (StatusCode::OK, Json(json!({ "status": "success", "items": results })))
 }
 
@@ -771,3 +754,33 @@ pub async fn pick_folder(
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_listing_preserves_unicode_paths_and_recursion() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        fs::create_dir(dir.path().join("documents"))?;
+        fs::write(dir.path().join("documents/नाम.txt"), b"data")?;
+        let state = Arc::new(AppState::new_test_state(dir.path().to_path_buf()));
+        for recursive in [false, true] {
+            let payload = serde_json::from_value(json!({
+                "root_path": dir.path(), "recursive": recursive, "caller": "user"
+            }))?;
+            let (status, Json(body)) =
+                list_dir(State(state.clone()), HeaderMap::new(), Json(payload)).await;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            let items: Vec<DiskItemDto> = serde_json::from_value(body["items"].clone())?;
+            let mut paths: Vec<_> = items.iter().map(|item| item.path.as_str()).collect();
+            paths.sort();
+            let expected = if recursive {
+                vec!["documents", "documents/नाम.txt"]
+            } else {
+                vec!["documents"]
+            };
+            assert_eq!(paths, expected);
+        }
+        Ok(())
+    }
+}

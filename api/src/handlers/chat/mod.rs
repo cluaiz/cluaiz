@@ -1,13 +1,14 @@
 //! 💬 Chat Completions API Handler (`api/src/handlers/chat/mod.rs`)
 //! Full OpenAI-compatible chat controller with streaming, multi-turn agent tool execution, and thinking filters.
 
-pub mod types;
+pub mod agent_loop;
 pub mod control;
+pub mod non_streaming;
 pub mod preflight;
 pub mod tool_parser;
-pub mod agent_loop;
-pub mod non_streaming;
+pub mod types;
 
+use crate::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -16,15 +17,17 @@ use axum::{
 };
 use serde_json::{json, Value};
 use std::sync::Arc;
-use crate::AppState;
 
 pub use control::{cancel_chat_stream, skip_chat_reasoning};
 pub use tool_parser::{extract_tool_call, ExtractedToolCall};
-pub use types::{ExternalChatRequest, ExternalMessage, MessageContent, TemporaryChatMode, DEFAULT_MAX_TOKENS};
+pub use types::{
+    ExternalChatRequest, ExternalMessage, MessageContent, TemporaryChatMode, DEFAULT_MAX_TOKENS,
+};
 
 /// POST /v1/chat/completions (Full OpenAI-compatible endpoint)
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
     Json(request): Json<types::ExternalChatRequest>,
 ) -> Response {
     if request.messages.is_empty() {
@@ -36,22 +39,21 @@ pub async fn chat_completions(
                     "type": "invalid_request_error"
                 }
             })),
-        ).into_response();
+        )
+            .into_response();
     }
 
-    let req_id = format!("chatcmpl-{}", std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis());
+    let req_id = format!("chatcmpl-{}", uuid::Uuid::new_v4().simple());
 
-    let ctx = match preflight::PreparedChatContext::prepare(&state, &request, &req_id).await {
-        Ok(c) => c,
-        Err(early_response) => return early_response,
-    };
+    let ctx =
+        match preflight::PreparedChatContext::prepare(&state, &request, &req_id, &headers).await {
+            Ok(c) => c,
+            Err(early_response) => return early_response,
+        };
 
     // Model is loaded (or reused) inside preflight, before token budgets are computed
     let max_tokens = ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS);
-    let initial_dispatch = state.host.dispatch_stream(&ctx.json_prompt, max_tokens).await;
+    let initial_dispatch = ctx.dispatch(&state.host, None, max_tokens).await;
 
     if request.stream {
         agent_loop::execute_streaming_loop(state, request, ctx, initial_dispatch).await

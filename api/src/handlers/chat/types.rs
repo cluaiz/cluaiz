@@ -1,10 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::{
-    atomic::AtomicBool,
-    Arc, LazyLock, RwLock,
-};
+use std::sync::{atomic::AtomicBool, Arc, LazyLock, RwLock};
 
 /// Thread-safe multi-stream controller signals
 #[derive(Clone, Default)]
@@ -25,7 +22,6 @@ pub struct StreamControlRequest {
 
 /// Fallback maximum token generation limit when not explicitly specified
 pub const DEFAULT_MAX_TOKENS: usize = 2048;
-
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -65,7 +61,7 @@ pub struct ExternalChatRequest {
     pub presence_penalty: Option<f32>,
     pub stop: Option<Vec<String>>,
     pub seed: Option<i64>,
-    pub response_format: Option<serde_json::Value>, 
+    pub response_format: Option<serde_json::Value>,
     pub chat_template_kwargs: Option<serde_json::Value>,
     pub grammar: Option<String>,
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
@@ -91,52 +87,60 @@ impl Default for MessageContent {
 }
 
 impl MessageContent {
-    pub async fn flatten_to_string(&self) -> String {
+    /// Text used by skill matching/telemetry, with no media fetch or fake path tokens.
+    pub fn text_content(&self) -> String {
         match self {
             MessageContent::Text(text) => text.clone(),
             MessageContent::Array(parts) => {
                 let mut combined = String::new();
                 for part in parts {
-                    match part {
-                        ContentPart::Text { text } => {
-                            combined.push_str(text);
-                            combined.push('\n');
-                        }
-                        ContentPart::ImageUrl { image_url } => {
-                            let local_path = match crate::url_resolver::resolve_to_local_file(&image_url.url).await {
-                                Ok(p) => p,
-                                Err(e) => {
-                                    tracing::error!("Failed to resolve image URL: {}", e);
-                                    image_url.url.clone()
-                                }
-                            };
-                            combined.push_str(&format!("<media type=\"image\" url=\"{}\" />\n", local_path));
-                        }
-                        ContentPart::AudioUrl { audio_url } => {
-                            let local_path = match crate::url_resolver::resolve_to_local_file(&audio_url.url).await {
-                                Ok(p) => p,
-                                Err(e) => {
-                                    tracing::error!("Failed to resolve audio URL: {}", e);
-                                    audio_url.url.clone()
-                                }
-                            };
-                            combined.push_str(&format!("<media type=\"audio\" url=\"{}\" />\n", local_path));
-                        }
-                        ContentPart::InputAudio { input_audio } => {
-                            let data_uri = format!("data:audio/{};base64,{}", input_audio.format, input_audio.data);
-                            let local_path = match crate::url_resolver::resolve_to_local_file(&data_uri).await {
-                                Ok(p) => p,
-                                Err(e) => {
-                                    tracing::error!("Failed to resolve input_audio: {}", e);
-                                    data_uri
-                                }
-                            };
-                            combined.push_str(&format!("<media type=\"audio\" url=\"{}\" />\n", local_path));
-                        }
+                    if let ContentPart::Text { text } = part {
+                        combined.push_str(text);
+                        combined.push('\n');
                     }
                 }
                 combined.trim_end().to_string()
             }
+        }
+    }
+
+    pub fn has_media(&self) -> bool {
+        matches!(self, Self::Array(parts) if parts.iter().any(|part| !matches!(part, ContentPart::Text { .. })))
+    }
+
+    /// Preserve ordered transport parts; decoding belongs to cluaiz_media.
+    pub fn input_parts(&self) -> anyhow::Result<Vec<cluaiz_core::media::InputPart>> {
+        use cluaiz_core::media::InputPart;
+        match self {
+            Self::Text(text) => Ok(vec![InputPart::Text { text: text.clone() }]),
+            Self::Array(parts) => parts
+                .iter()
+                .map(|part| {
+                    Ok(match part {
+                        ContentPart::Text { text } => InputPart::Text { text: text.clone() },
+                        ContentPart::ImageUrl { image_url } => InputPart::Image {
+                            source: image_url.url.clone(),
+                        },
+                        ContentPart::AudioUrl { audio_url } => InputPart::Audio {
+                            source: audio_url.url.clone(),
+                        },
+                        ContentPart::InputAudio { input_audio } => InputPart::Audio {
+                            source: format!(
+                                "data:{};base64,{}",
+                                cluaiz_media::formats::audio_mime(&input_audio.format)?,
+                                input_audio.data
+                            ),
+                        },
+                        ContentPart::FileUrl { file_url } => InputPart::Document {
+                            source: file_url.url.clone(),
+                        },
+                        ContentPart::VideoUrl { video_url } => InputPart::Video {
+                            source: video_url.url.clone(),
+                            include_audio: video_url.include_audio,
+                        },
+                    })
+                })
+                .collect(),
         }
     }
 }
@@ -152,6 +156,18 @@ pub enum ContentPart {
     AudioUrl { audio_url: MediaUrlContent },
     #[serde(rename = "input_audio")]
     InputAudio { input_audio: InputAudioContent },
+    #[serde(rename = "file_url")]
+    FileUrl { file_url: MediaUrlContent },
+    #[serde(rename = "video_url")]
+    VideoUrl { video_url: VideoUrlContent },
+}
+
+#[derive(Deserialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct VideoUrlContent {
+    pub url: String,
+    #[serde(default)]
+    pub include_audio: bool,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -210,7 +226,8 @@ pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
     })
 }
 
-static CACHED_MODEL_HEADER_INFO: LazyLock<RwLock<Option<(std::time::Instant, Vec<Value>)>>> =
+type CachedModelHeader = Option<(std::time::Instant, Vec<Value>)>;
+static CACHED_MODEL_HEADER_INFO: LazyLock<RwLock<CachedModelHeader>> =
     LazyLock::new(|| RwLock::new(None));
 
 /// Helper to fetch real model header and hardware slot allocations (cached for fast response)
@@ -229,13 +246,21 @@ pub fn generate_model_header_info() -> Vec<Value> {
     for (model_id, entry) in installed.installed_models {
         let think_start = entry.metadata.think_start_tag.unwrap_or_default();
         let think_close = entry.metadata.think_end_tag.unwrap_or_default();
-        let context_window_total = cluaiz_models::StructuralDNA::parse_context_string(&entry.metadata.context_window);
+        let context_window_total =
+            cluaiz_models::StructuralDNA::parse_context_string(&entry.metadata.context_window);
 
         // Allocated = what llama.cpp created, only for the model that is loaded (0 otherwise)
         let is_loaded = cluaiz_core::active_model_path()
-            .map(|p| !entry.local_dir.is_empty() && std::path::Path::new(&p).starts_with(&entry.local_dir))
+            .map(|p| {
+                !entry.local_dir.is_empty()
+                    && std::path::Path::new(&p).starts_with(&entry.local_dir)
+            })
             .unwrap_or(false);
-        let allocated_ctx = if is_loaded { cluaiz_core::active_context_tokens().unwrap_or(0) } else { 0 };
+        let allocated_ctx = if is_loaded {
+            cluaiz_core::active_context_tokens().unwrap_or(0)
+        } else {
+            0
+        };
 
         loaded_models.push(json!({
             "model_id": model_id,

@@ -27,20 +27,24 @@ pub fn constant_time_compare(a: &str, b: &str) -> bool {
     diff == 0
 }
 
-/// Where the running server keeps its session token (~/.cluaiz/session.token); local clients such as the
-/// CLI read it to authenticate.
+/// Session token in the selected Cluaiz home; local clients use the same path.
+/// EnvironmentManager preserves the default ~/.cluaiz path and portable/home overrides.
 pub fn session_token_path() -> Option<std::path::PathBuf> {
-    dirs::home_dir().map(|home| home.join(".cluaiz").join("session.token"))
+    Some(
+        cluaiz_core::EnvironmentManager::current()
+            .global_dir
+            .join("session.token"),
+    )
 }
 
-/// Generates a session token on engine boot and writes it to ~/.cluaiz/session.token
+/// Generates a session token on engine boot and writes it into the selected home.
 pub fn initialize_session_token() -> String {
     let token = format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple());
     if let Some(token_file) = session_token_path() {
         if let Some(token_dir) = token_file.parent() {
             let _ = std::fs::create_dir_all(token_dir);
         }
-        if let Ok(_) = std::fs::write(&token_file, &token) {
+        if std::fs::write(&token_file, &token).is_ok() {
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -180,8 +184,25 @@ mod tests {
     }
 
     #[test]
-    fn test_session_token_length() {
+    #[ignore = "writes only in an explicitly supplied isolated CLUAIZ_HOME / CLUAIZ_MEDIA_TEST_HOME"]
+    fn test_session_token_persists_in_selected_environment() -> anyhow::Result<()> {
+        let home = std::path::PathBuf::from(std::env::var("CLUAIZ_MEDIA_TEST_HOME")?);
+        assert_eq!(std::env::var("CLUAIZ_HOME")?, home.to_string_lossy());
+        assert!(
+            home.is_absolute() && !home.exists(),
+            "Fresh isolated home required"
+        );
         let token = initialize_session_token();
         assert_eq!(token.len(), 64);
+        let path = session_token_path().expect("selected Cluaiz home");
+        assert_eq!(
+            path.parent(),
+            Some(cluaiz_core::EnvironmentManager::current().global_dir.as_path())
+        );
+        assert_eq!(
+            std::fs::read_to_string(path).expect("written session token"),
+            token
+        );
+        Ok(())
     }
 }
