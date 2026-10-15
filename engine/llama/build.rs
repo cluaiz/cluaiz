@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=build.rs");
 
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -15,7 +15,7 @@ fn main() {
     if local_cache_path.exists() {
         println!("cargo:warning=🔩 Found local cached llama.cpp at {:?}", local_cache_path);
         // Rebuild when the fork's sources change, not only when this script does
-        for dir in ["include", "src", "common", "ggml/include", "ggml/src", "CMakeLists.txt"] {
+        for dir in ["include", "src", "common", "ggml/include", "ggml/src", "tools/mtmd", "vendor", "CMakeLists.txt"] {
             println!("cargo:rerun-if-changed={}", local_cache_path.join(dir).display());
         }
         llama_path = local_cache_path;
@@ -27,6 +27,8 @@ fn main() {
             .expect("Failed to clone llama.cpp");
         if !status.success() { panic!("Clone failed"); }
     }
+
+    generate_mtmd_bindings(&llama_path, Path::new(&out_dir))?;
 
     // ═══════════════════════════════════════════════════════════════
     // PHASE 2: INDUSTRIAL CMAKE BUILD
@@ -64,6 +66,9 @@ fn main() {
         // On macOS x64, OpenSSL is not in the default linker path → LNK error.
         // We only need the static libraries (llama.a, ggml.a, etc.), not any binaries.
         .define("LLAMA_BUILD_TOOLS",    "OFF")
+        .define("LLAMA_BUILD_MTMD",     "ON")
+        // Shared media owns file decoding. Do not enable mtmd's FFmpeg subprocess path.
+        .define("MTMD_VIDEO",           "OFF")
         .define("LLAMA_BUILD_APP",      "OFF")
         .define("LLAMA_BUILD_COMMON",   "ON")
         .define("LLAMA_STATIC",         "ON")
@@ -162,6 +167,9 @@ fn main() {
     find_and_link_search_paths(&dst);
 
     // ── Core libs (always present) ────────────────────────────────────
+    println!("cargo:rustc-link-lib=static=mtmd");
+    // mtmd's helper object uses vendor hashing; Cargo does not inherit CMake target links.
+    println!("cargo:rustc-link-lib=static=vendor-hash");
     println!("cargo:rustc-link-lib=static=llama");
     println!("cargo:rustc-link-lib=static=llama-common");
     println!("cargo:rustc-link-lib=static=llama-common-base");
@@ -267,6 +275,32 @@ fn main() {
     }
 
     println!("cargo:warning=🧿 [Llama-Engine] Industrial CMake Build Complete.");
+    Ok(())
+}
+
+/// Generate only the pinned multimodal C API; opaque llama/ggml handles stay pointers.
+fn generate_mtmd_bindings(source: &Path, output: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let mtmd = source.join("tools/mtmd");
+    let bindings = bindgen::Builder::default()
+        .header(mtmd.join("mtmd-helper.h").to_string_lossy())
+        .clang_arg(format!("-I{}", source.join("include").display()))
+        .clang_arg(format!("-I{}", source.join("ggml/include").display()))
+        .allowlist_type("mtmd_context_params|mtmd_input_text|mtmd_input_part")
+        .allowlist_function(concat!(
+            "mtmd_(context_params_default|default_marker|init_from_file|free|",
+            "support_vision|support_audio|get_audio_sample_rate|get_marker|",
+            "bitmap_(init|init_from_audio|free|get_nx|get_ny|get_data|get_n_bytes|is_audio)|",
+            "input_chunks_(init|free|size|get)|input_chunk_(get_type|get_tokens_text)|",
+            "tokenize|tokenize_from_parts|",
+            "helper_(get_n_tokens|get_n_pos|eval_chunks))"
+        ))
+        .opaque_type("llama_model|llama_context|ggml_tensor|ggml_backend_device")
+        .generate_comments(false)
+        .derive_debug(false)
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .generate()?;
+    bindings.write_to_file(output.join("mtmd_bindings.rs"))?;
+    Ok(())
 }
 
 fn find_and_link_search_paths(dir: &Path) {
