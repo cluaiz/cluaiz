@@ -14,7 +14,9 @@ pub trait UnifiedBackend: Send + Sync {
 
     /// Generate an embedding vector from text
     fn embed(&mut self, _input: &str) -> Result<Vec<f32>> {
-        Err(anyhow::anyhow!("Embedding generation not supported by this backend."))
+        Err(anyhow::anyhow!(
+            "Embedding generation not supported by this backend."
+        ))
     }
 }
 
@@ -28,7 +30,8 @@ pub trait StreamingInference: UnifiedBackend {
     ) -> Result<()>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Modality {
     Text,
     Audio,
@@ -48,7 +51,7 @@ pub enum EngineError {
 pub trait EmbeddingDriver: Send + Sync {
     /// Generate a 1D vector embedding for text.
     fn gen_embedding(&self, text: &str) -> std::result::Result<Vec<f32>, EngineError>;
-    
+
     /// Generate a multimodal embedding (e.g. from Audio bytes or Image bytes)
     fn gen_multimodal_embedding(
         &self,
@@ -57,4 +60,3 @@ pub trait EmbeddingDriver: Send + Sync {
         instruction: Option<String>,
     ) -> std::result::Result<Vec<f32>, EngineError>;
 }
-
