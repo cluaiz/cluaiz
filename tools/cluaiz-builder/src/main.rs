@@ -1,7 +1,8 @@
 mod local_ci;
+mod media_assets;
 
-use std::process::Command;
 use std::env;
+use std::process::Command;
 
 fn print_help() {
     println!("🚀 cluaiz Modular Builder");
@@ -14,6 +15,7 @@ fn print_help() {
     println!("  onnx              Build the ONNX hardware driver in isolation");
     println!("  llama             Build the LLaMA hardware driver in isolation");
     println!("  driver <name>     Build a specific driver (e.g., 'llama' or 'onnx')");
+    println!("  media-assets      Stage a verified native package: --source <package> --output <new-directory>");
     println!("");
     println!("Options:");
     println!("  --profile <mode>  Build profile: 'debug' (default) or 'release'");
@@ -22,7 +24,14 @@ fn print_help() {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    
+    if args.get(1).is_some_and(|command| command == "media-assets") {
+        if let Err(error) = media_assets::run(&args[2..]) {
+            eprintln!("Native media packaging failed: {error:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     if args.len() < 2 {
         print_help();
         std::process::exit(1);
@@ -48,7 +57,9 @@ fn main() {
                     driver_name = args[i + 1].clone();
                     i += 1;
                 } else {
-                    eprintln!("❌ Error: 'driver' command requires a driver name (e.g., llama or onnx)");
+                    eprintln!(
+                        "❌ Error: 'driver' command requires a driver name (e.g., llama or onnx)"
+                    );
                     std::process::exit(1);
                 }
             }
@@ -76,11 +87,18 @@ fn main() {
     }
 
     if profile != "debug" && profile != "release" {
-        eprintln!("❌ Error: Invalid profile '{}'. Use 'debug' or 'release'.", profile);
+        eprintln!(
+            "❌ Error: Invalid profile '{}'. Use 'debug' or 'release'.",
+            profile
+        );
         std::process::exit(1);
     }
 
-    println!("📋 Target: [{}] | Profile: [{}]", command_type.to_uppercase(), profile.to_uppercase());
+    println!(
+        "📋 Target: [{}] | Profile: [{}]",
+        command_type.to_uppercase(),
+        profile.to_uppercase()
+    );
 
     let mut commands_to_run = Vec::new();
 
@@ -88,23 +106,31 @@ fn main() {
         "all" => {
             println!("⚙️  Building entire cluaiz workspace...");
             let mut ws_cmd = vec!["build", "--workspace"];
-            if profile == "release" { ws_cmd.push("--release"); }
+            if profile == "release" {
+                ws_cmd.push("--release");
+            }
             commands_to_run.push(("Workspace", ws_cmd));
         }
         "core" => {
             println!("⚙️  Building Core Unified Server & CLI Binary...");
             let mut cmd = vec!["build", "-p", "cmd"];
-            if profile == "release" { cmd.push("--release"); }
+            if profile == "release" {
+                cmd.push("--release");
+            }
             commands_to_run.push(("Core Binary (cmd)", cmd));
         }
         "drivers" => {
             println!("⚙️  Building Engine Crates...");
             let mut llama_cmd = vec!["build", "-p", "llama-engine"];
-            if profile == "release" { llama_cmd.push("--release"); }
+            if profile == "release" {
+                llama_cmd.push("--release");
+            }
             commands_to_run.push(("Engine: LLaMA", llama_cmd));
 
             let mut onnx_cmd = vec!["build", "-p", "cluaiz-onnx"];
-            if profile == "release" { onnx_cmd.push("--release"); }
+            if profile == "release" {
+                onnx_cmd.push("--release");
+            }
             commands_to_run.push(("Engine: ONNX", onnx_cmd));
         }
         "driver" => {
@@ -115,7 +141,9 @@ fn main() {
             };
             println!("⚙️  Building Specific Crate: {} ...", crate_name);
             let mut cmd = vec!["build", "-p", crate_name];
-            if profile == "release" { cmd.push("--release"); }
+            if profile == "release" {
+                cmd.push("--release");
+            }
             commands_to_run.push(("Engine Crate", cmd));
         }
         _ => unreachable!(),
@@ -152,5 +180,8 @@ fn main() {
         }
     }
 
-    println!("✅ Build Successful! Binary located at target/{}/cluaiz.exe", profile);
+    println!(
+        "✅ Build Successful! Binary located at target/{}/cluaiz.exe",
+        profile
+    );
 }

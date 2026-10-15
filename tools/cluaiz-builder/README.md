@@ -75,6 +75,14 @@ cargo run -p cluaiz-builder -- all --profile <debug|release>
 
 ## 🔄 Deployment & Synchronization (`dev-sync`)
 
+Native OCR/PDF package staging uses `media-assets`:
+
+```bash
+cargo run -p cluaiz-builder --release --bin cluaiz-builder -- media-assets --source <verified-native-package> --output <new-staging-directory>
+```
+
+Staging reuses the runtime manifest verifier, copies declared library/dependency/traineddata/license files, checks SHA-256 digests and refuses an existing output. It performs no model/provider download. The installer or embedded launcher must deploy the staged directory as `engine/media` inside its selected Cluaiz environment. Current physical native acceptance is Windows x86_64; other-platform packages and a clean-machine installer remain unverified. See the [shared native provider contract](../../engine/media/src/documents/README.md).
+
 Compilation places artifacts inside `target/<profile>/`. To deploy these updates into your active system directory (`~/.cluaiz`), execute the synchronization command via the unified CLI:
 
 ### 1. Synchronize Everything (`dev-sync all`)
