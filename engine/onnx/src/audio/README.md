@@ -1,9 +1,9 @@
 # Component: Cluaiz ONNX Audio & TTS Subsystem (`src/audio/`)
 
 ## Technical Specification
-- **Purpose:** Decoupled, zero-dependency Rust audio processing engine and multi-family ONNX Text-to-Speech (TTS) orchestrator. Handles input audio decoding (Whisper ASR pipeline) and 8 distinct TTS model family topologies.
+- **Purpose:** ONNX STT model preprocessing/graphs and multi-family TTS orchestration. Input source reading, codec decoding and PCM preparation are shared through cluaiz-media.
 - **Platform Support:** Linux x86_64, macOS ARM64, Windows x86_64, Android AArch64.
-- **Reusability Level:** Public Sovereign Subsystem Engine within `cluaiz_onnx`.
+- **Reusability Level:** Backend-owned model processing; common audio preparation is imported directly from cluaiz-media.
 
 ---
 
@@ -11,7 +11,15 @@
 
 ```mermaid
 graph TD
+    S["STT local file / inline audio"] --> R["cluaiz_media::source::read_local_or_inline"]
+    R --> P["cluaiz_media::audio::decode_audio"]
+    P --> Q["Explicit mono / peak / rate preparation"]
+    Q --> W["Whisper spectrogram and encoder / decoder graphs"]
     A["Text Prompt Input"] --> B["tts_router::route_tts_inference"]
+    U["Prepared PCM / typed text from API"] --> V["media::execute_prepared_audio"]
+    V --> X
+    V --> W["tts_router::route_tts_text"]
+    W --> C
     B --> C["family_adapter::FamilyAdapter::detect_family"]
     C --> D{"TtsFamily Variant"}
     
@@ -41,10 +49,11 @@ graph TD
 ## API Contract (Interface)
 
 - **Core Router Entry:** `tts_router::route_tts_inference(engine, session, prompt, tokenizer) -> Result<String>`
+- **Typed entries:** `route_tts_text(engine, session, text)` preserves text at the transport boundary; `OnnxEngine::execute_stt_prepared` accepts shared PCM without source fetching. Legacy tagged prompts adapt to these entries.
 - **Audio Sanitizer:** `tts_router::sanitize_audio_pcm(pcm: Vec<f32>) -> Result<Vec<f32>>`
 - **Family Inspector:** `family_adapter::FamilyAdapter::detect_family(model_dir, sessions) -> TtsFamily`
 - **Asset Gate:** `family_adapter::FamilyAdapter::validate_package_inventory(family, model_dir) -> Result<()>`
-- **Export Type:** Public Rust Crate Module / C-FFI Exported via `cluaiz_onnx`.
+- **Export Type:** Public Rust modules through `onnx_engine`; native inference is delegated to ONNX Runtime through `ort`.
 
 ---
 
@@ -54,14 +63,14 @@ graph TD
 - [`config.rs`](./config.rs):
   - **Logic:** Dynamic JSON config parser (`config.json`, `preprocessor_config.json`, `generation_config.json`).
   - **Why:** Resolves model parameters and special token IDs across Whisper and TTS pipelines.
-- [`loader.rs`](./loader.rs):
-  - **Logic:** Decodes audio bytes/streams via `symphonia` supporting URLs, local paths, and Base64 URIs into float32 PCM samples.
-- [`spectrogram.rs`](./spectrogram.rs):
-  - **Logic:** Computes bit-perfect PyTorch-aligned log-mel spectrograms for Whisper ASR.
-- [`mel_bank.rs`](./mel_bank.rs):
+- **Shared input preparation:** `cluaiz_media::source`, `cluaiz_media::audio`, `cluaiz_media::resample` own bounded local/data URI reads, codec decoding, channel conversion and rate conversion. `stt/loader.rs` and its re-exports are removed. Remote audio must first be resolved by the asynchronous shared source resolver; this synchronous legacy STT entry does not download URLs.
+- [`spectrogram.rs`](./stt/spectrogram.rs):
+  - **Logic:** Computes log-mel features using the validated processor configuration. Numerical parity with every upstream processor has not been measured.
+- [`mel_bank.rs`](./stt/mel_bank.rs):
   - **Logic:** Builds dynamic Slaney mel filterbank matrices (80 and 128 channels).
-- [`decoder.rs`](./decoder.rs):
+- [`decoder.rs`](./stt/decoder.rs):
   - **Logic:** Autoregressive ONNX inference loop executing encoder-decoder transformer layers.
+  - **Input policy:** Typed calls retain shared PCM and choose mono plus `LimitToUnit` peak policy before resampling at the processor rate. Legacy calls decode through shared utilities first. Oversized recording windows and native errors fail explicitly. Cached decoder topologies are rejected until their cache contract is implemented.
 
 ### B. Registered ONNX TTS Engine (`src/audio/tts/`)
 - [`tts_router.rs`](./tts/tts_router.rs):

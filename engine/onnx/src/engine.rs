@@ -6,6 +6,44 @@ use std::sync::{
 };
 use tokenizers::Tokenizer;
 
+/// Attempt Windows DirectML with its required session options. Other platforms
+/// skip this provider so the caller can continue to its existing CPU fallback.
+pub(crate) fn try_directml_session(
+    builder: &ort::session::builder::SessionBuilder,
+    path: &std::path::Path,
+    cpu: &ort::ep::ExecutionProviderDispatch,
+) -> Option<Session> {
+    #[cfg(windows)]
+    {
+        let attempt = (|| -> ort::Result<Session> {
+            builder
+                .clone()
+                .with_memory_pattern(false)?
+                .with_parallel_execution(false)?
+                .with_execution_providers([
+                    ort::ep::DirectML::default().build().error_on_failure(),
+                    cpu.clone(),
+                ])?
+                .commit_from_file(path)
+        })();
+        match attempt {
+            Ok(session) => {
+                tracing::info!("DirectML provider registered and session created");
+                Some(session)
+            }
+            Err(error) => {
+                tracing::warn!(%error, "DirectML session unavailable; trying CPU");
+                None
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (builder, path, cpu);
+        None
+    }
+}
+
 /// ONNX Multimodal Router (Core Engine)
 pub struct OnnxEngine {
     // 🏊 Session Pool: N concurrent sessions for parallel embedding requests
@@ -19,6 +57,7 @@ pub struct OnnxEngine {
     pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, std::sync::Arc<Vec<f32>>)>>,
     // 📂 Model Directory Path for loading dynamic configs
     pub(crate) model_dir: Option<std::path::PathBuf>,
+    pub(crate) settings: cluaiz_core::OnnxSettings,
     // 🗣️ Vocoder Session: Optional secondary ONNX session for TTS flow matching / neural vocoder
     pub(crate) vocoder_session: Option<Arc<std::sync::Mutex<Session>>>,
     // 🔠 Text Encoder Session: Optional secondary ONNX session for TTS diffusion text encoding
@@ -29,18 +68,26 @@ pub struct OnnxEngine {
 
 impl OnnxEngine {
     pub fn new() -> Result<Self> {
-        // Prepend drivers directory to PATH so ONNX Runtime loads CUDA/TensorRT DLLs
-        let drivers_dir = cluaiz_core::EnvironmentManager::current()
-            .engine_dir()
-            .join("drivers");
-        if drivers_dir.exists() {
-            let current_path = std::env::var_os("PATH").unwrap_or_default();
-            let mut new_path = drivers_dir.into_os_string();
-            if !current_path.is_empty() {
-                new_path.push(";");
-                new_path.push(current_path);
+        Self::with_settings(cluaiz_core::Settings::current().onnx)
+    }
+
+    /// Capture provider settings once for this session owner.
+    pub fn with_settings(settings: cluaiz_core::OnnxSettings) -> Result<Self> {
+        // Windows resolves CUDA/TensorRT DLLs through PATH. Unix loaders do not.
+        #[cfg(windows)]
+        {
+            let drivers_dir = cluaiz_core::EnvironmentManager::current()
+                .engine_dir()
+                .join("drivers");
+            if drivers_dir.exists() {
+                let current_path = std::env::var_os("PATH").unwrap_or_default();
+                let mut new_path = drivers_dir.into_os_string();
+                if !current_path.is_empty() {
+                    new_path.push(";");
+                    new_path.push(current_path);
+                }
+                std::env::set_var("PATH", new_path);
             }
-            std::env::set_var("PATH", new_path);
         }
 
         // Initialize ONNX Runtime environment implicitly.
@@ -53,6 +100,7 @@ impl OnnxEngine {
             active_inferences: Arc::new(AtomicUsize::new(0)),
             active_kv_cache: None,
             model_dir: None,
+            settings,
             vocoder_session: None,
             text_encoder_session: None,
             duration_predictor_session: None,
@@ -61,65 +109,14 @@ impl OnnxEngine {
 
     pub fn acquire_session(
         &self,
-    ) -> Result<Arc<std::sync::Mutex<Session>>, cluaiz_core::EngineError>
-    {
+    ) -> Result<Arc<std::sync::Mutex<Session>>, cluaiz_core::EngineError> {
         if self.session_pool.is_empty() {
-            return Err(
-                cluaiz_core::EngineError::Internal(
-                    "No ONNX sessions available in pool".to_string(),
-                ),
-            );
+            return Err(cluaiz_core::EngineError::Internal(
+                "No ONNX sessions available in pool".to_string(),
+            ));
         }
         let idx = self.active_inferences.load(Ordering::Relaxed) % self.session_pool.len();
         Ok(self.session_pool[idx].clone())
-    }
-
-    pub fn build_session(&self, path: &std::path::Path) -> Result<Session> {
-        let onnx_meta = cluaiz_core::Settings::current().onnx;
-        
-        let model_size_gb = std::fs::metadata(path)
-            .map(|m| (m.len() as f64) / (1024.0 * 1024.0 * 1024.0))
-            .unwrap_or(0.5);
-
-        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
-        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
-        let use_gpu = if onnx_meta.n_gpu_layers == 0 {
-            false
-        } else if onnx_meta.n_gpu_layers > 0 {
-            true
-        } else {
-            // Auto: use GPU if free VRAM exceeds model size with 20% margin
-            free_vram_gb > (model_size_gb * 1.2)
-        };
-
-        let mut builder = Session::builder()?;
-        let cpu_ep = ort::ep::CPU::default().with_arena_allocator(onnx_meta.enable_cpu_mem_arena).build();
-        if use_gpu {
-            let mut cuda_ep = ort::ep::CUDA::default();
-            let mem_limit = if onnx_meta.gpu_mem_limit_bytes > 0 {
-                onnx_meta.gpu_mem_limit_bytes
-            } else {
-                (vram_free as usize).saturating_sub(512 * 1024 * 1024)
-            };
-            if mem_limit > 0 {
-                cuda_ep = cuda_ep.with_memory_limit(mem_limit);
-            }
-            let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
-                "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
-                _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
-            };
-            cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
-
-            builder = builder
-                .with_execution_providers([cuda_ep.build(), cpu_ep])
-                .map_err(|e| anyhow::anyhow!("GPU EP error: {:?}", e))?;
-        } else {
-            builder = builder
-                .with_execution_providers([cpu_ep])
-                .map_err(|e| anyhow::anyhow!("CPU EP error: {:?}", e))?;
-        }
-        let session = builder.commit_from_file(path)?;
-        Ok(session)
     }
 
     pub(crate) fn scan_onnx_files_recursive(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
@@ -202,7 +199,7 @@ impl OnnxEngine {
             tracing::info!("📡 [Telemetry] Moderate VRAM pressure ({:.1}GB free, {:.1}GB req). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = cluaiz_core::Settings::current().onnx;
+        let onnx_meta = self.settings.clone();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user config.");
@@ -243,12 +240,14 @@ impl OnnxEngine {
 
                 if let Ok(mut cuda_builder) = builder
                     .clone()
-                    .with_execution_providers([cuda_ep.clone().build(), cpu_ep.clone()])
+                    .with_execution_providers([cuda_ep.build().error_on_failure(), cpu_ep.clone()])
                 {
                     match cuda_builder.commit_from_file(model_path) {
                         Ok(sess) => {
-                            eprintln!("🎙️ [ONNX Hardware Binding] Session committed ON NATIVE NVIDIA CUDA GPU!");
-                            tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed ON NATIVE NVIDIA CUDA GPU!", i);
+                            tracing::info!(
+                                session = i,
+                                "CUDA provider registered and session created"
+                            );
                             session_opt = Some(sess);
                         }
                         Err(e) => {
@@ -257,43 +256,10 @@ impl OnnxEngine {
                         }
                     }
                 }
-
-                // Tier 1B: Fallback to DirectML if native CUDA failed
-                if session_opt.is_none() {
-                    let dml_ep = ort::ep::DirectML::default().with_device_id(0).build();
-                    if let Ok(mut gpu_builder) = builder
-                        .clone()
-                        .with_execution_providers([dml_ep, cpu_ep.clone()])
-                    {
-                        match gpu_builder.commit_from_file(model_path) {
-                            Ok(sess) => {
-                                eprintln!("🎙️ [ONNX Hardware Binding] Session committed ON DIRECTX 12 DIRECTML GPU (Device 0)!");
-                                tracing::info!("🚀 [Sovereign-Cascade] ONNX Session [{}] committed on DirectML GPU.", i);
-                                session_opt = Some(sess);
-                            }
-                            Err(e) => {
-                                eprintln!("🎙️ [ONNX Hardware Binding] DirectML GPU Session commit failed: {:?}", e);
-                                tracing::warn!(
-                                    "⚠️ [Sovereign-Cascade] DirectML Session commit failed: {:?}",
-                                    e
-                                );
-                            }
-                        }
-                    }
-                }
             }
 
-            // Tier 2: DirectML fallback (if Tier 1 was fully skipped, i.e., CPU-only mode requested)
             if session_opt.is_none() && use_gpu {
-                if let Ok(mut npu_builder) = builder.clone().with_execution_providers([
-                    ort::ep::DirectML::default().build(),
-                    cpu_ep.clone(),
-                ]) {
-                    if let Ok(sess) = npu_builder.commit_from_file(model_path) {
-                        tracing::info!("📡 [Sovereign-Cascade] ONNX Session [{}] committed successfully on Tier 2 (DirectML).", i);
-                        session_opt = Some(sess);
-                    }
-                }
+                session_opt = try_directml_session(&builder, model_path.as_ref(), &cpu_ep);
             }
 
             // Tier 3: CPU Thread Pool Arena
@@ -395,11 +361,16 @@ impl OnnxEngine {
             tracing::info!("🔠 [ONNX Text Encoder] Found Text Encoder: {:?}", tp);
             match self.build_session(&tp) {
                 Ok(sess) => {
-                    tracing::info!("🚀 [ONNX Text Encoder] Committed successfully via build_session");
+                    tracing::info!(
+                        "🚀 [ONNX Text Encoder] Committed successfully via build_session"
+                    );
                     self.text_encoder_session = Some(Arc::new(std::sync::Mutex::new(sess)));
                 }
                 Err(e) => {
-                    tracing::warn!("⚠️ [ONNX Text Encoder] Failed to load text encoder: {:?}", e);
+                    tracing::warn!(
+                        "⚠️ [ONNX Text Encoder] Failed to load text encoder: {:?}",
+                        e
+                    );
                 }
             }
         }
@@ -424,11 +395,16 @@ impl OnnxEngine {
             );
             match self.build_session(&dp) {
                 Ok(sess) => {
-                    tracing::info!("🚀 [ONNX Duration Predictor] Committed successfully via build_session");
+                    tracing::info!(
+                        "🚀 [ONNX Duration Predictor] Committed successfully via build_session"
+                    );
                     self.duration_predictor_session = Some(Arc::new(std::sync::Mutex::new(sess)));
                 }
                 Err(e) => {
-                    tracing::warn!("⚠️ [ONNX Duration Predictor] Failed to load duration predictor: {:?}", e);
+                    tracing::warn!(
+                        "⚠️ [ONNX Duration Predictor] Failed to load duration predictor: {:?}",
+                        e
+                    );
                 }
             }
         }
@@ -466,7 +442,7 @@ impl OnnxEngine {
             tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
         }
 
-        let onnx_meta = cluaiz_core::Settings::current().onnx;
+        let onnx_meta = self.settings.clone();
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Encoder.");
@@ -499,14 +475,13 @@ impl OnnxEngine {
             };
             cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
 
-            if let Ok(mut gpu_builder) = encoder_builder.clone().with_execution_providers([
-                cuda_ep.clone().build(),
-                ort::ep::DirectML::default().build(),
-                cpu_ep.clone(),
-            ]) {
+            if let Ok(mut gpu_builder) = encoder_builder
+                .clone()
+                .with_execution_providers([cuda_ep.build().error_on_failure(), cpu_ep.clone()])
+            {
                 match gpu_builder.commit_from_file(encoder_path) {
                     Ok(sess) => {
-                        tracing::info!("🚀 [Sovereign-Cascade] ONNX Encoder loaded successfully on GPU (CUDA/DirectML).");
+                        tracing::info!("CUDA provider registered and encoder session created");
                         session_opt = Some(sess);
                     }
                     Err(e) => {
@@ -516,19 +491,8 @@ impl OnnxEngine {
             }
         }
 
-        // Tier 2: DirectML fallback
         if session_opt.is_none() && use_gpu {
-            if let Ok(mut npu_builder) = encoder_builder
-                .clone()
-                .with_execution_providers([ort::ep::DirectML::default().build(), cpu_ep.clone()])
-            {
-                if let Ok(sess) = npu_builder.commit_from_file(encoder_path) {
-                    tracing::info!(
-                        "📡 [Sovereign-Cascade] ONNX Encoder committed on Tier 2 (DirectML)."
-                    );
-                    session_opt = Some(sess);
-                }
-            }
+            session_opt = try_directml_session(&encoder_builder, encoder_path.as_ref(), &cpu_ep);
         }
 
         // Tier 3: CPU
@@ -578,137 +542,11 @@ impl OnnxEngine {
     }
 
     pub fn load_vision_model(&mut self, model_path: &str) -> Result<()> {
-        tracing::info!("📦 [ONNX Vision] Loading vision model from: {}", model_path);
-
-        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
-        let free_vram_gb = (vram_free as f64) / (1024.0 * 1024.0 * 1024.0);
-        let mut use_gpu = true;
-
-        let required_vram = if let Ok(meta) = std::fs::metadata(model_path) {
-            let file_size_gb = meta.len() as f64 / (1024.0 * 1024.0 * 1024.0);
-            file_size_gb * 1.5
-        } else {
-            0.5
-        };
-
-        if free_vram_gb > required_vram {
-            tracing::info!(
-                "📡 [Telemetry] Safe VRAM levels for Vision (Free: {:.1}GB, Req: {:.1}GB).",
-                free_vram_gb,
-                required_vram
-            );
-        } else {
-            tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Vision (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
-        }
-
-        let onnx_meta = cluaiz_core::Settings::current().onnx;
-        if onnx_meta.n_gpu_layers == 0 {
-            use_gpu = false;
-            tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Vision.");
-        } else if onnx_meta.n_gpu_layers == -1 {
-            use_gpu = true;
-            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active for Vision.");
-        }
-
-        let builder = Session::builder()
-            .map_err(|e| anyhow::anyhow!("Vision session builder error: {:?}", e))?
-            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
-            .map_err(|e| anyhow::anyhow!("Vision opt level error: {:?}", e))?
-            .with_intra_threads(4)
-            .map_err(|e| anyhow::anyhow!("Vision threads error: {:?}", e))?;
-
-        let cpu_ep = ort::ep::CPU::default()
-            .with_arena_allocator(onnx_meta.enable_cpu_mem_arena)
-            .build();
-        let mut session_opt: Option<Session> = None;
-
-        if use_gpu {
-            let mut cuda_ep = ort::ep::CUDA::default();
-            if onnx_meta.gpu_mem_limit_bytes > 0 {
-                cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
-            }
-
-            let arena_strat = match onnx_meta.arena_extend_strategy.as_str() {
-                "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
-                _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
-            };
-            cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
-
-            if let Ok(mut gpu_builder) = builder.clone().with_execution_providers([
-                cuda_ep.clone().build(),
-                ort::ep::DirectML::default().build(),
-                cpu_ep.clone(),
-            ]) {
-                match gpu_builder.commit_from_file(model_path) {
-                    Ok(sess) => {
-                        tracing::info!("🚀 [Sovereign-Cascade] Vision Session committed on GPU (CUDA/DirectML).");
-                        session_opt = Some(sess);
-                    }
-                    Err(e) => {
-                        tracing::error!("⚠️ [Sovereign-Cascade] GPU Vision commit failed (VRAM/CUDA error): {:?}", e);
-                    }
-                }
-            }
-        }
-
-        // Tier 2: DirectML fallback
-        if session_opt.is_none() && use_gpu {
-            if let Ok(mut npu_builder) = builder
-                .clone()
-                .with_execution_providers([ort::ep::DirectML::default().build(), cpu_ep.clone()])
-            {
-                if let Ok(sess) = npu_builder.commit_from_file(model_path) {
-                    tracing::info!(
-                        "📡 [Sovereign-Cascade] Vision Session committed on Tier 2 (DirectML)."
-                    );
-                    session_opt = Some(sess);
-                }
-            }
-        }
-
-        // Tier 3: CPU
-        if session_opt.is_none() {
-            if let Ok(mut cpu_builder) = builder.clone().with_execution_providers([cpu_ep.clone()])
-            {
-                if let Ok(sess) = cpu_builder.commit_from_file(model_path) {
-                    tracing::info!(
-                        "⚙️ [Sovereign-Cascade] Vision Session committed on Tier 3 (CPU)."
-                    );
-                    session_opt = Some(sess);
-                }
-            }
-        }
-
-        // Tier 4: SSD Fallback
-        if session_opt.is_none() {
-            tracing::warn!(
-                "⚠️ [Sovereign-Cascade] CPU RAM Pressure high for Vision. Tier 4 fallback."
-            );
-            let fallback_cpu_ep = ort::ep::CPU::default().with_arena_allocator(false).build();
-            let mut ssd_builder = Session::builder()
-                .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
-                .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level1)
-                .map_err(|e| anyhow::anyhow!("Opt error: {:?}", e))?
-                .with_intra_threads(2)
-                .map_err(|e| anyhow::anyhow!("Threads error: {:?}", e))?
-                .with_execution_providers([fallback_cpu_ep])
-                .map_err(|e| anyhow::anyhow!("Fallback CPU error: {:?}", e))?;
-
-            let sess = ssd_builder.commit_from_file(model_path).map_err(|e| {
-                anyhow::anyhow!(
-                    "Sovereign Cascade failed across all 4 tiers for vision: {}",
-                    e
-                )
-            })?;
-            session_opt = Some(sess);
-        }
-
-        if let Some(session) = session_opt {
-            self.session_pool
-                .push(Arc::new(std::sync::Mutex::new(session)));
-            tracing::info!("✅ [ONNX] Vision session loaded (pool size: 1).");
-        }
-        Ok(())
+        let primary = std::path::Path::new(model_path);
+        let dir = primary
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Vision model parent missing"))?;
+        self.load_embedding_package(dir, primary)
     }
 }
 
@@ -721,12 +559,73 @@ impl EmbeddingDriver for OnnxEngine {
 
     fn gen_multimodal_embedding(
         &self,
-        _bytes: &[u8],
-        _modality: Modality,
-        _instruction: Option<String>,
+        bytes: &[u8],
+        modality: Modality,
+        instruction: Option<String>,
     ) -> std::result::Result<Vec<f32>, EngineError> {
-        Err(EngineError::UnsupportedModality(
-            "Multimodal embedding not implemented for ONNX text engine".to_string(),
-        ))
+        match modality {
+            Modality::Image => self.execute_image_embedding(bytes, instruction),
+            _ => Err(EngineError::UnsupportedModality(
+                "ONNX multimodal embedding currently supports image input only".into(),
+            )),
+        }
+    }
+}
+
+#[cfg(test)]
+mod provider_tests {
+    use super::*;
+
+    // Real ONNX protobuf: IR 8, opset 13, Identity(x -> y), FLOAT[1].
+    // This graph executes in ONNX Runtime; it is not a fabricated engine answer.
+    const IDENTITY_GRAPH: &[u8] = &[
+        8, 8, 58, 55, 10, 16, 10, 1, b'x', 18, 1, b'y', 34, 8, b'I', b'd', b'e', b'n', b't', b'i',
+        b't', b'y', 18, 1, b'g', 90, 15, 10, 1, b'x', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 98,
+        15, 10, 1, b'y', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 66, 2, 16, 13,
+    ];
+
+    fn run_identity(mut session: Session) -> ort::Result<()> {
+        let input = ort::value::Tensor::from_array(([1usize], vec![3.25f32]))?;
+        let outputs = session.run(ort::inputs!["x" => input])?;
+        assert_eq!(outputs["y"].try_extract_tensor::<f32>()?.1, &[3.25]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_cpu_provider_executes_real_graph() -> ort::Result<()> {
+        let session = Session::builder()?
+            .with_execution_providers([ort::ep::CPU::default().build().error_on_failure()])?
+            .commit_from_memory(IDENTITY_GRAPH)?;
+        run_identity(session)
+    }
+
+    #[test]
+    fn test_failed_cuda_registration_preserves_cpu_retry_builder() -> ort::Result<()> {
+        let builder = Session::builder()?;
+        // Fault injection: an invalid device must fail whether CUDA is absent
+        // or installed. A strict failure must not turn into apparent GPU success.
+        let cuda_attempt = builder
+            .clone()
+            .with_execution_providers([ort::ep::CUDA::default()
+                .with_device_id(i32::MAX)
+                .build()
+                .error_on_failure()]);
+        assert!(cuda_attempt.is_err());
+        let session = builder
+            .with_execution_providers([ort::ep::CPU::default().build().error_on_failure()])?
+            .commit_from_memory(IDENTITY_GRAPH)?;
+        run_identity(session)
+    }
+
+    #[test]
+    fn test_failed_directml_attempt_preserves_cpu_retry_builder() -> ort::Result<()> {
+        let builder = Session::builder()?;
+        let cpu = ort::ep::CPU::default().build().error_on_failure();
+        // Empty path cannot be an ONNX file, regardless of provider availability.
+        assert!(try_directml_session(&builder, std::path::Path::new(""), &cpu).is_none());
+        let session = builder
+            .with_execution_providers([cpu])?
+            .commit_from_memory(IDENTITY_GRAPH)?;
+        run_identity(session)
     }
 }
