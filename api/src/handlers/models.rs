@@ -1,23 +1,23 @@
 //! 📦 Model Discovery, Hardware Status, Inspection & Ollama Compatibility Handlers (`api/src/handlers/models.rs`)
 
+use crate::AppState;
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
-use serde::Deserialize;
-use serde_json::{json, Value};
-use std::sync::Arc;
-use crate::AppState;
+use cluaiz_core::EnvironmentManager;
 use cluaiz_hw::HardwareProber;
 use cluaiz_models::registry::InstalledStateRegistry;
 use cluaiz_models::GgufProber;
-use cluaiz_core::EnvironmentManager;
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::sync::Arc;
 
 /// GET /models/available
 pub async fn list_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let hw = HardwareProber::current();
     let registry = InstalledStateRegistry::load();
-    
+
     Json(json!({
         "success": true,
         "hardware": hw,
@@ -48,12 +48,35 @@ pub async fn list_installed_models() -> Json<Value> {
 }
 
 /// GET /v1/models (OpenAI Standard Format)
-pub async fn v1_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
+pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
     let registry = InstalledStateRegistry::load();
     let now = chrono::Utc::now().timestamp();
     let mut data = Vec::new();
 
     for (id, entry) in registry.installed_models {
+        let task_support =
+            if entry.format_type == "onnx" {
+                if let Some(package) = entry.metadata.capabilities.as_ref() {
+                    let loaded = state.host.onnx.readiness(&entry).await.ok().flatten();
+                    let formats = cluaiz_media::formats::attachment_formats();
+                    let routes: Vec<_> =
+                        formats
+                            .iter()
+                            .map(|&(input, format)| {
+                                cluaiz_runtime::media_support::AttachmentRoute { format, input }
+                            })
+                            .collect();
+                    Some(cluaiz_runtime::media_support::resolve_onnx_support(
+                        package,
+                        loaded.as_ref(),
+                        &routes,
+                    ))
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
         data.push(json!({
             "id": id,
             "object": "model",
@@ -63,7 +86,9 @@ pub async fn v1_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
             "root": id,
             "parent": null,
             "category": entry.category,
-            "context_window": entry.metadata.context_window
+            "context_window": entry.metadata.context_window,
+            "package_capabilities": entry.metadata.capabilities,
+            "task_support": task_support
         }));
     }
 
@@ -137,16 +162,28 @@ pub async fn load_model(
         .or_else(|| {
             let env = EnvironmentManager::current();
             let p = env.models_dir().join(format!("{}.gguf", payload.model_id));
-            if p.exists() { Some(p) } else { None }
+            if p.exists() {
+                Some(p)
+            } else {
+                None
+            }
         })
         .or_else(|| {
             let env = EnvironmentManager::current();
             let p = env.models_dir().join(&payload.model_id);
-            if p.exists() { Some(p) } else { None }
+            if p.exists() {
+                Some(p)
+            } else {
+                None
+            }
         });
 
     if let Some(path) = model_path {
-        match state.host.ensure_loaded(&payload.model_id, &path, &cluaiz_core::Settings::current()).await {
+        match state
+            .host
+            .ensure_loaded(&payload.model_id, &path, &cluaiz_core::Settings::current())
+            .await
+        {
             Ok(_) => Json(json!({
                 "status": "success",
                 "message": format!("Model '{}' loaded successfully from '{:?}'.", payload.model_id, path)
@@ -203,7 +240,10 @@ pub async fn rm_model(
     Path(model_id): Path<String>,
 ) -> Json<Value> {
     // A loaded model keeps its file open (Windows cannot delete it): unload it first
-    let model_dir = InstalledStateRegistry::load().installed_models.get(&model_id).map(|e| std::path::PathBuf::from(&e.local_dir));
+    let model_dir = InstalledStateRegistry::load()
+        .installed_models
+        .get(&model_id)
+        .map(|e| std::path::PathBuf::from(&e.local_dir));
     let loaded = state.host.active_model_path.lock().await.clone();
     if let (Some(dir), Some(loaded)) = (model_dir, loaded) {
         if std::path::Path::new(&loaded).starts_with(&dir) {

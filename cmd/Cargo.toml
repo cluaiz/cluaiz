@@ -16,6 +16,7 @@ cluaiz_api = { package = "cluaiz-api", path = "../api" }
 cluaiz-core = { path = "../engine/core" }
 cluaiz-hw = { path = "../engine/hardware" }
 cluaiz-models = { path = "../engine/models" }
+cluaiz-media = { path = "../engine/media" }
 cluaiz-plan = { path = "../engine/plan" }
 cluaiz-runtime = { path = "../engine/runtime" }
 cluaiz-agents = { path = "../agents" }

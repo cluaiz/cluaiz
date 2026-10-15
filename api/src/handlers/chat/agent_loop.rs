@@ -32,7 +32,7 @@ pub async fn execute_streaming_loop(
         HostResponse::Error(err) => {
             let err_chunk = json!({
                 "id": ctx.request_id.clone(),
-                "choices": [{"delta": {"content": format!("Error: {}", err)}}]
+                "error": {"message": err, "type": "engine_error"}
             });
             let stream = async_stream::stream! {
                 yield Ok::<_, Infallible>(Event::default().data(err_chunk.to_string()));
@@ -53,7 +53,7 @@ pub async fn execute_streaming_loop(
         lock.insert(
             req_id_stream.clone(),
             StreamSignals {
-                cancel: Arc::new(AtomicBool::new(false)),
+                cancel: Arc::clone(&ctx.cancel_signal),
                 skip_reasoning: Arc::new(AtomicBool::new(initial_skip_reasoning)),
             },
         );
@@ -162,6 +162,17 @@ pub async fn execute_streaming_loop(
 
                 if token.trim() == "[DONE]" {
                     break;
+                }
+
+                if let Some(error) = cluaiz_runtime::stream_error(&token) {
+                    yield Ok::<_, Infallible>(Event::default().data(json!({
+                        "id": req_id_stream.clone(),
+                        "error": {"message": error, "type": "engine_error"}
+                    }).to_string()));
+                    if let Ok(mut lock) = ACTIVE_STREAMS.write() { lock.remove(&req_id_stream); }
+                    if keep_alive_val == Some(0) { state_clone.host.unload_model().await; }
+                    yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
+                    return;
                 }
 
                 // 🧩 Token Accumulation & Robust Fragment Parsing for Tool Calls
@@ -539,8 +550,8 @@ pub async fn execute_streaming_loop(
                 tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
                 // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
                 think_filter.reset_turn(false);
-                let new_dispatch = state_clone.host.dispatch_stream(
-                    &current_prompt,
+                let new_dispatch = ctx.dispatch(
+                    &state_clone.host, Some(&current_prompt),
                     ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
                 ).await;
                 if let HostResponse::TokenStream(new_rx) = new_dispatch {

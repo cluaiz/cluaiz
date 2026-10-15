@@ -1,16 +1,16 @@
 //! 💻 System, Telemetry & Hardware Info Handlers (`api/src/handlers/system.rs`)
 //! Modular implementation using cluaiz-hw HardwareProber, cluaiz-plan Planner, and cluaiz-core Settings.
 
+use crate::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
-    response::Json,
+    response::{IntoResponse, Json, Response},
 };
+use cluaiz_core::{ActiveUserSettings, LlamaLoadParams, Settings};
+use cluaiz_hw::HardwareProber;
 use serde_json::{json, Value};
 use std::sync::Arc;
-use crate::AppState;
-use cluaiz_core::Settings;
-use cluaiz_hw::HardwareProber;
 
 // ─── Health Check ────────────────────────────────────────────────────
 pub async fn health_check() -> Json<Value> {
@@ -75,29 +75,70 @@ pub async fn get_system_live() -> Json<Value> {
 
 // ─── POST /v1/system/plan (Autonomous Model Execution Planning) ──────
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-pub struct LatencyComparePayload {
-    pub model: Option<String>,
-    pub weights_gb: Option<f64>,
+#[serde(deny_unknown_fields)]
+pub struct PlanRequest {
+    pub model: String,
     pub model_path: Option<String>,
-    pub batch_tokens: Option<usize>,
-    pub total_layers: Option<usize>,
-    pub n_ctx: Option<usize>,
+    pub batch_tokens: Option<u32>,
+    pub n_ctx: Option<i64>,
     pub vram_buffer_gb: Option<f64>,
     pub ram_buffer_gb: Option<f64>,
 }
 
-pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<Value> {
-    let model_id = payload.model.unwrap_or_else(|| "default-model".to_string());
+impl PlanRequest {
+    fn apply(&self, saved: &ActiveUserSettings) -> Result<ActiveUserSettings, String> {
+        if self.model.trim().is_empty() {
+            return Err("model must name an installed model".into());
+        }
+        if self.n_ctx.is_some_and(|n| n < -1 || n > u32::MAX as i64) {
+            return Err("n_ctx must be -1 (Max), 0 (Auto), or a positive u32 token count".into());
+        }
+        if self.batch_tokens == Some(0) {
+            return Err("batch_tokens must be positive".into());
+        }
+        for (field, value) in [
+            ("ram_buffer_gb", self.ram_buffer_gb),
+            ("vram_buffer_gb", self.vram_buffer_gb),
+        ] {
+            if value.is_some_and(|value| !value.is_finite() || value < 0.0) {
+                return Err(format!("{field} must be a finite nonnegative number"));
+            }
+        }
+        let mut settings = saved.clone();
+        LlamaLoadParams {
+            n_ctx: self.n_ctx,
+            n_batch: self.batch_tokens,
+            vram_buffer_gb: self.vram_buffer_gb,
+            ..Default::default()
+        }
+        .apply_to(&mut settings.optimization)?;
+        if let Some(buffer) = self.ram_buffer_gb {
+            settings.optimization.custom_ram_buffer_gb = Some(buffer);
+        }
+        Ok(settings)
+    }
+}
+
+pub async fn plan_execution(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<PlanRequest>,
+) -> Response {
+    let saved = Settings::current();
+    let settings = match payload.apply(&saved) {
+        Ok(settings) => settings,
+        Err(message) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"status":"error","code":"invalid_plan_input","message":message})),
+            )
+                .into_response()
+        }
+    };
+    let model_id = &payload.model;
     let hw = HardwareProber::with_live_memory();
-    let mut settings = Settings::current();
-    if let Some(vb) = payload.vram_buffer_gb {
-        settings.optimization.custom_vram_buffer_gb = Some(vb);
-    }
-    if let Some(rb) = payload.ram_buffer_gb {
-        settings.optimization.custom_ram_buffer_gb = Some(rb);
-    }
 
     // Resolve real model geometry from provided path or InstalledStateRegistry
+    let entry = cluaiz_models::registry::InstalledStateRegistry::find(model_id);
     let model_file_path = if let Some(ref path) = payload.model_path {
         let p = std::path::PathBuf::from(path);
         if p.exists() {
@@ -106,48 +147,114 @@ pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<
             None
         }
     } else {
-        let reg = cluaiz_models::registry::InstalledStateRegistry::load();
-        reg.installed_models.get(&model_id)
-            .or_else(|| {
-                let clean = model_id.trim_end_matches(".gguf");
-                reg.installed_models.get(clean)
-            })
-            .and_then(|entry| {
-                let dir = std::path::Path::new(&entry.local_dir);
-                entry.files.iter()
-                    .find(|f| f.is_primary && f.name.ends_with(".gguf"))
-                    .map(|f| dir.join(&f.name))
-                    .or_else(|| {
-                        std::fs::read_dir(dir).ok()?.filter_map(|e| e.ok()).map(|e| e.path())
-                            .find(|p| p.extension().and_then(|ext| ext.to_str()) == Some("gguf"))
-                    })
-            })
+        entry.as_ref().and_then(|entry| entry.primary_path())
     };
-
-    let geometry = match model_file_path {
-        Some(ref p) => match cluaiz_models::GgufProber::probe_geometry(p) {
-            Ok(geom) => geom,
-            Err(e) => {
-                return Json(json!({
-                    "status": "error",
-                    "code": "gguf_probe_failed",
-                    "message": format!("Failed to probe GGUF geometry at '{}': {}", p.display(), e)
-                }));
-            }
+    let model_file_path = match model_file_path {
+        Some(path) => match path.canonicalize() {
+            Ok(path) => path,
+            Err(error) => return Json(json!({"status":"error","code":"model_not_found","message":error.to_string()})).into_response(),
         },
         None => {
-            return Json(json!({
-                "status": "error",
-                "code": "model_not_found",
-                "message": format!("Model '{}' not found in registry and no valid model_path was provided. Zero dummy estimates permitted.", model_id)
-            }));
+            return Json(json!({"status":"error","code":"model_not_found",
+            "message":format!("Model '{model_id}' is not installed and no valid model_path was provided")})).into_response()
         }
     };
+    if model_file_path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("onnx"))
+    {
+        // Keep the existing ONNX planning contract and full registry refresh for that branch.
+        let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+        let entry = entry
+            .as_ref()
+            .and_then(|entry| registry.installed_models.get(&entry.id));
+        let canonical = model_file_path.canonicalize().ok();
+        let cached = entry
+            .and_then(|entry| entry.metadata.capabilities.as_ref())
+            .filter(|package| canonical.as_ref() == Some(&package.primary_file))
+            .cloned();
+        // Registry refresh already checked the primary and complete asset snapshot.
+        let package = match cached.map(Ok).unwrap_or_else(|| {
+            cluaiz_models::capabilities::PackageCapabilities::inspect(&model_file_path)
+        }) {
+            Ok(package) => package,
+            Err(error) => return Json(
+                json!({"status":"error","code":"onnx_probe_failed","message":error.to_string()}),
+            )
+            .into_response(),
+        };
+        let loaded = match entry.filter(|e| {
+            e.primary_path()
+                .and_then(|p| p.canonicalize().ok())
+                .as_ref()
+                == Some(&package.primary_file)
+        }) {
+            Some(entry) => state.host.onnx.readiness(entry).await.ok().flatten(),
+            None => None,
+        };
+        let formats = cluaiz_media::formats::attachment_formats();
+        let routes: Vec<_> = formats
+            .iter()
+            .map(
+                |&(input, format)| cluaiz_runtime::media_support::AttachmentRoute { format, input },
+            )
+            .collect();
+        let support =
+            cluaiz_runtime::media_support::resolve_onnx_support(&package, loaded.as_ref(), &routes);
+        let outputs: std::collections::BTreeSet<_> = support
+            .task_routes
+            .iter()
+            .flat_map(|route| &route.outputs)
+            .collect();
+        let Some(bytes) = package
+            .asset_snapshot
+            .iter()
+            .try_fold(0u64, |total, asset| total.checked_add(asset.bytes))
+        else {
+            return Json(json!({"status":"error","code":"package_size_overflow"})).into_response();
+        };
+        return Json(json!({"status":"success",
+            "model_info":{"model_id":model_id,"backend":"onnx","architecture":entry.map(|e| &e.metadata.architecture),
+                "inputs":support.inputs,"available_inputs":support.available_inputs,"input_availability":support.input_availability,
+                "outputs":outputs,"supported_attachments":support.supported_attachments,
+                "task_routes":support.task_routes,"missing_assets":support.missing_assets,"package_capabilities":package,
+                "model_size_gb":cluaiz_core::bytes_to_gib(bytes),"active_working_context":null,"max_input_context":null,"max_output_context":null},
+            "execution_plan":{"backend":"onnx","placement_mode":"runtime_provider_selection",
+                "provider_policy":if settings.onnx.n_gpu_layers == 0 { "cpu" } else { "cuda_then_windows_directml_then_cpu" },
+                "selected_provider":null,"peak_memory_gb":null,"speed":null,
+                "decision_reason":"Graph/helper metadata is inspected without loading weights. Native task readiness requires a successful retained request."},
+            "active_user_settings":{"onnx":settings.onnx},"hardware_info":hw})).into_response();
+    }
 
-    let plan = cluaiz_plan::Planner::create_plan(&model_id, &geometry, &hw, &settings);
+    let header = match cluaiz_models::GgufProber::read_header(&model_file_path) {
+        Ok(header) => header,
+        Err(error) => {
+            return Json(json!({"status": "error", "code": "gguf_probe_failed",
+            "message": format!("Failed to probe GGUF geometry: {error}")}))
+            .into_response()
+        }
+    };
+    let geometry =
+        match cluaiz_models::GgufProber::geometry_from_header(&model_file_path, &header) {
+            Ok(geometry) => geometry,
+            Err(error) => return Json(
+                json!({"status":"error","code":"gguf_probe_failed","message":error.to_string()}),
+            )
+            .into_response(),
+        };
+
+    let plan = cluaiz_plan::Planner::create_plan(model_id, &geometry, &hw, &settings);
 
     let model_size_gb = cluaiz_core::bytes_to_gib(geometry.file_size_bytes);
-    let is_vision = geometry.architecture.contains("vl") || geometry.architecture.contains("vision");
+    let Some(model_dir) = model_file_path.parent() else {
+        return Json(json!({"status":"error","code":"model_not_found"})).into_response();
+    };
+    let package = cluaiz_models::capabilities::PackageCapabilities::from_header(
+        &model_file_path,
+        model_dir,
+        &header,
+    );
+    let support = state.host.input_support(&package);
     let vram_free_gb = hw.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
     let vram_total_gb = hw.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
     let vram_buffer_gb = plan.vram_buffer_gb;
@@ -166,30 +273,63 @@ pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<
     let remaining_ram = (usable_ram_gb - plan.ram_budget_gb).max(0.0);
     let round2 = |v: f64| (v * 100.0).round() / 100.0;
 
-    let gpu = hw.gpus.first();
-    let pcie_bus = gpu.and_then(|g| match (g.pcie_gen, g.pcie_width) {
-        (Some(gen), Some(width)) => Some(format!("PCIe Gen {}.0 x{}", gen, width)),
-        _ => None,
-    });
-    let pcie_bw = gpu.map(|g| g.pcie_bandwidth_gbps).filter(|b| *b > 0.0);
-    let ssd_speed = hw.storage.first().map(|s| s.read_speed_mbps).filter(|v| *v > 0.0);
+    let formats = cluaiz_media::formats::attachment_formats();
+    let mut inputs: Vec<_> = support.input_availability.iter().map(|input| {
+        let mut value = json!({"type":input.input,"support":input.model_support,"available":input.available});
+        if let Some(reason) = input.reason { value["reason"] = json!(reason); }
+        if input.model_support == cluaiz_models::capabilities::CapabilityState::Supported
+            && input.input != cluaiz_core::Modality::Text {
+            value["formats"] = json!(cluaiz_media::formats::canonical_extensions(
+                formats.iter().filter(|(modality, _)| *modality == input.input).map(|(_, format)| *format)
+            ));
+        }
+        value
+    }).collect();
+    if package
+        .supported_inputs()
+        .contains(&cluaiz_core::Modality::Image)
+    {
+        let video_formats = tokio::task::spawn_blocking(cluaiz_media::video::attachment_formats)
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .unwrap_or_default();
+        let mut video = json!({"type":"video","support":"supported","processing":"sampled_frames",
+            "available":support.available_inputs.contains(&cluaiz_core::Modality::Image) && !video_formats.is_empty()});
+        if video_formats.is_empty() {
+            video["reason"] = json!("video_decoder_unavailable");
+        } else {
+            video["formats"] = json!(cluaiz_media::formats::canonical_extensions(
+                video_formats.iter().map(String::as_str)
+            ));
+            if !support
+                .available_inputs
+                .contains(&cluaiz_core::Modality::Image)
+            {
+                video["reason"] = json!("image_input_not_ready");
+            }
+        }
+        inputs.push(video);
+    }
+    let opt = &saved.optimization;
 
-    Json(json!({
+    let mut response = json!({
         "status": "success",
         "active_user_settings": {
-            "batch_size": settings.optimization.resolved_batch_size(),
-            "ubatch_size": settings.optimization.resolved_ubatch_size(),
-            "flash_attention": format!("{:?}", settings.optimization.flash_attention),
-            "kv_cache_quantization": format!("{:?}", settings.optimization.kv_cache_quantization),
-            "kv_cache_type_used": format!("{:?}", plan.kv_cache_type),
-            "n_ctx": plan.context_window,
-            "n_gpu_layers": plan.n_gpu_layers,
-            "ram_buffer_gb": ram_buffer_gb,
-            "vram_buffer_gb": vram_buffer_gb,
-            "target_slot": "chat_slot"
+            "batch_size": opt.batch_size, "ubatch_size": opt.ubatch_size,
+            "flash_attention": opt.flash_attention, "kv_cache_quantization": opt.kv_cache_quantization,
+            "custom_context_window": opt.custom_context_window, "n_gpu_layers": opt.n_gpu_layers,
+            "custom_ram_buffer_gb": opt.custom_ram_buffer_gb, "custom_vram_buffer_gb": opt.custom_vram_buffer_gb,
+            "n_cpu_moe": opt.n_cpu_moe, "offload_kqv": opt.offload_kqv, "op_offload": opt.op_offload,
+            "use_mmap": opt.use_mmap, "n_threads": opt.n_threads, "n_threads_batch": opt.n_threads_batch
         },
         "execution_plan": {
             "placement_mode": placement_mode,
+            "context_window": plan.context_window,
+            "batch_size": settings.optimization.resolved_batch_size(),
+            "ubatch_size": settings.optimization.resolved_ubatch_size(),
+            "kv_cache_type": plan.kv_cache_type,
+            "use_mmap": plan.use_mmap(&settings),
             "n_gpu_layers": plan.n_gpu_layers,
             "n_cpu_moe": plan.n_cpu_moe,
             "offload_kqv": plan.kv_offload,
@@ -207,72 +347,54 @@ pub async fn plan_execution(Json(payload): Json<LatencyComparePayload>) -> Json<
                 "remaining_free_ram_gb": round2(remaining_ram)
             },
             "context_reason": plan.context_reason,
-            "decision_reason": plan.explanation,
-            // Speed is not measured yet (rule STEP 4): no made-up timings
-            "speed": serde_json::Value::Null
+            "decision_reason": plan.explanation
         },
         "hardware_info": {
             "cpu": {
                 "model": hw.cpu.brand,
                 "cores": hw.cpu.physical_cores,
-                "threads": hw.cpu.logical_threads,
-                "clock_ghz": (hw.cpu.frequency_mhz as f64 / 1000.0 * 100.0).round() / 100.0,
-                "peak_gflops": (hw.cpu.gflops_fp32 * 10.0).round() / 10.0,
-                "current_load_pct": serde_json::Value::Null
+                "threads": hw.cpu.logical_threads
             },
             "gpu": {
                 "model": hw.gpus.first().map(|g| g.name.clone()).unwrap_or_else(|| "None".to_string()),
                 "total_vram_gb": (vram_total_gb * 100.0).round() / 100.0,
                 "free_vram_gb": (vram_free_gb * 100.0).round() / 100.0,
                 "usable_vram_gb": (usable_vram_gb * 100.0).round() / 100.0,
-                "safety_buffer_gb": vram_buffer_gb,
-                "vram_speed_gbps": serde_json::Value::Null,
-                "compute_capability": gpu.and_then(|g| g.compute_capability.clone())
-            },
-            "gpu_pcie_bus": {
-                "bus_type": pcie_bus,
-                "transfer_speed_gbps": pcie_bw,
-                "bus_latency_us": serde_json::Value::Null,
-                "description": "High-speed connection highway between System RAM and GPU VRAM"
+                "safety_buffer_gb": vram_buffer_gb
             },
             "ram": {
                 "total_ram_gb": (hw.memory.total_gb * 100.0).round() / 100.0,
                 "free_ram_gb": (hw.memory.available_gb * 100.0).round() / 100.0,
                 "usable_ram_gb": (usable_ram_gb * 100.0).round() / 100.0,
-                "safety_buffer_gb": ram_buffer_gb,
-                "read_speed_gbps": (hw.memory.bandwidth_gbps * 10.0).round() / 10.0,
-                "access_latency_ns": (hw.memory.memory_latency_ns * 10.0).round() / 10.0
-            },
-            "storage_ssd": {
-                "drive_type": hw.storage.first().map(|s| s.drive_type.clone()),
-                "speed_mbps": ssd_speed
-            },
-            "workspace_buffer": {
-                "logits_buffer_gb": round2(cluaiz_core::bytes_to_gib(geometry.logits_buffer_bytes(settings.optimization.resolved_ubatch_size()))),
-                "purpose": "llama.cpp logits part of the compute buffer (vocab x ubatch x f32)"
+                "safety_buffer_gb": ram_buffer_gb
             }
         },
         "model_info": {
             "model_id": model_id,
             "architecture": geometry.architecture,
             "total_layers": geometry.block_count,
-            "active_working_context": plan.context_window,
-            "max_input_context": geometry.context_length,
-            "max_output_context": plan.context_window,
+            "context_window": geometry.context_length,
             "model_size_gb": (model_size_gb * 100.0).round() / 100.0,
-            "attention_heads": geometry.head_count,
-            "kv_heads": geometry.head_count_kv,
-            "head_dim": geometry.head_dim(),
-            "inputs": if is_vision { vec!["text", "image"] } else { vec!["text"] },
-            "outputs": vec!["text"],
-            "supported_attachments": if is_vision {
-                vec!["image", "pdf", "video", "txt"]
-            } else {
-                vec!["pdf", "txt", "code", "markdown", "csv", "json"]
-            }
+            "inputs": inputs,
+            "outputs": vec!["text"]
         },
         "candidates": plan.candidates
-    }))
+    });
+    let mut overrides = serde_json::Map::new();
+    for (key, value) in [
+        ("n_ctx", json!(payload.n_ctx)),
+        ("batch_tokens", json!(payload.batch_tokens)),
+        ("vram_buffer_gb", json!(payload.vram_buffer_gb)),
+        ("ram_buffer_gb", json!(payload.ram_buffer_gb)),
+    ] {
+        if !value.is_null() {
+            overrides.insert(key.to_owned(), value);
+        }
+    }
+    if !overrides.is_empty() {
+        response["request_overrides"] = Value::Object(overrides);
+    }
+    Json(response).into_response()
 }
 
 /// GGUF settings page payload. Every field maps to a real engine setting in settings.json;
@@ -372,11 +494,19 @@ pub async fn update_gguf_config(Json(payload): Json<Value>) -> (StatusCode, Json
         if let Some(think_mode) = parsed.user_moved_flags.and_then(|f| f.think_mode) {
             current.optimization.think_mode = think_mode;
         }
-        Ok(Settings::update(current)?)
-    }).await {
+        Settings::update(current)
+    })
+    .await
+    {
         Ok(Ok(())) => (StatusCode::OK, Json(json!({ "status": "success" }))),
-        Ok(Err(e)) => (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({ "status": "error", "message": e.to_string() }))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "status": "error", "message": format!("Blocking task failed: {}", e) }))),
+        Ok(Err(e)) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(json!({ "status": "error", "message": e.to_string() })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "status": "error", "message": format!("Blocking task failed: {}", e) })),
+        ),
     }
 }
 
@@ -391,12 +521,20 @@ pub async fn update_onnx_config(Json(patch): Json<Value>) -> (StatusCode, Json<V
     current.onnx = match current.onnx.merged_with(&patch) {
         Ok(onnx) => onnx,
         Err(e) => {
-            return (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({ "status": "error", "message": format!("Invalid ONNX setting: {}", e) })));
+            return (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(
+                    json!({ "status": "error", "message": format!("Invalid ONNX setting: {}", e) }),
+                ),
+            );
         }
     };
     match Settings::update(current) {
         Ok(_) => (StatusCode::OK, Json(json!({ "status": "success" }))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "status": "error", "message": e.to_string() }))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "status": "error", "message": e.to_string() })),
+        ),
     }
 }
 
@@ -406,15 +544,15 @@ pub struct CmdPayload {
     pub command: String,
 }
 
-pub async fn execute_cmd(
-    Json(payload): Json<CmdPayload>,
-) -> Json<Value> {
+pub async fn execute_cmd(Json(payload): Json<CmdPayload>) -> Json<Value> {
     let cmd_trimmed = payload.command.trim();
     if cmd_trimmed.is_empty() {
         return Json(json!({ "status": "error", "output": "Command payload cannot be empty." }));
     }
     if cmd_trimmed.len() > 8192 {
-        return Json(json!({ "status": "error", "output": "Command payload exceeds maximum permitted length of 8192 characters." }));
+        return Json(
+            json!({ "status": "error", "output": "Command payload exceeds maximum permitted length of 8192 characters." }),
+        );
     }
 
     // Execute local OS command asynchronously via Tokio process (non-blocking)
@@ -444,6 +582,68 @@ pub async fn execute_cmd(
             };
             Json(json!({ "status": "success", "output": final_out }))
         }
-        Err(e) => Json(json!({ "status": "error", "output": format!("Failed to execute process: {}", e) })),
+        Err(e) => Json(
+            json!({ "status": "error", "output": format!("Failed to execute process: {}", e) }),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_plan_overrides_apply_without_changing_saved_auto_settings() -> anyhow::Result<()> {
+        let saved = ActiveUserSettings::default();
+        let request: PlanRequest = serde_json::from_value(json!({
+            "model":"selected", "n_ctx":1234, "batch_tokens":32,
+            "ram_buffer_gb":0.25, "vram_buffer_gb":0.5
+        }))?;
+        let applied = request.apply(&saved).map_err(anyhow::Error::msg)?;
+        assert_eq!(saved.optimization.custom_context_window, None);
+        assert_eq!(saved.optimization.batch_size, None);
+        assert_eq!(saved.optimization.custom_ram_buffer_gb, None);
+        assert_eq!(applied.optimization.custom_context_window, Some(1234));
+        assert_eq!(applied.optimization.batch_size, Some(32));
+        assert_eq!(applied.optimization.custom_ram_buffer_gb, Some(0.25));
+        assert_eq!(applied.optimization.custom_vram_buffer_gb, Some(0.5));
+        for (requested, expected) in [(0, None), (-1, Some(0))] {
+            let request: PlanRequest =
+                serde_json::from_value(json!({"model":"selected","n_ctx":requested}))?;
+            assert_eq!(
+                request
+                    .apply(&saved)
+                    .map_err(anyhow::Error::msg)?
+                    .optimization
+                    .custom_context_window,
+                expected
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_rejects_invalid_or_unused_fields() -> anyhow::Result<()> {
+        let saved = ActiveUserSettings::default();
+        for patch in [
+            json!({"n_ctx":-2}),
+            json!({"batch_tokens":0}),
+            json!({"ram_buffer_gb":-1}),
+            json!({"vram_buffer_gb":-1}),
+        ] {
+            let mut value = json!({"model":"selected"});
+            value
+                .as_object_mut()
+                .unwrap()
+                .extend(patch.as_object().unwrap().clone());
+            let request: PlanRequest = serde_json::from_value(value)?;
+            assert!(request.apply(&saved).is_err());
+        }
+        for field in ["weights_gb", "total_layers", "misspelled_option"] {
+            let mut value = json!({"model":"selected"});
+            value[field] = json!(1);
+            assert!(serde_json::from_value::<PlanRequest>(value).is_err());
+        }
+        Ok(())
     }
 }

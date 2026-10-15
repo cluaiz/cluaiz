@@ -1,31 +1,44 @@
-//! 📥 Ingestion & Document Processing Handler (`api/src/handlers/ingest.rs`)
+//! Shared document extraction API. Filesystem policy and source decoding have one owner.
 
-use axum::{Json, extract::State, response::IntoResponse};
+use crate::{
+    utils::{authorize_source, task_error},
+    AppState,
+};
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
+};
+use cluaiz_media::{
+    documents::{self, chunker::SemanticChunker, DEFAULT_CHUNK_BYTES},
+    source::SourceResolver,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
-use crate::AppState;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct OutputControls {
     pub return_text: Option<bool>,
     pub return_embeddings: Option<bool>,
 }
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct ChunkingStrategy {
     pub r#type: Option<String>,
+    /// Maximum UTF-8 bytes in a returned chunk, not model tokens.
     pub max_chunk_size: Option<usize>,
     pub overlap: Option<usize>,
 }
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct VisionSettings {
     pub use_vision: Option<bool>,
     pub detail_level: Option<String>,
     pub system_instruction: Option<String>,
 }
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum SourceInput {
@@ -34,6 +47,7 @@ pub enum SourceInput {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct IngestPayload {
     pub source: SourceInput,
     pub namespace: Option<String>,
@@ -43,78 +57,160 @@ pub struct IngestPayload {
     pub vision_settings: Option<VisionSettings>,
 }
 
-/// POST /v1/ingest & POST /v1/ingest/file
+/// Existing ingest routes now execute the same extraction service as chat.
 pub async fn file_ingest(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(payload): Json<IngestPayload>,
-) -> impl IntoResponse {
-    let mut all_sources = Vec::new();
-    match &payload.source {
-        SourceInput::Single(s) => all_sources.push(s.clone()),
-        SourceInput::Multiple(srcs) => all_sources.extend(srcs.clone()),
+) -> Response {
+    let sources = match payload.source {
+        SourceInput::Single(source) => vec![source],
+        SourceInput::Multiple(sources) => sources,
+    };
+    let invalid =
+        |message: &str| task_error(StatusCode::BAD_REQUEST, "invalid_request_error", message);
+    if sources.is_empty() || sources.iter().any(|source| source.trim().is_empty()) {
+        return invalid("At least one non-empty document source is required");
     }
-
-    if all_sources.is_empty() {
-        return Json(json!({
-            "status": "error",
-            "message": "You must provide either 'source' (string) or 'sources' (array of strings)."
-        }));
+    if payload.namespace.is_some() {
+        return invalid("Persistent namespaces are not implemented by document extraction");
     }
-
-    let chunk_size = payload.chunking_strategy
+    if payload.model.is_some() {
+        return invalid("Native document extraction needs no model; use /v1/embeddings with an explicit model for vectors");
+    }
+    if payload
+        .output_controls
         .as_ref()
-        .and_then(|cs| cs.max_chunk_size)
-        .unwrap_or(512);
-
-    let return_text = payload.output_controls
+        .is_some_and(|c| c.return_embeddings == Some(true))
+    {
+        return invalid("Embedding output is not implemented by this route; use /v1/embeddings with the extracted chunks");
+    }
+    if payload.vision_settings.as_ref().is_some_and(|v| {
+        v.use_vision == Some(true) || v.detail_level.is_some() || v.system_instruction.is_some()
+    }) {
+        return invalid("Model vision dispatch is not implemented by this extraction route; packaged native OCR is used automatically when needed");
+    }
+    let strategy = payload.chunking_strategy.as_ref();
+    if strategy.is_some_and(|s| {
+        s.overlap.unwrap_or(0) != 0 || s.r#type.as_deref().is_some_and(|t| t != "semantic")
+    }) {
+        return invalid("Only semantic chunking with zero overlap is currently supported");
+    }
+    let chunk_size = strategy
+        .and_then(|s| s.max_chunk_size)
+        .unwrap_or(DEFAULT_CHUNK_BYTES);
+    let settings = cluaiz_core::Settings::current();
+    if chunk_size == 0
+        || u64::try_from(chunk_size).map_or(true, |size| {
+            size > settings.media.limits.max_decoded_bytes()
+        })
+    {
+        return invalid("Chunk size must be positive and fit the document byte limit");
+    }
+    let return_text = payload
+        .output_controls
         .as_ref()
         .and_then(|c| c.return_text)
         .unwrap_or(true);
-
+    let resolver = match SourceResolver::from_environment(settings.media) {
+        Ok(resolver) => resolver,
+        Err(error) => return task_error(StatusCode::INTERNAL_SERVER_ERROR, "source_error", error),
+    };
     let mut processed = Vec::new();
-    for src in all_sources {
-        let local_path = match crate::url_resolver::resolve_to_local_file(&src).await {
-            Ok(p) => std::path::PathBuf::from(p),
-            Err(_) => std::path::PathBuf::from(&src),
+    let mut input_bytes = 0u64;
+    let mut output_bytes = 0u64;
+    for original in sources {
+        let mut source = original.clone();
+        let allowed = match authorize_source(&state, &headers, &mut source).await {
+            Ok(allowed) => allowed,
+            Err((kind, message)) => {
+                return task_error(
+                    if kind == "permission_error" {
+                        StatusCode::FORBIDDEN
+                    } else {
+                        StatusCode::BAD_REQUEST
+                    },
+                    kind,
+                    message,
+                )
+            }
         };
-
-        if !local_path.exists() {
-            processed.push(json!({
-                "source": src,
-                "status": "error",
-                "error": format!("File not found: {}", src)
-            }));
-            continue;
-        }
-
-        let ext = local_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        match std::fs::read_to_string(&local_path) {
-            Ok(content) => {
-                let chunks = cluaiz_models::SemanticChunker::chunk(&content, ext, chunk_size);
-                let mut item = json!({
-                    "source": src,
-                    "status": "ingested",
-                    "chunks_count": chunks.len(),
-                    "chunk_size": chunk_size
-                });
-                if return_text {
-                    item["chunks"] = json!(chunks);
-                }
-                processed.push(item);
+        let result = async {
+            let resolved = resolver.resolve(&source, |path| {
+                if allowed.as_deref() == Some(path) { Ok(()) } else { anyhow::bail!("Document source was not authorized") }
+            }).await?;
+            input_bytes = input_bytes.checked_add(resolved.input_bytes).ok_or_else(|| anyhow::anyhow!("Document batch size overflow"))?;
+            settings.media.limits.check_input_bytes(input_bytes)?;
+            let bytes = resolved.read_bytes(settings.media.limits).await?;
+            let format = resolved.format.clone();
+            drop(resolved);
+            let limits = settings.media.limits;
+            let document = tokio::task::spawn_blocking(move || documents::extract(&bytes, &format, limits)).await??;
+            let complete = document.complete();
+            let mut item = json!({"source":original, "status":if complete {"ingested"} else {"partial"},
+                "mime_type":document.mime_type, "chunk_size":chunk_size});
+            let chunks = match document.text(limits, false) {
+                Ok(text) => SemanticChunker::chunk(&text, chunk_size)?,
+                Err(_) if !complete => Vec::new(),
+                Err(error) => return Err(error),
+            };
+            item["chunks_count"] = json!(chunks.len());
+            if return_text {
+                item["parts"] = serde_json::to_value(document.parts)?;
+                item["chunks"] = json!(chunks);
+            } else {
+                item["parts"] = json!(document.parts.iter().map(|part| json!({
+                    "page":part.page, "method":part.method, "omissions":part.omissions,
+                    "warnings":part.warnings, "ocr_confidence":part.ocr_confidence
+                })).collect::<Vec<_>>());
             }
-            Err(e) => {
-                processed.push(json!({
-                    "source": src,
-                    "status": "error",
-                    "error": format!("Failed to read file: {}", e)
-                }));
+            Ok::<_, anyhow::Error>(item)
+        }.await;
+        let item = match result {
+            Ok(item) => item,
+            Err(error) => {
+                json!({"source":original, "status":"error", "error":format!("{error:#}")})
             }
+        };
+        let serialized = match serde_json::to_vec(&item) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                return task_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "serialization_error",
+                    error,
+                )
+            }
+        };
+        output_bytes = match output_bytes.checked_add(serialized.len() as u64) {
+            Some(bytes) => bytes,
+            None => return invalid("Document output size overflow"),
+        };
+        if settings
+            .media
+            .limits
+            .check_decoded_bytes(output_bytes)
+            .is_err()
+        {
+            return invalid("Document batch output exceeds the decoded byte limit");
         }
+        processed.push(item);
     }
-
-    Json(json!({
-        "status": "success",
-        "processed_sources": processed,
-        "total_sources": processed.len()
-    }))
+    let successes = processed
+        .iter()
+        .filter(|item| item["status"] == "ingested")
+        .count();
+    let status = if successes == processed.len() {
+        "success"
+    } else if processed.iter().all(|item| item["status"] == "error") {
+        "error"
+    } else {
+        "partial"
+    };
+    let http = if status == "error" {
+        StatusCode::BAD_REQUEST
+    } else {
+        StatusCode::OK
+    };
+    (http, Json(json!({"status":status, "total_sources":processed.len(), "processed_sources":processed}))).into_response()
 }

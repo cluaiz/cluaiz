@@ -1,19 +1,26 @@
+use crate::{state::AppState, utils::prepare_authorized_media};
 use axum::{
     extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Json, Sse, sse::Event},
+    http::{HeaderMap, StatusCode},
+    response::{sse::Event, IntoResponse, Response, Sse},
+    Json,
+};
+use cluaiz_core::{
+    media::{InputPart, PreparedPart},
+    ChatEnvelope, ChatMessage,
+};
+use cluaiz_models::types::manifest::{ModelRegistry, ModelRegistryEntry};
+use cluaiz_runtime::onnx_host::{
+    AudioEvent, AudioInput, AudioOutput as NativeOutput, AudioTask, OnnxModel, SttOptions,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::sync::Arc;
-use std::convert::Infallible;
-use futures::stream::Stream;
-use crate::state::AppState;
+use serde_json::{json, Value};
+use std::{convert::Infallible, sync::Arc};
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct InputSource {
     #[serde(rename = "type")]
-    pub source_type: String, // "url", "base64", "text"
+    pub source_type: String,
     pub data: String,
 }
 
@@ -33,12 +40,12 @@ pub struct AudioParameters {
 #[derive(Deserialize, Debug, Clone)]
 pub struct AudioExecuteRequest {
     pub model: Option<String>,
-    pub task: Option<String>, // "auto", "speech_to_text", "text_to_speech", etc.
+    pub task: Option<String>,
     pub instruction: Option<String>,
     pub input_source: InputSource,
     pub parameters: Option<AudioParameters>,
-    pub stream: Option<bool>, // Enable real-time SSE token streaming
-    pub keep_alive: Option<i32>, // Minute retention interval (0 = instant unload, -1 = forever, N = N minutes)
+    pub stream: Option<bool>,
+    pub keep_alive: Option<i32>,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -52,7 +59,7 @@ pub struct AudioSegment {
 #[derive(Serialize, Debug, Clone)]
 pub struct AudioOutput {
     pub text: Option<String>,
-    pub audio_data: Option<String>, // Base64 encoded audio for TTS/audio-to-audio
+    pub audio_data: Option<String>,
     pub segments: Option<Vec<AudioSegment>>,
 }
 
@@ -65,502 +72,416 @@ pub struct AudioExecuteResponse {
     pub output: AudioOutput,
 }
 
-// ─── POST /v1/audio/execute ─────────────────────────────────────────
-pub async fn execute_audio(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<AudioExecuteRequest>,
-) -> impl IntoResponse {
-    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+use crate::utils::task_error as error;
 
-    let input_type = payload.input_source.source_type.to_lowercase();
-    let raw_data = payload.input_source.data.trim();
-    let data_lower = raw_data.to_lowercase();
-    
-    let is_data_audio_file = data_lower.ends_with(".webm")
-        || data_lower.ends_with(".wav")
-        || data_lower.ends_with(".mp3")
-        || data_lower.ends_with(".m4a")
-        || data_lower.ends_with(".flac")
-        || data_lower.ends_with(".ogg")
-        || data_lower.starts_with("data:audio/");
-
-    let is_audio_input = input_type == "url" || input_type == "base64" || input_type == "file" || input_type == "audio" || is_data_audio_file;
-    let is_text_input = !is_audio_input && input_type == "text";
-
-    // 1. Task Resolution & Intent Determination
-    let requested_task = payload
-        .task
-        .as_deref()
-        .unwrap_or("auto")
-        .trim()
-        .to_lowercase()
-        .replace("-", "_");
-
-    let target_task = if requested_task.is_empty() || requested_task == "auto" {
-        if is_text_input {
-            "text_to_speech".to_string()
-        } else {
-            "speech_to_text".to_string()
-        }
-    } else {
-        requested_task.clone()
+fn select_model<'a>(
+    registry: &'a ModelRegistry,
+    selected: Option<&str>,
+    slot: Option<&str>,
+    task: AudioTask,
+) -> anyhow::Result<&'a ModelRegistryEntry> {
+    let supports = |entry: &&ModelRegistryEntry| {
+        entry.format_type.eq_ignore_ascii_case("onnx")
+            && entry
+                .supported_tasks
+                .iter()
+                .any(|t| AudioTask::parse(t).ok() == Some(task))
     };
-
-    // 2. Format-Agnostic Dynamic Model Resolution (GGUF, ONNX, Safetensors, PyTorch)
-    let target_model_id = match payload.model.as_deref() {
-        Some(m) if !m.trim().is_empty() && m != "auto" => {
-            let found_id = registry
-                .installed_models
-                .keys()
-                .find(|k| k.eq_ignore_ascii_case(m))
-                .or_else(|| {
-                    registry
-                        .installed_models
-                        .keys()
-                        .find(|k| k.to_lowercase().contains(&m.to_lowercase()))
-                })
-                .cloned();
-
-            match found_id {
-                Some(id) => id,
-                None => {
-                    return (
-                        StatusCode::NOT_FOUND,
-                        Json(json!({
-                            "error": format!("Requested audio model '{}' is not installed in ModelRegistry.", m),
-                            "status": "error"
-                        })),
-                    ).into_response();
-                }
-            }
-        }
-        _ => {
-            let schema = cluaiz_security::PermissionSchema::load();
-            let mut resolved_id = String::new();
-
-            // Check active slot in permission.json if available
-            if let Some(slot) = schema.active_slots.get("audio_slot") {
-                if let Some(ref active_id) = slot.model_id {
-                    if let Some(entry) = registry.installed_models.get(active_id.as_str()) {
-                        if entry
-                            .supported_tasks
-                            .iter()
-                            .any(|t| t.to_lowercase().replace("-", "_") == target_task)
-                        {
-                            resolved_id = active_id.clone();
-                        }
-                    }
-                }
-            }
-
-            // Force ONLY ONNX format models for audio requests
-            // CRITICAL: Never load an STT model for a TTS task or vice versa
-            if resolved_id.is_empty() {
-                resolved_id = registry
+    if let Some(id) = selected.filter(|s| !s.is_empty() && !s.eq_ignore_ascii_case("auto")) {
+        return registry
+            .installed_models
+            .get(id)
+            .or_else(|| {
+                registry
                     .installed_models
                     .values()
-                    .find(|e| {
-                        let id_lower = e.id.to_lowercase();
-                        let is_target_stt = target_task == "speech_to_text" || target_task == "speech_translation";
-                        e.format_type.to_lowercase() == "onnx"
-                            && if is_target_stt {
-                                id_lower.contains("whisper")
-                            } else {
-                                id_lower.contains("kokoro") || id_lower.contains("piper") || id_lower.contains("vits")
-                            }
-                            && e.supported_tasks
-                                .iter()
-                                .any(|t| t.to_lowercase().replace("-", "_") == target_task)
-                    })
-                    .or_else(|| {
-                        registry
-                            .installed_models
-                            .values()
-                            .find(|e| {
-                                e.format_type.to_lowercase() == "onnx"
-                                    && e.supported_tasks
-                                        .iter()
-                                        .any(|t| t.to_lowercase().replace("-", "_") == target_task)
-                            })
-                    })
-                    .or_else(|| {
-                        // Only fall back to category-based matching if the task matches the category
-                        // This prevents loading STT models for TTS and vice versa
-                        let is_tts_task = target_task == "text_to_speech" || target_task == "music_generation";
-                        let is_stt_task = target_task == "speech_to_text" || target_task == "speech_translation";
-                        registry
-                            .installed_models
-                            .values()
-                            .find(|e| {
-                                e.format_type.to_lowercase() == "onnx"
-                                    && e.category == "audio"
-                                    && if is_tts_task {
-                                        e.supported_tasks.iter().any(|t| t.to_lowercase().replace("-", "_") == "text_to_speech")
-                                    } else if is_stt_task {
-                                        e.supported_tasks.iter().any(|t| {
-                                            let t_norm = t.to_lowercase().replace("-", "_");
-                                            t_norm == "speech_to_text" || t_norm == "speech_translation"
-                                        })
-                                    } else {
-                                        true
-                                    }
-                            })
-                    })
-                    .map(|e| e.id.clone())
-                    .unwrap_or_default();
-            }
-
-            if resolved_id.is_empty() {
-                return (
-                    StatusCode::NOT_FOUND,
-                    Json(json!({
-                        "error": format!("No installed audio model found for task '{}' in Engine ModelRegistry. Please install an audio model for this task.", target_task),
-                        "status": "error"
-                    })),
-                ).into_response();
-            }
-            resolved_id
-        }
-    };
-
-    let target_entry = match registry.installed_models.get(&target_model_id) {
-        Some(entry) => entry,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!({
-                    "error": format!("Audio model '{}' not found in installed models.", target_model_id),
-                    "status": "error"
-                })),
-            ).into_response();
-        }
-    };
-
-    let supported_tasks = &target_entry.supported_tasks;
-
-    let resolved_task = if requested_task != "auto" && !requested_task.is_empty() {
-        requested_task.clone()
-    } else if supported_tasks
-        .iter()
-        .any(|t| t.to_lowercase().replace("-", "_") == target_task)
+                    .find(|e| e.id.eq_ignore_ascii_case(id))
+            })
+            .ok_or_else(|| anyhow::anyhow!("Requested audio model is not installed: {id}"));
+    }
+    if let Some(entry) = slot
+        .and_then(|id| registry.installed_models.get(id))
+        .filter(supports)
     {
-        target_task.clone()
-    } else {
-        supported_tasks
-            .first()
-            .cloned()
-            .unwrap_or(target_task.clone())
-    };
-
-    // 3. Modality Guardrail Validation
-    let is_tts_model = resolved_task == "text_to_speech" || resolved_task == "music_generation";
-    let is_stt_model = resolved_task == "speech_to_text"
-        || resolved_task == "speech_translation"
-        || resolved_task == "audio_classification"
-        || resolved_task == "speaker_diarization";
-
-    if is_tts_model && is_audio_input {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({
-                "error": format!(
-                    "Input modality mismatch: Model '{}' is configured for text-to-audio synthesis (task: '{}'), but an Audio file input ('{}') was provided. Expected Text input source.",
-                    target_model_id, resolved_task, input_type
-                ),
-                "status": "error"
-            })),
-        ).into_response();
+        return Ok(entry);
     }
-
-    if is_stt_model && is_text_input {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({
-                "error": format!(
-                    "Input modality mismatch: Model '{}' is configured for audio processing/transcription (task: '{}'), but a Text input source ('text') was provided. Expected an Audio file input source (url, base64, or file).",
-                    target_model_id, resolved_task
-                ),
-                "status": "error"
-            })),
-        ).into_response();
-    }
-
-    // 4. Neural Execution & Dispatch with Multi-ONNX Model Fallback Probe
-    let mut onnx_candidates: Vec<std::path::PathBuf> = Vec::new();
-
-    // Primary ONNX file candidate first if defined
-    if let Some(primary_file) = target_entry.files.iter().find(|f| f.is_primary) {
-        onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&primary_file.name));
-    }
-
-    // Add remaining ONNX files in model directory as fallbacks
-    for file in &target_entry.files {
-        let p = std::path::PathBuf::from(&target_entry.local_dir).join(&file.name);
-        if !onnx_candidates.contains(&p) && file.name.ends_with(".onnx") {
-            onnx_candidates.push(p);
-        }
-    }
-
-    if onnx_candidates.is_empty() {
-        if let Some(first) = target_entry.files.first() {
-            onnx_candidates.push(std::path::PathBuf::from(&target_entry.local_dir).join(&first.name));
-        }
-    }
-
-    // 🎯 SMART TTS CANDIDATE PRIORITIZATION:
-    // If running Text-to-Speech, move helper/speaker-extractor models (campplus, speaker_encoder, embedding) to fallback tail
-    // and prioritize main speech synthesis models (flow, estimator, tts, decoder, generator)
-    if is_tts_model && onnx_candidates.len() > 1 {
-        onnx_candidates.sort_by_key(|path| {
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
-            if name.contains("flow") || name.contains("estimator") || name.contains("generator") || name.contains("tts") || name.contains("synth") {
-                0 // Top priority: Flow Estimator / Speech Synthesizer
-            } else if name.contains("campplus") || name.contains("speaker") || name.contains("embed") || name.contains("encoder") {
-                2 // Low priority: Speaker Extractor / Embedding models
-            } else {
-                1 // Normal priority
-            }
-        });
-        tracing::info!("🎯 [Audio Handler] TTS Multi-ONNX Model Candidates Prioritized: {:?}", onnx_candidates);
-    }
-
-    let model_path = onnx_candidates[0].clone();
-    let instruction = payload
-        .instruction
-        .as_deref()
-        .unwrap_or("Transcribe speech to text cleanly.");
-
-    let language = payload.parameters.as_ref().and_then(|p| p.language.clone()).unwrap_or_else(|| "auto".to_string());
-    let translate_to = payload.parameters.as_ref().and_then(|p| p.translate_to.clone()).unwrap_or_default();
-
-    let voice_id = payload.parameters.as_ref().and_then(|p| p.voice_id.clone()).unwrap_or_default();
-
-    let prompt = if is_audio_input {
-        format!(
-            "[AUDIO_INPUT: {}] [LANGUAGE: {}] [TRANSLATE_TO: {}] {}",
-            payload.input_source.data,
-            language,
-            translate_to,
-            instruction
-        )
-    } else {
-        if voice_id.trim().is_empty() {
-            format!("[TEXT_INPUT] {}", payload.input_source.data)
-        } else {
-            format!("[TEXT_INPUT] [voice:{}] {}", voice_id.trim(), payload.input_source.data)
-        }
-    };
-
-    let should_stream = payload.stream.unwrap_or(true);
-
-    use cluaiz_runtime::HostResponse;
-
-    let execution_res = state.host.dispatch_stream(&prompt, 2048).await;
-
-    if should_stream {
-        if let HostResponse::TokenStream(rx) = execution_res {
-            let stream_start = std::time::Instant::now();
-            let stream = async_stream::stream! {
-                let mut rx = rx;
-                let mut first_token_time: Option<f64> = None;
-                while let Some(chunk) = rx.recv().await {
-                    if first_token_time.is_none() && !chunk.is_empty() {
-                        first_token_time = Some(stream_start.elapsed().as_secs_f64() * 1000.0);
-                    }
-                    if !chunk.is_empty() {
-                        let data = json!({ "token": chunk, "status": "chunk" }).to_string();
-                        yield Ok::<Event, Infallible>(Event::default().data(data));
-                    }
-                }
-                let total_elapsed = stream_start.elapsed();
-                let ttft = first_token_time.unwrap_or_else(|| total_elapsed.as_secs_f64() * 1000.0);
-                let done_data = json!({
-                    "token": "",
-                    "status": "done",
-                    "metrics": {
-                        "ttft_ms": (ttft * 10.0).round() / 10.0,
-                        "total_execution_time_ms": (total_elapsed.as_secs_f64() * 1000.0 * 10.0).round() / 10.0,
-                        "total_execution_time_sec": format!("{:.2}s", total_elapsed.as_secs_f64())
-                    }
-                }).to_string();
-                yield Ok::<Event, Infallible>(Event::default().data(done_data));
-            };
-            return Sse::new(stream).into_response();
-        }
-    }
-
-    let (execution_error, output_text, extracted_segments): (Option<String>, String, Vec<AudioSegment>) = match execution_res {
-        HostResponse::Completed(txt) => (None, txt, vec![]),
-        HostResponse::TokenStream(mut rx) => {
-            let mut collected = String::with_capacity(256);
-            while let Some(chunk) = rx.recv().await {
-                collected.push_str(&chunk);
-            }
-            let cleaned = collected.trim().to_string();
-            (None, cleaned, vec![])
-        }
-        HostResponse::Error(err_msg) => (Some(err_msg), String::new(), vec![]),
-    };
-
-    let keep_alive_val = payload.keep_alive;
-    if keep_alive_val == Some(0) {
-        tracing::info!("♻️ [Memory] Unloading audio model post-execution due to keep_alive: 0");
-        let _ = state.host.unload_model().await;
-    } else if let Some(mins) = keep_alive_val {
-        if mins > 0 {
-            let secs = (mins as u64) * 60;
-            let state_clone = Arc::clone(&state);
-            tracing::info!("⏳ [Memory] Scheduling audio model unload in {} minutes ({}s)", mins, secs);
-            tokio::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
-                tracing::info!("♻️ [Memory] Unloading audio model post keep_alive timeout ({}m)", mins);
-                let _ = state_clone.host.unload_model().await;
-            });
-        }
-    }
-
-    if let Some(err_msg) = execution_error {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({
-                "status": "error",
-                "error": err_msg,
-                "model": target_model_id,
-                "task": resolved_task
-            })),
-        ).into_response();
-    }
-
-    let (final_text, final_audio_data) = if is_tts_model {
-        (None, Some(output_text))
-    } else {
-        (Some(output_text), None)
-    };
-
-    let include_timestamps = payload
-        .parameters
-        .as_ref()
-        .and_then(|p| p.timestamps)
-        .unwrap_or(false);
-
-    let final_segments = if include_timestamps {
-        Some(extracted_segments)
-    } else {
-        None
-    };
-
-    let response = AudioExecuteResponse {
-        status: "success".to_string(),
-        task: resolved_task,
-        model: target_model_id,
-        info: None,
-        output: AudioOutput {
-            text: final_text,
-            audio_data: final_audio_data,
-            segments: final_segments,
-        },
-    };
-
-
-
-    (
-        StatusCode::OK,
-        Json(serde_json::to_value(&response).unwrap()),
-    ).into_response()
+    let mut candidates: Vec<_> = registry
+        .installed_models
+        .values()
+        .filter(supports)
+        .collect();
+    candidates.sort_by(|a, b| a.id.cmp(&b.id));
+    candidates
+        .first()
+        .copied()
+        .ok_or_else(|| anyhow::anyhow!("No installed ONNX model declares {}", task.as_str()))
 }
 
-// ─── POST /v1/audio/speech ──────────────────────────────────────────
+fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::Result<SttOptions> {
+    if payload.keep_alive.is_some_and(|v| v < -1) {
+        anyhow::bail!("keep_alive must be -1, 0, or positive minutes");
+    }
+    if payload
+        .instruction
+        .as_ref()
+        .is_some_and(|v| !v.trim().is_empty())
+    {
+        anyhow::bail!("Audio instruction prompts are not implemented for this graph contract");
+    }
+    let params = payload.parameters.clone().unwrap_or_default();
+    if params.timestamps == Some(true)
+        || params.vad_filter == Some(true)
+        || params.speaker_labels == Some(true)
+        || params.beam_size.is_some_and(|v| v != 1)
+        || params.temperature.is_some_and(|v| v != 0.0)
+        || params.speed.is_some_and(|v| v != 1.0)
+        || params.voice_id.as_ref().is_some_and(|v| !v.is_empty())
+    {
+        anyhow::bail!("Requested audio option is not implemented: this contract uses default TTS voice/speed or greedy STT without timestamps/VAD/diarization");
+    }
+    if task == AudioTask::TextToSpeech
+        && (params.language.is_some() || params.translate_to.is_some())
+    {
+        anyhow::bail!("Language/translation options are not implemented for TTS");
+    }
+    if let Some(target) = params
+        .translate_to
+        .as_deref()
+        .filter(|v| !v.is_empty() && *v != "false")
+    {
+        if task != AudioTask::SpeechTranslation || target != "en" {
+            anyhow::bail!("Speech translation currently supports only the declared speech_translation task with English output");
+        }
+    }
+    Ok(SttOptions {
+        language: params.language,
+        translate: task == AudioTask::SpeechTranslation,
+    })
+}
+
+fn completed(model: String, task: AudioTask, output: NativeOutput) -> AudioExecuteResponse {
+    let (text, audio_data) = match output {
+        NativeOutput::Transcript(text) => (Some(text), None),
+        NativeOutput::WavDataUri(wav) => (None, Some(wav)),
+    };
+    AudioExecuteResponse {
+        status: "success".into(),
+        task: task.as_str().into(),
+        model,
+        info: None,
+        output: AudioOutput {
+            text,
+            audio_data,
+            segments: None,
+        },
+    }
+}
+
+/// Existing audio routes share one typed ONNX boundary; no chat dispatch occurs here.
+pub async fn execute_audio(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<AudioExecuteRequest>,
+) -> Response {
+    let is_text = payload
+        .input_source
+        .source_type
+        .eq_ignore_ascii_case("text");
+    let task = match payload
+        .task
+        .as_deref()
+        .filter(|v| !v.is_empty() && !v.eq_ignore_ascii_case("auto"))
+    {
+        Some(value) => match AudioTask::parse(value) {
+            Ok(task) => task,
+            Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_task", e),
+        },
+        None => {
+            if is_text {
+                AudioTask::TextToSpeech
+            } else {
+                AudioTask::SpeechToText
+            }
+        }
+    };
+    if payload.input_source.data.trim().is_empty() || is_text != (task == AudioTask::TextToSpeech) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_input",
+            "Empty input or audio task/input modality mismatch",
+        );
+    }
+    let options = match validate_options(&payload, task) {
+        Ok(options) => options,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e),
+    };
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    let schema = state.permission_schema.read().await;
+    let slot_id = schema
+        .active_slots
+        .get(task.slot())
+        .or_else(|| schema.active_slots.get("audio_slot"))
+        .and_then(|s| s.model_id.as_deref());
+    let entry = match select_model(&registry, payload.model.as_deref(), slot_id, task) {
+        Ok(entry) => entry,
+        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
+    };
+    drop(schema);
+    let model_id = entry.id.clone();
+    let model = match OnnxModel::from_registry(entry, task) {
+        Ok(model) => model,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+    };
+    let settings = cluaiz_core::Settings::current();
+    let input = if is_text {
+        AudioInput::Text(payload.input_source.data)
+    } else {
+        let source = match payload
+            .input_source
+            .source_type
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "url" | "file" | "audio" => payload.input_source.data,
+            "base64" => {
+                if payload.input_source.data.starts_with("data:") {
+                    payload.input_source.data
+                } else {
+                    format!(
+                        "data:application/octet-stream;base64,{}",
+                        payload.input_source.data
+                    )
+                }
+            }
+            _ => {
+                return error(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_input",
+                    "Unsupported audio source type",
+                )
+            }
+        };
+        let request = ChatEnvelope {
+            messages: vec![ChatMessage {
+                role: "user".into(),
+                content: vec![InputPart::Audio { source }],
+            }],
+            samplers: Default::default(),
+            think_mode: "off".into(),
+            reasoning_effort: Default::default(),
+            reasoning_budget_message: None,
+            chat_template_kwargs: None,
+            grammar: None,
+            response_format: None,
+        };
+        let prepared =
+            match prepare_authorized_media(&state, &headers, request, &settings, None).await {
+                Ok(request) => request,
+                Err((kind, message)) => {
+                    return error(
+                        if kind == "permission_error" {
+                            StatusCode::FORBIDDEN
+                        } else {
+                            StatusCode::BAD_REQUEST
+                        },
+                        kind,
+                        message,
+                    )
+                }
+            };
+        match prepared.messages.into_iter().flat_map(|m| m.content).next() {
+            Some(PreparedPart::Audio { audio }) => AudioInput::Pcm(audio),
+            _ => {
+                return error(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_input",
+                    "Audio source did not produce PCM",
+                )
+            }
+        }
+    };
+    let mut events =
+        state
+            .host
+            .onnx
+            .dispatch(model, task, input, options, settings, payload.keep_alive);
+    if payload.stream.unwrap_or(true) {
+        let stream = async_stream::stream! {
+            let mut terminal_seen = false;
+            while let Some(event) = events.recv().await {
+                let body = match event {
+                    Ok(AudioEvent::Chunk(token)) => json!({"status":"chunk","token":token}),
+                    Ok(AudioEvent::Completed(output)) => json!({"status":"done","result":completed(model_id.clone(),task,output)}),
+                    Err(message) => json!({"status":"error","error":{"type":"engine_error","message":message}}),
+                };
+                let terminal = body["status"] != "chunk";
+                yield Ok::<_,Infallible>(Event::default().data(body.to_string()));
+                if terminal { terminal_seen = true; break; }
+            }
+            if !terminal_seen {
+                yield Ok::<_,Infallible>(Event::default().data(json!({"status":"error",
+                    "error":{"type":"engine_error","message":"Audio worker ended without a result"}}).to_string()));
+            }
+        };
+        return Sse::new(stream).into_response();
+    }
+    while let Some(event) = events.recv().await {
+        match event {
+            Ok(AudioEvent::Chunk(_)) => {}
+            Ok(AudioEvent::Completed(output)) => {
+                return Json(completed(model_id, task, output)).into_response()
+            }
+            Err(message) => {
+                return error(StatusCode::INTERNAL_SERVER_ERROR, "engine_error", message)
+            }
+        }
+    }
+    error(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "engine_error",
+        "Audio worker ended without a result",
+    )
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpeechRequest {
+    model: Option<String>,
+    input: String,
+    voice: Option<String>,
+    speed: Option<f32>,
+    keep_alive: Option<i32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TranscriptionRequest {
+    model: Option<String>,
+    file: Option<String>,
+    input_source: Option<InputSource>,
+    prompt: Option<String>,
+    language: Option<String>,
+    temperature: Option<f32>,
+    timestamps: Option<bool>,
+    stream: Option<bool>,
+    keep_alive: Option<i32>,
+}
+
 pub async fn speech(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<serde_json::Value>,
-) -> impl IntoResponse {
-    let model = payload.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let input_text = payload.get("input").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    
-    if input_text.trim().is_empty() {
-        return (
-            axum::http::StatusCode::BAD_REQUEST,
-            axum::Json(json!({
-                "error": {
-                    "message": "Missing or empty 'input' parameter",
-                    "type": "invalid_request_error",
-                    "param": "input",
-                    "code": "missing_required_parameter"
-                }
-            })),
-        ).into_response();
-    }
-
-    let voice = payload.get("voice").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let speed = payload.get("speed").and_then(|v| v.as_f64()).map(|s| s as f32);
-
-    let exec_req = AudioExecuteRequest {
-        model,
-        task: Some("text_to_speech".to_string()),
+    headers: HeaderMap,
+    Json(payload): Json<Value>,
+) -> Response {
+    let payload: SpeechRequest = match serde_json::from_value(payload) {
+        Ok(request) => request,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_input", e),
+    };
+    let request = AudioExecuteRequest {
+        model: payload.model,
+        task: Some("text_to_speech".into()),
         instruction: None,
         input_source: InputSource {
-            source_type: "text".to_string(),
-            data: input_text,
+            source_type: "text".into(),
+            data: payload.input,
         },
         parameters: Some(AudioParameters {
-            speed,
-            voice_id: voice,
+            speed: payload.speed,
+            voice_id: payload.voice,
             ..Default::default()
         }),
         stream: Some(false),
-        keep_alive: None,
+        keep_alive: payload.keep_alive,
     };
-
-    execute_audio(State(state), Json(exec_req)).await.into_response()
+    execute_audio(State(state), headers, Json(request)).await
 }
 
-// ─── POST /v1/audio/transcriptions ──────────────────────────────────
 pub async fn transcriptions(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<serde_json::Value>,
-) -> impl IntoResponse {
-    let model = payload.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let language = payload.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
-    let temp = payload.get("temperature").and_then(|v| v.as_f64()).map(|s| s as f32);
-    let timestamps = payload.get("timestamps").and_then(|v| v.as_bool());
-
-    let input_source = if let Some(is) = payload.get("input_source") {
-        serde_json::from_value::<InputSource>(is.clone()).unwrap_or_else(|_| InputSource {
-            source_type: "url".to_string(),
-            data: "".to_string(),
-        })
-    } else if let Some(file_str) = payload.get("file").and_then(|v| v.as_str()) {
-        InputSource {
-            source_type: "file".to_string(),
-            data: file_str.to_string(),
-        }
-    } else {
-        InputSource {
-            source_type: "url".to_string(),
-            data: "".to_string(),
-        }
+    headers: HeaderMap,
+    Json(payload): Json<Value>,
+) -> Response {
+    let payload: TranscriptionRequest = match serde_json::from_value(payload) {
+        Ok(request) => request,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_input", e),
     };
-
-    let exec_req = AudioExecuteRequest {
-        model,
-        task: Some("speech_to_text".to_string()),
-        instruction: payload.get("prompt").and_then(|v| v.as_str()).map(|s| s.to_string()),
+    let input_source = payload.input_source.unwrap_or(InputSource {
+        source_type: "file".into(),
+        data: payload.file.unwrap_or_default(),
+    });
+    let request = AudioExecuteRequest {
+        model: payload.model,
+        task: Some("speech_to_text".into()),
+        instruction: payload.prompt,
         input_source,
         parameters: Some(AudioParameters {
-            temperature: temp,
-            language,
-            timestamps,
+            language: payload.language,
+            temperature: payload.temperature,
+            timestamps: payload.timestamps,
             ..Default::default()
         }),
-        stream: payload.get("stream").and_then(|v| v.as_bool()),
-        keep_alive: None,
+        stream: payload.stream.or(Some(false)),
+        keep_alive: payload.keep_alive,
     };
-
-    execute_audio(State(state), Json(exec_req)).await
+    execute_audio(State(state), headers, Json(request)).await
 }
 
-
-
-
-
-
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn request() -> AudioExecuteRequest {
+        AudioExecuteRequest {
+            model: None,
+            task: None,
+            instruction: None,
+            input_source: InputSource {
+                source_type: "text".into(),
+                data: "sample".into(),
+            },
+            parameters: None,
+            stream: None,
+            keep_alive: None,
+        }
+    }
+    #[test]
+    fn test_unsupported_audio_options_are_errors() {
+        let mut request = request();
+        assert!(validate_options(&request, AudioTask::TextToSpeech).is_ok());
+        request.parameters = Some(AudioParameters {
+            voice_id: Some("unimplemented voice".into()),
+            ..Default::default()
+        });
+        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
+        request.parameters = Some(AudioParameters {
+            timestamps: Some(true),
+            ..Default::default()
+        });
+        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
+        request.parameters = None;
+        request.keep_alive = Some(-2);
+        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
+    }
+    #[test]
+    fn test_explicit_missing_model_is_not_replaced() {
+        let entry:ModelRegistryEntry=serde_json::from_value(json!({
+            "id":"model-long","category":"tts","format_type":"ONNX","huggingface_repo":"",
+            "local_dir":"","files":[],"extra_files":null,"supported_tasks":["text-to-speech"],"requires_gpu":false,
+            "metadata":{"architecture":"test","parameters":"","context_window":"",
+            "quantization":null,"bit_depth":null,"chat_template":null}
+        })).expect("Test registry fixture");
+        let mut registry = ModelRegistry::default();
+        registry.installed_models.insert(entry.id.clone(), entry);
+        assert_eq!(
+            select_model(&registry, None, None, AudioTask::TextToSpeech)
+                .expect("Declared TTS model")
+                .id,
+            "model-long"
+        );
+        assert!(select_model(
+            &registry,
+            Some("model"),
+            Some("other"),
+            AudioTask::TextToSpeech
+        )
+        .is_err());
+    }
+}

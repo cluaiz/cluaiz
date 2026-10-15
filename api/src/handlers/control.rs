@@ -32,7 +32,7 @@ pub struct ControlBatchResponse {
 async fn is_approved(state: &AppState, approval_id: &Option<String>) -> bool {
     if let Some(appr_id) = approval_id {
         let lock = state.pending_permissions.read().await;
-        lock.get(appr_id).map_or(false, |req| req.status == "approved")
+        lock.get(appr_id).is_some_and(|req| req.status == "approved")
     } else {
         false
     }
