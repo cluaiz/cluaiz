@@ -6,6 +6,8 @@ pub mod stream;
 pub mod sampler;
 pub mod context;
 pub mod templater;
+pub mod media;
+pub mod session;
 
 pub use core::{route_llama_logs, GenerationTimings, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;

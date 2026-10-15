@@ -14,6 +14,7 @@ cluaiz-core = { path = "../core" }
 cluaiz-hw = { path = "../hardware" }
 cluaiz-models = { path = "../models" }
 cluaiz-plan = { path = "../plan" }
+cluaiz-media = { path = "../media" }
 anyhow = "1.0"
 tracing = "0.1"
 tokio = { version = "1.0", features = ["full"] }
@@ -22,6 +23,11 @@ serde_json = "1.0"
 libc = "0.2"
 tokenizers = "0.22.2"
 sysinfo = "0.30"
+
+[dev-dependencies]
+base64 = "0.22"
+image = "0.24"
+tempfile = "3"
 
 [build-dependencies]
 cc = "1.0"
