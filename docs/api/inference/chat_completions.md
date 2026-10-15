@@ -19,7 +19,7 @@ Generates conversational completions, structured outputs, tool / function callin
 
 | Parameter | Type | Required | Default | Allowed Values / Range | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`messages`** | Array | **Yes** | — | Array of message objects | Full dialogue history. Content supports plain text or multimodal arrays (`text`, `image_url`, `audio_url`, `input_audio`). |
+| **`messages`** | Array | **Yes** | — | Array of message objects | Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses shared native extraction/OCR. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the [attachment contract](../../../api/README.md). |
 | **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat or vision slot. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
@@ -105,7 +105,49 @@ Supports JPEG, PNG, WEBP, GIF, and BMP:
 }
 ```
 
-### 2. Audio Input (`input_audio` & `audio_url`)
+### 2. Document Input (`file_url`)
+
+Direct document question answering & summarization. Powered by native PDFium and Tesseract OCR extraction.
+
+> [!TIP]
+> **No Vision Projector Required:** Because document text is extracted natively by the engine, standard text-only LLMs (e.g. `llama_3.2_instruct-3b-gguf-q4_k_m`) can read and summarize PDFs and Word documents without needing any vision projector (`mmproj`).
+
+```json
+{
+  "role": "user",
+  "content": [
+    { "type": "text", "text": "Summarize key findings from this document." },
+    {
+      "type": "file_url",
+      "file_url": {
+        "url": "data:application/pdf;base64,<actual-pdf-bytes>"
+      }
+    }
+  ]
+}
+```
+
+### 3. Sampled-Video Input (`video_url`)
+
+Decodes sampled RGB frames at native timestamps relative to the first decoded frame, routing through the vision projector.
+
+```json
+{
+  "role": "user",
+  "content": [
+    { "type": "text", "text": "Describe what happens across this video clip." },
+    {
+      "type": "video_url",
+      "video_url": {
+        "url": "C:/Users/Aryan/Videos/clip.mp4",
+        "include_audio": false
+      }
+    }
+  ]
+}
+```
+
+### 4. Audio Input (`input_audio` & `audio_url`)
 
 * **OpenAI Standard (`input_audio`):**
 
@@ -141,6 +183,14 @@ Supports JPEG, PNG, WEBP, GIF, and BMP:
   ]
 }
 ```
+
+---
+
+## ⚠️ Request Size Limit & Payload Ceiling
+
+* **Axum Request Ceiling:** The default Axum server request ceiling is **2 MiB**.
+* Inline Base64 Data URIs (`data:...;base64,...`) expand binary sizes by ~33%. Ensure the total JSON request body remains below 2 MiB, or pass authorized local file paths (e.g. on Desktop/Tauri) to bypass inline byte limits.
+
 
 ---
 
