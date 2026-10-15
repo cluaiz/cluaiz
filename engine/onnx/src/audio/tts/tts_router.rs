@@ -44,8 +44,20 @@ pub fn route_tts_inference(
     let raw_text_input = extract_parameter(prompt, "TEXT_INPUT")
         .or_else(|| extract_clean_text_prompt(prompt))
         .ok_or_else(|| anyhow!("No text prompt provided for Text-to-Speech synthesis."))?;
+    route_tts_text(engine, session, &raw_text_input)
+}
 
-    let text_chunks = chunk_tts_text(&raw_text_input, 140);
+/// Synthesize actual text without interpreting transport tags as user content.
+pub fn route_tts_text(
+    engine: &crate::engine::OnnxEngine,
+    session: &mut Session,
+    raw_text_input: &str,
+) -> Result<String> {
+    if raw_text_input.trim().is_empty() {
+        return Err(anyhow!("Text-to-Speech requires non-empty text"));
+    }
+
+    let text_chunks = chunk_tts_text(raw_text_input, 140);
     eprintln!("==================================================");
     eprintln!("🚀 [CLUAIZ ENGINE] EXECUTING TTS ROUTER DISPATCH 🚀");
     eprintln!("==================================================");
@@ -94,7 +106,7 @@ pub fn route_tts_inference(
             handle_kokoro(engine, session, &text_chunks, sample_rate)
         }
         super::family_adapter::TtsFamily::Matcha => {
-            let pcm = super::families::matcha::execute(engine, session, &raw_text_input)?;
+            let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
@@ -104,7 +116,7 @@ pub fn route_tts_inference(
             ))
         }
         super::family_adapter::TtsFamily::CosyVoice => {
-            let pcm = super::families::cosyvoice::execute(engine, &raw_text_input)?;
+            let pcm = super::families::cosyvoice::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
@@ -114,7 +126,7 @@ pub fn route_tts_inference(
             ))
         }
         super::family_adapter::TtsFamily::Supertonic => {
-            let pcm = super::families::supertonic::execute(engine, &raw_text_input)?;
+            let pcm = super::families::supertonic::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
@@ -124,7 +136,7 @@ pub fn route_tts_inference(
             ))
         }
         super::family_adapter::TtsFamily::Audio8 => {
-            let pcm = super::families::audio8::execute(engine, &raw_text_input)?;
+            let pcm = super::families::audio8::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
@@ -134,7 +146,7 @@ pub fn route_tts_inference(
             ))
         }
         super::family_adapter::TtsFamily::Chatterbox => {
-            let pcm = super::families::chatterbox::execute(engine, &raw_text_input)?;
+            let pcm = super::families::chatterbox::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
@@ -144,7 +156,7 @@ pub fn route_tts_inference(
             ))
         }
         super::family_adapter::TtsFamily::OmniVoice => {
-            let pcm = super::families::omnivoice::execute(engine, &raw_text_input)?;
+            let pcm = super::families::omnivoice::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
             let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
             use base64::Engine;
