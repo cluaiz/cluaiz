@@ -15,6 +15,12 @@ serde_yaml = "0.9"
 parquet = { version = "52.2.0", default-features = false, features = ["flate2", "arrow", "snap"] }
 arrow = "52.2.0"
 chrono = "=0.4.34"
+cluaiz-media = { path = "../../engine/media" }
+anyhow = "1.0"
+tempfile = "3"
+
+[dev-dependencies]
+sha2 = "0.10"
 
 
 [[bin]]
