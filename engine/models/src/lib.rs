@@ -1,21 +1,25 @@
 //! 📦 Cluaiz Models Subsystem (`engine/models`)
 //! Contains HuggingFace downloader, installed vault registry, taxonomy, prober, and unified GGUF reader.
 
+pub mod capabilities;
+pub mod fetcher;
 pub mod gguf;
-pub mod types;
-pub mod taxonomy;
 pub mod prober;
 pub mod registry;
-pub mod fetcher;
-pub mod ingest;
+pub mod taxonomy;
+pub mod types;
+
+#[cfg(test)]
+mod test_fixtures;
 
 pub use crate as models;
 
-pub use gguf::{ModelGeometry, WeightBytes, GgufProber, KV_CELL_PAD};
-pub use types::{StructuralDNA, KernelSignature, StreamingReasoningFilter};
-pub use types::manifest::{ModelManifest, ModelRecommendation, ModelAsset};
-pub use fetcher::{DownloadEvent, ModelDownloader, HuggingFaceHub, HfVariant, HfTreeItem, AutoHeal, resolve_model_repo};
-pub use registry::ModelCatalog as CoreRoster;
+pub use fetcher::{
+    resolve_model_repo, AutoHeal, DownloadEvent, HfTreeItem, HfVariant, HuggingFaceHub,
+    ModelDownloader,
+};
+pub use gguf::{GgufProber, ModelGeometry, WeightBytes, KV_CELL_PAD};
 pub use registry::auditor::{HardwareAuditor, HealthStatus};
-pub use ingest::{DocumentIngestor, SemanticChunker};
-
+pub use registry::ModelCatalog as CoreRoster;
+pub use types::manifest::{ModelAsset, ModelManifest, ModelRecommendation};
+pub use types::{KernelSignature, StreamingReasoningFilter, StructuralDNA};

@@ -18,7 +18,10 @@ pub struct InstallationModel {
     pub parameters: String,
     #[serde(default)]
     pub training_tokens: String,
-    #[serde(default = "default_bit_depth", deserialize_with = "deserialize_bit_depth")]
+    #[serde(
+        default = "default_bit_depth",
+        deserialize_with = "deserialize_bit_depth"
+    )]
     pub bit_depth: f64,
     pub ram_required_gb: f64,
     #[serde(default)]
@@ -117,7 +120,10 @@ pub struct ModelManifest {
     pub architecture_type: String,
     pub parameters: String,
     pub training_tokens: String,
-    #[serde(default = "default_bit_depth", deserialize_with = "deserialize_bit_depth")]
+    #[serde(
+        default = "default_bit_depth",
+        deserialize_with = "deserialize_bit_depth"
+    )]
     pub bit_depth: f64,
     pub ram_required_gb: f64,
     pub download_size_gb: f64,
@@ -185,6 +191,8 @@ pub struct RegistryModelMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub think_end_tag: Option<String>,
     pub chat_template: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<crate::capabilities::PackageCapabilities>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -229,7 +237,11 @@ impl ModelRegistry {
     /// Installed models matching `query`: the exact id (ignoring case and `- _ . :` and spaces) when
     /// there is one, else every id that contains the query (sorted). More than one = ambiguous.
     pub fn find(&self, query: &str) -> Vec<&ModelRegistryEntry> {
-        let norm = |s: &str| s.trim().to_lowercase().replace(['-', '_', ' ', '.', ':'], "");
+        let norm = |s: &str| {
+            s.trim()
+                .to_lowercase()
+                .replace(['-', '_', ' ', '.', ':'], "")
+        };
         let target = norm(query);
         if target.is_empty() {
             return Vec::new();
@@ -237,11 +249,19 @@ impl ModelRegistry {
         if let Some(exact) = self.installed_models.get(query.trim()) {
             return vec![exact];
         }
-        let exact: Vec<_> = self.installed_models.values().filter(|e| norm(&e.id) == target).collect();
+        let exact: Vec<_> = self
+            .installed_models
+            .values()
+            .filter(|e| norm(&e.id) == target)
+            .collect();
         if !exact.is_empty() {
             return exact;
         }
-        let mut partial: Vec<_> = self.installed_models.values().filter(|e| norm(&e.id).contains(&target)).collect();
+        let mut partial: Vec<_> = self
+            .installed_models
+            .values()
+            .filter(|e| norm(&e.id).contains(&target))
+            .collect();
         partial.sort_by(|a, b| a.id.cmp(&b.id));
         partial
     }

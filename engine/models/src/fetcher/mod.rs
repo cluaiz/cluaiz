@@ -32,7 +32,11 @@ impl ModelDownloader {
     /// Vault folder of a model: `<models>/<category>/<last part of the id, ':' written as '-'>`.
     /// Every download, lookup and delete uses this one rule.
     pub fn model_dir(category: &str, model_id: &str) -> PathBuf {
-        let name = model_id.split('/').next_back().unwrap_or(model_id).replace(':', "-");
+        let name = model_id
+            .split('/')
+            .next_back()
+            .unwrap_or(model_id)
+            .replace(':', "-");
         crate::models::registry::ModelVault::resolve_category_dir(category).join(name)
     }
 
@@ -75,7 +79,17 @@ impl ModelDownloader {
     ) -> Result<PathBuf, String> {
         let rt = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
         rt.block_on(async {
-            Self::download_gguf_async(category, repo_id, download_url, filename, assets, manifest, tx, abort).await
+            Self::download_gguf_async(
+                category,
+                repo_id,
+                download_url,
+                filename,
+                assets,
+                manifest,
+                tx,
+                abort,
+            )
+            .await
         })
     }
 
@@ -127,7 +141,10 @@ impl ModelDownloader {
             return Err("Model directory not found".to_string());
         }
         Self::remove_folder(&path)?;
-        let id = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let id = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
         crate::models::registry::InstalledStateRegistry::unregister_model(&id)
     }
 
@@ -141,7 +158,10 @@ impl ModelDownloader {
                 }
             }
         }
-        Err(format!("could not delete {} (is the model loaded by a running server?)", path.display()))
+        Err(format!(
+            "could not delete {} (is the model loaded by a running server?)",
+            path.display()
+        ))
     }
 
     /// Deletes an installed model (its folder and its model_registry.json entry). `model_id` is the
@@ -163,8 +183,8 @@ impl ModelDownloader {
     /// Downloads `files` of a model into its vault folder and registers it in model_registry.json, as the
     /// old ModelManager did: files already on disk are kept, a failed download removes only the files this
     /// call created, and nothing is registered unless the primary weight file is there.
-    /// `files` are repository paths; they are stored by file name, except voice packs, which keep their
-    /// folder. Returns the primary weight file.
+    /// Relocates graph-parent files together and preserves shared helper folders.
+    /// Returns the primary weight file.
     pub async fn install(
         manifest: &ModelManifest,
         files: &[String],
@@ -172,7 +192,8 @@ impl ModelDownloader {
         abort: Arc<AtomicBool>,
     ) -> Result<PathBuf, String> {
         let dir = Self::model_dir(&manifest.category, &manifest.id);
-        std::fs::create_dir_all(&dir).map_err(|e| format!("could not create {}: {}", dir.display(), e))?;
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("could not create {}: {}", dir.display(), e))?;
         let primary_name = Path::new(&manifest.huggingface_filename)
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
@@ -185,29 +206,52 @@ impl ModelDownloader {
             .map_err(|e| e.to_string())?;
 
         let mut created: Vec<PathBuf> = Vec::new();
+        let mapped = files
+            .iter()
+            .map(|path| AssetBundler::local_asset_path(path, &manifest.huggingface_filename))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut unique = std::collections::HashSet::new();
+        if mapped.iter().any(|path| !unique.insert(path.clone())) {
+            return Err("Model bundle contains conflicting local asset destinations".into());
+        }
         for (idx, rel_path) in files.iter().enumerate() {
-            let rel_lower = rel_path.to_lowercase();
-            let keeps_folder = rel_lower.contains("voices/") || rel_lower.contains("voice_styles/");
-            let local_name = if keeps_folder {
-                rel_path.clone()
-            } else {
-                Path::new(rel_path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| rel_path.clone())
-            };
-            let dest = dir.join(&local_name);
+            let local_name = mapped[idx].to_string_lossy();
+            let dest = dir.join(&mapped[idx]);
             if dest.exists() {
-                println!("   ├─ [{}/{}] Already on disk: {}", idx + 1, files.len(), local_name);
+                println!(
+                    "   ├─ [{}/{}] Already on disk: {}",
+                    idx + 1,
+                    files.len(),
+                    local_name
+                );
                 continue;
             }
             if created.is_empty() {
                 dispatch_model_telemetry(&manifest.id);
             }
             let url = if !manifest.huggingface_repo.is_empty() {
-                format!("https://huggingface.co/{}/resolve/main/{}", manifest.huggingface_repo, rel_path)
+                format!(
+                    "https://huggingface.co/{}/resolve/main/{}",
+                    manifest.huggingface_repo, rel_path
+                )
             } else {
                 manifest.download_url.clone()
             };
-            println!("   ├─ [{}/{}] Downloading {}", idx + 1, files.len(), rel_path);
-            if let Err(e) = FileDownloader::download_single_file(&client, &url, &dest, tx.clone(), abort.clone()).await {
+            println!(
+                "   ├─ [{}/{}] Downloading {}",
+                idx + 1,
+                files.len(),
+                rel_path
+            );
+            if let Err(e) = FileDownloader::download_single_file(
+                &client,
+                &url,
+                &dest,
+                tx.clone(),
+                abort.clone(),
+            )
+            .await
+            {
                 for path in &created {
                     let _ = std::fs::remove_file(path);
                 }
@@ -219,17 +263,129 @@ impl ModelDownloader {
 
         let primary = dir.join(&primary_name);
         if !primary.exists() {
-            return Err(format!("primary weight file '{}' is missing; the model was not registered", primary_name));
+            return Err(format!(
+                "primary weight file '{}' is missing; the model was not registered",
+                primary_name
+            ));
+        }
+        if primary
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("onnx"))
+        {
+            Self::complete_onnx_assets(manifest, &primary, &client, tx.clone(), abort.clone())
+                .await?;
         }
         if let Ok(json) = serde_json::to_string_pretty(manifest) {
             let _ = std::fs::write(dir.join("model_manifest.json"), json);
         }
         let entry = crate::models::registry::InstalledStateRegistry::entry_for_folder(
-            &manifest.category, &dir, Some(&primary_name), &manifest.huggingface_repo,
+            &manifest.category,
+            &dir,
+            Some(&primary_name),
+            &manifest.huggingface_repo,
         )
         .ok_or_else(|| format!("no weight file found in {}", dir.display()))?;
+        if let Some(package) = entry
+            .metadata
+            .capabilities
+            .as_ref()
+            .filter(|p| !p.onnx_graphs.is_empty())
+        {
+            let missing = package.missing_onnx_assets();
+            if !missing.is_empty() {
+                return Err(format!(
+                    "Required ONNX helper assets are missing: {}",
+                    missing.join(", ")
+                ));
+            }
+        }
         crate::models::registry::InstalledStateRegistry::register_model(entry)?;
         Ok(primary)
+    }
+
+    /// Fetch only genuinely referenced/required helpers from this selected
+    /// repository. An absent asset is an error, never another model's config.
+    pub async fn complete_onnx_assets(
+        manifest: &ModelManifest,
+        primary: &Path,
+        client: &reqwest::Client,
+        tx: mpsc::Sender<DownloadEvent>,
+        abort: Arc<AtomicBool>,
+    ) -> Result<(), String> {
+        let package = crate::capabilities::PackageCapabilities::inspect(primary)
+            .map_err(|e| e.to_string())?;
+        let missing = package.missing_onnx_assets();
+        if missing.is_empty() {
+            return Ok(());
+        }
+        if manifest.huggingface_repo.is_empty() {
+            return Err(format!(
+                "ONNX assets missing and no repository is configured: {}",
+                missing.join(", ")
+            ));
+        }
+        let tree = HuggingFaceHub::list_raw_tree(&manifest.huggingface_repo).await?;
+        let dir = package
+            .primary_file
+            .parent()
+            .ok_or("ONNX package directory missing")?;
+        let graph_parent = Path::new(&manifest.huggingface_filename)
+            .parent()
+            .unwrap_or_else(|| Path::new(""));
+        for asset in &missing {
+            if abort.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err("ONNX helper download cancelled".into());
+            }
+            let beside_graph = graph_parent
+                .join(asset)
+                .to_string_lossy()
+                .replace('\\', "/");
+            let external = package
+                .onnx_graphs
+                .iter()
+                .any(|graph| graph.external_files.contains(asset));
+            let candidates = if external {
+                vec![beside_graph.as_str()]
+            } else {
+                vec![asset.as_str(), beside_graph.as_str()]
+            };
+            let source = candidates
+                .into_iter()
+                .find(|candidate| {
+                    tree.iter().any(|item| {
+                        item.path == *candidate && item.r#type.as_deref() == Some("file")
+                    })
+                })
+                .ok_or_else(|| {
+                    format!("Required ONNX asset '{asset}' is absent in selected repository")
+                })?;
+            let local = AssetBundler::local_asset_path(source, &manifest.huggingface_filename)?;
+            if local != Path::new(asset) {
+                return Err("ONNX helper destination does not match graph contract".into());
+            }
+            let url = format!(
+                "https://huggingface.co/{}/resolve/main/{source}",
+                manifest.huggingface_repo
+            );
+            FileDownloader::download_single_file(
+                client,
+                &url,
+                &dir.join(local),
+                tx.clone(),
+                abort.clone(),
+            )
+            .await?;
+        }
+        let missing = crate::capabilities::PackageCapabilities::inspect(primary)
+            .map_err(|e| e.to_string())?
+            .missing_onnx_assets();
+        if !missing.is_empty() {
+            return Err(format!(
+                "ONNX helper completion failed: {}",
+                missing.join(", ")
+            ));
+        }
+        Ok(())
     }
 
     /// Cleans up incomplete .part and .lock files in blobs directory
