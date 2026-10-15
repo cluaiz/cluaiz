@@ -1,14 +1,31 @@
 //! 🏛️ Single Engine Host (`engine/runtime`)
 //! Central model host governing active execution plans and streaming sessions.
 
+use cluaiz_core::ActiveUserSettings;
+use cluaiz_core::{chat::ChatEnvelope, media::PreparedPart};
+use cluaiz_hw::SystemInfo;
+use cluaiz_models::types::StructuralDNA;
+use cluaiz_models::ModelGeometry;
+use cluaiz_plan::{ExecutionPlan, Planner};
+use llama_engine::native::session::NativeSession;
+use llama_engine::{extract_thinking_tags_native, GenerationTimings, NativeLlama, ThinkingReport};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
-use cluaiz_core::ActiveUserSettings;
-use cluaiz_hw::SystemInfo;
-use cluaiz_models::ModelGeometry;
-use cluaiz_models::types::StructuralDNA;
-use cluaiz_plan::{ExecutionPlan, Planner};
-use llama_engine::{GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};
+
+enum GenerationRequest {
+    Text {
+        prompt: String,
+        expected_key: Option<String>,
+    },
+    Media(Box<MediaGeneration>),
+}
+
+// Keep the large media/options payload out of every legacy text request's enum slot.
+struct MediaGeneration {
+    request: ChatEnvelope<Vec<PreparedPart>>,
+    expected_key: String,
+    settings: ActiveUserSettings,
+}
 
 pub enum HostResponse {
     TokenStream(mpsc::Receiver<String>),
@@ -23,7 +40,9 @@ fn error_token(message: impl std::fmt::Display) -> String {
 
 /// The error message when `token` is the stream's error token, else None.
 pub fn stream_error(token: &str) -> Option<&str> {
-    token.strip_prefix("[ERROR: ").and_then(|t| t.strip_suffix(']'))
+    token
+        .strip_prefix("[ERROR: ")
+        .and_then(|t| t.strip_suffix(']'))
 }
 
 /// llama.cpp's description of the loaded model, the values llama-bench prints.
@@ -36,10 +55,14 @@ pub struct ModelDescription {
 }
 
 pub struct EngineHost {
+    /// Audio sessions have their own lifecycle and never evict the chat owner.
+    pub onnx: crate::onnx_host::OnnxHost,
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
     /// Settings the loaded model was loaded with (user settings + request llama params)
     pub loaded_settings: Arc<Mutex<Option<ActiveUserSettings>>>,
-    pub active_llama: Arc<Mutex<Option<NativeLlama>>>,
+    active_session: Arc<Mutex<Option<NativeSession>>>,
+    /// Serialize load/unload transitions, including native allocations before publication.
+    model_transition: Mutex<()>,
     pub active_model_path: Arc<Mutex<Option<String>>>,
     pub active_fingerprint: Arc<Mutex<Option<String>>>,
     pub dna: Arc<Mutex<StructuralDNA>>,
@@ -63,9 +86,11 @@ impl EngineHost {
             llama_engine::ffi::llama_cpp::llama_backend_init();
         }
         Self {
+            onnx: crate::onnx_host::OnnxHost::default(),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
-            active_llama: Arc::new(Mutex::new(None)),
+            active_session: Arc::new(Mutex::new(None)),
+            model_transition: Mutex::new(()),
             active_model_path: Arc::new(Mutex::new(None)),
             active_fingerprint: Arc::new(Mutex::new(None)),
             dna: Arc::new(Mutex::new(StructuralDNA::default())),
@@ -80,7 +105,7 @@ impl EngineHost {
     /// Dynamically resolves thinking start and end markers directly from llama.cpp's native template engine
     /// Each lookup parses the whole template in llama.cpp, so the result is kept per template for the loaded model.
     pub async fn get_thinking_tags(&self, custom_tmpl: Option<&str>) -> ThinkingTags {
-        let llama_guard = self.active_llama.lock().await;
+        let llama_guard = self.active_session.lock().await;
         if llama_guard.is_some() {
             // Read once at load for the loaded model's template: reuse instead of re-parsing it per message
             let dna = self.dna.lock().await;
@@ -95,17 +120,20 @@ impl EngineHost {
                 }
             }
         }
-        let model_ptr = llama_guard.as_ref().map(|l| l.model_ptr as *const std::ffi::c_void).unwrap_or(std::ptr::null());
-        let tags = extract_thinking_tags_native(model_ptr, custom_tmpl);
+        let tags = match llama_guard.as_ref() {
+            Some(session) => session.thinking_tags(custom_tmpl),
+            None => extract_thinking_tags_native(std::ptr::null(), custom_tmpl),
+        };
         if llama_guard.is_some() {
-            *self.thinking_tags_cache.lock().await = Some((custom_tmpl.map(str::to_string), tags.clone()));
+            *self.thinking_tags_cache.lock().await =
+                Some((custom_tmpl.map(str::to_string), tags.clone()));
         }
         tags
     }
 
     /// Checks if a model at the specified path is currently resident in memory
     pub async fn is_model_loaded(&self, model_path: &str) -> bool {
-        let llama_guard = self.active_llama.lock().await;
+        let llama_guard = self.active_session.lock().await;
         let path_guard = self.active_model_path.lock().await;
         llama_guard.is_some() && path_guard.as_deref() == Some(model_path)
     }
@@ -113,12 +141,16 @@ impl EngineHost {
     /// Load key: model path + load-time settings (ctx setting, GPU layers, KV setting, FA, batch, mmap, buffer).
     /// It never includes live free memory, so a loaded model is not re-planned on the next message.
     pub fn load_key(model_path: &str, settings: &ActiveUserSettings) -> String {
-        format!("{}|{}", model_path, settings.optimization.load_fingerprint())
+        format!(
+            "{}|{}",
+            model_path,
+            settings.optimization.load_fingerprint()
+        )
     }
 
     /// Checks if a model is resident matching the exact load parameters fingerprint
     pub async fn is_model_loaded_with_fingerprint(&self, fingerprint: &str) -> bool {
-        let llama_guard = self.active_llama.lock().await;
+        let llama_guard = self.active_session.lock().await;
         let fp_guard = self.active_fingerprint.lock().await;
         llama_guard.is_some() && fp_guard.as_deref() == Some(fingerprint)
     }
@@ -134,6 +166,7 @@ impl EngineHost {
         model_path: &std::path::Path,
         settings: &ActiveUserSettings,
     ) -> anyhow::Result<ExecutionPlan> {
+        let _transition = self.model_transition.lock().await;
         let path_str = model_path.to_string_lossy().to_string();
         let key = Self::load_key(&path_str, settings);
 
@@ -143,16 +176,17 @@ impl EngineHost {
             }
         }
 
-        self.unload_model().await;
+        self.unload_model_inner().await;
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         let plan = Planner::create_plan(model_id, &geometry, &hw, settings);
         if !plan.is_feasible() {
             // Still report why, so the user sees the numbers behind the refusal
-            self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings)).await;
+            self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings))
+                .await;
             return Err(anyhow::anyhow!("{}", plan.explanation));
         }
-        let plan = self.load_model(&path_str, &plan, settings).await?;
+        let plan = self.load_model_inner(&path_str, &plan, settings).await?;
         *self.current_plan.lock().await = Some(plan.clone());
         *self.loaded_settings.lock().await = Some(settings.clone());
         Ok(plan)
@@ -167,7 +201,10 @@ impl EngineHost {
         settings: &ActiveUserSettings,
     ) -> anyhow::Result<ExecutionPlan> {
         let path_str = model_path.to_string_lossy().to_string();
-        if self.is_model_loaded_with_fingerprint(&Self::load_key(&path_str, settings)).await {
+        if self
+            .is_model_loaded_with_fingerprint(&Self::load_key(&path_str, settings))
+            .await
+        {
             if let Some(plan) = self.current_plan.lock().await.clone() {
                 return Ok(plan);
             }
@@ -194,7 +231,22 @@ impl EngineHost {
     /// Loads model into unified process memory using calculated ExecutionPlan.
     /// Returns the plan as loaded: if llama.cpp had to fall back (fewer GPU layers / CPU), the returned
     /// plan carries the real n_gpu_layers and says so, so the UI and API never show a placement that did not happen.
-    pub async fn load_model(&self, model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSettings) -> anyhow::Result<ExecutionPlan> {
+    pub async fn load_model(
+        &self,
+        model_path: &str,
+        plan: &ExecutionPlan,
+        settings: &ActiveUserSettings,
+    ) -> anyhow::Result<ExecutionPlan> {
+        let _transition = self.model_transition.lock().await;
+        self.load_model_inner(model_path, plan, settings).await
+    }
+
+    async fn load_model_inner(
+        &self,
+        model_path: &str,
+        plan: &ExecutionPlan,
+        settings: &ActiveUserSettings,
+    ) -> anyhow::Result<ExecutionPlan> {
         let geometry = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path))?;
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
 
@@ -204,7 +256,7 @@ impl EngineHost {
 
         // Same model with the same load-time settings is already resident: nothing to do
         {
-            let llama_guard = self.active_llama.lock().await;
+            let llama_guard = self.active_session.lock().await;
             let fp_guard = self.active_fingerprint.lock().await;
             if llama_guard.is_some() && fp_guard.as_deref() == Some(&target_fp) {
                 return Ok(plan.clone());
@@ -212,7 +264,8 @@ impl EngineHost {
         }
 
         // Plan banner: kept for the CLI's plan view and written to the log
-        self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings)).await;
+        self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings))
+            .await;
 
         if !plan.is_feasible() {
             return Err(anyhow::anyhow!("{}", plan.explanation));
@@ -220,7 +273,7 @@ impl EngineHost {
 
         // 🛡️ CRITICAL VRAM HYGIENE: Unload previous model before allocating new one!
         // Prevents two models from colliding simultaneously in physical VRAM.
-        self.unload_model().await;
+        self.unload_model_inner().await;
 
         let n_ctx = plan.context_window as u32;
         let mut dna_guard = self.dna.lock().await;
@@ -246,10 +299,18 @@ impl EngineHost {
         let actual_n_ctx = llama.n_ctx;
         cluaiz_core::set_active_context(Some((model_path.to_string(), actual_n_ctx)));
         if actual_n_ctx != n_ctx {
-            tracing::warn!("⚠️ [EngineHost] Planned n_ctx {} but llama.cpp created {}", n_ctx, actual_n_ctx);
+            tracing::warn!(
+                "⚠️ [EngineHost] Planned n_ctx {} but llama.cpp created {}",
+                n_ctx,
+                actual_n_ctx
+            );
         }
         let post_hw = cluaiz_hw::HardwareProber::with_live_memory();
-        let post_free_vram = post_hw.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
+        let post_free_vram = post_hw
+            .gpus
+            .first()
+            .map(|g| g.vram_available_gb)
+            .unwrap_or(0.0);
         let pre_free_vram = hw.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
         let vram_delta = (pre_free_vram - post_free_vram).max(0.0);
 
@@ -269,8 +330,8 @@ impl EngineHost {
             }
         }
 
-        let mut llama_guard = self.active_llama.lock().await;
-        *llama_guard = Some(llama);
+        let mut llama_guard = self.active_session.lock().await;
+        *llama_guard = Some(NativeSession::new(llama)?);
 
         let mut path_guard = self.active_model_path.lock().await;
         *path_guard = Some(model_path.to_string());
@@ -281,7 +342,10 @@ impl EngineHost {
         let mut tokens_guard = self.last_prefilled_tokens.lock().await;
         tokens_guard.clear();
 
-        tracing::info!("✅ [EngineHost] Model successfully loaded into unified process space: {}", model_path);
+        tracing::info!(
+            "✅ [EngineHost] Model successfully loaded into unified process space: {}",
+            model_path
+        );
         Ok(loaded_plan)
     }
 
@@ -292,7 +356,12 @@ impl EngineHost {
 
     /// Safely unloads the active model from unified process memory
     pub async fn unload_model(&self) {
-        let mut llama_guard = self.active_llama.lock().await;
+        let _transition = self.model_transition.lock().await;
+        self.unload_model_inner().await;
+    }
+
+    async fn unload_model_inner(&self) {
+        let mut llama_guard = self.active_session.lock().await;
         *llama_guard = None;
         cluaiz_core::set_active_context(None);
         *self.current_plan.lock().await = None;
@@ -309,10 +378,112 @@ impl EngineHost {
 
     /// Dispatches prompt generation stream directly through static llama engine
     pub async fn dispatch_stream(&self, prompt: &str, max_tokens: usize) -> HostResponse {
-        let (tx, rx) = mpsc::channel::<String>(128);
-        let prompt_string = prompt.to_string();
+        self.dispatch_request(
+            GenerationRequest::Text {
+                prompt: prompt.to_owned(),
+                expected_key: None,
+            },
+            max_tokens,
+            None,
+        )
+        .await
+    }
 
-        let llama_arc = self.active_llama.clone();
+    /// API text requests retain their selected model identity and independent cancellation.
+    pub async fn dispatch_chat_text(
+        &self,
+        prompt: &str,
+        max_tokens: usize,
+        model_path: &std::path::Path,
+        settings: &ActiveUserSettings,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> HostResponse {
+        self.dispatch_request(
+            GenerationRequest::Text {
+                prompt: prompt.to_owned(),
+                expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
+            },
+            max_tokens,
+            Some(cancel),
+        )
+        .await
+    }
+
+    /// Typed media remains owned until the serialized worker finishes. The load key
+    /// prevents a queued request from being evaluated by a different model/configuration.
+    pub async fn dispatch_prepared(
+        &self,
+        request: ChatEnvelope<Vec<PreparedPart>>,
+        max_tokens: usize,
+        model_path: &std::path::Path,
+        settings: &ActiveUserSettings,
+        cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
+    ) -> HostResponse {
+        if request
+            .messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .all(|part| matches!(part, PreparedPart::Text { .. }))
+        {
+            // Extracted documents are text inputs; they do not require a vision projector.
+            let request = request
+                .try_map_messages(|messages| async move {
+                    messages
+                        .into_iter()
+                        .map(|message| {
+                            let mut text = String::new();
+                            for part in message.content {
+                                match part {
+                                    PreparedPart::Text { text: value } => text.push_str(&value),
+                                    _ => anyhow::bail!("Non-text part in text preparation"),
+                                }
+                            }
+                            Ok(cluaiz_core::ChatMessage {
+                                role: message.role,
+                                content: text,
+                            })
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()
+                })
+                .await;
+            let request = match request {
+                Ok(request) => request,
+                Err(error) => return HostResponse::Error(error.to_string()),
+            };
+            return self
+                .dispatch_request(
+                    GenerationRequest::Text {
+                        prompt: request.to_prompt(),
+                        expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
+                    },
+                    max_tokens,
+                    cancel,
+                )
+                .await;
+        }
+        self.dispatch_request(
+            GenerationRequest::Media(Box::new(MediaGeneration {
+                request,
+                expected_key: Self::load_key(&model_path.to_string_lossy(), settings),
+                settings: settings.clone(),
+            })),
+            max_tokens,
+            cancel,
+        )
+        .await
+    }
+
+    async fn dispatch_request(
+        &self,
+        request: GenerationRequest,
+        max_tokens: usize,
+        cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
+    ) -> HostResponse {
+        let (tx, rx) = mpsc::channel::<String>(128);
+
+        let llama_arc = self.active_session.clone();
+        let path_arc = self.active_model_path.clone();
+        let fingerprint_arc = self.active_fingerprint.clone();
         let dna_arc = self.dna.clone();
         let tokens_arc = self.last_prefilled_tokens.clone();
         let timings_arc = self.last_timings.clone();
@@ -323,31 +494,103 @@ impl EngineHost {
             if let Some(ref mut llama) = *llama_guard {
                 let dna_guard = dna_arc.blocking_lock();
                 let mut tokens_guard = tokens_arc.blocking_lock();
-                let last_tokens = tokens_guard.clone();
+                let expected_key = match &request {
+                    GenerationRequest::Text { expected_key, .. } => expected_key.as_deref(),
+                    GenerationRequest::Media(media) => Some(media.expected_key.as_str()),
+                };
+                if expected_key
+                    .is_some_and(|key| fingerprint_arc.blocking_lock().as_deref() != Some(key))
+                    || cancel
+                        .as_ref()
+                        .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire))
+                {
+                    tokens_guard.clear();
+                    *timings_arc.blocking_lock() = None;
+                    *thinking_arc.blocking_lock() = None;
+                    let message = if cancel
+                        .as_ref()
+                        .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire))
+                    {
+                        "Request cancelled before execution"
+                    } else {
+                        "Model/configuration changed before execution; retry"
+                    };
+                    let _ = tx.blocking_send(error_token(message));
+                    return;
+                }
 
                 let tx_clone = tx.clone();
                 let callback = Box::new(move |token: String| {
-                    if cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst) {
+                    if cancel
+                        .as_deref()
+                        .unwrap_or(&cluaiz_core::GLOBAL_CANCEL_SIGNAL)
+                        .load(std::sync::atomic::Ordering::SeqCst)
+                    {
                         return false;
                     }
                     tx_clone.blocking_send(token).is_ok()
                 });
 
-                match stream_tokens(
-                    llama,
-                    &prompt_string,
-                    max_tokens,
-                    &dna_guard,
-                    &last_tokens,
-                    callback,
-                ) {
+                let result = match request {
+                    GenerationRequest::Text { prompt, .. } => {
+                        llama.stream_text(&prompt, max_tokens, &dna_guard, &tokens_guard, callback)
+                    }
+                    GenerationRequest::Media(media) => {
+                        let MediaGeneration {
+                            request, settings, ..
+                        } = *media;
+                        tokens_guard.clear();
+                        (|| -> anyhow::Result<Vec<i32>> {
+                            let model_path = path_arc.blocking_lock().clone().ok_or_else(|| {
+                                anyhow::anyhow!("Loaded model identity is unavailable")
+                            })?;
+                            let package =
+                                cluaiz_models::capabilities::PackageCapabilities::inspect(
+                                    std::path::Path::new(&model_path),
+                                )?;
+                            let supported = package.supported_inputs();
+                            if request
+                                .messages
+                                .iter()
+                                .flat_map(|m| &m.content)
+                                .any(|part| !supported.contains(&part.modality()))
+                            {
+                                anyhow::bail!("Selected model does not declare support for every request input");
+                            }
+                            let projector = package.projector.ok_or_else(|| {
+                                anyhow::anyhow!(
+                                    "Compatible media projector is missing or ambiguous"
+                                )
+                            })?;
+                            let needs = cluaiz_plan::media_budget::MediaRequirements {
+                                weights_bytes: std::fs::metadata(&projector.path)?.len(),
+                                workspace_bytes: settings.media.projector_workspace_bytes.get(),
+                                decoded_bytes: settings.media.limits.max_decoded_bytes(),
+                            };
+                            llama.ensure_projector(
+                                &projector.path,
+                                needs,
+                                &settings,
+                                llama.gpu_layers() != 0,
+                            )?;
+                            llama.stream_prepared(
+                                request, max_tokens, &dna_guard, &settings, callback,
+                            )?;
+                            Ok(Vec::new()) // media embeddings never become text-only prefix history
+                        })()
+                    }
+                };
+                match result {
                     Ok(new_tokens) => {
                         *tokens_guard = new_tokens;
                         // Stored before the sender drops, so it is ready when the stream ends
                         *timings_arc.blocking_lock() = Some(llama.timings());
-                        *thinking_arc.blocking_lock() = llama.last_thinking.clone();
+                        *thinking_arc.blocking_lock() = llama.thinking_report();
                     }
                     Err(e) => {
+                        tokens_guard.clear();
+                        *timings_arc.blocking_lock() = None;
+                        *thinking_arc.blocking_lock() = None;
                         let _ = tx.blocking_send(error_token(e));
                     }
                 }
@@ -357,6 +600,74 @@ impl EngineHost {
         });
 
         HostResponse::TokenStream(rx)
+    }
+
+    /// Nonblocking input evidence for planning; a busy or different model is unverified.
+    pub fn input_support(
+        &self,
+        package: &cluaiz_models::capabilities::PackageCapabilities,
+    ) -> crate::media_support::MediaSupportReport {
+        use crate::media_support::{resolve_support, ValidatedPairing, CURRENT_NATIVE_CHAT_INPUTS};
+        let (Ok(session), Ok(model)) = (
+            self.active_session.try_lock(),
+            self.active_model_path.try_lock(),
+        ) else {
+            return resolve_support(package, CURRENT_NATIVE_CHAT_INPUTS, None, &[]);
+        };
+        let mut inputs = CURRENT_NATIVE_CHAT_INPUTS.to_vec();
+        let selected = model
+            .as_deref()
+            .and_then(|path| std::path::Path::new(path).canonicalize().ok())
+            .is_some_and(|path| path == package.primary_file);
+        if let Some(support) = session
+            .as_ref()
+            .filter(|_| selected)
+            .and_then(NativeSession::projector_support)
+        {
+            inputs.retain(|input| match input {
+                cluaiz_core::Modality::Image => support.vision,
+                cluaiz_core::Modality::Audio => support.audio_sample_rate.is_some(),
+                cluaiz_core::Modality::Text => true,
+            });
+        }
+        let pairing = model
+            .as_deref()
+            .filter(|_| selected)
+            .zip(session.as_ref().and_then(NativeSession::projector_path))
+            .map(|(model, projector)| ValidatedPairing {
+                model: std::path::Path::new(model),
+                projector,
+            });
+        resolve_support(package, &inputs, pairing, &[])
+    }
+
+    /// Availability and attachment descriptors for existing general model endpoints.
+    pub async fn media_support(
+        &self,
+        package: &cluaiz_models::capabilities::PackageCapabilities,
+    ) -> crate::media_support::MediaSupportReport {
+        use crate::media_support::AttachmentRoute;
+        let mut report = self.input_support(package);
+        let mut formats = cluaiz_media::formats::attachment_formats();
+        formats.extend(cluaiz_media::formats::document_attachment_formats());
+        let mut routes: Vec<_> = formats
+            .iter()
+            .map(|(input, format)| AttachmentRoute {
+                input: *input,
+                format,
+            })
+            .collect();
+        let video_formats = tokio::task::spawn_blocking(cluaiz_media::video::attachment_formats)
+            .await
+            .ok()
+            .and_then(Result::ok)
+            .unwrap_or_default();
+        routes.extend(video_formats.iter().map(|format| AttachmentRoute {
+            input: cluaiz_core::Modality::Image,
+            format,
+        }));
+        report.set_attachment_routes(&routes);
+        report
     }
 
     /// llama.cpp timings of the last finished generation (None before the first one)
@@ -371,29 +682,39 @@ impl EngineHost {
 
     /// llama.cpp's description of the loaded model (None when nothing is loaded)
     pub async fn model_description(&self) -> Option<ModelDescription> {
-        let guard = self.active_llama.lock().await;
+        let guard = self.active_session.lock().await;
         guard.as_ref().map(|l| {
             let (desc, size_bytes, n_params) = l.describe();
-            ModelDescription { desc, size_bytes, n_params }
+            ModelDescription {
+                desc,
+                size_bytes,
+                n_params,
+            }
         })
     }
 
     /// llama-bench's measurement on the loaded model: `n_prompt` random tokens decoded in batches,
     /// then `n_gen` tokens one by one, `reps` times after one warmup. Returns nanoseconds per rep.
     /// The KV cache is cleared, so the next chat message prefills from scratch.
-    pub async fn bench(&self, n_prompt: usize, n_gen: usize, reps: usize) -> anyhow::Result<Vec<u64>> {
-        let llama_arc = self.active_llama.clone();
+    pub async fn bench(
+        &self,
+        n_prompt: usize,
+        n_gen: usize,
+        reps: usize,
+    ) -> anyhow::Result<Vec<u64>> {
+        let llama_arc = self.active_session.clone();
         let tokens_arc = self.last_prefilled_tokens.clone();
         tokio::task::spawn_blocking(move || {
             let mut guard = llama_arc.blocking_lock();
-            let llama = guard.as_mut().ok_or_else(|| anyhow::anyhow!("No model loaded in EngineHost"))?;
+            let llama = guard
+                .as_mut()
+                .ok_or_else(|| anyhow::anyhow!("No model loaded in EngineHost"))?;
             tokens_arc.blocking_lock().clear();
             llama.bench(n_prompt, n_gen, reps)
         })
         .await?
     }
 }
-
 
 /// Builds the llama.cpp model/context params from the plan and loads the model.
 /// Synchronous on purpose: the params and the MoE override list hold raw C pointers,
@@ -435,10 +756,20 @@ fn load_with_plan(
         cluaiz_core::FeatureState::Auto => -1,
     };
     // KV next to its GPU layers, except CTX rule 5B (weights on GPU, whole KV in RAM)
-    ctx_params.offload_kqv = if n_gpu_layers != 0 && plan.kv_offload { 1 } else { 0 };
-    ctx_params.op_offload = if n_gpu_layers != 0 && plan.op_offload { 1 } else { 0 };
+    ctx_params.offload_kqv = if n_gpu_layers != 0 && plan.kv_offload {
+        1
+    } else {
+        0
+    };
+    ctx_params.op_offload = if n_gpu_layers != 0 && plan.op_offload {
+        1
+    } else {
+        0
+    };
     // Same default as llama.cpp's CLI (physical cores); llama_context_default_params alone gives 4
-    let (n_threads, n_threads_batch) = settings.optimization.resolved_threads(hw.cpu.physical_cores);
+    let (n_threads, n_threads_batch) = settings
+        .optimization
+        .resolved_threads(hw.cpu.physical_cores);
     ctx_params.n_threads = n_threads;
     ctx_params.n_threads_batch = n_threads_batch;
     ctx_params.no_perf = 0; // keep llama.cpp's timing counters for the speed report
