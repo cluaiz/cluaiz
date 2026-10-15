@@ -1,0 +1,171 @@
+//! Ordered source-to-buffer preparation. This layer never invokes an inference model.
+
+use crate::{audio::decode_audio, image::decode_image, source::SourceResolver};
+use anyhow::{Context, Result};
+use cluaiz_core::{
+    chat::{ChatEnvelope, ChatMessage},
+    contracts::EngineError,
+    media::{InputPart, PreparedPart},
+    media_limits::MediaLimits,
+};
+use std::path::Path;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
+struct PreparationGuard {
+    signal: Arc<AtomicBool>,
+    active: bool,
+}
+impl Drop for PreparationGuard {
+    fn drop(&mut self) {
+        if self.active {
+            self.signal.store(true, Ordering::Release);
+        }
+    }
+}
+
+/// Prepares an entire request in order, retaining decoded data and generation options.
+/// The canonical-path authorization callback is supplied by the calling request boundary.
+pub async fn prepare_chat(
+    request: ChatEnvelope<Vec<InputPart>>,
+    resolver: &SourceResolver,
+    authorize_local: impl Fn(&Path) -> Result<()> + Send + Sync,
+) -> Result<ChatEnvelope<Vec<PreparedPart>>> {
+    let mut guard = PreparationGuard {
+        signal: resolver.cancellation(),
+        active: true,
+    };
+    let result = request
+        .try_map_messages(|messages| async move {
+            // Known unavailable providers fail before any source fetch or decoding.
+            if messages
+                .iter()
+                .flat_map(|message| &message.content)
+                .any(|part| matches!(part, InputPart::Video { .. }))
+            {
+                tokio::task::spawn_blocking(crate::video::attachment_formats)
+                    .await?
+                    .map_err(|error| {
+                        EngineError::UnsupportedModality(format!(
+                            "Video decoder unavailable: {error:#}"
+                        ))
+                    })?;
+            }
+            let limits = resolver.limits();
+            let mut retained = 0_u64;
+            let mut prepared = Vec::with_capacity(messages.len());
+            for (message_index, message) in messages.into_iter().enumerate() {
+                let mut parts = Vec::with_capacity(message.content.len());
+                for (part_index, part) in message.content.into_iter().enumerate() {
+                    let result = prepare_part(part, resolver, &authorize_local, retained)
+                        .await
+                        .with_context(|| {
+                            format!("Cannot prepare message {message_index}, part {part_index}")
+                        })?;
+                    for result in result {
+                        retained = retained
+                            .checked_add(u64::try_from(result.retained_bytes())?)
+                            .context("Prepared request byte count overflow")?;
+                        limits.check_decoded_bytes(retained)?;
+                        parts.push(result);
+                    }
+                }
+                prepared.push(ChatMessage {
+                    role: message.role,
+                    content: parts,
+                });
+            }
+            Ok(prepared)
+        })
+        .await;
+    guard.active = false;
+    result
+}
+
+async fn prepare_part(
+    part: InputPart,
+    resolver: &SourceResolver,
+    authorize_local: &(impl Fn(&Path) -> Result<()> + Send + Sync),
+    retained: u64,
+) -> Result<Vec<PreparedPart>> {
+    let limits = resolver.limits();
+    let (source, input_kind, video_audio) = match part {
+        InputPart::Text { text } => {
+            let next = retained
+                .checked_add(u64::try_from(text.capacity())?)
+                .context("Text byte count overflow")?;
+            limits.check_decoded_bytes(next)?;
+            return Ok(vec![PreparedPart::Text { text }]);
+        }
+        InputPart::Image { source } => (source, Some(cluaiz_core::Modality::Image), false),
+        InputPart::Audio { source } => (source, Some(cluaiz_core::Modality::Audio), false),
+        InputPart::Document { source } => (source, Some(cluaiz_core::Modality::Text), false),
+        InputPart::Video {
+            source,
+            include_audio,
+        } => (source, None, include_audio),
+    };
+    let remaining = limits
+        .max_decoded_bytes()
+        .checked_sub(retained)
+        .filter(|remaining| *remaining > 0)
+        .context("Prepared request has exhausted its decoded byte budget")?;
+    let decode_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
+    let source = resolver.resolve(&source, authorize_local).await?;
+    let bytes = source.read_bytes(limits).await?;
+    let format = source.format.clone();
+    // From here on the worker owns its bytes. Temporary source files can be dropped;
+    // prepared buffers own their data through model use and cloned continuations.
+    drop(source);
+    let video_settings = resolver.video_settings();
+    let cancellation = resolver.cancellation();
+    tokio::task::spawn_blocking(move || match input_kind {
+        Some(cluaiz_core::Modality::Image) => {
+            decode_image(&bytes, decode_limits).map(|image| vec![PreparedPart::Image { image }])
+        }
+        Some(cluaiz_core::Modality::Audio) => {
+            decode_audio(bytes, decode_limits).map(|audio| vec![PreparedPart::Audio { audio }])
+        }
+        Some(cluaiz_core::Modality::Text) => {
+            let document = crate::documents::extract(&bytes, &format, decode_limits)?;
+            let text = document.text(decode_limits, true)?;
+            Ok(vec![PreparedPart::Text { text }])
+        }
+        None => {
+            if !format.mime_type.starts_with("video/") {
+                anyhow::bail!("Video attachment is not a recognized video container");
+            }
+            let video = crate::video::decode(
+                bytes,
+                decode_limits,
+                video_settings,
+                video_audio,
+                cancellation,
+            )?;
+            let mut parts = Vec::new();
+            for frame in video.frames {
+                parts.push(PreparedPart::Text {
+                    text: format!(
+                        "Video frame at {:.3} seconds:\n",
+                        frame.timestamp_us as f64 / 1_000_000.0
+                    ),
+                });
+                parts.push(PreparedPart::Image { image: frame.image });
+            }
+            if let Some(audio) = video.audio {
+                parts.push(PreparedPart::Text {
+                    text: "Audio track for the preceding video:\n".into(),
+                });
+                parts.push(PreparedPart::Audio { audio });
+            }
+            Ok(parts)
+        }
+    })
+    .await?
+}
+
+#[cfg(test)]
+#[path = "request_tests.rs"]
+mod tests;

@@ -1,0 +1,18 @@
+[package]
+name = "cluaiz-video-ffmpeg"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Built and packaged separately; engine startup never links against FFmpeg.
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "1"
+ffmpeg-next = { version = "=8.1.0", default-features = false, features = ["codec", "format", "software-scaling"] }
+
+[profile.release]
+strip = true
