@@ -6,6 +6,8 @@ pub mod settings;
 pub mod units;
 pub mod contracts;
 pub mod chat;
+pub mod media;
+pub mod media_limits;
 
 pub use env::{EnvironmentManager, EnvironmentMode};
 pub use settings::{
