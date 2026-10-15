@@ -1,8 +1,8 @@
-# Vector Embeddings API
+# Vector Embeddings API (`/v1/embeddings`)
 
 `POST /v1/embeddings`
 
-Generates dense floating-point vector representations for text inputs, supporting both `.onnx` and `.gguf` embedding models with automatic hardware acceleration, mean pooling, and L2 normalization.
+Generates dense floating-point vector representations for text documents, search queries, and images. Backed by ONNX execution graphs with automatic mean pooling, tokenizer attention masking, and L2 normalization for semantic search and RAG retrieval pipelines.
 
 ---
 
@@ -11,55 +11,119 @@ Generates dense floating-point vector representations for text inputs, supportin
 * **HTTP Method:** `POST`
 * **Path:** `/v1/embeddings`
 * **Content-Type:** `application/json`
+* **Authentication:** `Authorization: Bearer <session-token>` (Optional header: `x-caller: user`)
+* **Output Format:** Normalized F32 floating point vector arrays (`data[].embedding`)
 
 ---
 
 ## 📥 Request Parameters
 
-| Parameter | Type | Required | Default | Description |
-|:---|:---|:---|:---|:---|
-| **`input`** | String or Array of Strings | **Yes** | — | The input text or batch of texts to vectorize. |
-| **`model`** | String | No | `"auto"` | Model ID. Defaults to the active embedding model loaded in the slot. |
-| **`encoding_format`** | String | No | `"float"` | Format for vector numbers (`"float"` or `"base64"`). |
+| Parameter | Type | Required | Default | Allowed Values / Formats | Description |
+|:---|:---|:---:|:---|:---|:---|
+| **`input`** | String, Array of Strings, or Array of Objects | **Yes** | — | Non-empty string, string array, or image object array | The data to vectorize. For text, pass a string or array of strings. For images, pass `[{"type": "image", "source": "<uri-or-path>"}]`. |
+| **`model`** | String | No | Active slot model | Installed embedding model ID (e.g. `bge_m3-unknown-onnx-fp32`, `fashion_clip-unknown-onnx-fp32`) | Exact model ID to execute. |
+| **`encoding_format`** | String | No | `"float"` | `"float"` | Numerical encoding format for vectors. Non-float encodings are rejected. |
+| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
+
+---
+
+## 🧠 Supported Input Modalities & Models
+
+### 1. Text Embeddings (`bge_m3-unknown-onnx-fp32`)
+* **Output Dimensions:** 1024 normalized dimensions.
+* **Input Syntax:** String or Array of Strings:
+  ```json
+  {
+    "model": "bge_m3-unknown-onnx-fp32",
+    "input": [
+      "Cluaiz high-performance local AI runtime",
+      "Semantic similarity search in vector database"
+    ]
+  }
+  ```
+
+### 2. Image Embeddings (`fashion_clip-unknown-onnx-fp32`)
+* **Output Dimensions:** 512 normalized dimensions.
+* **Input Syntax:** Array containing image source object (Base64 data URI, HTTP URL, or local path):
+  ```json
+  {
+    "model": "fashion_clip-unknown-onnx-fp32",
+    "input": [
+      {
+        "type": "image",
+        "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+      }
+    ]
+  }
+  ```
 
 ---
 
 ## 💻 Code Examples
 
-### 1. cURL (Single Text)
+### 1. cURL (Text Embeddings)
 
 ```bash
 curl -X POST http://localhost:8000/v1/embeddings \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <session-token>" \
   -d '{
-    "model": "auto",
-    "input": "Cluaiz Engine high-performance local AI runtime."
+    "model": "bge_m3-unknown-onnx-fp32",
+    "input": [
+      "First paragraph for semantic retrieval.",
+      "Second sentence for cosine similarity comparison."
+    ]
   }'
 ```
 
-### 2. Python (Batch Embedding)
+### 2. cURL (Image Embedding Vector)
+
+```bash
+curl -X POST http://localhost:8000/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <session-token>" \
+  -d '{
+    "model": "fashion_clip-unknown-onnx-fp32",
+    "input": [
+      {
+        "type": "image",
+        "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+      }
+    ]
+  }'
+```
+
+### 3. Python (Batch Text Embeddings)
 
 ```python
-from openai import OpenAI
+import requests
 
-client = OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <session-token>"
+}
 
-response = client.embeddings.create(
-    model="auto",
-    input=[
+payload = {
+    "model": "bge_m3-unknown-onnx-fp32",
+    "input": [
         "First document paragraph for semantic search.",
         "Second query string to compute cosine similarity."
     ]
-)
+}
 
-vector_1 = response.data[0].embedding
-vector_2 = response.data[1].embedding
-print(f"Dimension: {len(vector_1)}")
+response = requests.post("http://localhost:8000/v1/embeddings", json=payload, headers=headers)
+data = response.json()
+
+for item in data.get("data", []):
+    vec = item["embedding"]
+    print(f"Index {item['index']} | Dimension: {len(vec)} | Sample: {vec[:3]}")
 ```
 
 ---
 
-## 📤 Response Format
+## 📤 Response Schema & Fields
+
+### Success Response (`HTTP 200`)
 
 ```json
 {
@@ -69,18 +133,37 @@ print(f"Dimension: {len(vector_1)}")
       "object": "embedding",
       "index": 0,
       "embedding": [
-        0.0245123,
-        -0.0134521,
-        0.0891234,
-        -0.0456123,
-        0.0012345
+        -0.07441563,
+        0.039529443,
+        -0.035253406,
+        0.012948211,
+        -0.058192341
+      ]
+    },
+    {
+      "object": "embedding",
+      "index": 1,
+      "embedding": [
+        0.01824123,
+        -0.04519284,
+        0.07129481,
+        -0.02194819,
+        0.00941829
       ]
     }
   ],
-  "model": "bge-large-en-v1.5",
+  "model": "bge_m3-unknown-onnx-fp32",
   "usage": {
-    "prompt_tokens": 12,
-    "total_tokens": 12
+    "prompt_tokens": 14,
+    "total_tokens": 14
   }
 }
 ```
+
+### Response Field Reference
+
+* **`object`**: Object type (`"list"`).
+* **`data[].object`**: Item type (`"embedding"`).
+* **`data[].index`**: Zero-based item index matching input order.
+* **`data[].embedding`**: Finite normalized float array (L2 normalized vector).
+* **`usage.prompt_tokens`**: Total tokens consumed by the tokenizer attention mask.
