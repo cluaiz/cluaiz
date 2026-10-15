@@ -2,10 +2,10 @@
 //!   Fetcher: Universal Asset Bundler & Companion File Resolver
 //! ═══════════════════════════════════════════════════════════════════════
 
-use std::collections::HashSet;
-use std::path::Path;
 use crate::models::taxonomy::quantization::UniversalQuantization;
 use crate::models::taxonomy::tts_families::TtsTaxonomy;
+use std::collections::HashSet;
+use std::path::Path;
 
 pub struct AssetBundler;
 
@@ -114,7 +114,9 @@ impl AssetBundler {
         let preferred = ["f16", "bf16", "fp16", "f32", "fp32"];
         for pref in &preferred {
             for &path in mmproj_paths {
-                if Self::basename_of(path).contains(pref) {
+                if UniversalQuantization::extract_quant_tag(&Self::basename_of(path))
+                    .eq_ignore_ascii_case(pref)
+                {
                     return Some(path);
                 }
             }
@@ -141,23 +143,26 @@ impl AssetBundler {
     /// Evaluates if metadata from a subfolder is compatible with the primary model variant.
     pub fn is_compatible_subfolder_metadata(meta_path: &str, primary_path: &str) -> bool {
         let lower = meta_path.to_lowercase();
-        let is_asset = lower.ends_with(".json") 
-            || lower.ends_with(".txt") 
-            || lower.ends_with(".yaml") 
-            || lower.ends_with(".yml") 
+        let is_asset = lower.ends_with(".json")
+            || lower.ends_with(".txt")
+            || lower.ends_with(".yaml")
+            || lower.ends_with(".yml")
             || lower.ends_with(".onnx")
             || lower.ends_with(".onnx.data")
             || lower.ends_with(".bin")
-            || lower.contains("vocab") 
-            || lower.contains("merges") 
+            || lower.contains("vocab")
+            || lower.contains("merges")
             || lower.contains("token")
             || lower.contains("voices");
-            
+
         if !is_asset {
             return false;
         }
 
-        let meta_dir = Path::new(meta_path).parent().and_then(|p| p.to_str()).unwrap_or("");
+        let meta_dir = Path::new(meta_path)
+            .parent()
+            .and_then(|p| p.to_str())
+            .unwrap_or("");
         if meta_dir.is_empty() {
             return true; // Root-level files are shared
         }
@@ -166,8 +171,11 @@ impl AssetBundler {
         let primary_lower = primary_path.to_lowercase();
 
         // Isolate quant-specific folders (e.g. Q4 config shouldn't attach to FP16 model)
-        if (meta_dir_lower.contains("q4") || meta_dir_lower.contains("int8") || meta_dir_lower.contains("fp16") || meta_dir_lower.contains("quant")) 
-            && !primary_lower.contains(&meta_dir_lower) 
+        if (meta_dir_lower.contains("q4")
+            || meta_dir_lower.contains("int8")
+            || meta_dir_lower.contains("fp16")
+            || meta_dir_lower.contains("quant"))
+            && !primary_lower.contains(&meta_dir_lower)
             && !meta_dir_lower.contains("voices")
         {
             return false;
@@ -176,30 +184,37 @@ impl AssetBundler {
         true
     }
 
-    /// Drops root metadata files when a specific subfolder counterpart exists in the bundle.
-    pub fn filter_duplicate_metadata_files(bundle_files: &mut Vec<String>) {
-        let mut subfolder_basenames = HashSet::new();
-        for f in bundle_files.iter() {
-            if let Some(parent) = Path::new(f).parent() {
-                if !parent.as_os_str().is_empty() {
-                    if let Some(basename) = Path::new(f).file_name().and_then(|s| s.to_str()) {
-                        subfolder_basenames.insert(basename.to_lowercase());
-                    }
-                }
-            }
+    /// Graph-parent files are relocated together to the package root; shared
+    /// module folders keep their hierarchy. Validate before joining any path.
+    pub fn local_asset_path(asset: &str, primary: &str) -> Result<std::path::PathBuf, String> {
+        let safe = |value: &str| {
+            !value.is_empty()
+                && !value.contains(['\\', ':'])
+                && Path::new(value)
+                    .components()
+                    .all(|part| matches!(part, std::path::Component::Normal(_)))
+        };
+        if !safe(asset) || !safe(primary) {
+            return Err("Invalid repository-relative asset path".into());
         }
+        let parent = Path::new(primary).parent().unwrap_or_else(|| Path::new(""));
+        let relative = Path::new(asset)
+            .strip_prefix(parent)
+            .unwrap_or_else(|_| Path::new(asset));
+        if relative.as_os_str().is_empty() {
+            return Err("Asset path resolves to a directory".into());
+        }
+        Ok(relative.to_path_buf())
+    }
 
-        bundle_files.retain(|f| {
-            let path = Path::new(f);
-            let parent = path.parent().and_then(|p| p.to_str()).unwrap_or("");
-            if parent.is_empty() {
-                if let Some(basename) = path.file_name().and_then(|s| s.to_str()) {
-                    if subfolder_basenames.contains(&basename.to_lowercase()) {
-                        return false;
-                    }
-                }
-            }
-            true
+    /// Deduplicate actual destinations, not basenames from unrelated module folders.
+    pub fn filter_duplicate_metadata_files(bundle_files: &mut Vec<String>, primary: &str) {
+        let parent = Path::new(primary).parent().unwrap_or_else(|| Path::new(""));
+        bundle_files.sort_by_key(|file| !Path::new(file).starts_with(parent));
+        let mut destinations = HashSet::new();
+        bundle_files.retain(|file| match Self::local_asset_path(file, primary) {
+            Ok(path) => destinations.insert(path),
+            Err(_) => false,
         });
     }
 
@@ -246,5 +261,39 @@ impl AssetBundler {
         } else {
             format!("{}-{}", repo_basename, clean_file_stem)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_package_layout_keeps_pooling_and_rejects_traversal() -> Result<(), String> {
+        let mut files = vec![
+            "config.json".into(),
+            "1_Pooling/config.json".into(),
+            "onnx/config.json".into(),
+            "onnx/model.onnx".into(),
+            "onnx/weights/file.data".into(),
+            "tokenizer.json".into(),
+        ];
+        AssetBundler::filter_duplicate_metadata_files(&mut files, "onnx/model.onnx");
+        assert!(!files.contains(&"config.json".into()));
+        assert!(
+            files.contains(&"onnx/config.json".into())
+                && files.contains(&"1_Pooling/config.json".into())
+        );
+        assert_eq!(
+            AssetBundler::local_asset_path("1_Pooling/config.json", "onnx/model.onnx")?,
+            Path::new("1_Pooling/config.json")
+        );
+        assert_eq!(
+            AssetBundler::local_asset_path("onnx/weights/file.data", "onnx/model.onnx")?,
+            Path::new("weights/file.data")
+        );
+        for file in ["../escape", "/escape", "C:/escape", "bad\\file"] {
+            assert!(AssetBundler::local_asset_path(file, "onnx/model.onnx").is_err());
+        }
+        Ok(())
     }
 }

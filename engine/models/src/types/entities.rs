@@ -17,6 +17,9 @@ impl SlotTypeTasksExt for SlotType {
                 if caps.has_vision {
                     tasks.push("multimodal-vision".to_string());
                 }
+                if caps.has_audio {
+                    tasks.push("multimodal-audio".to_string());
+                }
             }
             SlotType::Embedding => {
                 tasks.push("sentence-similarity".to_string());

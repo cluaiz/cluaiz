@@ -39,13 +39,22 @@ impl SlotType {
         }
     }
 
-    pub fn supported_inputs(&self, has_vision: bool) -> Vec<String> {
+    pub fn supported_inputs(
+        &self,
+        caps: &crate::taxonomy::rules::ModelCapabilities,
+    ) -> Vec<String> {
         match self {
-            SlotType::Chat if has_vision => vec!["text".to_string(), "image".to_string()],
-            SlotType::Chat => vec!["text".to_string()],
+            SlotType::Chat | SlotType::Embedding => {
+                let mut inputs = vec!["text".to_string()];
+                if caps.has_vision {
+                    inputs.push("image".to_string());
+                }
+                if caps.has_audio {
+                    inputs.push("audio".to_string());
+                }
+                inputs
+            }
             SlotType::Ingest => vec!["text".to_string(), "image".to_string()],
-            SlotType::Embedding if has_vision => vec!["text".to_string(), "image".to_string()],
-            SlotType::Embedding => vec!["text".to_string()],
             SlotType::Tts => vec!["text".to_string()],
             SlotType::Stt => vec!["audio".to_string()],
         }

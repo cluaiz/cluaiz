@@ -2,11 +2,13 @@
 //!   Prober: GGUF Header & KV Metadata Probing (SSOT Binding)
 //! ═══════════════════════════════════════════════════════════════════════
 
-use std::collections::HashMap;
+use anyhow::{bail, Result};
+use std::collections::{HashMap, VecDeque};
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
-use std::path::Path;
-use anyhow::{Result, bail};
+use std::io::{BufRead, Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock, Mutex};
+use std::time::SystemTime;
 
 #[derive(Debug, Clone, Default)]
 pub struct GgufProbeResult {
@@ -19,6 +21,7 @@ pub struct GgufProbeResult {
     pub think_end_tag: Option<String>,
     pub is_embedding: bool,
     pub has_vision: bool,
+    pub has_audio: bool,
 }
 
 /// One tensor entry from the GGUF tensor table.
@@ -47,46 +50,65 @@ pub struct GgufHeader {
 const MAX_STORED_ARRAY_LEN: u64 = 4096;
 /// GGUF default alignment of the tensor data section when `general.alignment` is absent (GGUF spec).
 const GGUF_DEFAULT_ALIGNMENT: u64 = 32;
+const HEADER_CACHE_CAPACITY: usize = 16;
+
+struct CachedHeader {
+    path: PathBuf,
+    stamp: (u64, SystemTime),
+    header: Arc<GgufHeader>,
+}
+
+static HEADER_CACHE: LazyLock<Mutex<VecDeque<CachedHeader>>> =
+    LazyLock::new(|| Mutex::new(VecDeque::new()));
 
 pub struct GgufProber;
 
 impl GgufProber {
     /// Probes a GGUF file and extracts architectural metadata
     pub fn probe_file(path: &Path) -> Result<GgufProbeResult, String> {
-        let (metadata, tensor_infos, _tensor_count) = Self::probe(path)
-            .map_err(|e| e.to_string())?;
+        let header = Self::read_header(path).map_err(|e| e.to_string())?;
+        Ok(Self::probe_header(&header))
+    }
+
+    /// Metadata interpretation for consumers that already own the parsed header.
+    pub fn probe_header(header: &GgufHeader) -> GgufProbeResult {
+        let metadata = &header.metadata;
 
         let architecture = metadata.get("general.architecture").cloned();
         let arch_prefix = architecture.as_deref().unwrap_or("llama");
-        
+
         let context_window = metadata
             .get(&format!("{}.context_length", arch_prefix))
             .or_else(|| metadata.get("general.context_length"))
             .cloned();
 
-        let chat_template = metadata
-            .get("tokenizer.chat_template")
-            .cloned();
+        let chat_template = metadata.get("tokenizer.chat_template").cloned();
 
-        let quantization = metadata
-            .get("general.file_type")
-            .cloned();
+        let quantization = metadata.get("general.file_type").cloned();
 
-        let parameter_count = metadata
-            .get("general.parameter_count")
-            .cloned();
+        let parameter_count = metadata.get("general.parameter_count").cloned();
 
-        let has_vision = tensor_infos.keys().any(|k| {
-            let kl = k.to_lowercase();
-            kl.contains("v.") || kl.contains("vision") || kl.contains("mm.") || kl.contains("image")
-        });
+        // Attention value tensors are not vision encoders. Positive encoder
+        // flags are metadata evidence; package/config resolution adds companions.
+        let has_vision = metadata
+            .get("clip.has_vision_encoder")
+            .is_some_and(|v| v == "true");
+        let has_audio = metadata
+            .get("clip.has_audio_encoder")
+            .is_some_and(|v| v == "true");
 
-        let is_embedding = metadata.get("general.architecture").map(|a| a == "bert" || a == "nomic_bert" || a == "jina_bert").unwrap_or(false)
-            || tensor_infos.keys().any(|k| k.to_lowercase().contains("pooling"));
+        let is_embedding = metadata
+            .get("general.architecture")
+            .map(|a| a == "bert" || a == "nomic_bert" || a == "jina_bert")
+            .unwrap_or(false)
+            || header
+                .tensors
+                .iter()
+                .any(|tensor| tensor.name.to_lowercase().contains("pooling"));
 
         let (think_start_tag, think_end_tag) = (None, None);
 
-        Ok(GgufProbeResult {
+        GgufProbeResult {
             architecture,
             context_window,
             chat_template,
@@ -96,18 +118,56 @@ impl GgufProber {
             think_end_tag,
             is_embedding,
             has_vision,
-        })
+            has_audio,
+        }
     }
 
     /// The single GGUF header parser: metadata, integer arrays, and the tensor table with byte sizes.
+    /// Immutable cached headers are reused only while canonical path, size and mtime match.
     pub fn read_header(path: &Path) -> Result<GgufHeader> {
-        let file_len = std::fs::metadata(path)?.len();
+        let path = path.canonicalize()?;
+        let metadata = std::fs::metadata(&path)?;
+        let stamp = metadata.modified().ok().map(|time| (metadata.len(), time));
+        if let (Some(stamp), Ok(mut cache)) = (stamp, HEADER_CACHE.lock()) {
+            if let Some(index) = cache
+                .iter()
+                .position(|item| item.path == path && item.stamp == stamp)
+            {
+                if let Some(item) = cache.remove(index) {
+                    let header = (*item.header).clone();
+                    cache.push_back(item);
+                    return Ok(header);
+                }
+            }
+        }
+        let header = Self::parse_header(&path, metadata.len())?;
+        let after = std::fs::metadata(&path)?;
+        if stamp != after.modified().ok().map(|time| (after.len(), time)) {
+            bail!("GGUF changed during metadata inspection");
+        }
+        if let (Some(stamp), Ok(mut cache)) = (stamp, HEADER_CACHE.lock()) {
+            cache.retain(|item| item.path != path);
+            while cache.len() >= HEADER_CACHE_CAPACITY {
+                cache.pop_front();
+            }
+            cache.push_back(CachedHeader {
+                path,
+                stamp,
+                header: Arc::new(header.clone()),
+            });
+        }
+        Ok(header)
+    }
+
+    fn parse_header(path: &Path, file_len: u64) -> Result<GgufHeader> {
         let f = File::open(path)?;
         let mut file = std::io::BufReader::with_capacity(1024 * 1024, f);
 
         let mut magic = [0u8; 4];
         file.read_exact(&mut magic)?;
-        if &magic != b"GGUF" { bail!("Not a valid GGUF binary"); }
+        if &magic != b"GGUF" {
+            bail!("Not a valid GGUF binary");
+        }
 
         let mut version = [0u8; 4];
         file.read_exact(&mut version)?;
@@ -138,11 +198,19 @@ impl GgufProber {
             }
             let ggml_type = Self::read_u32(&mut file)?;
             let offset = Self::read_u64(&mut file)?;
-            header.tensors.push(GgufTensor { name, dims, ggml_type, offset, size_bytes: 0 });
+            header.tensors.push(GgufTensor {
+                name,
+                dims,
+                ggml_type,
+                offset,
+                size_bytes: 0,
+            });
         }
 
         // Tensor data starts at the next aligned position after the tensor table
-        let alignment = header.metadata.get("general.alignment")
+        let alignment = header
+            .metadata
+            .get("general.alignment")
             .and_then(|v| v.parse::<u64>().ok())
             .filter(|a| *a > 0)
             .unwrap_or(GGUF_DEFAULT_ALIGNMENT);
@@ -153,7 +221,10 @@ impl GgufProber {
         let mut order: Vec<usize> = (0..header.tensors.len()).collect();
         order.sort_by_key(|&i| header.tensors[i].offset);
         for (k, &i) in order.iter().enumerate() {
-            let end = order.get(k + 1).map(|&j| header.tensors[j].offset).unwrap_or(data_len);
+            let end = order
+                .get(k + 1)
+                .map(|&j| header.tensors[j].offset)
+                .unwrap_or(data_len);
             header.tensors[i].size_bytes = end.saturating_sub(header.tensors[i].offset);
         }
 
@@ -161,10 +232,16 @@ impl GgufProber {
     }
 
     /// Metadata map, tensor dims and tensor count (thin view over `read_header`).
-    pub fn probe(path: &Path) -> Result<(HashMap<String, String>, HashMap<String, Vec<usize>>, usize)> {
+    pub fn probe(
+        path: &Path,
+    ) -> Result<(HashMap<String, String>, HashMap<String, Vec<usize>>, usize)> {
         let header = Self::read_header(path)?;
         let count = header.tensors.len();
-        let dims = header.tensors.into_iter().map(|t| (t.name, t.dims)).collect();
+        let dims = header
+            .tensors
+            .into_iter()
+            .map(|t| (t.name, t.dims))
+            .collect();
         Ok((header.metadata, dims, count))
     }
 
@@ -188,7 +265,10 @@ impl GgufProber {
     }
 
     /// Reads one metadata value. Integer/bool arrays up to MAX_STORED_ARRAY_LEN are also returned as numbers.
-    fn read_value(file: &mut std::io::BufReader<File>, value_type: u32) -> Result<(String, Option<Vec<i64>>)> {
+    fn read_value(
+        file: &mut std::io::BufReader<File>,
+        value_type: u32,
+    ) -> Result<(String, Option<Vec<i64>>)> {
         if value_type == 9 {
             return Self::read_array(file);
         }
@@ -201,7 +281,11 @@ impl GgufProber {
                 let mut buf = [0u8; 1];
                 file.read_exact(&mut buf)?;
                 if value_type == 7 {
-                    Ok(if buf[0] == 0 { "false".into() } else { "true".into() })
+                    Ok(if buf[0] == 0 {
+                        "false".into()
+                    } else {
+                        "true".into()
+                    })
                 } else {
                     Ok(format!("{}", buf[0]))
                 }
@@ -242,15 +326,34 @@ impl GgufProber {
                 // String array (vocab, merges): read past it, keep a short summary
                 let mut first = Vec::new();
                 for i in 0..len {
-                    let s = Self::read_string(file)?;
-                    if i < 10 { first.push(s); }
+                    if i < 10 {
+                        first.push(Self::read_string(file)?);
+                    } else {
+                        // Discard unretained vocabulary strings without allocating/converting each one.
+                        // fill_buf/consume still detects a truncated last string (a seek would not).
+                        let mut remaining = Self::read_u64(file)?;
+                        while remaining > 0 {
+                            let available = file.fill_buf()?;
+                            if available.is_empty() {
+                                bail!("Truncated GGUF string array");
+                            }
+                            let used = remaining.min(available.len() as u64) as usize;
+                            file.consume(used);
+                            remaining -= used as u64;
+                        }
+                    }
                 }
-                Ok((format!("[StringArray: len={}, first_few={:?}]", len, first), None))
+                Ok((
+                    format!("[StringArray: len={}, first_few={:?}]", len, first),
+                    None,
+                ))
             }
             0 | 1 | 2 | 3 | 4 | 5 | 7 | 10 | 11 => {
                 let summary = format!("[PrimitiveArray: len={}, type={}]", len, item_type);
                 if len > MAX_STORED_ARRAY_LEN {
-                    file.seek(SeekFrom::Current((Self::scalar_size(item_type) * len) as i64))?;
+                    file.seek(SeekFrom::Current(
+                        (Self::scalar_size(item_type) * len) as i64,
+                    ))?;
                     return Ok((summary, None));
                 }
                 let mut values = Vec::with_capacity(len as usize);
@@ -266,8 +369,13 @@ impl GgufProber {
             }
             6 | 12 => {
                 // Float arrays are not used for placement; skip them
-                file.seek(SeekFrom::Current((Self::scalar_size(item_type) * len) as i64))?;
-                Ok((format!("[PrimitiveArray: len={}, type={}]", len, item_type), None))
+                file.seek(SeekFrom::Current(
+                    (Self::scalar_size(item_type) * len) as i64,
+                ))?;
+                Ok((
+                    format!("[PrimitiveArray: len={}, type={}]", len, item_type),
+                    None,
+                ))
             }
             _ => bail!("Unsupported GGUF array item type: {}", item_type),
         }
@@ -286,7 +394,9 @@ impl GgufProber {
 
     /// ⚡ Checks if the model has Native MTP (Multi-Token Prediction) support
     pub fn check_native_mtp(tensor_infos: &HashMap<String, Vec<usize>>) -> bool {
-        tensor_infos.keys().any(|k| k.contains(".mtp") || k.ends_with("mtp"))
+        tensor_infos
+            .keys()
+            .any(|k| k.contains(".mtp") || k.ends_with("mtp"))
     }
 
     /// ⚡ Checks if the model has recurrent/SSM (State Space Model) layers.
@@ -303,16 +413,26 @@ impl GgufProber {
         }
 
         let hybrid_meta_signals = [
-            "layer_types", "ssm_state_size", "d_state", "conv_kernel", "time_mix_extra_dim",
+            "layer_types",
+            "ssm_state_size",
+            "d_state",
+            "conv_kernel",
+            "time_mix_extra_dim",
         ];
-        if metadata.keys().any(|k| hybrid_meta_signals.iter().any(|sig| k.contains(sig))) {
+        if metadata
+            .keys()
+            .any(|k| hybrid_meta_signals.iter().any(|sig| k.contains(sig)))
+        {
             return true;
         }
 
         let ssm_tensor_patterns = [
             ".ssm", "ssm_", ".conv_1d", ".a_log", ".dt_", "time_mix", ".mamba", "rwkv_",
         ];
-        if tensor_infos.keys().any(|k| ssm_tensor_patterns.iter().any(|p| k.contains(p))) {
+        if tensor_infos
+            .keys()
+            .any(|k| ssm_tensor_patterns.iter().any(|p| k.contains(p)))
+        {
             return true;
         }
 
@@ -323,13 +443,24 @@ impl GgufProber {
     /// Optional keys fall back to the same defaults llama.cpp uses (llama-model.cpp load_hparams).
     pub fn probe_geometry(path: &Path) -> Result<crate::gguf::ModelGeometry> {
         let header = Self::read_header(path)?;
+        Self::geometry_from_header(path, &header)
+    }
+
+    /// Interpret a header already owned by package discovery; placement math is unchanged.
+    pub fn geometry_from_header(
+        path: &Path,
+        header: &GgufHeader,
+    ) -> Result<crate::gguf::ModelGeometry> {
         let meta = &header.metadata;
-        let architecture = meta.get("general.architecture").cloned()
-            .ok_or_else(|| anyhow::anyhow!("GGUF has no general.architecture: {}", path.display()))?;
+        let architecture = meta.get("general.architecture").cloned().ok_or_else(|| {
+            anyhow::anyhow!("GGUF has no general.architecture: {}", path.display())
+        })?;
         let key = |k: &str| format!("{}.{}", architecture, k);
         let get_u32 = |k: &str| meta.get(&key(k)).and_then(|v| v.parse::<u32>().ok());
-        let required = |k: &str| get_u32(k)
-            .ok_or_else(|| anyhow::anyhow!("GGUF is missing {} ({})", key(k), path.display()));
+        let required = |k: &str| {
+            get_u32(k)
+                .ok_or_else(|| anyhow::anyhow!("GGUF is missing {} ({})", key(k), path.display()))
+        };
 
         let block_count = required("block_count")?;
         let context_length = required("context_length")?;
@@ -337,14 +468,25 @@ impl GgufProber {
         let head_count = required("attention.head_count")?;
 
         // head_count_kv is a scalar or a per-layer array; absent means no GQA (llama.cpp: n_head_kv = n_head)
-        let head_count_kv_per_layer: Vec<u32> = match header.int_arrays.get(&key("attention.head_count_kv")) {
-            Some(arr) => arr.iter().map(|v| *v as u32).collect(),
-            None => vec![get_u32("attention.head_count_kv").unwrap_or(head_count); block_count as usize],
-        };
-        let head_count_kv = head_count_kv_per_layer.first().copied().unwrap_or(head_count);
+        let head_count_kv_per_layer: Vec<u32> =
+            match header.int_arrays.get(&key("attention.head_count_kv")) {
+                Some(arr) => arr.iter().map(|v| *v as u32).collect(),
+                None => vec![
+                    get_u32("attention.head_count_kv").unwrap_or(head_count);
+                    block_count as usize
+                ],
+            };
+        let head_count_kv = head_count_kv_per_layer
+            .first()
+            .copied()
+            .unwrap_or(head_count);
 
         // llama.cpp default head size: n_embd / n_head
-        let default_head = if head_count > 0 { embedding_length / head_count } else { 0 };
+        let default_head = if head_count > 0 {
+            embedding_length / head_count
+        } else {
+            0
+        };
         let key_length = get_u32("attention.key_length").unwrap_or(default_head);
         let value_length = get_u32("attention.value_length").unwrap_or(default_head);
         let key_length_swa = get_u32("attention.key_length_swa").unwrap_or(key_length);
@@ -353,7 +495,9 @@ impl GgufProber {
         // Sliding window layers are only marked when the file lists them; otherwise every layer is
         // counted as full attention (an over-estimate of KV, never an under-estimate)
         let sliding_window = get_u32("attention.sliding_window").filter(|w| *w > 0);
-        let swa_layers: Vec<bool> = header.int_arrays.get(&key("attention.sliding_window_pattern"))
+        let swa_layers: Vec<bool> = header
+            .int_arrays
+            .get(&key("attention.sliding_window_pattern"))
             .map(|arr| arr.iter().map(|v| *v != 0).collect())
             .unwrap_or_default();
         let shared_kv_layers = get_u32("attention.shared_kv_layers").unwrap_or(0);
@@ -368,7 +512,9 @@ impl GgufProber {
         let mut vocab_size = 0u32;
         for t in &header.tensors {
             weights.total += t.size_bytes;
-            let block = t.name.strip_prefix("blk.")
+            let block = t
+                .name
+                .strip_prefix("blk.")
                 .and_then(|rest| rest.split('.').next())
                 .and_then(|n| n.parse::<usize>().ok());
             match block {
@@ -430,5 +576,69 @@ impl GgufProber {
     /// Input-layer embedding tensors, which llama.cpp keeps on CPU regardless of n_gpu_layers.
     fn is_input_embedding(name: &str) -> bool {
         name.starts_with("token_embd.") || name.starts_with("per_layer_token_embd.")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_header_cache_is_immutable_and_refreshes_replaced_or_deleted_files() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = crate::test_fixtures::primary(dir.path());
+        let mut first = GgufProber::read_header(&path)?;
+        let original_bytes = first.tensors[0].size_bytes;
+        first
+            .metadata
+            .insert("general.architecture".into(), "caller mutation".into());
+        assert_eq!(
+            GgufProber::read_header(&path)?.metadata["general.architecture"],
+            "opaque"
+        );
+        use std::io::Write;
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)?
+            .write_all(&[0])?;
+        assert_eq!(
+            GgufProber::read_header(&path)?.tensors[0].size_bytes,
+            original_bytes + 1
+        );
+        std::fs::write(&path, b"not a model")?;
+        assert!(GgufProber::read_header(&path).is_err());
+        std::fs::remove_file(path.clone())?;
+        assert!(GgufProber::read_header(&path).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_unretained_vocab_strings_preserve_summary_and_reject_truncation() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("array.gguf");
+        let mut bytes = b"GGUF".to_vec();
+        bytes.extend(3u32.to_le_bytes());
+        bytes.extend(0u64.to_le_bytes());
+        bytes.extend(1u64.to_le_bytes());
+        let key = "tokenizer.ggml.tokens";
+        bytes.extend((key.len() as u64).to_le_bytes());
+        bytes.extend(key.as_bytes());
+        bytes.extend(9u32.to_le_bytes()); // GGUF array of strings.
+        bytes.extend(8u32.to_le_bytes());
+        bytes.extend(20u64.to_le_bytes());
+        for index in 0..20 {
+            let value = format!("token-{index}");
+            bytes.extend((value.len() as u64).to_le_bytes());
+            bytes.extend(value.as_bytes());
+        }
+        std::fs::write(&path, &bytes)?;
+        let header = GgufProber::read_header(&path)?;
+        assert!(header.metadata[key].contains("len=20"));
+        assert!(header.metadata[key].contains("token-9"));
+        assert!(!header.metadata[key].contains("token-19"));
+        bytes.pop();
+        std::fs::write(&path, bytes)?;
+        assert!(GgufProber::read_header(&path).is_err());
+        Ok(())
     }
 }

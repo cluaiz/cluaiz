@@ -2,20 +2,20 @@
 //!   Prober: Deep Binary Inspection & Autonomous Capability Discovery (SSOT)
 //! ═══════════════════════════════════════════════════════════════════════
 
+pub mod fallback;
 pub mod gguf;
 pub mod onnx;
-pub mod fallback;
 
+pub use fallback::{FallbackJsonMetadata, FallbackProber};
 pub use gguf::{GgufProbeResult, GgufProber};
 pub use onnx::{OnnxProbeResult, OnnxProber};
-pub use fallback::{FallbackJsonMetadata, FallbackProber};
 
-use std::collections::HashMap;
-use std::path::Path;
+use crate::models::taxonomy::classifier::UniversalModelClassifier;
+use crate::models::taxonomy::rules::ModelCapabilities;
 use crate::models::types::entities::SlotType;
 use crate::models::types::manifest::RegistryModelMetadata;
-use crate::models::taxonomy::rules::{ModelCapabilities, UniversalTaskRules};
-use crate::models::taxonomy::classifier::UniversalModelClassifier;
+use std::collections::HashMap;
+use std::path::Path;
 
 pub struct VotingArbitrator;
 
@@ -33,9 +33,9 @@ impl VotingArbitrator {
             }
             "text_generation" | "chat" | "conversational" => "chat-completion".to_string(),
             "feature_extraction" | "sentence_similarity" => "embedding".to_string(),
-            "image_feature_extraction" | "zero_shot_image_classification" | "visual_document_retrieval" => {
-                "image-feature-extraction".to_string()
-            }
+            "image_feature_extraction"
+            | "zero_shot_image_classification"
+            | "visual_document_retrieval" => "image-feature-extraction".to_string(),
             _ => raw_task.to_string(),
         }
     }
@@ -76,7 +76,11 @@ impl VotingArbitrator {
         }
 
         // SOURCE 3: Filesystem & Name Heuristics (Weight: 25)
-        let dir_name = model_dir.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+        let dir_name = model_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_lowercase();
         let combined_ident = format!("{} {}", arch_lower, dir_name);
 
         if model_dir.join("tts.json").exists()
@@ -96,7 +100,9 @@ impl VotingArbitrator {
             || combined_ident.contains("moonshine")
             || combined_ident.contains("paraformer")
         {
-            *scores.entry("automatic-speech-recognition".to_string()).or_insert(0) += 25;
+            *scores
+                .entry("automatic-speech-recognition".to_string())
+                .or_insert(0) += 25;
         }
 
         let is_embed = combined_ident.contains("bert")
@@ -117,7 +123,9 @@ impl VotingArbitrator {
             || combined_ident.contains("colqwen");
 
         if is_vision_embed {
-            *scores.entry("image-feature-extraction".to_string()).or_insert(0) += 40;
+            *scores
+                .entry("image-feature-extraction".to_string())
+                .or_insert(0) += 40;
         }
 
         let mut final_tasks = Vec::new();
@@ -156,15 +164,21 @@ impl ModelProber {
         let mut context_window = "Unknown".to_string();
         let mut parameters = "Unknown".to_string();
         let mut quantization = None;
-        let mut bit_depth = None;
+        let bit_depth = None;
         let mut chat_template = None;
         let mut think_start_tag = None;
         let mut think_end_tag = None;
-        let mut requires_gpu = false;
+        let requires_gpu = false;
         let mut header_tasks = Vec::new();
+        let mut primary_header = None;
+        let mut onnx_package = None;
 
         if is_gguf {
-            if let Ok(probe) = GgufProber::probe_file(weight_path) {
+            if let Ok(header) = GgufProber::read_header(weight_path) {
+                let probe = GgufProber::probe_header(&header);
+                if probe.is_embedding {
+                    header_tasks.push("embedding".to_string());
+                }
                 if let Some(arch) = probe.architecture {
                     architecture = arch;
                 }
@@ -178,19 +192,15 @@ impl ModelProber {
                 chat_template = probe.chat_template;
                 think_start_tag = probe.think_start_tag;
                 think_end_tag = probe.think_end_tag;
+                primary_header = Some(header);
             }
         } else {
-            let probe = OnnxProber::probe_file(weight_path);
-            let filename = weight_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-            architecture = if filename.contains("kokoro") {
-                "kokoro".to_string()
-            } else if filename.contains("piper") {
-                "piper".to_string()
-            } else if filename.contains("whisper") {
-                "whisper".to_string()
-            } else {
-                "onnx-generic".to_string()
-            };
+            architecture = "onnx".to_owned();
+            onnx_package =
+                crate::capabilities::PackageCapabilities::from_onnx(weight_path, model_dir).ok();
+            if let Some(package) = &onnx_package {
+                header_tasks = package.onnx_tasks();
+            }
         }
 
         // Secondary Fallback JSON Ingestion
@@ -247,10 +257,36 @@ impl ModelProber {
             classification.slot
         };
 
-        if context_window == "Unknown" {
+        let package = onnx_package.or_else(|| {
+            primary_header.as_ref().map(|header| {
+                crate::capabilities::PackageCapabilities::from_header(
+                    weight_path,
+                    model_dir,
+                    header,
+                )
+            })
+        });
+        if !is_gguf {
+            caps.explicit_tasks = package.as_ref().map(|p| p.onnx_tasks()).unwrap_or_default();
+            context_window = "Unknown".into();
+        }
+        if let Some(package) = package.as_ref() {
+            let inputs = package.supported_inputs();
+            caps.has_vision = inputs.contains(&cluaiz_core::Modality::Image);
+            caps.has_audio = inputs.contains(&cluaiz_core::Modality::Audio);
+            caps.is_vision_chat = caps.has_vision && slot == SlotType::Chat;
+        } else if is_gguf {
+            caps.has_vision = false;
+            caps.has_audio = false;
+            caps.is_vision_chat = false;
+        }
+
+        if context_window == "Unknown" && is_gguf {
             match slot {
                 SlotType::Tts | SlotType::Stt => context_window = "30s (3000 frames)".to_string(),
-                SlotType::Ingest | SlotType::Embedding => context_window = "224x224 (Images)".to_string(),
+                SlotType::Ingest | SlotType::Embedding => {
+                    context_window = "224x224 (Images)".to_string()
+                }
                 _ => context_window = "8k".to_string(),
             }
         }
@@ -267,6 +303,7 @@ impl ModelProber {
             think_start_tag,
             think_end_tag,
             chat_template,
+            capabilities: package,
         };
 
         (slot, caps, metadata, requires_gpu)

@@ -2,9 +2,9 @@
 //!   Prober: Fallback JSON Ingestion (config.json, tokenizer_config.json)
 //! ═══════════════════════════════════════════════════════════════════════
 
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
 pub struct FallbackJsonMetadata {
@@ -13,6 +13,8 @@ pub struct FallbackJsonMetadata {
     pub think_start_tag: Option<String>,
     pub think_end_tag: Option<String>,
     pub architecture: Option<String>,
+    pub vision_input: Option<bool>,
+    pub audio_input: Option<bool>,
 }
 
 pub struct FallbackProber;
@@ -43,6 +45,8 @@ impl FallbackProber {
         if cfg.exists() {
             if let Ok(content) = fs::read_to_string(&cfg) {
                 if let Ok(val) = serde_json::from_str::<Value>(&content) {
+                    meta.vision_input = Self::modality_config(&val, "vision_config");
+                    meta.audio_input = Self::modality_config(&val, "audio_config");
                     if let Some(ctx) = val.get("max_position_embeddings").and_then(|v| v.as_u64()) {
                         meta.context_window = Some(format!("{}", ctx));
                     }
@@ -56,5 +60,14 @@ impl FallbackProber {
         }
 
         meta
+    }
+
+    /// A declared encoder config is evidence; missing/malformed config stays unknown.
+    fn modality_config(config: &Value, key: &str) -> Option<bool> {
+        match config.get(key) {
+            Some(Value::Object(fields)) if !fields.is_empty() => Some(true),
+            Some(Value::Null) => Some(false),
+            _ => None,
+        }
     }
 }

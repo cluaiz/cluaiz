@@ -21,6 +21,9 @@ pub struct ModelCapabilities {
     pub is_asr: bool,
     pub is_audio_to_audio: bool,
     pub has_vision: bool,
+    /// Native audio input for chat/embedding, separate from STT and TTS task roles.
+    #[serde(default)]
+    pub has_audio: bool,
     pub is_vision_chat: bool,
     pub has_file: bool,
     pub chat_completion: bool,
@@ -41,6 +44,7 @@ impl ModelCapabilities {
             is_asr: true,
             is_audio_to_audio: true,
             has_vision: true,
+            has_audio: true,
             is_vision_chat: true,
             has_file: true,
             chat_completion: true,
@@ -60,7 +64,11 @@ impl UniversalTaskRules {
         has_chat_template: bool,
         caps: &mut ModelCapabilities,
     ) {
-        if caps.explicit_tasks.iter().any(|t| t == "chat-completion" || t == "conversational") {
+        if caps
+            .explicit_tasks
+            .iter()
+            .any(|t| t == "chat-completion" || t == "conversational")
+        {
             caps.is_instruct = true;
         } else if caps.explicit_tasks.iter().any(|t| t == "text-generation") {
             caps.is_base = true;
@@ -70,7 +78,9 @@ impl UniversalTaskRules {
             caps.is_base = true;
         }
 
-        if caps.explicit_tasks.iter().any(|t| t == "multimodal-file") || arch_lower.contains("coder") {
+        if caps.explicit_tasks.iter().any(|t| t == "multimodal-file")
+            || arch_lower.contains("coder")
+        {
             caps.has_file = true;
         }
     }
