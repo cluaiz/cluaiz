@@ -21,6 +21,7 @@ graph TD
 | Subsystem | Crate Name | Description |
 |---|---|---|
 | [`core/`](core/) | `cluaiz-core` | Environment paths, RAM-cached settings, units (`GiB`/`MiB`), and engine traits. |
+| [`media/`](media/) | `cluaiz-media` | Bounded local/HTTP/inline sources, image/audio decoding and explicit PCM preparation. ONNX consumes the common decoders; typed API/llama delivery remains pending. Core owns decoded-buffer/settings contracts. |
 | [`hardware/`](hardware/) | `cluaiz-hw` | Direct hardware truth, NVML GPU probing, CPU/RAM discovery. |
 | [`models/`](models/) | `cluaiz-models` | HuggingFace downloader, model vault registry, and single GGUF reader with SWA math. |
 | [`plan/`](plan/) | `cluaiz-plan` | Pure mathematical placement planner (Candidates A-F, budgets, and context window). |

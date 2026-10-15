@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "engine/core",
+    "engine/media",
     "engine/hardware",
     "engine/models",
     "engine/plan",
