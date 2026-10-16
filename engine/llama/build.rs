@@ -159,6 +159,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let dst = config.build();
 
+    // Engine-owned ABI adapter; the pinned upstream reasoning implementation is linked below.
+    println!("cargo:rerun-if-changed=src/ffi/reasoning_bridge.cpp");
+    cc::Build::new()
+        .cpp(true)
+        .std("c++17")
+        .include(llama_path.join("include"))
+        .include(llama_path.join("ggml/include"))
+        .include(llama_path.join("common"))
+        .file("src/ffi/reasoning_bridge.cpp")
+        .flag_if_supported("/EHsc")
+        .compile("cluaiz-reasoning-bridge");
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 3: INDUSTRIAL LINKAGE
     // ═══════════════════════════════════════════════════════════════
@@ -289,10 +301,10 @@ fn generate_mtmd_bindings(source: &Path, output: &Path) -> Result<(), Box<dyn st
         .allowlist_function(concat!(
             "mtmd_(context_params_default|default_marker|init_from_file|free|",
             "support_vision|support_audio|get_audio_sample_rate|get_marker|",
-            "bitmap_(init|init_from_audio|free|get_nx|get_ny|get_data|get_n_bytes|is_audio)|",
-            "input_chunks_(init|free|size|get)|input_chunk_(get_type|get_tokens_text)|",
-            "tokenize|tokenize_from_parts|",
-            "helper_(get_n_tokens|get_n_pos|eval_chunks))"
+            "bitmap_(init|init_from_audio|free|get_nx|get_ny|get_data|get_n_bytes|is_audio|set_id)|",
+            "input_chunks_(init|free|size|get)|input_chunk_(get_type|get_tokens_text|get_n_tokens|get_id)|",
+            "tokenize|tokenize_from_parts|encode_chunk|get_output_embd|",
+            "helper_(get_n_tokens|get_n_pos|eval_chunks|eval_chunk_single|decode_image_chunk))"
         ))
         .opaque_type("llama_model|llama_context|ggml_tensor|ggml_backend_device")
         .generate_comments(false)

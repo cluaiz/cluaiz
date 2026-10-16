@@ -7,12 +7,16 @@ use cluaiz_core::{
     chat::{ChatEnvelope, ChatMessage},
     media::PreparedPart,
     media_limits::MediaLimits,
+    processing::{
+        AttachmentRef, ProcessingReporter, ProcessingStage as Stage, ProcessingState as State,
+        ProcessingWork,
+    },
 };
 use cluaiz_media::resample::{prepare_mono, resample_linear, PeakNormalization};
 use cluaiz_plan::media_budget::ProjectorPlacement;
 use std::{
     cell::Cell,
-    ffi::{c_void, CString},
+    ffi::{c_void, CStr, CString},
     marker::PhantomData,
     num::NonZeroU32,
     ptr::NonNull,
@@ -160,21 +164,13 @@ static REQUEST_MARKER_ID: AtomicU64 = AtomicU64::new(0);
 pub(crate) struct MediaInput {
     bitmaps: Vec<Bitmap>,
     markers: Vec<String>,
+    targets: Vec<(usize, usize)>,
+    pub(crate) progress: Option<ProcessingReporter>,
 }
 
 pub(crate) struct MediaPrefill {
     pub(crate) text_tokens: Vec<i32>,
     pub(crate) positions: i32,
-}
-
-fn checked_bytes(parts: &[ChatMessage<Vec<PreparedPart>>]) -> Result<u64> {
-    parts
-        .iter()
-        .flat_map(|message| &message.content)
-        .try_fold(0_u64, |sum, part| {
-            sum.checked_add(u64::try_from(part.retained_bytes())?)
-                .context("Media request byte overflow")
-        })
 }
 
 /// Locate each placeholder exactly once and in order; template loss/duplication is an error.
@@ -196,13 +192,69 @@ fn marker_ranges(prompt: &str, markers: &[String]) -> Result<Vec<(usize, usize)>
 }
 
 impl MediaInput {
+    /// Conservative conversion peak derived from this request's geometry and queried audio rate.
+    /// The API may retain every original Arc throughout generation/tool continuations.
+    pub(crate) fn additional_bytes(
+        request: &ChatEnvelope<Vec<PreparedPart>>,
+        support: ProjectorSupport,
+        limits: MediaLimits,
+    ) -> Result<u64> {
+        let retained = PreparedPart::request_bytes(&request.messages)?;
+        let mut copies = 0_u64;
+        let mut extra_peak = 0_u64;
+        for part in request.messages.iter().flat_map(|m| &m.content) {
+            let (copy, scratch) = match part {
+                PreparedPart::Text { .. } => continue,
+                PreparedPart::Image { image } => (u64::try_from(image.pixels().len())?, 0),
+                PreparedPart::Audio { audio } => {
+                    let rate = support
+                        .audio_sample_rate
+                        .context("Loaded projector does not support audio input")?;
+                    let frames =
+                        u64::try_from(audio.samples().len() / usize::from(audio.channels()))?;
+                    let output = frames
+                        .checked_mul(u64::from(rate.get()))
+                        .context("Resampled frame count overflow")?
+                        / u64::from(audio.sample_rate());
+                    if output == 0 {
+                        bail!("Audio is too short for the requested sample rate");
+                    }
+                    let sample_bytes = std::mem::size_of::<f32>() as u64;
+                    let bytes = output
+                        .checked_mul(sample_bytes)
+                        .context("PCM byte count overflow")?;
+                    // Include mono/resampling temporaries and Vec-to-Arc copies conservatively.
+                    let scratch = frames
+                        .checked_mul(sample_bytes * 2)
+                        .and_then(|n| n.checked_add(bytes))
+                        .context("PCM workspace overflow")?;
+                    (bytes, scratch)
+                }
+            };
+            copies = copies
+                .checked_add(copy)
+                .context("Native copy byte overflow")?;
+            extra_peak = extra_peak.max(
+                copies
+                    .checked_add(scratch)
+                    .context("Media workspace overflow")?,
+            );
+        }
+        limits.check_decoded_bytes(
+            retained
+                .checked_add(extra_peak)
+                .context("Media conversion peak overflow")?,
+        )?;
+        Ok(extra_peak)
+    }
+
     pub(crate) fn prepare(
         request: ChatEnvelope<Vec<PreparedPart>>,
         support: ProjectorSupport,
         limits: MediaLimits,
     ) -> Result<(ChatEnvelope, Self)> {
-        let mut retained = checked_bytes(&request.messages)?;
-        limits.check_decoded_bytes(retained)?;
+        let retained = PreparedPart::request_bytes(&request.messages)?;
+        Self::additional_bytes(&request, support, limits)?;
         let prefix = loop {
             let candidate = format!(
                 "[cluaiz-media-{}-",
@@ -219,15 +271,17 @@ impl MediaInput {
         let mut input = Self {
             bitmaps: Vec::new(),
             markers: Vec::new(),
+            targets: Vec::new(),
+            progress: None,
         };
         let mut native_bytes = 0_u64;
         let mut messages = Vec::with_capacity(request.messages.len());
-        for message in request.messages {
+        for (message_index, message) in request.messages.into_iter().enumerate() {
             if message.role.contains('\0') {
                 bail!("Message role contains NUL");
             }
             let mut content = String::new();
-            for part in message.content {
+            for (part_index, part) in message.content.into_iter().enumerate() {
                 let part_bytes = u64::try_from(part.retained_bytes())?;
                 let other = retained
                     .checked_sub(part_bytes)
@@ -317,10 +371,15 @@ impl MediaInput {
                 native_bytes = native_bytes
                     .checked_add(bytes)
                     .context("Native bitmap budget overflow")?;
-                retained = other;
                 let marker = format!("{}{index}]", prefix, index = input.bitmaps.len());
+                let id = CString::new(input.bitmaps.len().to_string())?;
+                // SAFETY: constructor copies this ID; bitmap remains exclusively owned.
+                unsafe {
+                    mtmd::mtmd_bitmap_set_id(bitmap.0.as_ptr(), id.as_ptr());
+                }
                 content.push_str(&marker);
                 input.markers.push(marker);
+                input.targets.push((message_index, part_index));
                 input.bitmaps.push(bitmap);
             }
             messages.push(ChatMessage {
@@ -357,6 +416,9 @@ impl MediaInput {
             bail!("Invalid media output token budget");
         }
         let ranges = marker_ranges(prompt, &self.markers)?;
+        if let Some(p) = &self.progress {
+            p.emit(Stage::Prefill, State::Running, None, None);
+        }
         let mut text = Vec::with_capacity(ranges.len() + 1);
         let mut cursor = 0;
         for &(start, end) in &ranges {
@@ -416,6 +478,9 @@ impl MediaInput {
                 bail!("Media prompt requires {occupied} cells/positions; context budget is {capacity}. Shorten history or media");
             }
             let mut text_tokens = Vec::new();
+            let mut chunk_targets = Vec::new();
+            let mut slice_totals = vec![0_u64; self.targets.len()];
+            let mut slice_done = vec![0_u64; self.targets.len()];
             for i in 0..mtmd::mtmd_input_chunks_size(chunks.0.as_ptr()) {
                 let chunk = mtmd::mtmd_input_chunks_get(chunks.0.as_ptr(), i);
                 if chunk.is_null() {
@@ -424,6 +489,7 @@ impl MediaInput {
                 if mtmd::mtmd_input_chunk_get_type(chunk)
                     == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT
                 {
+                    chunk_targets.push(None);
                     let mut len = 0;
                     let tokens = mtmd::mtmd_input_chunk_get_tokens_text(chunk, &mut len);
                     if len > 0 {
@@ -432,6 +498,17 @@ impl MediaInput {
                         }
                         text_tokens.extend_from_slice(std::slice::from_raw_parts(tokens, len));
                     }
+                } else {
+                    let id = mtmd::mtmd_input_chunk_get_id(chunk);
+                    if id.is_null() {
+                        bail!("Native media chunk lost attachment identity");
+                    }
+                    let index: usize = CStr::from_ptr(id).to_str()?.parse()?;
+                    let total = slice_totals
+                        .get_mut(index)
+                        .context("Native media attachment index is invalid")?;
+                    *total += 1;
+                    chunk_targets.push(Some(index));
                 }
             }
             if llama.interrupt_signal.load(Ordering::Acquire) {
@@ -440,19 +517,96 @@ impl MediaInput {
             let memory = llama_cpp::llama_get_memory(llama.ctx_ptr);
             llama_cpp::llama_memory_clear(memory, true);
             let mut n_past = 0;
-            let code = mtmd::mtmd_helper_eval_chunks(
-                projector.ptr.as_ptr(),
-                llama.ctx_ptr.cast(),
-                chunks.0.as_ptr(),
-                0,
-                0,
-                i32::try_from(llama.n_batch)?,
-                true,
-                &mut n_past,
-            );
-            if code != 0 || llama.interrupt_signal.load(Ordering::Acquire) {
-                llama_cpp::llama_memory_clear(memory, true);
-                bail!("Native media evaluation failed/cancelled with code {code}");
+            let chunk_count = mtmd::mtmd_input_chunks_size(chunks.0.as_ptr());
+            let mut processed = 0_u64;
+            for i in 0..chunk_count {
+                if llama.interrupt_signal.load(Ordering::Acquire)
+                    || self.progress.as_ref().is_some_and(|p| p.cancelled())
+                {
+                    bail!("Media prefill cancelled");
+                }
+                let chunk = mtmd::mtmd_input_chunks_get(chunks.0.as_ptr(), i);
+                let kind = mtmd::mtmd_input_chunk_get_type(chunk);
+                let target = self.progress.as_ref().and_then(|p| {
+                    chunk_targets[i]
+                        .and_then(|index| self.targets.get(index))
+                        .map(|&(m, n)| p.attachment(m, n))
+                });
+                let code = if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT {
+                    mtmd::mtmd_helper_eval_chunk_single(
+                        projector.ptr.as_ptr(),
+                        llama.ctx_ptr.cast(),
+                        chunk,
+                        n_past,
+                        0,
+                        i32::try_from(llama.n_batch)?,
+                        i + 1 == chunk_count,
+                        &mut n_past,
+                    )
+                } else {
+                    if let Some(p) = &self.progress {
+                        p.emit(Stage::Encoding, State::Running, target, None);
+                    }
+                    let encoded = mtmd::mtmd_encode_chunk(projector.ptr.as_ptr(), chunk);
+                    if encoded != 0 {
+                        bail!("Native media encoding failed with code {encoded}");
+                    }
+                    let index =
+                        chunk_targets[i].context("Native media chunk lost attachment identity")?;
+                    slice_done[index] += 1;
+                    if let Some(p) = &self.progress {
+                        p.emit(
+                            Stage::Encoding,
+                            if slice_done[index] == slice_totals[index] {
+                                State::Completed
+                            } else {
+                                State::Running
+                            },
+                            target,
+                            Some(ProcessingWork {
+                                completed: slice_done[index],
+                                total: slice_totals[index],
+                                unit: "slices",
+                            }),
+                        );
+                        p.emit(Stage::Prefill, State::Running, target, None);
+                    }
+                    let mut observation = DecodeObservation {
+                        progress: self.progress.as_ref(),
+                        target,
+                        processed,
+                        total: count as u64,
+                    };
+                    mtmd::mtmd_helper_decode_image_chunk(
+                        projector.ptr.as_ptr(),
+                        llama.ctx_ptr.cast(),
+                        chunk,
+                        mtmd::mtmd_get_output_embd(projector.ptr.as_ptr()),
+                        n_past,
+                        0,
+                        i32::try_from(llama.n_batch)?,
+                        &mut n_past,
+                        Some(decoded_batch),
+                        (&mut observation as *mut DecodeObservation<'_>).cast(),
+                    )
+                };
+                if code != 0 || llama.interrupt_signal.load(Ordering::Acquire) {
+                    llama_cpp::llama_memory_clear(memory, true);
+                    bail!("Native media evaluation failed/cancelled with code {code}");
+                }
+                processed += mtmd::mtmd_input_chunk_get_n_tokens(chunk) as u64;
+                if let Some(p) = &self.progress {
+                    p.emit(
+                        Stage::Prefill,
+                        State::Running,
+                        target,
+                        Some(ProcessingWork {
+                            completed: processed,
+                            total: count as u64,
+                            unit: "tokens",
+                        }),
+                    );
+                }
             }
             if n_past != positions {
                 bail!("Native media evaluation position mismatch");
@@ -462,6 +616,21 @@ impl MediaInput {
                 prompt_positions = positions,
                 "Native media prefill evaluated"
             );
+            if let Some(p) = &self.progress {
+                p.emit(
+                    Stage::Prefill,
+                    State::Completed,
+                    None,
+                    Some(ProcessingWork {
+                        completed: count as u64,
+                        total: count as u64,
+                        unit: "tokens",
+                    }),
+                );
+                p.emit(Stage::Generation, State::Running, None, None);
+            }
+            // Native chunks own their preprocessed data; raw bitmap copies are no longer needed.
+            self.bitmaps.clear();
             Ok(MediaPrefill {
                 text_tokens,
                 positions: n_past,
@@ -470,112 +639,45 @@ impl MediaInput {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn request(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
-        ChatEnvelope {
-            messages: vec![ChatMessage {
-                role: "user".into(),
-                content: parts,
-            }],
-            samplers: cluaiz_core::SamplerDefaults {
-                temp: Some(0.0),
-                seed: Some(9),
-                ..Default::default()
-            },
-            think_mode: "off".into(),
-            reasoning_effort: Default::default(),
-            reasoning_budget_message: Some("budget message".into()),
-            chat_template_kwargs: None,
-            grammar: Some("grammar".into()),
-            response_format: None,
-        }
-    }
-
-    #[test]
-    fn test_media_template_preserves_literal_marker_and_rejects_loss_reorder() -> Result<()> {
-        let image = cluaiz_core::media::DecodedImage::new(1, 1, Arc::from([255, 0, 0]))?;
-        let (text, input) = MediaInput::prepare(
-            request(vec![
-                PreparedPart::Text {
-                    text: "literal <__media__> ".into(),
-                },
-                PreparedPart::Image { image },
-            ]),
-            ProjectorSupport {
-                vision: true,
-                audio_sample_rate: None,
-            },
-            MediaLimits::default(),
-        )?;
-        assert!(text.messages[0].content.starts_with("literal <__media__> "));
-        assert_eq!(text.samplers.seed, Some(9));
-        assert_eq!(text.grammar.as_deref(), Some("grammar"));
-        assert_eq!(
-            marker_ranges(&text.messages[0].content, &input.markers)?.len(),
-            1
-        );
-        assert!(marker_ranges("removed", &input.markers).is_err());
-        assert!(marker_ranges(&text.messages[0].content.repeat(2), &input.markers).is_err());
-        assert!(marker_ranges("second first", &["first".into(), "second".into()]).is_err());
-        Ok(())
-    }
-
-    #[test]
-    fn test_media_audio_uses_shared_mono_rate_and_rejects_unsupported_or_budget() -> Result<()> {
-        let audio =
-            cluaiz_core::media::DecodedAudio::new(8000, 2, Arc::from([0.0_f32, 1.0, 0.0, -1.0]))?;
-        let support = ProjectorSupport {
-            vision: false,
-            audio_sample_rate: NonZeroU32::new(16000),
-        };
-        let (_, input) = MediaInput::prepare(
-            request(vec![PreparedPart::Audio {
-                audio: audio.clone(),
-            }]),
-            support,
-            MediaLimits::default(),
-        )?;
-        // SAFETY: the owned native audio bitmap is live; queries only inspect its copied PCM.
-        unsafe {
-            assert!(mtmd::mtmd_bitmap_is_audio(input.bitmaps[0].0.as_ptr()));
-            assert_eq!(
-                mtmd::mtmd_bitmap_get_n_bytes(input.bitmaps[0].0.as_ptr()),
-                4 * std::mem::size_of::<f32>()
-            );
-        }
-        assert!(MediaInput::prepare(
-            request(vec![PreparedPart::Audio {
-                audio: audio.clone()
-            }]),
-            ProjectorSupport {
-                vision: false,
-                audio_sample_rate: None
-            },
-            MediaLimits::default()
-        )
-        .is_err());
-        assert!(MediaInput::prepare(
-            request(vec![PreparedPart::Audio { audio }]),
-            support,
-            MediaLimits::new(1, 1)?
-        )
-        .is_err());
-        Ok(())
-    }
-
-    #[test]
-    fn test_projector_load_callback_cancel_and_null_fail_closed() {
-        let signal = Arc::new(AtomicBool::new(false));
-        let data = Arc::as_ptr(&signal).cast_mut().cast();
-        // SAFETY: signal retains valid callback data during both synchronous calls.
-        unsafe {
-            assert!(load_progress(0.5, data));
-            signal.store(true, Ordering::Release);
-            assert!(!load_progress(0.5, data));
-            assert!(!load_progress(0.5, std::ptr::null_mut()));
-        }
-    }
+struct DecodeObservation<'a> {
+    progress: Option<&'a ProcessingReporter>,
+    target: Option<AttachmentRef>,
+    processed: u64,
+    total: u64,
 }
+
+// SAFETY: upstream calls synchronously with a valid batch and our stack-owned observation.
+unsafe extern "C" fn decoded_batch(
+    batch: *const mtmd::mtmd_helper_embd_batch,
+    user: *mut c_void,
+) -> i32 {
+    if batch.is_null() || user.is_null() {
+        return 1;
+    }
+    let observation = unsafe { &mut *user.cast::<DecodeObservation<'_>>() };
+    let tokens = unsafe { (*batch).n_tokens };
+    if tokens < 0 {
+        return 1;
+    }
+    observation.processed = observation.processed.saturating_add(tokens as u64);
+    if let Some(p) = observation.progress {
+        p.emit(
+            Stage::Prefill,
+            State::Running,
+            observation.target,
+            Some(ProcessingWork {
+                completed: observation.processed,
+                total: observation.total,
+                unit: "tokens",
+            }),
+        );
+        if p.cancelled() {
+            return 1;
+        }
+    }
+    0
+}
+
+#[cfg(test)]
+#[path = "media_tests.rs"]
+mod tests;
