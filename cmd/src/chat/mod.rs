@@ -123,13 +123,8 @@ impl Session {
         messages.extend(self.history.iter().cloned());
         messages.push(ChatMessage::new("user", text));
 
-        let reserve = cluaiz_core::answer_reserve(self.options.max_tokens, n_ctx);
-        let dropped = cluaiz_core::trim_history(&mut messages, n_ctx, reserve, opt.context_shifting);
-        if dropped > 0 {
-            tracing::info!("[chat] dropped the oldest turns (~{} tokens) to fit {} tokens of context", dropped, n_ctx);
-        }
-        let prompt_tokens: usize = messages.iter().map(ChatMessage::estimated_tokens).sum();
-        let max_tokens = cluaiz_core::answer_budget(n_ctx, prompt_tokens, self.options.max_tokens);
+        // No max_tokens: until the model ends or the context does; the engine fits the history
+        let max_tokens = self.options.max_tokens.unwrap_or(n_ctx).min(n_ctx);
 
         let think = self.options.think.unwrap_or(opt.think_mode);
         let envelope = ChatEnvelope {

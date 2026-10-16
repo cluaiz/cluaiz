@@ -37,7 +37,7 @@ pub async fn execute_non_streaming(
                             &request,
                             &ctx.request_id,
                             error.to_owned(),
-                            "engine_error",
+                            super::types::engine_error_type(error),
                             None,
                         );
                     }
@@ -176,6 +176,12 @@ pub async fn execute_non_streaming(
         message_json["reasoning_content"] = json!(r_text);
     }
 
+    // The engine's own count and stop reason for the last generation ("length" = max_tokens or context)
+    let context_report = state.host.last_context().await;
+    let finish_reason = context_report
+        .as_ref()
+        .map_or("stop", |report| report.finish_reason());
+
     let mut response = json!({
         "id": ctx.request_id.clone(),
         "object": "chat.completion",
@@ -184,7 +190,7 @@ pub async fn execute_non_streaming(
         "choices": [{
             "index": 0,
             "message": message_json,
-            "finish_reason": "stop"
+            "finish_reason": finish_reason
         }]
     });
 
@@ -197,12 +203,13 @@ pub async fn execute_non_streaming(
         } else {
             0
         };
-        let prompt_tok_est =
-            if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 {
+        let prompt_tok_est = match &context_report {
+            Some(report) => report.prompt_tokens,
+            None if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 => {
                 ((ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars) / 4).max(1)
-            } else {
-                0
-            };
+            }
+            None => 0,
+        };
         let total_completion_tokens = comp_tok_est + reasoning_toks;
         let mut usage_json = json!({
             "prompt_tokens": prompt_tok_est,
@@ -225,7 +232,7 @@ pub async fn execute_non_streaming(
                 active_ids.push(tid.clone());
             }
         }
-        let ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
+        let mut ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
             req_session_id.as_deref().unwrap_or("ephemeral"),
             &active_ids,
@@ -234,6 +241,10 @@ pub async fn execute_non_streaming(
             ctx.system_prompt_chars,
             total_completion_tokens,
         );
+        // Totals from the engine's own count of what the context holds now
+        if let Some(report) = &context_report {
+            ctx_telemetry.context_breakdown.apply_measured(report.n_ctx, report.n_tokens);
+        }
         usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
 
         let permission = cluaiz_security::PermissionSchema::load();

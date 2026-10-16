@@ -275,7 +275,7 @@ pub async fn execute_audio(
             response_format: None,
         };
         let prepared =
-            match prepare_authorized_media(&state, &headers, request, &settings, None).await {
+            match prepare_authorized_media(&state, &headers, request, &settings, None, None).await {
                 Ok(request) => request,
                 Err((kind, message)) => {
                     return error(

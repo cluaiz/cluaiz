@@ -49,6 +49,7 @@ pub(crate) async fn prepare_authorized_media(
     mut request: cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::InputPart>>,
     settings: &cluaiz_core::ActiveUserSettings,
     cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    progress: Option<cluaiz_core::processing::ProcessingReporter>,
 ) -> Result<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>, (&'static str, String)>
 {
     use cluaiz_core::media::InputPart;
@@ -74,6 +75,7 @@ pub(crate) async fn prepare_authorized_media(
     if let Some(signal) = cancellation {
         resolver = resolver.with_cancellation(signal);
     }
+    resolver = resolver.with_progress(progress);
     cluaiz_media::request::prepare_chat(request, &resolver, |path| {
         if allowed.contains(path) {
             Ok(())
