@@ -1,14 +1,14 @@
+use super::preflight::PreparedChatContext;
+use super::tool_parser;
+use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS, DEFAULT_MAX_TOKENS};
+use crate::state::AppState;
 use axum::response::{sse::Event, IntoResponse, Sse};
 use chrono::Utc;
 use cluaiz_runtime::HostResponse;
 use serde_json::json;
 use std::convert::Infallible;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use crate::state::AppState;
-use super::preflight::PreparedChatContext;
-use super::tool_parser;
-use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS, DEFAULT_MAX_TOKENS};
 
 pub async fn execute_streaming_loop(
     state: Arc<AppState>,
@@ -19,6 +19,9 @@ pub async fn execute_streaming_loop(
     let initial_rx = match initial_dispatch {
         HostResponse::TokenStream(rx) => rx,
         HostResponse::Completed(res) => {
+            if let Some(p) = &ctx.progress {
+                p.finish(cluaiz_core::processing::ProcessingState::Completed);
+            }
             let chunk = json!({
                 "id": ctx.request_id.clone(),
                 "choices": [{"delta": {"content": res}}]
@@ -30,6 +33,9 @@ pub async fn execute_streaming_loop(
             return Sse::new(stream).into_response();
         }
         HostResponse::Error(err) => {
+            if let Some(p) = &ctx.progress {
+                p.finish(cluaiz_core::processing::ProcessingState::Failed);
+            }
             let err_chunk = json!({
                 "id": ctx.request_id.clone(),
                 "error": {"message": err, "type": "engine_error"}
@@ -46,15 +52,23 @@ pub async fn execute_streaming_loop(
     let req_session_id = request.session_id.clone();
     let req_id_stream = ctx.request_id.clone();
     let keep_alive_val = request.keep_alive;
-    
+
     // 🛡️ Multi-Tenant Stream Registry Registration
-    let initial_skip_reasoning = request.skip_reasoning == Some(true) || ctx.active_think_mode == "off";
     if let Ok(mut lock) = ACTIVE_STREAMS.write() {
         lock.insert(
             req_id_stream.clone(),
             StreamSignals {
                 cancel: Arc::clone(&ctx.cancel_signal),
-                skip_reasoning: Arc::new(AtomicBool::new(initial_skip_reasoning)),
+                skip_reasoning: Arc::clone(&ctx.skip_reasoning),
+                reasoning_supported: ctx.active_think_mode != "off"
+                    && ctx
+                        .dyn_think_start
+                        .as_ref()
+                        .is_some_and(|tag| !tag.is_empty())
+                    && ctx
+                        .dyn_think_end
+                        .as_ref()
+                        .is_some_and(|tag| !tag.is_empty()),
             },
         );
     }
@@ -115,7 +129,7 @@ pub async fn execute_streaming_loop(
             0,
         );
 
-        let early_context_chunk = json!({
+        let mut early_context_chunk = json!({
             "id": req_id_stream.clone(),
             "object": "chat.completion.chunk",
             "created": Utc::now().timestamp(),
@@ -126,10 +140,13 @@ pub async fn execute_streaming_loop(
                 "active_session_tools": active_tools_list
             }
         });
+        if ctx.prepared_media.is_some() {
+            early_context_chunk["usage"]["context_telemetry_scope"] = json!("text_estimate_excluding_media; native prefill progress reports actual processed input tokens");
+        }
         yield Ok::<_, Infallible>(Event::default().data(early_context_chunk.to_string()));
-        
+
         let mut rx = initial_rx;
-        
+
         // 🔄 AUTONOMOUS MULTI-TURN AGENT EXECUTION LOOP
         // Chaining consecutive tool executions up to 15 turns without halting prematurely
         let mut max_iters = 15;
@@ -139,7 +156,7 @@ pub async fn execute_streaming_loop(
             max_iters -= 1;
             let mut tool_executed = false;
             let mut token_accumulator = String::new();
-            
+
             while let Some(token) = rx.recv().await {
                 // 🛑 Real-time Multi-Stream Signal Verification (Cancel & Skip-Reasoning)
                 let (should_cancel, should_skip) = if let Ok(lock) = ACTIVE_STREAMS.read() {
@@ -156,18 +173,15 @@ pub async fn execute_streaming_loop(
                     tracing::info!("🛑 [StreamControl] Aborting stream '{}' on user cancel signal.", req_id_stream);
                     break;
                 }
-                if should_skip && think_filter.in_think_block {
-                    tracing::debug!("⏩ [StreamControl] Skip reasoning signal active for stream '{}'.", req_id_stream);
-                }
-
                 if token.trim() == "[DONE]" {
                     break;
                 }
 
                 if let Some(error) = cluaiz_runtime::stream_error(&token) {
+                    if let Some(p) = &ctx.progress { p.finish(cluaiz_core::processing::ProcessingState::Failed); }
                     yield Ok::<_, Infallible>(Event::default().data(json!({
                         "id": req_id_stream.clone(),
-                        "error": {"message": error, "type": "engine_error"}
+                        "error": {"message": error, "type": super::types::engine_error_type(error)}
                     }).to_string()));
                     if let Ok(mut lock) = ACTIVE_STREAMS.write() { lock.remove(&req_id_stream); }
                     if keep_alive_val == Some(0) { state_clone.host.unload_model().await; }
@@ -218,7 +232,7 @@ pub async fn execute_streaming_loop(
                             None
                         }
                     };
-                    
+
                     // 1. Yield standard OpenAI tool_calls delta chunk EARLY before execution begins!
                     let tool_calls_chunk = json!({
                         "id": req_id_stream.clone(),
@@ -475,7 +489,7 @@ pub async fn execute_streaming_loop(
                         }]
                     });
                     yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
-                    
+
                     // 🔄 Continuous Multi-Turn Agent Turn Recording
                     let tool_call_xml = format!("<tool_call>\n{}\n</tool_call>", raw_json);
                     let tool_response_xml = cluaiz_agents::ToolsEngine::format_tool_response_raw(
@@ -509,7 +523,7 @@ pub async fn execute_streaming_loop(
                     token_accumulator.clear();
                     break;
                 }
-                
+
                 // Normal Token Yielding & Reasoning Separation
                 total_generated.push_str(&token);
                 overall_token_count += 1;
@@ -545,7 +559,7 @@ pub async fn execute_streaming_loop(
                     yield Ok::<_, Infallible>(make_chunk(content_opt, if should_skip { None } else { reasoning_opt }));
                 }
             }
-            
+
             if tool_executed {
                 tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
                 // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
@@ -593,7 +607,18 @@ pub async fn execute_streaming_loop(
                 "choices": [{"delta": delta}]
             }).to_string()));
         }
-        
+
+        // OpenAI's closing chunk: why the answer ended ("length" = max_tokens or the context)
+        let context_report = state_clone.host.last_context().await;
+        let finish_reason = context_report.as_ref().map_or("stop", |report| report.finish_reason());
+        yield Ok::<_, Infallible>(Event::default().data(json!({
+            "id": req_id_stream.clone(),
+            "object": "chat.completion.chunk",
+            "created": Utc::now().timestamp(),
+            "model": ctx.resolved_model_name.clone(),
+            "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}]
+        }).to_string()));
+
         // Generate Telemetry and Final Updates
         let total_time_ms = ctx.start_time.elapsed().as_millis();
         let decode_time_ms = total_time_ms.saturating_sub(first_ttft_ms);
@@ -606,10 +631,12 @@ pub async fn execute_streaming_loop(
         };
 
         if ctx.send_telemetry {
-            let prompt_tok_est = if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 {
-                ((ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars) / 4).max(1)
-            } else {
-                0
+            let prompt_tok_est = match &context_report {
+                Some(report) => report.prompt_tokens,
+                None if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 => {
+                    ((ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars) / 4).max(1)
+                }
+                None => 0,
             };
             let mut usage_json = json!({
                 "prompt_tokens": prompt_tok_est,
@@ -633,7 +660,7 @@ pub async fn execute_streaming_loop(
                     active_ids.push(tid.clone());
                 }
             }
-            let ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
+            let mut ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
                 &ctx.resolved_model_name,
                 req_session_id.as_deref().unwrap_or("ephemeral"),
                 &active_ids,
@@ -642,6 +669,10 @@ pub async fn execute_streaming_loop(
                 ctx.system_prompt_chars,
                 overall_token_count,
             );
+            // Totals from the engine's own count of what the context holds now
+            if let Some(report) = &context_report {
+                ctx_telemetry.context_breakdown.apply_measured(report.n_ctx, report.n_tokens);
+            }
             usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
 
             if permission.model_header_info {
@@ -673,13 +704,17 @@ pub async fn execute_streaming_loop(
         });
         yield Ok::<_, Infallible>(Event::default().data(engine_chunk.to_string()));
 
+        if let Some(p) = &ctx.progress {
+            p.finish(if ctx.cancel_signal.load(Ordering::Acquire) { cluaiz_core::processing::ProcessingState::Cancelled }
+                else { cluaiz_core::processing::ProcessingState::Completed });
+        }
         yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
 
         // ⏳ Decrement session tool turns & purge expired ephemeral tools
         if let Some(ref sid) = req_session_id {
             crate::handlers::session_tools::decrement_session_turns(sid);
         }
-        
+
         // 🧹 Auto-Cleanup: Remove completed stream from active registry
         if let Ok(mut lock) = ACTIVE_STREAMS.write() {
             lock.remove(&req_id_stream);
@@ -700,6 +735,6 @@ pub async fn execute_streaming_loop(
             }
         }
     };
-    
+
     Sse::new(stream).into_response()
 }

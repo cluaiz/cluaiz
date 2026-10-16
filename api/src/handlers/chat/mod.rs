@@ -5,6 +5,7 @@ pub mod agent_loop;
 pub mod control;
 pub mod non_streaming;
 pub mod preflight;
+mod processing;
 pub mod tool_parser;
 pub mod types;
 
@@ -44,9 +45,14 @@ pub async fn chat_completions(
     }
 
     let req_id = format!("chatcmpl-{}", uuid::Uuid::new_v4().simple());
+    if request.stream && request.return_progress {
+        return processing::stream_with_progress(state, headers, request, req_id).await;
+    }
 
     let ctx =
-        match preflight::PreparedChatContext::prepare(&state, &request, &req_id, &headers).await {
+        match preflight::PreparedChatContext::prepare(&state, &request, &req_id, &headers, None)
+            .await
+        {
             Ok(c) => c,
             Err(early_response) => return early_response,
         };

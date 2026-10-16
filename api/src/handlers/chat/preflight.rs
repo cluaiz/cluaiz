@@ -30,8 +30,11 @@ pub struct PreparedChatContext {
     pub active_tool_ids: Vec<String>,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
+    media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
     pub request_settings: cluaiz_core::ActiveUserSettings,
     pub cancel_signal: Arc<std::sync::atomic::AtomicBool>,
+    pub progress: Option<cluaiz_core::processing::ProcessingReporter>,
+    pub skip_reasoning: Arc<std::sync::atomic::AtomicBool>,
     pub initial_user_query: String,
     pub send_telemetry: bool,
     /// When the model was ready (after any load): TTFT and total time count from here
@@ -75,7 +78,9 @@ pub(super) fn error_response(
         };
         return axum::response::sse::Sse::new(stream).into_response();
     }
-    let status = if error_type == "permission_error" {
+    let status = if code == Some("media_busy") {
+        axum::http::StatusCode::SERVICE_UNAVAILABLE
+    } else if error_type == "permission_error" {
         axum::http::StatusCode::FORBIDDEN
     } else if error_type == "engine_error" || error_type == "engine_load_error" {
         axum::http::StatusCode::INTERNAL_SERVER_ERROR
@@ -97,6 +102,7 @@ impl PreparedChatContext {
         request: &ExternalChatRequest,
         request_id: &str,
         headers: &axum::http::HeaderMap,
+        progress: Option<cluaiz_core::processing::ProcessingReporter>,
     ) -> Result<Self, axum::response::Response> {
         let preflight_started = std::time::Instant::now();
         let schema = cluaiz_security::PermissionSchema::load();
@@ -108,6 +114,15 @@ impl PreparedChatContext {
             .messages
             .iter()
             .any(|message| message.content.has_media());
+        let media_lease = if has_media {
+            Some(state.host.media_admission.try_acquire().map_err(|_| {
+                error_response(request, request_id,
+                    "Another chat attachment request still owns processing buffers; retry after it finishes".into(),
+                    "resource_error", Some("media_busy"))
+            })?)
+        } else {
+            None
+        };
 
         crate::utils::slots::log_capability_guidance(
             &schema,
@@ -260,6 +275,14 @@ impl PreparedChatContext {
             }
         }
         let load_started = std::time::Instant::now();
+        if let Some(p) = &progress {
+            p.emit(
+                cluaiz_core::processing::ProcessingStage::ModelLoading,
+                cluaiz_core::processing::ProcessingState::Running,
+                None,
+                None,
+            );
+        }
         if let (Some(model_path), true) = (active_model_path.as_ref(), is_gguf) {
             if let Err(e) = state
                 .host
@@ -278,6 +301,14 @@ impl PreparedChatContext {
             }
         }
         let model_load_ms = load_started.elapsed().as_millis();
+        if let Some(p) = &progress {
+            p.emit(
+                cluaiz_core::processing::ProcessingStage::ModelLoading,
+                cluaiz_core::processing::ProcessingState::Completed,
+                None,
+                None,
+            );
+        }
         let start_time = std::time::Instant::now();
 
         // 🛡️ Dynamic Context Limit: Resolved from InstalledStateRegistry or active slot (Min 2k Floor)
@@ -517,37 +548,16 @@ impl PreparedChatContext {
             ));
         }
 
-        // 🧠 Pre-flight context shifting (shared rule with the CLI)
-        let reserve = cluaiz_core::answer_reserve(validated_max_tokens, n_ctx_limit);
-        let dropped = if has_media {
-            0
-        } else {
-            cluaiz_core::trim_history(
-                &mut chat_messages,
-                n_ctx_limit,
-                reserve,
-                settings.optimization.context_shifting,
-            )
-        };
-        if dropped > 0 {
-            tracing::info!(
-                "🌊 [ContextShifting] Pre-flight sliding window pruned historical turns (~{} tokens) to fit {} tokens of context.",
-                dropped, n_ctx_limit
-            );
-        }
-
-        // 🎯 Per-request answer budget: what the prompt leaves of the context, capped by max_tokens
-        let prompt_tokens_est: usize = chat_messages
-            .iter()
-            .map(cluaiz_core::ChatMessage::estimated_tokens)
-            .sum();
+        // 🎯 Answer limit: the request's max_tokens, else until the model ends or the context does
+        // (llama.cpp's n_predict -1). Fitting the history into the context (context shifting) happens
+        // in the engine with the model's own token counts.
         let validated_max_tokens = Some(if has_media {
             request
                 .max_tokens
                 .unwrap_or(super::types::DEFAULT_MAX_TOKENS)
                 .min(n_ctx_limit.saturating_sub(16))
         } else {
-            cluaiz_core::answer_budget(n_ctx_limit, prompt_tokens_est, request.max_tokens)
+            validated_max_tokens.unwrap_or(n_ctx_limit)
         });
 
         let mut system_prompt_chars = 0;
@@ -587,8 +597,18 @@ impl PreparedChatContext {
             grammar: request.grammar.clone(),
             response_format: request.response_format.clone(),
         };
-        let cancel_signal = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let prepared_media = if has_media {
+        let cancel_signal = progress
+            .as_ref()
+            .map(|p| p.cancellation())
+            .unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        let prepared_media = if let Some(lease) = media_lease.clone() {
+            if let Some(p) = &progress {
+                p.set_message_offset(
+                    augmented_messages
+                        .len()
+                        .saturating_sub(request.messages.len()),
+                );
+            }
             let typed = envelope
                 .clone()
                 .try_map_messages(|_| async {
@@ -612,25 +632,41 @@ impl PreparedChatContext {
                         Some("invalid_media"),
                     )
                 })?;
-            Some(
-                prepare_authorized_media(
-                    state,
-                    headers,
-                    typed,
-                    &settings,
-                    Some(cancel_signal.clone()),
-                )
+            let (owned_state, owned_headers, owned_settings) =
+                (state.clone(), headers.clone(), settings.clone());
+            let (cancellation, observer) = (cancel_signal.clone(), progress.clone());
+            // A disconnected preflight must not release the permit while spawn_blocking decodes.
+            let (prepared, _) = lease
+                .prepare(cancel_signal.clone(), async move {
+                    prepare_authorized_media(
+                        &owned_state,
+                        &owned_headers,
+                        typed,
+                        &owned_settings,
+                        Some(cancellation),
+                        observer,
+                    )
+                    .await
+                })
                 .await
-                .map_err(|(kind, error)| {
+                .map_err(|error| {
                     error_response(
                         request,
                         request_id,
-                        error,
-                        kind,
-                        Some("media_preparation_failed"),
+                        format!("Media preparation task failed: {error}"),
+                        "engine_error",
+                        None,
                     )
-                })?,
-            )
+                })?;
+            Some(prepared.map_err(|(kind, error)| {
+                error_response(
+                    request,
+                    request_id,
+                    error,
+                    kind,
+                    Some("media_preparation_failed"),
+                )
+            })?)
         } else {
             None
         };
@@ -668,8 +704,13 @@ impl PreparedChatContext {
             active_tool_ids: tool_ids_to_compile,
             json_prompt,
             prepared_media,
+            media_lease,
             request_settings: settings,
             cancel_signal,
+            progress,
+            skip_reasoning: Arc::new(std::sync::atomic::AtomicBool::new(
+                request.skip_reasoning == Some(true),
+            )),
             initial_user_query,
             send_telemetry,
             start_time,
@@ -694,12 +735,15 @@ impl PreparedChatContext {
                     "Selected media model identity is missing".into(),
                 );
             };
-            host.dispatch_prepared(
+            host.dispatch_prepared_with_progress(
                 prepared,
                 max_tokens,
                 path,
                 &self.request_settings,
                 Some(Arc::clone(&self.cancel_signal)),
+                Some(Arc::clone(&self.skip_reasoning)),
+                self.progress.clone(),
+                self.media_lease.clone(),
             )
             .await
         } else {
@@ -714,6 +758,7 @@ impl PreparedChatContext {
                 path,
                 &self.request_settings,
                 Arc::clone(&self.cancel_signal),
+                Arc::clone(&self.skip_reasoning),
             )
             .await
         }

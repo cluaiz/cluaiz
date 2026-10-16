@@ -119,6 +119,41 @@ impl PlanRequest {
     }
 }
 
+/// Project intrinsic declarations separately from optional engine preparation routes.
+fn chat_input_contract(
+    declared_inputs: &[cluaiz_core::Modality],
+    video_formats: &[String],
+) -> (Vec<Value>, Vec<Value>) {
+    use cluaiz_core::Modality;
+    let formats = cluaiz_media::formats::attachment_formats();
+    let inputs = declared_inputs
+        .iter()
+        .copied()
+        .map(|input| {
+            // This is positive model capability, not the current session's load state.
+            let mut value = json!({"type":input,"available":true});
+            if input != Modality::Text {
+                value["formats"] = json!(cluaiz_media::formats::unique_extensions(
+                    formats
+                        .iter()
+                        .filter(|(modality, _)| *modality == input)
+                        .map(|(_, format)| *format)
+                ));
+            }
+            value
+        })
+        .collect();
+    let preparation = if declared_inputs.contains(&Modality::Image) && !video_formats.is_empty() {
+        vec![
+            json!({"input":"video","output":"image","processing":"sampled_frames",
+            "formats":cluaiz_media::formats::unique_extensions(video_formats.iter().map(String::as_str))}),
+        ]
+    } else {
+        Vec::new()
+    };
+    (inputs, preparation)
+}
+
 pub async fn plan_execution(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<PlanRequest>,
@@ -254,7 +289,7 @@ pub async fn plan_execution(
         model_dir,
         &header,
     );
-    let support = state.host.input_support(&package);
+    let declared_inputs = package.supported_inputs();
     let vram_free_gb = hw.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
     let vram_total_gb = hw.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
     let vram_buffer_gb = plan.vram_buffer_gb;
@@ -273,44 +308,16 @@ pub async fn plan_execution(
     let remaining_ram = (usable_ram_gb - plan.ram_budget_gb).max(0.0);
     let round2 = |v: f64| (v * 100.0).round() / 100.0;
 
-    let formats = cluaiz_media::formats::attachment_formats();
-    let mut inputs: Vec<_> = support.input_availability.iter().map(|input| {
-        let mut value = json!({"type":input.input,"support":input.model_support,"available":input.available});
-        if let Some(reason) = input.reason { value["reason"] = json!(reason); }
-        if input.model_support == cluaiz_models::capabilities::CapabilityState::Supported
-            && input.input != cluaiz_core::Modality::Text {
-            value["formats"] = json!(cluaiz_media::formats::canonical_extensions(
-                formats.iter().filter(|(modality, _)| *modality == input.input).map(|(_, format)| *format)
-            ));
-        }
-        value
-    }).collect();
-    if package
-        .supported_inputs()
-        .contains(&cluaiz_core::Modality::Image)
-    {
-        let video_formats = tokio::task::spawn_blocking(cluaiz_media::video::attachment_formats)
+    let video_formats = if declared_inputs.contains(&cluaiz_core::Modality::Image) {
+        tokio::task::spawn_blocking(cluaiz_media::video::attachment_formats)
             .await
             .ok()
             .and_then(Result::ok)
-            .unwrap_or_default();
-        let mut video = json!({"type":"video","support":"supported","processing":"sampled_frames",
-            "available":support.available_inputs.contains(&cluaiz_core::Modality::Image) && !video_formats.is_empty()});
-        if video_formats.is_empty() {
-            video["reason"] = json!("video_decoder_unavailable");
-        } else {
-            video["formats"] = json!(cluaiz_media::formats::canonical_extensions(
-                video_formats.iter().map(String::as_str)
-            ));
-            if !support
-                .available_inputs
-                .contains(&cluaiz_core::Modality::Image)
-            {
-                video["reason"] = json!("image_input_not_ready");
-            }
-        }
-        inputs.push(video);
-    }
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    let (inputs, attachment_processing) = chat_input_contract(&declared_inputs, &video_formats);
     let opt = &saved.optimization;
 
     let mut response = json!({
@@ -380,6 +387,9 @@ pub async fn plan_execution(
         },
         "candidates": plan.candidates
     });
+    if !attachment_processing.is_empty() {
+        response["model_info"]["attachment_processing"] = json!(attachment_processing);
+    }
     let mut overrides = serde_json::Map::new();
     for (key, value) in [
         ("n_ctx", json!(payload.n_ctx)),
@@ -591,6 +601,44 @@ pub async fn execute_cmd(Json(payload): Json<CmdPayload>) -> Json<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_chat_inputs_mark_positive_capabilities_available_without_session_state(
+    ) -> anyhow::Result<()> {
+        use anyhow::Context;
+        use cluaiz_core::Modality;
+        let video_formats = vec!["mp4".into(), "m4v".into(), "mp4".into()];
+        let (inputs, preparation) = chat_input_contract(&[Modality::Text], &video_formats);
+        assert_eq!(inputs, [json!({"type":"text","available":true})]);
+        assert!(preparation.is_empty());
+        let declared = [Modality::Text, Modality::Image, Modality::Audio];
+        let (inputs, preparation) = chat_input_contract(&declared, &video_formats);
+        assert_eq!(inputs.len(), 3);
+        for input in &inputs {
+            assert_eq!(input["available"], true);
+            for field in ["support", "reason"] {
+                assert!(input.get(field).is_none());
+            }
+        }
+        for (index, aliases) in [(1, ["jpg", "jpeg"]), (2, ["mp2", "mp3"])] {
+            let formats = inputs[index]["formats"]
+                .as_array()
+                .context("Decoder formats")?;
+            for alias in aliases {
+                assert!(formats.contains(&json!(alias)));
+            }
+        }
+        assert_eq!(
+            preparation,
+            [
+                json!({"input":"video","output":"image","processing":"sampled_frames",
+            "formats":["mp4","m4v"]})
+            ]
+        );
+        assert!(chat_input_contract(&declared, &[]).1.is_empty());
+        assert!(chat_input_contract(&[], &video_formats).0.is_empty());
+        Ok(())
+    }
 
     #[test]
     fn test_plan_overrides_apply_without_changing_saved_auto_settings() -> anyhow::Result<()> {
