@@ -14,6 +14,9 @@ graph TD
     O --> P["Selected package, captured provider settings, typed task"]
     P --> Q["PCM transcription or text synthesis"]
     R["Ordered prepared RGB / PCM request"] --> A
+    I["API chat attachments"] --> J["MediaAdmission: before source decoding"]
+    J -->|"permit retained by preparation, API context and worker"| R
+    J -->|"another owner is active"| K["media_busy: retry after completion"]
     S --> T["Native media prefill then existing sampler loop"]
     E["Package input declarations and projector inventory"] --> F["media_support::resolve_support"]
     G["Wired inputs, validated model/projector pair, enabled attachment routes"] --> F
@@ -25,6 +28,8 @@ graph TD
 | Module | Responsibility |
 |---|---|
 | [`host.rs`](src/host.rs) | Unified engine host for model preparation and streaming dispatch. |
+| [`media_admission.rs`](src/media_admission.rs) | Per-host prepared-chat permit and owned preparation lifetime; separate from byte budgets and model planning. |
+| [`media_generation.rs`](src/media_generation.rs) | Native prepared dispatch, retained admission and selected-package execution, as a child of the host. |
 | [`media_support.rs`](src/media_support.rs) | Effective request input/attachment availability from declared capability, real assets and trusted backend evidence. |
 | [`onnx_host.rs`](src/onnx_host.rs) | Selected ONNX audio package validation, serialized graph execution, typed chunk/result/error events and generation-scoped retention. |
 
@@ -52,9 +57,12 @@ graph TD
 
 ## Native request continuation and resource policy
 
+- **Preparation admission:** Chat attachment requests acquire one per-host permit before model/media preparation. A second attachment request receives `media_busy` before reading/decoding its source, rather than growing a decoded waiting queue. Plain text chat bypasses this permit. The API context, owned preparation task and native worker share its lifetime, including document-to-text dispatch and tool continuations. Disconnect does not release admission while detached decoding/native work still owns buffers. This is a concurrency bound, not a memory reservation or a capacity guarantee; ONNX/audio/embedding admission remains separate.
 - **Media history:** each media turn re-evaluates its full typed input; text-only prefix history is cleared and no synthetic prefix cache is returned. The existing text sampler/prefill remains the single generation implementation. Oversized media context fails explicitly; whole-message auto fitting remains pending.
 - **Cancellation:** API chat callbacks use their own retained atomic flag. The legacy CLI entry retains its global cancellation source. A cancelled queued API request fails before encoding; an active request stops at callback/evaluation boundaries. Long native encode/decode operations have no newly certified immediate-abort latency.
-- **Budget:** projector file size is the weight-estimate lower bound. `media.projector_workspace_bytes` supplies a non-zero workspace estimate and the configured decoded ceiling is charged separately. These are checked against fresh free memory after the text model is resident. They are estimates, not an OS reservation or measured process peak; resource failure is explicit. Native driver allocation failure has no automatic CPU retry here.
+- **Skip reasoning:** text, prepared attachments and tool continuations retain the same request-owned skip flag created before dispatch. The serialized worker binds it to `NativeSession` only for that generation and clears the binding on success or error. Another queued request keeps its own flag. The shared native token loop invokes the upstream reasoning sampler and continues the existing answer stream; skipping does not cancel or reload the model.
+- **Budget:** `media_generation` derives retained input bytes from the prepared request instead of charging the entire configured ceiling. Projector file size remains the weight-estimate lower bound; `media.projector_workspace_bytes` remains a conservative non-zero workspace estimate. Before copying native bitmaps, the session checks additional conversion buffers against fresh free memory and the existing safety reserve. A decoded-size change does not change projector identity. An idle projector can be reclaimed under RAM pressure and admitted again without changing the loaded Chat model/plan. These checks are estimates, not OS reservations or measured native peaks; native driver allocation failure has no automatic CPU retry.
+- **Observations:** optional shared processing reporters cross the serialized native worker separately from token strings. The shared source decoder reports reads/decodes; the native adapter reports actual encode slices and prefill batches. API observation queues are bounded and opt-in. The separate ONNX task transport has not been changed.
 - **Delivery:** the worker sends its existing error token on failure. The API interprets it as an SSE error object or a non-success JSON response, clears stale generation telemetry and retains decoded media across tool continuation requests.
 
 ## ONNX task lease

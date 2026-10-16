@@ -53,6 +53,42 @@ fn png() -> Vec<u8> {
     bytes.into_inner()
 }
 
+#[tokio::test]
+async fn test_preparation_reports_each_real_attachment_and_preserves_origin() -> Result<()> {
+    use cluaiz_core::processing::{ProcessingReporter, ProcessingStage, ProcessingState};
+    let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let received = events.clone();
+    let progress = ProcessingReporter::new(move |event| received.lock().unwrap().push(event));
+    let dir = tempfile::tempdir()?;
+    let resolver = resolver(dir.path(), 256).with_progress(Some(progress.clone()));
+    let prepared = prepare_chat(
+        request(vec![
+            InputPart::Image {
+                source: inline("image/png", &png()),
+            },
+            InputPart::Image {
+                source: inline("image/png", &png()),
+            },
+        ]),
+        &resolver,
+        |_| Ok(()),
+    )
+    .await?;
+    assert_eq!(prepared.messages[1].content.len(), 2);
+    let events = events.lock().unwrap();
+    assert_eq!(events.len(), 8);
+    for (index, group) in events.chunks_exact(4).enumerate() {
+        assert_eq!(group[0].stage, ProcessingStage::Reading);
+        assert_eq!(group[3].stage, ProcessingStage::Decoding);
+        assert_eq!(group[3].state, ProcessingState::Completed);
+        let target = group[3].attachment.unwrap();
+        assert_eq!((target.message_index, target.part_index), (1, index));
+        assert_eq!(progress.attachment(1, index), target);
+        assert!(group.iter().all(|event| event.work.is_none()));
+    }
+    Ok(())
+}
+
 fn wav() -> Vec<u8> {
     let mut bytes = Cursor::new(Vec::new());
     let mut writer = hound::WavWriter::new(

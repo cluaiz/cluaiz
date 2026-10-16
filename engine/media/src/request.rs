@@ -7,6 +7,7 @@ use cluaiz_core::{
     contracts::EngineError,
     media::{InputPart, PreparedPart},
     media_limits::MediaLimits,
+    processing::{AttachmentRef, ProcessingStage as Stage, ProcessingState as State},
 };
 use std::path::Path;
 use std::sync::{
@@ -14,9 +15,24 @@ use std::sync::{
     Arc,
 };
 
-struct PreparationGuard {
+/// Cancels detached preparation when its awaiting caller disappears.
+pub struct PreparationGuard {
     signal: Arc<AtomicBool>,
     active: bool,
+}
+impl PreparationGuard {
+    /// Retain the request's shared signal until preparation completes or is dropped.
+    pub fn new(signal: Arc<AtomicBool>) -> Self {
+        Self {
+            signal,
+            active: true,
+        }
+    }
+
+    /// Normal completion leaves the same signal usable by subsequent native generation.
+    pub fn complete(&mut self) {
+        self.active = false;
+    }
 }
 impl Drop for PreparationGuard {
     fn drop(&mut self) {
@@ -33,10 +49,7 @@ pub async fn prepare_chat(
     resolver: &SourceResolver,
     authorize_local: impl Fn(&Path) -> Result<()> + Send + Sync,
 ) -> Result<ChatEnvelope<Vec<PreparedPart>>> {
-    let mut guard = PreparationGuard {
-        signal: resolver.cancellation(),
-        active: true,
-    };
+    let mut guard = PreparationGuard::new(resolver.cancellation());
     let result = request
         .try_map_messages(|messages| async move {
             // Known unavailable providers fail before any source fetch or decoding.
@@ -59,12 +72,48 @@ pub async fn prepare_chat(
             for (message_index, message) in messages.into_iter().enumerate() {
                 let mut parts = Vec::with_capacity(message.content.len());
                 for (part_index, part) in message.content.into_iter().enumerate() {
-                    let result = prepare_part(part, resolver, &authorize_local, retained)
+                    if resolver.cancellation().load(Ordering::Acquire) {
+                        anyhow::bail!("Media preparation cancelled");
+                    }
+                    let target = resolver
+                        .progress
+                        .as_ref()
+                        .map(|p| p.source_attachment(message_index, part_index))
+                        .unwrap_or(AttachmentRef {
+                            message_index,
+                            part_index,
+                            frame_index: None,
+                        });
+                    let is_video = matches!(part, InputPart::Video { .. });
+                    let result = prepare_part(part, resolver, &authorize_local, retained, target)
                         .await
                         .with_context(|| {
                             format!("Cannot prepare message {message_index}, part {part_index}")
                         })?;
+                    let mut frame = 0;
                     for result in result {
+                        if let Some(progress) = resolver
+                            .progress
+                            .as_ref()
+                            .filter(|_| !matches!(result, PreparedPart::Text { .. }))
+                        {
+                            let frame_index =
+                                if is_video && matches!(result, PreparedPart::Image { .. }) {
+                                    let index = frame;
+                                    frame += 1;
+                                    Some(index)
+                                } else {
+                                    None
+                                };
+                            progress.map_prepared(
+                                message_index,
+                                parts.len(),
+                                AttachmentRef {
+                                    frame_index,
+                                    ..target
+                                },
+                            );
+                        }
                         retained = retained
                             .checked_add(u64::try_from(result.retained_bytes())?)
                             .context("Prepared request byte count overflow")?;
@@ -80,7 +129,7 @@ pub async fn prepare_chat(
             Ok(prepared)
         })
         .await;
-    guard.active = false;
+    guard.complete();
     result
 }
 
@@ -89,6 +138,7 @@ async fn prepare_part(
     resolver: &SourceResolver,
     authorize_local: &(impl Fn(&Path) -> Result<()> + Send + Sync),
     retained: u64,
+    target: AttachmentRef,
 ) -> Result<Vec<PreparedPart>> {
     let limits = resolver.limits();
     let (source, input_kind, video_audio) = match part {
@@ -113,15 +163,22 @@ async fn prepare_part(
         .filter(|remaining| *remaining > 0)
         .context("Prepared request has exhausted its decoded byte budget")?;
     let decode_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
+    if let Some(p) = &resolver.progress {
+        p.emit(Stage::Reading, State::Running, Some(target), None);
+    }
     let source = resolver.resolve(&source, authorize_local).await?;
     let bytes = source.read_bytes(limits).await?;
     let format = source.format.clone();
     // From here on the worker owns its bytes. Temporary source files can be dropped;
     // prepared buffers own their data through model use and cloned continuations.
     drop(source);
+    if let Some(p) = &resolver.progress {
+        p.emit(Stage::Reading, State::Completed, Some(target), None);
+        p.emit(Stage::Decoding, State::Running, Some(target), None);
+    }
     let video_settings = resolver.video_settings();
     let cancellation = resolver.cancellation();
-    tokio::task::spawn_blocking(move || match input_kind {
+    let decoded = tokio::task::spawn_blocking(move || match input_kind {
         Some(cluaiz_core::Modality::Image) => {
             decode_image(&bytes, decode_limits).map(|image| vec![PreparedPart::Image { image }])
         }
@@ -163,7 +220,11 @@ async fn prepare_part(
             Ok(parts)
         }
     })
-    .await?
+    .await??;
+    if let Some(p) = &resolver.progress {
+        p.emit(Stage::Decoding, State::Completed, Some(target), None);
+    }
+    Ok(decoded)
 }
 
 #[cfg(test)]

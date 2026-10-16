@@ -30,6 +30,38 @@ pub struct MediaBudget {
     device_buffer_bytes: u64,
 }
 
+/// Incremental allocations only: prepared buffers and resident weights are already in live usage.
+/// Workspace remains a conservative estimate, even when a native allocator may retain it.
+pub fn check_request_ram(
+    workspace: u64,
+    additional_buffers: u64,
+    live: &SystemInfo,
+    settings: &ActiveUserSettings,
+) -> Result<()> {
+    if workspace == 0
+        || !live.memory.total_gb.is_finite()
+        || live.memory.total_gb <= 0.0
+        || !live.memory.available_gb.is_finite()
+        || live.memory.available_gb < 0.0
+        || live.memory.available_gb > live.memory.total_gb
+        || settings
+            .optimization
+            .custom_ram_buffer_gb
+            .is_some_and(|n| !n.is_finite() || n < 0.0)
+    {
+        bail!("Invalid live RAM snapshot or media workspace estimate");
+    }
+    let required = workspace
+        .checked_add(additional_buffers)
+        .context("Media request workspace overflow")?;
+    let free = gib_to_bytes(live.memory.available_gb);
+    let usable = ram_budget_bytes(live, settings);
+    if required > usable {
+        bail!("Insufficient live RAM for media request: required_bytes={required}, workspace_bytes={workspace}, additional_buffer_bytes={additional_buffers}, free_bytes={free}, reserve_bytes={}, usable_bytes={usable}", free.saturating_sub(usable));
+    }
+    Ok(())
+}
+
 impl MediaBudget {
     /// Reuses existing safety policies. Live free RAM already excludes resident model memory.
     /// GPU placement includes host staging/workspace as well as device weights/workspace.
@@ -148,6 +180,21 @@ mod tests {
         workspace_bytes: 2,
         decoded_bytes: 1,
     };
+
+    #[test]
+    fn test_request_ram_charges_incremental_buffers_and_reports_boundary() {
+        let (mut hw, settings) = snapshot(6, 0);
+        assert!(check_request_ram(4, 2, &hw, &settings).is_ok());
+        hw.memory.available_gb = bytes_to_gib(5);
+        let error = check_request_ram(4, 2, &hw, &settings)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("required_bytes=6"));
+        assert!(error.contains("usable_bytes=5"));
+        assert!(check_request_ram(u64::MAX, 1, &hw, &settings).is_err());
+        hw.memory.available_gb = f64::NAN;
+        assert!(check_request_ram(4, 2, &hw, &settings).is_err());
+    }
 
     #[test]
     fn test_media_budget_uses_existing_buffer_policy_and_decoded_limit() {

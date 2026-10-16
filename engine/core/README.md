@@ -14,6 +14,10 @@ graph TD
     K["ChatEnvelope with ordered InputPart content"] --> L["Shared source / decoder preparation"]
     L --> M["Same ChatEnvelope options with PreparedPart buffers"]
     J --> M
+    L --> N["Optional request-scoped processing observations"]
+    M --> O["Native encoding and prefill observations"]
+    O --> N
+    N --> P["Bounded API progress events separate from answer tokens"]
 ```
 
 ## 📦 Components
@@ -27,6 +31,7 @@ graph TD
 | [`media.rs`](src/media.rs) | Backend-neutral RGB8 and PCM F32 buffers with layout validation and shared immutable storage. |
 | [`chat.rs`](src/chat.rs) | One message/envelope definition for text and typed content; generation settings survive content preparation. Existing token estimates/history trimming remain text-only. |
 | [`media_limits.rs`](src/media_limits.rs) | Single definition of media byte ceilings, errors and default resource guards. |
+| [`processing.rs`](src/processing.rs) | Optional request-scoped backend/transport-neutral stage observations, real work counts, cancellation and source-to-prepared attachment identity. Retains a terminal snapshot for bounded transports; does not infer percentages. |
 | [`settings_tests.rs`](src/settings_tests.rs) | Existing settings tests, relocated without changing their visibility or production behavior. |
 
 ## Decoded media contract

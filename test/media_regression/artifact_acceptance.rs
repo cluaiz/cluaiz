@@ -2,6 +2,8 @@
 #[path = "../../engine/media/tests/support/mod.rs"]
 #[allow(dead_code)]
 mod documents;
+#[path = "processing_acceptance.rs"]
+mod processing_acceptance;
 
 use anyhow::{bail, Context, Result};
 use base64::Engine;
@@ -256,20 +258,51 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
                 );
             }
             let inputs = model["inputs"].as_array().context("Input contract")?;
+            assert_eq!(inputs.len(), package.supported_inputs().len());
+            for input in inputs {
+                assert_ne!(input["type"], "video");
+                assert_eq!(
+                    input["available"], true,
+                    "Positive model input must be available independent of session load state"
+                );
+                for field in ["support", "reason"] {
+                    assert!(
+                        input.get(field).is_none(),
+                        "Session field {field} leaked into capabilities"
+                    );
+                }
+            }
+            if let Some(preparation) = model.get("attachment_processing") {
+                let routes = preparation.as_array().context("Preparation routes")?;
+                assert!(!routes.is_empty());
+                for route in routes {
+                    assert_eq!(route["input"], "video");
+                    assert_eq!(route["output"], "image");
+                    assert_eq!(route["processing"], "sampled_frames");
+                    assert!(!route["formats"]
+                        .as_array()
+                        .context("Video formats")?
+                        .is_empty());
+                }
+            }
             for declaration in &package.inputs {
                 let modality = serde_json::to_value(declaration.modality)?;
-                let input = inputs
-                    .iter()
-                    .find(|input| input["type"] == modality)
-                    .context("Input declaration")?;
-                assert_eq!(input["support"], serde_json::to_value(declaration.state)?);
+                let input = inputs.iter().find(|input| input["type"] == modality);
+                if declaration.state != cluaiz_models::capabilities::CapabilityState::Supported {
+                    assert!(
+                        input.is_none(),
+                        "Undeclared input leaked into ordinary response"
+                    );
+                    continue;
+                }
+                let input = input.context("Supported input declaration")?;
                 if modality == "text" {
                     assert!(input.get("formats").is_none());
                 } else if declaration.state
                     == cluaiz_models::capabilities::CapabilityState::Supported
                 {
                     let descriptors = cluaiz_media::formats::attachment_formats();
-                    let expected = cluaiz_media::formats::canonical_extensions(
+                    let expected = cluaiz_media::formats::unique_extensions(
                         descriptors
                             .iter()
                             .filter(|(kind, _)| *kind == declaration.modality)
@@ -571,12 +604,13 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
     let plan = client
         .json("/v1/system/plan", json!({"model":ids[0]}))
         .await?;
-    let video_input = plan["model_info"]["inputs"]
+    let video_input = plan["model_info"]["attachment_processing"]
         .as_array()
-        .context("Inputs")?
+        .context("Preparation routes")?
         .iter()
-        .find(|input| input["type"] == "video")
-        .context("Video input")?;
+        .find(|route| route["input"] == "video")
+        .context("Video preparation")?;
+    assert_eq!(video_input["output"], "image");
     assert_eq!(video_input["processing"], "sampled_frames");
     assert!(video_input["formats"]
         .as_array()

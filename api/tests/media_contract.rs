@@ -224,11 +224,8 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     let (_, before) = post(&router, "/v1/system/plan", plan_request.clone(), "user").await?;
     let before: Value = serde_json::from_str(&before)?;
     for modality in ["text", "image", "audio"] {
-        assert_eq!(plan_input(&before, modality)?["support"], "supported");
-        assert_eq!(
-            plan_input(&before, modality)?["available"],
-            modality == "text"
-        );
+        assert_eq!(plan_input(&before, modality)?["type"], modality);
+        assert_eq!(plan_input(&before, modality)?["available"], true);
     }
     let current_settings = cluaiz_core::Settings::current();
     let (first, second) = tokio::join!(
@@ -317,9 +314,10 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     assert!(mixed_answer.to_ascii_lowercase().contains(&expected));
     let (_, after) = post(&router, "/v1/system/plan", plan_request, "user").await?;
     let after: Value = serde_json::from_str(&after)?;
-    for modality in ["text", "image", "audio"] {
-        assert_eq!(plan_input(&after, modality)?["available"], true);
-    }
+    assert_eq!(
+        before["model_info"]["inputs"],
+        after["model_info"]["inputs"]
+    );
     assert!(plan_input(&after, "image")?["formats"]
         .as_array()
         .context("Image formats")?
@@ -335,9 +333,12 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
 
     let request: ExternalChatRequest = serde_json::from_value(image_request.clone())?;
     let headers = axum::http::HeaderMap::new();
-    let ctx = PreparedChatContext::prepare(&state, &request, "continuation-fixture", &headers)
-        .await
-        .map_err(|response| anyhow::anyhow!("Media preparation failed: {}", response.status()))?;
+    let ctx =
+        PreparedChatContext::prepare(&state, &request, "continuation-fixture", &headers, None)
+            .await
+            .map_err(|response| {
+                anyhow::anyhow!("Media preparation failed: {}", response.status())
+            })?;
     let continued = collect_native(ctx.dispatch(&state.host,Some(r#"[PIVOT_CONTINUE]{"pivot_prompt":"The tool returned no extra visual data. Inspect the original image and reply with its main color, one word only."}"#),32).await).await?;
     eprintln!("REAL media continuation answer: {continued}");
     assert_eq!(continued.trim().to_ascii_lowercase(), "red");
@@ -386,6 +387,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
                 &home.join("different-model.gguf"),
                 &ctx.request_settings,
                 None,
+                None,
             )
             .await,
     )
@@ -427,7 +429,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     let mut agent_headers = axum::http::HeaderMap::new();
     agent_headers.insert("x-caller", "agent".parse()?);
     let denied_inside =
-        PreparedChatContext::prepare(&state, &inside, "inside-fixture", &agent_headers).await;
+        PreparedChatContext::prepare(&state, &inside, "inside-fixture", &agent_headers, None).await;
     let denied_inside = denied_inside
         .err()
         .context("Strict agent read must require approval inside workspace")?;
@@ -448,12 +450,17 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     .await?;
     assert_eq!(status, StatusCode::OK, "{approval}");
     agent_headers.insert("x-approval-id", approval_id.parse()?);
-    let inside_ctx =
-        PreparedChatContext::prepare(&state, &inside, "approved-inside-fixture", &agent_headers)
-            .await
-            .map_err(|response| {
-                anyhow::anyhow!("Approved workspace source failed: {}", response.status())
-            })?;
+    let inside_ctx = PreparedChatContext::prepare(
+        &state,
+        &inside,
+        "approved-inside-fixture",
+        &agent_headers,
+        None,
+    )
+    .await
+    .map_err(|response| {
+        anyhow::anyhow!("Approved workspace source failed: {}", response.status())
+    })?;
     assert!(inside_ctx.prepared_media.is_some());
     let (status, missing) = post(
         &router,

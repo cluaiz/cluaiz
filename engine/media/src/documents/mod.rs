@@ -1,10 +1,12 @@
 //! Model-independent document extraction shared by chat, ingestion and CLI consumers.
 
 pub mod chunker;
+mod doc;
 mod docx;
 pub mod ocr;
 mod pdf;
 pub mod pdf_render;
+mod text;
 
 use crate::formats::{DocumentKind, MediaFormat};
 use anyhow::{bail, Context, Result};
@@ -112,6 +114,7 @@ pub fn extract_with_assets(
             }
             parts
         }
+        DocumentKind::Doc => doc::extract(bytes, limits)?,
         DocumentKind::Docx => docx::extract(bytes, limits)?,
         DocumentKind::Image => {
             let image = crate::image::decode_image(bytes, limits)?;
@@ -148,15 +151,11 @@ pub fn extract_with_assets(
             vec![part]
         }
         DocumentKind::Text => {
-            let text = std::str::from_utf8(bytes).context("Document text must be UTF-8")?;
-            limits.check_decoded_bytes(u64::try_from(text.len())?)?;
-            if text.trim().is_empty() {
-                bail!("Document text is empty");
-            }
+            let (text, method) = text::decode(bytes, limits)?;
             vec![DocumentPart {
                 page: None,
-                method: "utf8",
-                text: text.to_owned(),
+                method,
+                text,
                 omissions: Vec::new(),
                 warnings: Vec::new(),
                 ocr_confidence: None,
