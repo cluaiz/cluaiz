@@ -8,6 +8,7 @@ use std::sync::{atomic::AtomicBool, Arc, LazyLock, RwLock};
 pub struct StreamSignals {
     pub cancel: Arc<AtomicBool>,
     pub skip_reasoning: Arc<AtomicBool>,
+    pub reasoning_supported: bool,
 }
 
 /// Global active streaming sessions registry (Keyed by unique `chatcmpl-...` stream_id)
@@ -36,6 +37,9 @@ pub struct ExternalChatRequest {
     pub messages: Vec<ExternalMessage>,
     #[serde(default)]
     pub stream: bool,
+    /// Opt-in named SSE events alongside the unchanged completion chunks.
+    #[serde(default)]
+    pub return_progress: bool,
     #[serde(default)]
     pub temporary_chat: Option<TemporaryChatMode>,
     #[serde(default)]
@@ -192,6 +196,16 @@ pub struct ExternalMessage {
     pub content: MessageContent,
 }
 
+/// API error type of an engine error: llama-server's `exceed_context_size_error` (HTTP 400) when the
+/// conversation does not fit the context even after context shifting, else `engine_error`.
+pub fn engine_error_type(message: &str) -> &'static str {
+    if message.contains("exceeds the available context size") {
+        "exceed_context_size_error"
+    } else {
+        "engine_error"
+    }
+}
+
 /// What the engine really did for the last generation: llama.cpp's own timings (same numbers as
 /// llama-cli / llama-server) and the llama.cpp load values of the loaded model.
 pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
@@ -201,6 +215,7 @@ pub async fn engine_report(host: &cluaiz_runtime::EngineHost) -> Value {
     json!({
         "timings": host.last_timings().await,
         "thinking": host.last_thinking().await,
+        "context": host.last_context().await,
         "load": plan.map(|p| json!({
             "placement": format!("{:?}", p.selected_tier),
             "n_ctx": p.context_window,

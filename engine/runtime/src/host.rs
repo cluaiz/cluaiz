@@ -8,14 +8,20 @@ use cluaiz_models::types::StructuralDNA;
 use cluaiz_models::ModelGeometry;
 use cluaiz_plan::{ExecutionPlan, Planner};
 use llama_engine::native::session::NativeSession;
-use llama_engine::{extract_thinking_tags_native, GenerationTimings, NativeLlama, ThinkingReport};
+use llama_engine::{
+    extract_thinking_tags_native, ContextReport, GenerationTimings, NativeLlama, ThinkingReport,
+};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
+
+#[path = "media_generation.rs"]
+mod media_generation;
 
 enum GenerationRequest {
     Text {
         prompt: String,
         expected_key: Option<String>,
+        media_lease: Option<crate::media_admission::MediaLease>,
     },
     Media(Box<MediaGeneration>),
 }
@@ -25,6 +31,8 @@ struct MediaGeneration {
     request: ChatEnvelope<Vec<PreparedPart>>,
     expected_key: String,
     settings: ActiveUserSettings,
+    progress: Option<cluaiz_core::processing::ProcessingReporter>,
+    media_lease: Option<crate::media_admission::MediaLease>,
 }
 
 pub enum HostResponse {
@@ -55,6 +63,8 @@ pub struct ModelDescription {
 }
 
 pub struct EngineHost {
+    /// Acquired before chat attachment decoding; retained through all buffer owners.
+    pub media_admission: crate::media_admission::MediaAdmission,
     /// Audio sessions have their own lifecycle and never evict the chat owner.
     pub onnx: crate::onnx_host::OnnxHost,
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
@@ -71,6 +81,8 @@ pub struct EngineHost {
     pub last_timings: Arc<Mutex<Option<GenerationTimings>>>,
     /// Thinking budget and use of the last finished generation
     pub last_thinking: Arc<Mutex<Option<ThinkingReport>>>,
+    /// What the context rules did in the last finished generation
+    pub last_context: Arc<Mutex<Option<ContextReport>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
     /// Full plan banner of the last load (also written to the log)
@@ -86,6 +98,7 @@ impl EngineHost {
             llama_engine::ffi::llama_cpp::llama_backend_init();
         }
         Self {
+            media_admission: crate::media_admission::MediaAdmission::default(),
             onnx: crate::onnx_host::OnnxHost::default(),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
@@ -97,6 +110,7 @@ impl EngineHost {
             last_prefilled_tokens: Arc::new(Mutex::new(Vec::new())),
             last_timings: Arc::new(Mutex::new(None)),
             last_thinking: Arc::new(Mutex::new(None)),
+            last_context: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
             plan_report: Arc::new(Mutex::new(None)),
         }
@@ -382,8 +396,10 @@ impl EngineHost {
             GenerationRequest::Text {
                 prompt: prompt.to_owned(),
                 expected_key: None,
+                media_lease: None,
             },
             max_tokens,
+            None,
             None,
         )
         .await
@@ -397,78 +413,17 @@ impl EngineHost {
         model_path: &std::path::Path,
         settings: &ActiveUserSettings,
         cancel: Arc<std::sync::atomic::AtomicBool>,
+        skip: Arc<std::sync::atomic::AtomicBool>,
     ) -> HostResponse {
         self.dispatch_request(
             GenerationRequest::Text {
                 prompt: prompt.to_owned(),
                 expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
+                media_lease: None,
             },
             max_tokens,
             Some(cancel),
-        )
-        .await
-    }
-
-    /// Typed media remains owned until the serialized worker finishes. The load key
-    /// prevents a queued request from being evaluated by a different model/configuration.
-    pub async fn dispatch_prepared(
-        &self,
-        request: ChatEnvelope<Vec<PreparedPart>>,
-        max_tokens: usize,
-        model_path: &std::path::Path,
-        settings: &ActiveUserSettings,
-        cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
-    ) -> HostResponse {
-        if request
-            .messages
-            .iter()
-            .flat_map(|message| &message.content)
-            .all(|part| matches!(part, PreparedPart::Text { .. }))
-        {
-            // Extracted documents are text inputs; they do not require a vision projector.
-            let request = request
-                .try_map_messages(|messages| async move {
-                    messages
-                        .into_iter()
-                        .map(|message| {
-                            let mut text = String::new();
-                            for part in message.content {
-                                match part {
-                                    PreparedPart::Text { text: value } => text.push_str(&value),
-                                    _ => anyhow::bail!("Non-text part in text preparation"),
-                                }
-                            }
-                            Ok(cluaiz_core::ChatMessage {
-                                role: message.role,
-                                content: text,
-                            })
-                        })
-                        .collect::<anyhow::Result<Vec<_>>>()
-                })
-                .await;
-            let request = match request {
-                Ok(request) => request,
-                Err(error) => return HostResponse::Error(error.to_string()),
-            };
-            return self
-                .dispatch_request(
-                    GenerationRequest::Text {
-                        prompt: request.to_prompt(),
-                        expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
-                    },
-                    max_tokens,
-                    cancel,
-                )
-                .await;
-        }
-        self.dispatch_request(
-            GenerationRequest::Media(Box::new(MediaGeneration {
-                request,
-                expected_key: Self::load_key(&model_path.to_string_lossy(), settings),
-                settings: settings.clone(),
-            })),
-            max_tokens,
-            cancel,
+            Some(skip),
         )
         .await
     }
@@ -478,6 +433,7 @@ impl EngineHost {
         request: GenerationRequest,
         max_tokens: usize,
         cancel: Option<Arc<std::sync::atomic::AtomicBool>>,
+        skip: Option<Arc<std::sync::atomic::AtomicBool>>,
     ) -> HostResponse {
         let (tx, rx) = mpsc::channel::<String>(128);
 
@@ -488,6 +444,7 @@ impl EngineHost {
         let tokens_arc = self.last_prefilled_tokens.clone();
         let timings_arc = self.last_timings.clone();
         let thinking_arc = self.last_thinking.clone();
+        let context_arc = self.last_context.clone();
 
         tokio::task::spawn_blocking(move || {
             let mut llama_guard = llama_arc.blocking_lock();
@@ -507,6 +464,7 @@ impl EngineHost {
                     tokens_guard.clear();
                     *timings_arc.blocking_lock() = None;
                     *thinking_arc.blocking_lock() = None;
+                    *context_arc.blocking_lock() = None;
                     let message = if cancel
                         .as_ref()
                         .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire))
@@ -531,66 +489,61 @@ impl EngineHost {
                     tx_clone.blocking_send(token).is_ok()
                 });
 
+                llama.set_reasoning_control(skip);
+                let is_media = matches!(request, GenerationRequest::Media(_));
                 let result = match request {
-                    GenerationRequest::Text { prompt, .. } => {
+                    GenerationRequest::Text {
+                        prompt,
+                        media_lease,
+                        ..
+                    } => {
+                        let _lease = media_lease;
                         llama.stream_text(&prompt, max_tokens, &dna_guard, &tokens_guard, callback)
                     }
                     GenerationRequest::Media(media) => {
                         let MediaGeneration {
-                            request, settings, ..
+                            request,
+                            settings,
+                            progress,
+                            media_lease,
+                            ..
                         } = *media;
+                        let _lease = media_lease;
+                        llama.set_processing_progress(progress);
                         tokens_guard.clear();
                         (|| -> anyhow::Result<Vec<i32>> {
                             let model_path = path_arc.blocking_lock().clone().ok_or_else(|| {
                                 anyhow::anyhow!("Loaded model identity is unavailable")
                             })?;
-                            let package =
-                                cluaiz_models::capabilities::PackageCapabilities::inspect(
-                                    std::path::Path::new(&model_path),
-                                )?;
-                            let supported = package.supported_inputs();
-                            if request
-                                .messages
-                                .iter()
-                                .flat_map(|m| &m.content)
-                                .any(|part| !supported.contains(&part.modality()))
-                            {
-                                anyhow::bail!("Selected model does not declare support for every request input");
-                            }
-                            let projector = package.projector.ok_or_else(|| {
-                                anyhow::anyhow!(
-                                    "Compatible media projector is missing or ambiguous"
-                                )
-                            })?;
-                            let needs = cluaiz_plan::media_budget::MediaRequirements {
-                                weights_bytes: std::fs::metadata(&projector.path)?.len(),
-                                workspace_bytes: settings.media.projector_workspace_bytes.get(),
-                                decoded_bytes: settings.media.limits.max_decoded_bytes(),
-                            };
-                            llama.ensure_projector(
-                                &projector.path,
-                                needs,
+                            media_generation::execute(
+                                llama,
+                                std::path::Path::new(&model_path),
+                                request,
                                 &settings,
-                                llama.gpu_layers() != 0,
-                            )?;
-                            llama.stream_prepared(
-                                request, max_tokens, &dna_guard, &settings, callback,
-                            )?;
-                            Ok(Vec::new()) // media embeddings never become text-only prefix history
+                                max_tokens,
+                                &dna_guard,
+                                callback,
+                            )
                         })()
                     }
                 };
+                llama.set_reasoning_control(None);
+                llama.set_processing_progress(None);
                 match result {
                     Ok(new_tokens) => {
-                        *tokens_guard = new_tokens;
+                        // Media embeddings hold KV positions no text token list describes: the next
+                        // text request starts from an empty cache instead of matching a wrong prefix
+                        *tokens_guard = if is_media { Vec::new() } else { new_tokens };
                         // Stored before the sender drops, so it is ready when the stream ends
                         *timings_arc.blocking_lock() = Some(llama.timings());
                         *thinking_arc.blocking_lock() = llama.thinking_report();
+                        *context_arc.blocking_lock() = llama.context_report();
                     }
                     Err(e) => {
                         tokens_guard.clear();
                         *timings_arc.blocking_lock() = None;
                         *thinking_arc.blocking_lock() = None;
+                        *context_arc.blocking_lock() = None;
                         let _ = tx.blocking_send(error_token(e));
                     }
                 }
@@ -678,6 +631,12 @@ impl EngineHost {
     /// Thinking budget and use of the last finished generation (None when the model did not think)
     pub async fn last_thinking(&self) -> Option<ThinkingReport> {
         self.last_thinking.lock().await.clone()
+    }
+
+    /// What the context rules did in the last finished generation (prompt tokens, cache reuse,
+    /// dropped turns, shifts, why it stopped)
+    pub async fn last_context(&self) -> Option<ContextReport> {
+        self.last_context.lock().await.clone()
     }
 
     /// llama.cpp's description of the loaded model (None when nothing is loaded)

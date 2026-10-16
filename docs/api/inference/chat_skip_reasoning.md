@@ -1,95 +1,65 @@
 # Skip Reasoning API
 
-`POST /v1/chat/skip-reasoning`
+`POST /v1/chat/skip-reasoning` requests a native reasoning exit for one running chat stream. The same `/v1/chat/completions` SSE continues with the answer; the model is not restarted.
 
-Instructs an active chat stream to immediately exit its `<think>` reasoning block and fast-forward directly to outputting the final conversational answer.
+## Request
 
----
+Use the configured engine URL, `Content-Type: application/json`, and `Authorization: Bearer <session-or-api-token>`. The required `stream_id` is the actual `id` from the running chat SSE, not an example identifier.
 
-## 📌 Endpoint Information
-
-* **HTTP Method:** `POST`
-* **Path:** `/v1/chat/skip-reasoning`
-* **Content-Type:** `application/json`
-
----
-
-## 📦 Request Payload
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `stream_id` | `string` | **Yes** | Unique stream identifier returned in the first SSE chunk of `/v1/chat/completions` (e.g., `chatcmpl-...`). |
-
-### Example Request Body
 ```json
-{
-  "stream_id": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"
-}
+{"stream_id":"<actual running chat SSE id>"}
 ```
 
----
-
-## 💻 Code Examples
-
-### 1. cURL
-```bash
-curl -X POST http://localhost:8080/v1/chat/skip-reasoning \
-  -H "Content-Type: application/json" \
-  -d '{"stream_id": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"}'
-```
-
-### 2. Python
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8080/v1/chat/skip-reasoning",
-    json={"stream_id": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1"}
-)
-print(response.json())
-```
-
-### 3. JavaScript / Node.js
 ```javascript
-const response = await fetch("http://localhost:8080/v1/chat/skip-reasoning", {
+const response = await fetch(`${engineUrl}/v1/chat/skip-reasoning`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ stream_id: "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1" })
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({ stream_id: activeStreamId }),
 });
-const data = await response.json();
-console.log(data);
+const acknowledgment = await response.json();
 ```
 
-### 4. Rust
-```rust
-let client = reqwest::Client::new();
-let res = client.post("http://localhost:8080/v1/chat/skip-reasoning")
-    .json(&serde_json::json!({ "stream_id": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1" }))
-    .send()
-    .await?;
-println!("{:#?}", res.json::<serde_json::Value>().await?);
-```
+## Responses
 
----
+| HTTP | Code/status | Meaning |
+|---|---|---|
+| 200 | `skip_requested` | This eligible stream's signal is set. It is not proof that generation has already reached the answer. |
+| 401 | Authentication error | The configured authentication check rejected the request. |
+| 404 | `stream_not_found` | The ID is unknown or the stream has completed. |
+| 409 | `reasoning_unavailable` | The stream has no enabled native reasoning control. |
+| 503 | `stream_control_unavailable` | The active-stream registry cannot be accessed. |
 
-## 📤 Response Format
-
-### Success (200 OK)
 ```json
 {
-  "status": "skipped",
-  "stream_id": "chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1",
-  "message": "Skip reasoning signal dispatched successfully."
+  "status": "skip_requested",
+  "stream_id": "<same running chat SSE id>",
+  "message": "Native reasoning exit requested; the same stream continues with the answer."
 }
 ```
 
-### Stream Not Found / Already Finished (404 Not Found)
-```json
-{
-  "error": {
-    "message": "Active stream 'chatcmpl-0c2510db1c8349dd8f193d8d69b7aee1' not found or already completed.",
-    "type": "invalid_request_error",
-    "code": "stream_not_found"
-  }
-}
+Errors use an `error` object with `code` and `message`. Repeating an accepted request for the same active eligible stream sets the same signal again.
+
+## Stream behavior
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Native as Native generation
+    Client->>API: Chat completions, stream=true
+    API-->>Client: SSE id and reasoning_content
+    Client->>API: Skip with that stream_id
+    API-->>Client: 200 skip_requested
+    API->>Native: Request-owned skip flag
+    Native->>Native: Upstream sampler forces real end sequence
+    Native-->>API: End marker followed by answer tokens
+    API-->>Client: Same SSE id, delta.content
+    API-->>Client: engine.thinking report, then [DONE]
 ```
+
+Continue consuming the original SSE after the acknowledgment. The parser changes phase on the actual model/template end sequence. The final `engine.thinking.ended_by` identifies an accepted native `skip`, an automatic `budget` exit, or a natural `model` end. Another request has its own signal.
+
+The control is checked between native sampling/decode operations. It does not certify immediate kernel interruption or a correct, brief answer; a model may explain its final answer. Use `/v1/chat/cancel` to cancel generation instead.

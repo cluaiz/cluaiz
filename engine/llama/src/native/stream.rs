@@ -1,6 +1,6 @@
 use crate::ffi::llama_cpp;
-use crate::native::context::{close_thinking_block, SafeBatch};
-use crate::native::core::NativeLlama;
+use crate::native::context::SafeBatch;
+use crate::native::core::{ContextReport, NativeLlama};
 use crate::native::media::{MediaInput, Projector};
 use cluaiz_models::types::StructuralDNA;
 use std::ffi::CString;
@@ -8,7 +8,10 @@ use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
 use tracing::info;
 
-pub static mut SKIP_PTR: *const std::sync::atomic::AtomicBool = std::ptr::null();
+pub(crate) struct StreamOptions<'a> {
+    pub media: Option<(&'a mut MediaInput, &'a mut Projector)>,
+    pub skip_reasoning: Option<&'a std::sync::atomic::AtomicBool>,
+}
 
 struct SafeSampler {
     sampler: *mut std::ffi::c_void,
@@ -39,7 +42,7 @@ pub fn stream_tokens(
         dna,
         last_prefilled_tokens,
         callback,
-        None,
+        StreamOptions { media: None, skip_reasoning: None },
     )
 }
 
@@ -51,8 +54,9 @@ pub(crate) fn stream_tokens_with_media(
     dna: &StructuralDNA,
     last_prefilled_tokens: &[i32],
     mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
-    media: Option<(&mut MediaInput, &mut Projector)>,
+    options: StreamOptions<'_>,
 ) -> anyhow::Result<Vec<i32>> {
+    let StreamOptions { media, skip_reasoning } = options;
     let is_media = media.is_some();
     if is_media && !last_prefilled_tokens.is_empty() {
         anyhow::bail!("Text-only prefix reuse is unavailable for media requests");
@@ -161,69 +165,102 @@ pub(crate) fn stream_tokens_with_media(
             _ => true,
         };
 
-        let formatted_prompt = if !structured_messages.is_empty() {
-            let msg_refs: Vec<(&str, &str)> = structured_messages
-                .iter()
-                .map(|(r, c)| (r.as_str(), c.as_str()))
-                .collect();
-            match crate::native::templater::apply_chat_template(
-                llama.model_ptr,
-                llama.chat_templates_for(dna.chat_template.as_deref()),
-                dna.chat_template.as_deref(),
-                &msg_refs,
-                true,
-                enable_thinking,
-            ) {
-                Ok(rendered) if !rendered.trim().is_empty() => {
-                    if is_pivot && !think_end_tag.is_empty() {
-                        format!("\n{}\n{}", think_end_tag, rendered)
-                    } else {
-                        rendered
-                    }
-                }
-                Ok(_) => {
-                    return Err(anyhow::anyhow!(
-                        "llama_chat_apply_template returned empty prompt"
-                    ));
-                }
-                Err(e) => {
-                    tracing::error!("❌ [NativeTemplate] llama.cpp chat template error: {}", e);
-                    return Err(e);
-                }
-            }
-        } else {
+        if structured_messages.is_empty() {
             // Plain text (CLI / TUI): one user message through the model's own template.
             // No caller sends pre-formatted prompts, so the text is never guessed to be one by its markers.
-            let single_msg = [("user", actual_prompt.as_str())];
-            match crate::native::templater::apply_chat_template(
-                llama.model_ptr,
-                llama.chat_templates_for(dna.chat_template.as_deref()),
-                dna.chat_template.as_deref(),
-                &single_msg,
-                true,
-                enable_thinking,
-            ) {
-                Ok(rendered) if !rendered.trim().is_empty() => {
-                    if is_pivot && !think_end_tag.is_empty() {
-                        format!("\n{}\n{}", think_end_tag, rendered)
-                    } else {
-                        rendered
-                    }
-                }
-                Ok(_) => {
-                    return Err(anyhow::anyhow!(
-                        "llama_chat_apply_template returned empty prompt for single message"
-                    ));
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "❌ [NativeTemplate] llama.cpp chat template error on single message: {}",
-                        e
-                    );
-                    return Err(e);
-                }
-            }
+            structured_messages.push(("user".to_string(), actual_prompt.clone()));
+        }
+
+        let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
+        let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
+
+        if n_vocab <= 0 {
+            return Err(anyhow::anyhow!("💀 Invalid model vocabulary"));
+        }
+
+        let n_ctx = llama.n_ctx as usize;
+        let shifting = cluaiz_core::Settings::current()
+            .optimization
+            .context_shifting;
+        // llama-server turns context shift and cache reuse off when the memory cannot move positions
+        // (sliding-window / recurrent caches) and for multimodal prompts
+        let can_shift = !is_media && llama_cpp::llama_memory_can_shift(mem);
+        // BOS the llama.cpp way: its chat template engine strips the BOS text from the rendered prompt and
+        // the tokenizer adds the BOS token when the model asks for it (llama_vocab_get_add_bos).
+        // A continuation (pivot) is appended to the existing context, so it gets none.
+        let add_bos = llama_cpp::llama_vocab_get_add_bos(vocab);
+        let add_special = !is_pivot && add_bos;
+        let gen_reserve = cluaiz_core::answer_reserve(max_tokens, n_ctx);
+        // Room kept free when a prompt is fitted: the answer's reserve, twice that for a model that
+        // thinks before answering (the thinking budget is taken from the same room)
+        let fit_reserve = if enable_thinking && !think_start_tag.is_empty() {
+            (gen_reserve * 2).min(n_ctx / 2)
+        } else {
+            gen_reserve
         };
+        let mut report = ContextReport {
+            n_ctx,
+            stop: "eos",
+            ..Default::default()
+        };
+
+        let render = |llama: &NativeLlama, messages: &[(String, String)]| {
+            render_prompt(
+                llama,
+                dna,
+                messages,
+                enable_thinking,
+                is_pivot,
+                &think_end_tag,
+            )
+        };
+        let mut formatted_prompt = render(llama, &structured_messages)?;
+        let mut prompt_tokens = Vec::new();
+        if !is_media {
+            prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
+            // Context shifting before the request: the oldest whole turns go until the prompt and the
+            // answer's room fit, counted with the model's own tokenizer. A continuation (pivot) only
+            // appends to the conversation already in the context, so it is fitted below by a shift.
+            while !is_pivot {
+                let overflow = (prompt_tokens.len() + fit_reserve).saturating_sub(n_ctx);
+                let Some(target) = (overflow > 0)
+                    .then(|| cluaiz_core::tokens_to_free(shifting, n_ctx, overflow, can_shift))
+                    .flatten()
+                else {
+                    break;
+                };
+                let sizes = structured_messages
+                    .iter()
+                    .map(|(role, content)| {
+                        Ok((role.as_str(), tokenize(vocab, content, false, false)?.len()))
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?;
+                let (n_drop, freed) = cluaiz_core::oldest_turns_to_drop(&sizes, target);
+                if n_drop == 0 {
+                    break;
+                }
+                let start = usize::from(structured_messages[0].0.eq_ignore_ascii_case("system"));
+                structured_messages.drain(start..start + n_drop);
+                report.dropped_messages += n_drop;
+                report.dropped_tokens += freed;
+                report.truncated = true;
+                formatted_prompt = render(llama, &structured_messages)?;
+                prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
+            }
+            if report.dropped_messages > 0 {
+                info!(
+                    "🌊 [Context] Dropped the {} oldest messages ({} tokens) so the prompt ({} tokens) fits {} tokens of context ({:?})",
+                    report.dropped_messages, report.dropped_tokens, prompt_tokens.len(), n_ctx, shifting
+                );
+            }
+            if !is_pivot && prompt_tokens.len() >= n_ctx {
+                anyhow::bail!(
+                    "request ({} tokens) exceeds the available context size ({} tokens), try increasing it",
+                    prompt_tokens.len(),
+                    n_ctx
+                );
+            }
+        }
 
         let suppress_thinking = match tm_str.as_str() {
             "off" | "false" | "0" | "hide" => true,
@@ -258,19 +295,6 @@ pub(crate) fn stream_tokens_with_media(
         let mut tag_window = String::new();
         let tag_window_len = think_start_tag.len().max(think_end_tag.len());
 
-        let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
-        let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
-
-        if n_vocab <= 0 {
-            return Err(anyhow::anyhow!("💀 Invalid model vocabulary"));
-        }
-
-        tracing::debug!(
-            "📝 [NativeStream] Final prompt to tokenize len={}",
-            formatted_prompt.len()
-        );
-
-        let gen_reserve = (max_tokens as i32).min((llama.n_ctx as i32 / 4).clamp(256, 2048));
         let mut safe_batch = SafeBatch {
             batch: llama_cpp::llama_batch_init(llama.n_batch as i32, 0, 1),
         };
@@ -278,241 +302,141 @@ pub(crate) fn stream_tokens_with_media(
             let prefill = input.evaluate(projector, llama, &formatted_prompt, max_tokens)?;
             (prefill.text_tokens, prefill.positions)
         } else {
-            let c_prompt = CString::new(formatted_prompt.clone())?;
-            let mut tokens = vec![0i32; formatted_prompt.len() + 8];
-
-            // BOS the llama.cpp way: its chat template engine strips the BOS text from the rendered prompt and
-            // the tokenizer adds the BOS token when the model asks for it (llama_vocab_get_add_bos).
-            // A continuation (pivot) is appended to the existing context, so it gets none.
-            let add_special = !is_pivot && llama_cpp::llama_vocab_get_add_bos(vocab);
-
-            let mut n_tokens = llama_cpp::llama_tokenize(
-                vocab,
-                c_prompt.as_ptr(),
-                formatted_prompt.len() as i32,
-                tokens.as_mut_ptr(),
-                tokens.len() as i32,
-                add_special,
-                true,
-            );
-
-            if n_tokens < 0 {
-                let required_size = n_tokens.abs() as usize;
-                tokens.resize(required_size, 0);
-                n_tokens = llama_cpp::llama_tokenize(
-                    vocab,
-                    c_prompt.as_ptr(),
-                    formatted_prompt.len() as i32,
-                    tokens.as_mut_ptr(),
-                    tokens.len() as i32,
-                    add_special,
-                    true,
-                );
-            }
-
-            if n_tokens < 0 {
-                return Err(anyhow::anyhow!(
-                    "Tokenization failed even after resizing buffer"
-                ));
-            }
-            tokens.truncate(n_tokens as usize);
-            // A prompt that already carried the BOS text now holds it twice: keep one (compared by token id)
-            let bos = llama_cpp::llama_vocab_bos(vocab);
-            if add_special && bos >= 0 && tokens.len() >= 2 && tokens[0] == bos && tokens[1] == bos
-            {
-                tokens.remove(0);
-            }
-            let full_prompt_tokens = tokens.clone(); // 🛡️ Save FULL prompt tokens BEFORE any trimming for correct return
-            tracing::debug!(
-                "🔢 [NativeStream] Tokenized prompt into {} tokens: {:?}",
-                full_prompt_tokens.len(),
-                &full_prompt_tokens[..full_prompt_tokens.len().min(16)]
-            );
-
-            let mut is_pivot = is_pivot;
-            let mut has_loaded_cache = has_loaded_cache;
-            let max_prompt_tokens = (llama.n_ctx as i32 - gen_reserve).max(1) as usize;
-
-            // 🛑 ROOT FIX: If the full conversation exceeds the KV cache capacity, we CANNOT just append!
-            // We MUST clear the cache, trim the oldest messages, and re-ingest from scratch at pos=0.
-            if tokens.len() > max_prompt_tokens {
-                is_pivot = false;
-                has_loaded_cache = false;
-                let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
-                llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-            }
-
-            let mut effective_cache_len = last_prefilled_tokens.len();
-            let mut match_len = 0;
-            // 🛡️ DYNAMIC PREFIX MATCHING (The real fix for KV cache corruption)
-            if !is_pivot && has_loaded_cache {
-                let min_len = last_prefilled_tokens.len().min(tokens.len());
-                while match_len < min_len && last_prefilled_tokens[match_len] == tokens[match_len] {
-                    match_len += 1;
-                }
-
-                tracing::debug!(
-                "🔍 [KV-Debug] last_prefilled_tokens.len() = {}, tokens.len() = {}, match_len = {}",
-                last_prefilled_tokens.len(),
-                tokens.len(),
-                match_len
-            );
-
-                if match_len < 4 {
-                    tracing::info!("🧹 [KV-Reset] Match length ({}) is below threshold (4). Resetting KV cache for clean inference.", match_len);
-                    let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
+            // `cached` = the tokens the KV cache holds (the previous generation's result)
+            let mut cached = last_prefilled_tokens.to_vec();
+            let n_past = if is_pivot {
+                // A continuation is appended after what the context already holds; when it does not
+                // fit, the oldest tokens after BOS are shifted out first (llama-server's context shift)
+                let mut start = (llama_cpp::llama_memory_seq_pos_max(mem, 0) + 1).max(0) as usize;
+                if cached.len() != start {
+                    // The cache's tokens are unknown (an earlier generation failed): start from it alone
                     llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-                    tokens = full_prompt_tokens.clone();
-                    has_loaded_cache = false;
-                    effective_cache_len = 0;
-                } else {
-                    // If the match is partial, we MUST roll back the KV cache to the divergence point
-                    if match_len < last_prefilled_tokens.len() {
-                        let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
-                        llama_cpp::llama_memory_seq_rm(mem, 0, match_len as i32, -1);
-                    }
-
-                    if tokens.len() > match_len {
-                        tokens = tokens[match_len..].to_vec();
-                    } else {
-                        tokens.clear();
-                    }
-
-                    // Update the state so start_pos is correctly set below
-                    has_loaded_cache = true;
-                    effective_cache_len = match_len;
+                    cached.clear();
+                    start = 0;
                 }
-            }
-
-            let mut start_pos = if is_pivot {
-                llama_cpp::llama_memory_seq_pos_max(llama_cpp::llama_get_memory(llama.ctx_ptr), 0)
-                    + 1
-            } else if has_loaded_cache {
-                effective_cache_len as i32
+                let needed = (start + prompt_tokens.len() + fit_reserve).saturating_sub(n_ctx);
+                let n_keep = usize::from(add_bos);
+                if needed > 0 && can_shift {
+                    if let Some(discard) =
+                        cluaiz_core::shift_discard(shifting, n_ctx, start.saturating_sub(n_keep))
+                    {
+                        let n_discard = discard.max(needed).min(start - n_keep - 1);
+                        crate::native::context::shift_context(
+                            llama.ctx_ptr,
+                            start as i32,
+                            n_keep as i32,
+                            n_discard as i32,
+                        );
+                        cached.drain(n_keep..n_keep + n_discard);
+                        start -= n_discard;
+                        report.shifted_tokens += n_discard;
+                        report.truncated = true;
+                        info!(
+                            "🌊 [Context] Shifted out {} tokens so the continuation fits {} tokens of context",
+                            n_discard, n_ctx
+                        );
+                    }
+                }
+                if start + prompt_tokens.len() >= n_ctx {
+                    anyhow::bail!(
+                        "request ({} tokens) exceeds the available context size ({} tokens), try increasing it",
+                        start + prompt_tokens.len(),
+                        n_ctx
+                    );
+                }
+                start
             } else {
-                0
+                // Reuse the KV cache: the common prefix, then (llama-server `--cache-reuse`) shared chunks
+                // after it, such as the history left after old turns were dropped
+                let mut n_past = cached
+                    .iter()
+                    .zip(&prompt_tokens)
+                    .take_while(|(a, b)| a == b)
+                    .count();
+                if can_shift && n_past < cached.len() && n_past < prompt_tokens.len() {
+                    n_past = crate::native::context::reuse_cache_chunks(
+                        llama.ctx_ptr,
+                        &mut cached,
+                        &prompt_tokens,
+                        n_past,
+                        CACHE_REUSE_MIN_CHUNK,
+                    );
+                }
+                // The sampler needs fresh logits of the last prompt token: at least one is processed
+                n_past = n_past.min(prompt_tokens.len().saturating_sub(1));
+                // A sliding-window cache holds only the latest positions; when the kept prefix needs ones
+                // it no longer has, the prompt is processed again (llama-server without checkpoints)
+                if n_past > 0 {
+                    let n_swa = llama_cpp::llama_model_n_swa(llama.model_ptr).max(1);
+                    if llama_cpp::llama_memory_seq_pos_min(mem, 0) > (n_past as i32 - n_swa).max(0)
+                    {
+                        n_past = 0;
+                    }
+                }
+                // Recurrent memory cannot drop a tail: then it starts over
+                if n_past == 0 || !llama_cpp::llama_memory_seq_rm(mem, 0, n_past as i32, -1) {
+                    llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                    n_past = 0;
+                }
+                cached.truncate(n_past);
+                n_past
+            };
+            report.cache_n = n_past;
+            let new_tokens = if is_pivot {
+                prompt_tokens.clone()
+            } else {
+                prompt_tokens[n_past..].to_vec()
+            };
+            cached.extend_from_slice(&new_tokens);
+            tracing::debug!(
+                "🔍 [KV-Debug] context {} tokens, {} from the cache, {} to process",
+                cached.len(),
+                n_past,
+                new_tokens.len()
+            );
+
+            let decode_from = |llama: &NativeLlama,
+                               batch: &mut crate::ffi::llama_cpp::LlamaBatch,
+                               tokens: &[i32],
+                               start_pos: usize|
+             -> bool {
+                let step = llama.prompt_chunk_len(tokens.len());
+                for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
+                    for (i, token) in chunk.iter().enumerate() {
+                        let index = chunk_idx * step + i;
+                        *batch.token.add(i) = *token;
+                        *batch.pos.add(i) = (start_pos + index) as i32;
+                        *batch.n_seq_id.add(i) = 1;
+                        *(*batch.seq_id.add(i)).add(0) = 0;
+                        *batch.logits.add(i) = i8::from(index + 1 == tokens.len());
+                    }
+                    batch.n_tokens = chunk.len() as i32;
+                    let rc = llama_cpp::llama_decode(llama.ctx_ptr, *batch);
+                    if rc != 0 {
+                        tracing::warn!(
+                            "⚠️ [Llama-Lib] Prefill chunk decode failed with code {} at position {}",
+                            rc,
+                            start_pos + chunk_idx * step
+                        );
+                        return false;
+                    }
+                }
+                true
             };
 
-            // 🛡️ Auto-reset KV cache if start_pos is already near context ceiling (prevents GGML stack buffer overrun ops.cpp:3767)
-            if start_pos >= (llama.n_ctx as i32 - 16) {
-                tracing::debug!(
-                "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
-                start_pos,
-                llama.n_ctx
-            );
-                tracing::info!(
-                "🌊 [KV-Reset] start_pos ({}) near n_ctx ({}). Wiping KV cache for fresh prefill.",
-                start_pos,
-                llama.n_ctx
-            );
-                let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
-                llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-                start_pos = 0;
-                tokens = full_prompt_tokens.clone();
-                effective_cache_len = 0;
-            }
-
-            // 🛡️ Strict GGML Buffer Overrun Guard: tokens + start_pos must never exceed llama.n_ctx - 16
-            let max_allowed_tokens = (llama.n_ctx as usize).saturating_sub(start_pos as usize + 16);
-            if tokens.len() > max_allowed_tokens {
-                let dropped = tokens.len() - max_allowed_tokens;
-                tokens.drain(0..dropped);
-            }
-
-            tracing::debug!(
-                "🔍 [KV-Debug] start_pos = {}, tokens_to_decode = {}",
-                start_pos,
-                tokens.len()
-            );
-
-            let mut decode_failed = false;
-
-            // 🛡️ ROOT FIX: When tokens is empty (same prompt repeated, 100% prefix match),
-            // no llama_decode() runs, leaving stale logits from the previous turn's EOS token.
-            // The sampler then immediately samples EOS → zero output → "No final response synthesized."
-            // Fix: Re-decode the last matched token with logits=1 to refresh logits for the sampler.
-            if tokens.is_empty() && effective_cache_len > 0 {
-                let last_matched_pos = effective_cache_len as i32 - 1;
-                let last_matched_token = full_prompt_tokens[effective_cache_len - 1];
-                tracing::debug!("🔄 [KV-Fix] Tokens empty after prefix match. Re-decoding last prompt token at pos {} to refresh logits.", last_matched_pos);
-
-                // Remove only the last position so we can re-decode it with logits=1
-                let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
-                llama_cpp::llama_memory_seq_rm(mem, 0, last_matched_pos, last_matched_pos + 1);
-
-                *safe_batch.batch.token.add(0) = last_matched_token;
-                *safe_batch.batch.pos.add(0) = last_matched_pos;
-                *safe_batch.batch.n_seq_id.add(0) = 1;
-                *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
-                *safe_batch.batch.logits.add(0) = 1; // MUST compute logits for sampler
-                safe_batch.batch.n_tokens = 1;
-
-                let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
-                if rc != 0 {
-                    tracing::warn!(
-                    "⚠️ [KV-Fix] Logits refresh decode failed with code {}. Falling back to full prefill.",
-                    rc
-                );
-                    decode_failed = true;
-                }
-            }
-
-            if !tokens.is_empty() {
-                let step = llama.prompt_chunk_len(tokens.len());
-                for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
-                    for (i, token) in chunk.iter().enumerate() {
-                        let cur_pos =
-                            (start_pos + (chunk_idx * step + i) as i32).min(llama.n_ctx as i32 - 1);
-                        *safe_batch.batch.token.add(i) = *token;
-                        *safe_batch.batch.pos.add(i) = cur_pos;
-                        *safe_batch.batch.n_seq_id.add(i) = 1;
-                        *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
-                        let is_last_token = (chunk_idx * step + i) == (tokens.len() - 1);
-                        *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
-                    }
-                    safe_batch.batch.n_tokens = chunk.len() as i32;
-
-                    let rc = llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch);
-                    if rc != 0 {
-                        tracing::warn!("⚠️ [Llama-Lib] Delta prefill chunk decode failed with code {} at start_pos {}", rc, start_pos);
-                        decode_failed = true;
-                        break;
-                    }
-                }
-            }
-
-            if decode_failed {
+            if !decode_from(llama, &mut safe_batch.batch, &new_tokens, n_past) {
                 tracing::warn!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
-
-                // 1. Clear KV cache completely
-                let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-
-                // 2. Reset tokens to the full prompt and start position to 0
-                tokens = full_prompt_tokens.clone();
-                start_pos = 0;
-
-                // 3. Re-decode the entire prompt
-                let step = llama.prompt_chunk_len(tokens.len());
-                for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
-                    for (i, token) in chunk.iter().enumerate() {
-                        *safe_batch.batch.token.add(i) = *token;
-                        *safe_batch.batch.pos.add(i) = start_pos + (chunk_idx * step + i) as i32;
-                        *safe_batch.batch.n_seq_id.add(i) = 1;
-                        *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
-                        let is_last_token = (chunk_idx * step + i) == (tokens.len() - 1);
-                        *safe_batch.batch.logits.add(i) = if is_last_token { 1 } else { 0 };
-                    }
-                    safe_batch.batch.n_tokens = chunk.len() as i32;
-
-                    if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                        return Err(anyhow::anyhow!("Fatal: Full prefill fallback failed"));
-                    }
+                report.cache_n = 0;
+                if !decode_from(llama, &mut safe_batch.batch, &cached, 0) {
+                    return Err(anyhow::anyhow!("Fatal: Full prefill fallback failed"));
                 }
             }
 
-            (full_prompt_tokens, start_pos + tokens.len() as i32)
+            let n_cur = cached.len() as i32;
+            (cached, n_cur)
         };
+        report.prompt_tokens = n_cur.max(0) as usize;
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(
             dna,
@@ -520,7 +444,7 @@ pub(crate) fn stream_tokens_with_media(
             req_samplers.as_ref(),
             n_vocab,
         )?;
-        let safe_sampler = SafeSampler {
+        let mut safe_sampler = SafeSampler {
             sampler: sampler_chain_raw,
         };
 
@@ -531,7 +455,7 @@ pub(crate) fn stream_tokens_with_media(
 
         // Room for thinking = context left after the prompt minus the answer's reserve, so whatever budget
         // was chosen, the answer still fits; Low/Medium/High are shares of it (settings, Auto = High)
-        let room = (llama.n_ctx as i32 - n_cur - gen_reserve).max(0) as usize;
+        let room = n_ctx.saturating_sub(n_cur.max(0) as usize + gen_reserve);
         let presets = cluaiz_core::Settings::current()
             .optimization
             .thinking_presets;
@@ -550,6 +474,13 @@ pub(crate) fn stream_tokens_with_media(
             Some(message) => format!("{}{}", message, think_end_tag),
             None => think_end_tag.clone(),
         };
+        let (root, reasoning) = crate::ffi::reasoning::ReasoningHandle::wrap(
+            safe_sampler.sampler, vocab, (&think_start_tag, &think_end_tag, &close_text),
+            max_think_tokens, prompt_opens_thinking,
+        )?;
+        safe_sampler.sampler = root;
+        let skip_requested = || skip_reasoning
+            .is_some_and(|signal| signal.load(Ordering::Acquire));
 
         // Sample the first token from the prompt prefill logits
         if prompt_opens_thinking {
@@ -559,6 +490,7 @@ pub(crate) fn stream_tokens_with_media(
             }
         }
 
+        reasoning.poll(skip_requested(), &mut ended_by);
         let mut next_token_id =
             llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         tracing::debug!(
@@ -566,8 +498,13 @@ pub(crate) fn stream_tokens_with_media(
             next_token_id
         );
 
-        while n_gen < max_tokens as i32 {
+        loop {
+            if n_gen >= max_tokens as i32 {
+                report.stop = "limit";
+                break;
+            }
             if llama.interrupt_signal.load(Ordering::SeqCst) {
+                report.stop = "cancel";
                 break;
             }
 
@@ -644,16 +581,11 @@ pub(crate) fn stream_tokens_with_media(
                             emit_str
                         );
                         if !callback(emit_str.to_string()) {
+                            report.stop = "cancel";
                             break;
                         }
                     }
                 }
-            }
-
-            // ⚡ Check global UI interrupt signal to skip thinking via pointer
-            let mut should_skip = false;
-            if !SKIP_PTR.is_null() {
-                should_skip = (*SKIP_PTR).swap(false, Ordering::SeqCst);
             }
 
             if in_think_block {
@@ -662,16 +594,52 @@ pub(crate) fn stream_tokens_with_media(
             } else {
                 n_gen += 1;
             }
-            // Budget used up, or the user pressed "skip thinking": close the block for the model
-            // (after this token is decoded below), so it moves on to the answer
-            let close_thinking = in_think_block
-                && !think_end_tag.is_empty()
-                && (should_skip || think_tokens_count >= max_think_tokens);
-
-            // Guard against context ceiling overflow
-            if n_cur >= (llama.n_ctx as i32 - 4) {
-                tracing::warn!("🛑 [NativeStream] Context window ceiling reached (n_cur={}, n_ctx={}). Stopping.", n_cur, llama.n_ctx);
-                break;
+            // Context full. An answer asked to be longer than the room left (max_tokens) continues with
+            // llama-server's context shift (keep BOS, discard the oldest of the rest) when the mode and
+            // the memory allow it. Without max_tokens it stops here like llama-server's default
+            // (finish_reason "length"): an answer longer than the context would push out the question
+            // itself and could not be sent back in the next turn.
+            if n_cur as usize + 1 >= n_ctx {
+                let n_keep = usize::from(add_bos);
+                let n_left = (n_cur as usize).saturating_sub(n_keep);
+                let longer_answer_asked = max_tokens < n_ctx;
+                match cluaiz_core::shift_discard(shifting, n_ctx, n_left)
+                    .filter(|_| can_shift && longer_answer_asked)
+                {
+                    Some(n_discard) => {
+                        crate::native::context::shift_context(
+                            llama.ctx_ptr,
+                            n_cur,
+                            n_keep as i32,
+                            n_discard as i32,
+                        );
+                        history.drain(n_keep..n_keep + n_discard);
+                        n_cur -= n_discard as i32;
+                        report.shifted_tokens += n_discard;
+                        report.truncated = true;
+                        tracing::warn!(
+                            "🌊 [Context] Context full ({} tokens): shifted out {} old tokens and continued ({:?})",
+                            n_ctx, n_discard, shifting
+                        );
+                    }
+                    None => {
+                        report.truncated = true;
+                        report.stop = "limit";
+                        tracing::warn!(
+                            "🛑 [NativeStream] Context window full (n_cur={}, n_ctx={}). Stopping ({}).",
+                            n_cur,
+                            n_ctx,
+                            if !can_shift {
+                                "this model's memory cannot shift"
+                            } else if !longer_answer_asked {
+                                "no max_tokens beyond the context"
+                            } else {
+                                "context shifting is Off"
+                            }
+                        );
+                        break;
+                    }
+                }
             }
 
             // Prepare single-token batch at pos n_cur
@@ -690,46 +658,14 @@ pub(crate) fn stream_tokens_with_media(
                     "❌ [NativeStream] llama_decode failed at position {}",
                     n_cur
                 );
+                report.stop = "error";
                 break;
             }
 
             n_cur += 1;
 
-            if close_thinking {
-                ended_by = if think_tokens_count >= max_think_tokens {
-                    "budget"
-                } else {
-                    "skip"
-                };
-                match close_thinking_block(llama, vocab, &close_text, n_cur, &mut safe_batch.batch)
-                {
-                    Ok(end_tokens) => {
-                        n_cur += end_tokens.len() as i32;
-                        history.extend_from_slice(&end_tokens);
-                        in_think_block = false;
-                        tag_window.clear();
-                        info!(
-                            "🧠 [NativeStream] Thinking closed after {} tokens ({}); continuing with the answer",
-                            think_tokens_count, ended_by
-                        );
-                        if !suppress_thinking && !callback(close_text.clone()) {
-                            break;
-                        }
-                    }
-                    Err(e) => {
-                        if is_media {
-                            return Err(e);
-                        }
-                        tracing::error!(
-                            "❌ [NativeStream] Could not close the thinking block: {}",
-                            e
-                        );
-                        break;
-                    }
-                }
-            }
-
             // Sample next token
+            reasoning.poll(skip_requested(), &mut ended_by);
             next_token_id =
                 llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
         }
@@ -749,6 +685,107 @@ pub(crate) fn stream_tokens_with_media(
         );
 
         history.truncate(n_cur as usize);
+        report.n_tokens = n_cur.max(0) as usize;
+        info!(
+            "🧠 [Context] prompt {} tokens ({} from the cache) | context {} of {} | stop {}{}",
+            report.prompt_tokens,
+            report.cache_n,
+            report.n_tokens,
+            n_ctx,
+            report.stop,
+            if report.truncated { " | truncated" } else { "" }
+        );
+        llama.last_context = Some(report);
         Ok(history)
+    }
+}
+
+/// Smallest shared chunk `--cache-reuse` moves instead of reprocessing (llama-server's preset value)
+const CACHE_REUSE_MIN_CHUNK: usize = 256;
+
+/// The model's tokens for `text`. `add_special` adds BOS when the model wants one; `parse_special`
+/// reads control tokens written as text (rendered templates), off for raw message content.
+///
+/// # Safety
+/// `vocab` belongs to a loaded model.
+unsafe fn tokenize(
+    vocab: *const std::ffi::c_void,
+    text: &str,
+    add_special: bool,
+    parse_special: bool,
+) -> anyhow::Result<Vec<i32>> {
+    let c_text = CString::new(text)?;
+    let mut tokens = vec![0i32; text.len() + 8];
+    let mut n_tokens = llama_cpp::llama_tokenize(
+        vocab,
+        c_text.as_ptr(),
+        text.len() as i32,
+        tokens.as_mut_ptr(),
+        tokens.len() as i32,
+        add_special,
+        parse_special,
+    );
+    if n_tokens < 0 {
+        tokens.resize(n_tokens.unsigned_abs() as usize, 0);
+        n_tokens = llama_cpp::llama_tokenize(
+            vocab,
+            c_text.as_ptr(),
+            text.len() as i32,
+            tokens.as_mut_ptr(),
+            tokens.len() as i32,
+            add_special,
+            parse_special,
+        );
+    }
+    if n_tokens < 0 {
+        return Err(anyhow::anyhow!(
+            "Tokenization failed even after resizing buffer"
+        ));
+    }
+    tokens.truncate(n_tokens as usize);
+    // A prompt that already carried the BOS text now holds it twice: keep one (compared by token id)
+    let bos = llama_cpp::llama_vocab_bos(vocab);
+    if add_special && bos >= 0 && tokens.len() >= 2 && tokens[0] == bos && tokens[1] == bos {
+        tokens.remove(0);
+    }
+    Ok(tokens)
+}
+
+/// `messages` through the model's chat template (llama.cpp's common template engine). A continuation
+/// (pivot) first closes an open thinking block.
+fn render_prompt(
+    llama: &NativeLlama,
+    dna: &StructuralDNA,
+    messages: &[(String, String)],
+    enable_thinking: bool,
+    is_pivot: bool,
+    think_end_tag: &str,
+) -> anyhow::Result<String> {
+    let msg_refs: Vec<(&str, &str)> = messages
+        .iter()
+        .map(|(r, c)| (r.as_str(), c.as_str()))
+        .collect();
+    match crate::native::templater::apply_chat_template(
+        llama.model_ptr,
+        llama.chat_templates_for(dna.chat_template.as_deref()),
+        dna.chat_template.as_deref(),
+        &msg_refs,
+        true,
+        enable_thinking,
+    ) {
+        Ok(rendered) if !rendered.trim().is_empty() => {
+            if is_pivot && !think_end_tag.is_empty() {
+                Ok(format!("\n{}\n{}", think_end_tag, rendered))
+            } else {
+                Ok(rendered)
+            }
+        }
+        Ok(_) => Err(anyhow::anyhow!(
+            "llama_chat_apply_template returned empty prompt"
+        )),
+        Err(e) => {
+            tracing::error!("❌ [NativeTemplate] llama.cpp chat template error: {}", e);
+            Err(e)
+        }
     }
 }
