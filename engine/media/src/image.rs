@@ -74,10 +74,9 @@ mod tests {
         assert!(!descriptors.iter().any(|(_, extension)| *extension == "tga"));
         let qoi = fixture(ImageOutputFormat::Qoi);
         assert!(decode_image(&qoi, limits).is_ok());
-        let canonical = crate::formats::canonical_extensions(
-            descriptors.iter().map(|(_, extension)| *extension),
-        );
-        assert!(canonical.contains(&"qoi"));
+        let extensions =
+            crate::formats::unique_extensions(descriptors.iter().map(|(_, extension)| *extension));
+        assert!(extensions.contains(&"qoi"));
         for format in ::image::ImageFormat::all().filter(|format| !format.reading_enabled()) {
             assert!(!descriptors
                 .iter()

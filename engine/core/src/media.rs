@@ -103,6 +103,18 @@ pub enum PreparedPart {
 }
 
 impl PreparedPart {
+    /// Retained source buffers, including text capacity, without cloning their contents.
+    pub fn request_bytes(messages: &[crate::ChatMessage<Vec<Self>>]) -> anyhow::Result<u64> {
+        use anyhow::Context;
+        messages
+            .iter()
+            .flat_map(|message| &message.content)
+            .try_fold(0_u64, |sum, part| {
+                sum.checked_add(u64::try_from(part.retained_bytes())?)
+                    .context("Prepared request byte count overflow")
+            })
+    }
+
     /// Retained content bytes for request-level budgets (not a model token estimate).
     pub fn retained_bytes(&self) -> usize {
         match self {

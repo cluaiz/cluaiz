@@ -24,6 +24,8 @@ quick-xml = "0.39.4"
 libloading = "0.8.9"
 sha2 = "0.10"
 serde_json = "1.0"
+office_oxide = { version = "=0.1.15", default-features = false }
 
 [dev-dependencies]
 hound = "3.5"
+cfb = "0.14"

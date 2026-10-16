@@ -66,19 +66,13 @@ pub fn attachment_formats() -> Vec<(cluaiz_core::Modality, &'static str)> {
     formats
 }
 
-/// One decoder-provided extension per MIME type, instead of every spelling/alias.
-/// This only normalizes supplied descriptors; it does not invent decoder support.
-pub fn canonical_extensions<'a>(extensions: impl IntoIterator<Item = &'a str>) -> Vec<&'a str> {
+/// Preserve decoder-provided aliases; only remove identical extensions.
+/// MIME grouping would hide valid file-picker choices such as jpg/jpeg.
+pub fn unique_extensions<'a>(extensions: impl IntoIterator<Item = &'a str>) -> Vec<&'a str> {
     let mut seen = std::collections::BTreeSet::new();
     extensions
         .into_iter()
-        .filter(|extension| {
-            let key = match mime_guess::from_ext(extension).first_raw() {
-                Some(mime) if mime != GENERIC_MIME => mime,
-                _ => *extension,
-            };
-            seen.insert(key)
-        })
+        .filter(|extension| seen.insert(*extension))
         .collect()
 }
 
@@ -95,6 +89,7 @@ pub struct MediaFormat {
 pub enum DocumentKind {
     Text,
     Pdf,
+    Doc,
     Docx,
     Image,
 }
@@ -104,6 +99,7 @@ pub enum DocumentKind {
 pub fn document_attachment_formats() -> Vec<(cluaiz_core::Modality, &'static str)> {
     [
         "application/pdf",
+        "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "text/plain",
         "text/markdown",
@@ -121,6 +117,7 @@ impl MediaFormat {
         match self.mime_type.as_str() {
             mime if mime.starts_with("image/") => Ok(DocumentKind::Image),
             "application/pdf" => Ok(DocumentKind::Pdf),
+            "application/msword" | "application/x-ole-storage" => Ok(DocumentKind::Doc),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => {
                 Ok(DocumentKind::Docx)
             }
@@ -140,15 +137,8 @@ impl MediaFormat {
                         | "application/javascript"
                 ) =>
             {
-                // A suffix/MIME hint alone cannot make actual UTF-8 code into video
-                // (for example a transport-stream suffix shared by a source-code format).
-                let text = std::str::from_utf8(bytes)?;
-                if text
-                    .chars()
-                    .any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'))
-                {
-                    bail!("Binary/control data cannot be treated as document text");
-                }
+                // Content validation belongs to the shared text decoder, including
+                // Unicode BOMs. A suffix alone cannot turn source code into video.
                 Ok(DocumentKind::Text)
             }
             _ => bail!("No document extractor is registered for {}", self.mime_type),
@@ -187,9 +177,13 @@ impl FormatRegistry {
         if let Some(found) = self.detector.get(bytes) {
             if let Some(ref hint) = hint {
                 let aliases = mime_guess::get_mime_extensions_str(hint).unwrap_or_default();
-                let is_container_hint = found.mime_type() == "application/zip"
+                let is_container_hint = (found.mime_type() == "application/zip"
                     && (hint.starts_with(OPENXML_MIME_PREFIX)
-                        || hint.starts_with(OPENDOCUMENT_MIME_PREFIX));
+                        || hint.starts_with(OPENDOCUMENT_MIME_PREFIX)))
+                    // OLE is the physical DOC container, as ZIP is for DOCX.
+                    // The selected Word extractor still requires valid Word streams.
+                    || (found.mime_type() == "application/x-ole-storage"
+                        && hint == "application/msword");
                 if hint != GENERIC_MIME
                     && hint != found.mime_type()
                     && !aliases.contains(&found.extension())
@@ -233,6 +227,15 @@ impl FormatRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_unique_extensions_preserve_picker_aliases_without_duplicates() {
+        assert_eq!(
+            unique_extensions(["jpg", "jpeg", "jpg", "mp2", "mp3", "qoi"]),
+            ["jpg", "jpeg", "mp2", "mp3", "qoi"]
+        );
+        assert!(unique_extensions(std::iter::empty()).is_empty());
+    }
 
     #[test]
     fn test_formats_signature_wins_and_contradictory_hint_rejects() {

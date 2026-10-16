@@ -55,9 +55,17 @@ pub struct SourceResolver {
     formats: FormatRegistry,
     video: cluaiz_core::media::VideoSettings,
     cancellation: Arc<std::sync::atomic::AtomicBool>,
+    pub(crate) progress: Option<cluaiz_core::processing::ProcessingReporter>,
 }
 
 impl SourceResolver {
+    pub fn with_progress(
+        mut self,
+        progress: Option<cluaiz_core::processing::ProcessingReporter>,
+    ) -> Self {
+        self.progress = progress;
+        self
+    }
     pub fn video_settings(&self) -> cluaiz_core::media::VideoSettings {
         self.video
     }
@@ -102,6 +110,7 @@ impl SourceResolver {
             formats,
             video: settings.video,
             cancellation: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            progress: None,
         })
     }
 

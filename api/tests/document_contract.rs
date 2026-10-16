@@ -74,6 +74,47 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
             .context("DOCX text")?
             .contains("Hello & नमस्ते")
     );
+    for (mime, bytes, expected) in [
+        (
+            "application/msword",
+            document_fixtures::doc("Actual legacy content नमस्ते 3187\r", false, true)?,
+            "नमस्ते 3187",
+        ),
+        (
+            "text/plain",
+            b"\xef\xbb\xbfconst actual_value = 3187;".to_vec(),
+            "actual_value = 3187",
+        ),
+        (
+            "text/plain",
+            [
+                vec![0xff, 0xfe],
+                "Unicode नमस्ते 3187"
+                    .encode_utf16()
+                    .flat_map(u16::to_le_bytes)
+                    .collect(),
+            ]
+            .concat(),
+            "नमस्ते 3187",
+        ),
+    ] {
+        let (status, body) = support::post(
+            &router,
+            "/v1/ingest/file",
+            json!({"source":inline(mime, &bytes)}),
+            "user",
+        )
+        .await?;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let response: Value = serde_json::from_str(&body)?;
+        assert_eq!(response["status"], "success", "{body}");
+        assert!(
+            response["processed_sources"][0]["parts"][0]["text"]
+                .as_str()
+                .is_some_and(|text| text.contains(expected)),
+            "{body}"
+        );
+    }
     let mixed = document_fixtures::pdf(&[Some("Known page content"), None])?;
     let (status, body) = support::post(
         &router,
@@ -94,6 +135,9 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         json!({"source":source,"chunking_strategy":{"max_chunk_size":0}}),
         json!({"source":source,"output_controls":{"return_embeddings":true}}),
         json!({"source":inline("application/pdf", b"%PDF-1.4 corrupt")}),
+        json!({"source":inline("application/msword", b"not a compound Word file\0")}),
+        json!({"source":inline("text/plain", b"\xff\xfe\x00\xd8")}),
+        json!({"source":inline("text/plain", b"binary\0content")}),
         json!({"source":"missing.pdf"}),
     ] {
         let (status, body) = support::post(&router, "/v1/ingest", request, "user").await?;
@@ -295,6 +339,35 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
         }
         println!("REAL DOCUMENT CHAT: selected text-only GGUF answered code {code}; stream={stream}; scanned={}; no projector in package", native_assets.is_some());
     }
+    for (mime, bytes, code) in [
+        (
+            "application/msword",
+            document_fixtures::doc("The recorded order code is 593187.\r", false, true)?,
+            "593187",
+        ),
+        (
+            "text/plain",
+            b"// Recorded order code\nconst order_code = 682954;".to_vec(),
+            "682954",
+        ),
+    ] {
+        let (status, body) = support::post(&router, "/v1/chat/completions", json!({
+            "model":id, "messages":[{"role":"user", "content":[
+                {"type":"file_url", "file_url":{"url":inline(mime, &bytes)}},
+                {"type":"text", "text":"Read the attached document. What is the recorded order code? Reply with the code only."}
+            ]}], "temperature":0, "max_tokens":48, "think_mode":"off"
+        }), "user").await?;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let response: Value = serde_json::from_str(&body)?;
+        let answer = response["choices"][0]["message"]["content"]
+            .as_str()
+            .context("Actual attached-document answer")?;
+        assert!(
+            answer.contains(code),
+            "Actual model answer must depend on {mime} content: {answer}"
+        );
+        println!("REAL DOCUMENT CHAT: {mime} -> selected text-only GGUF -> actual answer {answer}; no projector");
+    }
     let mixed = document_fixtures::pdf(&[Some("Known text"), None])?;
     let (status, body) = support::post(&router, "/v1/chat/completions", json!({"model":id,"messages":[{"role":"user","content":[
         {"type":"file_url","file_url":{"url":inline("application/pdf", &mixed)}}, {"type":"text","text":"Summarize the full document"}]}]}), "user").await?;
@@ -310,7 +383,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
         .iter()
         .find(|input| input["type"] == "text")
         .context("Text input")?;
-    assert_eq!(text_input["available"], true);
+    assert_eq!(text_input, &json!({"type":"text","available":true}));
     assert!(text_input.get("formats").is_none());
     assert!(plan["model_info"].get("supported_attachments").is_none());
     state.host.unload_model().await;

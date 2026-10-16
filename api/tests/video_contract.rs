@@ -43,7 +43,7 @@ fn test_video_transport_is_ordered_and_audio_is_explicit() -> Result<()> {
 #[ignore = "requires real vision GGUF/projector, packaged video provider, and an empty isolated CLUAIZ_HOME"]
 async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
-    if home != PathBuf::from(std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
+    if home != std::path::Path::new(&std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
         || home.join("engine/config/model_registry.json").exists()
     {
         bail!("Empty isolated test home required");
@@ -149,17 +149,19 @@ async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Re
     .await?;
     let plan: Value = serde_json::from_str(&plan)?;
     let inputs = plan["model_info"]["inputs"].as_array().context("Inputs")?;
-    assert_eq!(
-        inputs
-            .iter()
-            .find(|input| input["type"] == "image")
-            .context("Image input")?["available"],
-        true
-    );
-    let video_input = inputs
+    let image_input = inputs
         .iter()
-        .find(|input| input["type"] == "video")
-        .context("Video input")?;
+        .find(|input| input["type"] == "image")
+        .context("Image input")?;
+    assert_eq!(image_input["available"], true);
+    assert!(!inputs.iter().any(|input| input["type"] == "video"));
+    let video_input = plan["model_info"]["attachment_processing"]
+        .as_array()
+        .context("Preparation routes")?
+        .iter()
+        .find(|route| route["input"] == "video")
+        .context("Video preparation")?;
+    assert_eq!(video_input["output"], "image");
     assert_eq!(video_input["processing"], "sampled_frames");
     assert!(video_input["formats"]
         .as_array()
