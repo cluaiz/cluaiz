@@ -1,5 +1,5 @@
-//! Chat request envelope for legacy text and typed message content.
-//! Context estimates and trimming currently apply to the existing text request path.
+//! Chat request envelope for legacy text and typed message content, and the context rules the
+//! engine applies with the model's real token counts.
 
 use crate::settings::{ContextShiftingMode, SamplerDefaults, ThinkingBudget};
 use serde::{Deserialize, Serialize};
@@ -16,11 +16,6 @@ impl ChatMessage {
             role: role.into(),
             content: content.into(),
         }
-    }
-
-    /// Rough token count used by the context rules (4 characters per token, at least 1)
-    pub fn estimated_tokens(&self) -> usize {
-        (self.content.len() / 4).max(1)
     }
 }
 
@@ -70,60 +65,70 @@ impl<Content> ChatEnvelope<Content> {
     }
 }
 
-/// Tokens kept free for the answer when deciding whether the history fits.
-pub fn answer_reserve(max_tokens: Option<usize>, n_ctx: usize) -> usize {
-    max_tokens.unwrap_or(1024).clamp(256, (n_ctx / 4).max(512))
+/// Tokens kept free for the answer when a prompt is fitted into the context: the request's
+/// `max_tokens` (callers without one pass `n_ctx`), at most a quarter of the context (256..2048).
+pub fn answer_reserve(max_tokens: usize, n_ctx: usize) -> usize {
+    max_tokens.min((n_ctx / 4).clamp(256, 2048)).max(1)
 }
 
-/// Context shifting before a request: when the messages do not fit `n_ctx` minus `reserve`, the oldest
-/// turns after the system message are dropped (at least the overflow, or the mode's share of the
-/// context when that is larger). The last message always stays. Returns the estimated tokens dropped.
-pub fn trim_history(
-    messages: &mut Vec<ChatMessage>,
-    n_ctx: usize,
-    reserve: usize,
-    mode: ContextShiftingMode,
-) -> usize {
-    if messages.len() <= 2 || mode == ContextShiftingMode::Off {
-        return 0;
+/// Share of the context a mode frees at least each time; `None` = Off or Auto (decided per case).
+fn mode_share(mode: ContextShiftingMode, n_ctx: usize) -> Option<usize> {
+    let share = |f: f64| (n_ctx as f64 * f) as usize;
+    match mode {
+        ContextShiftingMode::Minimal => Some(share(0.05)),
+        ContextShiftingMode::Standard => Some(share(0.10)),
+        ContextShiftingMode::Aggressive => Some(share(0.25)),
+        ContextShiftingMode::Extreme => Some(share(0.50)),
+        ContextShiftingMode::Auto | ContextShiftingMode::Off => None,
     }
-    let budget = n_ctx.saturating_sub(reserve).max(512);
-    let total: usize = messages.iter().map(ChatMessage::estimated_tokens).sum();
-    if total <= budget {
-        return 0;
-    }
-    let overflow = total - budget;
-    let share = |f: f32| ((n_ctx as f32) * f) as usize;
-    let target = match mode {
-        ContextShiftingMode::Minimal => share(0.05),
-        ContextShiftingMode::Standard => share(0.10),
-        ContextShiftingMode::Aggressive => share(0.25),
-        ContextShiftingMode::Extreme => share(0.50),
-        ContextShiftingMode::Auto | ContextShiftingMode::Off => overflow,
-    }
-    .max(overflow);
+}
 
-    let keep_start = usize::from(
+/// Prompt tokens to free when a conversation does not fit (`overflow` > 0); `None` = Off, where the
+/// request fails like llama-server's "exceeds the available context size". Auto frees only the
+/// overflow when the KV cache can shift (`llama_memory_can_shift`: the rest of the old prompt is then
+/// reused without a new prefill), else a quarter of the context so the next turns reuse the cache.
+pub fn tokens_to_free(
+    mode: ContextShiftingMode,
+    n_ctx: usize,
+    overflow: usize,
+    can_shift: bool,
+) -> Option<usize> {
+    let at_least = match mode {
+        ContextShiftingMode::Off => return None,
+        ContextShiftingMode::Auto if can_shift => 0,
+        ContextShiftingMode::Auto => n_ctx / 4,
+        _ => mode_share(mode, n_ctx).unwrap_or(0),
+    };
+    Some(at_least.max(overflow))
+}
+
+/// Tokens a context shift discards during generation once the context is full (`n_left` = tokens
+/// after the kept start). `None` = Off: generation stops like llama-server without `--context-shift`.
+/// Auto discards half, llama-server's default `n_discard`.
+pub fn shift_discard(mode: ContextShiftingMode, n_ctx: usize, n_left: usize) -> Option<usize> {
+    if mode == ContextShiftingMode::Off || n_left < 2 {
+        return None;
+    }
+    let n_discard = mode_share(mode, n_ctx).unwrap_or(n_left / 2);
+    Some(n_discard.clamp(1, n_left - 1))
+}
+
+/// Oldest messages to drop so at least `target` tokens are freed. Whole turns go: dropping starts after
+/// the system message and stops at a user message, so the kept history never opens with an answer or a
+/// tool result. The last message always stays. `messages` = (role, tokens); returns (messages, tokens).
+pub fn oldest_turns_to_drop(messages: &[(&str, usize)], target: usize) -> (usize, usize) {
+    let start = usize::from(
         messages
             .first()
-            .map(|m| m.role.eq_ignore_ascii_case("system"))
-            .unwrap_or(false),
+            .is_some_and(|(role, _)| role.eq_ignore_ascii_case("system")),
     );
-    let mut dropped = 0;
-    while messages.len() > keep_start + 1 && dropped < target {
-        dropped += messages.remove(keep_start).estimated_tokens();
+    let last = messages.len().saturating_sub(1);
+    let (mut end, mut freed) = (start, 0);
+    while end < last && (freed < target || !messages[end].0.eq_ignore_ascii_case("user")) {
+        freed += messages[end].1;
+        end += 1;
     }
-    dropped
-}
-
-/// Tokens the answer may use: what is left of the context after the prompt (at least 32),
-/// never more than the request's `max_tokens`.
-pub fn answer_budget(n_ctx: usize, prompt_tokens: usize, max_tokens: Option<usize>) -> usize {
-    let free = n_ctx.saturating_sub(prompt_tokens).max(32);
-    match max_tokens {
-        Some(requested) => requested.min(n_ctx).min(free),
-        None => free,
-    }
+    (end.saturating_sub(start), freed)
 }
 
 #[cfg(test)]
@@ -131,44 +136,62 @@ mod tests {
     use super::*;
 
     #[test]
-    fn trim_keeps_system_and_last_message() {
-        let long = "x".repeat(4000); // ~1000 tokens each
-        let mut msgs = vec![
-            ChatMessage::new("system", "be brief"),
-            ChatMessage::new("user", long.clone()),
-            ChatMessage::new("assistant", long.clone()),
-            ChatMessage::new("user", "last"),
+    fn whole_turns_are_dropped_after_the_system_message() {
+        let msgs = [
+            ("system", 50),
+            ("user", 1000),
+            ("assistant", 1000),
+            ("user", 300),
+            ("assistant", 300),
+            ("user", 10),
         ];
-        let dropped = trim_history(&mut msgs, 2048, 512, ContextShiftingMode::Auto);
-        assert!(dropped > 0);
-        assert_eq!(msgs.first().unwrap().role, "system");
-        assert_eq!(msgs.last().unwrap().content, "last");
+        // 1 token over: the first user turn and its answer go together
+        assert_eq!(oldest_turns_to_drop(&msgs, 1), (2, 2000));
+        // More than one turn: dropping stops at the next user message
+        assert_eq!(oldest_turns_to_drop(&msgs, 2100), (4, 2600));
+        // Never the last message
+        assert_eq!(oldest_turns_to_drop(&msgs, 100_000), (4, 2600));
     }
 
     #[test]
-    fn nothing_trimmed_when_it_fits_or_shifting_is_off() {
-        let mut msgs = vec![
-            ChatMessage::new("user", "a"),
-            ChatMessage::new("assistant", "b"),
-            ChatMessage::new("user", "c"),
+    fn a_tool_result_is_never_left_without_its_call() {
+        let msgs = [
+            ("user", 10),
+            ("assistant", 10),
+            ("tool", 500),
+            ("assistant", 10),
+            ("user", 5),
         ];
-        assert_eq!(
-            trim_history(&mut msgs, 4096, 1024, ContextShiftingMode::Auto),
-            0
-        );
-        let mut big = vec![ChatMessage::new("user", "x".repeat(40_000)); 3];
-        assert_eq!(
-            trim_history(&mut big, 4096, 1024, ContextShiftingMode::Off),
-            0
-        );
-        assert_eq!(big.len(), 3);
+        assert_eq!(oldest_turns_to_drop(&msgs, 15), (4, 530));
     }
 
     #[test]
-    fn answer_budget_is_bounded_by_free_context() {
-        assert_eq!(answer_budget(4096, 1000, None), 3096);
-        assert_eq!(answer_budget(4096, 1000, Some(100)), 100);
-        assert_eq!(answer_budget(4096, 5000, None), 32);
+    fn modes_choose_how_much_to_free() {
+        use ContextShiftingMode::*;
+        assert_eq!(tokens_to_free(Off, 4096, 100, true), None);
+        assert_eq!(tokens_to_free(Auto, 4096, 100, true), Some(100));
+        assert_eq!(tokens_to_free(Auto, 4096, 100, false), Some(1024));
+        assert_eq!(tokens_to_free(Minimal, 4096, 100, true), Some(204));
+        assert_eq!(tokens_to_free(Extreme, 4096, 100, true), Some(2048));
+        assert_eq!(tokens_to_free(Minimal, 4096, 3000, true), Some(3000));
+    }
+
+    #[test]
+    fn shift_discards_like_llama_server() {
+        use ContextShiftingMode::*;
+        assert_eq!(shift_discard(Off, 4096, 4000), None);
+        assert_eq!(shift_discard(Auto, 4096, 4000), Some(2000));
+        assert_eq!(shift_discard(Standard, 4096, 4000), Some(409));
+        assert_eq!(shift_discard(Extreme, 4096, 1000), Some(999));
+        assert_eq!(shift_discard(Auto, 4096, 1), None);
+    }
+
+    #[test]
+    fn answer_reserve_follows_max_tokens_within_a_quarter() {
+        assert_eq!(answer_reserve(100, 4096), 100);
+        assert_eq!(answer_reserve(4096, 4096), 1024);
+        assert_eq!(answer_reserve(32768, 32768), 2048);
+        assert_eq!(answer_reserve(2048, 512), 256);
     }
 
     #[test]

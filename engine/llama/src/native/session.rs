@@ -26,7 +26,8 @@ struct ProjectorKey {
     modified: SystemTime,
     threads: i32,
     prefer_gpu: bool,
-    needs: MediaRequirements,
+    weights_bytes: u64,
+    workspace_bytes: u64,
     ram_buffer: Option<u64>,
     vram_buffer: Option<u64>,
 }
@@ -39,9 +40,22 @@ pub struct NativeSession {
     llama: NativeLlama,
     key: Option<ProjectorKey>,
     budget: Option<MediaBudget>,
+    skip_reasoning: Option<Arc<AtomicBool>>,
+    progress: Option<cluaiz_core::processing::ProcessingReporter>,
 }
 
 impl NativeSession {
+    pub fn set_processing_progress(
+        &mut self,
+        progress: Option<cluaiz_core::processing::ProcessingReporter>,
+    ) {
+        self.progress = progress;
+    }
+    /// Bound only while this request owns the serialized native generation worker.
+    pub fn set_reasoning_control(&mut self, signal: Option<Arc<AtomicBool>>) {
+        self.skip_reasoning = signal;
+    }
+
     /// Loaded context size used by request budgets.
     pub fn context_tokens(&self) -> u32 {
         self.llama.n_ctx
@@ -60,6 +74,11 @@ impl NativeSession {
     /// Thinking report for the most recent generation.
     pub fn thinking_report(&self) -> Option<super::core::ThinkingReport> {
         self.llama.last_thinking.clone()
+    }
+
+    /// Context report for the most recent generation.
+    pub fn context_report(&self) -> Option<super::core::ContextReport> {
+        self.llama.last_context.clone()
     }
 
     /// Native model description without exposing its pointers.
@@ -81,7 +100,18 @@ impl NativeSession {
         cached: &[i32],
         callback: cluaiz_core::contracts::StreamCallback,
     ) -> Result<Vec<i32>> {
-        super::stream::stream_tokens(&mut self.llama, prompt, max_tokens, dna, cached, callback)
+        super::stream::stream_tokens_with_media(
+            &mut self.llama,
+            prompt,
+            max_tokens,
+            dna,
+            cached,
+            callback,
+            super::stream::StreamOptions {
+                media: None,
+                skip_reasoning: self.skip_reasoning.as_deref(),
+            },
+        )
     }
 
     /// Benchmark owns and clears the same model context as generation.
@@ -109,6 +139,8 @@ impl NativeSession {
             llama,
             key: None,
             budget: None,
+            skip_reasoning: None,
+            progress: None,
         })
     }
 
@@ -153,7 +185,8 @@ impl NativeSession {
             modified: metadata.modified()?,
             threads,
             prefer_gpu,
-            needs,
+            weights_bytes: needs.weights_bytes,
+            workspace_bytes: needs.workspace_bytes,
             ram_buffer: settings.optimization.custom_ram_buffer_gb.map(f64::to_bits),
             vram_buffer: settings
                 .optimization
@@ -162,7 +195,31 @@ impl NativeSession {
         };
         if self.key.as_ref() == Some(&key) {
             if let Some(projector) = &self.projector {
-                return Ok(projector.support());
+                let (ram, _) = HardwareProber::probe_live_memory();
+                hw.memory.available_gb = bytes_to_gib(ram);
+                if cluaiz_plan::media_budget::check_request_ram(
+                    needs.workspace_bytes,
+                    needs.decoded_bytes,
+                    &hw,
+                    settings,
+                )
+                .is_ok()
+                {
+                    if let Some(p) = &self.progress {
+                        p.emit(
+                            cluaiz_core::processing::ProcessingStage::ProjectorLoading,
+                            cluaiz_core::processing::ProcessingState::Reused,
+                            None,
+                            None,
+                        );
+                    }
+                    return Ok(projector.support());
+                }
+                // Only the idle encoder is reclaimed under pressure; the chat plan/model stays intact.
+                tracing::info!(
+                    free_bytes = ram,
+                    "Reclaiming idle projector before media admission"
+                );
             }
         }
         self.unload_projector();
@@ -175,7 +232,23 @@ impl NativeSession {
             gpu.vram_available_gb = bytes_to_gib(vram);
         }
         let budget = MediaBudget::plan(needs, &hw, settings, prefer_gpu)?;
+        if let Some(p) = &self.progress {
+            p.emit(
+                cluaiz_core::processing::ProcessingStage::ProjectorLoading,
+                cluaiz_core::processing::ProcessingState::Running,
+                None,
+                None,
+            );
+        }
         let projector = Projector::load(&self.llama, &c_path, budget.placement(), threads)?;
+        if let Some(p) = &self.progress {
+            p.emit(
+                cluaiz_core::processing::ProcessingStage::ProjectorLoading,
+                cluaiz_core::processing::ProcessingState::Completed,
+                None,
+                None,
+            );
+        }
         let after = std::fs::metadata(&key.path)?;
         if after.len() != key.file_bytes || after.modified()? != key.modified {
             bail!("Projector file changed during loading; retry with fresh estimates");
@@ -219,22 +292,25 @@ impl NativeSession {
         settings: &ActiveUserSettings,
         mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     ) -> Result<()> {
+        if self.progress.as_ref().is_some_and(|p| p.cancelled()) {
+            bail!("Media request cancelled before execution");
+        }
         let limits = settings.media.limits;
         let workspace = self
             .key
             .as_ref()
             .context("Media projector is not loaded")?
-            .needs
             .workspace_bytes;
-        let cost = workspace
-            .checked_add(limits.max_decoded_bytes())
-            .context("Request workspace overflow")?;
+        let additional = MediaInput::additional_bytes(
+            &request,
+            self.projector_support()
+                .context("Media projector is not loaded")?,
+            limits,
+        )?;
         let mut live = HardwareProber::current();
         let (ram, vram) = HardwareProber::probe_live_memory();
         live.memory.available_gb = bytes_to_gib(ram);
-        if cost > cluaiz_plan::ram_budget_bytes(&live, settings) {
-            bail!("Insufficient live RAM for media request workspace and decoded ceiling");
-        }
+        cluaiz_plan::media_budget::check_request_ram(workspace, additional, &live, settings)?;
         if self
             .budget
             .context("Media budget is unavailable")?
@@ -258,6 +334,7 @@ impl NativeSession {
             .as_mut()
             .context("Media projector is not loaded")?;
         let (text, mut media) = MediaInput::prepare(request, projector.support(), limits)?;
+        media.progress = self.progress.clone();
         let prompt = serde_json::to_string(&text)?;
         let stopped = Arc::new(AtomicBool::new(false));
         let consumer_stop = Arc::clone(&stopped);
@@ -274,7 +351,10 @@ impl NativeSession {
                 }
                 keep_going
             }),
-            Some((&mut media, projector)),
+            super::stream::StreamOptions {
+                media: Some((&mut media, projector)),
+                skip_reasoning: self.skip_reasoning.as_deref(),
+            },
         );
         if result.is_err()
             || stopped.load(Ordering::Acquire)
@@ -410,6 +490,18 @@ mod tests {
             .test_address();
         assert_eq!(
             session.ensure_projector(&projector, needs, &settings, false)?,
+            support
+        );
+        assert_eq!(
+            session.ensure_projector(
+                &projector,
+                MediaRequirements {
+                    decoded_bytes: 1,
+                    ..needs
+                },
+                &settings,
+                false
+            )?,
             support
         );
         assert_eq!(

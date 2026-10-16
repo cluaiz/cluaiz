@@ -71,6 +71,12 @@ impl KvCacheQuantization {
     }
 }
 
+/// What the engine does when a conversation outgrows the context (rules in `chat.rs`).
+/// Off = llama.cpp defaults: an oversized prompt is an error and generation stops at the limit.
+/// The other modes drop the oldest whole turns before a request, and shift the KV cache (llama.cpp
+/// `--context-shift`) when an answer asked for more tokens (max_tokens) than the context has left,
+/// freeing at least 5 / 10 / 25 / 50% of the context each time; Auto frees what is needed, sized by
+/// whether the model's KV cache can shift.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum ContextShiftingMode {
     #[default]

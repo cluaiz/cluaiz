@@ -45,25 +45,25 @@ pub async fn cancel_chat_stream(
 pub async fn skip_chat_reasoning(
     Json(payload): Json<StreamControlRequest>,
 ) -> axum::response::Response {
-    let signal_found = if let Ok(lock) = ACTIVE_STREAMS.read() {
-        if let Some(entry) = lock.get(&payload.stream_id) {
-            entry.skip_reasoning.store(true, Ordering::Relaxed);
-            true
-        } else {
-            false
-        }
-    } else {
-        false
+    let entry = match ACTIVE_STREAMS.read() {
+        Ok(streams) => streams.get(&payload.stream_id).cloned(),
+        Err(_) => return (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"error":{"message":"Stream controls unavailable","code":"stream_control_unavailable"}})),
+        ).into_response(),
     };
-
-    if signal_found {
-        // ⏩ Dual-Layer Signal: Trigger Deep Hardware Native Llama Reasoning Exit
-        cluaiz_core::GLOBAL_SKIP_THINKING_SIGNAL.store(true, Ordering::SeqCst);
-        tracing::info!("⏩ [StreamControl] Deep skip-reasoning signal dispatched for stream '{}'.", payload.stream_id);
+    if let Some(entry) = entry {
+        if !entry.reasoning_supported {
+            return (
+                axum::http::StatusCode::CONFLICT,
+                Json(json!({"error":{"message":"This stream has no enabled native reasoning control","code":"reasoning_unavailable"}})),
+            ).into_response();
+        }
+        entry.skip_reasoning.store(true, Ordering::Release);
         Json(json!({
-            "status": "skipped",
+            "status": "skip_requested",
             "stream_id": payload.stream_id,
-            "message": "Skip reasoning signal dispatched successfully."
+            "message": "Native reasoning exit requested; the same stream continues with the answer."
         })).into_response()
     } else {
         (
