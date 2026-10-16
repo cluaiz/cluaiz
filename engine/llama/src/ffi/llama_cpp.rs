@@ -264,6 +264,12 @@ extern "C" {
     pub fn llama_memory_seq_cp(mem: *mut std::ffi::c_void, seq_id_src: i32, seq_id_dst: i32, p0: i32, p1: i32);
     pub fn llama_memory_seq_rm(mem: *mut std::ffi::c_void, seq_id: i32, p0: i32, p1: i32) -> bool;
     pub fn llama_memory_seq_pos_max(mem: *mut std::ffi::c_void, seq_id: i32) -> i32;
+    /// Smallest position still held for the sequence (-1 = empty); a sliding-window cache drops old ones.
+    pub fn llama_memory_seq_pos_min(mem: *mut std::ffi::c_void, seq_id: i32) -> i32;
+    /// Whether positions can be moved (`llama_memory_seq_add`); false for SWA / recurrent memory.
+    pub fn llama_memory_can_shift(mem: *mut std::ffi::c_void) -> bool;
+    /// Sliding attention window of the model (0 = full attention).
+    pub fn llama_model_n_swa(model: *const std::ffi::c_void) -> i32;
 
     /// 🔤 Convert token to piece (string).
     pub fn llama_token_to_piece(

@@ -24,6 +24,41 @@ pub struct NativeLlama {
     chat_templates_src: Option<String>,
     /// Thinking budget and use of the last generation (None when the model did not think)
     pub last_thinking: Option<ThinkingReport>,
+    /// What the context rules did in the last generation
+    pub last_context: Option<ContextReport>,
+}
+
+/// What the context rules did in one generation (sent to the client in the engine report).
+/// Token counts are the model's own; names follow llama-server where it has one.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct ContextReport {
+    pub n_ctx: usize,
+    /// Prompt tokens after fitting, cached or not
+    pub prompt_tokens: usize,
+    /// Prompt tokens reused from the KV cache instead of being processed again
+    pub cache_n: usize,
+    /// Oldest messages dropped before the request so it fits, and the tokens they held
+    pub dropped_messages: usize,
+    pub dropped_tokens: usize,
+    /// Tokens removed by context shifts while answering
+    pub shifted_tokens: usize,
+    /// Tokens in the context when generation ended (prompt + answer)
+    pub n_tokens: usize,
+    /// The context limit cut the history or the answer (llama-server `truncated`)
+    pub truncated: bool,
+    /// "eos" = the model ended, "limit" = max_tokens or the context ended it, "cancel", "error"
+    pub stop: &'static str,
+}
+
+impl ContextReport {
+    /// OpenAI `finish_reason`
+    pub fn finish_reason(&self) -> &'static str {
+        if self.stop == "limit" {
+            "length"
+        } else {
+            "stop"
+        }
+    }
 }
 
 /// What the thinking budget did in one generation (sent to the client in the engine report).
@@ -519,6 +554,7 @@ impl NativeLlama {
             chat_templates: crate::native::templater::parse_templates(model_ptr, dna.chat_template.as_deref()),
             chat_templates_src: dna.chat_template.clone(),
             last_thinking: None,
+            last_context: None,
         };
         llama.warmup();
         Ok(llama)
