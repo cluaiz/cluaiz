@@ -159,18 +159,81 @@ impl Drop for Chunks {
 
 static REQUEST_MARKER_ID: AtomicU64 = AtomicU64::new(0);
 
+/// One piece of what the KV cache holds after a media generation, in prompt order (llama-server
+/// keeps the same in `server_tokens`): text tokens, or an encoded image/audio known by its id.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) enum CachedChunk {
+    Text(Vec<i32>),
+    Media { id: String, n_pos: i32 },
+}
+
+/// Where a new prompt stops matching the cache, as llama-server's `get_common_prefix` with media:
+/// text compares token by token, media only as a whole chunk with the same id. Returns the KV
+/// positions to keep, the first prompt chunk to evaluate and its text tokens already in the cache.
+/// At least one prompt token is always left to evaluate, so the sampler gets fresh logits.
+pub(crate) fn cache_prefix(cached: &[CachedChunk], prompt: &[CachedChunk]) -> (i32, usize, usize) {
+    let mut pos = 0;
+    for (i, chunk) in prompt.iter().enumerate() {
+        match (cached.get(i), chunk) {
+            (Some(CachedChunk::Text(old)), CachedChunk::Text(new)) => {
+                let k = old.iter().zip(new).take_while(|(a, b)| a == b).count();
+                if k == new.len() && i + 1 == prompt.len() {
+                    // The whole prompt is cached: evaluate its last token again
+                    let back = usize::from(k > 0);
+                    return (pos + (k - back) as i32, i, k - back);
+                }
+                pos += k as i32;
+                if k < new.len() {
+                    return (pos, i, k);
+                }
+                if k < old.len() {
+                    return (pos, i + 1, 0);
+                }
+            }
+            (
+                Some(CachedChunk::Media { id: a, n_pos: pa }),
+                CachedChunk::Media { id: b, n_pos: pb },
+            ) if a == b && pa == pb && i + 1 < prompt.len() => pos += pb,
+            _ => return (pos, i, 0),
+        }
+    }
+    (pos, prompt.len(), 0)
+}
+
+/// Content identity of a media part (FNV-1a over its shape and samples, as llama-server hashes
+/// bitmaps), so the same attachment in a later turn is recognised in the KV cache.
+fn content_hash(header: &[u64], data: &[u8]) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    for byte in header
+        .iter()
+        .flat_map(|v| v.to_le_bytes())
+        .chain(data.iter().copied())
+    {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
 /// Native buffers stay owned until evaluation/generation completes. These unique
 /// template placeholders never reach tokenization; typed bitmap parts replace them.
 pub(crate) struct MediaInput {
     bitmaps: Vec<Bitmap>,
+    /// Content hash of each bitmap (its native id is "index:hash")
+    hashes: Vec<u64>,
     markers: Vec<String>,
     targets: Vec<(usize, usize)>,
     pub(crate) progress: Option<ProcessingReporter>,
+    /// KV layout left by the previous media generation (set by the session before evaluation)
+    pub(crate) cached: Vec<CachedChunk>,
+    /// This prompt's KV layout and its text token count, known after evaluation
+    layout: Vec<CachedChunk>,
+    pub(crate) prompt_text_tokens: usize,
 }
 
 pub(crate) struct MediaPrefill {
     pub(crate) text_tokens: Vec<i32>,
     pub(crate) positions: i32,
+    pub(crate) context: super::core::ContextReport,
 }
 
 /// Locate each placeholder exactly once and in order; template loss/duplication is an error.
@@ -270,9 +333,13 @@ impl MediaInput {
         };
         let mut input = Self {
             bitmaps: Vec::new(),
+            hashes: Vec::new(),
             markers: Vec::new(),
             targets: Vec::new(),
             progress: None,
+            cached: Vec::new(),
+            layout: Vec::new(),
+            prompt_text_tokens: 0,
         };
         let mut native_bytes = 0_u64;
         let mut messages = Vec::with_capacity(request.messages.len());
@@ -295,7 +362,7 @@ impl MediaInput {
                     .filter(|n| *n > 0)
                     .context("No decoded budget remains for media conversion")?;
                 let local_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
-                let (bitmap, bytes) = match part {
+                let (bitmap, bytes, hash) = match part {
                     PreparedPart::Text { text } => {
                         if text.contains('\0') {
                             bail!("Message text contains NUL");
@@ -325,7 +392,11 @@ impl MediaInput {
                             )
                         })
                         .context("Native image allocation failed")?;
-                        (Bitmap(bitmap), bytes)
+                        let hash = content_hash(
+                            &[u64::from(image.width()), u64::from(image.height())],
+                            image.pixels(),
+                        );
+                        (Bitmap(bitmap), bytes, hash)
                     }
                     PreparedPart::Audio { audio } => {
                         let rate = support
@@ -365,14 +436,20 @@ impl MediaInput {
                             )
                         })
                         .context("Native audio allocation failed")?;
-                        (Bitmap(bitmap), bytes)
+                        let samples: Vec<u8> = prepared
+                            .samples()
+                            .iter()
+                            .flat_map(|v| v.to_le_bytes())
+                            .collect();
+                        let hash = content_hash(&[u64::from(rate.get())], &samples);
+                        (Bitmap(bitmap), bytes, hash)
                     }
                 };
                 native_bytes = native_bytes
                     .checked_add(bytes)
                     .context("Native bitmap budget overflow")?;
                 let marker = format!("{}{index}]", prefix, index = input.bitmaps.len());
-                let id = CString::new(input.bitmaps.len().to_string())?;
+                let id = CString::new(format!("{}:{hash:016x}", input.bitmaps.len()))?;
                 // SAFETY: constructor copies this ID; bitmap remains exclusively owned.
                 unsafe {
                     mtmd::mtmd_bitmap_set_id(bitmap.0.as_ptr(), id.as_ptr());
@@ -381,6 +458,7 @@ impl MediaInput {
                 input.markers.push(marker);
                 input.targets.push((message_index, part_index));
                 input.bitmaps.push(bitmap);
+                input.hashes.push(hash);
             }
             messages.push(ChatMessage {
                 role: message.role,
@@ -405,20 +483,13 @@ impl MediaInput {
         ))
     }
 
-    pub(crate) fn evaluate(
-        &mut self,
-        projector: &mut Projector,
-        llama: &mut NativeLlama,
+    fn tokenize(
+        &self,
+        projector: &Projector,
+        llama: &NativeLlama,
         prompt: &str,
-        max_tokens: usize,
-    ) -> Result<MediaPrefill> {
-        if max_tokens == 0 || max_tokens > i32::MAX as usize {
-            bail!("Invalid media output token budget");
-        }
+    ) -> Result<(Chunks, usize, i32)> {
         let ranges = marker_ranges(prompt, &self.markers)?;
-        if let Some(p) = &self.progress {
-            p.emit(Stage::Prefill, State::Running, None, None);
-        }
         let mut text = Vec::with_capacity(ranges.len() + 1);
         let mut cursor = 0;
         for &(start, end) in &ranges {
@@ -471,13 +542,143 @@ impl MediaInput {
             }
             let count = mtmd::mtmd_helper_get_n_tokens(chunks.0.as_ptr());
             let positions = mtmd::mtmd_helper_get_n_pos(chunks.0.as_ptr());
+            Ok((chunks, count, positions))
+        }
+    }
+
+    fn remove_history(
+        &mut self,
+        messages: &mut Vec<(String, String)>,
+        range: std::ops::Range<usize>,
+    ) -> Result<()> {
+        let current = messages
+            .iter()
+            .rposition(|(role, _)| role.eq_ignore_ascii_case("user"))
+            .context("Media request has no current user turn")?;
+        anyhow::ensure!(
+            range.end <= current,
+            "Cannot discard the current media turn"
+        );
+        for index in (0..self.markers.len()).rev() {
+            if messages[range.clone()]
+                .iter()
+                .any(|(_, text)| text.contains(&self.markers[index]))
+            {
+                self.bitmaps.remove(index);
+                self.hashes.remove(index);
+                self.markers.remove(index);
+                self.targets.remove(index);
+            }
+        }
+        messages.drain(range);
+        for (index, (bitmap, hash)) in self.bitmaps.iter().zip(&self.hashes).enumerate() {
+            let id = CString::new(format!("{index}:{hash:016x}"))?;
+            // SAFETY: live exclusively owned bitmap; native setter copies the supplied ID.
+            unsafe {
+                mtmd::mtmd_bitmap_set_id(bitmap.0.as_ptr(), id.as_ptr());
+            }
+        }
+        Ok(())
+    }
+
+    /// The KV layout after generation: this prompt's chunks plus the answer tokens decoded after it.
+    pub(crate) fn cached_after(&mut self, generated: &[i32]) -> Vec<CachedChunk> {
+        let mut layout = std::mem::take(&mut self.layout);
+        match layout.last_mut() {
+            Some(CachedChunk::Text(tokens)) => tokens.extend_from_slice(generated),
+            _ => layout.push(CachedChunk::Text(generated.to_vec())),
+        }
+        layout
+    }
+
+    pub(crate) fn evaluate(
+        &mut self,
+        projector: &mut Projector,
+        llama: &mut NativeLlama,
+        max_tokens: usize,
+        messages: &mut Vec<(String, String)>,
+        render: impl Fn(&NativeLlama, &[(String, String)]) -> Result<String>,
+    ) -> Result<MediaPrefill> {
+        if max_tokens == 0 || max_tokens > i32::MAX as usize {
+            bail!("Invalid media output token budget");
+        }
+        if let Some(p) = &self.progress {
+            p.emit(Stage::Prefill, State::Running, None, None);
+        }
+        let n_ctx = llama.n_ctx as usize;
+        let mut report = super::core::ContextReport {
+            n_ctx,
+            stop: "eos",
+            ..Default::default()
+        };
+        // Same answer room as text requests: max_tokens, at most a quarter of the context
+        let reserve = cluaiz_core::answer_reserve(max_tokens, n_ctx);
+        let capacity = n_ctx.saturating_sub(reserve);
+        let shifting = cluaiz_core::Settings::current()
+            .optimization
+            .context_shifting;
+        let (mut previous, mut to_free) = (None, 0_usize);
+        let (chunks, count, positions) = loop {
+            if llama.interrupt_signal.load(Ordering::Acquire)
+                || self.progress.as_ref().is_some_and(|p| p.cancelled())
+            {
+                bail!("Media prefill cancelled");
+            }
+            let prompt = render(llama, messages)?;
+            let (chunks, count, positions) = self.tokenize(projector, llama, &prompt)?;
             let occupied = count
                 .max(usize::try_from(positions).context("Negative native media position count")?);
-            let capacity = (llama.n_ctx as usize).saturating_sub(max_tokens.saturating_add(16));
-            if occupied == 0 || occupied > capacity {
-                bail!("Media prompt requires {occupied} cells/positions; context budget is {capacity}. Shorten history or media");
+            if let Some(last) = previous {
+                let freed = usize::saturating_sub(last, occupied);
+                report.dropped_tokens += freed;
+                to_free = to_free.saturating_sub(freed);
             }
+            if occupied > 0 && occupied <= capacity && to_free == 0 {
+                break (chunks, count, positions);
+            }
+            let target = cluaiz_core::tokens_to_free(
+                shifting,
+                n_ctx,
+                occupied.saturating_sub(capacity),
+                false,
+            );
+            let current = messages
+                .iter()
+                .rposition(|(role, _)| role.eq_ignore_ascii_case("user"))
+                .unwrap_or(0);
+            let sizes: Vec<_> = messages[..=current]
+                .iter()
+                .map(|(role, _)| (role.as_str(), 1))
+                .collect();
+            let (n_drop, _) = cluaiz_core::oldest_turns_to_drop(&sizes, 1);
+            if occupied == 0 || target.is_none() || n_drop == 0 {
+                if occupied > 0 && occupied <= capacity {
+                    break (chunks, count, positions);
+                }
+                return Err(super::core::ContextExceeded(format!(
+                    "request ({occupied} tokens) exceeds the available context size ({n_ctx} tokens, {reserve} kept for the answer). {}",
+                    if n_drop == 0 {
+                        "The current message and its attachments alone are too large: use a model with a larger context, or send a smaller document or image"
+                    } else {
+                        "Context shifting is Off: start a new chat or turn context shifting on"
+                    }
+                ))
+                .into());
+            }
+            if to_free == 0 {
+                to_free = target.unwrap_or(0);
+            }
+            previous = Some(occupied);
+            drop(chunks);
+            let start = usize::from(messages[0].0.eq_ignore_ascii_case("system"));
+            self.remove_history(messages, start..start + n_drop)?;
+            report.dropped_messages += n_drop;
+            report.truncated = true;
+        };
+        // SAFETY: exclusive live native owners; final chunks retain all tokenized data.
+        unsafe {
             let mut text_tokens = Vec::new();
+            let mut layout = Vec::new();
             let mut chunk_targets = Vec::new();
             let mut slice_totals = vec![0_u64; self.targets.len()];
             let mut slice_done = vec![0_u64; self.targets.len()];
@@ -498,12 +699,27 @@ impl MediaInput {
                         }
                         text_tokens.extend_from_slice(std::slice::from_raw_parts(tokens, len));
                     }
+                    let tokens = if len > 0 {
+                        std::slice::from_raw_parts(tokens, len).to_vec()
+                    } else {
+                        Vec::new()
+                    };
+                    layout.push(CachedChunk::Text(tokens));
                 } else {
                     let id = mtmd::mtmd_input_chunk_get_id(chunk);
                     if id.is_null() {
                         bail!("Native media chunk lost attachment identity");
                     }
-                    let index: usize = CStr::from_ptr(id).to_str()?.parse()?;
+                    let id = CStr::from_ptr(id).to_str()?;
+                    let index: usize = id
+                        .split(':')
+                        .next()
+                        .context("Native media chunk id has no index")?
+                        .parse()?;
+                    layout.push(CachedChunk::Media {
+                        id: id.to_owned(),
+                        n_pos: mtmd::mtmd_input_chunk_get_n_pos(chunk),
+                    });
                     let total = slice_totals
                         .get_mut(index)
                         .context("Native media attachment index is invalid")?;
@@ -515,11 +731,53 @@ impl MediaInput {
                 bail!("Media prefill cancelled");
             }
             let memory = llama_cpp::llama_get_memory(llama.ctx_ptr);
-            llama_cpp::llama_memory_clear(memory, true);
-            let mut n_past = 0;
             let chunk_count = mtmd::mtmd_input_chunks_size(chunks.0.as_ptr());
-            let mut processed = 0_u64;
-            for i in 0..chunk_count {
+            // Reuse the KV of the previous media turn up to where this prompt first differs
+            let (mut keep, mut first, mut skip) = cache_prefix(&self.cached, &layout);
+            if keep > 0 {
+                // A sliding-window cache keeps only the latest positions (llama-server's check)
+                let n_swa = llama_cpp::llama_model_n_swa(llama.model_ptr).max(1);
+                if llama_cpp::llama_memory_seq_pos_min(memory, 0) > (keep - n_swa).max(0)
+                    || !llama_cpp::llama_memory_seq_rm(memory, 0, keep, -1)
+                {
+                    (keep, first, skip) = (0, 0, 0);
+                }
+            }
+            if keep == 0 {
+                llama_cpp::llama_memory_clear(memory, true);
+                (first, skip) = (0, 0);
+            }
+            report.cache_n = keep as usize;
+            let mut n_past = keep;
+            let mut processed = layout[..first]
+                .iter()
+                .map(|chunk| match chunk {
+                    CachedChunk::Text(tokens) => tokens.len(),
+                    CachedChunk::Media { n_pos, .. } => *n_pos as usize,
+                })
+                .sum::<usize>() as u64
+                + skip as u64;
+            for (i, index) in chunk_targets.iter().enumerate().take(first) {
+                if let (Some(p), Some(&(m, n))) =
+                    (&self.progress, index.and_then(|x| self.targets.get(x)))
+                {
+                    if i == 0 || chunk_targets[i - 1] != *index {
+                        p.emit(
+                            Stage::Encoding,
+                            State::Reused,
+                            Some(p.attachment(m, n)),
+                            None,
+                        );
+                    }
+                }
+            }
+            if keep > 0 {
+                tracing::info!(
+                    "🧠 [Context] Media prompt reuses {} cached positions ({} of {} chunks), processing the rest",
+                    keep, first, chunk_count
+                );
+            }
+            for i in first..chunk_count {
                 if llama.interrupt_signal.load(Ordering::Acquire)
                     || self.progress.as_ref().is_some_and(|p| p.cancelled())
                 {
@@ -532,7 +790,39 @@ impl MediaInput {
                         .and_then(|index| self.targets.get(index))
                         .map(|&(m, n)| p.attachment(m, n))
                 });
-                let code = if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT {
+                let code = if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT
+                    && i == first
+                    && skip > 0
+                {
+                    // Part of this text is already in the cache: process only the rest
+                    let CachedChunk::Text(tokens) = &layout[i] else {
+                        bail!("Media layout does not match its chunks");
+                    };
+                    let rest = &tokens[skip..];
+                    let step = llama.n_batch.max(1) as usize;
+                    let mut batch = super::context::SafeBatch {
+                        batch: llama_cpp::llama_batch_init(step as i32, 0, 1),
+                    };
+                    let mut code = 0;
+                    for (part_index, part) in rest.chunks(step).enumerate() {
+                        let last_part = (part_index + 1) * step >= rest.len();
+                        for (j, token) in part.iter().enumerate() {
+                            *batch.batch.token.add(j) = *token;
+                            *batch.batch.pos.add(j) = n_past + j as i32;
+                            *batch.batch.n_seq_id.add(j) = 1;
+                            *(*batch.batch.seq_id.add(j)).add(0) = 0;
+                            *batch.batch.logits.add(j) =
+                                i8::from(i + 1 == chunk_count && last_part && j + 1 == part.len());
+                        }
+                        batch.batch.n_tokens = part.len() as i32;
+                        code = llama_cpp::llama_decode(llama.ctx_ptr, batch.batch);
+                        if code != 0 {
+                            break;
+                        }
+                        n_past += part.len() as i32;
+                    }
+                    code
+                } else if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT {
                     mtmd::mtmd_helper_eval_chunk_single(
                         projector.ptr.as_ptr(),
                         llama.ctx_ptr.cast(),
@@ -631,9 +921,12 @@ impl MediaInput {
             }
             // Native chunks own their preprocessed data; raw bitmap copies are no longer needed.
             self.bitmaps.clear();
+            self.prompt_text_tokens = text_tokens.len();
+            self.layout = layout;
             Ok(MediaPrefill {
                 text_tokens,
                 positions: n_past,
+                context: report,
             })
         }
     }

@@ -22,6 +22,8 @@ enum GenerationRequest {
         prompt: String,
         expected_key: Option<String>,
         media_lease: Option<crate::media_admission::MediaLease>,
+        /// Chat the request belongs to (the API's session_id), for chat memory on disk
+        chat: Option<String>,
     },
     Media(Box<MediaGeneration>),
 }
@@ -33,6 +35,7 @@ struct MediaGeneration {
     settings: ActiveUserSettings,
     progress: Option<cluaiz_core::processing::ProcessingReporter>,
     media_lease: Option<crate::media_admission::MediaLease>,
+    chat: Option<String>,
 }
 
 pub enum HostResponse {
@@ -83,6 +86,8 @@ pub struct EngineHost {
     pub last_thinking: Arc<Mutex<Option<ThinkingReport>>>,
     /// What the context rules did in the last finished generation
     pub last_context: Arc<Mutex<Option<ContextReport>>>,
+    /// Chat whose KV cache the context holds now (chat memory on disk)
+    memory_owner: Arc<Mutex<Option<String>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
     /// Full plan banner of the last load (also written to the log)
@@ -111,6 +116,7 @@ impl EngineHost {
             last_timings: Arc::new(Mutex::new(None)),
             last_thinking: Arc::new(Mutex::new(None)),
             last_context: Arc::new(Mutex::new(None)),
+            memory_owner: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
             plan_report: Arc::new(Mutex::new(None)),
         }
@@ -355,6 +361,7 @@ impl EngineHost {
 
         let mut tokens_guard = self.last_prefilled_tokens.lock().await;
         tokens_guard.clear();
+        *self.memory_owner.lock().await = None;
 
         tracing::info!(
             "✅ [EngineHost] Model successfully loaded into unified process space: {}",
@@ -387,6 +394,7 @@ impl EngineHost {
         *fp_guard = None;
         let mut tokens_guard = self.last_prefilled_tokens.lock().await;
         tokens_guard.clear();
+        *self.memory_owner.lock().await = None;
         tracing::info!("♻️ [EngineHost] Model unloaded from process memory");
     }
 
@@ -397,6 +405,7 @@ impl EngineHost {
                 prompt: prompt.to_owned(),
                 expected_key: None,
                 media_lease: None,
+                chat: None,
             },
             max_tokens,
             None,
@@ -414,12 +423,14 @@ impl EngineHost {
         settings: &ActiveUserSettings,
         cancel: Arc<std::sync::atomic::AtomicBool>,
         skip: Arc<std::sync::atomic::AtomicBool>,
+        chat: Option<&str>,
     ) -> HostResponse {
         self.dispatch_request(
             GenerationRequest::Text {
                 prompt: prompt.to_owned(),
                 expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
                 media_lease: None,
+                chat: chat.map(str::to_owned),
             },
             max_tokens,
             Some(cancel),
@@ -445,6 +456,8 @@ impl EngineHost {
         let timings_arc = self.last_timings.clone();
         let thinking_arc = self.last_thinking.clone();
         let context_arc = self.last_context.clone();
+        let owner_arc = self.memory_owner.clone();
+        let plan_arc = self.current_plan.clone();
 
         tokio::task::spawn_blocking(move || {
             let mut llama_guard = llama_arc.blocking_lock();
@@ -475,6 +488,56 @@ impl EngineHost {
                     };
                     let _ = tx.blocking_send(error_token(message));
                     return;
+                }
+
+                // Chat memory: when this chat is not the one in the context, restore its saved KV
+                let memory = cluaiz_core::Settings::current().chat_memory;
+                let (chat, pivot) = match &request {
+                    GenerationRequest::Text { chat, prompt, .. } => {
+                        (chat.clone(), prompt.starts_with("[PIVOT_CONTINUE]"))
+                    }
+                    GenerationRequest::Media(media) => (media.chat.clone(), false),
+                };
+                let model_path = path_arc.blocking_lock().clone().unwrap_or_default();
+                let kv_type = plan_arc
+                    .blocking_lock()
+                    .as_ref()
+                    .map(|p| format!("{:?}", p.kv_cache_type))
+                    .unwrap_or_default();
+                let memory_key = crate::chat_memory::memory_key(
+                    fingerprint_arc
+                        .blocking_lock()
+                        .as_deref()
+                        .unwrap_or_default(),
+                    &model_path,
+                    &kv_type,
+                );
+                if memory.enabled && !pivot {
+                    let mut owner = owner_arc.blocking_lock();
+                    if *owner != chat {
+                        if let Some(id) = &chat {
+                            match crate::chat_memory::restore(llama, id, &memory_key) {
+                                Ok(Some(tokens)) => {
+                                    tracing::info!(
+                                        "💾 [ChatMemory] Restored chat {} from disk ({} text tokens)",
+                                        id,
+                                        tokens.len()
+                                    );
+                                    *tokens_guard = tokens;
+                                }
+                                Ok(None) => {}
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "💾 [ChatMemory] Could not restore chat {}: {}",
+                                        id,
+                                        e
+                                    );
+                                    tokens_guard.clear();
+                                }
+                            }
+                        }
+                        *owner = chat.clone();
+                    }
                 }
 
                 let tx_clone = tx.clone();
@@ -529,6 +592,7 @@ impl EngineHost {
                 };
                 llama.set_reasoning_control(None);
                 llama.set_processing_progress(None);
+                let succeeded = result.is_ok();
                 match result {
                     Ok(new_tokens) => {
                         // Media embeddings hold KV positions no text token list describes: the next
@@ -540,11 +604,41 @@ impl EngineHost {
                         *context_arc.blocking_lock() = llama.context_report();
                     }
                     Err(e) => {
-                        tokens_guard.clear();
+                        // A request refused for its size never touched the KV: its token list stays valid
+                        if !e.is::<llama_engine::ContextExceeded>() {
+                            tokens_guard.clear();
+                        }
                         *timings_arc.blocking_lock() = None;
                         *thinking_arc.blocking_lock() = None;
                         *context_arc.blocking_lock() = None;
                         let _ = tx.blocking_send(error_token(e));
+                    }
+                }
+                // The answer is complete for the client; then the chat's KV is saved for later turns
+                drop(tx);
+                if let (true, true, Some(id)) = (succeeded, memory.enabled, &chat) {
+                    let started = std::time::Instant::now();
+                    let positions = llama
+                        .context_report()
+                        .map_or(tokens_guard.len(), |r| r.n_tokens);
+                    match crate::chat_memory::save(
+                        llama,
+                        id,
+                        &tokens_guard,
+                        positions,
+                        &memory_key,
+                        &model_path,
+                        &memory,
+                    ) {
+                        Ok(bytes) => tracing::info!(
+                            "💾 [ChatMemory] Saved chat {} ({:.1} MB) in {} ms",
+                            id,
+                            bytes as f64 / 1_048_576.0,
+                            started.elapsed().as_millis()
+                        ),
+                        Err(e) => {
+                            tracing::warn!("💾 [ChatMemory] Could not save chat {}: {}", id, e)
+                        }
                     }
                 }
             } else {
@@ -663,12 +757,14 @@ impl EngineHost {
     ) -> anyhow::Result<Vec<u64>> {
         let llama_arc = self.active_session.clone();
         let tokens_arc = self.last_prefilled_tokens.clone();
+        let owner_arc = self.memory_owner.clone();
         tokio::task::spawn_blocking(move || {
             let mut guard = llama_arc.blocking_lock();
             let llama = guard
                 .as_mut()
                 .ok_or_else(|| anyhow::anyhow!("No model loaded in EngineHost"))?;
             tokens_arc.blocking_lock().clear();
+            *owner_arc.blocking_lock() = None;
             llama.bench(n_prompt, n_gen, reps)
         })
         .await?

@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 pub struct PreparedChatContext {
     pub request_id: String,
+    /// The request's session_id: chat memory on disk is kept per chat
+    pub chat_id: Option<String>,
     pub target_slot: String,
     pub resolved_model_name: String,
     pub active_model_path: Option<PathBuf>,
@@ -548,17 +550,10 @@ impl PreparedChatContext {
             ));
         }
 
-        // 🎯 Answer limit: the request's max_tokens, else until the model ends or the context does
-        // (llama.cpp's n_predict -1). Fitting the history into the context (context shifting) happens
-        // in the engine with the model's own token counts.
-        let validated_max_tokens = Some(if has_media {
-            request
-                .max_tokens
-                .unwrap_or(super::types::DEFAULT_MAX_TOKENS)
-                .min(n_ctx_limit.saturating_sub(16))
-        } else {
-            validated_max_tokens.unwrap_or(n_ctx_limit)
-        });
+        // 🎯 Answer limit, text and media alike: the request's max_tokens, else until the model ends
+        // or the context does (llama.cpp's n_predict -1). Fitting the history into the context
+        // (context shifting) happens in the engine with the model's own token counts.
+        let validated_max_tokens = Some(validated_max_tokens.unwrap_or(n_ctx_limit));
 
         let mut system_prompt_chars = 0;
         let mut history_chars = 0;
@@ -684,6 +679,11 @@ impl PreparedChatContext {
 
         Ok(Self {
             request_id: request_id.to_string(),
+            // A temporary (private) chat keeps nothing on disk, so it gets no chat memory
+            chat_id: request
+                .session_id
+                .clone()
+                .filter(|_| request.temporary_chat.is_none()),
             target_slot: target_slot.to_string(),
             resolved_model_name,
             active_model_path,
@@ -744,6 +744,7 @@ impl PreparedChatContext {
                 Some(Arc::clone(&self.skip_reasoning)),
                 self.progress.clone(),
                 self.media_lease.clone(),
+                self.chat_id.as_deref(),
             )
             .await
         } else {
@@ -759,6 +760,7 @@ impl PreparedChatContext {
                 &self.request_settings,
                 Arc::clone(&self.cancel_signal),
                 Arc::clone(&self.skip_reasoning),
+                self.chat_id.as_deref(),
             )
             .await
         }

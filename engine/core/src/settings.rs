@@ -652,6 +652,46 @@ pub struct ActiveUserSettings {
     /// Shared media source and decoded-buffer limits.
     #[serde(default)]
     pub media: MediaSettings,
+    /// Chat memory: each chat's KV cache saved to disk so it resumes without being processed again.
+    #[serde(default)]
+    pub chat_memory: ChatMemorySettings,
+}
+
+/// Chat memory on disk (llama-server `--slot-save-path`, managed per chat). After every answer the
+/// engine saves the chat's KV cache under `kv_cache/chats`; when that chat is continued later (after
+/// another chat, a model reload or a restart) it is restored instead of processing the whole history.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ChatMemorySettings {
+    #[serde(default = "ChatMemorySettings::default_enabled")]
+    pub enabled: bool,
+    /// Disk the saved chats may use; the least recently used ones are deleted first
+    #[serde(default = "ChatMemorySettings::default_max_disk_gb")]
+    pub max_disk_gb: f64,
+    /// Saved chats unused for this many days are deleted (0 = kept until the disk limit)
+    #[serde(default = "ChatMemorySettings::default_max_age_days")]
+    pub max_age_days: u32,
+}
+
+impl ChatMemorySettings {
+    fn default_enabled() -> bool {
+        true
+    }
+    fn default_max_disk_gb() -> f64 {
+        5.0
+    }
+    fn default_max_age_days() -> u32 {
+        30
+    }
+}
+
+impl Default for ChatMemorySettings {
+    fn default() -> Self {
+        Self {
+            enabled: Self::default_enabled(),
+            max_disk_gb: Self::default_max_disk_gb(),
+            max_age_days: Self::default_max_age_days(),
+        }
+    }
 }
 
 /// ONNX Runtime session settings. Every field is read by the ONNX engine (engine/onnx).
@@ -720,6 +760,7 @@ impl Default for ActiveUserSettings {
             samplers: SamplerDefaults::default(),
             onnx: OnnxSettings::default(),
             media: MediaSettings::default(),
+            chat_memory: ChatMemorySettings::default(),
         }
     }
 }

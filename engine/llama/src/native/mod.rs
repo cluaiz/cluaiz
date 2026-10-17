@@ -9,6 +9,6 @@ pub mod templater;
 pub mod media;
 pub mod session;
 
-pub use core::{route_llama_logs, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
+pub use core::{route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;
 pub use templater::extract_thinking_tags_native;

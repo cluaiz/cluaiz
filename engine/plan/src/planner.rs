@@ -13,6 +13,11 @@ use crate::types::{ExecutionCandidate, ExecutionPlan, PlacementTier};
 
 /// CTX rule 3: Auto never goes below this many tokens (or the model's native limit if smaller).
 pub const AUTO_CONTEXT_FLOOR: u32 = 4096;
+/// CTX rule 3b: a model split across GPU and RAM (or on the CPU) may grow its Auto context past the
+/// floor while the whole KV cache takes at most this share of the memory left after the weights...
+pub const AUTO_SPLIT_KV_SHARE: f64 = 0.10;
+/// ...and up to this many tokens: longer prompts on CPU-held layers take long to process.
+pub const AUTO_SPLIT_CONTEXT_CAP: u32 = 16384;
 /// BUFFER rule: Cluaiz may use up to this share of total RAM, other apps included (>= 5% always free).
 pub const RAM_CEILING_FRACTION: f64 = 0.95;
 /// llama.cpp pads the context to 256 cells, so planned sizes stay on that grid.
@@ -126,6 +131,39 @@ pub fn resolve_context(geometry: &ModelGeometry, budget: &DeviceBudget, settings
     }
 }
 
+/// CTX rule 3b: when the model does not fit on the GPU (`floor` came back with fits_on_device false),
+/// it runs split or on the CPU and most of its KV cache sits in RAM, so the context is sized against
+/// GPU + RAM: the largest one whose KV cache (same KV type as the floor) stays within
+/// AUTO_SPLIT_KV_SHARE of what the weights leave free, up to AUTO_SPLIT_CONTEXT_CAP. Never below the floor.
+pub fn split_context(
+    geometry: &ModelGeometry,
+    vram_usable: u64,
+    ram_budget: u64,
+    settings: &ActiveUserSettings,
+    floor: ContextChoice,
+) -> ContextChoice {
+    let ubatch = settings.optimization.resolved_ubatch_size();
+    let fixed = geometry.weights.total + geometry.logits_buffer_bytes(ubatch);
+    let left = (vram_usable + ram_budget).saturating_sub(fixed);
+    let allowance = (left as f64 * AUTO_SPLIT_KV_SHARE) as u64;
+    let ceiling = geometry.context_length.max(1).min(AUTO_SPLIT_CONTEXT_CAP);
+    let kv = floor.kv_quant;
+    let ctx = largest_fitting_context(ceiling, |c| geometry.kv_cache_bytes(c, kv, ubatch) <= allowance);
+    if ctx <= floor.n_ctx {
+        return floor;
+    }
+    ContextChoice {
+        n_ctx: ctx,
+        kv_quant: kv,
+        buffer_gb: floor.buffer_gb,
+        fits_on_device: false,
+        reason: format!(
+            "Auto: {} tokens, KV {:?} ({:.2} GB, at most {:.0}% of the {:.2} GB left after the weights); model runs split across GPU and RAM",
+            ctx, kv, gib(geometry.kv_cache_bytes(ctx, kv, ubatch)), AUTO_SPLIT_KV_SHARE * 100.0, gib(left)
+        ),
+    }
+}
+
 /// Largest context <= `ceiling` for which `fits` holds: the ceiling itself, else the largest
 /// multiple of 256. KV grows with context, so `fits` is monotonic and a binary search is exact.
 fn largest_fitting_context(ceiling: u32, fits: impl Fn(u32) -> bool) -> u32 {
@@ -177,7 +215,11 @@ impl Planner {
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
-        let choice = resolve_context(geometry, &budget, settings);
+        let mut choice = resolve_context(geometry, &budget, settings);
+        if gpu_allowed && !choice.fits_on_device && opt.context_setting() == ContextSetting::Auto {
+            let buffer = gib_to_bytes(budget.buffers_gb.first().copied().unwrap_or(0.0));
+            choice = split_context(geometry, vram_free.saturating_sub(buffer), ram_budget, settings, choice);
+        }
         let ctx = choice.n_ctx;
         let kv = choice.kv_quant;
         let vram_buffer = if gpu_allowed { gib_to_bytes(choice.buffer_gb) } else { 0 };
@@ -582,6 +624,39 @@ mod tests {
         let plan = Planner::create_plan("m", &qwen3_like(1.08), &hw(2.95, 8.0), &s);
         let split = plan.candidates.iter().find(|c| c.name == "GPU + RAM split").unwrap();
         assert!((split.n_gpu_layers as u32) < plan.total_layers + 1);
+    }
+
+    #[test]
+    fn split_model_gets_more_than_the_floor_within_its_share() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let g = qwen3_like(4.5);
+        let plan = Planner::create_plan("m", &g, &hw(2.8, 12.0), &s);
+        assert!(plan.is_feasible(), "{}", plan.explanation);
+        assert!(plan.context_window > AUTO_CONTEXT_FLOOR, "{}", plan.context_reason);
+        assert!(plan.context_window <= AUTO_SPLIT_CONTEXT_CAP);
+        let kv = g.kv_cache_bytes(plan.context_window, plan.kv_cache_type, 512);
+        let left = gib_to_bytes(2.8 - 1.0) + ram_budget_bytes(&hw(2.8, 12.0), &s)
+            - g.weights.total - g.logits_buffer_bytes(512);
+        assert!(kv as f64 <= left as f64 * AUTO_SPLIT_KV_SHARE, "{}", plan.context_reason);
+    }
+
+    #[test]
+    fn split_context_grows_with_ram_and_keeps_the_floor_when_tight() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let g = qwen3_like(4.5);
+        let mut prev = 0;
+        for ram in [5.0, 6.0, 8.0, 12.0, 16.0, 22.0] {
+            let plan = Planner::create_plan("m", &g, &hw(2.8, ram), &s);
+            assert!(plan.context_window >= prev, "ram {}: {} < {}", ram, plan.context_window, prev);
+            assert!(plan.context_window >= AUTO_CONTEXT_FLOOR);
+            prev = plan.context_window;
+        }
+        // Fits on the GPU: the GPU rule decides, the split rule is not used
+        let small = Planner::create_plan("m", &qwen3_like(1.08), &hw(2.95, 8.0), &s);
+        assert!(!small.context_reason.contains("split across"), "{}", small.context_reason);
+        // Custom stays exact
+        let custom = settings(ContextSetting::Custom(4096), KvCacheQuantization::Auto);
+        assert_eq!(Planner::create_plan("m", &g, &hw(2.8, 12.0), &custom).context_window, 4096);
     }
 
     #[test]

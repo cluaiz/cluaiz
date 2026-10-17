@@ -151,6 +151,12 @@ What happened is reported in the closing `engine.context` object (and `usage.pro
 
 ---
 
+## 💾 Chat Memory (saved KV cache per chat)
+
+Send a `session_id` with every request of a chat. After each answer the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](./chat_memory.md).
+
+---
+
 ## 🖼️ Multimodal Vision & Audio Guide
 
 ### 1. Vision Input (`image_url`)

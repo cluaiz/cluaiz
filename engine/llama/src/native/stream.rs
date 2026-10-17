@@ -1,6 +1,6 @@
 use crate::ffi::llama_cpp;
 use crate::native::context::SafeBatch;
-use crate::native::core::{ContextReport, NativeLlama};
+use crate::native::core::{ContextExceeded, ContextReport, NativeLlama};
 use crate::native::media::{MediaInput, Projector};
 use cluaiz_models::types::StructuralDNA;
 use std::ffi::CString;
@@ -143,7 +143,8 @@ pub(crate) fn stream_tokens_with_media(
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
         let has_loaded_cache = !last_prefilled_tokens.is_empty();
-        if !is_pivot {
+        // A media prompt matches the KV against its own chunk layout during evaluation
+        if !is_pivot && !is_media {
             if has_loaded_cache {
                 // Keep the loaded KV cache sequence, only remove anything AFTER the loaded tokens
                 let loaded_len = last_prefilled_tokens.len() as i32;
@@ -254,11 +255,12 @@ pub(crate) fn stream_tokens_with_media(
                 );
             }
             if !is_pivot && prompt_tokens.len() >= n_ctx {
-                anyhow::bail!(
+                return Err(ContextExceeded(format!(
                     "request ({} tokens) exceeds the available context size ({} tokens), try increasing it",
                     prompt_tokens.len(),
                     n_ctx
-                );
+                ))
+                .into());
             }
         }
 
@@ -299,7 +301,8 @@ pub(crate) fn stream_tokens_with_media(
             batch: llama_cpp::llama_batch_init(llama.n_batch as i32, 0, 1),
         };
         let (full_prompt_tokens, mut n_cur) = if let Some((input, projector)) = media {
-            let prefill = input.evaluate(projector, llama, &formatted_prompt, max_tokens)?;
+            let prefill = input.evaluate(projector, llama, max_tokens, &mut structured_messages, render)?;
+            report = prefill.context;
             (prefill.text_tokens, prefill.positions)
         } else {
             // `cached` = the tokens the KV cache holds (the previous generation's result)

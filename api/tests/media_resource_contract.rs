@@ -66,3 +66,80 @@ async fn test_busy_attachment_rejects_before_fetch_and_releases_for_retry() -> R
     assert!(state.host.current_plan.lock().await.is_none());
     Ok(())
 }
+
+#[tokio::test]
+async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize() -> Result<()> {
+    let workspace = tempfile::tempdir()?;
+    let state = Arc::new(AppState::new_test_state(workspace.path().to_owned()));
+    state.permission_schema.write().await.api_auth.required = true;
+    let router = cluaiz_api::routes::build_api_router(state.clone());
+    let request = json!({"model":format!("missing-{}", uuid::Uuid::new_v4()),"stream":false,
+        "messages":[{"role":"user","content":"x".repeat(3 * cluaiz_core::MIB as usize)}]});
+    for route in ["/v1/chat/completions", "/api/chat"] {
+        let (status, body) = support::post(&router, route, request.clone(), "user").await?;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert!(body.contains("model_not_found"));
+    }
+    let denied = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/chat/completions")
+                .header("content-type", "application/json")
+                .body(Body::from(request.to_string()))?,
+        )
+        .await?;
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    // Non-attachment JSON endpoints retain their existing default, not the upload ceiling.
+    // Use the router directly for this negative: on Windows an early HTTP rejection can
+    // reset a still-uploading connection instead of reaching the client's response parser.
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/system/plan")
+                .header("content-type", "application/json")
+                .header("authorization", "Bearer test_session_token")
+                .body(Body::from(request.to_string()))?,
+        )
+        .await?;
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+    let input = cluaiz_core::Settings::current()
+        .media
+        .limits
+        .max_input_bytes();
+    let limit = input
+        .div_ceil(3)
+        .saturating_mul(4)
+        .saturating_add(2 * cluaiz_core::MIB);
+    // A declared oversize body rejects before allocation; chunked bodies cannot bypass the cap.
+    for declared in [true, false] {
+        let mut request = Request::builder()
+            .method("POST")
+            .uri("/v1/ingest")
+            .header("authorization", "Bearer test_session_token")
+            .header("origin", "http://localhost:1420")
+            .header("content-type", "application/json");
+        let body = if declared {
+            request = request.header("content-length", limit + 1);
+            Body::empty()
+        } else {
+            let chunk = axum::body::Bytes::from(vec![b' '; 64 * 1024]);
+            let count = limit as usize / chunk.len() + 1;
+            Body::from_stream(futures::stream::iter(
+                (0..count).map(move |_| Ok::<_, std::io::Error>(chunk.clone())),
+            ))
+        };
+        let response = router.clone().oneshot(request.body(body)?).await?;
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(response.headers()["access-control-allow-origin"], "*");
+        let bytes = axum::body::to_bytes(response.into_body(), 4096).await?;
+        let error: Value = serde_json::from_slice(&bytes)?;
+        assert_eq!(error["error"]["type"], "request_too_large");
+    }
+    assert!(state.host.current_plan.lock().await.is_none());
+    Ok(())
+}

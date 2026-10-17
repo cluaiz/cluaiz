@@ -22,7 +22,7 @@ impl EngineHost {
         skip: Option<Arc<AtomicBool>>,
     ) -> HostResponse {
         self.dispatch_prepared_with_progress(
-            request, max_tokens, model_path, settings, cancel, skip, None, None,
+            request, max_tokens, model_path, settings, cancel, skip, None, None, None,
         )
         .await
     }
@@ -39,6 +39,7 @@ impl EngineHost {
         skip: Option<Arc<AtomicBool>>,
         progress: Option<cluaiz_core::processing::ProcessingReporter>,
         media_lease: Option<MediaLease>,
+        chat: Option<&str>,
     ) -> HostResponse {
         if request
             .messages
@@ -77,6 +78,7 @@ impl EngineHost {
                         prompt: request.to_prompt(),
                         expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
                         media_lease,
+                        chat: chat.map(str::to_owned),
                     },
                     max_tokens,
                     cancel,
@@ -91,6 +93,7 @@ impl EngineHost {
                 settings: settings.clone(),
                 progress,
                 media_lease,
+                chat: chat.map(str::to_owned),
             })),
             max_tokens,
             cancel,
@@ -172,6 +175,7 @@ mod tests {
                     None,
                     None,
                     Some(lease.clone()),
+                    None,
                 )
                 .await;
             drop(lease);

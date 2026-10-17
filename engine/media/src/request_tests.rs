@@ -258,8 +258,8 @@ async fn test_request_invalid_source_permissions_and_unsupported_provider_reject
 #[tokio::test]
 async fn test_request_aggregate_budget_and_literal_text_markers() {
     let dir = tempfile::tempdir().unwrap();
-    let limit = 21;
-    // 7 retained system bytes + 19 image workspace exceeds the total 21-byte budget.
+    let limit = 12;
+    // 7 retained system bytes + 6 bytes for overlapping RGB Vec/Arc exceed 12.
     let result = prepare_chat(
         request(vec![InputPart::Image {
             source: inline("image/png", &png()),
@@ -277,13 +277,13 @@ async fn test_request_aggregate_budget_and_literal_text_markers() {
     ];
     // First image fits, but its retained RGB bytes reduce the next decoder's budget.
     assert!(
-        prepare_chat(request(images.clone()), &resolver(dir.path(), 28), |_| Ok(
+        prepare_chat(request(images.clone()), &resolver(dir.path(), 15), |_| Ok(
             ()
         ))
         .await
         .is_err()
     );
-    let paired = prepare_chat(request(images), &resolver(dir.path(), 29), |_| Ok(()))
+    let paired = prepare_chat(request(images), &resolver(dir.path(), 16), |_| Ok(()))
         .await
         .unwrap();
     assert_eq!(paired.messages[1].content.len(), 2);
@@ -321,6 +321,46 @@ async fn test_request_aggregate_budget_and_literal_text_markers() {
     .await
     .is_err());
     assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+}
+
+#[tokio::test]
+#[ignore = "requires CLUAIZ_MEDIA_TEST_IMAGE and CLUAIZ_MEDIA_TEST_RETAINED_BYTES"]
+async fn test_actual_image_with_retained_history_across_requests() -> Result<()> {
+    let source = std::fs::canonicalize(std::env::var("CLUAIZ_MEDIA_TEST_IMAGE")?)?;
+    let retained = std::env::var("CLUAIZ_MEDIA_TEST_RETAINED_BYTES")?.parse::<usize>()?;
+    let bytes = std::fs::read(&source)?;
+    let reference = ::image::load_from_memory(&bytes)?.into_rgb8();
+    let dir = tempfile::tempdir()?;
+    let settings = MediaSettings::default();
+    let resolver = SourceResolver::new(
+        dir.path().to_owned(),
+        settings.clone(),
+        FormatRegistry::default(),
+    )?;
+    for request_index in 0..3 {
+        let mut input = request(vec![InputPart::Image {
+            source: source.to_string_lossy().into_owned(),
+        }]);
+        input.messages[0].content = vec![InputPart::Text {
+            text: "x".repeat(retained),
+        }];
+        let prepared = prepare_chat(input, &resolver, |path| {
+            anyhow::ensure!(
+                std::fs::canonicalize(path)? == source,
+                "Unexpected source path"
+            );
+            Ok(())
+        })
+        .await?;
+        let PreparedPart::Image { image } = &prepared.messages[1].content[0] else {
+            anyhow::bail!("Expected decoded image");
+        };
+        assert_eq!((image.width(), image.height()), reference.dimensions());
+        assert!(image.pixels() == reference.as_raw(), "RGB pixels changed");
+        println!("ACTUAL REQUEST PREPARATION: request={request_index}; retained_history={retained}; rgb_bytes={}; ceiling={}; exact_pixels=true", image.pixels().len(), settings.limits.max_decoded_bytes());
+        drop(prepared);
+    }
+    Ok(())
 }
 
 #[test]
