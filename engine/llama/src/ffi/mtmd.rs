@@ -6,6 +6,12 @@
 
 include!(concat!(env!("OUT_DIR"), "/mtmd_bindings.rs"));
 
+// Declared by hand so the generated allowlist (and the native build it is part of) stays unchanged.
+extern "C" {
+    /// KV positions a chunk occupies (an M-RoPE image uses fewer positions than tokens).
+    pub fn mtmd_input_chunk_get_n_pos(chunk: *const mtmd_input_chunk) -> i32;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

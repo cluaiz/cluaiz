@@ -28,6 +28,19 @@ pub struct NativeLlama {
     pub last_context: Option<ContextReport>,
 }
 
+/// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
+/// before the KV cache is touched, so the cache stays valid for the next request.
+#[derive(Debug)]
+pub struct ContextExceeded(pub String);
+
+impl std::fmt::Display for ContextExceeded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for ContextExceeded {}
+
 /// What the context rules did in one generation (sent to the client in the engine report).
 /// Token counts are the model's own; names follow llama-server where it has one.
 #[derive(Debug, Clone, Default, serde::Serialize)]

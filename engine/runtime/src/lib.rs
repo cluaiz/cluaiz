@@ -1,6 +1,7 @@
 //! 🏛️ Cluaiz Engine Runtime & Model Host (`engine/runtime`)
 //! Central model host governing active execution plans and streaming sessions.
 
+pub mod chat_memory;
 pub mod host;
 pub mod media_admission;
 pub mod media_support;

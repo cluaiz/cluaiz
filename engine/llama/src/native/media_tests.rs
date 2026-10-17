@@ -127,3 +127,89 @@ fn test_projector_load_callback_cancel_and_null_fail_closed() {
         assert!(!load_progress(0.5, std::ptr::null_mut()));
     }
 }
+
+#[test]
+fn test_removing_old_media_turn_preserves_system_current_pixels_and_original_identity() -> Result<()>
+{
+    let image = cluaiz_core::media::DecodedImage::new(1, 1, Arc::from([12, 34, 56]))?;
+    let mut envelope = request(vec![]);
+    envelope.messages = vec![
+        ChatMessage {
+            role: "system".into(),
+            content: vec![PreparedPart::Text {
+                text: "system".into(),
+            }],
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: vec![PreparedPart::Image {
+                image: image.clone(),
+            }],
+        },
+        ChatMessage {
+            role: "assistant".into(),
+            content: vec![PreparedPart::Text {
+                text: "old answer".into(),
+            }],
+        },
+        ChatMessage {
+            role: "user".into(),
+            content: vec![PreparedPart::Image { image }],
+        },
+    ];
+    let (text, mut input) = MediaInput::prepare(
+        envelope,
+        ProjectorSupport {
+            vision: true,
+            audio_sample_rate: None,
+        },
+        MediaLimits::default(),
+    )?;
+    let mut messages: Vec<_> = text
+        .messages
+        .into_iter()
+        .map(|m| (m.role, m.content))
+        .collect();
+    let sizes: Vec<_> = messages
+        .iter()
+        .map(|(role, _)| (role.as_str(), 1))
+        .collect();
+    let (n_drop, _) = cluaiz_core::oldest_turns_to_drop(&sizes, 1);
+    assert_eq!(n_drop, 2);
+    input.remove_history(&mut messages, 1..1 + n_drop)?;
+    assert_eq!(messages[0], ("system".into(), "system".into()));
+    assert_eq!(messages.len(), 2);
+    assert_eq!(input.targets, [(3, 0)]);
+    assert_eq!(input.bitmaps.len(), 1);
+    assert_eq!(marker_ranges(&messages[1].1, &input.markers)?.len(), 1);
+    // SAFETY: retained native bitmap owns its pixel storage.
+    unsafe {
+        assert_eq!(
+            std::slice::from_raw_parts(mtmd::mtmd_bitmap_get_data(input.bitmaps[0].0.as_ptr()), 3),
+            &[12, 34, 56]
+        );
+    }
+    let sizes: Vec<_> = messages
+        .iter()
+        .map(|(role, _)| (role.as_str(), 1))
+        .collect();
+    assert_eq!(cluaiz_core::oldest_turns_to_drop(&sizes, 1).0, 0);
+    messages.push(("assistant".into(), "tool call".into()));
+    messages.push(("tool".into(), "tool result".into()));
+    assert!(input.remove_history(&mut messages, 1..3).is_err());
+    assert_eq!(input.targets, [(3, 0)]);
+    assert_eq!(input.bitmaps.len(), 1);
+    messages.push(("user".into(), "current source text".into()));
+    input.remove_history(&mut messages, 1..4)?;
+    assert!(input.bitmaps.is_empty());
+    assert!(input.markers.is_empty());
+    assert!(input.targets.is_empty());
+    assert_eq!(
+        messages,
+        [
+            ("system".into(), "system".into()),
+            ("user".into(), "current source text".into())
+        ]
+    );
+    Ok(())
+}

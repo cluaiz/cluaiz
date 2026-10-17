@@ -2,7 +2,7 @@
 
 use super::{
     core::NativeLlama,
-    media::{MediaInput, Projector, ProjectorSupport},
+    media::{CachedChunk, MediaInput, Projector, ProjectorSupport},
 };
 use anyhow::{bail, Context, Result};
 use cluaiz_core::{bytes_to_gib, chat::ChatEnvelope, media::PreparedPart, ActiveUserSettings};
@@ -42,6 +42,9 @@ pub struct NativeSession {
     budget: Option<MediaBudget>,
     skip_reasoning: Option<Arc<AtomicBool>>,
     progress: Option<cluaiz_core::processing::ProcessingReporter>,
+    /// What the KV cache holds after the last media generation (text tokens and encoded media by
+    /// content id), so the next media turn re-encodes only what changed. Empty = nothing reusable.
+    media_cache: Vec<CachedChunk>,
 }
 
 impl NativeSession {
@@ -100,6 +103,8 @@ impl NativeSession {
         cached: &[i32],
         callback: cluaiz_core::contracts::StreamCallback,
     ) -> Result<Vec<i32>> {
+        // The text path keeps its own token list of the KV; a media layout no longer describes it
+        self.media_cache.clear();
         super::stream::stream_tokens_with_media(
             &mut self.llama,
             prompt,
@@ -114,6 +119,72 @@ impl NativeSession {
         )
     }
 
+    /// Saves the KV cache (sequence 0) to `<base>.kv` with what it holds: the text token list, or for a
+    /// media chat its chunk layout in `<base>.layout.json` (llama-server's slot save). Returns the bytes.
+    pub fn save_memory(&self, base: &Path, tokens: &[i32]) -> Result<u64> {
+        let kv = base.with_extension("kv");
+        let layout = base.with_extension("layout.json");
+        let c_path = CString::new(kv.to_string_lossy().as_bytes())?;
+        // SAFETY: live context; the token slice outlives the call, which copies it into the file.
+        let written = unsafe {
+            crate::ffi::llama_cpp::llama_state_seq_save_file(
+                self.llama.ctx_ptr,
+                c_path.as_ptr(),
+                0,
+                tokens.as_ptr(),
+                tokens.len(),
+            )
+        };
+        if written == 0 {
+            bail!(
+                "llama.cpp could not save the chat memory to {}",
+                kv.display()
+            );
+        }
+        if self.media_cache.is_empty() {
+            let _ = std::fs::remove_file(&layout);
+        } else {
+            std::fs::write(&layout, serde_json::to_vec(&self.media_cache)?)?;
+        }
+        Ok(written as u64)
+    }
+
+    /// Restores a KV cache saved by `save_memory` into sequence 0 and returns its text token list
+    /// (empty for a media chat, whose chunk layout is restored instead). On failure the KV is empty.
+    pub fn restore_memory(&mut self, base: &Path) -> Result<Vec<i32>> {
+        let kv = base.with_extension("kv");
+        let layout = base.with_extension("layout.json");
+        let c_path = CString::new(kv.to_string_lossy().as_bytes())?;
+        let mut tokens = vec![0_i32; self.llama.n_ctx as usize];
+        let mut count = 0_usize;
+        // SAFETY: live context; the output buffer holds n_ctx tokens, the most a sequence can have.
+        let read = unsafe {
+            let memory = crate::ffi::llama_cpp::llama_get_memory(self.llama.ctx_ptr);
+            crate::ffi::llama_cpp::llama_memory_seq_rm(memory, 0, -1, -1);
+            crate::ffi::llama_cpp::llama_state_seq_load_file(
+                self.llama.ctx_ptr,
+                c_path.as_ptr(),
+                0,
+                tokens.as_mut_ptr(),
+                tokens.len(),
+                &mut count,
+            )
+        };
+        self.media_cache.clear();
+        if read == 0 {
+            bail!(
+                "llama.cpp could not restore the chat memory from {}",
+                kv.display()
+            );
+        }
+        tokens.truncate(count);
+        if layout.exists() {
+            self.media_cache = serde_json::from_slice(&std::fs::read(&layout)?)?;
+            tokens.clear();
+        }
+        Ok(tokens)
+    }
+
     /// Benchmark owns and clears the same model context as generation.
     pub fn bench(
         &mut self,
@@ -121,6 +192,7 @@ impl NativeSession {
         generated: usize,
         repetitions: usize,
     ) -> Result<Vec<u64>> {
+        self.media_cache.clear();
         self.llama.bench(prompt, generated, repetitions)
     }
 
@@ -141,6 +213,7 @@ impl NativeSession {
             budget: None,
             skip_reasoning: None,
             progress: None,
+            media_cache: Vec::new(),
         })
     }
 
@@ -283,7 +356,8 @@ impl NativeSession {
     }
 
     /// Generate from actual prepared media using native template/encoder and the existing
-    /// sampler loop. No text-only prefix history is returned for reuse across media turns.
+    /// sampler loop. The KV prefix of the previous media turn (text and encoded media matched by
+    /// content id, as llama-server does) is reused; only what changed is encoded and processed.
     pub fn stream_prepared(
         &mut self,
         request: ChatEnvelope<Vec<PreparedPart>>,
@@ -335,6 +409,7 @@ impl NativeSession {
             .context("Media projector is not loaded")?;
         let (text, mut media) = MediaInput::prepare(request, projector.support(), limits)?;
         media.progress = self.progress.clone();
+        media.cached = std::mem::take(&mut self.media_cache);
         let prompt = serde_json::to_string(&text)?;
         let stopped = Arc::new(AtomicBool::new(false));
         let consumer_stop = Arc::clone(&stopped);
@@ -356,7 +431,14 @@ impl NativeSession {
                 skip_reasoning: self.skip_reasoning.as_deref(),
             },
         );
-        if result.is_err()
+        let too_large = result
+            .as_ref()
+            .err()
+            .is_some_and(|e| e.is::<super::core::ContextExceeded>());
+        if too_large {
+            // Refused before the KV was touched: the previous turn stays cached for the next request
+            self.media_cache = std::mem::take(&mut media.cached);
+        } else if result.is_err()
             || stopped.load(Ordering::Acquire)
             || self.llama.interrupt_signal.load(Ordering::Acquire)
         {
@@ -368,9 +450,16 @@ impl NativeSession {
                 );
             }
         }
-        result?;
+        let history = result?;
         if stopped.load(Ordering::Acquire) || self.llama.interrupt_signal.load(Ordering::Acquire) {
             bail!("Media generation cancelled/stopped by consumer");
+        }
+        // The KV now holds the prompt layout plus the answer tokens that were decoded
+        if let Some(report) = &self.llama.last_context {
+            let decoded = report.n_tokens.saturating_sub(report.prompt_tokens);
+            let start = media.prompt_text_tokens.min(history.len());
+            let end = (start + decoded).min(history.len());
+            self.media_cache = media.cached_after(&history[start..end]);
         }
         Ok(())
     }
@@ -597,6 +686,8 @@ mod tests {
             cluaiz_media::formats::FormatRegistry::default(),
         )?;
         let runtime = tokio::runtime::Runtime::new()?;
+        let mut history = Vec::new();
+        let mut previous_prompt = 0_usize;
         // Test-only encoded fixtures; neither their color nor ground truth enters the prompt.
         for (pixels, format, mime, expected) in [
             ([255, 0, 0], ImageOutputFormat::Png, "image/png", "red"),
@@ -639,13 +730,32 @@ mod tests {
                 grammar: None,
                 response_format: None,
             };
-            let prepared = runtime.block_on(cluaiz_media::request::prepare_chat(
+            let mut prepared = runtime.block_on(cluaiz_media::request::prepare_chat(
                 request,
                 &resolver,
                 |_| bail!("Inline image fixtures must not read local files"),
             ))?;
+            let current_turn = prepared.messages.clone();
+            prepared.messages.splice(0..0, history.clone());
             let output = Arc::new(std::sync::Mutex::new(String::new()));
             session.stream_prepared(prepared, 32, &dna, &settings, collect(&output))?;
+            let report = session
+                .llama
+                .last_context
+                .clone()
+                .context("Media context report missing")?;
+            eprintln!(
+                "REAL MEDIA CACHE: cached={} prompt={} dropped={}",
+                report.cache_n, report.prompt_tokens, report.dropped_messages
+            );
+            if !history.is_empty() {
+                // Earlier turns, their images included, come from the KV cache instead of being encoded again
+                assert_eq!(report.dropped_messages, 0);
+                assert!(
+                    report.cache_n * 10 >= previous_prompt * 9,
+                    "earlier media turn was not reused"
+                );
+            }
             let answer = output.lock().expect("image output").clone();
             eprintln!("Shared {mime} -> native image encoder -> model answer: {answer}");
             let words: Vec<_> = answer
@@ -654,7 +764,54 @@ mod tests {
                 .map(str::to_ascii_lowercase)
                 .collect();
             assert_eq!(words, [expected], "Image answer must follow actual pixels");
+            history.extend(current_turn);
+            history.push(ChatMessage {
+                role: "assistant".into(),
+                content: vec![cluaiz_core::media::PreparedPart::Text { text: answer }],
+            });
+            previous_prompt = report.prompt_tokens;
         }
+        // A text-only follow-up in the same chat reuses every image instead of encoding them again
+        let mut follow_up = ChatEnvelope {
+            messages: history.clone(),
+            samplers: cluaiz_core::SamplerDefaults {
+                temp: Some(0.0),
+                seed: Some(31),
+                ..Default::default()
+            },
+            think_mode: "off".into(),
+            reasoning_effort: Default::default(),
+            reasoning_budget_message: None,
+            chat_template_kwargs: None,
+            grammar: None,
+            response_format: None,
+        };
+        follow_up.messages.push(ChatMessage {
+            role: "user".into(),
+            content: vec![cluaiz_core::media::PreparedPart::Text {
+                text: "What color was the first image? Reply with one color word only.".into(),
+            }],
+        });
+        let output = Arc::new(std::sync::Mutex::new(String::new()));
+        session.stream_prepared(follow_up, 32, &dna, &settings, collect(&output))?;
+        let report = session
+            .llama
+            .last_context
+            .clone()
+            .context("Media context report missing")?;
+        eprintln!(
+            "REAL MEDIA FOLLOW-UP: cached={} prompt={}",
+            report.cache_n, report.prompt_tokens
+        );
+        assert!(
+            report.cache_n * 10 >= previous_prompt * 9,
+            "follow-up re-encoded earlier images"
+        );
+        assert!(output
+            .lock()
+            .expect("follow-up output")
+            .to_ascii_lowercase()
+            .contains("red"));
         assert_eq!(std::fs::read_dir(directory.path())?.count(), 0);
         let recovery = Arc::new(std::sync::Mutex::new(String::new()));
         super::super::stream::stream_tokens(

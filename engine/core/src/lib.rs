@@ -12,7 +12,7 @@ pub mod processing;
 
 pub use env::{EnvironmentManager, EnvironmentMode};
 pub use settings::{
-    Settings, ActiveUserSettings, OptimizationControl, FeatureState, KvCacheQuantization, ContextShiftingMode,
+    Settings, ActiveUserSettings, ChatMemorySettings, OptimizationControl, FeatureState, KvCacheQuantization, ContextShiftingMode,
     ContextSetting, SamplerDefaults, LlamaLoadParams, ThinkingBudget, ThinkingLimit, ThinkingPresets, ThinkingShare, OnnxSettings, set_active_context, active_context_tokens, active_model_path,
     DEFAULT_SAFE_VRAM_BUFFER_GB, MIN_SAFE_VRAM_BUFFER_GB, DEFAULT_SAFE_RAM_BUFFER_GB, MIN_SAFE_RAM_BUFFER_GB,
 };

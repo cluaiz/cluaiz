@@ -45,6 +45,7 @@ Authorization: Bearer <TOKEN>
 * [**`POST /v1/chat/completions`**](./inference/chat_completions.md) — Conversational dialogue, multimodal vision/audio input, streaming SSE, and reasoning tokens.
 * [**`POST /v1/chat/cancel`**](./inference/chat_cancel.md) — Cancel active stream mid-generation by unique `stream_id`.
 * [**`POST /v1/chat/skip-reasoning`**](./inference/chat_skip_reasoning.md) — Fast-forward reasoning chains and jump directly to the final answer.
+* [**`GET/DELETE /v1/chat/memory`, `POST /v1/chat/memory/settings`, `DELETE /v1/chat/memory/{chat_id}`**](./inference/chat_memory.md) — Chat memory: each chat's KV cache saved to disk and restored when the chat continues.
 * [**`POST /v1/embeddings`**](./inference/embeddings.md) — High-dimensional vector generation with GGUF/ONNX routing.
 * [**`POST /v1/audio/speech`**](./inference/audio_speech.md) — Text-to-Speech (TTS) via Kokoro/Piper.
 * [**`POST /v1/audio/transcriptions`**](./inference/audio_transcriptions.md) — Speech-to-Text (STT) via Whisper encoder/decoder.
