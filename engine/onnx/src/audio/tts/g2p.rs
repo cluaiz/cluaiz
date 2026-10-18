@@ -113,7 +113,10 @@ fn load_lexicon(model_dir: &Path) {
         model_dir.join("dict_fr.json"),
     ];
 
-    let mut combined_dict = HashMap::new();
+    // 0. The language's pronunciation dictionary (downloaded on first use); the model's own data
+    //    below overrides it. Dictionary copies older engines left in the model folder are moved out.
+    super::ipa_dictionary::retire_engine_lexicons(model_dir);
+    let mut combined_dict = super::ipa_dictionary::load_language_lexicon(&get_model_language(model_dir));
 
     // 1. Parse phoneme_map metadata directly from model config JSON files
     if let Ok(entries) = fs::read_dir(model_dir) {
@@ -200,10 +203,6 @@ fn load_lexicon(model_dir: &Path) {
             }
         }
     }
-
-    // 3. Load dynamic compiled lexicon (from assets/ipa_dictionary)
-    let dict = super::ipa_dictionary::load_or_compile_lexicon(model_dir);
-    combined_dict.extend(dict);
 
     if let Ok(mut guard) = DYNAMIC_LEXICON.write() {
         *guard = Some(combined_dict);
