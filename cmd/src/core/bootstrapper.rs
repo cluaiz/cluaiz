@@ -116,14 +116,30 @@ impl Bootstrapper {
             tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
         if has_nvidia {
-            if onnx_engine::cudnn_driver::is_cudnn_available_in(&drivers_dir) {
+            if onnx_engine::cudnn_driver::is_cuda_runtime_available_in(&drivers_dir) {
                 onnx_engine::cudnn_driver::register_drivers_dir_in_path(&drivers_dir);
-                tracing::info!("⚡ NVIDIA cuDNN 9 runtime libraries verified.");
+                tracing::info!("⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.");
             } else {
-                tracing::debug!(
-                    "ℹ️ NVIDIA cuDNN 9 not yet present in {:?}; will auto-provision on first CUDA ONNX session load.",
+                tracing::info!(
+                    "⬇️ [Bootstrap] Provisioning NVIDIA CUDA + cuDNN 9 runtime libraries into {:?}...",
                     drivers_dir
                 );
+                match tokio::task::spawn_blocking(
+                    onnx_engine::cudnn_driver::provision_cuda_runtime_at_setup,
+                )
+                .await
+                {
+                    Ok(Ok(true)) => {
+                        tracing::info!("✅ NVIDIA CUDA + cuDNN 9 runtime libraries provisioned at setup.");
+                    }
+                    Ok(Ok(false)) => {}
+                    Ok(Err(err)) => {
+                        tracing::warn!("⚠️ Setup-time CUDA/cuDNN 9 provisioning skipped: {}", err);
+                    }
+                    Err(join_err) => {
+                        tracing::warn!("⚠️ Setup-time CUDA/cuDNN 9 task join error: {}", join_err);
+                    }
+                }
             }
         }
 
@@ -203,9 +219,23 @@ impl Bootstrapper {
             ("cudnn_heuristic64_9", "cudnn_heuristic64_9"),
             ("cudnn_engines_precompiled64_9", "cudnn_engines_precompiled64_9"),
             ("cudnn_engines_runtime_compiled64_9", "cudnn_engines_runtime_compiled64_9"),
+            ("cudart64_12", "cudart64_12"),
+            ("cublas64_12", "cublas64_12"),
+            ("cublasLt64_12", "cublasLt64_12"),
+            ("cufft64_11", "cufft64_11"),
+            ("cudart64_13", "cudart64_13"),
+            ("cublas64_13", "cublas64_13"),
+            ("cublasLt64_13", "cublasLt64_13"),
+            ("cufft64_12", "cufft64_12"),
         ];
 
         let interface_path = hub_path.join("engine");
+        let is_cuda_redist_dll = |name: &str| {
+            name.starts_with("cudnn")
+                || name.starts_with("cudart")
+                || name.starts_with("cublas")
+                || name.starts_with("cufft")
+        };
 
         for (src_name, dest_name) in kernels_to_sync {
             // Apply filtering logic
@@ -226,7 +256,7 @@ impl Bootstrapper {
                     tracing::warn!("⚠️ [DevSync] {} Kernel Link Failed: {}.", dest_name, e);
                 } else {
                     // Create a ready marker
-                    if !src_name.starts_with("onnxruntime") && !src_name.starts_with("cudnn") {
+                    if !src_name.starts_with("onnxruntime") && !is_cuda_redist_dll(src_name) {
                         let marker_name = format!("{}.ready", dest_name);
                         let marker = "dev-release";
                         let _ = std::fs::write(interface_path.join(marker_name), marker);
@@ -234,9 +264,18 @@ impl Bootstrapper {
                     tracing::info!("🧬 [DevSync] {} Driver Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
                 }
             } else {
-                if (target == "drivers" || target == "driver") && !src_name.starts_with("cudnn") {
+                if (target == "drivers" || target == "driver") && !is_cuda_redist_dll(src_name) {
                     tracing::warn!("⚠️ [DevSync] Driver source not found for: {}", src_name);
                 }
+            }
+        }
+
+        if target == "all" || target == "drivers" || target == "driver" {
+            let hw = cluaiz_hw::HardwareProber::current();
+            let has_nvidia = hw.gpus.iter().any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
+            let drivers_dir = interface_path.join("drivers");
+            if let Err(err) = onnx_engine::cudnn_driver::ensure_cuda_runtime_ready(&drivers_dir, has_nvidia) {
+                tracing::warn!("⚠️ [DevSync] CUDA/cuDNN 9 runtime provisioning warning: {}", err);
             }
         }
 
