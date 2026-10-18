@@ -48,6 +48,16 @@ graph TD
 
 ## API Contract (Interface)
 
+### Hindi pronunciation input boundaries
+
+`tts/rules_g2p.rs` uses per-language `data/g2p_rules/*.json` rules. Abugida files may declare `ignored_characters` (formatting controls or elision signs) and `word_separators` (internal word boundaries). Hindi declares ZWJ/ZWNJ and avagraha as ignored, and selected hyphens, slash and apostrophes as separators. Each piece runs through the existing vowel/schwa rules independently; formatting controls do not split consonant conjuncts. Other languages retain their own policy; Hindi does not override a preferred same-script language merely because it accepts a separator.
+
+Hindi examples include decomposed nasal vowels (`में`, `एँ`), anusvara before non-stop consonants, Om, vocalic vowels/signs and avagraha. Vocalic R/L mappings follow this Hindi rule file's existing pronunciation convention; they do not certify Vedic/Sanskrit recitation. Nasalization and vowel length remain separate phoneme symbols and must survive the selected model's symbol conversion.
+
+`PhonemeMap::require_phonemes` rejects sequences containing only that package's pad/BOS/EOS IDs before either Kokoro or Piper inference. A nonempty token vector alone does not prove any speech content was encoded. This prevents unsupported-only input from producing a meaningless waveform. It does not detect every omitted symbol or certify pronunciation quality.
+
+Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated home. The ignored `actual_hindi_vowels_fit_installed_model_symbols` test additionally requires `CLUAIZ_TTS_TEST_MODEL` pointing to a staged genuine package and checks actual symbol coverage. Real waveform/listening acceptance is separate from IPA, token-count and HTTP-success tests.
+
 - **Core Router Entry:** `tts_router::route_tts_inference(engine, session, prompt, tokenizer) -> Result<String>`
 - **Typed entries:** `route_tts_text(engine, session, text)` preserves text at the transport boundary; `OnnxEngine::execute_stt_prepared` accepts shared PCM without source fetching. Legacy tagged prompts adapt to these entries.
 - **Audio Sanitizer:** `tts_router::sanitize_audio_pcm(pcm: Vec<f32>) -> Result<Vec<f32>>`
@@ -74,7 +84,8 @@ graph TD
 
 ### B. Registered ONNX TTS Engine (`src/audio/tts/`)
 - [`tts_router.rs`](./tts/tts_router.rs):
-  - **Logic:** High-level router that parses prompts, chunking text into 140-char sentences, detecting family variant, validating inventory, executing model family pipeline, sanitizing PCM output, and encoding base64 WAV URIs.
+  - **Logic:** High-level router that parses prompts, groups sentences toward a 140 UTF-8-byte target and splits long sentences at whitespace, detects family variant, validates inventory, executes model family pipelines, sanitizes PCM output, and encodes base64 WAV URIs. Whole words stay intact; a single oversized word remains subject to the model's native token guard.
+  - **Pronunciation normalization:** Abugida files can opt into canonical Unicode normalization with `normalize_unicode`; Hindi enables it so canonical-equivalent nukta spellings reach the same pronunciation keys. Other rule files keep their existing behavior. Regression inputs live in test-only `data/pronunciation_tests.json`.
 - [`family_adapter.rs`](./tts/family_adapter.rs):
   - **Logic:** Pre-boot asset inventory validator and priority family detector checking `model_registry.json`, `model_manifest.json`, and ONNX session signature inputs.
 - [`manifest_loader.rs`](./tts/manifest_loader.rs):

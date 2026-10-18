@@ -1,0 +1,40 @@
+{
+  "rules": [
+    {"group":"routing","text":"नमस्ते","language":"en-us","expected_language":"hi"},
+    {"group":"routing","text":"hello","language":"en-us","reject":true},
+    {"group":"routing","text":"नमस्ते","language":"mr","expected_language":"mr"},
+    {"group":"routing","text":"ciao","language":"it-IT","expected_language":"it"},
+    {"group":"boundary","text":"कर्म-फल","language":"hi","expected_ipa":"kərmə pʰəl","model_coverage":true},
+    {"group":"boundary","text":"कर्म‐फल","language":"hi","expected_ipa":"kərmə pʰəl"},
+    {"group":"boundary","text":"कर्म‑फल","language":"hi","expected_ipa":"kərmə pʰəl"},
+    {"group":"boundary","text":"कर्म/फल","language":"hi","expected_ipa":"kərmə pʰəl"},
+    {"group":"boundary","text":"कर्म'फल","language":"hi","expected_ipa":"kərmə pʰəl"},
+    {"group":"boundary","text":"कर्म’फल","language":"hi","expected_ipa":"kərmə pʰəl"},
+    {"group":"boundary","text":"क्\u200dष","language":"hi","same_as":"क्ष","model_coverage":true},
+    {"group":"boundary","text":"क्\u200cष","language":"hi","same_as":"क्ष"},
+    {"group":"boundary","text":"hello-world","language":"en-us","reject":true},
+    {"group":"boundary","text":"कर्म-फल","language":"mr","reject":true},
+    {"group":"boundary","text":"/\u200d","language":"hi","reject":true},
+    {"group":"coverage","text":"में","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"एँ","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"हैं","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"माँ","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"संसार","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"संयम","language":"hi","model_coverage":true},
+    {"group":"coverage","text":"ॐ","language":"hi","model_coverage":true},
+    {"group":"canonical","text":"क़लम","language":"hi","same_as":"क़लम","model_coverage":true},
+    {"group":"canonical","text":"ख़त","language":"hi","same_as":"ख़त","model_coverage":true},
+    {"group":"canonical","text":"ग़म","language":"hi","same_as":"ग़म","model_coverage":true},
+    {"group":"canonical","text":"ज़रूर","language":"hi","same_as":"ज़रूर","model_coverage":true},
+    {"group":"canonical","text":"बड़ा","language":"hi","same_as":"बड़ा","model_coverage":true},
+    {"group":"canonical","text":"पढ़ना","language":"hi","same_as":"पढ़ना","model_coverage":true},
+    {"group":"canonical","text":"फ़ल","language":"hi","same_as":"फ़ल","model_coverage":true},
+    {"group":"canonical","text":"य़","language":"hi","same_as":"य़","model_coverage":true}
+  ],
+  "chunking": {"unit":"नमस्ते","repeat":100,"max_bytes":140,"language":"hi"},
+  "symbol_guard": {
+    "symbols":{"e":[11],"̃":[12]},
+    "pad_id":7,"bos_id":8,"eos_id":9,
+    "unsupported":["","ॱ"],"supported":["ẽ"],"required_ids":[11,12]
+  }
+}

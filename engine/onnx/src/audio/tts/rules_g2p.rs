@@ -6,8 +6,8 @@
 //!
 //! Two kinds of writing systems:
 //! - `abugida` (Indian scripts): a consonant carries an inherent vowel unless a vowel sign or virama
-//!   follows; languages that do not say it drop it at the end of a word ("कमल" → kəməl) and between
-//!   a vowel-consonant and a consonant-vowel ("समझना" → səmədʒʰnaː), right to left.
+//!   follows; languages that do not say it drop it at the end of a word and between
+//!   a vowel-consonant and a consonant-vowel, right to left.
 //! - `alphabet` (Latin, Greek, Cyrillic...): ordered rewrite rules, longest spelling first, each
 //!   optionally limited to letters before/after it ("c" before e/i → tʃ in Italian).
 //!
@@ -32,10 +32,19 @@ enum RuleSet {
 struct Abugida {
     language: String,
     script_ranges: Vec<(String, String)>,
+    /// Opt in to NFC only when this rule file uses canonical spellings for its keys.
+    #[serde(default)]
+    normalize_unicode: bool,
+    /// Formatting controls/elision signs that do not change pronunciation.
+    #[serde(default)]
+    ignored_characters: String,
+    /// Internal word boundaries; schwa rules apply to each piece separately.
+    #[serde(default)]
+    word_separators: String,
     #[serde(default)]
     default_for_script: bool,
     consonants: HashMap<String, String>,
-    /// Consonant letters that never carry the inherent vowel (Malayalam chillu, Bengali ৎ)
+    /// Consonant letters that never carry the inherent vowel.
     #[serde(default)]
     dead_consonants: HashMap<String, String>,
     vowels: HashMap<String, String>,
@@ -61,7 +70,7 @@ struct Abugida {
     nasal_vowel_mark: String,
     #[serde(default)]
     anusvara_before: HashMap<String, Vec<String>>,
-    /// Consonants voiced between vowels and after nasals (Tamil க → ɡ)
+    /// Consonants voiced between vowels and after nasals.
     #[serde(default)]
     voicing: Option<Voicing>,
     #[serde(default)]
@@ -170,16 +179,26 @@ pub fn word_to_ipa(word: &str, lang: &str) -> Option<(String, &'static str)> {
         return None;
     }
     let lang = base(lang).to_lowercase();
-    let covers = |set: &RuleSet| word.chars().all(|c| in_ranges(c, set.script_ranges()));
+    let covers = |set: &RuleSet| {
+        let in_script = |c| in_ranges(c, set.script_ranges());
+        word.chars().any(in_script) && word.chars().all(|c| {
+            in_script(c) || matches!(set, RuleSet::Abugida(a)
+                if a.ignored_characters.contains(c) || a.word_separators.contains(c))
+        })
+    };
     let sets = rule_sets();
-    let set = sets
+    let preferred = sets
         .iter()
-        .find(|s| s.language() == lang && covers(s))
+        .find(|s| s.language() == lang && word.chars().any(|c| in_ranges(c, s.script_ranges())));
+    let set = preferred
         .or_else(|| {
             sets.iter().find(|s| {
                 matches!(s, RuleSet::Abugida(a) if a.default_for_script) && covers(s)
             })
         })?;
+    if !covers(set) {
+        return None;
+    }
     Some((set.convert(word), set.language()))
 }
 
@@ -256,6 +275,24 @@ fn longest<'m>(map: &'m HashMap<String, String>, rest: &str) -> Option<(usize, &
 
 impl Abugida {
     fn convert(&self, word: &str) -> String {
+        // Canonically equivalent spellings must use the same data-owned rules.
+        let mut normalized = tokenizers::NormalizedString::from(word);
+        if self.normalize_unicode {
+            normalized.nfc();
+        }
+        let word = normalized.get();
+        if !word.chars().any(|c| self.ignored_characters.contains(c) || self.word_separators.contains(c)) {
+            return self.convert_word(word);
+        }
+        let clean: String = word.chars().filter(|&c| !self.ignored_characters.contains(c)).collect();
+        clean.split(|c| self.word_separators.contains(c))
+            .filter(|part| !part.is_empty())
+            .map(|part| self.convert_word(part))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    fn convert_word(&self, word: &str) -> String {
         let mut segs: Vec<Segment> = Vec::new();
         let mut tail = String::new();
         let mut geminate = false;
@@ -444,6 +481,48 @@ impl Alphabet {
 mod tests {
     use super::*;
 
+    #[derive(Deserialize)]
+    struct Case {
+        group: String,
+        text: String,
+        language: String,
+        expected_language: Option<String>,
+        expected_ipa: Option<String>,
+        same_as: Option<String>,
+        #[serde(default)]
+        reject: bool,
+        #[serde(default)]
+        model_coverage: bool,
+    }
+
+    fn cases() -> Vec<Case> {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!("data/pronunciation_tests.json")).unwrap();
+        serde_json::from_value(fixture["rules"].clone()).unwrap()
+    }
+
+    fn check_group(group: &str) {
+        let mut checked = 0;
+        for case in cases().into_iter().filter(|case| case.group == group) {
+            let got = word_to_ipa(&case.text, &case.language);
+            if case.reject {
+                assert!(got.is_none(), "unexpected rule for {}", case.text);
+            } else {
+                let (ipa, language) = got.expect("fixture must select a rule");
+                if let Some(expected) = case.expected_ipa {
+                    assert_eq!(ipa, expected, "{}", case.text);
+                }
+                if let Some(expected) = case.expected_language {
+                    assert_eq!(language, expected, "{}", case.text);
+                }
+                if let Some(equivalent) = case.same_as {
+                    assert_eq!(Some((ipa, language)), word_to_ipa(&equivalent, &case.language), "{}", case.text);
+                }
+            }
+            checked += 1;
+        }
+        assert!(checked > 0, "empty fixture group {group}");
+    }
+
     /// Every rule file's `examples` (word → expected IPA) hold, so a rule edit that breaks a
     /// language fails here.
     #[test]
@@ -461,10 +540,35 @@ mod tests {
 
     #[test]
     fn script_and_language_pick_the_rules() {
-        // Devanagari for an English model falls back to Hindi; Latin words get no rules there
-        assert_eq!(word_to_ipa("नमस्ते", "en-us").unwrap().1, "hi");
-        assert!(word_to_ipa("hello", "en-us").is_none());
-        assert_eq!(word_to_ipa("नमस्ते", "mr").unwrap().1, "mr");
-        assert_eq!(word_to_ipa("ciao", "it-IT").unwrap().1, "it");
+        check_group("routing");
+    }
+
+    #[test]
+    fn separators_and_join_controls_preserve_words() {
+        check_group("boundary");
+    }
+
+    #[test]
+    fn canonical_spellings_keep_the_same_pronunciation() {
+        check_group("canonical");
+    }
+
+    #[test]
+    #[ignore = "requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata"]
+    fn actual_pronunciations_fit_installed_model_symbols() {
+        let dir = std::path::PathBuf::from(std::env::var("CLUAIZ_TTS_TEST_MODEL").unwrap());
+        let map = super::super::phoneme_map::PhonemeMap::from_model_dir(&dir).unwrap();
+        for case in cases().into_iter().filter(|case| case.model_coverage) {
+            let converter = super::super::phoneme_sets::converter_for(&dir, &case.language);
+            let (ipa, _) = word_to_ipa(&case.text, &case.language).unwrap();
+            let converted = converter.as_ref().map_or(ipa.clone(), |c| c.convert(&ipa));
+            let missing: String = converted.chars().filter(|c| !c.is_whitespace())
+                .filter(|c| !map.has_symbol(&c.to_string())).collect();
+            assert!(missing.is_empty(), "unsupported symbols: {missing}");
+            let ids = map.text_to_ids_no_pad(&converted);
+            map.require_phonemes(&ids).unwrap();
+            println!("source_chars={} phoneme_chars={} model_tokens={} missing_symbols=0",
+                case.text.chars().count(), converted.chars().count(), ids.len());
+        }
     }
 }

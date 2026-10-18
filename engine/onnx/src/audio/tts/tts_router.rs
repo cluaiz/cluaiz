@@ -238,7 +238,9 @@ fn handle_vits_piper(
         );
 
         let token_ids: Vec<i64> = if let Some(ref pmap) = phoneme_map {
-            pmap.text_to_ids(&processed_text)
+            let ids = pmap.text_to_ids(&processed_text);
+            pmap.require_phonemes(&ids)?;
+            ids
         } else {
             return Err(anyhow!("PackageContractException: Piper/VITS model missing required 'tokens.txt' or 'phoneme_id_map' in model directory {:?}.", model_dir));
         };
@@ -339,7 +341,9 @@ fn handle_kokoro(
             model_dir,
         );
         let mut token_ids: Vec<i64> = if let Some(ref pmap) = phoneme_map {
-            pmap.text_to_ids_no_pad(&processed_text)
+            let ids = pmap.text_to_ids_no_pad(&processed_text);
+            pmap.require_phonemes(&ids)?;
+            ids
         } else {
             return Err(anyhow!("PackageContractException: Kokoro model missing required 'tokens.txt' or 'phoneme_id_map' in model directory {:?}. Refusing to pass raw byte fallback to prevent garbled noise.", model_dir));
         };
@@ -407,11 +411,16 @@ fn chunk_tts_text(text: &str, max_chunk_len: usize) -> Vec<String> {
     let mut current_chunk = String::new();
 
     for sentence in text.split_inclusive(&['.', '!', '?', ';', '\n'][..]) {
-        if current_chunk.len() + sentence.len() > max_chunk_len && !current_chunk.is_empty() {
-            chunks.push(current_chunk.trim().to_string());
-            current_chunk = String::new();
+        // A long sentence also needs boundaries. Keep whole words so combining signs and
+        // conjuncts stay together; a single oversized word reaches the native token guard.
+        let split_at_words = sentence.len() > max_chunk_len;
+        for part in sentence.split_inclusive(|c: char| split_at_words && c.is_whitespace()) {
+            if current_chunk.len() + part.len() > max_chunk_len && !current_chunk.trim().is_empty() {
+                chunks.push(current_chunk.trim().to_string());
+                current_chunk.clear();
+            }
+            current_chunk.push_str(part);
         }
-        current_chunk.push_str(sentence);
     }
 
     if !current_chunk.trim().is_empty() {
@@ -422,5 +431,47 @@ fn chunk_tts_text(text: &str, max_chunk_len: usize) -> Vec<String> {
         vec![text.to_string()]
     } else {
         chunks
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> (String, usize, String) {
+        let data: serde_json::Value = serde_json::from_str(include_str!("data/pronunciation_tests.json")).unwrap();
+        let case = &data["chunking"];
+        let unit = case["unit"].as_str().unwrap();
+        let text = vec![unit; case["repeat"].as_u64().unwrap() as usize].join(" ");
+        (text, case["max_bytes"].as_u64().unwrap() as usize, case["language"].as_str().unwrap().to_owned())
+    }
+
+    #[test]
+    fn test_chunk_long_sentence_keeps_whole_words_and_order() {
+        let (text, limit, _) = fixture();
+        let chunks = chunk_tts_text(&text, limit);
+        assert!(chunks.len() > 1);
+        assert!(chunks.iter().all(|chunk| !chunk.is_empty() && chunk.len() <= limit));
+        assert_eq!(chunks.join(" "), text);
+        let word = text.split_whitespace().next().unwrap();
+        assert_eq!(chunk_tts_text(word, 1), vec![word]);
+    }
+
+    #[test]
+    #[ignore = "requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata"]
+    fn test_long_sentence_model_token_counts() {
+        let (text, limit, language) = fixture();
+        let dir = std::path::PathBuf::from(std::env::var("CLUAIZ_TTS_TEST_MODEL").unwrap());
+        let map = super::super::phoneme_map::PhonemeMap::from_model_dir(&dir).unwrap();
+        let converter = super::super::phoneme_sets::converter_for(&dir, &language);
+        let count = |text: &str| {
+            let ipa = text.split_whitespace().map(|word| super::super::rules_g2p::word_to_ipa(word, &language).unwrap().0).collect::<Vec<_>>().join(" ");
+            let converted = converter.as_ref().map_or(ipa.clone(), |c| c.convert(&ipa));
+            map.text_to_ids_no_pad(&converted).len()
+        };
+        let chunks = chunk_tts_text(&text, limit);
+        let counts: Vec<_> = chunks.iter().map(|chunk| count(chunk)).collect();
+        println!("unchunked_tokens={} chunk_count={} chunk_tokens={counts:?}", count(&text), chunks.len());
+        assert!(chunks.len() > 1);
     }
 }
