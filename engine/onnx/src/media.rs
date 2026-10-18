@@ -80,23 +80,24 @@ impl OnnxEngine {
             .with_arena_allocator(settings.enable_cpu_mem_arena)
             .build();
         if settings.n_gpu_layers != 0 {
-            crate::cudnn_driver::ensure_cudnn_ready_for_cuda();
-            let strategy = match settings.arena_extend_strategy.as_str() {
-                "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
-                _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
-            };
-            let mut cuda = ort::ep::CUDA::default().with_arena_extend_strategy(strategy);
-            if settings.gpu_mem_limit_bytes > 0 {
-                cuda = cuda.with_memory_limit(settings.gpu_mem_limit_bytes);
-            }
-            if let Ok(mut attempt) = builder
-                .clone()
-                .with_execution_providers([cuda.build().error_on_failure(), cpu.clone()])
-            {
-                match attempt.commit_from_file(path) {
-                    Ok(session) => return Ok(session),
-                    Err(error) => {
-                        tracing::warn!(%error, "CUDA session creation failed; trying fallback")
+            if crate::cudnn_driver::is_cuda_runtime_ready_or_spawn_background() {
+                let strategy = match settings.arena_extend_strategy.as_str() {
+                    "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
+                    _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
+                };
+                let mut cuda = ort::ep::CUDA::default().with_arena_extend_strategy(strategy);
+                if settings.gpu_mem_limit_bytes > 0 {
+                    cuda = cuda.with_memory_limit(settings.gpu_mem_limit_bytes);
+                }
+                if let Ok(mut attempt) = builder
+                    .clone()
+                    .with_execution_providers([cuda.build().error_on_failure(), cpu.clone()])
+                {
+                    match attempt.commit_from_file(path) {
+                        Ok(session) => return Ok(session),
+                        Err(error) => {
+                            tracing::warn!(%error, "CUDA session creation failed; trying fallback")
+                        }
                     }
                 }
             }

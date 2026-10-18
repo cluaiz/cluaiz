@@ -231,8 +231,7 @@ impl OnnxEngine {
 
             let mut session_opt: Option<Session> = None;
 
-            if use_gpu {
-                crate::cudnn_driver::ensure_cudnn_ready_for_cuda();
+            if use_gpu && crate::cudnn_driver::is_cuda_runtime_ready_or_spawn_background() {
                 let mut cuda_ep = ort::ep::CUDA::default();
                 if onnx_meta.gpu_mem_limit_bytes > 0 {
                     cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
@@ -258,7 +257,7 @@ impl OnnxEngine {
                         }
                         Err(e) => {
                             eprintln!("🎙️ [ONNX Hardware Binding] CUDA EP commit failed: {:?}. Trying DirectML GPU fallback...", e);
-                            tracing::warn!("⚠️ [Sovereign-Cascade] Native CUDA EP commit failed: {:?}. Trying DirectML/CoreML fallback...", e);
+                            tracing::warn!("⚠️ [ONNX Cascade] Native CUDA EP commit failed: {:?}. Trying DirectML/CoreML fallback...", e);
                         }
                     }
                 }
@@ -463,8 +462,7 @@ impl OnnxEngine {
             .build();
         let mut session_opt: Option<Session> = None;
 
-        if use_gpu {
-            crate::cudnn_driver::ensure_cudnn_ready_for_cuda();
+        if use_gpu && crate::cudnn_driver::is_cuda_runtime_ready_or_spawn_background() {
             let mut cuda_ep = ort::ep::CUDA::default();
             if onnx_meta.gpu_mem_limit_bytes > 0 {
                 cuda_ep = cuda_ep.with_memory_limit(onnx_meta.gpu_mem_limit_bytes as usize);
@@ -486,7 +484,7 @@ impl OnnxEngine {
                         session_opt = Some(sess);
                     }
                     Err(e) => {
-                        tracing::error!("⚠️ [Sovereign-Cascade] GPU Encoder commit failed (VRAM/CUDA error): {:?}", e);
+                        tracing::error!("⚠️ [ONNX Cascade] GPU Encoder commit failed (VRAM/CUDA error): {:?}", e);
                     }
                 }
             }

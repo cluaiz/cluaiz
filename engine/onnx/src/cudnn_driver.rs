@@ -1,11 +1,13 @@
-//! Runtime provisioning for NVIDIA cuDNN 9 shared libraries required by the ONNX Runtime CUDA
-//! Execution Provider (`onnxruntime_providers_cuda`).
+//! Setup-time provisioning and non-blocking runtime readiness verification for NVIDIA CUDA
+//! (`cudart`, `cublas`, `cublasLt`, `cufft`) and cuDNN 9 shared libraries required by the
+//! ONNX Runtime CUDA Execution Provider (`onnxruntime_providers_cuda`).
 //!
-//! When an NVIDIA GPU is present and the cuDNN 9 sentinel library (`cudnn64_9.dll` on Windows,
-//! `libcudnn.so.9` on Linux) is missing from `<cluaiz_home>/engine/drivers/` and the system library
-//! path, this module downloads the official NVIDIA cuDNN 9 redistributable archive pinned in
-//! `data/cudnn_sources.json`, verifies its exact byte size and SHA-256 digest, and extracts the
-//! runtime shared libraries into `<cluaiz_home>/engine/drivers/`.
+//! Provisioning runs during setup/bootstrap (`provision_cuda_runtime_at_setup`) so user inference
+//! requests never block waiting for multi-hundred-megabyte redistributable downloads. At model
+//! load time, `is_cuda_runtime_ready_or_spawn_background` performs a fast synchronous file check:
+//! if all required DLLs/SOs are present, it registers `<cluaiz_home>/engine/drivers` on `PATH` and
+//! returns `true`; if any are missing, it spawns a single background provisioning thread and
+//! immediately returns `false` so the current request proceeds on CPU/DirectML without delay.
 
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
@@ -13,6 +15,7 @@ use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 
 const CUDNN_SOURCES_JSON: &str = include_str!("data/cudnn_sources.json");
@@ -23,6 +26,8 @@ pub struct CudnnManifest {
     pub cuda_variant: String,
     pub base_url: String,
     pub platforms: Vec<CudnnPlatformSource>,
+    #[serde(default)]
+    pub cuda_variants: Vec<CudaVariantManifest>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -32,6 +37,33 @@ pub struct CudnnPlatformSource {
     pub bytes: u64,
     pub sha256: String,
     pub sentinel_library: String,
+    pub library_prefix: String,
+    pub library_extension: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CudaVariantManifest {
+    pub cuda_variant: String,
+    pub cuda_version: String,
+    pub cudnn_version: String,
+    pub components: Vec<CudaComponentManifest>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CudaComponentManifest {
+    pub component: String,
+    pub version: String,
+    pub base_url: String,
+    pub platforms: Vec<CudaComponentPlatformSource>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CudaComponentPlatformSource {
+    pub platform: String,
+    pub relative_path: String,
+    pub bytes: u64,
+    pub sha256: String,
+    pub sentinel_libraries: Vec<String>,
     pub library_prefix: String,
     pub library_extension: String,
 }
@@ -68,12 +100,86 @@ pub fn current_platform_key() -> Option<&'static str> {
     None
 }
 
-/// Resolves the `CudnnPlatformSource` for a given platform key (e.g. `"windows-x86_64"`).
+/// Resolves the legacy single-archive `CudnnPlatformSource` for a given platform key.
 pub fn platform_source(platform_key: &str) -> Option<&'static CudnnPlatformSource> {
     manifest()?
         .platforms
         .iter()
         .find(|entry| entry.platform == platform_key)
+}
+
+/// Resolves the `CudaVariantManifest` for `"cuda12"` or `"cuda13"`.
+pub fn variant_manifest(cuda_variant: &str) -> Option<&'static CudaVariantManifest> {
+    manifest()?
+        .cuda_variants
+        .iter()
+        .find(|v| v.cuda_variant == cuda_variant)
+}
+
+/// Inspects raw binary bytes of `onnxruntime_providers_cuda.dll` / `libonnxruntime_providers_cuda.so`
+/// to determine whether the provider was compiled against CUDA 13 or CUDA 12.
+pub fn detect_cuda_variant_from_provider_bytes(bytes: &[u8]) -> Option<&'static str> {
+    const CUDA13_MARKERS: &[&[u8]] = &[
+        b"cublas64_13.dll",
+        b"cudart64_13.dll",
+        b"libcublas.so.13",
+        b"libcudart.so.13",
+    ];
+    const CUDA12_MARKERS: &[&[u8]] = &[
+        b"cublas64_12.dll",
+        b"cudart64_12.dll",
+        b"libcublas.so.12",
+        b"libcudart.so.12",
+    ];
+    for marker in CUDA13_MARKERS {
+        if bytes.windows(marker.len()).any(|w| w.eq_ignore_ascii_case(marker)) {
+            return Some("cuda13");
+        }
+    }
+    for marker in CUDA12_MARKERS {
+        if bytes.windows(marker.len()).any(|w| w.eq_ignore_ascii_case(marker)) {
+            return Some("cuda12");
+        }
+    }
+    None
+}
+
+/// Detects whether the installed `onnxruntime_providers_cuda` binary targets `"cuda12"` or `"cuda13"`.
+/// Defaults to `"cuda12"` when no provider binary is found or when no import marker matches.
+pub fn detect_provider_cuda_variant(drivers_dir: &Path) -> &'static str {
+    let provider_names = [
+        "onnxruntime_providers_cuda.dll",
+        "libonnxruntime_providers_cuda.so",
+    ];
+    let mut candidate_dirs = vec![drivers_dir.to_path_buf()];
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            candidate_dirs.push(parent.to_path_buf());
+        }
+    }
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let dfbin = PathBuf::from(local_app_data).join("ort.pyke.io").join("dfbin");
+        if let Ok(targets) = std::fs::read_dir(&dfbin) {
+            for target_entry in targets.flatten() {
+                if let Ok(hashes) = std::fs::read_dir(target_entry.path()) {
+                    for hash_entry in hashes.flatten() {
+                        candidate_dirs.push(hash_entry.path());
+                    }
+                }
+            }
+        }
+    }
+    for dir in candidate_dirs {
+        for name in provider_names {
+            let path = dir.join(name);
+            if let Ok(bytes) = std::fs::read(&path) {
+                if let Some(variant) = detect_cuda_variant_from_provider_bytes(&bytes) {
+                    return variant;
+                }
+            }
+        }
+    }
+    "cuda12"
 }
 
 /// Default `<cluaiz_home>/engine/drivers` directory.
@@ -83,28 +189,66 @@ pub fn default_drivers_dir() -> PathBuf {
         .join("drivers")
 }
 
-/// Checks whether the platform's cuDNN 9 sentinel library exists and is non-empty inside
-/// `drivers_dir`.
-pub fn is_cudnn_in_drivers_dir(drivers_dir: &Path, source: &CudnnPlatformSource) -> bool {
-    let sentinel = drivers_dir.join(&source.sentinel_library);
+/// Checks whether a specific sentinel library file exists and is non-empty inside `drivers_dir`.
+pub fn is_sentinel_in_drivers_dir(drivers_dir: &Path, sentinel_library: &str) -> bool {
+    let sentinel = drivers_dir.join(sentinel_library);
     std::fs::metadata(sentinel)
         .map(|meta| meta.is_file() && meta.len() > 0)
         .unwrap_or(false)
 }
 
-/// Checks whether the platform's cuDNN 9 sentinel library is available either in `drivers_dir` or
-/// in the operating system's dynamic library search paths.
-pub fn is_cudnn_available_in(drivers_dir: &Path) -> bool {
+/// Checks whether the platform's cuDNN 9 sentinel library exists and is non-empty inside `drivers_dir`.
+pub fn is_cudnn_in_drivers_dir(drivers_dir: &Path, source: &CudnnPlatformSource) -> bool {
+    is_sentinel_in_drivers_dir(drivers_dir, &source.sentinel_library)
+}
+
+/// Checks whether all sentinel libraries for a CUDA runtime component are present in `drivers_dir`.
+pub fn is_component_in_drivers_dir(
+    drivers_dir: &Path,
+    source: &CudaComponentPlatformSource,
+) -> bool {
+    !source.sentinel_libraries.is_empty()
+        && source
+            .sentinel_libraries
+            .iter()
+            .all(|s| is_sentinel_in_drivers_dir(drivers_dir, s))
+}
+
+/// Checks whether all sentinel libraries for a CUDA runtime component are available either in
+/// `drivers_dir` or on the operating system's dynamic library search path.
+pub fn is_component_available(drivers_dir: &Path, source: &CudaComponentPlatformSource) -> bool {
+    !source.sentinel_libraries.is_empty()
+        && source.sentinel_libraries.iter().all(|sentinel| {
+            is_sentinel_in_drivers_dir(drivers_dir, sentinel)
+                || is_sentinel_on_system_path(sentinel)
+        })
+}
+
+/// Checks whether the full CUDA + cuDNN 9 runtime suite (`cuda_cudart`, `libcublas`, `libcufft`,
+/// `cudnn`) for the detected CUDA variant is available in `drivers_dir` or on the system path.
+pub fn is_cuda_runtime_available_in(drivers_dir: &Path) -> bool {
     let Some(key) = current_platform_key() else {
         return false;
     };
-    let Some(source) = platform_source(key) else {
+    let cuda_variant = detect_provider_cuda_variant(drivers_dir);
+    let Some(v_manifest) = variant_manifest(cuda_variant) else {
         return false;
     };
-    if is_cudnn_in_drivers_dir(drivers_dir, source) {
-        return true;
+    for comp in &v_manifest.components {
+        let Some(plat_src) = comp.platforms.iter().find(|p| p.platform == key) else {
+            return false;
+        };
+        if !is_component_available(drivers_dir, plat_src) {
+            return false;
+        }
     }
-    is_sentinel_on_system_path(&source.sentinel_library)
+    true
+}
+
+/// Checks whether the platform's cuDNN 9 sentinel library is available either in `drivers_dir` or
+/// in the operating system's dynamic library search paths.
+pub fn is_cudnn_available_in(drivers_dir: &Path) -> bool {
+    is_cuda_runtime_available_in(drivers_dir)
 }
 
 fn is_sentinel_on_system_path(sentinel_library: &str) -> bool {
@@ -155,7 +299,7 @@ fn is_sentinel_on_system_path(sentinel_library: &str) -> bool {
 }
 
 /// Ensures `drivers_dir` is registered on `PATH` (Windows) so `LoadLibrary` inside
-/// `onnxruntime_providers_cuda` can resolve `cudnn64_9.dll`.
+/// `onnxruntime_providers_cuda` can resolve `cudart`, `cublas`, `cublasLt`, `cufft`, and `cudnn`.
 pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
     #[cfg(windows)]
     {
@@ -179,69 +323,91 @@ pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
     }
 }
 
-/// Provisions cuDNN 9 into the default `<cluaiz_home>/engine/drivers` directory if an NVIDIA GPU
-/// is present and cuDNN 9 is not yet installed.
-pub fn ensure_cudnn_ready_default() -> Result<bool> {
+/// Synchronous setup-time provisioning entry point invoked during `Bootstrapper::sync_neural_stack`,
+/// `Calibrate`, and `DevSync`. Downloads and verifies all missing CUDA + cuDNN 9 runtime archives
+/// when an NVIDIA GPU is present.
+pub fn provision_cuda_runtime_at_setup() -> Result<bool> {
     let hw = cluaiz_hw::HardwareProber::current();
     let has_nvidia = hw
         .gpus
         .iter()
         .any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
     let drivers_dir = default_drivers_dir();
-    let ready = ensure_cudnn_ready(&drivers_dir, has_nvidia)?;
+    let ready = ensure_cuda_runtime_ready(&drivers_dir, has_nvidia)?;
     if ready {
         register_drivers_dir_in_path(&drivers_dir);
     }
     Ok(ready)
 }
 
-/// Best-effort pre-flight hook invoked before registering the ONNX Runtime CUDA Execution
-/// Provider. If cuDNN 9 is already present, ensures `drivers_dir` is on `PATH`. If missing on an
-/// NVIDIA system, attempts a single automatic download per process and logs a warning on failure
-/// so the caller can continue to DirectML/CPU fallback.
-pub fn ensure_cudnn_ready_for_cuda() {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    static FAILED_ONCE: AtomicBool = AtomicBool::new(false);
-
-    let drivers_dir = default_drivers_dir();
-    if is_cudnn_available_in(&drivers_dir) {
-        register_drivers_dir_in_path(&drivers_dir);
-        return;
-    }
-    if FAILED_ONCE.load(Ordering::Relaxed) {
-        return;
-    }
-    match ensure_cudnn_ready_default() {
-        Ok(_) => {}
-        Err(error) => {
-            FAILED_ONCE.store(true, Ordering::Relaxed);
-            tracing::warn!(
-                %error,
-                "Automatic cuDNN 9 provisioning did not complete; CUDA Execution Provider may fall back to DirectML/CPU"
-            );
-        }
-    }
+/// Alias preserved for callers expecting `ensure_cudnn_ready_default`.
+pub fn ensure_cudnn_ready_default() -> Result<bool> {
+    provision_cuda_runtime_at_setup()
 }
 
-/// Checks if cuDNN 9 is ready for `drivers_dir` when `has_nvidia_gpu` is true, and downloads +
-/// extracts it from the official NVIDIA redistributable if missing.
-pub fn ensure_cudnn_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bool> {
+/// Non-blocking model-load readiness check.
+///
+/// - If all required CUDA + cuDNN 9 runtime libraries are already present on disk, registers
+///   `drivers_dir` on `PATH` and immediately returns `true`.
+/// - If any library is missing, never blocks the calling model load or inference request: spawns a
+///   single background provisioning thread (if an NVIDIA GPU is present) and immediately returns
+///   `false` so the caller falls back to CPU/DirectML without delay.
+pub fn is_cuda_runtime_ready_or_spawn_background() -> bool {
+    static BACKGROUND_PROVISION_SPAWNED: AtomicBool = AtomicBool::new(false);
+
+    let drivers_dir = default_drivers_dir();
+    if is_cuda_runtime_available_in(&drivers_dir) {
+        register_drivers_dir_in_path(&drivers_dir);
+        return true;
+    }
+
+    let hw = cluaiz_hw::HardwareProber::current();
+    let has_nvidia = hw
+        .gpus
+        .iter()
+        .any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
+    if !has_nvidia {
+        return false;
+    }
+
+    if BACKGROUND_PROVISION_SPAWNED
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        tracing::info!(
+            drivers_dir = ?drivers_dir,
+            "CUDA/cuDNN 9 runtime libraries not yet present; spawning background provisioning thread and using CPU/DirectML for the current session"
+        );
+        let _ = std::thread::Builder::new()
+            .name("cluaiz-cuda-driver-bg".to_string())
+            .spawn(move || {
+                if let Err(error) = provision_cuda_runtime_at_setup() {
+                    tracing::warn!(
+                        %error,
+                        "Background CUDA/cuDNN 9 runtime provisioning did not complete"
+                    );
+                }
+            });
+    }
+
+    false
+}
+
+/// Provisions all missing CUDA + cuDNN 9 runtime components (`cuda_cudart`, `libcublas`,
+/// `libcufft`, `cudnn`) for the detected CUDA variant (`cuda12` or `cuda13`) into `drivers_dir`.
+pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bool> {
     if !has_nvidia_gpu {
         return Ok(false);
     }
     let Some(key) = current_platform_key() else {
         return Ok(false);
     };
-    let Some(manifest) = manifest() else {
-        bail!("cuDNN manifest is unavailable");
-    };
-    let Some(source) = platform_source(key) else {
-        return Ok(false);
+    let cuda_variant = detect_provider_cuda_variant(drivers_dir);
+    let Some(v_manifest) = variant_manifest(cuda_variant) else {
+        bail!("CUDA variant manifest '{}' is unavailable", cuda_variant);
     };
 
-    if is_cudnn_in_drivers_dir(drivers_dir, source)
-        || is_sentinel_on_system_path(&source.sentinel_library)
-    {
+    if is_cuda_runtime_available_in(drivers_dir) {
         return Ok(true);
     }
 
@@ -250,7 +416,7 @@ pub fn ensure_cudnn_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bo
         .unwrap_or(false)
     {
         tracing::info!(
-            "Skipping automatic cuDNN 9 download because CLUAIZ_DISABLE_CUDNN_AUTODOWNLOAD is set"
+            "Skipping automatic CUDA/cuDNN 9 download because CLUAIZ_DISABLE_CUDNN_AUTODOWNLOAD is set"
         );
         return Ok(false);
     }
@@ -258,55 +424,84 @@ pub fn ensure_cudnn_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bo
     std::fs::create_dir_all(drivers_dir)
         .with_context(|| format!("failed to create drivers directory {:?}", drivers_dir))?;
 
-    let url = format!("{}{}", manifest.base_url, source.relative_path);
-    let archive_ext = if source.relative_path.ends_with(".zip") {
-        "zip"
-    } else {
-        "tar.xz"
-    };
-    let part_archive = drivers_dir.join(format!(
-        "cudnn-{}-{}.part.{}",
-        manifest.version,
-        std::process::id(),
-        archive_ext
-    ));
-
-    tracing::info!(
-        version = %manifest.version,
-        platform = %source.platform,
-        bytes = source.bytes,
-        "Downloading NVIDIA cuDNN 9 runtime archive for ONNX CUDA Execution Provider"
-    );
-
-    let download_result = (|| -> Result<()> {
-        download_to_file(&url, &part_archive, source.bytes)?;
-        verify_archive_file(&part_archive, source.bytes, &source.sha256)?;
-        if archive_ext == "zip" {
-            extract_cudnn_from_zip(&part_archive, drivers_dir, source)?;
-        } else {
-            extract_cudnn_from_tar_xz(&part_archive, drivers_dir, source)?;
+    for comp in &v_manifest.components {
+        let Some(source) = comp.platforms.iter().find(|p| p.platform == key) else {
+            bail!(
+                "no platform entry '{}' for CUDA component '{}' ({})",
+                key,
+                comp.component,
+                cuda_variant
+            );
+        };
+        if is_component_available(drivers_dir, source) {
+            continue;
         }
-        Ok(())
-    })();
 
-    let _ = std::fs::remove_file(&part_archive);
-    download_result?;
+        let url = format!("{}{}", comp.base_url, source.relative_path);
+        let archive_ext = if source.relative_path.ends_with(".zip") {
+            "zip"
+        } else {
+            "tar.xz"
+        };
+        let part_archive = drivers_dir.join(format!(
+            "{}-{}-{}.part.{}",
+            comp.component,
+            comp.version,
+            std::process::id(),
+            archive_ext
+        ));
 
-    if !is_cudnn_in_drivers_dir(drivers_dir, source) {
-        bail!(
-            "cuDNN archive extracted but sentinel library '{}' was not found in {:?}",
-            source.sentinel_library,
-            drivers_dir
+        tracing::info!(
+            component = %comp.component,
+            version = %comp.version,
+            cuda_variant = %cuda_variant,
+            platform = %source.platform,
+            bytes = source.bytes,
+            "Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider"
         );
+
+        let download_result = (|| -> Result<()> {
+            download_to_file(&url, &part_archive, source.bytes)?;
+            verify_archive_file(&part_archive, source.bytes, &source.sha256)?;
+            if archive_ext == "zip" {
+                extract_component_from_zip(&part_archive, drivers_dir, source)?;
+            } else {
+                extract_component_from_tar_xz(&part_archive, drivers_dir, source)?;
+            }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&part_archive);
+        download_result?;
+
+        if !is_component_in_drivers_dir(drivers_dir, source) {
+            bail!(
+                "component '{}' extracted but sentinel libraries {:?} were not found in {:?}",
+                comp.component,
+                source.sentinel_libraries,
+                drivers_dir
+            );
+        }
     }
 
-    let _ = std::fs::write(drivers_dir.join("cudnn9.ready"), &manifest.version);
+    let _ = std::fs::write(drivers_dir.join("cudnn9.ready"), &v_manifest.cudnn_version);
+    let _ = std::fs::write(
+        drivers_dir.join("cuda_runtime.ready"),
+        format!("{}:{}", v_manifest.cuda_variant, v_manifest.cuda_version),
+    );
     tracing::info!(
-        version = %manifest.version,
+        cuda_variant = %v_manifest.cuda_variant,
+        cuda_version = %v_manifest.cuda_version,
+        cudnn_version = %v_manifest.cudnn_version,
         drivers_dir = ?drivers_dir,
-        "NVIDIA cuDNN 9 runtime libraries installed into engine drivers directory"
+        "NVIDIA CUDA and cuDNN 9 runtime libraries installed into engine drivers directory"
     );
     Ok(true)
+}
+
+/// Alias preserved for callers and tests invoking `ensure_cudnn_ready`.
+pub fn ensure_cudnn_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bool> {
+    ensure_cuda_runtime_ready(drivers_dir, has_nvidia_gpu)
 }
 
 fn download_to_file(url: &str, dest: &Path, expected_bytes: u64) -> Result<()> {
@@ -367,12 +562,40 @@ pub fn verify_archive_file(path: &Path, expected_bytes: u64, expected_sha256: &s
     Ok(())
 }
 
-/// Extracts matching cuDNN runtime shared libraries (`bin/cudnn*.dll`) from a verified ZIP archive
-/// into `drivers_dir` using atomic `.part` renames.
+/// Extracts matching runtime shared libraries from a verified ZIP archive into `drivers_dir`
+/// using atomic `.part` renames.
+pub fn extract_component_from_zip(
+    archive_path: &Path,
+    drivers_dir: &Path,
+    source: &CudaComponentPlatformSource,
+) -> Result<usize> {
+    extract_libraries_from_zip(
+        archive_path,
+        drivers_dir,
+        &source.library_prefix,
+        &source.library_extension,
+    )
+}
+
+/// Extracts matching cuDNN runtime shared libraries from a verified ZIP archive into `drivers_dir`.
 pub fn extract_cudnn_from_zip(
     archive_path: &Path,
     drivers_dir: &Path,
     source: &CudnnPlatformSource,
+) -> Result<usize> {
+    extract_libraries_from_zip(
+        archive_path,
+        drivers_dir,
+        &source.library_prefix,
+        &source.library_extension,
+    )
+}
+
+fn extract_libraries_from_zip(
+    archive_path: &Path,
+    drivers_dir: &Path,
+    library_prefix: &str,
+    library_extension: &str,
 ) -> Result<usize> {
     let file = File::open(archive_path)?;
     let mut zip = zip::ZipArchive::new(BufReader::new(file))
@@ -397,8 +620,8 @@ pub fn extract_cudnn_from_zip(
             s.eq_ignore_ascii_case("bin") || s.eq_ignore_ascii_case("lib")
         });
         if !in_bin_or_lib
-            || !file_name.starts_with(&source.library_prefix)
-            || !file_name.contains(&source.library_extension)
+            || !file_name.starts_with(library_prefix)
+            || !file_name.contains(library_extension)
         {
             continue;
         }
@@ -418,17 +641,21 @@ pub fn extract_cudnn_from_zip(
     }
 
     if extracted_count == 0 {
-        bail!("no cuDNN runtime libraries matched inside {:?}", archive_path);
+        bail!(
+            "no runtime libraries matching prefix '{}' found inside {:?}",
+            library_prefix,
+            archive_path
+        );
     }
     Ok(extracted_count)
 }
 
-fn extract_cudnn_from_tar_xz(
+fn extract_component_from_tar_xz(
     archive_path: &Path,
     drivers_dir: &Path,
-    source: &CudnnPlatformSource,
+    source: &CudaComponentPlatformSource,
 ) -> Result<usize> {
-    let temp_extract = drivers_dir.join(format!("cudnn-extract-{}", std::process::id()));
+    let temp_extract = drivers_dir.join(format!("cuda-extract-{}", std::process::id()));
     std::fs::create_dir_all(&temp_extract)?;
 
     let status = std::process::Command::new("tar")
@@ -437,7 +664,7 @@ fn extract_cudnn_from_tar_xz(
         .arg("-C")
         .arg(&temp_extract)
         .status()
-        .context("failed to invoke system 'tar' to extract cuDNN .tar.xz archive")?;
+        .context("failed to invoke system 'tar' to extract CUDA/cuDNN .tar.xz archive")?;
 
     if !status.success() {
         let _ = std::fs::remove_dir_all(&temp_extract);
@@ -467,9 +694,8 @@ fn extract_cudnn_from_tar_xz(
             if let Ok(meta) = std::fs::metadata(&path) {
                 if meta.is_file() && meta.len() > 0 {
                     let target = drivers_dir.join(file_name);
-                    std::fs::copy(&path, &target).with_context(|| {
-                        format!("failed to copy {:?} to {:?}", path, target)
-                    })?;
+                    std::fs::copy(&path, &target)
+                        .with_context(|| format!("failed to copy {:?} to {:?}", path, target))?;
                     extracted_count += 1;
                 }
             }
@@ -478,7 +704,11 @@ fn extract_cudnn_from_tar_xz(
 
     let _ = std::fs::remove_dir_all(&temp_extract);
     if extracted_count == 0 {
-        bail!("no cuDNN shared libraries found in {:?}", archive_path);
+        bail!(
+            "no shared libraries matching prefix '{}' found in {:?}",
+            source.library_prefix,
+            archive_path
+        );
     }
     Ok(extracted_count)
 }
@@ -488,17 +718,58 @@ mod tests {
     use super::*;
 
     #[test]
-    fn manifest_parses_and_pins_all_supported_platforms() {
+    fn manifest_parses_both_cuda12_and_cuda13_with_all_four_components() {
         let m = manifest().expect("cudnn_sources.json must parse");
         assert_eq!(m.version, "9.8.0.87");
-        assert_eq!(m.cuda_variant, "cuda12");
-        assert!(m.base_url.starts_with("https://developer.download.nvidia.com/"));
-        for key in ["windows-x86_64", "linux-x86_64", "linux-aarch64"] {
-            let src = platform_source(key).unwrap_or_else(|| panic!("missing platform {key}"));
-            assert_eq!(src.sha256.len(), 64, "invalid sha256 for {key}");
-            assert!(src.bytes > 100_000_000, "unexpected byte size for {key}");
-            assert!(!src.sentinel_library.is_empty());
+        assert_eq!(m.cuda_variants.len(), 2);
+
+        for variant_key in ["cuda12", "cuda13"] {
+            let vm = variant_manifest(variant_key)
+                .unwrap_or_else(|| panic!("missing variant {variant_key}"));
+            let comp_names: Vec<&str> = vm.components.iter().map(|c| c.component.as_str()).collect();
+            assert_eq!(
+                comp_names,
+                vec!["cuda_cudart", "libcublas", "libcufft", "cudnn"],
+                "unexpected components for {variant_key}"
+            );
+            for comp in &vm.components {
+                assert!(comp.base_url.starts_with("https://developer.download.nvidia.com/"));
+                for plat in &comp.platforms {
+                    assert_eq!(
+                        plat.sha256.len(),
+                        64,
+                        "invalid sha256 for {variant_key}/{}/{}",
+                        comp.component,
+                        plat.platform
+                    );
+                    assert!(plat.bytes > 500_000);
+                    assert!(!plat.sentinel_libraries.is_empty());
+                }
+            }
         }
+    }
+
+    #[test]
+    fn provider_binary_inspection_distinguishes_cuda12_and_cuda13() {
+        let fake_cuda12_pe = b"MZ\x90\x00...import_table...cublas64_12.dll\0cudart64_12.dll\0";
+        assert_eq!(
+            detect_cuda_variant_from_provider_bytes(fake_cuda12_pe),
+            Some("cuda12")
+        );
+
+        let fake_cuda13_pe = b"MZ\x90\x00...import_table...cublas64_13.dll\0cudart64_13.dll\0";
+        assert_eq!(
+            detect_cuda_variant_from_provider_bytes(fake_cuda13_pe),
+            Some("cuda13")
+        );
+
+        let fake_linux_cuda13 = b"\x7fELF...libcublas.so.13\0libcudart.so.13\0";
+        assert_eq!(
+            detect_cuda_variant_from_provider_bytes(fake_linux_cuda13),
+            Some("cuda13")
+        );
+
+        assert_eq!(detect_cuda_variant_from_provider_bytes(b"no_cuda_imports"), None);
     }
 
     #[test]

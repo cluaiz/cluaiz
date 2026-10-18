@@ -362,6 +362,9 @@ async fn main() -> Result<()> {
         CliCommand::Status => cli::status::execute(),
         CliCommand::Calibrate => {
             let _ = cluaiz_hw::HardwareProber::calibrate();
+            if let Err(err) = onnx_engine::cudnn_driver::provision_cuda_runtime_at_setup() {
+                tracing::warn!("CUDA/cuDNN 9 runtime provisioning during calibrate returned: {}", err);
+            }
             println!("Hardware profile re-scanned.");
             cli::status::execute();
         }
