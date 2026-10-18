@@ -5,6 +5,7 @@
 use crate::models::fetcher::asset_bundler::AssetBundler;
 use crate::models::taxonomy::classifier::UniversalModelClassifier;
 use crate::models::taxonomy::quantization::UniversalQuantization;
+use crate::models::taxonomy::stt_families::SttTaxonomy;
 use crate::models::taxonomy::tts_families::TtsTaxonomy;
 use crate::models::types::manifest::ModelManifest;
 use reqwest::Client;
@@ -278,19 +279,72 @@ impl HuggingFaceHub {
             }
         }
 
-        // 2. Process ONNX models (Bundling .onnx.data companion binary shards via SSOT)
-        for item in &items {
-            let lower = item.path.to_lowercase();
-            if lower.ends_with(".onnx") && !TtsTaxonomy::is_subcomponent_file(&item.path) {
-                let mut bundle_files = vec![item.path.clone()];
-                let mut total_size = item.size.unwrap_or(0);
-                let parent_dir = Path::new(&item.path)
+        // 2. Process ONNX models (Bundling .onnx.data companion binary shards & STT sub-graphs via SSOT)
+        let has_stt_encoder_in_dir = |dir: &str| -> bool {
+            items.iter().any(|candidate| {
+                let c_lower = candidate.path.to_lowercase();
+                let c_parent = Path::new(&candidate.path)
                     .parent()
                     .and_then(|p| p.to_str())
                     .unwrap_or("");
-                let clean_base = UniversalQuantization::strip_onnx_companion_suffix(&item.path);
+                c_parent == dir
+                    && c_lower.ends_with(".onnx")
+                    && !TtsTaxonomy::is_subcomponent_file(&candidate.path)
+                    && !SttTaxonomy::is_subcomponent_file(&candidate.path)
+            })
+        };
 
-                // Pair matching companion .onnx.data shards
+        for item in &items {
+            let lower = item.path.to_lowercase();
+            let parent_dir = Path::new(&item.path)
+                .parent()
+                .and_then(|p| p.to_str())
+                .unwrap_or("");
+            let is_stt_subcomponent =
+                SttTaxonomy::is_subcomponent_file(&item.path) && has_stt_encoder_in_dir(parent_dir);
+            if lower.ends_with(".onnx")
+                && !TtsTaxonomy::is_subcomponent_file(&item.path)
+                && !is_stt_subcomponent
+            {
+                let mut bundle_files = vec![item.path.clone()];
+                let mut total_size = item.size.unwrap_or(0);
+                let fname = Path::new(&item.path)
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or(&item.path)
+                    .to_string();
+                let quant_tag = UniversalQuantization::extract_quant_tag(&fname);
+
+                // Pair companion STT sub-component .onnx graphs (e.g. decoder_model*.onnx, uncached_decode.onnx) in same dir with matching quantization
+                for sub_item in &items {
+                    let s_path = &sub_item.path;
+                    let s_lower = s_path.to_lowercase();
+                    let s_parent = Path::new(s_path)
+                        .parent()
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("");
+                    if s_path != &item.path
+                        && s_parent == parent_dir
+                        && s_lower.ends_with(".onnx")
+                        && SttTaxonomy::is_subcomponent_file(s_path)
+                    {
+                        let s_fname = Path::new(s_path)
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or(s_path);
+                        let s_quant = UniversalQuantization::extract_quant_tag(s_fname);
+                        if s_quant == quant_tag && !bundle_files.contains(s_path) {
+                            bundle_files.push(s_path.clone());
+                            total_size += sub_item.size.unwrap_or(0);
+                        }
+                    }
+                }
+
+                // Pair matching companion .onnx.data shards for all bundled ONNX graphs
+                let bundled_bases: Vec<String> = bundle_files
+                    .iter()
+                    .map(|p| UniversalQuantization::strip_onnx_companion_suffix(p))
+                    .collect();
                 for data_item in &items {
                     let d_path = &data_item.path;
                     let d_parent = Path::new(d_path)
@@ -301,8 +355,8 @@ impl HuggingFaceHub {
                     if UniversalQuantization::is_onnx_companion_file(d_path)
                         && (d_parent == parent_dir || d_path.starts_with(parent_dir))
                     {
-                        if UniversalQuantization::strip_onnx_companion_suffix(d_path) == clean_base
-                        {
+                        let d_base = UniversalQuantization::strip_onnx_companion_suffix(d_path);
+                        if bundled_bases.contains(&d_base) && !bundle_files.contains(d_path) {
                             bundle_files.push(d_path.clone());
                             total_size += data_item.size.unwrap_or(0);
                         }
@@ -318,12 +372,6 @@ impl HuggingFaceHub {
                 AssetBundler::filter_duplicate_metadata_files(&mut bundle_files, &item.path);
 
                 let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
-                let fname = Path::new(&item.path)
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or(&item.path)
-                    .to_string();
-                let quant_tag = UniversalQuantization::extract_quant_tag(&fname);
 
                 variants.push(HfVariant {
                     variant_id: fname.clone(),

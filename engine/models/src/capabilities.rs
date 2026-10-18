@@ -93,7 +93,10 @@ impl PackageCapabilities {
                 Err(error) => diagnostics.push(format!("{}: {error}", path.display())),
             }
         }
-        let audio = graphs.iter().any(|g| g.has_input("input_features"));
+        let has_decoder = graphs.iter().any(|g| g.has_input("encoder_hidden_states"));
+        let audio = graphs.iter().any(|g| {
+            g.has_input("input_features") || (g.has_input("input_values") && has_decoder)
+        });
         let text = !audio && (graphs[0].has_input("input_ids") || graphs[0].is_tts);
         let image = graphs[0].is_vision;
         let inputs = [
@@ -136,14 +139,17 @@ impl PackageCapabilities {
         if primary.is_tts {
             tasks.push("text-to-speech".into());
         }
-        if self
+        let has_decoder = self
             .onnx_graphs
             .iter()
-            .any(|g| g.has_input("input_features"))
-        {
+            .any(|g| g.has_input("encoder_hidden_states"));
+        let is_asr_package = self.onnx_graphs.iter().any(|g| {
+            g.has_input("input_features") || (g.has_input("input_values") && has_decoder)
+        });
+        if is_asr_package {
             tasks.push("automatic-speech-recognition".into());
         }
-        if primary.is_embedding {
+        if primary.is_embedding && !is_asr_package {
             if primary.is_vision {
                 tasks.push("image-feature-extraction".into());
             } else if primary.has_input("input_ids") {
@@ -164,7 +170,10 @@ impl PackageCapabilities {
             if graph.has_input("input_ids") {
                 required.insert("tokenizer.json".to_owned());
             }
-            if graph.is_vision || graph.has_input("input_features") {
+            if graph.is_vision
+                || graph.has_input("input_features")
+                || graph.has_input("input_values")
+            {
                 required.insert("preprocessor_config.json".to_owned());
             }
             if graph

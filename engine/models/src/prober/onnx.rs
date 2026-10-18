@@ -77,8 +77,9 @@ impl OnnxProber {
             bail!("ONNX graph has no usable signature");
         }
         result.is_vision = result.has_input("pixel_values");
-        result.is_asr =
-            result.has_input("input_features") || result.has_input("encoder_hidden_states");
+        result.is_asr = result.has_input("input_features")
+            || result.has_input("input_values")
+            || result.has_input("encoder_hidden_states");
         result.is_tts = (result.has_input("input_lengths") && result.has_input("scales"))
             || (result.has_input("tokens")
                 && result.has_input("style")

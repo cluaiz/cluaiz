@@ -181,3 +181,28 @@ fn test_capabilities_installed_package_read_only() {
     println!("{}", serde_json::to_string_pretty(&package).unwrap());
     assert!(!package.inputs.is_empty());
 }
+
+#[test]
+fn test_moonshine_raw_waveform_asr_package_detects_audio_and_asr_task() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let encoder_path = dir.path().join("encoder_model.onnx");
+    let decoder_path = dir.path().join("decoder_model.onnx");
+    crate::test_fixtures::onnx(&encoder_path, "input_values", "last_hidden_state", None);
+    crate::test_fixtures::onnx(&decoder_path, "encoder_hidden_states", "logits", None);
+
+    let package = PackageCapabilities::inspect(&encoder_path)?;
+    assert_eq!(package.supported_inputs(), [Modality::Audio]);
+    assert_eq!(package.onnx_tasks(), ["automatic-speech-recognition"]);
+    assert_eq!(
+        package.missing_onnx_assets(),
+        ["preprocessor_config.json"]
+    );
+
+    std::fs::write(
+        dir.path().join("preprocessor_config.json"),
+        r#"{"feature_extractor_type":"MoonshineFeatureExtractor","sampling_rate":16000}"#,
+    )?;
+    let complete = PackageCapabilities::inspect(&encoder_path)?;
+    assert!(complete.missing_onnx_assets().is_empty());
+    Ok(())
+}
