@@ -10,6 +10,11 @@ include!(concat!(env!("OUT_DIR"), "/mtmd_bindings.rs"));
 extern "C" {
     /// KV positions a chunk occupies (an M-RoPE image uses fewer positions than tokens).
     pub fn mtmd_input_chunk_get_n_pos(chunk: *const mtmd_input_chunk) -> i32;
+    /// Logger for mtmd and its CLIP encoder (it prints to stderr until one is set).
+    pub fn mtmd_helper_log_set(
+        log_callback: Option<crate::ffi::llama_cpp::LlamaLogCallback>,
+        user_data: *mut std::ffi::c_void,
+    );
 }
 
 #[cfg(test)]

@@ -734,12 +734,29 @@ impl MediaInput {
             let chunk_count = mtmd::mtmd_input_chunks_size(chunks.0.as_ptr());
             // Reuse the KV of the previous media turn up to where this prompt first differs
             let (mut keep, mut first, mut skip) = cache_prefix(&self.cached, &layout);
+            let swa = llama_cpp::llama_model_n_swa(llama.model_ptr) > 0;
             if keep > 0 {
-                // A sliding-window cache keeps only the latest positions (llama-server's check)
+                // A sliding-window cache keeps only the latest positions (llama-server's check): restart
+                // at the newest checkpoint inside the kept prefix, else process everything again
                 let n_swa = llama_cpp::llama_model_n_swa(llama.model_ptr).max(1);
-                if llama_cpp::llama_memory_seq_pos_min(memory, 0) > (keep - n_swa).max(0)
-                    || !llama_cpp::llama_memory_seq_rm(memory, 0, keep, -1)
-                {
+                if llama_cpp::llama_memory_seq_pos_min(memory, 0) > (keep - n_swa).max(0) {
+                    let ctx = llama.ctx_ptr;
+                    (keep, first, skip) = llama
+                        .checkpoints
+                        .iter()
+                        .rev()
+                        .filter(|c| c.n_tokens > 0 && c.n_tokens <= keep)
+                        .find_map(|c| text_position(&layout, c.n_tokens).map(|(i, o)| (c, i, o)))
+                        .filter(|(c, _, _)| super::context::load_checkpoint(ctx, c))
+                        .map_or((0, 0, 0), |(c, i, o)| (c.n_tokens, i, o));
+                    if keep > 0 {
+                        tracing::info!(
+                            "🧠 [Context] Restarted from the checkpoint at {} positions (sliding window)",
+                            keep
+                        );
+                    }
+                }
+                if keep > 0 && !llama_cpp::llama_memory_seq_rm(memory, 0, keep, -1) {
                     (keep, first, skip) = (0, 0, 0);
                 }
             }
@@ -747,6 +764,7 @@ impl MediaInput {
                 llama_cpp::llama_memory_clear(memory, true);
                 (first, skip) = (0, 0);
             }
+            llama.checkpoints.retain(|c| c.n_tokens <= keep);
             report.cache_n = keep as usize;
             let mut n_past = keep;
             let mut processed = layout[..first]
@@ -790,36 +808,30 @@ impl MediaInput {
                         .and_then(|index| self.targets.get(index))
                         .map(|&(m, n)| p.attachment(m, n))
                 });
-                let code = if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT
-                    && i == first
-                    && skip > 0
-                {
-                    // Part of this text is already in the cache: process only the rest
+                let is_text = kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT;
+                let last = i + 1 == chunk_count;
+                let code = if is_text && ((i == first && skip > 0) || (swa && last)) {
+                    // Text processed here: the part not in the cache, and for a sliding-window model
+                    // a checkpoint a few tokens before the prompt end (llama-server's offsets)
                     let CachedChunk::Text(tokens) = &layout[i] else {
                         bail!("Media layout does not match its chunks");
                     };
-                    let rest = &tokens[skip..];
-                    let step = llama.n_batch.max(1) as usize;
-                    let mut batch = super::context::SafeBatch {
-                        batch: llama_cpp::llama_batch_init(step as i32, 0, 1),
+                    let rest = &tokens[if i == first { skip } else { 0 }..];
+                    let split = if swa && last && rest.len() > super::context::CHECKPOINT_TAIL {
+                        rest.len() - super::context::CHECKPOINT_TAIL
+                    } else {
+                        0
                     };
-                    let mut code = 0;
-                    for (part_index, part) in rest.chunks(step).enumerate() {
-                        let last_part = (part_index + 1) * step >= rest.len();
-                        for (j, token) in part.iter().enumerate() {
-                            *batch.batch.token.add(j) = *token;
-                            *batch.batch.pos.add(j) = n_past + j as i32;
-                            *batch.batch.n_seq_id.add(j) = 1;
-                            *(*batch.batch.seq_id.add(j)).add(0) = 0;
-                            *batch.batch.logits.add(j) =
-                                i8::from(i + 1 == chunk_count && last_part && j + 1 == part.len());
+                    let mut code = decode_text(llama, &rest[..split], &mut n_past, false);
+                    if code == 0 && split > 0 {
+                        if let Some(checkpoint) =
+                            super::context::take_checkpoint(llama.ctx_ptr, n_past)
+                        {
+                            super::context::remember_checkpoint(&mut llama.checkpoints, checkpoint);
                         }
-                        batch.batch.n_tokens = part.len() as i32;
-                        code = llama_cpp::llama_decode(llama.ctx_ptr, batch.batch);
-                        if code != 0 {
-                            break;
-                        }
-                        n_past += part.len() as i32;
+                    }
+                    if code == 0 {
+                        code = decode_text(llama, &rest[split..], &mut n_past, last);
                     }
                     code
                 } else if kind == mtmd::mtmd_input_chunk_type_MTMD_INPUT_CHUNK_TYPE_TEXT {
@@ -882,6 +894,7 @@ impl MediaInput {
                 };
                 if code != 0 || llama.interrupt_signal.load(Ordering::Acquire) {
                     llama_cpp::llama_memory_clear(memory, true);
+                    llama.checkpoints.clear();
                     bail!("Native media evaluation failed/cancelled with code {code}");
                 }
                 processed += mtmd::mtmd_input_chunk_get_n_tokens(chunk) as u64;
@@ -930,6 +943,60 @@ impl MediaInput {
             })
         }
     }
+}
+
+/// Chunk index and offset of a KV position in `layout`: inside a text chunk, or at the start of a media
+/// chunk (None inside media, which cannot be split).
+fn text_position(layout: &[CachedChunk], pos: i32) -> Option<(usize, usize)> {
+    let mut start = 0_i32;
+    for (i, chunk) in layout.iter().enumerate() {
+        match chunk {
+            CachedChunk::Text(tokens) => {
+                if pos < start + tokens.len() as i32 {
+                    return Some((i, (pos - start) as usize));
+                }
+                start += tokens.len() as i32;
+            }
+            CachedChunk::Media { n_pos, .. } => {
+                if pos == start {
+                    return Some((i, 0));
+                }
+                if pos < start + n_pos {
+                    return None;
+                }
+                start += n_pos;
+            }
+        }
+    }
+    None
+}
+
+/// Decodes text tokens at positions from `n_past` on; logits only for the last one when asked.
+///
+/// # Safety
+/// `llama` is the live context the media prompt is being evaluated into.
+unsafe fn decode_text(llama: &NativeLlama, tokens: &[i32], n_past: &mut i32, logits_last: bool) -> i32 {
+    let step = llama.n_batch.max(1) as usize;
+    let mut batch = super::context::SafeBatch {
+        batch: llama_cpp::llama_batch_init(step as i32, 0, 1),
+    };
+    for (part_index, part) in tokens.chunks(step).enumerate() {
+        let last_part = (part_index + 1) * step >= tokens.len();
+        for (j, token) in part.iter().enumerate() {
+            *batch.batch.token.add(j) = *token;
+            *batch.batch.pos.add(j) = *n_past + j as i32;
+            *batch.batch.n_seq_id.add(j) = 1;
+            *(*batch.batch.seq_id.add(j)).add(0) = 0;
+            *batch.batch.logits.add(j) = i8::from(logits_last && last_part && j + 1 == part.len());
+        }
+        batch.batch.n_tokens = part.len() as i32;
+        let code = llama_cpp::llama_decode(llama.ctx_ptr, batch.batch);
+        if code != 0 {
+            return code;
+        }
+        *n_past += part.len() as i32;
+    }
+    0
 }
 
 struct DecodeObservation<'a> {

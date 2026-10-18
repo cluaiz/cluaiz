@@ -13,6 +13,60 @@ impl Drop for SafeBatch {
     }
 }
 
+/// llama-server's context checkpoint: the part of the KV cache that cannot be rolled back (the
+/// sliding-window cells) as it was after the first `n_tokens` positions. A later prompt that differs
+/// after that point restarts there instead of processing everything again.
+#[derive(Clone)]
+pub struct Checkpoint {
+    pub n_tokens: i32,
+    pub data: Vec<u8>,
+}
+
+const STATE_SEQ_PARTIAL_ONLY: u32 = 1;
+/// Checkpoints kept per context (the newest replace the oldest)
+pub(crate) const MAX_CHECKPOINTS: usize = 4;
+/// Prompt tokens processed after the checkpoint: llama-server checkpoints 4 tokens before the end
+/// of a prompt, so the generation prompt (which history renders differently) stays after it.
+pub(crate) const CHECKPOINT_TAIL: usize = 4;
+
+/// Copies the sliding-window state now, labelled with the positions processed so far.
+///
+/// # Safety
+/// `ctx_ptr` is a live context whose sequence 0 holds positions 0..n_tokens.
+pub(crate) unsafe fn take_checkpoint(ctx_ptr: *mut std::ffi::c_void, n_tokens: i32) -> Option<Checkpoint> {
+    let size = llama_cpp::llama_state_seq_get_size_ext(ctx_ptr, 0, STATE_SEQ_PARTIAL_ONLY);
+    if size == 0 {
+        return None;
+    }
+    let mut data = vec![0_u8; size];
+    let written = llama_cpp::llama_state_seq_get_data_ext(ctx_ptr, data.as_mut_ptr(), size, 0, STATE_SEQ_PARTIAL_ONLY);
+    (written == size).then_some(Checkpoint { n_tokens, data })
+}
+
+/// Puts a checkpoint's sliding-window state back; the caller then removes positions >= n_tokens.
+///
+/// # Safety
+/// `ctx_ptr` is the live context the checkpoint was taken from (same model and KV layout).
+pub(crate) unsafe fn load_checkpoint(ctx_ptr: *mut std::ffi::c_void, checkpoint: &Checkpoint) -> bool {
+    llama_cpp::llama_state_seq_set_data_ext(
+        ctx_ptr,
+        checkpoint.data.as_ptr(),
+        checkpoint.data.len(),
+        0,
+        STATE_SEQ_PARTIAL_ONLY,
+    ) != 0
+}
+
+/// Adds a checkpoint, replacing one at the same position and dropping the oldest past the limit.
+pub(crate) fn remember_checkpoint(list: &mut Vec<Checkpoint>, checkpoint: Checkpoint) {
+    list.retain(|c| c.n_tokens != checkpoint.n_tokens);
+    list.push(checkpoint);
+    list.sort_by_key(|c| c.n_tokens);
+    while list.len() > MAX_CHECKPOINTS {
+        list.remove(0);
+    }
+}
+
 /// llama-server's context shift: removes the `n_discard` KV positions after the first `n_keep` and
 /// moves the following ones back, up to `n_past`. The caller removes the same range from its token list.
 ///
