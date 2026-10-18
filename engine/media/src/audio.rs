@@ -63,11 +63,16 @@ pub fn decode_audio(bytes: Vec<u8>, limits: MediaLimits) -> Result<DecodedAudio>
         {
             bail!("Unsupported Opus channel mapping/header");
         }
-        let channels = parameters
+        // OpusHead owns the output channel count (RFC 7845 section 5.1).
+        // MKV/WebM may expose only channel_layout, while Ogg supplies channels.
+        let channels = usize::from(header[9]);
+        if parameters
             .channels
-            .context("Opus track is missing channel metadata")?
-            .count();
-        if usize::from(header[9]) != channels {
+            .is_some_and(|mask| mask.count() != channels)
+            || parameters
+                .channel_layout
+                .is_some_and(|layout| layout.into_channels().count() != channels)
+        {
             bail!("Opus channel metadata mismatch");
         }
         (

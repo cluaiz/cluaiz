@@ -167,3 +167,47 @@ fn test_audio_real_opus_packet_decodes_in_ogg_container() {
         assert!((scaled - original * factor).abs() < 0.00001);
     }
 }
+
+#[test]
+fn test_audio_webm_opus_mono_and_stereo_decode_without_channel_mask() {
+    for (bytes, channels) in [
+        (
+            include_bytes!("../tests/fixtures/opus-mono.webm").as_slice(),
+            1,
+        ),
+        (
+            include_bytes!("../tests/fixtures/opus-stereo.webm").as_slice(),
+            2,
+        ),
+    ] {
+        // Real streaming-layout containers: the MKV demuxer supplies a layout,
+        // not CodecParameters::channels. No ffmpeg process runs in this test.
+        let decoded = decode_audio(bytes.to_vec(), MediaLimits::default()).unwrap();
+        assert_eq!(
+            (decoded.sample_rate(), decoded.channels()),
+            (OPUS_RATE, channels)
+        );
+        let frames = decoded.samples().len() / usize::from(channels);
+        assert!((3_840..=5_760).contains(&frames));
+        assert!(decoded.samples().iter().all(|sample| sample.is_finite()));
+        assert!(decoded.samples().iter().any(|sample| sample.abs() > 0.01));
+        assert!(decode_audio(bytes.to_vec(), MediaLimits::new(4_096, 32).unwrap()).is_err());
+    }
+}
+
+#[test]
+fn test_audio_webm_opus_rejects_conflicting_or_unsupported_header() {
+    let bytes = include_bytes!("../tests/fixtures/opus-mono.webm");
+    let header = bytes
+        .windows(8)
+        .position(|part| part == b"OpusHead")
+        .unwrap();
+    // Zero/unsupported channels, disagreement with the container's mono layout,
+    // incompatible header version and unsupported channel mapping all reject.
+    for (offset, value) in [(9, 0), (9, 2), (9, 3), (8, 16), (18, 1)] {
+        let mut corrupt = bytes.to_vec();
+        corrupt[header + offset] = value;
+        assert!(decode_audio(corrupt, MediaLimits::default()).is_err());
+    }
+    assert!(decode_audio(bytes.to_vec(), MediaLimits::default()).is_ok());
+}

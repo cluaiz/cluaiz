@@ -4,6 +4,8 @@
 
 `text_documents.rs` exercises the shared Unicode reader and genuine legacy DOC documents. The common fixture owner builds CFB streams with Word FIB/CLX and actual text pieces; `cfb` is test-only in both consumer crates. Tests cover UTF-8/BOM, UTF-16LE/BE, source-extension handling, invalid/control data, exact byte limits, ANSI/Unicode DOC, alternate tables, corruption/encryption and partial extraction. Extraction-only timings include actual byte counts; they do not measure inference, peak process memory or energy.
 
+[`fixtures/`](fixtures/README.md) contains tiny synthetic mono/stereo WebM Opus recordings used by `src/audio_tests.rs`. Those tests decode real finite nonzero PCM, retain channel/rate metadata and reject unsupported/conflicting headers and workspace excess. This catches the MKV reader's separate channel-layout representation; a MIME/header-only test cannot prove audio decoding. Fixtures are embedded, so test execution needs no FFmpeg or model download. Actual STT and App recording acceptance remain separate.
+
 ```mermaid
 flowchart LR
     A[Test-only genuine document builders] --> B[Shared extraction]
