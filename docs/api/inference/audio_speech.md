@@ -24,7 +24,7 @@ Synthesizes high-fidelity natural speech audio from input text using ONNX-accele
 | **`model`** | String | No | `"piper-en-us-ryan-medium"` | Installed TTS package ID | Neural TTS voice model package ID. |
 | **`voice`** | String | No | `"default"` | `"default"`, or a voice file name of the model (Kokoro: `af_heart`, `am_adam`, `hf_alpha`, `hm_omega` …) | `"default"`/`"auto"` picks a voice that speaks the text's language. Single-voice models (Piper) ignore it. |
 | **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Speaking rate (1.0 = the model's normal pace; 1.25 = faster, 0.8 = slower). |
-| **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream audio response chunks via Server-Sent Events (SSE). |
+| **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Each finished sentence arrives as its own small WAV (`speech.audio.delta`) while the next one is made, so playback can start after the first sentence; the last event holds the whole WAV. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
 
 ---
@@ -120,6 +120,18 @@ async function playSpeech(text, token) {
 ```
 
 ---
+
+## 📡 Streaming (`"stream": true`)
+
+The response is `text/event-stream`. Kokoro and Piper send one event per finished sentence, then the whole audio:
+
+```text
+data: {"status":"chunk","type":"speech.audio.delta","index":0,"format":"wav","audio":"data:audio/wav;base64,UklGR..."}
+data: {"status":"chunk","type":"speech.audio.delta","index":1,"format":"wav","audio":"data:audio/wav;base64,UklGR..."}
+data: {"status":"done","result":{"status":"success","task":"text_to_speech","model":"...","output":{"audio_data":"data:audio/wav;base64,..."}}}
+```
+
+Play the `audio` parts in `index` order, back to back (each is a complete WAV). Parts are clamped, not loudness-normalised; the final `audio_data` is the whole text normalised. Other TTS families send only the final event.
 
 ## 📤 Response Schema & Fields
 

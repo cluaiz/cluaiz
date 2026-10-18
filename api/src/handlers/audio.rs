@@ -326,8 +326,14 @@ pub async fn execute_audio(
     if payload.stream.unwrap_or(true) {
         let stream = async_stream::stream! {
             let mut terminal_seen = false;
+            let mut audio_index = 0_u64;
             while let Some(event) = events.recv().await {
                 let body = match event {
+                    // Speech: each finished phrase as its own WAV, playable in order while the rest is made
+                    Ok(AudioEvent::Chunk(audio)) if task == AudioTask::TextToSpeech => {
+                        audio_index += 1;
+                        json!({"status":"chunk","type":"speech.audio.delta","index":audio_index - 1,"format":"wav","audio":audio})
+                    }
                     Ok(AudioEvent::Chunk(token)) => json!({"status":"chunk","token":token}),
                     Ok(AudioEvent::Completed(output)) => json!({"status":"done","result":completed(model_id.clone(),task,output)}),
                     Err(message) => json!({"status":"error","error":{"type":"engine_error","message":message}}),

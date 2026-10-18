@@ -54,7 +54,7 @@ pub fn route_tts_inference(
     // Only the legacy envelope prefix can select a voice; user text is never metadata.
     let voice = prompt.find("[TEXT_INPUT")
         .and_then(|start| extract_parameter(&prompt[..start], "voice"));
-    route_tts_input(engine, session, &raw_text_input, voice.as_deref(), 1.0)
+    route_tts_input(engine, session, &raw_text_input, voice.as_deref(), 1.0, None)
 }
 
 /// Synthesize actual text without interpreting transport tags as user content.
@@ -63,18 +63,72 @@ pub fn route_tts_text(
     session: &mut Session,
     raw_text_input: &str,
 ) -> Result<String> {
-    route_tts_input(engine, session, raw_text_input, None, 1.0)
+    route_tts_input(engine, session, raw_text_input, None, 1.0, None)
 }
 
+/// Receives each part of the audio as soon as it is final, as a WAV data URI; false stops sending.
+pub type AudioSink<'a> = &'a mut (dyn FnMut(String) -> bool + Send);
+
 /// Synthesize text with a requested voice (None: by language) and speaking rate (1.0 = normal).
+/// With `on_audio`, Kokoro and Piper send each phrase while the next one is synthesized; the
+/// returned WAV is the whole text either way.
 pub fn route_tts_with(
     engine: &crate::engine::OnnxEngine,
     session: &mut Session,
     raw_text_input: &str,
     voice: Option<&str>,
     speed: f32,
+    on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
-    route_tts_input(engine, session, raw_text_input, voice, speed)
+    route_tts_input(engine, session, raw_text_input, voice, speed, on_audio)
+}
+
+/// Sends the part of the audio that later phrases can no longer change. Joining the next phrase
+/// may trim the quiet end of the audio or blend its last samples, so that end is held back until
+/// the next phrase (or the end of the text).
+struct AudioStream<'a> {
+    sink: Option<AudioSink<'a>>,
+    sample_rate: usize,
+    sent: usize,
+}
+
+/// Samples blended when two phrases join without a pause (reading::append_audio)
+const JOIN_OVERLAP: usize = 120;
+/// Below this level a sample may count as the silence a later join trims
+const QUIET_LEVEL: f32 = 0.005;
+
+impl<'a> AudioStream<'a> {
+    fn new(sink: Option<AudioSink<'a>>, sample_rate: usize) -> Self {
+        Self { sink, sample_rate, sent: 0 }
+    }
+
+    fn settled(&mut self, all: &[f32]) {
+        let quiet_end = all.iter().rev().take_while(|v| v.abs() <= QUIET_LEVEL).count();
+        self.send(all, all.len().saturating_sub(quiet_end + JOIN_OVERLAP));
+    }
+
+    fn finish(&mut self, all: &[f32]) {
+        self.send(all, all.len());
+    }
+
+    fn send(&mut self, all: &[f32], end: usize) {
+        let Some(sink) = self.sink.as_mut() else {
+            return;
+        };
+        if end <= self.sent {
+            return;
+        }
+        // Each part is its own small WAV; the level is clamped, not normalised (the whole text's
+        // peak is not known yet)
+        let part: Vec<f32> = all[self.sent..end].iter().map(|v| v.clamp(-0.95, 0.95)).collect();
+        let wav = super::vocoder::NativeVocoder::new(self.sample_rate, 1920, 480, 80).encode_wav_bytes(&part);
+        use base64::Engine;
+        let uri = format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav));
+        if !sink(uri) {
+            self.sink = None; // the client left: stop sending parts
+        }
+        self.sent = end;
+    }
 }
 
 fn route_tts_input(
@@ -83,6 +137,7 @@ fn route_tts_input(
     raw_text_input: &str,
     requested_voice: Option<&str>,
     speed: f32,
+    on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
     if raw_text_input.trim().is_empty() {
         return Err(anyhow!("Text-to-Speech requires non-empty text"));
@@ -139,10 +194,10 @@ fn route_tts_input(
 
     match detected_family {
         super::family_adapter::TtsFamily::VitsPiper => {
-            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed)
+            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed, on_audio)
         }
         super::family_adapter::TtsFamily::Kokoro => {
-            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice, speed)
+            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice, speed, on_audio)
         }
         super::family_adapter::TtsFamily::Matcha => {
             let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
@@ -206,7 +261,7 @@ fn route_tts_input(
         }
         super::family_adapter::TtsFamily::GenericOnnx => {
             tracing::debug!("⚠️ [TTS Router] Unknown family detected. Attempting VITS/Piper handler as fallback.");
-            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed)
+            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed, on_audio)
         }
     }
 }
@@ -219,7 +274,9 @@ fn handle_vits_piper(
     manifest: &super::manifest_loader::TtsModelManifest,
     sample_rate: usize,
     speed: f32,
+    on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
+    let mut stream = AudioStream::new(on_audio, sample_rate);
     tracing::debug!(
         "🎙️ [TTS Router] VITS/Piper Handler Activated with sample_rate={}Hz.",
         sample_rate
@@ -291,10 +348,12 @@ fn handle_vits_piper(
             }
 
             reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
+            stream.settled(&all_pcm_samples);
             pause_before_ms = text_chunk.pause_after_ms;
         }
     }
 
+    stream.finish(&all_pcm_samples);
     let sanitized_pcm = sanitize_audio_pcm(all_pcm_samples)?;
     let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
     use base64::Engine;
@@ -310,7 +369,9 @@ fn handle_kokoro(
     sample_rate: usize,
     requested_voice: Option<&str>,
     speed: f32,
+    on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
+    let mut stream = AudioStream::new(on_audio, sample_rate);
     tracing::debug!(
         "🎙️ [TTS Router] Kokoro Handler Activated with sample_rate={}Hz.",
         sample_rate
@@ -380,9 +441,11 @@ fn handle_kokoro(
             super::families::kokoro::execute(session, &token_ids, &style_vector, speed)?;
 
         reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
+        stream.settled(&all_pcm_samples);
         pause_before_ms = text_chunk.pause_after_ms;
     }
 
+    stream.finish(&all_pcm_samples);
     let sanitized_pcm = sanitize_audio_pcm(all_pcm_samples)?;
     let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
     use base64::Engine;
