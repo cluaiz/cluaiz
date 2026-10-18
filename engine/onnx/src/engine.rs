@@ -200,23 +200,17 @@ impl OnnxEngine {
             1.0
         };
 
-        if free_vram_gb > required_vram {
-            tracing::info!(
-                "📡 [Telemetry] VRAM available ({:.1}GB free, {:.1}GB req). GPU active.",
-                free_vram_gb,
-                required_vram
-            );
-        } else {
-            tracing::info!("📡 [Telemetry] Moderate VRAM pressure ({:.1}GB free, {:.1}GB req). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
-        }
-
         let onnx_meta = self.settings.clone();
+        // Auto: the GPU when the model fits in the free VRAM (another model may hold it), else the
+        // CPU straight away instead of a GPU attempt that fails and reloads on the CPU
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user config.");
-        } else if onnx_meta.n_gpu_layers == -1 {
-            use_gpu = true;
-            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active.");
+        } else if onnx_meta.n_gpu_layers == -1 && free_vram_gb <= required_vram {
+            use_gpu = false;
+            tracing::info!("📡 [Telemetry] {:.1}GB VRAM free, {:.1}GB needed: running on the CPU.", free_vram_gb, required_vram);
+        } else {
+            tracing::info!("📡 [Telemetry] {:.1}GB VRAM free, {:.1}GB needed: running on the GPU.", free_vram_gb, required_vram);
         }
 
         for i in 0..pool_size {
@@ -443,30 +437,24 @@ impl OnnxEngine {
             0.5
         };
 
-        if free_vram_gb > required_vram {
-            tracing::info!(
-                "📡 [Telemetry] Safe VRAM levels for Encoder (Free: {:.1}GB, Req: {:.1}GB).",
-                free_vram_gb,
-                required_vram
-            );
-        } else {
-            tracing::info!("📡 [Telemetry] Moderate VRAM pressure for Encoder (Free: {:.1}GB, Req: {:.1}GB). Attempting CUDA GPU allocation.", free_vram_gb, required_vram);
-        }
-
         let onnx_meta = self.settings.clone();
+        // Same rule as the main graph: the GPU when the encoder fits in the free VRAM, else the CPU
         if onnx_meta.n_gpu_layers == 0 {
             use_gpu = false;
             tracing::info!("⚙️ [ONNX Config] Force CPU mode requested by user for Encoder.");
-        } else if onnx_meta.n_gpu_layers == -1 {
-            use_gpu = true;
-            tracing::info!("⚙️ [ONNX Config] Auto/GPU Mode active for Encoder.");
+        } else if onnx_meta.n_gpu_layers == -1 && free_vram_gb <= required_vram {
+            use_gpu = false;
+            tracing::info!("📡 [Telemetry] Encoder: {:.1}GB VRAM free, {:.1}GB needed: running on the CPU.", free_vram_gb, required_vram);
+        } else {
+            tracing::info!("📡 [Telemetry] Encoder: {:.1}GB VRAM free, {:.1}GB needed: running on the GPU.", free_vram_gb, required_vram);
         }
 
+        // All CPU cores unless the user set a thread count (0 = ONNX Runtime's default: all)
         let encoder_builder = Session::builder()
             .map_err(|e| anyhow::anyhow!("Encoder session builder error: {:?}", e))?
             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
             .map_err(|e| anyhow::anyhow!("Encoder opt level error: {:?}", e))?
-            .with_intra_threads(4)
+            .with_intra_threads(onnx_meta.intra_op_num_threads)
             .map_err(|e| anyhow::anyhow!("Encoder threads error: {:?}", e))?;
 
         let cpu_ep = ort::ep::CPU::default()

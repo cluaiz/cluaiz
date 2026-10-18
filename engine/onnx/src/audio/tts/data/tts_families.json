@@ -1,0 +1,4 @@
+{
+  "_about": "TTS families whose engine runtime is unfinished (they return an error or poor audio). They stay usable when a model is chosen by name, but are never picked automatically. Tags are the tts_family values the downloader writes into the model registry.",
+  "experimental": ["audio8-codec", "supertonic-v3", "matcha-v1", "cosyvoice", "chatterbox", "omnivoice"]
+}

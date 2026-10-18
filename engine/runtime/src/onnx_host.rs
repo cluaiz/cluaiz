@@ -3,6 +3,7 @@ use anyhow::{bail, Context, Result};
 use cluaiz_core::ActiveUserSettings;
 use cluaiz_models::{capabilities::PackageCapabilities, types::manifest::ModelRegistryEntry};
 pub use onnx_engine::media::{AudioInput, AudioOutput, AudioTask, SttOptions};
+pub use onnx_engine::audio::tts::is_experimental_family;
 pub use onnx_engine::text::{EmbeddingInput, EmbeddingOutput};
 use onnx_engine::OnnxEngine;
 use std::{

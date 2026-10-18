@@ -120,7 +120,7 @@ impl OnnxEngine {
             .and_then(|n| n.checked_add(mel_bytes))
             .ok_or_else(|| anyhow!("STT processor workspace size overflow"))?;
         limits.check_decoded_bytes(sample_workspace as u64)?;
-        println!(
+        tracing::debug!(
             "⏱️ [BENCHMARK STT] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {})",
             t_pcm.elapsed(),
             pcm_samples.len() as f32 / config.sample_rate as f32,
@@ -129,7 +129,7 @@ impl OnnxEngine {
 
         let t_mel = std::time::Instant::now();
         let (mel_flat, actual_frames) = compute_log_mel_spectrogram(pcm_samples, &config);
-        println!("⏱️ [BENCHMARK STT] Step B - Mel Spectrogram Compute Time: {:?} (actual_frames: {}, padded_to: {})", t_mel.elapsed(), actual_frames, config.max_frames);
+        tracing::debug!("⏱️ [BENCHMARK STT] Step B - Mel Spectrogram Compute Time: {:?} (actual_frames: {}, padded_to: {})", t_mel.elapsed(), actual_frames, config.max_frames);
         let shape_vec = vec![1usize, config.n_mels, config.max_frames];
 
         let t_enc = std::time::Instant::now();
@@ -153,7 +153,7 @@ impl OnnxEngine {
         );
         drop(outputs);
         drop(encoder);
-        println!(
+        tracing::debug!(
             "⏱️ [BENCHMARK STT] Step C - Encoder ONNX Model Inference Time: {:?}",
             t_enc.elapsed()
         );
@@ -304,7 +304,7 @@ impl OnnxEngine {
                                     if let Ok(lang_name) =
                                         tokenizer.decode(&[detected_id as u32], false)
                                     {
-                                        println!("🌍 [Whisper STT Dynamic Probing] Auto-Detected Language Token: '{}' (ID: {}, Score: {:.4})", lang_name.trim(), detected_id, max_score);
+                                        tracing::debug!("🌍 [Whisper STT Dynamic Probing] Auto-Detected Language Token: '{}' (ID: {}, Score: {:.4})", lang_name.trim(), detected_id, max_score);
                                     }
                                 }
                                 chosen_lang_token = Some(detected_id);
@@ -330,7 +330,7 @@ impl OnnxEngine {
         current_decoder_ids.push(task_token);
         current_decoder_ids.push(no_timestamps);
 
-        println!("🔍 [Whisper Decoder Inputs]: {:?}", decoder_input_names);
+        tracing::debug!("🔍 [Whisper Decoder Inputs]: {:?}", decoder_input_names);
 
         let mut emitted_bytes_offset = 0usize;
         let mut ended = false;
@@ -353,7 +353,7 @@ impl OnnxEngine {
                 }
             }
 
-            println!(
+            tracing::debug!(
                 "🎙️ [Whisper STT Decoder] Step {}/{} running session with {} inputs...",
                 step,
                 max_speech_len,
@@ -373,7 +373,7 @@ impl OnnxEngine {
 
             if raw_extracted.is_none() {
                 for (k, v) in output_tensors.iter() {
-                    println!("🔍 [Whisper STT Decoder] ONNX Output key: '{}'", k);
+                    tracing::debug!("🔍 [Whisper STT Decoder] ONNX Output key: '{}'", k);
                     if let Ok((shape, data)) = v.try_extract_tensor::<f32>() {
                         raw_extracted =
                             Some((shape.iter().map(|&s| s as usize).collect(), data.to_vec()));
@@ -393,7 +393,7 @@ impl OnnxEngine {
                 let offset = (seq_len.saturating_sub(1)) * vocab_size;
 
                 if offset + vocab_size > data.len() {
-                    println!("⚠️ [Whisper STT Decoder] Logits offset out of bounds: shape={:?}, seq_len={}, vocab_size={}, data.len()={}", shape, seq_len, vocab_size, data.len());
+                    tracing::debug!("⚠️ [Whisper STT Decoder] Logits offset out of bounds: shape={:?}, seq_len={}, vocab_size={}, data.len()={}", shape, seq_len, vocab_size, data.len());
                     return Err(anyhow!("STT logits tensor shape is out of bounds"));
                 }
                 let step_logits = &data[offset..offset + vocab_size];
@@ -460,7 +460,7 @@ impl OnnxEngine {
             }
         }
 
-        println!(
+        tracing::debug!(
             "⏱️ [BENCHMARK STT] Total STT Execution Time: {:?}",
             t_start.elapsed()
         );
