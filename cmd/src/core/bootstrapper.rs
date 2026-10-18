@@ -115,6 +115,17 @@ impl Bootstrapper {
         if drivers_dir.exists() {
             tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
+        if has_nvidia {
+            if onnx_engine::cudnn_driver::is_cudnn_available_in(&drivers_dir) {
+                onnx_engine::cudnn_driver::register_drivers_dir_in_path(&drivers_dir);
+                tracing::info!("⚡ NVIDIA cuDNN 9 runtime libraries verified.");
+            } else {
+                tracing::debug!(
+                    "ℹ️ NVIDIA cuDNN 9 not yet present in {:?}; will auto-provision on first CUDA ONNX session load.",
+                    drivers_dir
+                );
+            }
+        }
 
         Ok(())
     }
@@ -184,6 +195,14 @@ impl Bootstrapper {
             ("onnxruntime_providers_cuda", "onnxruntime_providers_cuda"),
             ("onnxruntime_providers_tensorrt", "onnxruntime_providers_tensorrt"),
             ("onnxruntime_providers_nv_tensorrt_rtx", "onnxruntime_providers_nv_tensorrt_rtx"),
+            ("cudnn64_9", "cudnn64_9"),
+            ("cudnn_graph64_9", "cudnn_graph64_9"),
+            ("cudnn_ops64_9", "cudnn_ops64_9"),
+            ("cudnn_cnn64_9", "cudnn_cnn64_9"),
+            ("cudnn_adv64_9", "cudnn_adv64_9"),
+            ("cudnn_heuristic64_9", "cudnn_heuristic64_9"),
+            ("cudnn_engines_precompiled64_9", "cudnn_engines_precompiled64_9"),
+            ("cudnn_engines_runtime_compiled64_9", "cudnn_engines_runtime_compiled64_9"),
         ];
 
         let interface_path = hub_path.join("engine");
@@ -207,7 +226,7 @@ impl Bootstrapper {
                     tracing::warn!("⚠️ [DevSync] {} Kernel Link Failed: {}.", dest_name, e);
                 } else {
                     // Create a ready marker
-                    if !src_name.starts_with("onnxruntime") {
+                    if !src_name.starts_with("onnxruntime") && !src_name.starts_with("cudnn") {
                         let marker_name = format!("{}.ready", dest_name);
                         let marker = "dev-release";
                         let _ = std::fs::write(interface_path.join(marker_name), marker);
@@ -215,7 +234,7 @@ impl Bootstrapper {
                     tracing::info!("🧬 [DevSync] {} Driver Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
                 }
             } else {
-                if target == "drivers" || target == "driver" {
+                if (target == "drivers" || target == "driver") && !src_name.starts_with("cudnn") {
                     tracing::warn!("⚠️ [DevSync] Driver source not found for: {}", src_name);
                 }
             }

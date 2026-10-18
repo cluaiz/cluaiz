@@ -1,0 +1,34 @@
+{
+  "version": "9.8.0.87",
+  "cuda_variant": "cuda12",
+  "base_url": "https://developer.download.nvidia.com/compute/cudnn/redist/",
+  "platforms": [
+    {
+      "platform": "windows-x86_64",
+      "relative_path": "cudnn/windows-x86_64/cudnn-windows-x86_64-9.8.0.87_cuda12-archive.zip",
+      "bytes": 675349654,
+      "sha256": "d8a23705e3884b137b7e05449fb2b61bfa524e7cfc3fda80743d633f423c6ce4",
+      "sentinel_library": "cudnn64_9.dll",
+      "library_prefix": "cudnn",
+      "library_extension": ".dll"
+    },
+    {
+      "platform": "linux-x86_64",
+      "relative_path": "cudnn/linux-x86_64/cudnn-linux-x86_64-9.8.0.87_cuda12-archive.tar.xz",
+      "bytes": 923946888,
+      "sha256": "321b9b33bb1287404d93d5672d352f16feabc4b220ac6ae0b86e4b27f257dcf4",
+      "sentinel_library": "libcudnn.so.9",
+      "library_prefix": "libcudnn",
+      "library_extension": ".so.9"
+    },
+    {
+      "platform": "linux-aarch64",
+      "relative_path": "cudnn/linux-aarch64/cudnn-linux-aarch64-9.8.0.87_cuda12-archive.tar.xz",
+      "bytes": 964790260,
+      "sha256": "f03ece3ff07d1719f06218973a8797cec1be387cc317baab5bb118dc988199e7",
+      "sentinel_library": "libcudnn.so.9",
+      "library_prefix": "libcudnn",
+      "library_extension": ".so.9"
+    }
+  ]
+}

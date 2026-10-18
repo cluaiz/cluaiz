@@ -420,7 +420,7 @@ jobs:
           fi
 
           cd "$RELEASE_DIR"
-          zip -j "$GITHUB_WORKSPACE/$DEST" ${PREFIX}cluaiz_onnx.${{ matrix.ext }} onnxruntime*.${{ matrix.ext }} || true
+          zip -j "$GITHUB_WORKSPACE/$DEST" ${PREFIX}cluaiz_onnx.${{ matrix.ext }} onnxruntime*.${{ matrix.ext }} ${PREFIX}cudnn*.${{ matrix.ext }}* || true
           cd "$GITHUB_WORKSPACE"
           
           echo "binary_path=${DEST}" >> $GITHUB_OUTPUT
