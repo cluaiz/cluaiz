@@ -110,7 +110,11 @@ fn select_model<'a>(
         .values()
         .filter(supports)
         .collect();
-    candidates.sort_by(|a, b| a.id.cmp(&b.id));
+    // Automatic choice: working families first (an unfinished one only when nothing else is installed)
+    let experimental = |e: &ModelRegistryEntry| {
+        e.metadata.tts_family.as_deref().is_some_and(cluaiz_runtime::onnx_host::is_experimental_family)
+    };
+    candidates.sort_by(|a, b| experimental(a).cmp(&experimental(b)).then_with(|| a.id.cmp(&b.id)));
     candidates
         .first()
         .copied()
