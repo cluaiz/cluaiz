@@ -334,6 +334,24 @@ extern "C" {
         n_token_count_out: *mut usize,
     ) -> bool;
 
+    /// Size / copy / restore of one sequence's state; flags 1 = only the part that cannot be
+    /// rolled back (sliding-window cells), as llama-server's context checkpoints use it
+    pub fn llama_state_seq_get_size_ext(ctx: *mut std::ffi::c_void, seq_id: i32, flags: u32) -> usize;
+    pub fn llama_state_seq_get_data_ext(
+        ctx: *mut std::ffi::c_void,
+        dst: *mut u8,
+        size: usize,
+        seq_id: i32,
+        flags: u32,
+    ) -> usize;
+    pub fn llama_state_seq_set_data_ext(
+        ctx: *mut std::ffi::c_void,
+        src: *const u8,
+        size: usize,
+        dest_seq_id: i32,
+        flags: u32,
+    ) -> usize;
+
     pub fn llama_state_seq_load_file(
         ctx: *mut std::ffi::c_void,
         path_session: *const c_char,

@@ -26,6 +26,8 @@ pub struct NativeLlama {
     pub last_thinking: Option<ThinkingReport>,
     /// What the context rules did in the last generation
     pub last_context: Option<ContextReport>,
+    /// Sliding-window checkpoints of the current KV (llama-server context checkpoints), oldest first
+    pub checkpoints: Vec<crate::native::context::Checkpoint>,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -154,6 +156,8 @@ impl NativeLlama {
     /// decoded in `n_batch` chunks followed by `n_gen` single-token decodes, the memory cleared
     /// before each run. Returns the wall time of each run in nanoseconds (same clock window as llama-bench).
     pub fn bench(&mut self, n_prompt: usize, n_gen: usize, reps: usize) -> anyhow::Result<Vec<u64>> {
+        // The benchmark replaces the KV: no checkpoint of a chat stays valid
+        self.checkpoints.clear();
         if n_prompt + n_gen > self.n_ctx as usize {
             return Err(anyhow::anyhow!(
                 "{} prompt + {} generated tokens do not fit the context of {} tokens", n_prompt, n_gen, self.n_ctx
@@ -277,11 +281,31 @@ extern "C" fn llama_log_callback(
     }
 }
 
-/// Sends llama.cpp / ggml logs to tracing. Call before `llama_backend_init` so backend start-up lines
-/// (e.g. `ggml_cuda_init`) do not go straight to the terminal.
+/// mtmd / CLIP (image and audio encoder) log lines go to the engine log like llama.cpp's. Its debug
+/// lines that carry the prompt text (`add_text: ...`) are dropped: a chat never reaches a log.
+extern "C" fn mtmd_log_callback(
+    level: std::ffi::c_int,
+    text: *const std::ffi::c_char,
+    user_data: *mut std::ffi::c_void,
+) {
+    if text.is_null() {
+        return;
+    }
+    // SAFETY: mtmd passes a NUL-terminated line valid for this call.
+    let line = unsafe { std::ffi::CStr::from_ptr(text) }.to_string_lossy();
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("add_text") || trimmed.contains("callback returned text") {
+        return;
+    }
+    llama_log_callback(level, text, user_data);
+}
+
+/// Sends llama.cpp / ggml and mtmd / CLIP logs to tracing. Call before `llama_backend_init` so
+/// backend start-up lines (e.g. `ggml_cuda_init`) do not go straight to the terminal.
 pub fn route_llama_logs() {
     unsafe {
         llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
+        crate::ffi::mtmd::mtmd_helper_log_set(Some(mtmd_log_callback), std::ptr::null_mut());
     }
 }
 
@@ -568,6 +592,7 @@ impl NativeLlama {
             chat_templates_src: dna.chat_template.clone(),
             last_thinking: None,
             last_context: None,
+            checkpoints: Vec::new(),
         };
         llama.warmup();
         Ok(llama)

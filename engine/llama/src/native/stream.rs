@@ -332,6 +332,8 @@ pub(crate) fn stream_tokens_with_media(
                         );
                         cached.drain(n_keep..n_keep + n_discard);
                         start -= n_discard;
+                        // Positions moved: no checkpoint describes this KV any more
+                        llama.checkpoints.clear();
                         report.shifted_tokens += n_discard;
                         report.truncated = true;
                         info!(
@@ -347,6 +349,7 @@ pub(crate) fn stream_tokens_with_media(
                         n_ctx
                     );
                 }
+                llama.checkpoints.retain(|c| c.n_tokens as usize <= start);
                 start
             } else {
                 // Reuse the KV cache: the common prefix, then (llama-server `--cache-reuse`) shared chunks
@@ -368,12 +371,23 @@ pub(crate) fn stream_tokens_with_media(
                 // The sampler needs fresh logits of the last prompt token: at least one is processed
                 n_past = n_past.min(prompt_tokens.len().saturating_sub(1));
                 // A sliding-window cache holds only the latest positions; when the kept prefix needs ones
-                // it no longer has, the prompt is processed again (llama-server without checkpoints)
+                // it no longer has, it restarts at the newest checkpoint inside the prefix, else the
+                // prompt is processed again (llama-server's context checkpoints)
                 if n_past > 0 {
                     let n_swa = llama_cpp::llama_model_n_swa(llama.model_ptr).max(1);
                     if llama_cpp::llama_memory_seq_pos_min(mem, 0) > (n_past as i32 - n_swa).max(0)
                     {
-                        n_past = 0;
+                        let ctx = llama.ctx_ptr;
+                        n_past = llama
+                            .checkpoints
+                            .iter()
+                            .rev()
+                            .find(|c| c.n_tokens > 0 && c.n_tokens as usize <= n_past)
+                            .filter(|c| crate::native::context::load_checkpoint(ctx, c))
+                            .map_or(0, |c| c.n_tokens as usize);
+                        if n_past > 0 {
+                            info!("🧠 [Context] Restarted from the checkpoint at {} tokens (sliding window)", n_past);
+                        }
                     }
                 }
                 // Recurrent memory cannot drop a tail: then it starts over
@@ -381,6 +395,7 @@ pub(crate) fn stream_tokens_with_media(
                     llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
                     n_past = 0;
                 }
+                llama.checkpoints.retain(|c| c.n_tokens as usize <= n_past);
                 cached.truncate(n_past);
                 n_past
             };
@@ -427,9 +442,28 @@ pub(crate) fn stream_tokens_with_media(
                 true
             };
 
-            if !decode_from(llama, &mut safe_batch.batch, &new_tokens, n_past) {
+            // Sliding-window models: checkpoint a few tokens before the prompt end, so the next turn
+            // can restart there when its history differs from this one's generation prompt onwards
+            let swa = llama_cpp::llama_model_n_swa(llama.model_ptr) > 0;
+            let split = if swa && new_tokens.len() > crate::native::context::CHECKPOINT_TAIL {
+                new_tokens.len() - crate::native::context::CHECKPOINT_TAIL
+            } else {
+                0
+            };
+            let mut prefilled = decode_from(llama, &mut safe_batch.batch, &new_tokens[..split], n_past);
+            if prefilled && split > 0 {
+                if let Some(checkpoint) =
+                    crate::native::context::take_checkpoint(llama.ctx_ptr, (n_past + split) as i32)
+                {
+                    crate::native::context::remember_checkpoint(&mut llama.checkpoints, checkpoint);
+                }
+            }
+            prefilled = prefilled
+                && decode_from(llama, &mut safe_batch.batch, &new_tokens[split..], n_past + split);
+            if !prefilled {
                 tracing::warn!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                llama.checkpoints.clear();
                 report.cache_n = 0;
                 if !decode_from(llama, &mut safe_batch.batch, &cached, 0) {
                     return Err(anyhow::anyhow!("Fatal: Full prefill fallback failed"));
@@ -616,6 +650,7 @@ pub(crate) fn stream_tokens_with_media(
                             n_keep as i32,
                             n_discard as i32,
                         );
+                        llama.checkpoints.clear();
                         history.drain(n_keep..n_keep + n_discard);
                         n_cur -= n_discard as i32;
                         report.shifted_tokens += n_discard;

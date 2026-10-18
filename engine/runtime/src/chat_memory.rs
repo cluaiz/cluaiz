@@ -65,10 +65,11 @@ fn stem(chat_id: &str) -> String {
     format!("chat-{hash:016x}")
 }
 
-fn files(base: &Path) -> [PathBuf; 3] {
+fn files(base: &Path) -> [PathBuf; 4] {
     [
         base.with_extension("kv"),
         base.with_extension("layout.json"),
+        base.with_extension("ckpt"),
         base.with_extension("json"),
     ]
 }

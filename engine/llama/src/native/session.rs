@@ -146,6 +146,18 @@ impl NativeSession {
         } else {
             std::fs::write(&layout, serde_json::to_vec(&self.media_cache)?)?;
         }
+        // The newest sliding-window checkpoint, so a restored chat can restart before its last answer
+        let checkpoint = base.with_extension("ckpt");
+        match self.llama.checkpoints.last() {
+            Some(c) => {
+                let mut bytes = c.n_tokens.to_le_bytes().to_vec();
+                bytes.extend_from_slice(&c.data);
+                std::fs::write(&checkpoint, bytes)?;
+            }
+            None => {
+                let _ = std::fs::remove_file(&checkpoint);
+            }
+        }
         Ok(written as u64)
     }
 
@@ -171,11 +183,21 @@ impl NativeSession {
             )
         };
         self.media_cache.clear();
+        self.llama.checkpoints.clear();
         if read == 0 {
             bail!(
                 "llama.cpp could not restore the chat memory from {}",
                 kv.display()
             );
+        }
+        if let Ok(bytes) = std::fs::read(base.with_extension("ckpt")) {
+            if bytes.len() > 4 {
+                let n_tokens = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                self.llama.checkpoints.push(super::context::Checkpoint {
+                    n_tokens,
+                    data: bytes[4..].to_vec(),
+                });
+            }
         }
         tokens.truncate(count);
         if layout.exists() {
