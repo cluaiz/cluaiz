@@ -80,6 +80,7 @@ impl OnnxEngine {
             .with_arena_allocator(settings.enable_cpu_mem_arena)
             .build();
         if settings.n_gpu_layers != 0 {
+            crate::cudnn_driver::ensure_cudnn_ready_for_cuda();
             let strategy = match settings.arena_extend_strategy.as_str() {
                 "kSameAsRequested" => ort::ep::ArenaExtendStrategy::SameAsRequested,
                 _ => ort::ep::ArenaExtendStrategy::NextPowerOfTwo,
@@ -126,16 +127,35 @@ impl OnnxEngine {
         let tokenizer = tokenizers::Tokenizer::from_file(dir.join("tokenizer.json"))
             .map_err(|e| anyhow::anyhow!("STT tokenizer: {e}"))?;
         self.tokenizer = Some(Arc::new(tokenizer));
-        let config = stt_config(self)?;
         let mut decoder = None;
         let mut encoder = None;
         for path in graphs {
             let session = self.build_session(path)?;
             if session.inputs().len() == 1 && session.inputs()[0].name() == "input_features" {
+                let config = stt_config(self)?;
                 validate_tensor(
                     session.inputs()[0].dtype(),
                     TensorElementType::Float32,
                     &[1, config.n_mels as i64, config.max_frames as i64],
+                )?;
+                if session.outputs().len() != 1 {
+                    bail!("STT encoder requires one hidden-state output");
+                }
+                validate_tensor(
+                    session.outputs()[0].dtype(),
+                    TensorElementType::Float32,
+                    &[1, -1, -1],
+                )?;
+                if encoder.replace(session).is_some() {
+                    bail!("Ambiguous STT encoder graphs");
+                }
+            } else if session.inputs().len() == 1 && session.inputs()[0].name() == "input_values" {
+                let _profile =
+                    crate::audio::stt::families::moonshine::resolve_moonshine_profile(self)?;
+                validate_tensor(
+                    session.inputs()[0].dtype(),
+                    TensorElementType::Float32,
+                    &[1, -1],
                 )?;
                 if session.outputs().len() != 1 {
                     bail!("STT encoder requires one hidden-state output");
