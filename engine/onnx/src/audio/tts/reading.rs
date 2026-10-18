@@ -161,6 +161,10 @@ pub(super) fn prepare(text: &str, language: &str) -> Result<Vec<Chunk>> {
     if chunks.is_empty() {
         bail!("TTS input contains no readable text");
     }
+    // Numbers as words, after operators between them became words ("5 - 3" → "five minus three")
+    for chunk in &mut chunks {
+        chunk.text = super::numbers::expand(&chunk.text, &language);
+    }
     Ok(chunks)
 }
 
@@ -314,7 +318,7 @@ mod tests {
             for (symbol, label) in words {
                 // Between numbers, where every operator is spoken (a lone dash is a pause)
                 let chunks = prepare(&format!("1{symbol}2"), language).unwrap();
-                assert_eq!(chunks[0].text, format!("1 {label} 2"));
+                assert!(chunks[0].text.contains(label.as_str()), "{language} {symbol}: {}", chunks[0].text);
             }
         }
     }

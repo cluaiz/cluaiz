@@ -6,6 +6,7 @@ pub mod phoneme_sets;
 pub mod languages;
 pub mod rules_g2p;
 pub mod romanized;
+mod numbers;
 mod reading;
 pub mod tts_router;
 pub mod vocoder;

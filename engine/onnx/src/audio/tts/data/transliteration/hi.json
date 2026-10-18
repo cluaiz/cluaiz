@@ -257,6 +257,8 @@
     "naya",
     "paani",
     "pahle",
+    "paisa",
+    "paise",
     "pata",
     "pe",
     "phir",
@@ -270,6 +272,8 @@
     "rahi",
     "ruk",
     "ruko",
+    "rupaye",
+    "rupye",
     "saath",
     "sab",
     "sabhi",
@@ -518,7 +522,12 @@
     "chahtay": "चाहते",
     "tumhain": "तुम्हें",
     "humain": "हमें",
-    "kyunke": "क्योंकि"
+    "kyunke": "क्योंकि",
+    "rupay": "रुपये",
+    "rupee": "रुपये",
+    "rupees": "रुपये",
+    "rupaiya": "रुपया",
+    "rupaiye": "रुपये"
   },
   "ambiguous": {
     "main": "मैं",

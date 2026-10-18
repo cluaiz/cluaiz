@@ -1,0 +1,80 @@
+{
+  "language": "en",
+  "_about": "Numbers said as words before G2P: 'small' are the words for those numbers; a number below 100 that is not listed is its tens word + tens_join + unit word; larger numbers use 'scales' (largest first: quotient in words, scale word, remainder). Decimals say 'point' and each digit; a run of at least read_digits_from digits (phone numbers) and numbers with leading zeros are read digit by digit. 'currency' symbols before a number are said after it; 'suffixes' after a number (%) are said after it; 'between_numbers' are operators only between two numbers (2*2). Written for Cluaiz.",
+  "small": {
+    "0": "zero",
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine",
+    "10": "ten",
+    "11": "eleven",
+    "12": "twelve",
+    "13": "thirteen",
+    "14": "fourteen",
+    "15": "fifteen",
+    "16": "sixteen",
+    "17": "seventeen",
+    "18": "eighteen",
+    "19": "nineteen",
+    "20": "twenty",
+    "30": "thirty",
+    "40": "forty",
+    "50": "fifty",
+    "60": "sixty",
+    "70": "seventy",
+    "80": "eighty",
+    "90": "ninety"
+  },
+  "tens_join": "-",
+  "scales": [
+    [
+      1000000000,
+      "billion"
+    ],
+    [
+      1000000,
+      "million"
+    ],
+    [
+      1000,
+      "thousand"
+    ],
+    [
+      100,
+      "hundred"
+    ]
+  ],
+  "point": "point",
+  "read_digits_from": 10,
+  "currency": {
+    "₹": "rupees",
+    "$": "dollars",
+    "€": "euros",
+    "£": "pounds",
+    "¥": "yen"
+  },
+  "suffixes": {
+    "%": "percent"
+  },
+  "between_numbers": {
+    "*": "times",
+    "/": "by"
+  },
+  "examples": {
+    "300": "three hundred",
+    "2026": "two thousand twenty-six",
+    "₹300": "three hundred rupees",
+    "3.5": "three point five",
+    "15%": "fifteen percent",
+    "2*2": "two times two",
+    "1,000": "one thousand",
+    "12:30": "twelve thirty",
+    "9876543210": "nine eight seven six five four three two one zero"
+  }
+}
