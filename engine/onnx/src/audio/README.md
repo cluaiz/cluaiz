@@ -14,13 +14,14 @@ graph TD
     S["STT local file / inline audio"] --> R["cluaiz_media::source::read_local_or_inline"]
     R --> P["cluaiz_media::audio::decode_audio"]
     P --> Q["Explicit mono / peak / rate preparation"]
-    Q --> W["Whisper spectrogram and encoder / decoder graphs"]
+    Q --> STT["Whisper spectrogram and encoder / decoder graphs"]
     A["Text Prompt Input"] --> B["tts_router::route_tts_inference"]
     U["Prepared PCM / typed text from API"] --> V["media::execute_prepared_audio"]
-    V --> X
-    V --> W["tts_router::route_tts_text"]
-    W --> C
-    B --> C["family_adapter::FamilyAdapter::detect_family"]
+    V -->|"Prepared PCM"| STT
+    V -->|"Typed text"| T["tts_router::route_tts_text"]
+    T --> R1["reading::prepare — spoken symbols, bracket content, phrase breaks"]
+    B --> R1
+    R1 --> C["family_adapter::FamilyAdapter::detect_family"]
     C --> D{"TtsFamily Variant"}
     
     D -->|"Kokoro"| E["families::kokoro::execute"]
@@ -32,8 +33,9 @@ graph TD
     D -->|"Matcha"| K["families::matcha::execute"]
     D -->|"OmniVoice"| L["families::omnivoice::execute"]
     
-    E --> M["sanitize_audio_pcm"]
-    F --> M
+    E --> PJ["reading::append_audio — guarded boundary pauses"]
+    F --> PJ
+    PJ --> M["sanitize_audio_pcm"]
     G --> M
     H --> M
     I --> M
@@ -56,7 +58,17 @@ Hindi examples include decomposed nasal vowels (`में`, `एँ`), anusvara
 
 `PhonemeMap::require_phonemes` rejects sequences containing only that package's pad/BOS/EOS IDs before either Kokoro or Piper inference. A nonempty token vector alone does not prove any speech content was encoded. This prevents unsupported-only input from producing a meaningless waveform. It does not detect every omitted symbol or certify pronunciation quality.
 
-Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated home. The ignored `actual_hindi_vowels_fit_installed_model_symbols` test additionally requires `CLUAIZ_TTS_TEST_MODEL` pointing to a staged genuine package and checks actual symbol coverage. Real waveform/listening acceptance is separate from IPA, token-count and HTTP-success tests.
+Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated home. The ignored `actual_pronunciations_fit_installed_model_symbols` test additionally requires `CLUAIZ_TTS_TEST_MODEL` pointing to a staged genuine package and checks actual symbol coverage. Real waveform/listening acceptance is separate from IPA, token-count and HTTP-success tests.
+
+### Reading punctuation, parentheses and operators
+
+`tts/reading.rs` is the shared text preparation owner. `data/reading_rules.json` stores spoken operator labels, Unicode aliases and phrase-break policy. Brackets become parenthetical boundaries; their contents are retained. The typed text path never extracts voice commands from user text. The legacy adapter unwraps nested text envelopes and accepts a voice only in the envelope prefix; typed API voice transport remains separate work.
+
+Operator labels cover English and the existing22 rule-language codes. They come from [Unicode CLDR](https://github.com/unicode-org/cldr-json) commit `91c267402229a59e3ef2774544f001bf959e8809`; Hindi/English use documented shorter editorial forms. The Unicode-3.0 license is in `tts/data/CLDR-LICENSE.txt` and the CLI's bundled third-party notices. Rust contains no language-word replacement list. Same-script model preferences use the existing G2P rule data, so Marathi/Nepali are not automatically relabeled Hindi.
+
+Piper/Kokoro use configured minimum boundary gaps: comma120ms, parenthesis100ms, sentence280ms and paragraph360ms. Existing quiet leading/trailing padding counts toward the target; excessive padding is capped at twice that minimum while preserving20ms guards next to speech. The detector uses0.5% of the incoming chunk's peak gain; samples above this threshold are never eligible for trimming. Quiet consonant edges remain a listening-review risk. Byte-budget splits keep whole words and use the previous crossfade without inventing a sentence pause. Extra native calls at phrase boundaries can increase synthesis time. Other model families receive normalized text, but their native timing is not certified by these two handlers' PCM join.
+
+Decimal/grouping/time separators between digits, configured abbreviations, internal word hyphens/apostrophes and URI/email structure are preserved. Full number-to-word grammar, general math/Markdown/URL reading, arbitrary abbreviation expansion, emotional emphasis and all-language voice quality are not implemented or certified by this policy. Unsupported language/operator combinations fail explicitly; punctuation-only input is not sent to the model as speech. Regression inputs live in test-only `data/reading_tests.json`.
 
 - **Core Router Entry:** `tts_router::route_tts_inference(engine, session, prompt, tokenizer) -> Result<String>`
 - **Typed entries:** `route_tts_text(engine, session, text)` preserves text at the transport boundary; `OnnxEngine::execute_stt_prepared` accepts shared PCM without source fetching. Legacy tagged prompts adapt to these entries.
@@ -84,7 +96,7 @@ Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated hom
 
 ### B. Registered ONNX TTS Engine (`src/audio/tts/`)
 - [`tts_router.rs`](./tts/tts_router.rs):
-  - **Logic:** High-level router that parses prompts, groups sentences toward a 140 UTF-8-byte target and splits long sentences at whitespace, detects family variant, validates inventory, executes model family pipelines, sanitizes PCM output, and encodes base64 WAV URIs. Whole words stay intact; a single oversized word remains subject to the model's native token guard.
+  - **Logic:** High-level router adapts legacy/typed inputs, uses shared reading preparation, detects family variant, validates inventory, executes model family pipelines, sanitizes PCM output and encodes base64 WAV URIs. Whole words stay intact; a single oversized word remains subject to the model's native token guard.
   - **Pronunciation normalization:** Abugida files can opt into canonical Unicode normalization with `normalize_unicode`; Hindi enables it so canonical-equivalent nukta spellings reach the same pronunciation keys. Other rule files keep their existing behavior. Regression inputs live in test-only `data/pronunciation_tests.json`.
 - [`family_adapter.rs`](./tts/family_adapter.rs):
   - **Logic:** Pre-boot asset inventory validator and priority family detector checking `model_registry.json`, `model_manifest.json`, and ONNX session signature inputs.
@@ -94,6 +106,8 @@ Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated hom
   - **Logic:** IPA & G2P phoneme-to-ID lookup mapper for VITS/Piper models.
 - [`g2p.rs`](./tts/g2p.rs):
   - **Logic:** Rule-based and lexicon-assisted Grapheme-to-Phoneme converter.
+- [`reading.rs`](./tts/reading.rs):
+  - **Logic:** Data-owned spoken symbols, content-preserving parenthetical boundaries, word-preserving chunks and a shared PCM join that bounds quiet boundary padding relative to chunk gain and adds missing quiet samples.
 - [`vocoder.rs`](./tts/vocoder.rs):
   - **Logic:** Native WAV encoder constructing standard PCM RIFF headers from float32 audio buffers.
 - [`neural_vocoder.rs`](./tts/neural_vocoder.rs):

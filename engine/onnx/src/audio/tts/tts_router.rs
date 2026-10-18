@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Result};
 use ort::session::Session;
+use super::reading::{self, Chunk};
+#[cfg(test)]
+use super::reading::chunk_tts_text;
 
 /// Universal PCM Audio Output Sanitizer
 /// Validates generated PCM audio float buffer for finite values and normalizes peak amplitude cleanly
@@ -41,10 +44,17 @@ pub fn route_tts_inference(
     prompt: &str,
     _tokenizer: Option<&tokenizers::Tokenizer>,
 ) -> Result<String> {
-    let raw_text_input = extract_parameter(prompt, "TEXT_INPUT")
-        .or_else(|| extract_clean_text_prompt(prompt))
-        .ok_or_else(|| anyhow!("No text prompt provided for Text-to-Speech synthesis."))?;
-    route_tts_text(engine, session, &raw_text_input)
+    let raw_text_input = if prompt.contains("[TEXT_INPUT:") {
+        extract_parameter(prompt, "TEXT_INPUT")
+            .ok_or_else(|| anyhow!("Malformed legacy TTS text envelope"))?
+    } else {
+        extract_clean_text_prompt(prompt)
+            .ok_or_else(|| anyhow!("No text prompt provided for Text-to-Speech synthesis."))?
+    };
+    // Only the legacy envelope prefix can select a voice; user text is never metadata.
+    let voice = prompt.find("[TEXT_INPUT")
+        .and_then(|start| extract_parameter(&prompt[..start], "voice"));
+    route_tts_input(engine, session, &raw_text_input, voice.as_deref())
 }
 
 /// Synthesize actual text without interpreting transport tags as user content.
@@ -53,11 +63,28 @@ pub fn route_tts_text(
     session: &mut Session,
     raw_text_input: &str,
 ) -> Result<String> {
+    route_tts_input(engine, session, raw_text_input, None)
+}
+
+fn route_tts_input(
+    engine: &crate::engine::OnnxEngine,
+    session: &mut Session,
+    raw_text_input: &str,
+    requested_voice: Option<&str>,
+) -> Result<String> {
     if raw_text_input.trim().is_empty() {
         return Err(anyhow!("Text-to-Speech requires non-empty text"));
     }
 
-    let text_chunks = chunk_tts_text(raw_text_input, 140);
+    let model_dir = engine.model_dir.as_deref()
+        .ok_or_else(|| anyhow!("TTS model directory not set"))?;
+    let model_language = super::g2p::get_model_language(model_dir);
+    let language = super::rules_g2p::script_language(raw_text_input, &model_language)
+        .or_else(|| super::languages::script_language(raw_text_input))
+        .map(str::to_owned).unwrap_or(model_language);
+    let text_chunks = reading::prepare(raw_text_input, &language)?;
+    let normalized_text = text_chunks.iter().map(|chunk| chunk.text.as_str()).collect::<Vec<_>>().join(" ");
+    let raw_text_input = normalized_text.as_str();
     tracing::debug!(
         "🎙️ [TTS Router] Original Length: {} chars | Total Sentences/Chunks: {}",
         raw_text_input.len(),
@@ -100,7 +127,7 @@ pub fn route_tts_text(
             handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate)
         }
         super::family_adapter::TtsFamily::Kokoro => {
-            handle_kokoro(engine, session, &text_chunks, sample_rate)
+            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice)
         }
         super::family_adapter::TtsFamily::Matcha => {
             let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
@@ -169,31 +196,11 @@ pub fn route_tts_text(
     }
 }
 
-fn append_pcm_with_crossfade(all_pcm: &mut Vec<f32>, chunk_pcm: &[f32]) {
-    if chunk_pcm.is_empty() {
-        return;
-    }
-    if all_pcm.is_empty() {
-        all_pcm.extend_from_slice(chunk_pcm);
-        return;
-    }
-
-    let crossfade_len = 120.min(all_pcm.len()).min(chunk_pcm.len());
-    let start_idx = all_pcm.len() - crossfade_len;
-
-    for i in 0..crossfade_len {
-        let alpha = i as f32 / crossfade_len as f32;
-        all_pcm[start_idx + i] = all_pcm[start_idx + i] * (1.0 - alpha) + chunk_pcm[i] * alpha;
-    }
-
-    all_pcm.extend_from_slice(&chunk_pcm[crossfade_len..]);
-}
-
 /// VITS/Piper TTS Handler — uses PhonemeMap for proper tokenization
 fn handle_vits_piper(
     engine: &crate::engine::OnnxEngine,
     session: &mut Session,
-    text_chunks: &[String],
+    text_chunks: &[Chunk],
     manifest: &super::manifest_loader::TtsModelManifest,
     sample_rate: usize,
 ) -> Result<String> {
@@ -215,18 +222,10 @@ fn handle_vits_piper(
     let length_scale = manifest.length_scale.unwrap_or(1.0);
     let noise_w = manifest.noise_scale_w.unwrap_or(0.8);
 
-    let pause_samples = (sample_rate as f32 * 0.18) as usize; // 180ms natural sentence boundary pause
+    let mut pause_before_ms = 0;
 
     for (chunk_idx, text_chunk) in text_chunks.iter().enumerate() {
-        let mut clean_chunk = text_chunk.clone();
-        while let Some(start) = clean_chunk.find('[') {
-            if let Some(end) = clean_chunk[start..].find(']') {
-                clean_chunk.replace_range(start..=end, "");
-            } else {
-                break;
-            }
-        }
-        let trimmed_chunk = clean_chunk.trim();
+        let trimmed_chunk = text_chunk.text.trim();
         if trimmed_chunk.is_empty() {
             continue;
         }
@@ -274,11 +273,8 @@ fn handle_vits_piper(
                 }
             }
 
-            if !all_pcm_samples.is_empty() {
-                // Insert natural 180ms pause between sentence chunks
-                all_pcm_samples.extend(std::iter::repeat(0.0f32).take(pause_samples));
-            }
-            all_pcm_samples.extend_from_slice(&chunk_pcm);
+            reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
+            pause_before_ms = text_chunk.pause_after_ms;
         }
     }
 
@@ -293,8 +289,9 @@ fn handle_vits_piper(
 fn handle_kokoro(
     engine: &crate::engine::OnnxEngine,
     session: &mut Session,
-    text_chunks: &[String],
+    text_chunks: &[Chunk],
     sample_rate: usize,
+    requested_voice: Option<&str>,
 ) -> Result<String> {
     tracing::debug!(
         "🎙️ [TTS Router] Kokoro Handler Activated with sample_rate={}Hz.",
@@ -310,13 +307,13 @@ fn handle_kokoro(
 
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
-    let full_text = text_chunks.join(" ");
+    let full_text = text_chunks.iter().map(|chunk| chunk.text.as_str()).collect::<Vec<_>>().join(" ");
     // A requested voice, else one whose name says it speaks the text's language (its script, or the
     // model's language), else the first voice (data/languages.json)
     let text_lang = super::languages::script_language(&full_text)
         .map(str::to_owned)
         .unwrap_or_else(|| super::g2p::get_model_language(model_dir));
-    let selected_voice = extract_parameter(&full_text, "voice")
+    let selected_voice = requested_voice.map(str::to_owned)
         .or_else(|| super::languages::voice_for_language(model_dir, &text_lang))
         .unwrap_or_default();
     tracing::info!("🎙️ [Kokoro Handler] Voice '{selected_voice}' for language '{text_lang}'");
@@ -326,17 +323,10 @@ fn handle_kokoro(
         .or_else(|_| super::families::kokoro::load_first_available_voice(model_dir))
         .map_err(|e| anyhow!("Kokoro style embedding load failed for voice '{}': {}. Place a voice .bin file in the model's voices/ directory.", selected_voice, e))?;
 
+    let mut pause_before_ms = 0;
     for (chunk_idx, text_chunk) in text_chunks.iter().enumerate() {
-        let mut clean_chunk = text_chunk.clone();
-        while let Some(start) = clean_chunk.find('[') {
-            if let Some(end) = clean_chunk[start..].find(']') {
-                clean_chunk.replace_range(start..=end, "");
-            } else {
-                break;
-            }
-        }
         let processed_text = super::g2p::process_text_for_family(
-            clean_chunk.trim(),
+            text_chunk.text.trim(),
             &super::family_adapter::TtsFamily::Kokoro,
             model_dir,
         );
@@ -364,14 +354,15 @@ fn handle_kokoro(
             "🎙️ [Kokoro Handler] Chunk {}/{}: {} chars → {} tokens",
             chunk_idx + 1,
             text_chunks.len(),
-            text_chunk.len(),
+            text_chunk.text.len(),
             token_ids.len()
         );
 
         let chunk_pcm =
             super::families::kokoro::execute(session, &token_ids, &style_vector, 1.0f32)?;
 
-        append_pcm_with_crossfade(&mut all_pcm_samples, &chunk_pcm);
+        reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
+        pause_before_ms = text_chunk.pause_after_ms;
     }
 
     let sanitized_pcm = sanitize_audio_pcm(all_pcm_samples)?;
@@ -389,8 +380,16 @@ fn extract_parameter(prompt: &str, param_name: &str) -> Option<String> {
     let tag = format!("[{}:", param_name);
     let start = prompt.find(&tag)?;
     let rest = &prompt[start + tag.len()..];
-    let end = rest.find(']')?;
-    Some(rest[..end].trim().to_string())
+    let mut depth = 0usize;
+    for (i, c) in rest.char_indices() {
+        match c {
+            '[' => depth += 1,
+            ']' if depth == 0 => return Some(rest[..i].trim().to_owned()),
+            ']' => depth -= 1,
+            _ => {}
+        }
+    }
+    None
 }
 
 fn extract_clean_text_prompt(prompt: &str) -> Option<String> {
@@ -406,37 +405,25 @@ fn extract_clean_text_prompt(prompt: &str) -> Option<String> {
     }
 }
 
-fn chunk_tts_text(text: &str, max_chunk_len: usize) -> Vec<String> {
-    let mut chunks = Vec::new();
-    let mut current_chunk = String::new();
-
-    for sentence in text.split_inclusive(&['.', '!', '?', ';', '\n'][..]) {
-        // A long sentence also needs boundaries. Keep whole words so combining signs and
-        // conjuncts stay together; a single oversized word reaches the native token guard.
-        let split_at_words = sentence.len() > max_chunk_len;
-        for part in sentence.split_inclusive(|c: char| split_at_words && c.is_whitespace()) {
-            if current_chunk.len() + part.len() > max_chunk_len && !current_chunk.trim().is_empty() {
-                chunks.push(current_chunk.trim().to_string());
-                current_chunk.clear();
-            }
-            current_chunk.push_str(part);
-        }
-    }
-
-    if !current_chunk.trim().is_empty() {
-        chunks.push(current_chunk.trim().to_string());
-    }
-
-    if chunks.is_empty() {
-        vec![text.to_string()]
-    } else {
-        chunks
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_legacy_text_preserves_nested_bracket_content() {
+        let data: serde_json::Value = serde_json::from_str(include_str!("data/reading_tests.json")).unwrap();
+        for case in data["legacy"].as_array().unwrap() {
+            assert_eq!(extract_parameter(case["input"].as_str().unwrap(), "TEXT_INPUT").as_deref(), case["expected"].as_str());
+        }
+    }
+
+    #[test]
+    fn test_reading_script_selection_preserves_same_script_model_language() {
+        let data: serde_json::Value = serde_json::from_str(include_str!("data/reading_tests.json")).unwrap();
+        for case in data["languages"].as_array().unwrap() {
+            assert_eq!(super::super::rules_g2p::script_language(case["input"].as_str().unwrap(), case["model"].as_str().unwrap()), case["expected"].as_str());
+        }
+    }
 
     fn fixture() -> (String, usize, String) {
         let data: serde_json::Value = serde_json::from_str(include_str!("data/pronunciation_tests.json")).unwrap();

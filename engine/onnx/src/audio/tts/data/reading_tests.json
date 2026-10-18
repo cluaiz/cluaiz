@@ -1,0 +1,41 @@
+{
+  "legacy": [
+    {"input":"[TEXT_INPUT: Read [the whole (inside)] aloud.]","expected":"Read [the whole (inside)] aloud."},
+    {"input":"[TEXT_INPUT: अंदर [पूरा] पढ़ो।]","expected":"अंदर [पूरा] पढ़ो।"}
+  ],
+  "languages": [
+    {"input":"कर्म+फल","model":"mr","expected":"mr"},
+    {"input":"कर्म(फल)","model":"ne","expected":"ne"},
+    {"input":"कर्म+फल","model":"en-us","expected":"hi"},
+    {"input":"বাংলা + ভাষা","model":"en-us","expected":"bn"},
+    {"input":"hello","model":"en-us","expected":null}
+  ],
+  "waves": [
+    {"name":"bracket","text":"[नमस्ते दुनिया]","expected_status":200,"baseline":true},
+    {"name":"operators","text":"क+ष=क्ष","expected_status":200,"baseline":true},
+    {"name":"operator-words","text":"क प्लस ष बराबर क्ष","expected_status":200},
+    {"name":"pauses","text":"नमस्ते, दुनिया। फिर मिलेंगे!","expected_status":200,"baseline":true},
+    {"name":"parenthesis","text":"नमस्ते (दुनिया), फिर मिलेंगे।","expected_status":200},
+    {"name":"unsupported","text":"ॱ","expected_status":500},
+    {"name":"recovery","text":"नमस्ते दुनिया।","expected_status":200},
+    {"name":"english-bracket","text":"[Hello world]","expected_status":200,"baseline":true,"models":["Kokoro-82M-v1.0-ONNX-UINT8"]},
+    {"name":"english-operators","text":"A+B=C","expected_status":200,"models":["Kokoro-82M-v1.0-ONNX-UINT8"]},
+    {"name":"english-words","text":"A plus B equals C","expected_status":200,"models":["Kokoro-82M-v1.0-ONNX-UINT8"]}
+  ],
+  "cases": [
+    {"language":"en","input":"Read [the whole] message.","contains":["Read","the whole","message"],"not_contains":["[","]"]},
+    {"language":"hi","input":"क्षमा(क्ष+मा)=क्षमा।","contains":["क्षमा","क्ष","प्लस","मा","बराबर"],"not_contains":["+","="]},
+    {"language":"en-us","input":"A+B=C.","contains":["A plus B equals C"],"not_contains":["+","="]},
+    {"language":"en","input":"wait,then stop. Next!","pause_ms":[120,280,280],"chunk_count":3},
+    {"language":"hi","input":"रुको, फिर चलो।","pause_ms":[120,280],"chunk_count":2},
+    {"language":"en","input":"Cost 3.5, time 12:30, count 1,000.","contains":["3.5","12:30","1,000"],"chunk_count":3},
+    {"language":"en","input":"Dr. Smith — read well-known words.","contains":["Dr. Smith","well-known"],"not_contains":["minus"],"chunk_count":2},
+    {"language":"hi","input":"कर्म-फल और क्या-क्या।","contains":["कर्म-फल","क्या-क्या"]},
+    {"language":"en","input":"C++ and A - B.","contains":["C plus plus","minus"]},
+    {"language":"en","input":"Keep user+tag@example.org and https://example.org/a+b.","contains":["user+tag@example.org","https://example.org/a+b."]},
+    {"language":"en","input":"One\nTwo\n\nThree","pause_ms":[240,360,0],"chunk_count":3},
+    {"language":"en","input":"Read {all [nested (words)]} clearly.","contains":["all","nested","words","clearly"]},
+    {"language":"zz","input":"A+B","error":true},
+    {"language":"en","input":"... , () []","error":true}
+  ]
+}
