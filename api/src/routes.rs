@@ -75,6 +75,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             post(handlers::embeddings::generate_embeddings),
         )
         .route("/v1/audio/speech", post(handlers::audio::speech))
+        .route("/v1/audio/voices", get(handlers::audio::voices))
         .route(
             "/v1/audio/transcriptions",
             post(handlers::audio::transcriptions),
