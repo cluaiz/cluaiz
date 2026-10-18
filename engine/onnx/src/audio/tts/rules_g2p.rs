@@ -202,6 +202,17 @@ pub fn word_to_ipa(word: &str, lang: &str) -> Option<(String, &'static str)> {
     Some((set.convert(word), set.language()))
 }
 
+/// Select an abugida script's language using the same rule data and model preference as G2P.
+pub(super) fn script_language(text: &str, preferred: &str) -> Option<&'static str> {
+    let preferred = base(preferred).to_lowercase();
+    rule_sets().iter().filter_map(|set| {
+        let RuleSet::Abugida(rule) = set else { return None; };
+        let count = text.chars().filter(|&c| in_ranges(c, &rule.script_ranges)).count();
+        (count > 0).then_some((rule, count))
+    }).max_by_key(|(rule, count)| (*count, rule.language == preferred, rule.default_for_script))
+        .map(|(rule, _)| rule.language.as_str())
+}
+
 impl RuleSet {
     fn language(&self) -> &str {
         match self {
