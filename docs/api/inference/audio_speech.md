@@ -22,8 +22,9 @@ Synthesizes high-fidelity natural speech audio from input text using ONNX-accele
 |:---|:---|:---:|:---|:---|:---|
 | **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
 | **`model`** | String | No | `"piper-en-us-ryan-medium"` | Installed TTS package ID | Neural TTS voice model package ID. |
-| **`voice`** | String | No | `"default"` | Speaker persona | Voice persona or speaker ID within multi-speaker packages. |
-| **`speed`** | Float | No | `1.0` | `1.0` | Voice playback speed multiplier. |
+| **`voice`** | String | No | `"default"` | `"default"`, or a voice file name of the model (Kokoro: `af_heart`, `am_adam`, `hf_alpha`, `hm_omega` …) | `"default"`/`"auto"` picks a voice that speaks the text's language. Single-voice models (Piper) ignore it. |
+| **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Speaking rate (1.0 = the model's normal pace; 1.25 = faster, 0.8 = slower). |
+| **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream audio response chunks via Server-Sent Events (SSE). |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
 
 ---

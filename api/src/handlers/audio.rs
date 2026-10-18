@@ -134,10 +134,18 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
         || params.speaker_labels == Some(true)
         || params.beam_size.is_some_and(|v| v != 1)
         || params.temperature.is_some_and(|v| v != 0.0)
-        || params.speed.is_some_and(|v| v != 1.0)
-        || params.voice_id.as_ref().is_some_and(|v| !v.is_empty())
     {
-        anyhow::bail!("Requested audio option is not implemented: this contract uses default TTS voice/speed or greedy STT without timestamps/VAD/diarization");
+        anyhow::bail!("Requested audio option is not implemented: greedy STT without timestamps/VAD/diarization");
+    }
+    // TTS voice and rate: "default"/"auto"/empty lets the engine pick a voice for the text's language
+    if task != AudioTask::TextToSpeech
+        && (params.speed.is_some_and(|v| v != 1.0)
+            || params.voice_id.as_ref().is_some_and(|v| !is_default_voice(v)))
+    {
+        anyhow::bail!("voice and speed apply to text_to_speech only");
+    }
+    if params.speed.is_some_and(|v| !(SPEED_RANGE.0..=SPEED_RANGE.1).contains(&v)) {
+        anyhow::bail!("speed must be between {} and {}", SPEED_RANGE.0, SPEED_RANGE.1);
     }
     if task == AudioTask::TextToSpeech
         && (params.language.is_some() || params.translate_to.is_some())
@@ -156,7 +164,17 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
     Ok(SttOptions {
         language: params.language,
         translate: task == AudioTask::SpeechTranslation,
+        voice: params.voice_id.filter(|v| !is_default_voice(v)),
+        speed: params.speed,
     })
+}
+
+/// Speaking rates accepted for text_to_speech (OpenAI's /v1/audio/speech range)
+const SPEED_RANGE: (f32, f32) = (0.25, 4.0);
+
+fn is_default_voice(voice: &str) -> bool {
+    let voice = voice.trim();
+    voice.is_empty() || voice.eq_ignore_ascii_case("default") || voice.eq_ignore_ascii_case("auto")
 }
 
 fn completed(model: String, task: AudioTask, output: NativeOutput) -> AudioExecuteResponse {
@@ -350,6 +368,7 @@ struct SpeechRequest {
     input: String,
     voice: Option<String>,
     speed: Option<f32>,
+    stream: Option<bool>,
     keep_alive: Option<i32>,
 }
 
@@ -389,7 +408,7 @@ pub async fn speech(
             voice_id: payload.voice,
             ..Default::default()
         }),
-        stream: Some(false),
+        stream: payload.stream.or(Some(false)),
         keep_alive: payload.keep_alive,
     };
     execute_audio(State(state), headers, Json(request)).await
@@ -447,7 +466,20 @@ mod tests {
         let mut request = request();
         assert!(validate_options(&request, AudioTask::TextToSpeech).is_ok());
         request.parameters = Some(AudioParameters {
-            voice_id: Some("unimplemented voice".into()),
+            voice_id: Some("hf_alpha".into()),
+            speed: Some(1.5),
+            ..Default::default()
+        });
+        let options = validate_options(&request, AudioTask::TextToSpeech).unwrap();
+        assert_eq!((options.voice.as_deref(), options.speed), (Some("hf_alpha"), Some(1.5)));
+        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
+        request.parameters = Some(AudioParameters {
+            voice_id: Some("default".into()),
+            ..Default::default()
+        });
+        assert!(validate_options(&request, AudioTask::TextToSpeech).unwrap().voice.is_none());
+        request.parameters = Some(AudioParameters {
+            speed: Some(9.0),
             ..Default::default()
         });
         assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
