@@ -105,6 +105,9 @@ struct SchwaDeletion {
 struct Alphabet {
     language: String,
     script_ranges: Vec<(String, String)>,
+    /// A script only this language uses (kana, Zhuyin): its rules apply for any model language
+    #[serde(default)]
+    default_for_script: bool,
     /// Named letter sets the rules refer to ("V": vowels)
     #[serde(default)]
     classes: HashMap<String, String>,
@@ -193,7 +196,11 @@ pub fn word_to_ipa(word: &str, lang: &str) -> Option<(String, &'static str)> {
     let set = preferred
         .or_else(|| {
             sets.iter().find(|s| {
-                matches!(s, RuleSet::Abugida(a) if a.default_for_script) && covers(s)
+                let default = match s {
+                    RuleSet::Abugida(a) => a.default_for_script,
+                    RuleSet::Alphabet(a) => a.default_for_script,
+                };
+                default && covers(s)
             })
         })?;
     if !covers(set) {
