@@ -97,7 +97,7 @@ impl PhonemeMap {
             return None;
         }
 
-        eprintln!(
+        tracing::debug!(
             "📖 [PhonemeMap] Loaded {} tokens.txt entries (max_key_len={}) from {:?}",
             sym_to_id.len(),
             max_key_len,
@@ -149,7 +149,7 @@ impl PhonemeMap {
             return None;
         }
 
-        eprintln!(
+        tracing::debug!(
             "📖 [PhonemeMap] Loaded {} symbol table entries (max_key_len={}) from {:?}",
             sym_to_id.len(),
             max_key_len,
@@ -227,7 +227,7 @@ impl PhonemeMap {
             return None;
         }
 
-        eprintln!(
+        tracing::debug!(
             "📖 [PhonemeMap] Loaded {} symbol entries from {:?} (pad={}, bos={}, eos={})",
             sym_to_id.len(),
             path.file_name().unwrap_or_default(),
@@ -339,6 +339,11 @@ impl PhonemeMap {
 
         ids.push(self.eos_id);
         ids
+    }
+
+    /// Whether the model has a token for this exact symbol
+    pub fn has_symbol(&self, symbol: &str) -> bool {
+        self.sym_to_id.contains_key(symbol)
     }
 
     /// Returns the pad token ID

@@ -1,0 +1,158 @@
+{
+  "kind": "abugida",
+  "language": "ml",
+  "_about": "Written for Cluaiz from standard Malayalam phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0D00",
+      "0D7F"
+    ]
+  ],
+  "consonants": {
+    "ക": "k",
+    "ഖ": "kʰ",
+    "ഗ": "ɡ",
+    "ഘ": "ɡʰ",
+    "ങ": "ŋ",
+    "ച": "tʃ",
+    "ഛ": "tʃʰ",
+    "ജ": "dʒ",
+    "ഝ": "dʒʰ",
+    "ഞ": "ɲ",
+    "ട": "ʈ",
+    "ഠ": "ʈʰ",
+    "ഡ": "ɖ",
+    "ഢ": "ɖʰ",
+    "ണ": "ɳ",
+    "ത": "t̪",
+    "ഥ": "t̪ʰ",
+    "ദ": "d̪",
+    "ധ": "d̪ʰ",
+    "ന": "n",
+    "ഩ": "n",
+    "പ": "p",
+    "ഫ": "pʰ",
+    "ബ": "b",
+    "ഭ": "bʰ",
+    "മ": "m",
+    "യ": "j",
+    "ര": "ɾ",
+    "റ": "r",
+    "ല": "l",
+    "ള": "ɭ",
+    "ഴ": "ɻ",
+    "വ": "ʋ",
+    "ശ": "ʃ",
+    "ഷ": "ʂ",
+    "സ": "s",
+    "ഹ": "h"
+  },
+  "dead_consonants": {
+    "ൺ": "ɳ",
+    "ൻ": "n",
+    "ർ": "r",
+    "ൽ": "l",
+    "ൾ": "ɭ",
+    "ൿ": "k"
+  },
+  "vowels": {
+    "അ": "a",
+    "ആ": "aː",
+    "ഇ": "i",
+    "ഈ": "iː",
+    "ഉ": "u",
+    "ഊ": "uː",
+    "ഋ": "ru",
+    "എ": "e",
+    "ഏ": "eː",
+    "ഐ": "ai",
+    "ഒ": "o",
+    "ഓ": "oː",
+    "ഔ": "au"
+  },
+  "vowel_signs": {
+    "ാ": "aː",
+    "ി": "i",
+    "ീ": "iː",
+    "ു": "u",
+    "ൂ": "uː",
+    "ൃ": "ru",
+    "െ": "e",
+    "േ": "eː",
+    "ൈ": "ai",
+    "ൊ": "o",
+    "ോ": "oː",
+    "ൌ": "au",
+    "ൗ": "au",
+    "ൊ": "o",
+    "ോ": "oː",
+    "ൌ": "au"
+  },
+  "inherent_vowel": "a",
+  "virama": "്",
+  "final_virama_vowel": "ɨ",
+  "nasalize_marks": [
+    "ഁ"
+  ],
+  "anusvara_marks": [
+    "ം"
+  ],
+  "anusvara_otherwise": "m",
+  "visarga": {
+    "mark": "ഃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": false,
+    "keep_final_after_cluster": false,
+    "medial_vc_cv": false
+  },
+  "examples": {
+    "മലയാളം": "malajaːɭam",
+    "കേരളം": "keːɾaɭam",
+    "അവൻ": "aʋan"
+  }
+}

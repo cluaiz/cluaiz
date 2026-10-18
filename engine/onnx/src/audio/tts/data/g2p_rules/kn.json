@@ -1,0 +1,142 @@
+{
+  "kind": "abugida",
+  "language": "kn",
+  "_about": "Written for Cluaiz from standard Kannada phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0C80",
+      "0CFF"
+    ]
+  ],
+  "consonants": {
+    "ಕ": "k",
+    "ಖ": "kʰ",
+    "ಗ": "ɡ",
+    "ಘ": "ɡʰ",
+    "ಙ": "ŋ",
+    "ಚ": "tʃ",
+    "ಛ": "tʃʰ",
+    "ಜ": "dʒ",
+    "ಝ": "dʒʰ",
+    "ಞ": "ɲ",
+    "ಟ": "ʈ",
+    "ಠ": "ʈʰ",
+    "ಡ": "ɖ",
+    "ಢ": "ɖʰ",
+    "ಣ": "ɳ",
+    "ತ": "t̪",
+    "ಥ": "t̪ʰ",
+    "ದ": "d̪",
+    "ಧ": "d̪ʰ",
+    "ನ": "n",
+    "ಪ": "p",
+    "ಫ": "pʰ",
+    "ಬ": "b",
+    "ಭ": "bʰ",
+    "ಮ": "m",
+    "ಯ": "j",
+    "ರ": "r",
+    "ಱ": "r",
+    "ಲ": "l",
+    "ಳ": "ɭ",
+    "ವ": "ʋ",
+    "ಶ": "ʃ",
+    "ಷ": "ʂ",
+    "ಸ": "s",
+    "ಹ": "h"
+  },
+  "vowels": {
+    "ಅ": "a",
+    "ಆ": "aː",
+    "ಇ": "i",
+    "ಈ": "iː",
+    "ಉ": "u",
+    "ಊ": "uː",
+    "ಋ": "ru",
+    "ಎ": "e",
+    "ಏ": "eː",
+    "ಐ": "ai",
+    "ಒ": "o",
+    "ಓ": "oː",
+    "ಔ": "au"
+  },
+  "vowel_signs": {
+    "ಾ": "aː",
+    "ಿ": "i",
+    "ೀ": "iː",
+    "ು": "u",
+    "ೂ": "uː",
+    "ೃ": "ru",
+    "ೆ": "e",
+    "ೇ": "eː",
+    "ೈ": "ai",
+    "ೊ": "o",
+    "ೋ": "oː",
+    "ೌ": "au"
+  },
+  "inherent_vowel": "a",
+  "virama": "್",
+  "nasalize_marks": [
+    "ಁ"
+  ],
+  "anusvara_marks": [
+    "ಂ"
+  ],
+  "anusvara_otherwise": "m",
+  "visarga": {
+    "mark": "ಃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": false,
+    "keep_final_after_cluster": false,
+    "medial_vc_cv": false
+  },
+  "examples": {
+    "ನಮಸ್ಕಾರ": "namaskaːra",
+    "ಕನ್ನಡ": "kannaɖa"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "kind": "alphabet",
+  "language": "hr",
+  "_about": "Spelling rules for Croatian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {},
+  "rules": [
+    {
+      "g": "dž",
+      "p": "dʒ"
+    },
+    {
+      "g": "lj",
+      "p": "ʎ"
+    },
+    {
+      "g": "nj",
+      "p": "ɲ"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": "x"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "ʋ"
+    },
+    {
+      "g": "w",
+      "p": "ʋ"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    },
+    {
+      "g": "c",
+      "p": "ts"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "č",
+      "p": "tʃ"
+    },
+    {
+      "g": "ć",
+      "p": "tɕ"
+    },
+    {
+      "g": "đ",
+      "p": "dʑ"
+    },
+    {
+      "g": "š",
+      "p": "ʃ"
+    },
+    {
+      "g": "ž",
+      "p": "ʒ"
+    }
+  ],
+  "examples": {
+    "hvala": "xʋala",
+    "ljubav": "ʎubaʋ"
+  }
+}

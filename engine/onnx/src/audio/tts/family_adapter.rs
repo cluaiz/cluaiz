@@ -148,10 +148,10 @@ impl FamilyAdapter {
                 .unwrap_or_default();
             let has_fm_decoder = entries.iter().any(|e| e.contains("fm_decoder") || e.contains("matcha"));
             if registry_family == TtsFamily::Supertonic && has_fm_decoder {
-                eprintln!("📖 [FamilyAdapter] Model directory {:?} contains fm_decoder graph. Overriding registry to TtsFamily::Matcha.", model_dir);
+                tracing::debug!("📖 [FamilyAdapter] Model directory {:?} contains fm_decoder graph. Overriding registry to TtsFamily::Matcha.", model_dir);
                 return TtsFamily::Matcha;
             }
-            eprintln!("📖 [FamilyAdapter] Resolved tts_family='{:?}' from model_registry.json for {:?}", registry_family, model_dir);
+            tracing::debug!("📖 [FamilyAdapter] Resolved tts_family='{:?}' from model_registry.json for {:?}", registry_family, model_dir);
             return registry_family;
         }
 

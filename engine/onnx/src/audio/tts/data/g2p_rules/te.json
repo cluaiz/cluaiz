@@ -1,0 +1,143 @@
+{
+  "kind": "abugida",
+  "language": "te",
+  "_about": "Written for Cluaiz from standard Telugu phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0C00",
+      "0C7F"
+    ]
+  ],
+  "consonants": {
+    "క": "k",
+    "ఖ": "kʰ",
+    "గ": "ɡ",
+    "ఘ": "ɡʰ",
+    "ఙ": "ŋ",
+    "చ": "tʃ",
+    "ఛ": "tʃʰ",
+    "జ": "dʒ",
+    "ఝ": "dʒʰ",
+    "ఞ": "ɲ",
+    "ట": "ʈ",
+    "ఠ": "ʈʰ",
+    "డ": "ɖ",
+    "ఢ": "ɖʰ",
+    "ణ": "ɳ",
+    "త": "t̪",
+    "థ": "t̪ʰ",
+    "ద": "d̪",
+    "ధ": "d̪ʰ",
+    "న": "n",
+    "ప": "p",
+    "ఫ": "pʰ",
+    "బ": "b",
+    "భ": "bʰ",
+    "మ": "m",
+    "య": "j",
+    "ర": "r",
+    "ఱ": "r",
+    "ల": "l",
+    "ళ": "ɭ",
+    "ఴ": "ɻ",
+    "వ": "ʋ",
+    "శ": "ʃ",
+    "ష": "ʂ",
+    "స": "s",
+    "హ": "h"
+  },
+  "vowels": {
+    "అ": "a",
+    "ఆ": "aː",
+    "ఇ": "i",
+    "ఈ": "iː",
+    "ఉ": "u",
+    "ఊ": "uː",
+    "ఋ": "ru",
+    "ఎ": "e",
+    "ఏ": "eː",
+    "ఐ": "ai",
+    "ఒ": "o",
+    "ఓ": "oː",
+    "ఔ": "au"
+  },
+  "vowel_signs": {
+    "ా": "aː",
+    "ి": "i",
+    "ీ": "iː",
+    "ు": "u",
+    "ూ": "uː",
+    "ృ": "ru",
+    "ె": "e",
+    "ే": "eː",
+    "ై": "ai",
+    "ొ": "o",
+    "ో": "oː",
+    "ౌ": "au"
+  },
+  "inherent_vowel": "a",
+  "virama": "్",
+  "nasalize_marks": [
+    "ఁ"
+  ],
+  "anusvara_marks": [
+    "ం"
+  ],
+  "anusvara_otherwise": "m",
+  "visarga": {
+    "mark": "ః",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": false,
+    "keep_final_after_cluster": false,
+    "medial_vc_cv": false
+  },
+  "examples": {
+    "నమస్కారం": "namaskaːram",
+    "తెలుగు": "t̪eluɡu"
+  }
+}

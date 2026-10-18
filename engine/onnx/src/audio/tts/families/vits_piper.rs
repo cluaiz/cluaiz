@@ -41,8 +41,6 @@ pub fn execute(
         }
     }
     let seq_len = padded_ids.len();
-    eprintln!("DEBUG: phoneme_ids = {:?}", phoneme_ids);
-    eprintln!("DEBUG: padded_ids = {:?}", &padded_ids[..padded_ids.len().min(30)]);
     let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
     use super::logger;
     logger::log_step("VitsPiper", "0% START", &format!("Executing VITS with {} raw phoneme IDs", phoneme_ids.len()));

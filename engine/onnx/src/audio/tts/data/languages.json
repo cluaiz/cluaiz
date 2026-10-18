@@ -1,0 +1,20 @@
+{
+  "_about": "Which language a text is in when its script says so (Unicode ranges, hex), and which language a voice speaks from the first letter of its file name (Kokoro: a = American English, b = British English, ...). preferred_voices are chosen first when a model has them and they speak the language; otherwise the first voice by name. Text in a script not listed here uses the model's own language.",
+  "scripts": [
+    { "language": "hi", "ranges": [["0900", "097F"], ["A8E0", "A8FF"]] },
+    { "language": "ja", "ranges": [["3040", "30FF"]] },
+    { "language": "zh", "ranges": [["4E00", "9FFF"], ["3400", "4DBF"]] }
+  ],
+  "preferred_voices": ["af_heart", "bf_emma", "hf_alpha"],
+  "voice_prefix_languages": {
+    "a": "en-us",
+    "b": "en-gb",
+    "e": "es",
+    "f": "fr",
+    "h": "hi",
+    "i": "it",
+    "j": "ja",
+    "p": "pt-br",
+    "z": "zh"
+  }
+}

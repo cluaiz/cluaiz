@@ -33,7 +33,7 @@ pub fn execute(
     let vocoder_file = entries.iter().find(|f| f.contains("vocoder") || f.contains("generator") || f.contains("hift"));
 
     use crate::audio::tts::families::logger;
-    logger::log_step("Supertonic", "0% START", &format!("Executing Supertonic pipeline for text: '{}'", text));
+    logger::log_step("Supertonic", "0% START", &format!("Executing Supertonic pipeline for {} chars", text.chars().count()));
 
     let formatted_text = format!("<en>{}</en>", text);
     let char_codes: Vec<i64> = formatted_text.chars().map(|c| c as i64).collect();

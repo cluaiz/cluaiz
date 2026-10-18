@@ -1,0 +1,149 @@
+{
+  "kind": "abugida",
+  "language": "gu",
+  "_about": "Written for Cluaiz from standard Gujarati phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0A80",
+      "0AFF"
+    ]
+  ],
+  "consonants": {
+    "ક": "k",
+    "ખ": "kʰ",
+    "ગ": "ɡ",
+    "ઘ": "ɡʰ",
+    "ઙ": "ŋ",
+    "ચ": "tʃ",
+    "છ": "tʃʰ",
+    "જ": "dʒ",
+    "ઝ": "dʒʰ",
+    "ઞ": "ɲ",
+    "ટ": "ʈ",
+    "ઠ": "ʈʰ",
+    "ડ": "ɖ",
+    "ઢ": "ɖʰ",
+    "ણ": "ɳ",
+    "ત": "t̪",
+    "થ": "t̪ʰ",
+    "દ": "d̪",
+    "ધ": "d̪ʰ",
+    "ન": "n",
+    "પ": "p",
+    "ફ": "pʰ",
+    "બ": "b",
+    "ભ": "bʰ",
+    "મ": "m",
+    "ય": "j",
+    "ર": "r",
+    "લ": "l",
+    "ળ": "ɭ",
+    "વ": "ʋ",
+    "શ": "ʃ",
+    "ષ": "ʂ",
+    "સ": "s",
+    "હ": "ɦ",
+    "ક઼": "q",
+    "ખ઼": "x",
+    "ગ઼": "ɣ",
+    "જ઼": "z",
+    "ઝ઼": "ʒ",
+    "ફ઼": "f",
+    "ડ઼": "ɽ",
+    "ઢ઼": "ɽʰ",
+    "ય઼": "j"
+  },
+  "vowels": {
+    "અ": "ə",
+    "આ": "a",
+    "ઇ": "i",
+    "ઈ": "i",
+    "ઉ": "u",
+    "ઊ": "u",
+    "ઋ": "ru",
+    "ઍ": "ɛ",
+    "એ": "e",
+    "ઐ": "əj",
+    "ઑ": "ɔ",
+    "ઓ": "o",
+    "ઔ": "əʋ"
+  },
+  "vowel_signs": {
+    "ા": "a",
+    "િ": "i",
+    "ી": "i",
+    "ુ": "u",
+    "ૂ": "u",
+    "ૃ": "ru",
+    "ૅ": "ɛ",
+    "ે": "e",
+    "ૈ": "əj",
+    "ૉ": "ɔ",
+    "ો": "o",
+    "ૌ": "əʋ"
+  },
+  "inherent_vowel": "ə",
+  "virama": "્",
+  "nasalize_marks": [
+    "ઁ"
+  ],
+  "anusvara_marks": [
+    "ં"
+  ],
+  "visarga": {
+    "mark": "ઃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": true,
+    "keep_final_after_cluster": true,
+    "medial_vc_cv": true
+  },
+  "examples": {
+    "ગુજરાતી": "ɡudʒrat̪i",
+    "કેમ": "kem"
+  }
+}

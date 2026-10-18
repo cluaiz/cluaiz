@@ -33,7 +33,7 @@ impl TtsModelManifest {
         if let Ok(meta) = session.metadata() {
             if let Some(sr_str) = meta.custom("sample_rate") {
                 if let Ok(sr) = sr_str.parse::<u32>() {
-                    eprintln!("📖 [Metadata Parser] Found sample_rate={} in ONNX header metadata", sr);
+                    tracing::debug!("📖 [Metadata Parser] Found sample_rate={} in ONNX header metadata", sr);
                     manifest.sample_rate = Some(sr);
                 }
             }

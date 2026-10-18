@@ -1,0 +1,117 @@
+{
+  "kind": "abugida",
+  "language": "bn",
+  "_about": "Written for Cluaiz from standard Bengali phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0980",
+      "09FF"
+    ]
+  ],
+  "consonants": {
+    "ক": "k",
+    "খ": "kʰ",
+    "গ": "ɡ",
+    "ঘ": "ɡʰ",
+    "ঙ": "ŋ",
+    "চ": "tʃ",
+    "ছ": "tʃʰ",
+    "জ": "dʒ",
+    "ঝ": "dʒʰ",
+    "ঞ": "n",
+    "ট": "ʈ",
+    "ঠ": "ʈʰ",
+    "ড": "ɖ",
+    "ঢ": "ɖʰ",
+    "ণ": "n",
+    "ত": "t̪",
+    "থ": "t̪ʰ",
+    "দ": "d̪",
+    "ধ": "d̪ʰ",
+    "ন": "n",
+    "প": "p",
+    "ফ": "pʰ",
+    "ব": "b",
+    "ভ": "bʰ",
+    "ম": "m",
+    "য": "dʒ",
+    "র": "r",
+    "ল": "l",
+    "শ": "ʃ",
+    "ষ": "ʃ",
+    "স": "ʃ",
+    "হ": "ɦ",
+    "ক়": "q",
+    "খ়": "x",
+    "গ়": "ɣ",
+    "জ়": "z",
+    "ঝ়": "ʒ",
+    "ফ়": "f",
+    "ড়": "ɽ",
+    "ঢ়": "ɽʰ",
+    "য়": "j",
+    "ড়": "ɽ",
+    "ঢ়": "ɽʰ",
+    "য়": "j",
+    "ৰ": "r",
+    "ৱ": "w"
+  },
+  "dead_consonants": {
+    "ৎ": "t̪"
+  },
+  "vowels": {
+    "অ": "ɔ",
+    "আ": "a",
+    "ই": "i",
+    "ঈ": "i",
+    "উ": "u",
+    "ঊ": "u",
+    "ঋ": "ri",
+    "এ": "e",
+    "ঐ": "oi",
+    "ও": "o",
+    "ঔ": "ou"
+  },
+  "vowel_signs": {
+    "া": "a",
+    "ি": "i",
+    "ী": "i",
+    "ু": "u",
+    "ূ": "u",
+    "ৃ": "ri",
+    "ে": "e",
+    "ৈ": "oi",
+    "ো": "o",
+    "ৌ": "ou"
+  },
+  "inherent_vowel": "ɔ",
+  "virama": "্",
+  "nasalize_marks": [
+    "ঁ"
+  ],
+  "anusvara_marks": [
+    "ং"
+  ],
+  "anusvara_otherwise": "ŋ",
+  "visarga": {
+    "mark": "ঃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {},
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": true,
+    "keep_final_after_cluster": true,
+    "medial_vc_cv": true
+  },
+  "examples": {
+    "বাংলা": "baŋla",
+    "আমার": "amar",
+    "কলকাতা": "kɔlkat̪a"
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "kind": "abugida",
+  "language": "pa",
+  "_about": "Written for Cluaiz from standard Punjabi (Gurmukhi) phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0A00",
+      "0A7F"
+    ]
+  ],
+  "consonants": {
+    "ਕ": "k",
+    "ਖ": "kʰ",
+    "ਗ": "ɡ",
+    "ਘ": "ɡʰ",
+    "ਙ": "ŋ",
+    "ਚ": "tʃ",
+    "ਛ": "tʃʰ",
+    "ਜ": "dʒ",
+    "ਝ": "dʒʰ",
+    "ਞ": "ɲ",
+    "ਟ": "ʈ",
+    "ਠ": "ʈʰ",
+    "ਡ": "ɖ",
+    "ਢ": "ɖʰ",
+    "ਣ": "ɳ",
+    "ਤ": "t̪",
+    "ਥ": "t̪ʰ",
+    "ਦ": "d̪",
+    "ਧ": "d̪ʰ",
+    "ਨ": "n",
+    "ਪ": "p",
+    "ਫ": "pʰ",
+    "ਬ": "b",
+    "ਭ": "bʰ",
+    "ਮ": "m",
+    "ਯ": "j",
+    "ਰ": "r",
+    "ਲ": "l",
+    "ਲ਼": "ɭ",
+    "ਵ": "ʋ",
+    "ਸ਼": "ʃ",
+    "ਸ": "s",
+    "ਹ": "ɦ",
+    "ਕ਼": "q",
+    "ਖ਼": "x",
+    "ਗ਼": "ɣ",
+    "ਜ਼": "z",
+    "ਝ਼": "ʒ",
+    "ਫ਼": "f",
+    "ਡ਼": "ɽ",
+    "ਢ਼": "ɽʰ",
+    "ਯ਼": "j",
+    "ਖ਼": "x",
+    "ਗ਼": "ɣ",
+    "ਜ਼": "z",
+    "ੜ": "ɽ",
+    "ਫ਼": "f"
+  },
+  "vowels": {
+    "ਅ": "ə",
+    "ਆ": "aː",
+    "ਇ": "ɪ",
+    "ਈ": "iː",
+    "ਉ": "ʊ",
+    "ਊ": "uː",
+    "ਏ": "eː",
+    "ਐ": "ɛː",
+    "ਓ": "oː",
+    "ਔ": "ɔː"
+  },
+  "vowel_signs": {
+    "ਾ": "aː",
+    "ਿ": "ɪ",
+    "ੀ": "iː",
+    "ੁ": "ʊ",
+    "ੂ": "uː",
+    "ੇ": "eː",
+    "ੈ": "ɛː",
+    "ੋ": "oː",
+    "ੌ": "ɔː"
+  },
+  "inherent_vowel": "ə",
+  "virama": "੍",
+  "nasalize_marks": [
+    "ਁ"
+  ],
+  "anusvara_marks": [
+    "ਂ",
+    "ੰ"
+  ],
+  "gemination_mark": "ੱ",
+  "visarga": {
+    "mark": "ਃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": true,
+    "keep_final_after_cluster": true,
+    "medial_vc_cv": true
+  },
+  "examples": {
+    "ਪੰਜਾਬੀ": "pəɲdʒaːbiː",
+    "ਪੱਕਾ": "pəkkaː",
+    "ਅਕਾਲ": "əkaːl"
+  }
+}
