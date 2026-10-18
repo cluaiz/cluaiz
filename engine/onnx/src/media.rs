@@ -206,6 +206,7 @@ impl OnnxEngine {
                     text,
                     options.voice.as_deref(),
                     options.speed.unwrap_or(1.0),
+                    callback,
                 )?;
                 limits.check_decoded_bytes(output.len() as u64)?;
                 Ok(AudioOutput::WavDataUri(output))
