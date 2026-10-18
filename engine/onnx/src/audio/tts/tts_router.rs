@@ -80,7 +80,7 @@ fn route_tts_input(
         .ok_or_else(|| anyhow!("TTS model directory not set"))?;
     let model_language = super::g2p::get_model_language(model_dir);
     // Hindi typed in Latin letters (and other romanized languages) is read in its own script
-    let romanized = super::romanized::to_native_script(raw_text_input);
+    let romanized = super::romanized::to_native_script(raw_text_input, &model_language);
     let raw_text_input = romanized.as_ref();
     let language = super::rules_g2p::script_language(raw_text_input, &model_language)
         .or_else(|| super::languages::script_language(raw_text_input))

@@ -18,6 +18,9 @@ use std::sync::OnceLock;
 #[derive(Deserialize)]
 struct Romanization {
     language: String,
+    /// Wins a tie when no file is the model's language (romanized words several languages share)
+    #[serde(default)]
+    default: bool,
     /// Language whose (downloaded) dictionary tells real English words apart
     english_dictionary: String,
     min_evidence: f32,
@@ -44,9 +47,13 @@ struct Chart {
     consonants: HashMap<String, String>,
     vowels: HashMap<String, String>,
     vowel_signs: HashMap<String, String>,
-    /// Vowel signs at the end of a word ("sakta": the final a is आ)
+    /// Vowel signs for the rest of a word when it ends with them ("sakta": final a is आ; Urdu
+    /// "kartay": final ay is े)
     #[serde(default)]
     final_vowel_signs: HashMap<String, String>,
+    /// A consonant ending the word gets a virama (scripts whose rules say every inherent vowel)
+    #[serde(default)]
+    final_consonant_virama: bool,
     #[serde(default)]
     anusvara: Option<Anusvara>,
     /// Write a virama only in clusters at the start or end of a word; inside a word the native
@@ -84,14 +91,15 @@ fn romanizations() -> &'static [Romanization] {
 }
 
 /// Text with every romanized sentence of a known language written in that language's script.
-pub fn to_native_script(text: &str) -> Cow<'_, str> {
+/// `model_language` decides between languages whose romanized words look alike.
+pub fn to_native_script<'t>(text: &'t str, model_language: &str) -> Cow<'t, str> {
     if romanizations().is_empty() || !text.chars().any(|c| c.is_ascii_alphabetic()) {
         return Cow::Borrowed(text);
     }
     let mut out = String::with_capacity(text.len() * 2);
     let mut changed = false;
     for sentence in text.split_inclusive(&SENTENCE_ENDS[..]) {
-        match convert_sentence(sentence) {
+        match convert_sentence(sentence, model_language) {
             Some(native) => {
                 out.push_str(&native);
                 changed = true;
@@ -123,13 +131,15 @@ fn latin_words(sentence: &str) -> Vec<(usize, usize)> {
     words
 }
 
-fn convert_sentence(sentence: &str) -> Option<String> {
+fn convert_sentence(sentence: &str, model_language: &str) -> Option<String> {
     let words = latin_words(sentence);
     if words.is_empty() {
         return None;
     }
     let lower: Vec<String> = words.iter().map(|&(s, e)| sentence[s..e].to_lowercase()).collect();
-    // The language with the most evidence that passes its thresholds
+    let model_base = model_language.split(['-', '_']).next().unwrap_or(model_language).to_lowercase();
+    // The language with the most evidence that passes its thresholds; a tie goes to the model's
+    // language, then to the default file
     let (rom, english) = romanizations()
         .iter()
         .filter_map(|rom| {
@@ -139,7 +149,10 @@ fn convert_sentence(sentence: &str) -> Option<String> {
             for w in &lower {
                 if rom.is_known(w) {
                     evidence += 1.0;
-                } else if rom.ambiguous.contains_key(w) {
+                } else if rom.ambiguous.contains_key(w)
+                    || romanizations().iter().any(|other| other.is_known(w))
+                {
+                    // Also English, or another language's word: evidence for neither
                     continue;
                 } else if in_english(w) {
                     english_words += 1.0;
@@ -150,7 +163,10 @@ fn convert_sentence(sentence: &str) -> Option<String> {
             let share = evidence / (evidence + english_words).max(f32::EPSILON);
             (evidence >= rom.min_evidence && share >= rom.min_share).then_some((evidence, rom, english))
         })
-        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .max_by(|a, b| {
+            let rank = |rom: &Romanization| (rom.language == model_base, rom.default);
+            a.0.total_cmp(&b.0).then_with(|| rank(a.1).cmp(&rank(b.1)))
+        })
         .map(|(_, rom, english)| (rom, english))?;
 
     let mut out = String::with_capacity(sentence.len() * 2);
@@ -197,12 +213,11 @@ impl Chart {
         while i < word.len() {
             let rest = &word[i..];
             if after_consonant {
+                if let Some(sign) = self.final_vowel_signs.get(rest) {
+                    out.push_str(sign);
+                    break;
+                }
                 if let Some((n, sign)) = longest(&self.vowel_signs, rest) {
-                    let at_end = i + n == word.len();
-                    let sign = at_end
-                        .then(|| self.final_vowel_signs.get(&rest[..n]))
-                        .flatten()
-                        .map_or(sign, String::as_str);
                     out.push_str(sign);
                     i += n;
                     (after_consonant, after_vowel, seen_vowel) = (false, true, true);
@@ -236,6 +251,9 @@ impl Chart {
                 i += rest.chars().next().map_or(1, char::len_utf8);
             }
         }
+        if after_consonant && self.final_consonant_virama {
+            out.push_str(&self.virama);
+        }
         out
     }
 }
@@ -244,17 +262,35 @@ impl Chart {
 mod tests {
     use super::*;
 
-    /// Every file's examples hold (sentence → expected text).
+    /// Every file's examples hold (sentence → expected text) for a model speaking that language.
     #[test]
     fn every_romanization_file_converts_its_examples() {
         let mut checked = 0;
         for rom in romanizations() {
             for (input, expected) in &rom.examples {
-                assert_eq!(to_native_script(input), expected.as_str(), "{} {input}", rom.language);
+                let got = to_native_script(input, &rom.language);
+                assert_eq!(got, expected.as_str(), "{} {input}", rom.language);
                 checked += 1;
             }
         }
         assert!(checked >= 4, "only {checked} examples");
+    }
+
+    /// For an English model, the words of the sentence pick the language
+    #[test]
+    fn words_pick_the_language_for_an_english_model() {
+        let script = |text: &str| super::super::languages::script_language(&to_native_script(text, "en-us"))
+            .map(str::to_owned);
+        let contains = |text: &str, from: u32, to: u32| {
+            to_native_script(text, "en-us").chars().any(|c| (from..=to).contains(&(c as u32)))
+        };
+        assert!(contains("Sat sri akal ji, ki haal hai?", 0x0A00, 0x0A7F), "Punjabi → Gurmukhi");
+        assert!(contains("Vanakkam, eppadi irukeenga?", 0x0B80, 0x0BFF), "Tamil");
+        assert!(contains("Kem cho? Majama", 0x0A80, 0x0AFF), "Gujarati");
+        assert!(contains("Tumi kemon acho?", 0x0980, 0x09FF), "Bengali");
+        assert_eq!(to_native_script("Tu kasa aahes?", "en-us"), "तू कसा आहेस?");
+        assert_eq!(script("Aap kaise hain?").as_deref(), Some("hi"));
+        assert_eq!(to_native_script("Hello, how are you?", "en-us"), "Hello, how are you?");
     }
 
     /// `spellings` holds only what the chart gets wrong, so the chart stays the rule
