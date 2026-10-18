@@ -1,0 +1,179 @@
+{
+  "kind": "alphabet",
+  "language": "ro",
+  "_about": "Spelling rules for Romanian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "F": "ei"
+  },
+  "rules": [
+    {
+      "g": "che",
+      "p": "ke"
+    },
+    {
+      "g": "chi",
+      "p": "ki"
+    },
+    {
+      "g": "ghe",
+      "p": "ɡe"
+    },
+    {
+      "g": "ghi",
+      "p": "ɡi"
+    },
+    {
+      "g": "c",
+      "p": "tʃ",
+      "before": "F"
+    },
+    {
+      "g": "g",
+      "p": "dʒ",
+      "before": "F"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "ʒ"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "w"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "ă",
+      "p": "ə"
+    },
+    {
+      "g": "â",
+      "p": "ɨ"
+    },
+    {
+      "g": "î",
+      "p": "ɨ"
+    },
+    {
+      "g": "ș",
+      "p": "ʃ"
+    },
+    {
+      "g": "ş",
+      "p": "ʃ"
+    },
+    {
+      "g": "ț",
+      "p": "ts"
+    },
+    {
+      "g": "ţ",
+      "p": "ts"
+    }
+  ],
+  "examples": {
+    "mulțumesc": "multsumesk",
+    "chiar": "kiar",
+    "bună": "bunə"
+  }
+}

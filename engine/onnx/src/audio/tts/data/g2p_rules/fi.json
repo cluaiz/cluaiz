@@ -1,0 +1,174 @@
+{
+  "kind": "alphabet",
+  "language": "fi",
+  "_about": "Spelling rules for Finnish written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {},
+  "rules": [
+    {
+      "g": "aa",
+      "p": "ɑː"
+    },
+    {
+      "g": "ee",
+      "p": "eː"
+    },
+    {
+      "g": "ii",
+      "p": "iː"
+    },
+    {
+      "g": "oo",
+      "p": "oː"
+    },
+    {
+      "g": "uu",
+      "p": "uː"
+    },
+    {
+      "g": "yy",
+      "p": "yː"
+    },
+    {
+      "g": "ää",
+      "p": "æː"
+    },
+    {
+      "g": "öö",
+      "p": "øː"
+    },
+    {
+      "g": "ng",
+      "p": "ŋː"
+    },
+    {
+      "g": "nk",
+      "p": "ŋk"
+    },
+    {
+      "g": "a",
+      "p": "ɑ"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "ʋ"
+    },
+    {
+      "g": "w",
+      "p": "ʋ"
+    },
+    {
+      "g": "z",
+      "p": "ts"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "y"
+    },
+    {
+      "g": "ä",
+      "p": "æ"
+    },
+    {
+      "g": "ö",
+      "p": "ø"
+    },
+    {
+      "g": "å",
+      "p": "oː"
+    }
+  ],
+  "examples": {
+    "kiitos": "kiːtos",
+    "päivää": "pæiʋæː"
+  }
+}

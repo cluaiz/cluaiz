@@ -135,7 +135,7 @@ impl FlowMatchingSampler {
                                 }
                             }
                         }
-                        Err(e) => eprintln!("❌ [Text Encoder] Graph run error: {}", e),
+                        Err(e) => tracing::debug!("❌ [Text Encoder] Graph run error: {}", e),
                     }
                 }
             }

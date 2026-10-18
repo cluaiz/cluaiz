@@ -1,0 +1,195 @@
+{
+  "kind": "alphabet",
+  "language": "hu",
+  "_about": "Spelling rules for Hungarian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {},
+  "rules": [
+    {
+      "g": "dzs",
+      "p": "dʒ"
+    },
+    {
+      "g": "sz",
+      "p": "s"
+    },
+    {
+      "g": "zs",
+      "p": "ʒ"
+    },
+    {
+      "g": "cs",
+      "p": "tʃ"
+    },
+    {
+      "g": "gy",
+      "p": "ɟ"
+    },
+    {
+      "g": "ty",
+      "p": "c"
+    },
+    {
+      "g": "ny",
+      "p": "ɲ"
+    },
+    {
+      "g": "ly",
+      "p": "j"
+    },
+    {
+      "g": "dz",
+      "p": "dz"
+    },
+    {
+      "g": "a",
+      "p": "ɒ"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "ɛ"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "ʃ"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "v"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    },
+    {
+      "g": "c",
+      "p": "ts"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "á",
+      "p": "aː"
+    },
+    {
+      "g": "é",
+      "p": "eː"
+    },
+    {
+      "g": "í",
+      "p": "iː"
+    },
+    {
+      "g": "ó",
+      "p": "oː"
+    },
+    {
+      "g": "ö",
+      "p": "ø"
+    },
+    {
+      "g": "ő",
+      "p": "øː"
+    },
+    {
+      "g": "ú",
+      "p": "uː"
+    },
+    {
+      "g": "ü",
+      "p": "y"
+    },
+    {
+      "g": "ű",
+      "p": "yː"
+    }
+  ],
+  "examples": {
+    "köszönöm": "køsønøm",
+    "szia": "siɒ",
+    "jó": "joː"
+  }
+}

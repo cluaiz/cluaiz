@@ -1,0 +1,206 @@
+{
+  "kind": "alphabet",
+  "language": "es",
+  "_about": "Spelling rules for Spanish written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiouáéíóúü",
+    "F": "eiéí"
+  },
+  "rules": [
+    {
+      "g": "ch",
+      "p": "tʃ"
+    },
+    {
+      "g": "ll",
+      "p": "ʝ"
+    },
+    {
+      "g": "rr",
+      "p": "r"
+    },
+    {
+      "g": "qu",
+      "p": "k",
+      "before": "F"
+    },
+    {
+      "g": "gu",
+      "p": "ɡ",
+      "before": "F"
+    },
+    {
+      "g": "gü",
+      "p": "ɡw"
+    },
+    {
+      "g": "c",
+      "p": "θ",
+      "before": "F"
+    },
+    {
+      "g": "g",
+      "p": "x",
+      "before": "F"
+    },
+    {
+      "g": "y",
+      "p": "ʝ",
+      "before": "V"
+    },
+    {
+      "g": "r",
+      "p": "r",
+      "after": "#"
+    },
+    {
+      "g": "r",
+      "p": "r",
+      "after": "lns"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": ""
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "x"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "ɾ"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "b"
+    },
+    {
+      "g": "w",
+      "p": "w"
+    },
+    {
+      "g": "z",
+      "p": "θ"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "ñ",
+      "p": "ɲ"
+    },
+    {
+      "g": "á",
+      "p": "a"
+    },
+    {
+      "g": "é",
+      "p": "e"
+    },
+    {
+      "g": "í",
+      "p": "i"
+    },
+    {
+      "g": "ó",
+      "p": "o"
+    },
+    {
+      "g": "ú",
+      "p": "u"
+    },
+    {
+      "g": "ü",
+      "p": "u"
+    }
+  ],
+  "examples": {
+    "gracias": "ɡɾaθias",
+    "perro": "pero",
+    "llamar": "ʝamaɾ",
+    "hola": "ola"
+  }
+}

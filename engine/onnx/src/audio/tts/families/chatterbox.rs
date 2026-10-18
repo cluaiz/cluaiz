@@ -41,7 +41,7 @@ pub fn execute(
     }
 
     use super::logger;
-    logger::log_step("Chatterbox", "0% START", &format!("Received text input: '{}' (len={})", text, text.len()));
+    logger::log_step("Chatterbox", "0% START", &format!("Received text input (len={})", text.len()));
 
     // ─── Stage 1: speech_encoder → speaker embeddings / features ───────────────
     // Provide realistic non-zero acoustic reference vector so decoder conditions on human speech
@@ -73,17 +73,17 @@ pub fn execute(
                                 }
                             }
                             if feat.is_empty() { feat = vec![0.05f32; feat_dim * 80]; }
-                            eprintln!("🎙️ [Chatterbox Stage 1/4] speaker_embeddings=[1,192] speaker_features=[1,{},80]", feat_dim);
+                            tracing::debug!("🎙️ [Chatterbox Stage 1/4] speaker_embeddings=[1,192] speaker_features=[1,{},80]", feat_dim);
                             (emb, feat, feat_dim)
                         }
                         Err(e) => {
-                            eprintln!("⚠️ [Chatterbox] speech_encoder failed: {}", e);
+                            tracing::debug!("⚠️ [Chatterbox] speech_encoder failed: {}", e);
                             (vec![0.05f32; 192], vec![0.05f32; 32 * 80], 32usize)
                         }
                     }
                 }
                 Err(e) => {
-                    eprintln!("⚠️ [Chatterbox] speech_encoder load failed: {}", e);
+                    tracing::debug!("⚠️ [Chatterbox] speech_encoder load failed: {}", e);
                     (vec![0.05f32; 192], vec![0.05f32; 32 * 80], 32usize)
                 }
             }
@@ -108,7 +108,7 @@ pub fn execute(
                         if let Ok(tok) = tokenizers::Tokenizer::from_file(&tokenizer_path) {
                             if let Ok(encoding) = tok.encode(text, false) {
                                 let ids: Vec<i64> = encoding.get_ids().iter().map(|&id| id as i64).collect();
-                                eprintln!("📖 [Chatterbox Tokenizer] Encoded '{}' into {} BPE tokens.", text, ids.len());
+                                tracing::debug!("📖 [Chatterbox Tokenizer] Encoded {} chars into {} BPE tokens.", text.chars().count(), ids.len());
                                 ids
                             } else {
                                 text.bytes().map(|b| b as i64).collect()
@@ -134,7 +134,7 @@ pub fn execute(
                                 })
                             }
                             Err(e) => {
-                                eprintln!("⚠️ [Chatterbox] embed_tokens failed: {}", e);
+                                tracing::debug!("⚠️ [Chatterbox] embed_tokens failed: {}", e);
                                 None
                             }
                         }
@@ -245,14 +245,14 @@ pub fn execute(
                                             }
                                         }
                                         Err(e) => {
-                                            eprintln!("⚠️ [Chatterbox] LM step failed: {}", e);
+                                            tracing::debug!("⚠️ [Chatterbox] LM step failed: {}", e);
                                             break;
                                         }
                                     }
                                 }
                                 // end LM decode loop
                             }
-                    eprintln!("🎙️ [Chatterbox Stage 3/4] Generated {} speech tokens", generated.len());
+                    tracing::debug!("🎙️ [Chatterbox Stage 3/4] Generated {} speech tokens", generated.len());
                     if generated.is_empty() {
                         return Err(anyhow!("Chatterbox language_model failed to produce valid speech tokens."));
                     } else {
@@ -296,7 +296,7 @@ pub fn execute(
         if let Ok((_shape, wav_tensor)) = wav_val.try_extract_tensor::<f32>() {
             let pcm = wav_tensor.to_vec();
             if !pcm.is_empty() {
-                eprintln!("🎙️ [Chatterbox Stage 4/4] Conditional Decoder Output PCM: {} samples ({:.2}s)",
+                tracing::debug!("🎙️ [Chatterbox Stage 4/4] Conditional Decoder Output PCM: {} samples ({:.2}s)",
                     pcm.len(), pcm.len() as f32 / 24000.0);
                 return Ok(pcm);
             }

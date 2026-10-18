@@ -42,7 +42,7 @@ pub fn load_first_available_voice(model_dir: &Path) -> Result<Vec<f32>> {
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file() && path.extension().map(|e| e == "bin").unwrap_or(false) {
-            eprintln!(
+            tracing::debug!(
                 "📖 [Kokoro Handler] Using first available voice: {:?}",
                 path.file_name().unwrap_or_default()
             );
@@ -81,7 +81,7 @@ fn load_style_from_file(path: &Path) -> Result<Vec<f32>> {
         }
     }
 
-    eprintln!(
+    tracing::debug!(
         "📖 [Kokoro Handler] Loaded style vector: {:?} ({} dims)",
         path.file_name().unwrap_or_default(),
         style_dim
@@ -108,7 +108,7 @@ pub fn execute(
     let style_dim = style_vector.len();
     let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
 
-    eprintln!(
+    tracing::debug!(
         "🎙️ [Kokoro Handler] Executing with {} phoneme IDs, style_dim={}, speed={}",
         seq_len, style_dim, speed
     );

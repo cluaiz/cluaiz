@@ -40,7 +40,7 @@ pub fn execute(
         return Err(anyhow!("OmniVoice model directory does not exist: {:?}", model_dir));
     }
 
-    eprintln!("🎙️ [OmniVoice Handler] Executing Multi-Head GenAI Decoder for text: '{}'", text);
+    tracing::debug!("🎙️ [OmniVoice Handler] Executing Multi-Head GenAI Decoder for {} chars", text.chars().count());
 
     // Encode text as codec token ids: [1, 8, seq] with audio_mask=[1, seq] bool
     let char_codes: Vec<i64> = text.chars().map(|c| ((c as i64) % 1024) + 1).collect();
@@ -187,7 +187,7 @@ pub fn execute(
         }
     }
 
-    eprintln!("🎙️ [OmniVoice Stage 4/4] PCM synthesized: {} samples ({:.2}s at {}Hz)",
+    tracing::debug!("🎙️ [OmniVoice Stage 4/4] PCM synthesized: {} samples ({:.2}s at {}Hz)",
         pcm.len(), pcm.len() as f32 / SAMPLE_RATE as f32, SAMPLE_RATE);
 
     if pcm.is_empty() {

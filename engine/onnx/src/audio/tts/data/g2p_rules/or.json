@@ -1,0 +1,147 @@
+{
+  "kind": "abugida",
+  "language": "or",
+  "_about": "Written for Cluaiz from standard Odia phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0B00",
+      "0B7F"
+    ]
+  ],
+  "consonants": {
+    "କ": "k",
+    "ଖ": "kʰ",
+    "ଗ": "ɡ",
+    "ଘ": "ɡʰ",
+    "ଙ": "ŋ",
+    "ଚ": "tʃ",
+    "ଛ": "tʃʰ",
+    "ଜ": "dʒ",
+    "ଝ": "dʒʰ",
+    "ଞ": "ɲ",
+    "ଟ": "ʈ",
+    "ଠ": "ʈʰ",
+    "ଡ": "ɖ",
+    "ଢ": "ɖʰ",
+    "ଣ": "ɳ",
+    "ତ": "t̪",
+    "ଥ": "t̪ʰ",
+    "ଦ": "d̪",
+    "ଧ": "d̪ʰ",
+    "ନ": "n",
+    "ପ": "p",
+    "ଫ": "pʰ",
+    "ବ": "b",
+    "ଭ": "bʰ",
+    "ମ": "m",
+    "ଯ": "dʒ",
+    "ର": "r",
+    "ଲ": "l",
+    "ଳ": "ɭ",
+    "ଵ": "ʋ",
+    "ଶ": "s",
+    "ଷ": "s",
+    "ସ": "s",
+    "ହ": "ɦ",
+    "କ଼": "q",
+    "ଖ଼": "x",
+    "ଗ଼": "ɣ",
+    "ଜ଼": "z",
+    "ଝ଼": "ʒ",
+    "ଫ଼": "f",
+    "ଡ଼": "ɽ",
+    "ଢ଼": "ɽʰ",
+    "ଯ଼": "j",
+    "ୟ": "j",
+    "ୱ": "w"
+  },
+  "vowels": {
+    "ଅ": "ɔ",
+    "ଆ": "a",
+    "ଇ": "i",
+    "ଈ": "i",
+    "ଉ": "u",
+    "ଊ": "u",
+    "ଋ": "ru",
+    "ଏ": "e",
+    "ଐ": "oi",
+    "ଓ": "o",
+    "ଔ": "ou"
+  },
+  "vowel_signs": {
+    "ା": "a",
+    "ି": "i",
+    "ୀ": "i",
+    "ୁ": "u",
+    "ୂ": "u",
+    "ୃ": "ru",
+    "େ": "e",
+    "ୈ": "oi",
+    "ୋ": "o",
+    "ୌ": "ou"
+  },
+  "inherent_vowel": "ɔ",
+  "virama": "୍",
+  "nasalize_marks": [
+    "ଁ"
+  ],
+  "anusvara_marks": [
+    "ଂ"
+  ],
+  "visarga": {
+    "mark": "ଃ",
+    "ipa": "h"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": false,
+    "keep_final_after_cluster": false,
+    "medial_vc_cv": false
+  },
+  "examples": {
+    "ଓଡ଼ିଆ": "oɽia",
+    "ଭାଷା": "bʰasa"
+  }
+}

@@ -35,7 +35,7 @@ pub fn synthesize_mel_to_pcm(
     let mut final_num_mels = num_mels;
 
     if num_mels != expected_mels {
-        eprintln!("🎙️ [Neural Vocoder] Channel mismatch: Got {}, Expected {}. Resampling...", num_mels, expected_mels);
+        tracing::debug!("🎙️ [Neural Vocoder] Channel mismatch: Got {}, Expected {}. Resampling...", num_mels, expected_mels);
         let mut resampled_mel = vec![0.0f32; expected_mels * num_frames];
         for t in 0..num_frames {
             for m in 0..expected_mels {
@@ -59,8 +59,8 @@ pub fn synthesize_mel_to_pcm(
     }
 
     let shape = vec![1usize, final_num_mels, num_frames]; 
-    eprintln!("🎙️ [Neural Vocoder] Executing ONNX Graph.");
-    eprintln!("🎙️ [Neural Vocoder] Input name: {}, final mel_data length: {}, num_frames: {}, expected_mels: {}", input_name, final_mel_data.len(), num_frames, final_num_mels);
+    tracing::debug!("🎙️ [Neural Vocoder] Executing ONNX Graph.");
+    tracing::debug!("🎙️ [Neural Vocoder] Input name: {}, final mel_data length: {}, num_frames: {}, expected_mels: {}", input_name, final_mel_data.len(), num_frames, final_num_mels);
 
     let mut tts_inputs: HashMap<String, Value> = HashMap::new();
     
@@ -85,9 +85,9 @@ pub fn synthesize_mel_to_pcm(
                     max_abs = s.abs();
                 }
             }
-            eprintln!("🎙️ [Neural Vocoder] Output PCM Length: {}, max_abs: {}", pcm.len(), max_abs);
+            tracing::debug!("🎙️ [Neural Vocoder] Output PCM Length: {}, max_abs: {}", pcm.len(), max_abs);
             if max_abs > 1.0 {
-                eprintln!("🎙️ [Neural Vocoder] Normalizing amplitude by dividing by {}", max_abs);
+                tracing::debug!("🎙️ [Neural Vocoder] Normalizing amplitude by dividing by {}", max_abs);
                 for s in &mut pcm {
                     *s = *s / max_abs;
                 }

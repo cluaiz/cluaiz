@@ -1,0 +1,166 @@
+{
+  "kind": "alphabet",
+  "language": "tr",
+  "_about": "Spelling rules for Turkish written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeıioöuüâîû"
+  },
+  "rules": [
+    {
+      "g": "ğ",
+      "p": "ː",
+      "after": "V"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "j",
+      "p": "ʒ"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "ɾ"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "v"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    },
+    {
+      "g": "c",
+      "p": "dʒ"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "j"
+    },
+    {
+      "g": "ç",
+      "p": "tʃ"
+    },
+    {
+      "g": "ğ",
+      "p": ""
+    },
+    {
+      "g": "ı",
+      "p": "ɯ"
+    },
+    {
+      "g": "ö",
+      "p": "ø"
+    },
+    {
+      "g": "ş",
+      "p": "ʃ"
+    },
+    {
+      "g": "ü",
+      "p": "y"
+    },
+    {
+      "g": "â",
+      "p": "aː"
+    },
+    {
+      "g": "î",
+      "p": "iː"
+    },
+    {
+      "g": "û",
+      "p": "uː"
+    }
+  ],
+  "examples": {
+    "teşekkürler": "teʃekkyɾleɾ",
+    "dağ": "daː",
+    "çiçek": "tʃitʃek"
+  }
+}

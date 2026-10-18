@@ -26,7 +26,7 @@ pub fn sanitize_audio_pcm(mut pcm: Vec<f32>) -> Result<Vec<f32>> {
             *s = (*s * scale).clamp(-0.95, 0.95);
         }
     } else {
-        eprintln!("⚠️ [TTS Router] Output signal amplitude is near noise floor ({:.6}). Preserving raw PCM without scaling to prevent noise amplification.", max_amplitude);
+        tracing::debug!("⚠️ [TTS Router] Output signal amplitude is near noise floor ({:.6}). Preserving raw PCM without scaling to prevent noise amplification.", max_amplitude);
     }
 
     Ok(pcm)
@@ -58,10 +58,7 @@ pub fn route_tts_text(
     }
 
     let text_chunks = chunk_tts_text(raw_text_input, 140);
-    eprintln!("==================================================");
-    eprintln!("🚀 [CLUAIZ ENGINE] EXECUTING TTS ROUTER DISPATCH 🚀");
-    eprintln!("==================================================");
-    eprintln!(
+    tracing::debug!(
         "🎙️ [TTS Router] Original Length: {} chars | Total Sentences/Chunks: {}",
         raw_text_input.len(),
         text_chunks.len()
@@ -74,7 +71,7 @@ pub fn route_tts_text(
     let sessions_pairs = [("primary", &*session)];
     let detected_family =
         super::family_adapter::FamilyAdapter::detect_family(dummy_dir, &sessions_pairs);
-    eprintln!(
+    tracing::debug!(
         "🎯 [TTS Router] FamilyAdapter Detected Model Family: {:?}",
         detected_family
     );
@@ -91,7 +88,7 @@ pub fn route_tts_text(
         super::family_adapter::TtsFamily::Audio8 => 44100,
         _ => 24000,
     }) as usize;
-    eprintln!(
+    tracing::debug!(
         "🎙️ [TTS Router] Dynamically Resolved Target Sample Rate: {} Hz",
         sample_rate
     );
@@ -166,7 +163,7 @@ pub fn route_tts_text(
             ))
         }
         super::family_adapter::TtsFamily::GenericOnnx => {
-            eprintln!("⚠️ [TTS Router] Unknown family detected. Attempting VITS/Piper handler as fallback.");
+            tracing::debug!("⚠️ [TTS Router] Unknown family detected. Attempting VITS/Piper handler as fallback.");
             handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate)
         }
     }
@@ -200,7 +197,7 @@ fn handle_vits_piper(
     manifest: &super::manifest_loader::TtsModelManifest,
     sample_rate: usize,
 ) -> Result<String> {
-    eprintln!(
+    tracing::debug!(
         "🎙️ [TTS Router] VITS/Piper Handler Activated with sample_rate={}Hz.",
         sample_rate
     );
@@ -247,7 +244,7 @@ fn handle_vits_piper(
         };
 
         if !token_ids.is_empty() {
-            eprintln!(
+            tracing::debug!(
                 "🎙️ [VITS Handler] Sentence Chunk {}/{}: {} chars → {} tokens",
                 chunk_idx + 1,
                 text_chunks.len(),
@@ -297,7 +294,7 @@ fn handle_kokoro(
     text_chunks: &[String],
     sample_rate: usize,
 ) -> Result<String> {
-    eprintln!(
+    tracing::debug!(
         "🎙️ [TTS Router] Kokoro Handler Activated with sample_rate={}Hz.",
         sample_rate
     );
@@ -312,22 +309,18 @@ fn handle_kokoro(
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
     let full_text = text_chunks.join(" ");
-    let is_hindi_script = full_text
-        .chars()
-        .any(|c| ('\u{0900}'..='\u{097F}').contains(&c));
-    let default_voice = if is_hindi_script {
-        "hf_alpha"
-    } else {
-        "af_heart"
-    };
-    let selected_voice =
-        extract_parameter(&full_text, "voice").unwrap_or_else(|| default_voice.to_string());
+    // A requested voice, else one whose name says it speaks the text's language (its script, or the
+    // model's language), else the first voice (data/languages.json)
+    let text_lang = super::languages::script_language(&full_text)
+        .map(str::to_owned)
+        .unwrap_or_else(|| super::g2p::get_model_language(model_dir));
+    let selected_voice = extract_parameter(&full_text, "voice")
+        .or_else(|| super::languages::voice_for_language(model_dir, &text_lang))
+        .unwrap_or_default();
+    tracing::info!("🎙️ [Kokoro Handler] Voice '{selected_voice}' for language '{text_lang}'");
 
     // Load style vector from voices/ directory
     let style_vector = super::families::kokoro::load_style_vector(model_dir, &selected_voice)
-        .or_else(|_| super::families::kokoro::load_style_vector(model_dir, "hm_omega"))
-        .or_else(|_| super::families::kokoro::load_style_vector(model_dir, "af_heart"))
-        .or_else(|_| super::families::kokoro::load_style_vector(model_dir, "default"))
         .or_else(|_| super::families::kokoro::load_first_available_voice(model_dir))
         .map_err(|e| anyhow!("Kokoro style embedding load failed for voice '{}': {}. Place a voice .bin file in the model's voices/ directory.", selected_voice, e))?;
 
@@ -363,7 +356,7 @@ fn handle_kokoro(
             token_ids.push(0);
         }
 
-        eprintln!(
+        tracing::debug!(
             "🎙️ [Kokoro Handler] Chunk {}/{}: {} chars → {} tokens",
             chunk_idx + 1,
             text_chunks.len(),

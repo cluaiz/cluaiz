@@ -7,6 +7,8 @@ use std::sync::RwLock;
 
 static DYNAMIC_LEXICON: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
 static CURRENT_LOADED_MODEL_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+/// Language of the loaded model (picks letter-to-sound rules for scripts several languages share)
+static CURRENT_MODEL_LANGUAGE: RwLock<String> = RwLock::new(String::new());
 
 /// Dynamically process and normalize text for any TTS architecture family
 /// using model directory manifest assets (`lexicon.txt`, `dict_*.json`).
@@ -115,8 +117,21 @@ fn load_lexicon(model_dir: &Path) {
 
     // 0. The language's pronunciation dictionary (downloaded on first use); the model's own data
     //    below overrides it. Dictionary copies older engines left in the model folder are moved out.
+    //    Its plain IPA is rewritten into the symbols this model was trained on.
     super::ipa_dictionary::retire_engine_lexicons(model_dir);
-    let mut combined_dict = super::ipa_dictionary::load_language_lexicon(&get_model_language(model_dir));
+    let lang = get_model_language(model_dir);
+    let mut combined_dict = super::ipa_dictionary::load_language_lexicon(&lang);
+    if let Some(converter) = super::phoneme_sets::converter_for(model_dir, &lang)
+        .filter(|_| !combined_dict.is_empty())
+    {
+        for ipa in combined_dict.values_mut() {
+            *ipa = converter.convert(ipa);
+        }
+        tracing::info!(
+            "🔤 [G2P Router] Dictionary rewritten into the model's '{}' phoneme symbols",
+            converter.name()
+        );
+    }
 
     // 1. Parse phoneme_map metadata directly from model config JSON files
     if let Ok(entries) = fs::read_dir(model_dir) {
@@ -146,7 +161,7 @@ fn load_lexicon(model_dir: &Path) {
                                     }
                                 }
                                 if count > 0 {
-                                    eprintln!(
+                                    tracing::debug!(
                                         "📖 [G2P Router] Loaded {} phoneme_map entries from header {:?}",
                                         count,
                                         path.file_name().unwrap_or_default()
@@ -171,7 +186,7 @@ fn load_lexicon(model_dir: &Path) {
         if ext == "json" {
             if let Ok(content) = fs::read_to_string(path) {
                 if let Ok(dict) = serde_json::from_str::<HashMap<String, String>>(&content) {
-                    eprintln!(
+                    tracing::debug!(
                         "📖 [G2P Router] Loaded {} dynamic JSON lexicon entries from {:?}",
                         dict.len(),
                         path.file_name().unwrap_or_default()
@@ -195,7 +210,7 @@ fn load_lexicon(model_dir: &Path) {
                         count += 1;
                     }
                 }
-                eprintln!(
+                tracing::debug!(
                     "📖 [G2P Router] Loaded {} dynamic lexicon.txt entries from {:?}",
                     count,
                     path.file_name().unwrap_or_default()
@@ -210,17 +225,22 @@ fn load_lexicon(model_dir: &Path) {
     if let Ok(mut guard) = CURRENT_LOADED_MODEL_DIR.write() {
         *guard = Some(model_dir.to_path_buf());
     }
+    if let Ok(mut guard) = CURRENT_MODEL_LANGUAGE.write() {
+        *guard = lang;
+    }
 }
 
 /// Convert input text using dynamic lexicon assets or clean word fallback.
-fn lexicon_text_to_ipa(text: &str, _model_dir: &Path) -> String {
+fn lexicon_text_to_ipa(text: &str, model_dir: &Path) -> String {
     let clean_text = text.to_lowercase();
     let words: Vec<&str> = clean_text.split_whitespace().collect();
 
+    let model_lang = CURRENT_MODEL_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
     let lexicon_guard = DYNAMIC_LEXICON.read().ok();
     let dict = lexicon_guard.as_ref().and_then(|g| g.as_ref());
 
     let mut output_phonemes = Vec::new();
+    let (mut known, mut unknown) = (0usize, 0usize);
 
     for word in words {
         let clean_word = word.trim_matches(|c: char| {
@@ -237,19 +257,20 @@ fn lexicon_text_to_ipa(text: &str, _model_dir: &Path) -> String {
         let trailing = &word[end..];
 
         // 1. Try lexicon lookup for the clean word
-        let mut ipa = clean_word.to_string();
-        let mut matched = false;
-        if let Some(d) = dict {
-            if let Some(lookup_ipa) = d.get(clean_word) {
-                ipa = lookup_ipa.clone();
-                matched = true;
+        let ipa = match dict.and_then(|d| d.get(clean_word)) {
+            Some(lookup_ipa) => {
+                known += 1;
+                lookup_ipa.clone()
             }
-        }
-        eprintln!(
-            "DEBUG: word='{}', clean='{}', matched={}, ipa='{}'",
-            word, clean_word, matched, ipa
-        );
-
+            None => {
+                unknown += 1;
+                // Letter-to-sound rules for its script, else dictionary pieces, else as written
+                super::rules_g2p::word_to_ipa(clean_word, &model_lang)
+                    .map(|(ipa, lang)| convert_for_model(model_dir, lang, &ipa))
+                    .or_else(|| dict.and_then(|d| ipa_from_pieces(clean_word, d)))
+                    .unwrap_or_else(|| clean_word.to_string())
+            }
+        };
         // 2. Re-attach punctuation
         let mut reconstructed = String::new();
         if !leading.is_empty() {
@@ -262,11 +283,77 @@ fn lexicon_text_to_ipa(text: &str, _model_dir: &Path) -> String {
         output_phonemes.push(reconstructed);
     }
 
+    // Counts only: the text being spoken is never logged
+    tracing::debug!("🔤 [G2P Router] {known} words from the lexicon, {unknown} not in it (said from dictionary pieces or as written)");
+
     if output_phonemes.is_empty() {
         clean_text
     } else {
         output_phonemes.join(" ")
     }
+}
+
+/// Rule output (espeak-style IPA in `lang`) rewritten into this model's symbols. Converters are
+/// built once per model folder and language.
+fn convert_for_model(model_dir: &Path, lang: &str, ipa: &str) -> String {
+    type Converters = HashMap<(PathBuf, String), Option<super::phoneme_sets::Converter>>;
+    static CONVERTERS: std::sync::Mutex<Option<Converters>> = std::sync::Mutex::new(None);
+    let Ok(mut guard) = CONVERTERS.lock() else {
+        return ipa.to_owned();
+    };
+    guard
+        .get_or_insert_with(HashMap::new)
+        .entry((model_dir.to_path_buf(), lang.to_owned()))
+        .or_insert_with(|| super::phoneme_sets::converter_for(model_dir, lang))
+        .as_ref()
+        .map_or_else(|| ipa.to_owned(), |c| c.convert(ipa))
+}
+
+/// Cost of covering part of an unknown word with one dictionary entry of `chars` letters: whole
+/// words are cheap, two-letter pieces dearer, single letters (spelled out) the last resort.
+fn piece_cost(chars: usize) -> usize {
+    match chars {
+        0 => usize::MAX,
+        1 => 6,
+        2 => 3,
+        _ => 1,
+    }
+}
+
+/// A word missing from the dictionary, said as the cheapest split into words that are in it
+/// ("unbelievably" → "un" + "believably"; an unknown name falls back to letters). None when no
+/// split covers it (e.g. a script the dictionary has no letters for).
+fn ipa_from_pieces(word: &str, dict: &HashMap<String, String>) -> Option<String> {
+    let bounds: Vec<usize> = word
+        .char_indices()
+        .map(|(i, _)| i)
+        .chain(std::iter::once(word.len()))
+        .collect();
+    let n = bounds.len() - 1;
+    // best[j] = (cost, start index) of the cheapest cover of the first j characters
+    let mut best: Vec<Option<(usize, usize)>> = vec![None; n + 1];
+    best[0] = Some((0, 0));
+    for j in 1..=n {
+        for i in 0..j {
+            let (Some((cost, _)), Some(_)) = (best[i], dict.get(&word[bounds[i]..bounds[j]])) else {
+                continue;
+            };
+            let total = cost.saturating_add(piece_cost(j - i));
+            if best[j].map_or(true, |(c, _)| total < c) {
+                best[j] = Some((total, i));
+            }
+        }
+    }
+    best[n]?;
+    let mut pieces = Vec::new();
+    let mut j = n;
+    while j > 0 {
+        let (_, i) = best[j]?;
+        pieces.push(dict.get(&word[bounds[i]..bounds[j]])?.as_str());
+        j = i;
+    }
+    pieces.reverse();
+    Some(pieces.concat())
 }
 
 /// Convert input text into token IDs using dynamic manifest symbol maps.

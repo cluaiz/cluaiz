@@ -1,0 +1,146 @@
+{
+  "kind": "abugida",
+  "language": "ta",
+  "_about": "Written for Cluaiz from standard Tamil phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
+  "default_for_script": false,
+  "script_ranges": [
+    [
+      "0B80",
+      "0BFF"
+    ]
+  ],
+  "consonants": {
+    "க": "k",
+    "ங": "ŋ",
+    "ச": "tʃ",
+    "ஜ": "dʒ",
+    "ஞ": "ɲ",
+    "ட": "ʈ",
+    "ண": "ɳ",
+    "த": "t̪",
+    "ந": "n",
+    "ன": "n",
+    "ப": "p",
+    "ம": "m",
+    "ய": "j",
+    "ர": "ɾ",
+    "ற": "r",
+    "ல": "l",
+    "ள": "ɭ",
+    "ழ": "ɻ",
+    "வ": "ʋ",
+    "ஶ": "ʃ",
+    "ஷ": "ʂ",
+    "ஸ": "s",
+    "ஹ": "h"
+  },
+  "vowels": {
+    "அ": "a",
+    "ஆ": "aː",
+    "இ": "i",
+    "ஈ": "iː",
+    "உ": "u",
+    "ஊ": "uː",
+    "எ": "e",
+    "ஏ": "eː",
+    "ஐ": "ai",
+    "ஒ": "o",
+    "ஓ": "oː",
+    "ஔ": "au"
+  },
+  "vowel_signs": {
+    "ா": "aː",
+    "ி": "i",
+    "ீ": "iː",
+    "ு": "u",
+    "ூ": "uː",
+    "ெ": "e",
+    "ே": "eː",
+    "ை": "ai",
+    "ொ": "o",
+    "ோ": "oː",
+    "ௌ": "au",
+    "ொ": "o",
+    "ோ": "oː",
+    "ௌ": "au"
+  },
+  "inherent_vowel": "a",
+  "virama": "்",
+  "nasalize_marks": [],
+  "anusvara_marks": [
+    "ஂ"
+  ],
+  "visarga": {
+    "mark": "ஃ",
+    "ipa": "x"
+  },
+  "nasal_vowel_mark": "̃",
+  "anusvara_before": {
+    "ŋ": [
+      "k",
+      "kʰ",
+      "ɡ",
+      "ɡʰ",
+      "q",
+      "x",
+      "ɣ"
+    ],
+    "ɲ": [
+      "tʃ",
+      "tʃʰ",
+      "dʒ",
+      "dʒʰ"
+    ],
+    "ɳ": [
+      "ʈ",
+      "ʈʰ",
+      "ɖ",
+      "ɖʰ"
+    ],
+    "n": [
+      "t̪",
+      "t̪ʰ",
+      "d̪",
+      "d̪ʰ",
+      "n"
+    ],
+    "m": [
+      "p",
+      "pʰ",
+      "b",
+      "bʰ",
+      "m"
+    ]
+  },
+  "voicing": {
+    "map": {
+      "k": "ɡ",
+      "tʃ": "s",
+      "ʈ": "ɖ",
+      "t̪": "d̪",
+      "p": "b"
+    },
+    "nasals": [
+      "ŋ",
+      "ɲ",
+      "ɳ",
+      "n",
+      "m"
+    ]
+  },
+  "punctuation": {
+    "।": ".",
+    "॥": "."
+  },
+  "schwa_deletion": {
+    "word_final": false,
+    "keep_final_after_cluster": false,
+    "medial_vc_cv": false
+  },
+  "examples": {
+    "வணக்கம்": "ʋaɳakkam",
+    "தமிழ்": "t̪amiɻ",
+    "நாடு": "naːɖu",
+    "மகன்": "maɡan"
+  }
+}

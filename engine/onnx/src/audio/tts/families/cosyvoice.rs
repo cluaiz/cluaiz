@@ -38,9 +38,9 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
         ));
     }
 
-    eprintln!(
-        "🎙️ [CosyVoice Handler] Executing Multi-Stage Flow Synthesizer for text: '{}'",
-        text
+    tracing::debug!(
+        "🎙️ [CosyVoice Handler] Executing Multi-Stage Flow Synthesizer for {} chars",
+        text.chars().count()
     );
 
     let char_codes: Vec<i64> = text.chars().map(|c| c as i64).collect();
@@ -61,7 +61,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
                         if let Ok(outputs) = camp_sess.run(camp_inputs) {
                             if let Some(out_val) = outputs.values().next() {
                                 if let Ok((_, t)) = out_val.try_extract_tensor::<f32>() {
-                                    eprintln!("📖 [CosyVoice] Successfully extracted {} dim speaker embedding from campplus.onnx", t.len());
+                                    tracing::debug!("📖 [CosyVoice] Successfully extracted {} dim speaker embedding from campplus.onnx", t.len());
                                     t.to_vec()
                                 } else { vec![0.05f32; 192] }
                             } else { vec![0.05f32; 192] }
@@ -73,7 +73,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
     };
 
     use super::logger;
-    logger::log_step("CosyVoice", "0% START", &format!("Received text input: '{}' (len={})", text, text.len()));
+    logger::log_step("CosyVoice", "0% START", &format!("Received text input (len={})", text.len()));
     logger::log_step("CosyVoice", "20% STAGE 1 SPEAKER_EMB", &format!("Speaker embedding extracted size={}", spk_embedding.len()));
 
     // 🎯 Stage 2: Flow Estimator Session Execution
@@ -227,7 +227,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
                             if let Ok((_shape, tensor)) = out_val.try_extract_tensor::<f32>() {
                                 let pcm = tensor.to_vec();
                                 if !pcm.is_empty() {
-                                    eprintln!("🎙️ [CosyVoice Stage 3/3] Real HiFT Vocoder Output PCM: {} samples", pcm.len());
+                                    tracing::debug!("🎙️ [CosyVoice Stage 3/3] Real HiFT Vocoder Output PCM: {} samples", pcm.len());
                                     return Ok(pcm);
                                 }
                             }

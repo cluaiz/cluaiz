@@ -239,7 +239,7 @@ pub fn execute(
                     }
                 }
             }
-            Err(e) => eprintln!("⚠️ [LuxTTS] FM decoder step {} error: {}", step, e),
+            Err(e) => tracing::debug!("⚠️ [LuxTTS] FM decoder step {} error: {}", step, e),
         }
     }
 
@@ -265,7 +265,7 @@ pub fn execute(
                 &mel_transposed,
                 mel_seq_len,
             )?;
-            eprintln!(
+            tracing::debug!(
                 "🎙️ [LuxTTS] Output PCM: {} samples ({:.2}s at 24000Hz)",
                 pcm.len(),
                 pcm.len() as f32 / 24000.0
@@ -277,7 +277,7 @@ pub fn execute(
     // If no vocoder session loaded, try to find and load a sibling hift.onnx vocoder (e.g. from CosyVoice)
     let mut hift_path_opt = None;
     if let Some(parent_dir) = model_dir.parent() {
-        eprintln!(
+        tracing::debug!(
             "🔍 [LuxTTS] Scanning parent directory {:?} for sibling hift.onnx...",
             parent_dir
         );
@@ -286,7 +286,7 @@ pub fn execute(
                 if entry.path().is_dir() {
                     let hift_candidate = entry.path().join("hift.onnx");
                     if hift_candidate.exists() {
-                        eprintln!(
+                        tracing::debug!(
                             "🔍 [LuxTTS] Found sibling hift.onnx at {:?}",
                             hift_candidate
                         );
@@ -359,7 +359,7 @@ pub fn execute(
             sum_val += val;
         }
         let mean_val = sum_val / mel_80_resampled.len() as f32;
-        eprintln!(
+        tracing::debug!(
             "🔍 [LuxTTS] mel_80 range (dynamically scaled & resampled): [{}, {}], mean: {}",
             min_val, max_val, mean_val
         );
@@ -371,7 +371,7 @@ pub fn execute(
                     &mel_80_resampled,
                     target_seq_len,
                 ).map(|pcm| {
-                    eprintln!("🎙️ [LuxTTS] Pre-loaded Neural Vocoder Output PCM: {} samples", pcm.len());
+                    tracing::debug!("🎙️ [LuxTTS] Pre-loaded Neural Vocoder Output PCM: {} samples", pcm.len());
                     pcm
                 })
             } else {
@@ -417,7 +417,7 @@ pub fn execute(
                                     mel_seq_len,
                                 )
                             {
-                                eprintln!("🎙️ [LuxTTS] Vocoder Output PCM: {} samples", pcm.len());
+                                tracing::debug!("🎙️ [LuxTTS] Vocoder Output PCM: {} samples", pcm.len());
                                 return Ok(pcm);
                             }
                         }
@@ -443,7 +443,7 @@ pub fn execute(
             }
         }
     }
-    eprintln!(
+    tracing::debug!(
         "🎙️ [LuxTTS] Mel Acoustic Fallback PCM: {} samples",
         pcm.len()
     );
