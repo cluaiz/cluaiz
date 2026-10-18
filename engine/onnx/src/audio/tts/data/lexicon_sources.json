@@ -1,0 +1,341 @@
+{
+  "_about": "Pronunciation dictionaries the TTS engine downloads on first use (never shipped in the repo). Files come from the pinned commit and must match sha256. Languages with enabled=false are never fetched.",
+  "source": "https://github.com/open-dict-data/ipa-dict",
+  "license": "MIT unless a language says otherwise (see the source README credits)",
+  "commit": "43c3570eb3553bdd19fccd2bd0091534889af023",
+  "url": "https://raw.githubusercontent.com/open-dict-data/ipa-dict/{commit}/data/{file}",
+  "languages": [
+    {
+      "file": "ar.txt",
+      "codes": [
+        "ar"
+      ],
+      "bytes": 32883883,
+      "sha256": "8c57c049cca1acbf497b37e8fb491695f0e909eaed4d60d2575d836e85dd8141",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "de.txt",
+      "codes": [
+        "de",
+        "de-de"
+      ],
+      "bytes": 30726400,
+      "sha256": "d36d11dbcc226468a22f0fb3a0794ee0ce142bf277e26e517a8bfd0de1ec2653",
+      "license": "CC BY-SA (german-ipa-dict, from Wiktionary)",
+      "enabled": true
+    },
+    {
+      "file": "en_UK.txt",
+      "codes": [
+        "en-gb",
+        "en-uk"
+      ],
+      "bytes": 1684124,
+      "sha256": "221394caef0cf723b4f2df81a98ac33191293257b88aed5b1fb89466d3a0dc77",
+      "license": "GPL-3.0 (ipacards)",
+      "enabled": false,
+      "disabled_reason": "GPL data is not shipped or fetched by an Apache-2.0 engine"
+    },
+    {
+      "file": "en_US.txt",
+      "codes": [
+        "en-us",
+        "en"
+      ],
+      "bytes": 3180267,
+      "sha256": "2af6f154a5c363275f052d1f85acedef38ed185ca9745aa4314be77f6b70de67",
+      "license": "MIT (cmudict-ipa)",
+      "enabled": true
+    },
+    {
+      "file": "eo.txt",
+      "codes": [
+        "eo"
+      ],
+      "bytes": 491389,
+      "sha256": "30ef8d2671639e1ceb9daad88e1c2e6e42608957705dddf34c1c57ff5c7bf284",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "es_ES.txt",
+      "codes": [
+        "es",
+        "es-es"
+      ],
+      "bytes": 16310951,
+      "sha256": "5c1f7afc5afcf8083075430fbd31d293d2ab272c78c92a739acc5a5f05caf4b4",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "es_MX.txt",
+      "codes": [
+        "es-mx",
+        "es-419"
+      ],
+      "bytes": 16198940,
+      "sha256": "d76d0a8c85b8edbb79a37e1630f198bd3879abe8989c5aeb217460593133db75",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "fa.txt",
+      "codes": [
+        "fa"
+      ],
+      "bytes": 240166,
+      "sha256": "bbe97b7b356e47c34db189577dd0a36023a870ac3912eb35be8a4775e1be4a84",
+      "license": "MIT (partly Wiktionary, CC BY-SA)",
+      "enabled": true
+    },
+    {
+      "file": "fi.txt",
+      "codes": [
+        "fi"
+      ],
+      "bytes": 2912947,
+      "sha256": "76f7fb4d4bd30cd0a3c7b3965f4707d5fab63c7038e5d506f81bc1d66db2f48b",
+      "license": "GPL-2.0 (prosodic1b)",
+      "enabled": false,
+      "disabled_reason": "GPL data is not shipped or fetched by an Apache-2.0 engine"
+    },
+    {
+      "file": "fr_FR.txt",
+      "codes": [
+        "fr",
+        "fr-fr"
+      ],
+      "bytes": 6153972,
+      "sha256": "def906754262cfae80ee7a639e945114d98a2a104df62ad765c96475a83168cd",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "fr_QC.txt",
+      "codes": [
+        "fr-ca"
+      ],
+      "bytes": 6745633,
+      "sha256": "02e351260948e8aeaabebdeafdb441f11d89d662678cde46cc002413f6c98fba",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "is.txt",
+      "codes": [
+        "is"
+      ],
+      "bytes": 1596279,
+      "sha256": "9c12a9a33fcb7916e40bb2bc4d3b4750191c0bcecf8b165d7f8a9ffe7b711eb9",
+      "license": "CC BY 3.0 (Hjal project)",
+      "enabled": true
+    },
+    {
+      "file": "ja.txt",
+      "codes": [
+        "ja"
+      ],
+      "bytes": 6795765,
+      "sha256": "66fc9b2187be77627d155269288df0ed45ca8c8fbf465341f8a70b4f758c82b6",
+      "license": "CC BY-SA 3.0 (EDICT)",
+      "enabled": true
+    },
+    {
+      "file": "jam.txt",
+      "codes": [
+        "jam"
+      ],
+      "bytes": 34169,
+      "sha256": "b42d6c7f42bf792d0af4e14827737fc6b95c6635c06e7459e3f09a7f7d37d12b",
+      "license": "CC BY 4.0 (Open Grammar Project)",
+      "enabled": true
+    },
+    {
+      "file": "km.txt",
+      "codes": [
+        "km"
+      ],
+      "bytes": 100144,
+      "sha256": "d125b5ec03f661b0f02af47efebac3e018bd435b605b0a3dc8444570f910ef2a",
+      "license": "CC BY-NC-SA 4.0 (aakanee.com)",
+      "enabled": false,
+      "disabled_reason": "non-commercial license"
+    },
+    {
+      "file": "ko.txt",
+      "codes": [
+        "ko"
+      ],
+      "bytes": 2232325,
+      "sha256": "369f0c900841e9314c7c8b903a64775f22470b24dc5d59820255e7c077bee87a",
+      "license": "CC BY-SA 4.0 (korean-word-ipa-dictionary)",
+      "enabled": true
+    },
+    {
+      "file": "ma.txt",
+      "codes": [
+        "ms",
+        "id"
+      ],
+      "bytes": 581598,
+      "sha256": "0efc994e87aa0e0a1134521fd081df45ee7bd0fd73e285805bb211aa3b78b8de",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "nb.txt",
+      "codes": [
+        "nb",
+        "no"
+      ],
+      "bytes": 259767,
+      "sha256": "5876576b0ad9ca7688a1b082a91154702d68b14829878ce5d3c63a4b90694608",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "nl.txt",
+      "codes": [
+        "nl"
+      ],
+      "bytes": 4031508,
+      "sha256": "909df7fa3458ce094d6b1814b8fa57d2ae41f92ea77e31658a2fe6639728d5a9",
+      "license": "CC BY (Instituut voor de Nederlandse Taal)",
+      "enabled": true
+    },
+    {
+      "file": "or.txt",
+      "codes": [
+        "or"
+      ],
+      "bytes": 211279,
+      "sha256": "cb5b6ad1829565305f433646e881d5579bdae1c23a6bfa15174ab0b4092c2ba8",
+      "license": "MIT (from Odia Wikimedia, CC BY-SA)",
+      "enabled": true
+    },
+    {
+      "file": "pt_BR.txt",
+      "codes": [
+        "pt-br",
+        "pt"
+      ],
+      "bytes": 2828684,
+      "sha256": "db5d17ce85cb6f6751e55728453330edfae70a48d810d67f1ddf7762c4f0b67c",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "ro.txt",
+      "codes": [
+        "ro"
+      ],
+      "bytes": 1599278,
+      "sha256": "959253828007eb718ad14f9db2443e59988979dacbc52038385b89e6daeaa348",
+      "license": "CC BY-NC 3.0 (MaRePhoR)",
+      "enabled": false,
+      "disabled_reason": "non-commercial license"
+    },
+    {
+      "file": "sv.txt",
+      "codes": [
+        "sv"
+      ],
+      "bytes": 574869,
+      "sha256": "acd508aaa5a883dd54e6fafcb886ee7494d71c101c7e4341410fe289ec46bdb2",
+      "license": "CC BY-SA 2.5 (Folkets lexikon)",
+      "enabled": true
+    },
+    {
+      "file": "sw.txt",
+      "codes": [
+        "sw"
+      ],
+      "bytes": 1040728,
+      "sha256": "101b1136a17161214935676a13157df0911a1f1f085637a2dd4d008fbdcf8d89",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "tts.txt",
+      "codes": [
+        "tts"
+      ],
+      "bytes": 56121,
+      "sha256": "95bdb7c94da3bd871442a9d80342c2821090710af195c5fa7f99f8a5310c0078",
+      "license": "CC BY-NC-SA 4.0 (aakanee.com)",
+      "enabled": false,
+      "disabled_reason": "non-commercial license"
+    },
+    {
+      "file": "vi_C.txt",
+      "codes": [
+        "vi-c"
+      ],
+      "bytes": 2868521,
+      "sha256": "82ec688b680cf7f740c2695224b1e1ea6e2f96c1b3620bddffd5a05a764bcdde",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "vi_N.txt",
+      "codes": [
+        "vi",
+        "vi-vn",
+        "vi-n"
+      ],
+      "bytes": 2808884,
+      "sha256": "610dfc59d4e7cf3fffeedf0f00cc4dd263a49d6a5eb0c297740be14dbf936a58",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "vi_S.txt",
+      "codes": [
+        "vi-s"
+      ],
+      "bytes": 2808425,
+      "sha256": "1e3b4108e1e748c94965fb567cf6e81602f94056387c1bc7052f8b9acb966dc2",
+      "license": "MIT",
+      "enabled": true
+    },
+    {
+      "file": "yue.txt",
+      "codes": [
+        "yue",
+        "zh-yue",
+        "zh-hk"
+      ],
+      "bytes": 1779057,
+      "sha256": "06f07ed9b49358305991ca2d2a82fc052a8c2201762f423f5d166e8282da9ccc",
+      "license": "CC BY 3.0 (KFCD Pingyam, kaifangcidian)",
+      "enabled": true
+    },
+    {
+      "file": "zh_hans.txt",
+      "codes": [
+        "zh",
+        "cmn",
+        "zh-cn",
+        "zh-hans"
+      ],
+      "bytes": 1369263,
+      "sha256": "10fe876988e576daddc2eafefebc0c0da1f3680c143ceaa564453785ca2b4ae3",
+      "license": "CC BY 3.0 (KFCD Pinyin, kaifangcidian, Unihan)",
+      "enabled": true
+    },
+    {
+      "file": "zh_hant.txt",
+      "codes": [
+        "zh-tw",
+        "zh-hant"
+      ],
+      "bytes": 1456104,
+      "sha256": "c323d1041162c1390e6bc334c34863cb24cd3713bd002bd3ee683ba2eeab6d2e",
+      "license": "CC BY 3.0 (KFCD Pinyin, kaifangcidian, Unihan)",
+      "enabled": true
+    }
+  ]
+}

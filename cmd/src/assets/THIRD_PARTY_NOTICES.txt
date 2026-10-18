@@ -69,3 +69,15 @@ The backend utilizes various open-source crates from the Rust ecosystem
 which are dual-licensed under the MIT and Apache 2.0 licenses. 
 Wasmtime is licensed under the Apache 2.0 license with LLVM Exceptions.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+5. Pronunciation Dictionaries (downloaded on first use, not bundled)
+------------------------------------------------------------------------
+Phoneme text-to-speech voices use word pronunciations from ipa-dict
+(https://github.com/open-dict-data/ipa-dict), released under the MIT
+license; some languages carry their own source license (CC BY, CC BY-SA,
+Unicode). The engine downloads a language's file from the pinned commit
+listed in engine/onnx/src/audio/tts/data/lexicon_sources.json the first
+time it is needed. Languages under GPL or non-commercial licenses are
+never downloaded.
+------------------------------------------------------------------------
