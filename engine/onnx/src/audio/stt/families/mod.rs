@@ -36,6 +36,8 @@ pub struct SttFamilyProfile {
     pub transcribe_token: Option<i64>,
     pub translate_token: Option<i64>,
     pub no_timestamps_token: Option<i64>,
+    /// Explicit supported language codes (empty means dynamic tokenizer vocabulary lookup, as in Whisper).
+    pub supported_languages: Vec<String>,
     /// Token generation rate cap per second of audio (e.g. 6.5 for Moonshine, 15.0 for Whisper).
     pub tokens_per_second_budget: f32,
     /// Minimum token budget floor before clamping to `max_target_positions`.
@@ -51,6 +53,31 @@ impl SttFamilyProfile {
             + (self.min_token_budget as f32))
             .ceil() as usize;
         dynamic_budget.clamp(1, hard_cap)
+    }
+
+    /// Validates that the caller's requested language is supported by this STT model profile.
+    pub fn validate_requested_language(&self, requested_lang: &str) -> Result<()> {
+        if self.supported_languages.is_empty() {
+            return Ok(());
+        }
+        let norm = requested_lang.trim().to_ascii_lowercase();
+        if norm.is_empty() || norm == "auto" {
+            return Ok(());
+        }
+        let primary = norm.split(['-', '_']).next().unwrap_or(norm.as_str());
+        if self
+            .supported_languages
+            .iter()
+            .any(|supported| supported == &norm || supported == primary)
+        {
+            return Ok(());
+        }
+        bail!(
+            "Requested language '{}' is not supported by this STT model (supported: {}). Use a multilingual Whisper model for '{}' transcription.",
+            requested_lang.trim(),
+            self.supported_languages.join(", "),
+            requested_lang.trim()
+        )
     }
 }
 

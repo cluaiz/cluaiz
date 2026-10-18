@@ -280,6 +280,22 @@ impl HuggingFaceHub {
         }
 
         // 2. Process ONNX models (Bundling .onnx.data companion binary shards & STT sub-graphs via SSOT)
+        variants.extend(Self::bundle_onnx_variants(&items, &metadata_files));
+
+        if variants.is_empty() {
+            return Err(format!(
+                "No supported model files (.gguf, .onnx) found in repository '{}'.",
+                repo_id
+            ));
+        }
+
+        Ok(variants)
+    }
+
+    /// Bundles primary `.onnx` models with their matching STT sub-component graphs
+    /// (e.g. `decoder_model_merged.onnx`, `uncached_decode.onnx`) and `.onnx_data` shards.
+    pub fn bundle_onnx_variants(items: &[HfTreeItem], metadata_files: &[String]) -> Vec<HfVariant> {
+        let mut variants = Vec::new();
         let has_stt_encoder_in_dir = |dir: &str| -> bool {
             items.iter().any(|candidate| {
                 let c_lower = candidate.path.to_lowercase();
@@ -294,7 +310,7 @@ impl HuggingFaceHub {
             })
         };
 
-        for item in &items {
+        for item in items {
             let lower = item.path.to_lowercase();
             let parent_dir = Path::new(&item.path)
                 .parent()
@@ -316,7 +332,7 @@ impl HuggingFaceHub {
                 let quant_tag = UniversalQuantization::extract_quant_tag(&fname);
 
                 // Pair companion STT sub-component .onnx graphs (e.g. decoder_model*.onnx, uncached_decode.onnx) in same dir with matching quantization
-                for sub_item in &items {
+                for sub_item in items {
                     let s_path = &sub_item.path;
                     let s_lower = s_path.to_lowercase();
                     let s_parent = Path::new(s_path)
@@ -345,7 +361,7 @@ impl HuggingFaceHub {
                     .iter()
                     .map(|p| UniversalQuantization::strip_onnx_companion_suffix(p))
                     .collect();
-                for data_item in &items {
+                for data_item in items {
                     let d_path = &data_item.path;
                     let d_parent = Path::new(d_path)
                         .parent()
@@ -364,7 +380,7 @@ impl HuggingFaceHub {
                 }
 
                 // Add auxiliary metadata
-                for mf in &metadata_files {
+                for mf in metadata_files {
                     if AssetBundler::is_compatible_subfolder_metadata(mf, &item.path) {
                         bundle_files.push(mf.clone());
                     }
@@ -384,15 +400,7 @@ impl HuggingFaceHub {
                 });
             }
         }
-
-        if variants.is_empty() {
-            return Err(format!(
-                "No supported model files (.gguf, .onnx) found in repository '{}'.",
-                repo_id
-            ));
-        }
-
-        Ok(variants)
+        variants
     }
 
     /// Builds a canonical ModelManifest for a Hugging Face variant
@@ -457,3 +465,68 @@ impl HuggingFaceHub {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bundle_onnx_variants_pairs_moonshine_encoder_and_decoders_by_quant() {
+        let items = vec![
+            HfTreeItem {
+                r#type: Some("file".to_string()),
+                path: "onnx/encoder_model.onnx".to_string(),
+                size: Some(32_000_000),
+            },
+            HfTreeItem {
+                r#type: Some("file".to_string()),
+                path: "onnx/decoder_model_merged.onnx".to_string(),
+                size: Some(78_000_000),
+            },
+            HfTreeItem {
+                r#type: Some("file".to_string()),
+                path: "onnx/encoder_model_quantized.onnx".to_string(),
+                size: Some(9_000_000),
+            },
+            HfTreeItem {
+                r#type: Some("file".to_string()),
+                path: "onnx/decoder_model_merged_quantized.onnx".to_string(),
+                size: Some(21_000_000),
+            },
+        ];
+        let metadata = vec![
+            "config.json".to_string(),
+            "tokenizer.json".to_string(),
+            "preprocessor_config.json".to_string(),
+        ];
+
+        let variants = HuggingFaceHub::bundle_onnx_variants(&items, &metadata);
+        // Should emit only 2 primary variants (the encoders), NOT 4 separate variants for decoders
+        assert_eq!(variants.len(), 2);
+
+        let fp32 = variants
+            .iter()
+            .find(|v| v.primary_file == "onnx/encoder_model.onnx")
+            .expect("missing fp32 encoder variant");
+        assert!(fp32
+            .all_files
+            .contains(&"onnx/decoder_model_merged.onnx".to_string()));
+        assert!(!fp32
+            .all_files
+            .contains(&"onnx/decoder_model_merged_quantized.onnx".to_string()));
+        assert!(fp32.all_files.contains(&"config.json".to_string()));
+
+        let quant = variants
+            .iter()
+            .find(|v| v.primary_file == "onnx/encoder_model_quantized.onnx")
+            .expect("missing quantized encoder variant");
+        assert!(quant
+            .all_files
+            .contains(&"onnx/decoder_model_merged_quantized.onnx".to_string()));
+        assert!(!quant
+            .all_files
+            .contains(&"onnx/decoder_model_merged.onnx".to_string()));
+    }
+}
+
+

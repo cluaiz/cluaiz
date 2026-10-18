@@ -101,6 +101,7 @@ impl OnnxEngine {
             .ok_or_else(|| anyhow!("Unsupported STT encoder input signature"))?
             .to_owned();
         let profile = families::resolve_stt_profile(self, &encoder_input)?;
+        profile.validate_requested_language(req_lang)?;
 
         let t_pcm = std::time::Instant::now();
         let mono = prepare_mono(audio, PeakNormalization::LimitToUnit, limits)?;

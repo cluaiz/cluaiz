@@ -72,6 +72,7 @@ pub fn resolve_whisper_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile> 
         transcribe_token: Some(transcribe_token),
         translate_token: Some(translate_token),
         no_timestamps_token: Some(no_timestamps_token),
+        supported_languages: Vec::new(),
         tokens_per_second_budget: 15.0,
         min_token_budget: 64,
     })
