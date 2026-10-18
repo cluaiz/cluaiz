@@ -6,6 +6,10 @@
 //! charts write it in English letters, a अ, aa आ, kh ख, chh छ ...); `spellings` lists only the words
 //! that people write differently from the chart (hamara → हमारा, theek → ठीक).
 //!
+//! Languages whose romanization is syllable by syllable use a `syllables` table instead (Pinyin →
+//! Zhuyin ㄋㄧˇ ㄏㄠˇ, Romaji → kana), with tone marks and doubled consonants; a word the table cannot
+//! read completely is not that language.
+//!
 //! Decided per sentence: known words count fully and words that are not English partly; when that
 //! evidence is large enough next to the sentence's English words, its Hindi words are rewritten and
 //! real English words stay English ("Large Language Model"). Other sentences are left as they are.
@@ -36,10 +40,44 @@ struct Romanization {
     /// Words that are also English: replaced in a qualifying sentence, never counted as evidence
     #[serde(default)]
     ambiguous: HashMap<String, String>,
-    chart: Chart,
+    /// Letter chart (abugida scripts)
+    #[serde(default)]
+    chart: Option<Chart>,
+    /// Syllable table (Pinyin, Romaji)
+    #[serde(default)]
+    syllables: Option<Syllables>,
     #[serde(default)]
     #[cfg_attr(not(test), allow(dead_code))]
     examples: HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
+struct Syllables {
+    /// Romanized syllable → native script, longest match first
+    table: HashMap<String, String>,
+    /// Letters rewritten before matching (macrons: ō → ou)
+    #[serde(default)]
+    normalize: HashMap<char, String>,
+    /// A doubled consonant is this mark before the syllable (Japanese っ)
+    #[serde(default)]
+    geminate: Option<Geminate>,
+    #[serde(default)]
+    tones: Option<Tones>,
+}
+
+#[derive(Deserialize)]
+struct Geminate {
+    mark: String,
+    /// Consonants that can be doubled
+    consonants: String,
+}
+
+#[derive(Deserialize)]
+struct Tones {
+    /// Tone-marked vowel → (plain vowel, tone number from 1)
+    marks: HashMap<char, (char, usize)>,
+    /// Written after a syllable for tone 1, 2, ...
+    output: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -93,7 +131,7 @@ fn romanizations() -> &'static [Romanization] {
 /// Text with every romanized sentence of a known language written in that language's script.
 /// `model_language` decides between languages whose romanized words look alike.
 pub fn to_native_script<'t>(text: &'t str, model_language: &str) -> Cow<'t, str> {
-    if romanizations().is_empty() || !text.chars().any(|c| c.is_ascii_alphabetic()) {
+    if romanizations().is_empty() || !text.chars().any(is_latin_letter) {
         return Cow::Borrowed(text);
     }
     let mut out = String::with_capacity(text.len() * 2);
@@ -114,12 +152,17 @@ pub fn to_native_script<'t>(text: &'t str, model_language: &str) -> Cow<'t, str>
     }
 }
 
+/// Latin letter, with diacritics (Pinyin ǎ, Romaji ō).
+fn is_latin_letter(c: char) -> bool {
+    c.is_alphabetic() && (c as u32) < 0x0250
+}
+
 /// English-letter words of a sentence with their byte ranges.
 fn latin_words(sentence: &str) -> Vec<(usize, usize)> {
     let mut words = Vec::new();
     let mut start = None;
     for (i, c) in sentence.char_indices().chain(std::iter::once((sentence.len(), ' '))) {
-        match (c.is_ascii_alphabetic(), start) {
+        match (is_latin_letter(c), start) {
             (true, None) => start = Some(i),
             (false, Some(s)) => {
                 words.push((s, i));
@@ -156,7 +199,7 @@ fn convert_sentence(sentence: &str, model_language: &str) -> Option<String> {
                     continue;
                 } else if in_english(w) {
                     english_words += 1.0;
-                } else if english.is_some() {
+                } else if english.is_some() && rom.write(w).is_some() {
                     evidence += rom.unknown_word_weight;
                 }
             }
@@ -180,7 +223,9 @@ fn convert_sentence(sentence: &str, model_language: &str) -> Option<String> {
             .cloned()
             .or_else(|| {
                 let english_word = english.as_ref().is_some_and(|d| d.contains_key(word));
-                (rom.known_words.contains(word) || !english_word).then(|| rom.chart.write(word))
+                (rom.known_words.contains(word) || !english_word)
+                    .then(|| rom.write(word))
+                    .flatten()
             });
         out.push_str(native.as_deref().unwrap_or(&sentence[s..e]));
         last = e;
@@ -200,6 +245,64 @@ fn longest<'m>(map: &'m HashMap<String, String>, rest: &str) -> Option<(usize, &
 impl Romanization {
     fn is_known(&self, word: &str) -> bool {
         self.known_words.contains(word) || self.spellings.contains_key(word)
+    }
+
+    /// The word in the native script; None when the syllable table cannot read all of it.
+    fn write(&self, word: &str) -> Option<String> {
+        match (&self.chart, &self.syllables) {
+            (Some(chart), _) => Some(chart.write(word)),
+            (None, Some(syllables)) => syllables.write(word),
+            (None, None) => None,
+        }
+    }
+}
+
+impl Syllables {
+    fn write(&self, word: &str) -> Option<String> {
+        // Plain letters, with the tone each marked vowel carries
+        let mut plain: Vec<char> = Vec::new();
+        let mut tone_at: Vec<usize> = Vec::new();
+        for c in word.chars() {
+            if let Some(&(base, tone)) = self.tones.as_ref().and_then(|t| t.marks.get(&c)) {
+                plain.push(base);
+                tone_at.push(tone);
+            } else if let Some(text) = self.normalize.get(&c) {
+                for n in text.chars() {
+                    plain.push(n);
+                    tone_at.push(0);
+                }
+            } else {
+                plain.push(c);
+                tone_at.push(0);
+            }
+        }
+        let longest_key = self.table.keys().map(|k| k.chars().count()).max().unwrap_or(1);
+        let mut out = String::new();
+        let mut i = 0;
+        while i < plain.len() {
+            if let Some(g) = &self.geminate {
+                let next = plain.get(i + 1).copied();
+                // "kk", "tt" ... and "tch": a doubled consonant
+                if g.consonants.contains(plain[i])
+                    && (next == Some(plain[i]) || (plain[i] == 't' && next == Some('c')))
+                {
+                    out.push_str(&g.mark);
+                    i += 1;
+                    continue;
+                }
+            }
+            let (len, native) = (1..=longest_key.min(plain.len() - i)).rev().find_map(|n| {
+                let key: String = plain[i..i + n].iter().collect();
+                self.table.get(&key).map(|native| (n, native))
+            })?;
+            out.push_str(native);
+            let tone = tone_at[i..i + len].iter().copied().max().unwrap_or(0);
+            if let Some(mark) = self.tones.as_ref().and_then(|t| tone.checked_sub(1).and_then(|k| t.output.get(k))) {
+                out.push_str(mark);
+            }
+            i += len;
+        }
+        Some(out)
     }
 }
 
@@ -289,6 +392,11 @@ mod tests {
         assert!(contains("Kem cho? Majama", 0x0A80, 0x0AFF), "Gujarati");
         assert!(contains("Tumi kemon acho?", 0x0980, 0x09FF), "Bengali");
         assert_eq!(to_native_script("Tu kasa aahes?", "en-us"), "तू कसा आहेस?");
+        assert_eq!(to_native_script("Konnichiwa, arigatou!", "en-us"), "こんにちわ, ありがとう!");
+        assert_eq!(to_native_script("Nǐ hǎo", "en-us"), "ㄋㄧˇ ㄏㄠˇ");
+        // and the script's own rules say them for an English model too
+        assert_eq!(super::super::rules_g2p::word_to_ipa("ありがとう", "en-us").map(|(ipa, _)| ipa).as_deref(), Some("aɾiɡatoɯ"));
+        assert_eq!(super::super::rules_g2p::word_to_ipa("ㄋㄧˇ", "en-us").map(|(ipa, _)| ipa).as_deref(), Some("ni˨˩˦"));
         assert_eq!(script("Aap kaise hain?").as_deref(), Some("hi"));
         assert_eq!(to_native_script("Hello, how are you?", "en-us"), "Hello, how are you?");
     }
@@ -298,19 +406,19 @@ mod tests {
     fn spellings_list_only_words_the_chart_writes_differently() {
         for rom in romanizations() {
             for (word, native) in &rom.spellings {
-                assert_ne!(rom.chart.write(word), *native, "{word}: the chart already writes it");
+                assert_ne!(rom.write(word).as_deref(), Some(native.as_str()), "{word}: the chart already writes it");
             }
         }
     }
 
     #[test]
     fn the_chart_writes_hindi_from_english_letters() {
-        let hi = romanizations().iter().find(|r| r.language == "hi").unwrap();
-        assert_eq!(hi.chart.write("sakta"), "सकता");
-        assert_eq!(hi.chart.write("aapki"), "आपकी");
-        assert_eq!(hi.chart.write("dost"), "दोस्त");
-        assert_eq!(hi.chart.write("kya"), "क्या");
-        assert_eq!(hi.chart.write("hindi"), "हिंदी");
-        assert_eq!(hi.chart.write("gyaan"), "ज्ञान");
+        let hi = romanizations().iter().find(|r| r.language == "hi").and_then(|r| r.chart.as_ref()).unwrap();
+        assert_eq!(hi.write("sakta"), "सकता");
+        assert_eq!(hi.write("aapki"), "आपकी");
+        assert_eq!(hi.write("dost"), "दोस्त");
+        assert_eq!(hi.write("kya"), "क्या");
+        assert_eq!(hi.write("hindi"), "हिंदी");
+        assert_eq!(hi.write("gyaan"), "ज्ञान");
     }
 }
