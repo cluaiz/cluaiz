@@ -2,6 +2,7 @@
 //! Provides speech-to-text (Whisper), text-to-speech (Kokoro, CosyVoice, etc.), and vision encoders.
 
 pub mod audio;
+pub mod cudnn_driver;
 pub mod text;
 pub mod vision;
 pub mod chat;
