@@ -20,11 +20,13 @@ Transcribes spoken audio, voice notes, and audio clips into clean text using ONN
 
 | Parameter | Type | Required | Default | Allowed Values / Formats | Description |
 |:---|:---|:---:|:---|:---|:---|
-| **`input_source`** | Object | **Yes** | — | `{"type": "audio" \| "base64" \| "url" \| "file", "data": "..."}` | Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. |
+| **`input_source`** | Object | No* | — | `{"type": "file" \| "audio" \| "base64" \| "url", "data": "..."}` | Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted). |
+| **`file`** | String | No* | — | Local file path or URI | Direct file path shortcut (OpenAI-compatible alternative to `input_source`). |
 | **`model`** | String | No | `"whisper-large-v3-turbo-INT8"` | Installed STT model ID | Model identifier. Defaults to active or installed Whisper package (`whisper-large-v3-turbo-INT8`). |
 | **`language`** | String | No | `"auto"` | ISO-639-1 code (e.g. `"en"`, `"hi"`, `"es"`, `"fr"`, `"auto"`) | Target spoken language. Setting `"auto"` runs Whisper language identification. |
-| **`stream`** | Boolean | No | `false` | `true`, `false` | When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object. |
 | **`temperature`** | Float | No | `0.0` | `0.0 - 1.0` | Sampling temperature for greedy decoding. `0.0` is recommended for maximum transcription accuracy. |
+| **`timestamps`** | Boolean | No | `false` | `true`, `false` | Whether to return word/segment timestamps in output (default: `false` for raw text). |
+| **`stream`** | Boolean | No | `false` | `true`, `false` | When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session cache lifetime in memory before automatic session cleanup. |
 
 ---
@@ -56,11 +58,14 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
       "data": "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
     },
     "language": "auto",
-    "stream": false
+    "temperature": 0.0,
+    "timestamps": false,
+    "stream": false,
+    "keep_alive": 5
   }'
 ```
 
-### 2. cURL (Authorized Local File Path - Desktop / Tauri)
+### 2. cURL (Authorized Local File Path / Direct File Field)
 
 ```bash
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
@@ -69,11 +74,11 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -H "x-caller: user" \
   -d '{
     "model": "whisper-large-v3-turbo-INT8",
-    "input_source": {
-      "type": "file",
-      "data": "C:/Users/Aryan/Recordings/meeting_notes.wav"
-    },
-    "language": "en"
+    "file": "C:/Users/Aryan/Downloads/harvard.mp3",
+    "language": "en",
+    "temperature": 0.0,
+    "stream": false,
+    "keep_alive": 5
   }'
 ```
 
@@ -100,7 +105,10 @@ payload = {
         "data": audio_uri
     },
     "language": "auto",
-    "stream": False
+    "temperature": 0.0,
+    "timestamps": False,
+    "stream": False,
+    "keep_alive": 5
 }
 
 response = requests.post("http://localhost:8000/v1/audio/transcriptions", json=payload, headers=headers)
@@ -135,7 +143,11 @@ async function transcribeBlob(blob: Blob, token: string): Promise<string> {
         type: "audio",
         data: base64DataUri
       },
-      stream: false
+      language: "auto",
+      temperature: 0.0,
+      timestamps: false,
+      stream: false,
+      keep_alive: 5
     })
   });
 

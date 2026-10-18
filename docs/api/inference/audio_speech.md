@@ -50,7 +50,10 @@ curl -X POST http://localhost:8000/v1/audio/speech \
   -H "Authorization: Bearer <session-token>" \
   -d '{
     "model": "piper-en-us-ryan-medium",
-    "input": "Welcome to Cluaiz Engine native voice synthesis."
+    "input": "Welcome to Cluaiz Engine native voice synthesis.",
+    "voice": "default",
+    "speed": 1.0,
+    "keep_alive": 5
   }'
 ```
 
@@ -67,7 +70,10 @@ headers = {
 
 payload = {
     "model": "piper-en-us-ryan-medium",
-    "input": "Hello! The local speech synthesis pipeline is active and working."
+    "input": "Hello! The local speech synthesis pipeline is active and working.",
+    "voice": "default",
+    "speed": 1.0,
+    "keep_alive": 5
 }
 
 response = requests.post("http://localhost:8000/v1/audio/speech", json=payload, headers=headers)
@@ -96,7 +102,10 @@ async function playSpeech(text, token) {
     },
     body: JSON.stringify({
       model: "piper-en-us-ryan-medium",
-      input: text
+      input: text,
+      voice: "default",
+      speed: 1.0,
+      keep_alive: 5
     })
   });
 
