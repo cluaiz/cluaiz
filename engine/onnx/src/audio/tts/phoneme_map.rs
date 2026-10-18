@@ -346,9 +346,54 @@ impl PhonemeMap {
         self.sym_to_id.contains_key(symbol)
     }
 
+    /// Refuse boundary/padding-only sequences before a model can synthesize noise.
+    pub fn require_phonemes(&self, ids: &[i64]) -> anyhow::Result<()> {
+        if !ids.iter().any(|id| ![self.pad_id, self.bos_id, self.eos_id].contains(id)) {
+            anyhow::bail!("TTS input contains no supported phonemes for this model");
+        }
+        Ok(())
+    }
+
     /// Returns the pad token ID
     pub fn pad_id(&self) -> i64 {
         self.pad_id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(serde::Deserialize)]
+    struct Fixture {
+        symbols: HashMap<String, Vec<i64>>,
+        pad_id: i64,
+        bos_id: i64,
+        eos_id: i64,
+        unsupported: Vec<String>,
+        supported: Vec<String>,
+        required_ids: Vec<i64>,
+    }
+
+    #[test]
+    fn speech_requires_content_and_preserves_tokens_with_model_boundary_ids() {
+        let data: serde_json::Value = serde_json::from_str(include_str!("data/pronunciation_tests.json")).unwrap();
+        let fixture: Fixture = serde_json::from_value(data["symbol_guard"].clone()).unwrap();
+        let char_to_ids = fixture.symbols.iter().filter(|(symbol, _)| symbol.chars().count() == 1)
+            .map(|(symbol, ids)| (symbol.chars().next().unwrap(), ids.clone())).collect();
+        let max_key_len = fixture.symbols.keys().map(String::len).max().unwrap();
+        let map = PhonemeMap { sym_to_id: fixture.symbols, char_to_ids, pad_id: fixture.pad_id,
+            bos_id: fixture.bos_id, eos_id: fixture.eos_id, max_key_len };
+        for text in fixture.unsupported {
+            assert!(map.require_phonemes(&map.text_to_ids(&text)).is_err());
+            assert!(map.require_phonemes(&map.text_to_ids_no_pad(&text)).is_err());
+        }
+        for text in fixture.supported {
+            for ids in [map.text_to_ids(&text), map.text_to_ids_no_pad(&text)] {
+                map.require_phonemes(&ids).unwrap();
+                assert!(fixture.required_ids.iter().all(|id| ids.contains(id)));
+            }
+        }
     }
 }
 

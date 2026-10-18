@@ -3,6 +3,9 @@
   "language": "hi",
   "_about": "Written for Cluaiz from standard Hindi phonology (not copied from espeak-ng). Output is espeak-style IPA; phoneme_sets.json rewrites it into each model's symbols.",
   "default_for_script": true,
+  "normalize_unicode": true,
+  "ignored_characters": "\u200c\u200dऽ",
+  "word_separators": "-‐‑/'’",
   "script_ranges": [
     [
       "0900",
@@ -69,6 +72,10 @@
     "उ": "ʊ",
     "ऊ": "uː",
     "ऋ": "rɪ",
+    "ॠ": "rɪː",
+    "ऌ": "lɪ",
+    "ॡ": "lɪː",
+    "ॐ": "oːm",
     "ऍ": "ɛ",
     "ऎ": "e",
     "ए": "eː",
@@ -85,6 +92,9 @@
     "ु": "ʊ",
     "ू": "uː",
     "ृ": "rɪ",
+    "ॄ": "rɪː",
+    "ॢ": "lɪ",
+    "ॣ": "lɪː",
     "ॅ": "ɛ",
     "ॆ": "e",
     "े": "eː",
@@ -161,6 +171,19 @@
     "मित्र": "mɪt̪rə",
     "हिंदी": "ɦɪnd̪iː",
     "हैं": "ɦɛ̃ː",
-    "ज़रूर": "zəruːr"
+    "ज़रूर": "zəruːr",
+    "में": "mẽː",
+    "एँ": "ẽː",
+    "माँ": "mãː",
+    "संसार": "sə̃saːr",
+    "संयम": "sə̃jəm",
+    "ॐ": "oːm",
+    "ॠ": "rɪː",
+    "ऌ": "lɪ",
+    "ॡ": "lɪː",
+    "कॄ": "krɪː",
+    "कॢ": "klɪ",
+    "कॣ": "klɪː",
+    "सोऽहम्": "soːɦəm"
   }
 }
