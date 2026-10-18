@@ -183,7 +183,10 @@ impl FormatRegistry {
                     // OLE is the physical DOC container, as ZIP is for DOCX.
                     // The selected Word extractor still requires valid Word streams.
                     || (found.mime_type() == "application/x-ole-storage"
-                        && hint == "application/msword");
+                        && hint == "application/msword")
+                    // Browser audio recordings wrap audio streams inside WebM (EBML) containers
+                    // declared as audio/webm, which signature detectors classify as video/webm.
+                    || (found.mime_type() == "video/webm" && hint == "audio/webm");
                 if hint != GENERIC_MIME
                     && hint != found.mime_type()
                     && !aliases.contains(&found.extension())
@@ -275,5 +278,15 @@ mod tests {
                 .unwrap()
                 .content_detected
         );
+    }
+
+    #[test]
+    fn test_webm_audio_container_hint_equivalence() {
+        let registry = FormatRegistry::default();
+        // Matroska / WebM EBML header magic bytes: 0x1A, 0x45, 0xDF, 0xA3
+        let webm_header = [0x1a, 0x45, 0xdf, 0xa3, 0x01, 0x00, 0x00, 0x00];
+        let detected = registry.detect(&webm_header, Some("audio/webm")).unwrap();
+        assert_eq!(detected.mime_type, "audio/webm");
+        assert_eq!(detected.extension, "weba");
     }
 }
