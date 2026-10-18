@@ -6,6 +6,7 @@
   "paragraph_pause_ms": 360,
   "numeric_infix": ".,:",
   "word_infix": "-'’",
+  "spaced_dashes": "-",
   "aliases": {
     "＋": "+",
     "➕": "+",
