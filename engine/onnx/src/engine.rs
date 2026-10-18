@@ -67,6 +67,17 @@ pub struct OnnxEngine {
 }
 
 impl OnnxEngine {
+    /// Retry only known GPU execution-provider failures, never tensor/package errors.
+    pub fn permits_cpu_execution_retry(&self, error: &anyhow::Error) -> bool {
+        if self.settings.n_gpu_layers == 0 {
+            return false;
+        }
+        let message = format!("{error:#}");
+        (message.contains("cuDNN is unavailable or disabled for CUDA Execution Provider")
+            && message.contains("LoadLibrary failed"))
+            || (message.contains("DmlExecutionProvider") && message.contains("80070057"))
+    }
+
     pub fn new() -> Result<Self> {
         Self::with_settings(cluaiz_core::Settings::current().onnx)
     }
@@ -627,5 +638,32 @@ mod provider_tests {
             .with_execution_providers([cpu])?
             .commit_from_memory(IDENTITY_GRAPH)?;
         run_identity(session)
+    }
+
+    #[test]
+    fn test_cpu_execution_retry_only_accepts_observed_provider_faults() -> anyhow::Result<()> {
+        let mut settings = cluaiz_core::OnnxSettings::default();
+        settings.n_gpu_layers = -1;
+        let gpu = OnnxEngine::with_settings(settings.clone())?;
+        let failures = [
+            "cuDNN is unavailable or disabled for CUDA Execution Provider: LoadLibrary failed for cudnn64_9.dll with error 2",
+            "DmlExecutionProvider/MLOperatorAuthorImpl.cpp Exception 80070057 The parameter is incorrect",
+        ];
+        for message in failures {
+            let error = anyhow::anyhow!(message).context("TTS execution");
+            assert!(gpu.permits_cpu_execution_retry(&error));
+        }
+        for message in [
+            "Unexpected input data type: int64, expected float16",
+            "Invalid tensor dimensions",
+            "Required tokenizer missing",
+            "Audio contains NaN",
+        ] {
+            assert!(!gpu.permits_cpu_execution_retry(&anyhow::anyhow!(message)));
+        }
+        settings.n_gpu_layers = 0;
+        let cpu = OnnxEngine::with_settings(settings)?;
+        assert!(!cpu.permits_cpu_execution_retry(&anyhow::anyhow!(failures[0])));
+        Ok(())
     }
 }

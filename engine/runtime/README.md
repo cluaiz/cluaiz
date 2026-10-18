@@ -68,6 +68,7 @@ graph TD
 ## ONNX task lease
 
 - **Owner:** `OnnxModel` validates the selected package/primary/assets. `OnnxHost::with_engine` is the single serialized load/reuse/replace/error/unload implementation shared by audio dispatch and embedding batches.
+- **TTS provider recovery:** After an observed missing-cuDNN or DirectML operator failure, the owner releases the failed GPU session before loading the same package on CPU and executing once more. The effective CPU owner retains the requested package/settings key, so a retained session does not retry the failed GPU on every utterance. Original settings are unchanged. CPU execution can be slower; unrecognized failures propagate. STT and embeddings do not retry after execution because this path has only been validated for whole-WAV TTS delivery.
 - **Identity:** resident reuse includes declared asset/config stamps, task and captured provider settings. The existing generation guard protects newer requests from old positive keep-alive timers. This is cache identity, not cryptographic file integrity.
 - **Embedding:** `embed` sends typed text/RGB to a blocking worker and returns actual vector/token results. Its byte and graph errors propagate to the API. Audio and embedding replace each other's ONNX resident task; neither calls chat unload. Simultaneously loaded chat/ONNX memory scheduling remains separate work.
 
