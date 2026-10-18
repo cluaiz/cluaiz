@@ -87,9 +87,9 @@ pub fn resolve_onnx_support(
             "image-feature-extraction" => {
                 ("/v1/embeddings", vec![Modality::Image], vec!["embedding"])
             }
-            "text-to-speech" => ("/v1/audio/execute", vec![Modality::Text], vec!["audio"]),
+            "text-to-speech" => ("/v1/audio/speech", vec![Modality::Text], vec!["audio"]),
             "automatic-speech-recognition" => {
-                ("/v1/audio/execute", vec![Modality::Audio], vec!["text"])
+                ("/v1/audio/transcriptions", vec![Modality::Audio], vec!["text"])
             }
             _ => continue,
         };
