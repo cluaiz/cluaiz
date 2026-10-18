@@ -158,14 +158,18 @@ fn is_latin_letter(c: char) -> bool {
 }
 
 /// English-letter words of a sentence with their byte ranges.
+/// Digits inside a word are letters of chat alphabets (Arabizi "3arabi", "7abibi"); a run of only
+/// digits is a number and not a word.
 fn latin_words(sentence: &str) -> Vec<(usize, usize)> {
     let mut words = Vec::new();
     let mut start = None;
     for (i, c) in sentence.char_indices().chain(std::iter::once((sentence.len(), ' '))) {
-        match (is_latin_letter(c), start) {
+        match (is_latin_letter(c) || c.is_ascii_digit(), start) {
             (true, None) => start = Some(i),
             (false, Some(s)) => {
-                words.push((s, i));
+                if sentence[s..i].chars().any(is_latin_letter) {
+                    words.push((s, i));
+                }
                 start = None;
             }
             _ => {}
@@ -394,6 +398,9 @@ mod tests {
         assert_eq!(to_native_script("Tu kasa aahes?", "en-us"), "तू कसा आहेस?");
         assert_eq!(to_native_script("Konnichiwa, arigatou!", "en-us"), "こんにちわ, ありがとう!");
         assert_eq!(to_native_script("Nǐ hǎo", "en-us"), "ㄋㄧˇ ㄏㄠˇ");
+        assert!(contains("Marhaba 7abibi, kifak? Yalla", 0x0600, 0x06FF), "Arabizi → Arabic");
+        assert!(contains("Salam, chetori? Khubam, merci", 0x0600, 0x06FF), "Finglish → Persian");
+        assert_eq!(to_native_script("Mere paas 2 kitaab hai", "en-us").contains('2'), true);
         // and the script's own rules say them for an English model too
         assert_eq!(super::super::rules_g2p::word_to_ipa("ありがとう", "en-us").map(|(ipa, _)| ipa).as_deref(), Some("aɾiɡatoɯ"));
         assert_eq!(super::super::rules_g2p::word_to_ipa("ㄋㄧˇ", "en-us").map(|(ipa, _)| ipa).as_deref(), Some("ni˨˩˦"));
