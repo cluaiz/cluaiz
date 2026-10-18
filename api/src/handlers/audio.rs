@@ -1,6 +1,6 @@
 use crate::{state::AppState, utils::prepare_authorized_media};
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::{HeaderMap, StatusCode},
     response::{sse::Event, IntoResponse, Response, Sse},
     Json,
@@ -418,6 +418,41 @@ pub async fn speech(
         keep_alive: payload.keep_alive,
     };
     execute_audio(State(state), headers, Json(request)).await
+}
+
+#[derive(Deserialize)]
+pub struct VoicesQuery {
+    model: Option<String>,
+}
+
+/// GET /v1/audio/voices?model=<id>: the voices a TTS model can speak with. "default" (the engine
+/// picks a voice for the text's language) comes first; a single-voice model has only it.
+pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<VoicesQuery>) -> Response {
+    let task = AudioTask::TextToSpeech;
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    let schema = state.permission_schema.read().await;
+    let slot_id = schema
+        .active_slots
+        .get(task.slot())
+        .or_else(|| schema.active_slots.get("audio_slot"))
+        .and_then(|s| s.model_id.as_deref());
+    let entry = match select_model(&registry, query.model.as_deref(), slot_id, task) {
+        Ok(entry) => entry,
+        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
+    };
+    drop(schema);
+    let model = match OnnxModel::from_registry(entry, task) {
+        Ok(model) => model,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+    };
+    let mut data = vec![json!({"id": "default", "language": null, "default": true})];
+    data.extend(
+        model
+            .voices()
+            .into_iter()
+            .map(|v| json!({"id": v.id, "language": v.language, "default": false})),
+    );
+    Json(json!({"object": "list", "model": model.id, "data": data})).into_response()
 }
 
 pub async fn transcriptions(

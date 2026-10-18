@@ -23,6 +23,11 @@ pub struct OnnxModel {
 }
 
 impl OnnxModel {
+    /// The package's TTS voices (empty for a single-voice model).
+    pub fn voices(&self) -> Vec<onnx_engine::audio::tts::languages::Voice> {
+        onnx_engine::audio::tts::languages::list_voices(&self.dir)
+    }
+
     /// Resolve declared assets inside the selected installed package only.
     pub fn from_registry(entry: &ModelRegistryEntry, task: AudioTask) -> Result<Self> {
         if !entry

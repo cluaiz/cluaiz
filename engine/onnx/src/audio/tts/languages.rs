@@ -62,18 +62,27 @@ pub fn script_language(text: &str) -> Option<&'static str> {
         .map(|(script, _)| script.language.as_str())
 }
 
-/// The voice file (stem in `voices/`) to use for `lang`: an exact language match first, then the
-/// same base language; preferred voices first, then by name. None when no voice's name says it speaks that language.
-pub fn voice_for_language(model_dir: &Path, lang: &str) -> Option<String> {
-    let languages = languages()?;
-    let mut voices: Vec<String> = std::fs::read_dir(model_dir.join("voices"))
-        .ok()?
+/// A voice file of a model (`voices/<id>.bin`) and the language its name says it speaks.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Voice {
+    pub id: String,
+    pub language: Option<String>,
+}
+
+/// The model's voice files, preferred voices first (in their listed order), then by name. Empty for
+/// a single-voice model.
+pub fn list_voices(model_dir: &Path) -> Vec<Voice> {
+    let Some(languages) = languages() else {
+        return Vec::new();
+    };
+    let mut ids: Vec<String> = std::fs::read_dir(model_dir.join("voices"))
+        .into_iter()
+        .flatten()
         .flatten()
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|x| x == "bin"))
         .filter_map(|p| p.file_stem()?.to_str().map(str::to_owned))
         .collect();
-    // Preferred voices first (in their listed order), then the rest by name
     let rank = |v: &String| {
         languages
             .preferred_voices
@@ -81,17 +90,29 @@ pub fn voice_for_language(model_dir: &Path, lang: &str) -> Option<String> {
             .position(|p| p == v)
             .unwrap_or(usize::MAX)
     };
-    voices.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| a.cmp(b)));
-    let voice_lang = |voice: &str| {
-        let prefix = voice.chars().next()?.to_string();
-        languages.voice_prefix_languages.get(&prefix).map(String::as_str)
-    };
+    ids.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| a.cmp(b)));
+    ids.into_iter()
+        .map(|id| {
+            let language = id
+                .chars()
+                .next()
+                .and_then(|prefix| languages.voice_prefix_languages.get(&prefix.to_string()))
+                .cloned();
+            Voice { id, language }
+        })
+        .collect()
+}
+
+/// The voice file (stem in `voices/`) to use for `lang`: an exact language match first, then the
+/// same base language; preferred voices first, then by name. None when no voice's name says it speaks that language.
+pub fn voice_for_language(model_dir: &Path, lang: &str) -> Option<String> {
+    let voices = list_voices(model_dir);
     let lang = lang.to_lowercase();
     voices
         .iter()
-        .find(|v| voice_lang(v) == Some(lang.as_str()))
-        .or_else(|| voices.iter().find(|v| voice_lang(v).map(base) == Some(base(&lang))))
-        .cloned()
+        .find(|v| v.language.as_deref() == Some(lang.as_str()))
+        .or_else(|| voices.iter().find(|v| v.language.as_deref().map(base) == Some(base(&lang))))
+        .map(|v| v.id.clone())
 }
 
 #[cfg(test)]
