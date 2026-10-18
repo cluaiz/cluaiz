@@ -100,7 +100,7 @@ graph TD
 - [`cosyvoice.rs`](./tts/families/cosyvoice.rs):
   - **Logic:** Family 6 (CosyVoice2). Extracts speaker embeddings via `campplus.onnx` and dynamically maps all 6 required flow estimator input tensors (`prompt_token`, `prompt_speech`, `embedding`, `len`, `token_ids`) before feeding `hift.onnx` vocoder.
 - [`audio8.rs`](./tts/families/audio8.rs):
-  - **Logic:** Family 4 (Audio8 Codec-LM). Executes 3-stage pipeline (Slow AR -> Fast AR -> Codec Decoder). Expands coarse tokens into 10-codebooks 3D array `[1, 10, frames]` matching DAC neural vocoder contract.
+  - **Status:** Audio8 native synthesis is not implemented for the exported FP16 KV-cache/logits topology. The former guessed tensor inputs and fabricated codec codebooks are removed. The route returns an explicit error; genuine tokenizer/reference-voice handling and stateful Slow/Fast AR generation remain required. No Audio8 speech quality or synthesis success is claimed.
 - [`matcha.rs`](./tts/families/matcha.rs):
   - **Logic:** Family 5 (Matcha/LuxTTS). Executes 2-stage flow matching pipeline (`text_encoder_int8` -> `fm_decoder_int8` ODE loop -> `vocos.bin` / neural vocoder). Uses rank-1 unit slice tensor mapping for ORT scalar inputs.
 - [`omnivoice.rs`](./tts/families/omnivoice.rs):

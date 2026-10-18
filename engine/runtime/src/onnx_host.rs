@@ -256,8 +256,8 @@ impl OnnxHost {
     fn with_engine<T>(
         &self,
         lease: OnnxLease<'_>,
-        load: impl FnOnce(&mut OnnxEngine) -> Result<()>,
-        execute: impl FnOnce(&OnnxEngine) -> Result<T>,
+        load: impl Fn(&mut OnnxEngine) -> Result<()>,
+        mut execute: impl FnMut(&OnnxEngine) -> Result<T>,
     ) -> Result<T> {
         let OnnxLease {
             model,
@@ -298,7 +298,42 @@ impl OnnxHost {
             .as_mut()
             .context("ONNX session was not published")?;
         resident.generation = generation;
-        let result = execute(&resident.engine);
+        let mut result = execute(&resident.engine);
+        // TTS has not delivered output yet; a retry cannot duplicate partial STT text.
+        if task == "text_to_speech"
+            && result
+                .as_ref()
+                .err()
+                .is_some_and(|error| resident.engine.permits_cpu_execution_retry(error))
+        {
+            let provider_error = result
+                .as_ref()
+                .err()
+                .map(|error| format!("{error:#}"))
+                .unwrap_or_default();
+            tracing::warn!(model = %model.id, error = %provider_error, "TTS GPU execution failed; releasing session before CPU retry");
+            state.resident = None;
+            let mut cpu_settings = settings.onnx.clone();
+            cpu_settings.n_gpu_layers = 0;
+            let mut engine = OnnxEngine::with_settings(cpu_settings)?;
+            load(&mut engine)
+                .with_context(|| format!("TTS CPU retry load failed after: {provider_error}"))?;
+            result = execute(&engine)
+                .with_context(|| format!("TTS CPU retry failed after: {provider_error}"));
+            state.resident = Some(Resident {
+                key: key.clone(),
+                id: model.id.clone(),
+                generation,
+                engine,
+                package_key: model.asset_key.clone(),
+                readiness: None,
+                provider_settings_key: serde_json::to_string(&settings.onnx)?,
+            });
+        }
+        let resident = state
+            .resident
+            .as_mut()
+            .context("ONNX session was not published")?;
         if result.is_ok() {
             use cluaiz_core::Modality;
             let readiness = match task {
