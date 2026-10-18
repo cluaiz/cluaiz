@@ -13,6 +13,10 @@ struct Rules {
     paragraph_pause_ms: u32,
     numeric_infix: String,
     word_infix: String,
+    /// Symbols that, standing alone between spaces (or at a line start), are a dash or a list
+    /// bullet: a pause, not an operator word, unless numbers stand on both sides ("5 - 3")
+    #[serde(default)]
+    spaced_dashes: String,
     aliases: HashMap<char, char>,
     punctuation: HashMap<char, Boundary>,
     abbreviations: HashMap<String, Vec<String>>,
@@ -62,6 +66,18 @@ pub(super) fn prepare(text: &str, language: &str) -> Result<Vec<Chunk>> {
     let mut chunks = Vec::new();
     let mut current = String::new();
     let mut line_breaks = 0;
+    let all: Vec<char> = text.chars().collect();
+    let mut at = 0usize; // index in `all` of the character being read
+    let nearest = |from: usize, back: bool| -> Option<char> {
+        let mut i = from;
+        loop {
+            i = if back { i.checked_sub(1)? } else { i + 1 };
+            match all.get(i) {
+                Some(c) if c.is_whitespace() => continue,
+                other => return other.copied(),
+            }
+        }
+    };
     for token in text.split_inclusive(char::is_whitespace) {
         let word = token.trim_end();
         // Keep URI/email structure; spoken URL spelling is a separate policy.
@@ -73,6 +89,8 @@ pub(super) fn prepare(text: &str, language: &str) -> Result<Vec<Chunk>> {
                 .is_some_and(|words| words.contains(&word.to_lowercase()));
         let chars: Vec<char> = token.chars().collect();
         for (i, original) in chars.iter().copied().enumerate() {
+            let here = at;
+            at += 1;
             let c = rules.aliases.get(&original).copied().unwrap_or(original);
             let before = i.checked_sub(1).and_then(|i| chars.get(i)).copied();
             let after = chars.get(i + 1).copied();
@@ -88,6 +106,19 @@ pub(super) fn prepare(text: &str, language: &str) -> Result<Vec<Chunk>> {
             let internal_dot = c == '.'
                 && before.is_some_and(char::is_alphabetic)
                 && after.is_some_and(char::is_alphabetic);
+            let spaced_dash = rules.spaced_dashes.contains(c)
+                && before.map_or(true, char::is_whitespace)
+                && after.map_or(true, char::is_whitespace)
+                && !(nearest(here, true).is_some_and(char::is_numeric)
+                    && nearest(here, false).is_some_and(char::is_numeric));
+            if spaced_dash {
+                if let Some(dash) = rules.punctuation.get(&'—') {
+                    current.push(' ');
+                    current.push_str(&dash.emit);
+                    emit(&mut current, &mut chunks, dash.pause_ms, rules.chunk_bytes);
+                }
+                continue;
+            }
             if (protected && !c.is_whitespace()) || numeric_infix || word_infix || internal_dot {
                 current.push(original);
             } else if let Some(boundary) = rules.punctuation.get(&c) {
@@ -281,8 +312,9 @@ mod tests {
         let rules = rules().unwrap();
         for (language, words) in &rules.operator_words {
             for (symbol, label) in words {
-                let chunks = prepare(&format!("{symbol}"), language).unwrap();
-                assert_eq!(chunks[0].text, *label);
+                // Between numbers, where every operator is spoken (a lone dash is a pause)
+                let chunks = prepare(&format!("1{symbol}2"), language).unwrap();
+                assert_eq!(chunks[0].text, format!("1 {label} 2"));
             }
         }
     }

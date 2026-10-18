@@ -235,21 +235,24 @@ fn open_log_file() -> Option<std::fs::File> {
 /// Engine logs (tracing) go to the log file, and to stderr with -v / for `serve`. stdout stays the
 /// command's own output.
 fn init_logging(verbose: u8, serving: bool) {
-    use tracing_subscriber::{filter::LevelFilter, prelude::*};
+    use tracing_subscriber::{filter::{LevelFilter, Targets}, prelude::*};
     let console = match (verbose, serving) {
         (0, false) => LevelFilter::OFF,
         (0, true) | (1, _) => LevelFilter::INFO,
         _ => LevelFilter::DEBUG,
     };
     let file_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::INFO };
+    // ONNX Runtime reports every memory-arena step at INFO; below -vv only its warnings are kept
+    let ort_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::WARN };
+    let levels = |level: LevelFilter| Targets::new().with_default(level).with_target("ort", ort_level.min(level));
     let file_layer = open_log_file().map(|f| {
-        tracing_subscriber::fmt::layer().with_writer(std::sync::Mutex::new(f)).with_ansi(false).with_filter(file_level)
+        tracing_subscriber::fmt::layer().with_writer(std::sync::Mutex::new(f)).with_ansi(false).with_filter(levels(file_level))
     });
     let console_layer = tracing_subscriber::fmt::layer()
         .with_writer(std::io::stderr)
         .with_ansi(std::io::stderr().is_terminal())
         .with_target(false)
-        .with_filter(console);
+        .with_filter(levels(console));
     let _ = tracing_subscriber::registry().with(file_layer).with(console_layer).try_init();
 }
 
