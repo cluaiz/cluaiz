@@ -57,6 +57,7 @@ impl OnnxEngine {
             language: extract_parameter(prompt, "LANGUAGE"),
             translate: extract_parameter(prompt, "TRANSLATE_TO")
                 .is_some_and(|value| !value.is_empty() && value != "false"),
+            ..Default::default()
         };
         self.execute_stt_prepared(&audio, &options, limits, callback)
     }

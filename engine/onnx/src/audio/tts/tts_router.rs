@@ -54,7 +54,7 @@ pub fn route_tts_inference(
     // Only the legacy envelope prefix can select a voice; user text is never metadata.
     let voice = prompt.find("[TEXT_INPUT")
         .and_then(|start| extract_parameter(&prompt[..start], "voice"));
-    route_tts_input(engine, session, &raw_text_input, voice.as_deref())
+    route_tts_input(engine, session, &raw_text_input, voice.as_deref(), 1.0)
 }
 
 /// Synthesize actual text without interpreting transport tags as user content.
@@ -63,7 +63,18 @@ pub fn route_tts_text(
     session: &mut Session,
     raw_text_input: &str,
 ) -> Result<String> {
-    route_tts_input(engine, session, raw_text_input, None)
+    route_tts_input(engine, session, raw_text_input, None, 1.0)
+}
+
+/// Synthesize text with a requested voice (None: by language) and speaking rate (1.0 = normal).
+pub fn route_tts_with(
+    engine: &crate::engine::OnnxEngine,
+    session: &mut Session,
+    raw_text_input: &str,
+    voice: Option<&str>,
+    speed: f32,
+) -> Result<String> {
+    route_tts_input(engine, session, raw_text_input, voice, speed)
 }
 
 fn route_tts_input(
@@ -71,6 +82,7 @@ fn route_tts_input(
     session: &mut Session,
     raw_text_input: &str,
     requested_voice: Option<&str>,
+    speed: f32,
 ) -> Result<String> {
     if raw_text_input.trim().is_empty() {
         return Err(anyhow!("Text-to-Speech requires non-empty text"));
@@ -127,10 +139,10 @@ fn route_tts_input(
 
     match detected_family {
         super::family_adapter::TtsFamily::VitsPiper => {
-            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate)
+            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed)
         }
         super::family_adapter::TtsFamily::Kokoro => {
-            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice)
+            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice, speed)
         }
         super::family_adapter::TtsFamily::Matcha => {
             let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
@@ -194,7 +206,7 @@ fn route_tts_input(
         }
         super::family_adapter::TtsFamily::GenericOnnx => {
             tracing::debug!("⚠️ [TTS Router] Unknown family detected. Attempting VITS/Piper handler as fallback.");
-            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate)
+            handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed)
         }
     }
 }
@@ -206,6 +218,7 @@ fn handle_vits_piper(
     text_chunks: &[Chunk],
     manifest: &super::manifest_loader::TtsModelManifest,
     sample_rate: usize,
+    speed: f32,
 ) -> Result<String> {
     tracing::debug!(
         "🎙️ [TTS Router] VITS/Piper Handler Activated with sample_rate={}Hz.",
@@ -222,7 +235,8 @@ fn handle_vits_piper(
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
     let noise_scale = manifest.noise_scale.unwrap_or(0.667);
-    let length_scale = manifest.length_scale.unwrap_or(1.0);
+    // Piper's length scale is the duration of each phoneme: a faster rate shortens it
+    let length_scale = manifest.length_scale.unwrap_or(1.0) / speed;
     let noise_w = manifest.noise_scale_w.unwrap_or(0.8);
 
     let mut pause_before_ms = 0;
@@ -295,6 +309,7 @@ fn handle_kokoro(
     text_chunks: &[Chunk],
     sample_rate: usize,
     requested_voice: Option<&str>,
+    speed: f32,
 ) -> Result<String> {
     tracing::debug!(
         "🎙️ [TTS Router] Kokoro Handler Activated with sample_rate={}Hz.",
@@ -362,7 +377,7 @@ fn handle_kokoro(
         );
 
         let chunk_pcm =
-            super::families::kokoro::execute(session, &token_ids, &style_vector, 1.0f32)?;
+            super::families::kokoro::execute(session, &token_ids, &style_vector, speed)?;
 
         reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
         pause_before_ms = text_chunk.pause_after_ms;

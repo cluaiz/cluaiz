@@ -47,6 +47,10 @@ impl AudioTask {
 pub struct SttOptions {
     pub language: Option<String>,
     pub translate: bool,
+    /// TTS voice name (a model's voice file, e.g. Kokoro "hf_alpha"); None picks one by language
+    pub voice: Option<String>,
+    /// TTS speaking rate (1.0 = the model's normal pace)
+    pub speed: Option<f32>,
 }
 
 #[derive(Debug, Clone)]
@@ -196,8 +200,13 @@ impl OnnxEngine {
                 let mut session = session
                     .lock()
                     .map_err(|_| anyhow::anyhow!("TTS session mutex poisoned"))?;
-                let output =
-                    crate::audio::tts::tts_router::route_tts_text(self, &mut session, text)?;
+                let output = crate::audio::tts::tts_router::route_tts_with(
+                    self,
+                    &mut session,
+                    text,
+                    options.voice.as_deref(),
+                    options.speed.unwrap_or(1.0),
+                )?;
                 limits.check_decoded_bytes(output.len() as u64)?;
                 Ok(AudioOutput::WavDataUri(output))
             }
