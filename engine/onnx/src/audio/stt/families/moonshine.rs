@@ -50,6 +50,7 @@ pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile
     let mut decoder_start_token: Option<i64> = None;
     let mut eos_token: Option<i64> = None;
     let mut max_target_positions: Option<usize> = None;
+    let mut supported_languages: Vec<String> = Vec::new();
 
     for filename in ["config.json", "generation_config.json", "tokenizer_config.json"] {
         let path = dir.join(filename);
@@ -75,8 +76,27 @@ pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile
                         .and_then(|v| usize::try_from(v).ok())
                         .filter(|v| *v > 4);
                 }
+                if supported_languages.is_empty() {
+                    if let Some(lang) = json.get("language").and_then(|v| v.as_str()) {
+                        let clean = lang.trim().to_ascii_lowercase();
+                        if !clean.is_empty() {
+                            supported_languages.push(clean);
+                        }
+                    } else if let Some(arr) = json.get("languages").and_then(|v| v.as_array()) {
+                        for item in arr.iter().filter_map(|v| v.as_str()) {
+                            let clean = item.trim().to_ascii_lowercase();
+                            if !clean.is_empty() && !supported_languages.contains(&clean) {
+                                supported_languages.push(clean);
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    if supported_languages.is_empty() {
+        supported_languages = vec!["en".to_string(), "english".to_string()];
     }
 
     if let Some(tokenizer) = &engine.tokenizer {
@@ -116,6 +136,7 @@ pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile
         transcribe_token: None,
         translate_token: None,
         no_timestamps_token: None,
+        supported_languages,
         // Moonshine paper / reference implementation bounds generation at ~6.5 tokens per second of audio.
         tokens_per_second_budget: 6.5,
         min_token_budget: 24,
@@ -215,6 +236,17 @@ mod tests {
         );
         assert!(profile.transcribe_token.is_none());
 
+        // English and auto are accepted; Hindi ("hi") is rejected with a clear Whisper suggestion.
+        assert!(profile.validate_requested_language("auto").is_ok());
+        assert!(profile.validate_requested_language("en").is_ok());
+        assert!(profile.validate_requested_language("en-US").is_ok());
+        assert!(profile.validate_requested_language("english").is_ok());
+        let hi_err = profile
+            .validate_requested_language("hi")
+            .expect_err("Moonshine must reject Hindi language requests")
+            .to_string();
+        assert!(hi_err.contains("Whisper"), "unexpected error: {hi_err}");
+
         // 2s audio -> ceil(2 * 6.5 + 24) = 37 steps; 10s audio -> ceil(10 * 6.5 + 24) = 89 steps
         let steps_2s = profile.max_decode_steps(2.0);
         let steps_10s = profile.max_decode_steps(10.0);
@@ -291,6 +323,7 @@ mod tests {
             transcribe_token: None,
             translate_token: None,
             no_timestamps_token: None,
+            supported_languages: vec!["en".to_string(), "english".to_string()],
             tokens_per_second_budget: 6.5,
             min_token_budget: 24,
         };
