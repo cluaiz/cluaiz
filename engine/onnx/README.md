@@ -1,23 +1,26 @@
 # 🎙️ Cluaiz ONNX Audio & Multimodal Engine (`engine/onnx`)
 
-Unified ONNX compute engine for Audio STT (Whisper), TTS (Kokoro, CosyVoice, Matcha, Chatterbox, Vits), and Multimodal Vision.
+Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro, CosyVoice, Matcha, Chatterbox, Vits), and Multimodal Vision.
 
 ## 📐 Architecture
 
 ```mermaid
 graph TD
-    A["OnnxEngine"] --> B["audio/stt: Whisper Speech-to-Text"]
+    A["OnnxEngine"] --> B["audio/stt: Whisper & Moonshine STT"]
     A --> C["audio/tts: Voice Synthesis"]
     A --> D["vision: Image Encoding"]
     A --> E["text: Text Embeddings"]
+    A --> F["cudnn_driver: cuDNN 9 Runtime Provisioning"]
 ```
 
 ## 📦 Components
 
 | Module | Responsibility |
 |---|---|
-| [`audio/stt/`](src/audio/stt/) | Typed PCM and legacy source entries for supported uncached Whisper encoder/decoder graphs. |
+| [`audio/stt/`](src/audio/stt/) | Typed PCM and legacy source entries for supported uncached Whisper (`input_features`) and Moonshine (`input_values`) encoder/decoder graphs. |
+| [`audio/stt/families/`](src/audio/stt/families/) | Modular STT family adapters (`whisper.rs` for fixed-window Mel-spectrogram encoders, `moonshine.rs` for variable-length raw-waveform encoders). |
 | [`audio/tts/`](src/audio/tts/) | Existing family pipelines for voice synthesis; family acceptance is measured separately. |
+| [`cudnn_driver.rs`](src/cudnn_driver.rs) | Detects, downloads, SHA-256 verifies, and extracts pinned NVIDIA cuDNN 9 (`9.8.0.87`) runtime shared libraries into `<cluaiz_home>/engine/drivers/`. |
 | [`vision.rs`](src/vision.rs) | CLIP and ViT visual embedding extraction. |
 | [`engine.rs`](src/engine.rs) | ONNX Runtime session pooling and execution. |
 | [`media.rs`](src/media.rs) | Typed audio tasks/results, session probing, captured provider policy and processor/signature validation. |
@@ -29,6 +32,7 @@ STT input preparation directly imports shared source/audio/resample functions. O
 ## Provider selection reference
 
 - **Owner:** `engine.rs` owns primary, encoder and vision session construction. These loaders attempt CUDA, then Windows DirectML, then CPU. `n_gpu_layers: 0` bypasses their GPU attempts.
+- **cuDNN 9 runtime provisioning:** Before registering the CUDA Execution Provider on an NVIDIA system, `cudnn_driver::ensure_cudnn_ready_for_cuda` checks whether `cudnn64_9.dll` (Windows) or `libcudnn.so.9` (Linux) is present in `<cluaiz_home>/engine/drivers/` or the system library search path. If missing, it attempts a single download per process of the official NVIDIA redistributable pinned in `src/data/cudnn_sources.json`, verifies its byte length and SHA-256 digest, and extracts the runtime libraries into `engine/drivers/`. Can be disabled via `CLUAIZ_DISABLE_CUDNN_AUTODOWNLOAD=1`.
 - **Registration failure:** CUDA and DirectML attempts use `error_on_failure()` so a failed registration cannot be reported as successful GPU registration. A registered provider still does not prove every operator executes on the GPU; unsupported operators can use CPU.
 - **TTS execution failure:** `permits_cpu_execution_retry` identifies the observed Windows missing-cuDNN execution error and DirectML `80070057` operator failure. The runtime may retry a whole, undelivered TTS request once on CPU. Tensor shape/type errors and missing package assets do not qualify; a CPU request cannot loop back into this retry.
 - **DirectML configuration:** One private `try_directml_session` implementation disables memory patterns and parallel execution, as required by the [ONNX Runtime DirectML contract](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html#configuration-options). Non-Windows builds skip this attempt and continue to the CPU path. No forwarding-only platform module is used.
@@ -39,8 +43,8 @@ STT input preparation directly imports shared source/audio/resample functions. O
 ## Typed audio contract
 
 - **Input/output:** `AudioInput::Text` -> `AudioOutput::WavDataUri`; shared `DecodedAudio` -> `AudioOutput::Transcript`. `execute_prepared_audio` rejects a task/modality mismatch. The TTS family computation and WAV encoder are reused through `route_tts_text`; no new synthesis algorithm is introduced.
-- **STT graph selection:** `load_audio_package` probes actual sessions from the selected package for `input_features` and an uncached decoder with `input_ids`, `encoder_hidden_states` and `logits`. Dtypes, ranks, static dimensions and encoder/decoder hidden-state compatibility are checked. Ambiguous/missing graphs or cache-only packages return errors. No fixed empty KV tensor is injected.
-- **Processor:** `preprocessor_config.json` must supply positive feature size, sampling rate, hop, FFT, sample count and frame count. These dimensions govern PCM conversion and mel tensor construction. Decoder token IDs come from the installed tokenizer; model encoder positions do not replace processor frame counts. Unsupported lengths fail instead of silently discarding recording tails.
+- **STT graph selection:** `load_audio_package` probes actual sessions from the selected package for either `input_features` (Mel-spectrogram encoder, e.g. Whisper) or `input_values` (raw-waveform encoder, e.g. Moonshine) paired with an uncached decoder declaring `input_ids`, `encoder_hidden_states` and `logits`. Dtypes, ranks, static dimensions and encoder/decoder hidden-state compatibility are checked. Ambiguous/missing graphs or cache-only packages return errors. No fixed empty KV tensor is injected.
+- **Processor:** For `input_features` encoders, `preprocessor_config.json` must supply positive feature size, sampling rate, hop, FFT, sample count and frame count. For `input_values` encoders, `preprocessor_config.json` supplies `sampling_rate` (and optional `do_normalize` / `n_samples`), while `config.json` / `tokenizer.json` supply `decoder_start_token_id` (`bos_token_id`), `eos_token_id`, and `max_position_embeddings`. Unsupported lengths fail instead of silently discarding recording tails.
 - **Failures:** encoder/decoder run errors, invalid tensor extraction, missing tokenizer/text and stopped output consumer propagate. Existing spectrogram, language probing and greedy sampling remain model-owned routines; universal language/quality equivalence is not asserted.
 - **Audio8:** its former single-shot guessed inputs and fabricated codec expansion do not implement the exported stateful AR contract and are removed. Synthesis explicitly returns not implemented. The installed package also lacks tokenizer/reference-voice assets; adding those alone does not supply the missing native runtime.
 
