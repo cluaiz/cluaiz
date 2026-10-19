@@ -89,11 +89,11 @@ impl OnnxEngine {
                 if settings.gpu_mem_limit_bytes > 0 {
                     cuda = cuda.with_memory_limit(settings.gpu_mem_limit_bytes);
                 }
-                if let Ok(mut attempt) = builder
+                match builder
                     .clone()
                     .with_execution_providers([cuda.build().error_on_failure(), cpu.clone()])
                 {
-                    match attempt.commit_from_file(path) {
+                    Ok(mut attempt) => match attempt.commit_from_file(path) {
                         Ok(session) => return Ok(session),
                         Err(error) => {
                             tracing::warn!(%error, "CUDA session creation failed; trying fallback")
@@ -101,6 +101,9 @@ impl OnnxEngine {
                     }
                 }
             }
+                    },
+                    Err(error) => {
+                        tracing::warn!(%error, "CUDA provider could not be registered; trying fallback")
             if let Some(session) = try_directml_session(&builder, path, &cpu) {
                 return Ok(session);
             }

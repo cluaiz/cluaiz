@@ -243,11 +243,12 @@ impl OnnxEngine {
                 };
                 cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
 
-                if let Ok(mut cuda_builder) = builder
+                match builder
                     .clone()
                     .with_execution_providers([cuda_ep.build().error_on_failure(), cpu_ep.clone()])
                 {
-                    match cuda_builder.commit_from_file(model_path) {
+                    Err(e) => tracing::warn!("⚠️ [ONNX Cascade] CUDA provider could not be registered: {e}. Trying DirectML/CoreML fallback..."),
+                    Ok(mut cuda_builder) => match cuda_builder.commit_from_file(model_path) {
                         Ok(sess) => {
                             tracing::info!(
                                 session = i,
@@ -259,7 +260,7 @@ impl OnnxEngine {
                             eprintln!("🎙️ [ONNX Hardware Binding] CUDA EP commit failed: {:?}. Trying DirectML GPU fallback...", e);
                             tracing::warn!("⚠️ [ONNX Cascade] Native CUDA EP commit failed: {:?}. Trying DirectML/CoreML fallback...", e);
                         }
-                    }
+                    },
                 }
             }
 
@@ -474,11 +475,12 @@ impl OnnxEngine {
             };
             cuda_ep = cuda_ep.with_arena_extend_strategy(arena_strat);
 
-            if let Ok(mut gpu_builder) = encoder_builder
+            match encoder_builder
                 .clone()
                 .with_execution_providers([cuda_ep.build().error_on_failure(), cpu_ep.clone()])
             {
-                match gpu_builder.commit_from_file(encoder_path) {
+                Err(e) => tracing::warn!("⚠️ [ONNX Cascade] CUDA provider could not be registered for the encoder: {e}"),
+                Ok(mut gpu_builder) => match gpu_builder.commit_from_file(encoder_path) {
                     Ok(sess) => {
                         tracing::info!("CUDA provider registered and encoder session created");
                         session_opt = Some(sess);
@@ -486,7 +488,7 @@ impl OnnxEngine {
                     Err(e) => {
                         tracing::error!("⚠️ [ONNX Cascade] GPU Encoder commit failed (VRAM/CUDA error): {:?}", e);
                     }
-                }
+                },
             }
         }
 
