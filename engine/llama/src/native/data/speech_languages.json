@@ -1,0 +1,11 @@
+{
+  "_source": "Pinned llama.cpp tools/mtmd/mtmd-helper-gen.cpp tts_lang_codes. Supported languages are still queried from the loaded vocabulary; these are ISO aliases only.",
+  "aliases": {"zh":"chinese","en":"english","de":"german","it":"italian","pt":"portuguese","es":"spanish","ja":"japanese","ko":"korean","fr":"french","ru":"russian"},
+  "tests": [
+    {"requested":"en-US","supported":["english","spanish"],"expected":"english"},
+    {"requested":"ES","supported":["english","spanish"],"expected":"spanish"},
+    {"requested":"hi","supported":["english","spanish"],"error":true},
+    {"requested":"fr","supported":["english","spanish"],"error":true},
+    {"requested":"en","supported":[],"error":true}
+  ]
+}

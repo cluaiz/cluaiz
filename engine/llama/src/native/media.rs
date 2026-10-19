@@ -5,7 +5,7 @@ use crate::ffi::{llama_cpp, mtmd};
 use anyhow::{bail, Context, Result};
 use cluaiz_core::{
     chat::{ChatEnvelope, ChatMessage},
-    media::PreparedPart,
+    media::{DecodedAudio, PreparedPart},
     media_limits::MediaLimits,
     processing::{
         AttachmentRef, ProcessingReporter, ProcessingStage as Stage, ProcessingState as State,
@@ -139,7 +139,30 @@ impl Drop for Projector {
     }
 }
 
-struct Bitmap(NonNull<mtmd::mtmd_bitmap>);
+pub(super) struct Bitmap(pub(super) NonNull<mtmd::mtmd_bitmap>);
+
+impl Bitmap {
+    /// Shared mono/rate preparation and copying native owner for chat or speaker audio.
+    pub(super) fn from_audio(audio: &DecodedAudio, rate: u32, limits: MediaLimits) -> Result<(Self, DecodedAudio)> {
+        let original = u64::try_from(std::mem::size_of_val(audio.samples()))?;
+        let mono = prepare_mono(audio, PeakNormalization::Preserve, limits)?;
+        let extra = if mono.samples().as_ptr() == audio.samples().as_ptr() { 0 } else { original };
+        let remaining = limits.max_decoded_bytes().checked_sub(extra).filter(|n| *n > 0)
+            .context("No budget remains for audio resampling")?;
+        let prepared = resample_linear(&mono, rate, MediaLimits::new(limits.max_input_bytes(), remaining)?)?;
+        let bytes = u64::try_from(std::mem::size_of_val(prepared.samples()))?;
+        let peak = original.checked_add(u64::try_from(std::mem::size_of_val(mono.samples()))?)
+            .and_then(|n| bytes.checked_mul(2).and_then(|copy| n.checked_add(copy)))
+            .context("PCM copying budget overflow")?;
+        limits.check_decoded_bytes(peak)?;
+        u32::try_from(prepared.samples().len()).context("Audio is too long for native bitmap")?;
+        // SAFETY: validated finite mono PCM at the queried native rate; constructor copies it.
+        let ptr = NonNull::new(unsafe {
+            mtmd::mtmd_bitmap_init_from_audio(prepared.samples().len(), prepared.samples().as_ptr())
+        }).context("Native audio allocation failed")?;
+        Ok((Self(ptr), prepared))
+    }
+}
 
 impl Drop for Bitmap {
     fn drop(&mut self) {
@@ -402,47 +425,15 @@ impl MediaInput {
                         let rate = support
                             .audio_sample_rate
                             .context("Loaded projector does not support audio input")?;
-                        let mono = prepare_mono(&audio, PeakNormalization::Preserve, local_limits)?;
-                        // The original can coexist with a separately allocated mono buffer.
-                        let original_extra = if mono.samples().as_ptr() == audio.samples().as_ptr()
-                        {
-                            0
-                        } else {
-                            part_bytes
-                        };
-                        let resample_limit = remaining
-                            .checked_sub(original_extra)
-                            .filter(|n| *n > 0)
-                            .context("No budget remains for audio resampling")?;
-                        let prepared = resample_linear(
-                            &mono,
-                            rate.get(),
-                            MediaLimits::new(limits.max_input_bytes(), resample_limit)?,
-                        )?;
+                        let (bitmap, prepared) = Bitmap::from_audio(&audio, rate.get(), local_limits)?;
                         let bytes = u64::try_from(std::mem::size_of_val(prepared.samples()))?;
-                        let peak = part_bytes
-                            .checked_add(u64::try_from(std::mem::size_of_val(mono.samples()))?)
-                            .and_then(|n| bytes.checked_mul(2).and_then(|copy| n.checked_add(copy)))
-                            .context("PCM copying budget overflow")?;
-                        local_limits.check_decoded_bytes(peak)?;
-                        // The pinned constructor stores sample count in uint32_t internally.
-                        u32::try_from(prepared.samples().len())
-                            .context("Audio is too long for native bitmap")?;
-                        // SAFETY: finite mono PCM at the queried native rate, live through copying call.
-                        let bitmap = NonNull::new(unsafe {
-                            mtmd::mtmd_bitmap_init_from_audio(
-                                prepared.samples().len(),
-                                prepared.samples().as_ptr(),
-                            )
-                        })
-                        .context("Native audio allocation failed")?;
                         let samples: Vec<u8> = prepared
                             .samples()
                             .iter()
                             .flat_map(|v| v.to_le_bytes())
                             .collect();
                         let hash = content_hash(&[u64::from(rate.get())], &samples);
-                        (Bitmap(bitmap), bytes, hash)
+                        (bitmap, bytes, hash)
                     }
                 };
                 native_bytes = native_bytes

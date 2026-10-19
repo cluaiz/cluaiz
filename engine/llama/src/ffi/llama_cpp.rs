@@ -208,6 +208,8 @@ extern "C" {
     /// 🧬 Get model vocabulary.
     pub fn llama_model_get_vocab(model: *const std::ffi::c_void) -> *const std::ffi::c_void;
     pub fn llama_vocab_n_tokens(vocab: *const std::ffi::c_void) -> i32;
+    /// Borrowed, NUL-terminated spelling of a vocabulary token.
+    pub fn llama_vocab_get_text(vocab: *const std::ffi::c_void, token: i32) -> *const c_char;
 
     /// 🏛️ Initialize a batch for inference.
     pub fn llama_batch_init(n_tokens: i32, embd: i32, n_seq_max: i32) -> LlamaBatch;

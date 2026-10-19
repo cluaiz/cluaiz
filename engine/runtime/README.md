@@ -1,6 +1,19 @@
 # 🏛️ Cluaiz Engine Runtime & Host (`engine/runtime`)
 
-Single unified model host and execution supervisor. Replaces the fragmented `dispatcher`, `CoreRouter`, and `EngineRunner`.
+Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
+
+## GGUF speech retention
+
+```mermaid
+graph LR
+    Request["Text + authorized speaker PCM + options"] --> Worker["SpeechHost serialized blocking worker"]
+    Worker --> Resident["Own GGUF backbone/projector, separate from chat and ONNX"]
+    Resident --> Output["Complete WAV result"]
+    Output --> Policy["Error/zero: release; positive minutes: expiry; omitted/-1: retain"]
+    Policy --> Lease["Expiry checks request identity before unloading"]
+```
+
+`speech_host.rs` serializes generation and native destruction behind one mutex. Each request replaces the resident's lease identity, including requests for the same model, so an old timer cannot unload a newer request or replacement. Timers weakly reference the owner and do not extend the host lifetime. Positive minutes start after successful generation; failures and keep_alive0release the resident. The native handles stay on the blocking side. Reference source authorization/decoding happens in the shared API media path before dispatch. GGUF `stream:true` currently produces the final result only; it does not imply progressive native PCM.
 
 ## 📐 Architecture
 

@@ -87,6 +87,26 @@ pub(crate) async fn prepare_authorized_media(
     .map_err(|error| ("invalid_request_error", format!("{error:#}")))
 }
 
+/// Prepare one authorized audio source for STT or a speech speaker reference.
+pub(crate) async fn prepare_authorized_audio(
+    state: &std::sync::Arc<crate::AppState>,
+    headers: &axum::http::HeaderMap,
+    source: String,
+    settings: &cluaiz_core::ActiveUserSettings,
+) -> Result<cluaiz_core::media::DecodedAudio, (&'static str, String)> {
+    use cluaiz_core::{ChatEnvelope, ChatMessage, media::{InputPart, PreparedPart}};
+    let request = ChatEnvelope {
+        messages: vec![ChatMessage { role: "user".into(), content: vec![InputPart::Audio { source }] }],
+        samplers: Default::default(), think_mode: "off".into(), reasoning_effort: Default::default(),
+        reasoning_budget_message: None, chat_template_kwargs: None, grammar: None, response_format: None,
+    };
+    let prepared = prepare_authorized_media(state, headers, request, settings, None, None).await?;
+    match prepared.messages.into_iter().flat_map(|m| m.content).next() {
+        Some(PreparedPart::Audio { audio }) => Ok(audio),
+        _ => Err(("invalid_input", "Audio source did not produce PCM".into())),
+    }
+}
+
 /// Shared task error envelope; preserve local-file approval details for clients.
 pub(crate) fn task_error(
     status: axum::http::StatusCode,

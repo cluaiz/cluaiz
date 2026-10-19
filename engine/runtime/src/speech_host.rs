@@ -6,9 +6,11 @@
 use crate::onnx_host::{AudioEvent, AudioOutput};
 use anyhow::{Context, Result};
 use cluaiz_models::types::manifest::ModelRegistryEntry;
-use llama_engine::native::speech::{SpeechModel, SpeechOptions};
+use llama_engine::native::speech::SpeechModel;
+pub use llama_engine::native::speech::SpeechOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// GPU memory kept free beside the speech model's own files
@@ -16,7 +18,14 @@ const GPU_HEADROOM_BYTES: u64 = 768 * 1024 * 1024;
 
 #[derive(Default)]
 pub struct SpeechHost {
-    loaded: Arc<Mutex<Option<(String, SpeechModel)>>>,
+    loaded: Arc<Mutex<Option<Resident<SpeechModel>>>>,
+}
+
+struct Resident<T> {
+    id: String,
+    model: T,
+    /// Identity changes even when the next request uses the same model/retention value.
+    lease: Arc<()>,
 }
 
 impl SpeechHost {
@@ -25,15 +34,28 @@ impl SpeechHost {
         &self,
         entry: ModelRegistryEntry,
         text: String,
-        language: Option<String>,
+        options: SpeechOptions,
         keep_alive: Option<i32>,
     ) -> mpsc::Receiver<Result<AudioEvent, String>> {
         let (tx, rx) = mpsc::channel(2);
         let loaded = Arc::clone(&self.loaded);
+        let handle = tokio::runtime::Handle::current();
         tokio::task::spawn_blocking(move || {
-            let result = speak(&loaded, &entry, &text, language, keep_alive)
+            let lease = Arc::new(());
+            let result = speak(&loaded, &entry, &text, options, keep_alive, Arc::clone(&lease))
                 .map(|uri| AudioEvent::Completed(AudioOutput::WavDataUri(uri)))
                 .map_err(|e| format!("{e:#}"));
+            if result.is_ok() {
+                if let Some(minutes) = keep_alive.filter(|v| *v > 0) {
+                    let weak = Arc::downgrade(&loaded);
+                    handle.spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(minutes as u64 * 60)).await;
+                        if let Some(loaded) = weak.upgrade() {
+                            let _ = tokio::task::spawn_blocking(move || unload_if_current(&loaded, &lease)).await;
+                        }
+                    });
+                }
+            }
             let _ = tx.blocking_send(result);
         });
         rx
@@ -41,19 +63,20 @@ impl SpeechHost {
 
     /// The loaded speech model's id, if any.
     pub fn resident_model(&self) -> Option<String> {
-        self.loaded.lock().ok()?.as_ref().map(|(id, _)| id.clone())
+        self.loaded.lock().ok()?.as_ref().map(|r| r.id.clone())
     }
 }
 
 fn speak(
-    loaded: &Mutex<Option<(String, SpeechModel)>>,
+    loaded: &Mutex<Option<Resident<SpeechModel>>>,
     entry: &ModelRegistryEntry,
     text: &str,
-    language: Option<String>,
+    mut options: SpeechOptions,
     keep_alive: Option<i32>,
+    lease: Arc<()>,
 ) -> Result<String> {
     let mut slot = loaded.lock().map_err(|_| anyhow::anyhow!("Speech host lock poisoned"))?;
-    if slot.as_ref().map(|(id, _)| id != &entry.id).unwrap_or(true) {
+    if slot.as_ref().map(|r| r.id != entry.id).unwrap_or(true) {
         // Free the previous model before loading the next one
         *slot = None;
         let (model, projector) = speech_files(entry)?;
@@ -74,18 +97,46 @@ fn speak(
             }
             Err(error) => return Err(error),
         };
-        *slot = Some((entry.id.clone(), speech));
+        *slot = Some(Resident { id: entry.id.clone(), model: speech, lease: Arc::clone(&lease) });
     }
-    let (_, speech) = slot.as_mut().context("Speech model is not loaded")?;
-    let language = language
+    let resident = slot.as_mut().context("Speech model is not loaded")?;
+    resident.lease = lease;
+    options.language = options.language
         .map(|l| l.split(['-', '_']).next().unwrap_or(&l).to_ascii_lowercase())
         .filter(|l| !l.is_empty() && l != "auto");
-    let wav = speech.speak(text, &SpeechOptions { language, ..Default::default() })?;
-    if keep_alive == Some(0) {
+    let result = resident.model.speak(text, &options);
+    if result.is_err() || keep_alive == Some(0) {
         *slot = None;
     }
+    let wav = result?;
     use base64::Engine;
     Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(wav)))
+}
+
+fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) -> Result<bool> {
+    let mut slot = loaded.lock().map_err(|_| anyhow::anyhow!("Speech host lock poisoned"))?;
+    if !slot.as_ref().is_some_and(|r| Arc::ptr_eq(&r.lease, lease)) { return Ok(false); }
+    *slot = None;
+    tracing::debug!("Speech retention expired; released native model");
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_expiry_cannot_unload_a_newer_request_or_replacement() -> Result<()> {
+        let old = Arc::new(());
+        let current = Arc::new(());
+        let loaded = Mutex::new(Some(Resident { id: String::new(), model: (), lease: Arc::clone(&current) }));
+        assert!(!unload_if_current(&loaded, &old)?);
+        assert!(unload_if_current(&loaded, &current)?);
+        assert!(!unload_if_current(&loaded, &current)?);
+        *loaded.lock().map_err(|_| anyhow::anyhow!("Test lock poisoned"))? =
+            Some(Resident { id: String::new(), model: (), lease: Arc::new(()) });
+        assert!(!unload_if_current(&loaded, &current)?);
+        Ok(())
+    }
 }
 
 /// The backbone (the registry's primary file) and its audio projector (the package's inspected
