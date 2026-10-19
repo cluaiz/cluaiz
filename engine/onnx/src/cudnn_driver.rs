@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 const CUDNN_SOURCES_JSON: &str = include_str!("data/cudnn_sources.json");
 
@@ -174,14 +174,72 @@ pub fn sync_ort_provider_binaries_to_drivers_dir(drivers_dir: &Path) {
 pub fn detect_provider_cuda_variant(drivers_dir: &Path) -> &'static str {
     for dir in provider_search_dirs(drivers_dir) {
         for name in ["onnxruntime_providers_cuda.dll", "libonnxruntime_providers_cuda.so"] {
-            if let Ok(bytes) = std::fs::read(dir.join(name)) {
-                if let Some(variant) = detect_cuda_variant_from_provider_bytes(&bytes) {
-                    return variant;
-                }
+            if let Some(variant) = provider_variant(&dir.join(name), drivers_dir) {
+                return variant;
             }
         }
     }
     "cuda12"
+}
+
+/// File in `drivers_dir` remembering the last provider binary's variant with its size, time and path
+const VARIANT_RECORD: &str = "cuda_provider_variant.txt";
+
+/// The CUDA variant of one provider binary. The binary is ~260 MB, so the answer is kept (in memory
+/// and in `VARIANT_RECORD`) by its size, modification time and path, and the file is read again
+/// only when it changes, not on every command and model load.
+fn provider_variant(path: &Path, drivers_dir: &Path) -> Option<&'static str> {
+    static SEEN: Mutex<Vec<(String, &'static str)>> = Mutex::new(Vec::new());
+    let meta = std::fs::metadata(path).ok().filter(|m| m.is_file())?;
+    let modified = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_secs());
+    let stamp = format!("{}\t{}\t{}", meta.len(), modified, path.display());
+    let known = |variant: &str| ["cuda12", "cuda13"].into_iter().find(|v| *v == variant);
+
+    if let Some(variant) = SEEN.lock().ok()?.iter().find(|(s, _)| *s == stamp).map(|(_, v)| *v) {
+        return Some(variant);
+    }
+    let record = drivers_dir.join(VARIANT_RECORD);
+    let recorded = std::fs::read_to_string(&record).ok().and_then(|text| {
+        let (variant, rest) = text.trim_end().split_once('\t')?;
+        (rest == stamp).then(|| known(variant)).flatten()
+    });
+    let variant = match recorded {
+        Some(variant) => variant,
+        None => {
+            let variant = detect_cuda_variant_from_provider_bytes(&std::fs::read(path).ok()?)?;
+            if drivers_dir.is_dir() {
+                let _ = std::fs::write(&record, format!("{variant}\t{stamp}"));
+            }
+            variant
+        }
+    };
+    if let Ok(mut seen) = SEEN.lock() {
+        seen.push((stamp, variant));
+    }
+    Some(variant)
+}
+
+/// A download cut off when its process ended leaves a `.part` file behind; one untouched for an
+/// hour is not in progress (downloads time out after 30 minutes), so it is removed.
+fn remove_stale_downloads(drivers_dir: &Path) {
+    for entry in std::fs::read_dir(drivers_dir).into_iter().flatten().flatten() {
+        if !entry.file_name().to_string_lossy().contains(".part") {
+            continue;
+        }
+        let stale = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .is_some_and(|age| age > std::time::Duration::from_secs(3600));
+        if stale && entry.path().is_file() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
 }
 
 /// Default `<cluaiz_home>/engine/drivers` directory.
@@ -387,6 +445,7 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
 
     std::fs::create_dir_all(drivers_dir)
         .with_context(|| format!("failed to create drivers directory {:?}", drivers_dir))?;
+    remove_stale_downloads(drivers_dir);
 
     for comp in &v_manifest.components {
         let Some(source) = comp.platforms.iter().find(|p| p.platform == key) else {
@@ -666,6 +725,22 @@ mod tests {
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"MZ...cublas64_13.dll\0"), Some("cuda13"));
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"\x7fELF...libcublas.so.13\0"), Some("cuda13"));
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"no_cuda_imports"), None);
+    }
+
+    #[test]
+    fn provider_variant_is_recorded_and_reused_until_the_binary_changes() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-provider-variant-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let provider = dir.join("onnxruntime_providers_cuda.dll");
+        std::fs::write(&provider, b"MZ...cublas64_13.dll\0").unwrap();
+        assert_eq!(provider_variant(&provider, &dir), Some("cuda13"));
+        let record = std::fs::read_to_string(dir.join(VARIANT_RECORD)).unwrap();
+        assert!(record.starts_with("cuda13\t"));
+        // A different binary (another size) is read again
+        std::fs::write(&provider, b"MZ......cublas64_12.dll\0").unwrap();
+        assert_eq!(provider_variant(&provider, &dir), Some("cuda12"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
