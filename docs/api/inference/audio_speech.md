@@ -39,6 +39,20 @@ The following official Piper ONNX voice packages are available out-of-the-box:
 | **`piper-en_US-amy-medium`** | English (US) | Female (Warm) | 22.05 kHz | Clear, articulate American English female voice. |
 | **`piper-voices-hi_in-rohan-medium`** | Hindi (India) / Hinglish | Male | 22.05 kHz | Native Indian accent Hindi & Hinglish voice. |
 
+### Which voices a model has
+
+`GET /v1/audio/voices?model=<id>` (model optional: the active or first installed TTS model) lists the values accepted by `voice`. `"default"` comes first; each voice carries the language its name declares (Kokoro: `a` American English, `b` British English, `h` Hindi, …), `null` when unknown:
+
+```json
+{ "object": "list", "model": "Kokoro-82M-v1.0-ONNX-UINT8", "data": [
+  { "id": "default", "language": null, "default": true },
+  { "id": "af_heart", "language": "en-us", "default": false },
+  { "id": "hf_alpha", "language": "hi", "default": false }
+] }
+```
+
+A single-voice model (Piper) returns only `"default"`.
+
 ---
 
 ## 💻 Code Examples
