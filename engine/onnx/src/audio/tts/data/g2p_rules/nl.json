@@ -10,9 +10,19 @@
   ],
   "classes": {
     "V": "aeiouy",
+    "C": "bcdfghjklmnpqrstvwxz",
     "F": "eiy"
   },
   "rules": [
+    {"g":"er","p":"ər","before":"#","after_sequence":["V","C"]},
+    {"g":"bb","p":"b"}, {"g":"dd","p":"d"}, {"g":"ff","p":"f"},
+    {"g":"gg","p":"ɣ"}, {"g":"kk","p":"k"}, {"g":"ll","p":"l"},
+    {"g":"mm","p":"m"}, {"g":"nn","p":"n"}, {"g":"pp","p":"p"},
+    {"g":"rr","p":"r"}, {"g":"ss","p":"s"}, {"g":"tt","p":"t"},
+    {"g":"a","p":"aː","before_sequence":["C","V"]},
+    {"g":"e","p":"eː","before_sequence":["C","V"]},
+    {"g":"o","p":"oː","before_sequence":["C","V"]},
+    {"g":"u","p":"y","before_sequence":["C","V"]},
     {
       "g": "sch",
       "p": "sx"
@@ -231,11 +241,22 @@
     }
   ],
   "examples": {
+    "water": "ʋaːtər",
+    "kamer": "kaːmər",
+    "kopen": "koːpə",
+    "maken": "maːkə",
+    "mannen": "mɑnə",
+    "katten": "kɑtə",
+    "bomen": "boːmə",
+    "botten": "bɔtə",
+    "buren": "byrə",
     "huis": "hœys",
     "goed": "ɣut",
     "schip": "sxɪp",
     "kat": "kɑt",
     "wij": "ʋɛi",
     "boek": "buk"
-  }
+  },
+  "_sources": ["https://woordenlijst.org/zoeken/leidraad/2/1.html", "https://woordenlijst.org/zoeken/leidraad/2/2.html"],
+  "_limits": "Single consonant plus vowel is an open-syllable approximation, not a morphological or stress analyzer. Doubling a written consonant closes the preceding syllable without producing a geminate. Loanwords, unstressed prefixes, hiatus and compounds remain dictionary/model dependent. No all-Dutch quality claim."
 }

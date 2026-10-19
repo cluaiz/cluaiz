@@ -19,6 +19,7 @@ OVERRIDES = {
     "ja": {"point": "点"},  # CLDR writes "・" between the parts; it is said 点 (ten)
     "zh": {"suffixes": {"%": "百分之{0}"}},  # CLDR's long unit is "{0}%"; it is said 百分之…
     "ru": {"point": "запятая"},  # CLDR's decimal word depends on the plural of the whole part
+    "vi": {"suffixes": {"%": "{0} phần trăm"}},  # CLDR's unit pattern is written with a literal %
 }
 # Not generated: CLDR's Slovenian spell-out reads like Croatian ("dvaset ena" for 21)
 

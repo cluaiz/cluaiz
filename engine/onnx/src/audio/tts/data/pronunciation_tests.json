@@ -1,5 +1,18 @@
 {
   "rules": [
+    {"group":"coverage","text":"water","language":"nl","model_coverage":true},
+    {"group":"coverage","text":"kamer","language":"nl","model_coverage":true},
+    {"group":"coverage","text":"kopen","language":"nl","model_coverage":true},
+    {"group":"coverage","text":"mannen","language":"nl","model_coverage":true},
+    {"group":"coverage","text":"ma","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"má","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mà","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mả","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mã","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mạ","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mát","language":"vi","model_coverage":true},
+    {"group":"coverage","text":"mạt","language":"vi","model_coverage":true},
+    {"group":"canonical","text":"ma\u0301","language":"vi","same_as":"má","model_coverage":true},
     {"group":"routing","text":"नमस्ते","language":"en-us","expected_language":"hi"},
     {"group":"routing","text":"hello","language":"en-us","reject":true},
     {"group":"routing","text":"नमस्ते","language":"mr","expected_language":"mr"},
