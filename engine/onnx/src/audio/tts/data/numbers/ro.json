@@ -1,0 +1,326 @@
+{
+ "language": "ro",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "virgulă",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} de rupii indiene",
+  "$": "{0} de dolari americani",
+  "€": "{0} de euro",
+  "£": "{0} de lire sterline",
+  "¥": "{0} de yeni japonezi"
+ },
+ "suffixes": {
+  "%": "{0} de procente"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal-masculine=;"
+    ]
+   ],
+   "%spellout-cardinal-masculine": [
+    [
+     "-x",
+     "minus →→;"
+    ],
+    [
+     "x.x",
+     "←← virgulă →→;"
+    ],
+    [
+     "0",
+     "zero;"
+    ],
+    [
+     "1",
+     "unu;"
+    ],
+    [
+     "2",
+     "doi;"
+    ],
+    [
+     "3",
+     "trei;"
+    ],
+    [
+     "4",
+     "patru;"
+    ],
+    [
+     "5",
+     "cinci;"
+    ],
+    [
+     "6",
+     "șase;"
+    ],
+    [
+     "7",
+     "șapte;"
+    ],
+    [
+     "8",
+     "opt;"
+    ],
+    [
+     "9",
+     "nouă;"
+    ],
+    [
+     "10",
+     "zece;"
+    ],
+    [
+     "11",
+     "unsprezece;"
+    ],
+    [
+     "12",
+     "→→sprezece;"
+    ],
+    [
+     "20",
+     "←%spellout-cardinal-feminine←zeci[ și →→];"
+    ],
+    [
+     "100",
+     "una sută[ →→];"
+    ],
+    [
+     "200",
+     "←%spellout-cardinal-feminine← sute[ →→];"
+    ],
+    [
+     "1000",
+     "una mie[ →→];"
+    ],
+    [
+     "2000",
+     "←%spellout-cardinal-feminine← mii[ →→];"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-neuter← milion[ →→];"
+    ],
+    [
+     "2000000",
+     "←%spellout-cardinal-neuter← milioane[ →→];"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-neuter← miliard[ →→];"
+    ],
+    [
+     "2000000000",
+     "←%spellout-cardinal-neuter← miliarde[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←%spellout-cardinal-neuter← bilion[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←%spellout-cardinal-neuter← bilioane[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←%spellout-cardinal-neuter← biliard[ →→];"
+    ],
+    [
+     "2000000000000000",
+     "←%spellout-cardinal-neuter← biliarde[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%spellout-cardinal-neuter": [
+    [
+     "-x",
+     "minus →→;"
+    ],
+    [
+     "x.x",
+     "←← virgulă →→;"
+    ],
+    [
+     "0",
+     "zero;"
+    ],
+    [
+     "1",
+     "unu;"
+    ],
+    [
+     "2",
+     "=%spellout-cardinal-feminine=;"
+    ],
+    [
+     "20",
+     "←%spellout-cardinal-feminine←zeci[ și →→];"
+    ],
+    [
+     "100",
+     "una sută[ →→];"
+    ],
+    [
+     "200",
+     "←%spellout-cardinal-feminine← sute[ →→];"
+    ],
+    [
+     "1000",
+     "una mie[ →→];"
+    ],
+    [
+     "2000",
+     "←%spellout-cardinal-feminine← mii[ →→];"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-neuter← milion[ →→];"
+    ],
+    [
+     "2000000",
+     "←%spellout-cardinal-neuter← milioane[ →→];"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-neuter← miliard[ →→];"
+    ],
+    [
+     "2000000000",
+     "←%spellout-cardinal-neuter← miliarde[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←%spellout-cardinal-neuter← bilion[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←%spellout-cardinal-neuter← bilioane[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←%spellout-cardinal-neuter← biliard[ →→];"
+    ],
+    [
+     "2000000000000000",
+     "←%spellout-cardinal-neuter← biliarde[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%spellout-cardinal-feminine": [
+    [
+     "-x",
+     "minus →→;"
+    ],
+    [
+     "x.x",
+     "←← virgulă →→;"
+    ],
+    [
+     "0",
+     "zero;"
+    ],
+    [
+     "1",
+     "una;"
+    ],
+    [
+     "2",
+     "două;"
+    ],
+    [
+     "3",
+     "=%spellout-cardinal-masculine=;"
+    ],
+    [
+     "12",
+     "→→sprezece;"
+    ],
+    [
+     "20",
+     "←%spellout-cardinal-feminine←zeci[ și →→];"
+    ],
+    [
+     "100",
+     "una sută[ →→];"
+    ],
+    [
+     "200",
+     "←%spellout-cardinal-feminine← sute[ →→];"
+    ],
+    [
+     "1000",
+     "una mie[ →→];"
+    ],
+    [
+     "2000",
+     "←%spellout-cardinal-feminine← mii[ →→];"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-neuter← milion[ →→];"
+    ],
+    [
+     "2000000",
+     "←%spellout-cardinal-neuter← milioane[ →→];"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-neuter← miliard[ →→];"
+    ],
+    [
+     "2000000000",
+     "←%spellout-cardinal-neuter← miliarde[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←%spellout-cardinal-neuter← bilion[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←%spellout-cardinal-neuter← bilioane[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←%spellout-cardinal-neuter← biliard[ →→];"
+    ],
+    [
+     "2000000000000000",
+     "←%spellout-cardinal-neuter← biliarde[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "one",
+    "i = 1 and v = 0"
+   ],
+   [
+    "few",
+    "v != 0 or n = 0 or n != 1 and n % 100 = 1..19"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "două mii douăzeci și șase"
+ }
+}

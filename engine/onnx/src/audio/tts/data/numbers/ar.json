@@ -1,0 +1,366 @@
+{
+ "language": "ar",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "فاصل",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} روبية هندي",
+  "$": "{0} دولار أمريكي",
+  "€": "{0} يورو",
+  "£": "{0} جنيه إسترليني",
+  "¥": "{0} ين ياباني"
+ },
+ "suffixes": {
+  "%": "{0} بالمائة"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "-x",
+     "ناقص →→;"
+    ],
+    [
+     "x.x",
+     "←← فاصل →→;"
+    ],
+    [
+     "0",
+     "صفر;"
+    ],
+    [
+     "1",
+     "واحد;"
+    ],
+    [
+     "2",
+     "إثنان;"
+    ],
+    [
+     "3",
+     "ثلاثة;"
+    ],
+    [
+     "4",
+     "أربعة;"
+    ],
+    [
+     "5",
+     "خمسة;"
+    ],
+    [
+     "6",
+     "ستة;"
+    ],
+    [
+     "7",
+     "سبعة;"
+    ],
+    [
+     "8",
+     "ثمانية;"
+    ],
+    [
+     "9",
+     "تسعة;"
+    ],
+    [
+     "10",
+     "عشرة;"
+    ],
+    [
+     "11",
+     "إحدى عشر;"
+    ],
+    [
+     "12",
+     "إثنا عشر;"
+    ],
+    [
+     "13",
+     "→%spellout-numbering→ عشر;"
+    ],
+    [
+     "20",
+     "[→%spellout-numbering→ و]عشرون;"
+    ],
+    [
+     "30",
+     "[→%spellout-numbering→ و]ثلاثون;"
+    ],
+    [
+     "40",
+     "[→%spellout-numbering→ و]أربعون;"
+    ],
+    [
+     "50",
+     "[→%spellout-numbering→ و]خمسون;"
+    ],
+    [
+     "60",
+     "[→%spellout-numbering→ و]ستون;"
+    ],
+    [
+     "70",
+     "[→%spellout-numbering→ و]سبعون;"
+    ],
+    [
+     "80",
+     "[→%spellout-numbering→ و]ثمانون;"
+    ],
+    [
+     "90",
+     "[→%spellout-numbering→ و]تسعون;"
+    ],
+    [
+     "100",
+     "مائة[ و→%spellout-numbering→];"
+    ],
+    [
+     "200",
+     "مائتان[ و→%spellout-numbering→];"
+    ],
+    [
+     "300",
+     "←%spellout-numbering← مائة[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000",
+     "ألف[ و→%spellout-numbering→];"
+    ],
+    [
+     "2000",
+     "ألفين[ و→%spellout-numbering→];"
+    ],
+    [
+     "3000",
+     "←%spellout-numbering← آلاف[ و→%spellout-numbering→];"
+    ],
+    [
+     "11000/1000",
+     "←%%spellout-numbering-m← ألف[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000000",
+     "مليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "2000000",
+     "←%%spellout-numbering-m← مليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000000000",
+     "مليار[ و→%spellout-numbering→];"
+    ],
+    [
+     "2000000000",
+     "←%%spellout-numbering-m← مليار[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000000000000",
+     "ترليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "2000000000000",
+     "←%%spellout-numbering-m← ترليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000000000000000",
+     "كوادرليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "2000000000000000",
+     "←%%spellout-numbering-m← كوادرليون[ و→%spellout-numbering→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%%spellout-numbering-m": [
+    [
+     "0",
+     "صفر;"
+    ],
+    [
+     "1",
+     "واحد;"
+    ],
+    [
+     "2",
+     "إثنان;"
+    ],
+    [
+     "3",
+     "ثلاثة;"
+    ],
+    [
+     "4",
+     "أربعة;"
+    ],
+    [
+     "5",
+     "خمسة;"
+    ],
+    [
+     "6",
+     "ستة;"
+    ],
+    [
+     "7",
+     "سبعة;"
+    ],
+    [
+     "8",
+     "ثمانية;"
+    ],
+    [
+     "9",
+     "تسعة;"
+    ],
+    [
+     "10",
+     "عشرة;"
+    ],
+    [
+     "11",
+     "إحدى عشر;"
+    ],
+    [
+     "12",
+     "إثنا عشر;"
+    ],
+    [
+     "13",
+     "→→ عشر;"
+    ],
+    [
+     "20",
+     "[→%%spellout-numbering-m→ و]عشرون;"
+    ],
+    [
+     "30",
+     "[→%%spellout-numbering-m→ و]ثلاثون;"
+    ],
+    [
+     "40",
+     "[→%%spellout-numbering-m→ و]أربعون;"
+    ],
+    [
+     "50",
+     "[→%%spellout-numbering-m→ و]خمسون;"
+    ],
+    [
+     "60",
+     "[→%%spellout-numbering-m→ و]ستون;"
+    ],
+    [
+     "70",
+     "[→%%spellout-numbering-m→ و]سبعون;"
+    ],
+    [
+     "80",
+     "[→%%spellout-numbering-m→ و]ثمانون;"
+    ],
+    [
+     "90",
+     "[→%%spellout-numbering-m→ و]تسعون;"
+    ],
+    [
+     "100",
+     "مائة[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "200",
+     "مائتان[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "300",
+     "←%spellout-numbering← مائة[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000",
+     "ألف[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "2000",
+     "ألفي[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "3000",
+     "←%spellout-numbering← آلاف[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "11000/1000",
+     "←%%spellout-numbering-m← ألف[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000000",
+     "مليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "2000000",
+     "←%%spellout-numbering-m← مليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000000000",
+     "مليار[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "2000000000",
+     "←%%spellout-numbering-m← مليار[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000000000000",
+     "ترليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "2000000000000",
+     "←%%spellout-numbering-m← ترليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000000000000000",
+     "كوادرليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "2000000000000000",
+     "←%%spellout-numbering-m← كوادرليون[ و→%%spellout-numbering-m→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "zero",
+    "n = 0"
+   ],
+   [
+    "one",
+    "n = 1"
+   ],
+   [
+    "two",
+    "n = 2"
+   ],
+   [
+    "few",
+    "n % 100 = 3..10"
+   ],
+   [
+    "many",
+    "n % 100 = 11..99"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "15%": "خمسة عشر بالمائة"
+ }
+}

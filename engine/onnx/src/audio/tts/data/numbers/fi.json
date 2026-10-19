@@ -1,0 +1,146 @@
+{
+ "language": "fi",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "pilkku",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} Intian rupiaa",
+  "$": "{0} Yhdysvaltain dollaria",
+  "€": "{0} euroa",
+  "£": "{0} Englannin puntaa",
+  "¥": "{0} Japanin jeniä"
+ },
+ "suffixes": {
+  "%": "{0} prosenttia"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal=;"
+    ]
+   ],
+   "%spellout-cardinal": [
+    [
+     "-x",
+     "miinus →→;"
+    ],
+    [
+     "x.x",
+     "←← pilkku →→;"
+    ],
+    [
+     "0",
+     "nolla;"
+    ],
+    [
+     "1",
+     "yksi;"
+    ],
+    [
+     "2",
+     "kaksi;"
+    ],
+    [
+     "3",
+     "kolme;"
+    ],
+    [
+     "4",
+     "neljä;"
+    ],
+    [
+     "5",
+     "viisi;"
+    ],
+    [
+     "6",
+     "kuusi;"
+    ],
+    [
+     "7",
+     "seitsemän;"
+    ],
+    [
+     "8",
+     "kahdeksan;"
+    ],
+    [
+     "9",
+     "yhdeksän;"
+    ],
+    [
+     "10",
+     "kymmenen;"
+    ],
+    [
+     "11",
+     "→→toista;"
+    ],
+    [
+     "20",
+     "←←­kymmentä[­→→];"
+    ],
+    [
+     "100",
+     "sata[­→→];"
+    ],
+    [
+     "200",
+     "←←­sataa[­→→];"
+    ],
+    [
+     "1000",
+     "tuhat[­→→];"
+    ],
+    [
+     "2000",
+     "←←­tuhatta[­→→];"
+    ],
+    [
+     "1000000",
+     "←← miljoona[ →→];"
+    ],
+    [
+     "2000000",
+     "←← miljoonaa[ →→];"
+    ],
+    [
+     "1000000000",
+     "←← miljardi[ →→];"
+    ],
+    [
+     "2000000000",
+     "←← miljardia[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←← biljoona[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←← biljoonaa[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "one",
+    "i = 1 and v = 0"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "kaksituhattakaksikymmentäkuusi"
+ }
+}

@@ -1,0 +1,131 @@
+{
+ "language": "ja",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand. Editorial overrides: point (said aloud differently from CLDR's written form).",
+ "point": "点",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0}インド ルピー",
+  "$": "{0}米ドル",
+  "€": "{0}ユーロ",
+  "£": "{0}英国ポンド",
+  "¥": "{0}円"
+ },
+ "suffixes": {
+  "%": "{0} パーセント"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal=;"
+    ]
+   ],
+   "%spellout-cardinal": [
+    [
+     "-x",
+     "マイナス→→;"
+    ],
+    [
+     "x.x",
+     "←←・→→→;"
+    ],
+    [
+     "0",
+     "〇;"
+    ],
+    [
+     "1",
+     "一;"
+    ],
+    [
+     "2",
+     "二;"
+    ],
+    [
+     "3",
+     "三;"
+    ],
+    [
+     "4",
+     "四;"
+    ],
+    [
+     "5",
+     "五;"
+    ],
+    [
+     "6",
+     "六;"
+    ],
+    [
+     "7",
+     "七;"
+    ],
+    [
+     "8",
+     "八;"
+    ],
+    [
+     "9",
+     "九;"
+    ],
+    [
+     "10",
+     "十[→→];"
+    ],
+    [
+     "20",
+     "←←十[→→];"
+    ],
+    [
+     "100",
+     "百[→→];"
+    ],
+    [
+     "200",
+     "←←百[→→];"
+    ],
+    [
+     "1000",
+     "千[→→];"
+    ],
+    [
+     "2000",
+     "←←千[→→];"
+    ],
+    [
+     "10000",
+     "←←万[→→];"
+    ],
+    [
+     "100000000",
+     "←←億[→→];"
+    ],
+    [
+     "1000000000000",
+     "←←兆[→→];"
+    ],
+    [
+     "10000000000000000",
+     "←←京[→→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "二千二十六",
+  "3.5": "三 点 五"
+ }
+}
