@@ -139,16 +139,18 @@ fn provider_search_dirs(drivers_dir: &Path) -> Vec<PathBuf> {
     dirs
 }
 
+/// The ONNX Runtime CUDA provider libraries (the shared bridge and the CUDA provider itself).
+const PROVIDER_FILES: [&str; 2] = if cfg!(windows) {
+    ["onnxruntime_providers_shared.dll", "onnxruntime_providers_cuda.dll"]
+} else {
+    ["libonnxruntime_providers_shared.so", "libonnxruntime_providers_cuda.so"]
+};
+
 /// Synchronizes `onnxruntime_providers_shared` and `onnxruntime_providers_cuda` from the build/cache
 /// directory into `drivers_dir` when present, avoiding stale ABI mismatches.
 pub fn sync_ort_provider_binaries_to_drivers_dir(drivers_dir: &Path) {
-    let provider_files: &[&str] = if cfg!(windows) {
-        &["onnxruntime_providers_shared.dll", "onnxruntime_providers_cuda.dll"]
-    } else {
-        &["libonnxruntime_providers_shared.so", "libonnxruntime_providers_cuda.so"]
-    };
     let search_dirs = provider_search_dirs(drivers_dir);
-    for file_name in provider_files {
+    for file_name in &PROVIDER_FILES {
         let dest = drivers_dir.join(file_name);
         for dir in &search_dirs {
             if dir == drivers_dir {
@@ -334,8 +336,10 @@ fn is_sentinel_on_system_path(sentinel_library: &str) -> bool {
 }
 
 /// Ensures `drivers_dir` is registered on `PATH` (Windows) so `LoadLibrary` inside
-/// `onnxruntime_providers_cuda` can resolve `cudart`, `cublas`, `cublasLt`, `cufft`, and `cudnn`.
+/// `onnxruntime_providers_cuda` can resolve `cudart`, `cublas`, `cublasLt`, `cufft`, and `cudnn`,
+/// and that the provider libraries sit beside the executable (see `place_providers_beside_executable`).
 pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
+    place_providers_beside_executable(drivers_dir);
     #[cfg(windows)]
     {
         if !drivers_dir.exists() {
@@ -353,6 +357,40 @@ pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
     }
     #[cfg(not(windows))]
     let _ = drivers_dir;
+}
+
+/// ONNX Runtime loads its CUDA provider only from the folder of the module it is built into (the
+/// `cluaiz` executable), never from `PATH`. An installed engine keeps the providers in
+/// `drivers_dir` and its executable alone in `bin/`, so CUDA was skipped without an error and ONNX
+/// models ran on DirectML. A missing provider is linked (or, across drives, copied) beside the
+/// executable; one already there (a development build's own) is left as it is.
+pub fn place_providers_beside_executable(drivers_dir: &Path) {
+    let Some(exe_dir) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
+    else {
+        return;
+    };
+    if exe_dir == drivers_dir {
+        return;
+    }
+    for name in PROVIDER_FILES {
+        let source = drivers_dir.join(name);
+        let target = exe_dir.join(name);
+        if target.exists() || !source.is_file() {
+            continue;
+        }
+        if std::fs::hard_link(&source, &target).is_ok() {
+            continue;
+        }
+        // A copy is written aside and renamed, so a cut-off copy is never taken for the provider
+        let part = exe_dir.join(format!("{name}.part{}", std::process::id()));
+        let copied = std::fs::copy(&source, &part).and_then(|_| std::fs::rename(&part, &target));
+        if let Err(error) = copied {
+            let _ = std::fs::remove_file(&part);
+            tracing::warn!(%error, ?target, "Could not place the ONNX CUDA provider beside the executable; ONNX models will not use CUDA");
+        }
+    }
 }
 
 /// Synchronous setup-time provisioning entry point invoked during `Bootstrapper::sync_neural_stack`,
