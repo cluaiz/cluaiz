@@ -154,10 +154,14 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
     if params.speed.is_some_and(|v| !(SPEED_RANGE.0..=SPEED_RANGE.1).contains(&v)) {
         anyhow::bail!("speed must be between {} and {}", SPEED_RANGE.0, SPEED_RANGE.1);
     }
-    if task == AudioTask::TextToSpeech
-        && (params.language.is_some() || params.translate_to.is_some() || !params.languages.is_empty())
-    {
-        anyhow::bail!("Language/translation options are not implemented for TTS");
+    if task == AudioTask::TextToSpeech && (params.translate_to.is_some() || !params.languages.is_empty()) {
+        anyhow::bail!("languages and translate_to apply to speech-to-text only");
+    }
+    // TTS `language`: the text's language (Cluaiz extension, like Google/Azure languageCode)
+    if params.language.as_deref().is_some_and(|code| {
+        !(2..=12).contains(&code.len()) || !code.chars().all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
+    }) {
+        anyhow::bail!("language must be a language code such as \"cs\", \"hi\" or \"en-US\"");
     }
     if params.languages.len() > MAX_SPEAKER_LANGUAGES
         || params.languages.iter().any(|code| {
@@ -391,6 +395,9 @@ struct SpeechRequest {
     model: Option<String>,
     input: String,
     voice: Option<String>,
+    /// Cluaiz extension: the text's language, so text in a language no voice speaks is still read
+    /// with that language's rules (default: from the text's script, the voice or the model)
+    language: Option<String>,
     speed: Option<f32>,
     stream: Option<bool>,
     keep_alive: Option<i32>,
@@ -433,6 +440,7 @@ pub async fn speech(
         parameters: Some(AudioParameters {
             speed: payload.speed,
             voice_id: payload.voice,
+            language: payload.language,
             ..Default::default()
         }),
         stream: payload.stream.or(Some(false)),
@@ -569,6 +577,23 @@ mod tests {
             ..Default::default()
         });
         assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
+        // The text's language for TTS; the speaker's languages only for STT
+        request.parameters = Some(AudioParameters {
+            language: Some("cs".into()),
+            ..Default::default()
+        });
+        assert_eq!(validate_options(&request, AudioTask::TextToSpeech).unwrap().language.as_deref(), Some("cs"));
+        request.parameters = Some(AudioParameters {
+            language: Some("not a code!".into()),
+            ..Default::default()
+        });
+        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
+        request.parameters = Some(AudioParameters {
+            languages: vec!["hi".into()],
+            ..Default::default()
+        });
+        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
+        assert!(validate_options(&request, AudioTask::SpeechToText).is_ok());
         request.parameters = Some(AudioParameters {
             timestamps: Some(true),
             ..Default::default()

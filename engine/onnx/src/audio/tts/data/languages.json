@@ -1,7 +1,19 @@
 {
-  "_about": "Which language a text is in when its script says so (Unicode ranges, hex), and which language a voice speaks from the first letter of its file name (Kokoro: a = American English, b = British English, ...). preferred_voices are chosen first when a model has them and they speak the language; otherwise the first voice by name. Text in a script not listed here uses the model's own language.",
+  "_about": "Which language a text is in when its script says so (Unicode ranges, hex), and which language a voice speaks from the first letter of its file name (Kokoro: a = American English, b = British English, ...). preferred_voices are chosen first when a model has them and they speak the language; otherwise the first voice by name. Text in a script not listed here uses the model's own language. nearest_voice_languages: for a language no voice speaks, the languages whose voices sound closest, tried in order (a Hindi voice reads Tamil far better than an American one); chosen by the TTS→STT character error rate measured for Cluaiz.",
   "scripts": [
     { "language": "hi", "ranges": [["0900", "097F"], ["A8E0", "A8FF"]] },
+    { "language": "bn", "ranges": [["0980", "09FF"]] },
+    { "language": "pa", "ranges": [["0A00", "0A7F"]] },
+    { "language": "gu", "ranges": [["0A80", "0AFF"]] },
+    { "language": "or", "ranges": [["0B00", "0B7F"]] },
+    { "language": "ta", "ranges": [["0B80", "0BFF"]] },
+    { "language": "te", "ranges": [["0C00", "0C7F"]] },
+    { "language": "kn", "ranges": [["0C80", "0CFF"]] },
+    { "language": "ml", "ranges": [["0D00", "0D7F"]] },
+    { "language": "ar", "ranges": [["0600", "06FF"], ["0750", "077F"]] },
+    { "language": "el", "ranges": [["0370", "03FF"], ["1F00", "1FFF"]] },
+    { "language": "ru", "ranges": [["0400", "04FF"]] },
+    { "language": "ka", "ranges": [["10A0", "10FF"]] },
     { "language": "ja", "ranges": [["3040", "30FF"]] },
     { "language": "zh", "ranges": [["4E00", "9FFF"], ["3400", "4DBF"], ["3100", "312F"], ["31A0", "31BF"]] }
   ],
@@ -16,5 +28,14 @@
     "j": "ja",
     "p": "pt-br",
     "z": "zh"
+  },
+  "nearest_voice_languages": {
+    "bn": ["hi"], "gu": ["hi"], "pa": ["hi"], "mr": ["hi"], "ne": ["hi"], "or": ["hi"], "as": ["hi"],
+    "ta": ["hi"], "te": ["hi"], "kn": ["hi"], "ml": ["hi"], "ur": ["hi"], "sa": ["hi"],
+    "ar": ["hi"], "fa": ["hi"],
+    "ro": ["it", "es"], "ca": ["es", "it"], "gl": ["es", "pt"],
+    "cs": ["es", "it"], "sk": ["es", "it"], "pl": ["es", "it"], "hr": ["es", "it"], "bs": ["es", "it"], "sr": ["es", "it"],
+    "sl": ["es", "it"], "ru": ["es", "it"], "uk": ["es", "it"], "el": ["es", "it"], "ka": ["es", "it"],
+    "fi": ["es", "it"], "hu": ["es", "it"], "tr": ["es", "it"], "id": ["es", "it"], "sw": ["es", "it"]
   }
 }

@@ -13,6 +13,9 @@ struct Languages {
     #[serde(default)]
     preferred_voices: Vec<String>,
     voice_prefix_languages: HashMap<String, String>,
+    /// For a language no voice speaks, the languages whose voices sound closest, in order
+    #[serde(default)]
+    nearest_voice_languages: HashMap<String, Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -111,15 +114,25 @@ pub fn voice_language(voice_id: &str) -> Option<&'static str> {
 }
 
 /// The voice file (stem in `voices/`) to use for `lang`: an exact language match first, then the
-/// same base language; preferred voices first, then by name. None when no voice's name says it speaks that language.
+/// same base language, then a voice of its nearest languages (`nearest_voice_languages`);
+/// preferred voices first, then by name. None when no voice speaks it or a near language.
 pub fn voice_for_language(model_dir: &Path, lang: &str) -> Option<String> {
     let voices = list_voices(model_dir);
-    let lang = lang.to_lowercase();
-    voices
-        .iter()
-        .find(|v| v.language.as_deref() == Some(lang.as_str()))
-        .or_else(|| voices.iter().find(|v| v.language.as_deref().map(base) == Some(base(&lang))))
-        .map(|v| v.id.clone())
+    let speaking = |lang: &str| {
+        let lang = lang.to_lowercase();
+        voices
+            .iter()
+            .find(|v| v.language.as_deref() == Some(lang.as_str()))
+            .or_else(|| voices.iter().find(|v| v.language.as_deref().map(base) == Some(base(&lang))))
+            .map(|v| v.id.clone())
+    };
+    speaking(lang).or_else(|| {
+        languages()?
+            .nearest_voice_languages
+            .get(base(&lang.to_lowercase()))?
+            .iter()
+            .find_map(|near| speaking(near))
+    })
 }
 
 #[cfg(test)]
