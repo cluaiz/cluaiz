@@ -85,94 +85,96 @@ pub fn manifest() -> Option<&'static CudnnManifest> {
 /// Maps the current compilation target to a platform entry in `cudnn_sources.json`.
 pub fn current_platform_key() -> Option<&'static str> {
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
-    {
-        return Some("windows-x86_64");
-    }
+    return Some("windows-x86_64");
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
-    {
-        return Some("linux-x86_64");
-    }
+    return Some("linux-x86_64");
     #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
-    {
-        return Some("linux-aarch64");
-    }
+    return Some("linux-aarch64");
     #[allow(unreachable_code)]
     None
 }
 
 /// Resolves the legacy single-archive `CudnnPlatformSource` for a given platform key.
 pub fn platform_source(platform_key: &str) -> Option<&'static CudnnPlatformSource> {
-    manifest()?
-        .platforms
-        .iter()
-        .find(|entry| entry.platform == platform_key)
+    manifest()?.platforms.iter().find(|entry| entry.platform == platform_key)
 }
 
 /// Resolves the `CudaVariantManifest` for `"cuda12"` or `"cuda13"`.
 pub fn variant_manifest(cuda_variant: &str) -> Option<&'static CudaVariantManifest> {
-    manifest()?
-        .cuda_variants
-        .iter()
-        .find(|v| v.cuda_variant == cuda_variant)
+    manifest()?.cuda_variants.iter().find(|v| v.cuda_variant == cuda_variant)
 }
 
 /// Inspects raw binary bytes of `onnxruntime_providers_cuda.dll` / `libonnxruntime_providers_cuda.so`
 /// to determine whether the provider was compiled against CUDA 13 or CUDA 12.
 pub fn detect_cuda_variant_from_provider_bytes(bytes: &[u8]) -> Option<&'static str> {
-    const CUDA13_MARKERS: &[&[u8]] = &[
-        b"cublas64_13.dll",
-        b"cudart64_13.dll",
-        b"libcublas.so.13",
-        b"libcudart.so.13",
-    ];
-    const CUDA12_MARKERS: &[&[u8]] = &[
-        b"cublas64_12.dll",
-        b"cudart64_12.dll",
-        b"libcublas.so.12",
-        b"libcudart.so.12",
-    ];
-    for marker in CUDA13_MARKERS {
-        if bytes.windows(marker.len()).any(|w| w.eq_ignore_ascii_case(marker)) {
-            return Some("cuda13");
-        }
+    const CUDA13: &[&[u8]] = &[b"cublas64_13.dll", b"cudart64_13.dll", b"libcublas.so.13", b"libcudart.so.13"];
+    const CUDA12: &[&[u8]] = &[b"cublas64_12.dll", b"cudart64_12.dll", b"libcublas.so.12", b"libcudart.so.12"];
+    if CUDA13.iter().any(|m| bytes.windows(m.len()).any(|w| w.eq_ignore_ascii_case(m))) {
+        return Some("cuda13");
     }
-    for marker in CUDA12_MARKERS {
-        if bytes.windows(marker.len()).any(|w| w.eq_ignore_ascii_case(marker)) {
-            return Some("cuda12");
-        }
+    if CUDA12.iter().any(|m| bytes.windows(m.len()).any(|w| w.eq_ignore_ascii_case(m))) {
+        return Some("cuda12");
     }
     None
+}
+
+/// Returns candidate directories where the active `onnxruntime_providers_cuda` binary may reside,
+/// ordered from most authoritative (current executable dir and `ort.pyke.io` cache) to `drivers_dir`.
+fn provider_search_dirs(drivers_dir: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            dirs.push(parent.to_path_buf());
+        }
+    }
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let dfbin = PathBuf::from(local_app_data).join("ort.pyke.io").join("dfbin");
+        for target_entry in std::fs::read_dir(&dfbin).into_iter().flatten().flatten() {
+            for hash_entry in std::fs::read_dir(target_entry.path()).into_iter().flatten().flatten() {
+                dirs.push(hash_entry.path());
+            }
+        }
+    }
+    dirs.push(drivers_dir.to_path_buf());
+    dirs
+}
+
+/// Synchronizes `onnxruntime_providers_shared` and `onnxruntime_providers_cuda` from the build/cache
+/// directory into `drivers_dir` when present, avoiding stale ABI mismatches.
+pub fn sync_ort_provider_binaries_to_drivers_dir(drivers_dir: &Path) {
+    let provider_files: &[&str] = if cfg!(windows) {
+        &["onnxruntime_providers_shared.dll", "onnxruntime_providers_cuda.dll"]
+    } else {
+        &["libonnxruntime_providers_shared.so", "libonnxruntime_providers_cuda.so"]
+    };
+    let search_dirs = provider_search_dirs(drivers_dir);
+    for file_name in provider_files {
+        let dest = drivers_dir.join(file_name);
+        for dir in &search_dirs {
+            if dir == drivers_dir {
+                continue;
+            }
+            let candidate = dir.join(file_name);
+            if let Ok(meta) = std::fs::metadata(&candidate) {
+                if meta.is_file() && meta.len() > 0 {
+                    let needs_copy = std::fs::metadata(&dest).map(|d| d.len() != meta.len()).unwrap_or(true);
+                    if needs_copy {
+                        let _ = std::fs::create_dir_all(drivers_dir);
+                        let _ = std::fs::copy(&candidate, &dest);
+                    }
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /// Detects whether the installed `onnxruntime_providers_cuda` binary targets `"cuda12"` or `"cuda13"`.
 /// Defaults to `"cuda12"` when no provider binary is found or when no import marker matches.
 pub fn detect_provider_cuda_variant(drivers_dir: &Path) -> &'static str {
-    let provider_names = [
-        "onnxruntime_providers_cuda.dll",
-        "libonnxruntime_providers_cuda.so",
-    ];
-    let mut candidate_dirs = vec![drivers_dir.to_path_buf()];
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            candidate_dirs.push(parent.to_path_buf());
-        }
-    }
-    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-        let dfbin = PathBuf::from(local_app_data).join("ort.pyke.io").join("dfbin");
-        if let Ok(targets) = std::fs::read_dir(&dfbin) {
-            for target_entry in targets.flatten() {
-                if let Ok(hashes) = std::fs::read_dir(target_entry.path()) {
-                    for hash_entry in hashes.flatten() {
-                        candidate_dirs.push(hash_entry.path());
-                    }
-                }
-            }
-        }
-    }
-    for dir in candidate_dirs {
-        for name in provider_names {
-            let path = dir.join(name);
-            if let Ok(bytes) = std::fs::read(&path) {
+    for dir in provider_search_dirs(drivers_dir) {
+        for name in ["onnxruntime_providers_cuda.dll", "libonnxruntime_providers_cuda.so"] {
+            if let Ok(bytes) = std::fs::read(dir.join(name)) {
                 if let Some(variant) = detect_cuda_variant_from_provider_bytes(&bytes) {
                     return variant;
                 }
@@ -184,15 +186,12 @@ pub fn detect_provider_cuda_variant(drivers_dir: &Path) -> &'static str {
 
 /// Default `<cluaiz_home>/engine/drivers` directory.
 pub fn default_drivers_dir() -> PathBuf {
-    cluaiz_core::EnvironmentManager::current()
-        .engine_dir()
-        .join("drivers")
+    cluaiz_core::EnvironmentManager::current().engine_dir().join("drivers")
 }
 
 /// Checks whether a specific sentinel library file exists and is non-empty inside `drivers_dir`.
 pub fn is_sentinel_in_drivers_dir(drivers_dir: &Path, sentinel_library: &str) -> bool {
-    let sentinel = drivers_dir.join(sentinel_library);
-    std::fs::metadata(sentinel)
+    std::fs::metadata(drivers_dir.join(sentinel_library))
         .map(|meta| meta.is_file() && meta.len() > 0)
         .unwrap_or(false)
 }
@@ -203,15 +202,9 @@ pub fn is_cudnn_in_drivers_dir(drivers_dir: &Path, source: &CudnnPlatformSource)
 }
 
 /// Checks whether all sentinel libraries for a CUDA runtime component are present in `drivers_dir`.
-pub fn is_component_in_drivers_dir(
-    drivers_dir: &Path,
-    source: &CudaComponentPlatformSource,
-) -> bool {
+pub fn is_component_in_drivers_dir(drivers_dir: &Path, source: &CudaComponentPlatformSource) -> bool {
     !source.sentinel_libraries.is_empty()
-        && source
-            .sentinel_libraries
-            .iter()
-            .all(|s| is_sentinel_in_drivers_dir(drivers_dir, s))
+        && source.sentinel_libraries.iter().all(|s| is_sentinel_in_drivers_dir(drivers_dir, s))
 }
 
 /// Checks whether all sentinel libraries for a CUDA runtime component are available either in
@@ -219,8 +212,7 @@ pub fn is_component_in_drivers_dir(
 pub fn is_component_available(drivers_dir: &Path, source: &CudaComponentPlatformSource) -> bool {
     !source.sentinel_libraries.is_empty()
         && source.sentinel_libraries.iter().all(|sentinel| {
-            is_sentinel_in_drivers_dir(drivers_dir, sentinel)
-                || is_sentinel_on_system_path(sentinel)
+            is_sentinel_in_drivers_dir(drivers_dir, sentinel) || is_sentinel_on_system_path(sentinel)
         })
 }
 
@@ -234,15 +226,13 @@ pub fn is_cuda_runtime_available_in(drivers_dir: &Path) -> bool {
     let Some(v_manifest) = variant_manifest(cuda_variant) else {
         return false;
     };
-    for comp in &v_manifest.components {
-        let Some(plat_src) = comp.platforms.iter().find(|p| p.platform == key) else {
-            return false;
-        };
-        if !is_component_available(drivers_dir, plat_src) {
-            return false;
-        }
-    }
-    true
+    v_manifest.components.iter().all(|comp| {
+        comp.platforms
+            .iter()
+            .find(|p| p.platform == key)
+            .map(|plat_src| is_component_available(drivers_dir, plat_src))
+            .unwrap_or(false)
+    })
 }
 
 /// Checks whether the platform's cuDNN 9 sentinel library is available either in `drivers_dir` or
@@ -254,47 +244,34 @@ pub fn is_cudnn_available_in(drivers_dir: &Path) -> bool {
 fn is_sentinel_on_system_path(sentinel_library: &str) -> bool {
     #[cfg(windows)]
     {
-        if let Some(path_os) = std::env::var_os("PATH") {
-            for dir in std::env::split_paths(&path_os) {
-                let candidate = dir.join(sentinel_library);
-                if std::fs::metadata(&candidate)
-                    .map(|m| m.is_file() && m.len() > 0)
-                    .unwrap_or(false)
-                {
-                    return true;
-                }
-            }
-        }
-        false
+        std::env::var_os("PATH")
+            .map(|path_os| {
+                std::env::split_paths(&path_os).any(|dir| {
+                    std::fs::metadata(dir.join(sentinel_library))
+                        .map(|m| m.is_file() && m.len() > 0)
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {
         if let Some(ld_os) = std::env::var_os("LD_LIBRARY_PATH") {
-            for dir in std::env::split_paths(&ld_os) {
-                let candidate = dir.join(sentinel_library);
-                if std::fs::metadata(&candidate)
+            if std::env::split_paths(&ld_os).any(|dir| {
+                std::fs::metadata(dir.join(sentinel_library))
                     .map(|m| m.is_file() && m.len() > 0)
                     .unwrap_or(false)
-                {
-                    return true;
-                }
-            }
-        }
-        for std_dir in [
-            "/usr/local/cuda/lib64",
-            "/usr/lib/x86_64-linux-gnu",
-            "/usr/lib/aarch64-linux-gnu",
-            "/usr/lib64",
-        ] {
-            let candidate = Path::new(std_dir).join(sentinel_library);
-            if std::fs::metadata(&candidate)
-                .map(|m| m.is_file() && m.len() > 0)
-                .unwrap_or(false)
-            {
+            }) {
                 return true;
             }
         }
-        false
+        ["/usr/local/cuda/lib64", "/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64"]
+            .iter()
+            .any(|std_dir| {
+                std::fs::metadata(Path::new(std_dir).join(sentinel_library))
+                    .map(|m| m.is_file() && m.len() > 0)
+                    .unwrap_or(false)
+            })
     }
 }
 
@@ -307,8 +284,7 @@ pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
             return;
         }
         let current_path = std::env::var_os("PATH").unwrap_or_default();
-        let already_present = std::env::split_paths(&current_path).any(|p| p == drivers_dir);
-        if !already_present {
+        if !std::env::split_paths(&current_path).any(|p| p == drivers_dir) {
             let mut new_path = drivers_dir.as_os_str().to_os_string();
             if !current_path.is_empty() {
                 new_path.push(";");
@@ -318,9 +294,7 @@ pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
         }
     }
     #[cfg(not(windows))]
-    {
-        let _ = drivers_dir;
-    }
+    let _ = drivers_dir;
 }
 
 /// Synchronous setup-time provisioning entry point invoked during `Bootstrapper::sync_neural_stack`,
@@ -328,10 +302,7 @@ pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
 /// when an NVIDIA GPU is present.
 pub fn provision_cuda_runtime_at_setup() -> Result<bool> {
     let hw = cluaiz_hw::HardwareProber::current();
-    let has_nvidia = hw
-        .gpus
-        .iter()
-        .any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
+    let has_nvidia = hw.gpus.iter().any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
     let drivers_dir = default_drivers_dir();
     let ready = ensure_cuda_runtime_ready(&drivers_dir, has_nvidia)?;
     if ready {
@@ -362,10 +333,7 @@ pub fn is_cuda_runtime_ready_or_spawn_background() -> bool {
     }
 
     let hw = cluaiz_hw::HardwareProber::current();
-    let has_nvidia = hw
-        .gpus
-        .iter()
-        .any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
+    let has_nvidia = hw.gpus.iter().any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
     if !has_nvidia {
         return false;
     }
@@ -382,10 +350,7 @@ pub fn is_cuda_runtime_ready_or_spawn_background() -> bool {
             .name("cluaiz-cuda-driver-bg".to_string())
             .spawn(move || {
                 if let Err(error) = provision_cuda_runtime_at_setup() {
-                    tracing::warn!(
-                        %error,
-                        "Background CUDA/cuDNN 9 runtime provisioning did not complete"
-                    );
+                    tracing::warn!(%error, "Background CUDA/cuDNN 9 runtime provisioning did not complete");
                 }
             });
     }
@@ -402,6 +367,7 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
     let Some(key) = current_platform_key() else {
         return Ok(false);
     };
+    sync_ort_provider_binaries_to_drivers_dir(drivers_dir);
     let cuda_variant = detect_provider_cuda_variant(drivers_dir);
     let Some(v_manifest) = variant_manifest(cuda_variant) else {
         bail!("CUDA variant manifest '{}' is unavailable", cuda_variant);
@@ -415,9 +381,7 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
         .unwrap_or(false)
     {
-        tracing::info!(
-            "Skipping automatic CUDA/cuDNN 9 download because CLUAIZ_DISABLE_CUDNN_AUTODOWNLOAD is set"
-        );
+        tracing::info!("Skipping automatic CUDA/cuDNN 9 download because CLUAIZ_DISABLE_CUDNN_AUTODOWNLOAD is set");
         return Ok(false);
     }
 
@@ -426,23 +390,14 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
 
     for comp in &v_manifest.components {
         let Some(source) = comp.platforms.iter().find(|p| p.platform == key) else {
-            bail!(
-                "no platform entry '{}' for CUDA component '{}' ({})",
-                key,
-                comp.component,
-                cuda_variant
-            );
+            bail!("no platform entry '{}' for CUDA component '{}' ({})", key, comp.component, cuda_variant);
         };
         if is_component_available(drivers_dir, source) {
             continue;
         }
 
         let url = format!("{}{}", comp.base_url, source.relative_path);
-        let archive_ext = if source.relative_path.ends_with(".zip") {
-            "zip"
-        } else {
-            "tar.xz"
-        };
+        let archive_ext = if source.relative_path.ends_with(".zip") { "zip" } else { "tar.xz" };
         let part_archive = drivers_dir.join(format!(
             "{}-{}-{}.part.{}",
             comp.component,
@@ -451,6 +406,11 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
             archive_ext
         ));
 
+        let mb = source.bytes as f64 / (1024.0 * 1024.0);
+        eprintln!(
+            "  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA {} v{} ({}, {:.1} MB)...",
+            comp.component, comp.version, cuda_variant, mb
+        );
         tracing::info!(
             component = %comp.component,
             version = %comp.version,
@@ -482,6 +442,10 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
                 drivers_dir
             );
         }
+        eprintln!(
+            "  ✅  [Cluaiz CUDA Setup] Installed {} v{} into {:?}",
+            comp.component, comp.version, drivers_dir
+        );
     }
 
     let _ = std::fs::write(drivers_dir.join("cudnn9.ready"), &v_manifest.cudnn_version);
@@ -514,33 +478,25 @@ fn download_to_file(url: &str, dest: &Path, expected_bytes: u64) -> Result<()> {
         .with_context(|| format!("GET {url} failed"))?
         .error_for_status()?;
 
-    let file = File::create(dest)
-        .with_context(|| format!("failed to create temporary archive {:?}", dest))?;
+    let file = File::create(dest).with_context(|| format!("failed to create temporary archive {:?}", dest))?;
     let mut writer = BufWriter::new(file);
     let mut reader = response.take(expected_bytes + 1);
     let copied = std::io::copy(&mut reader, &mut writer)
         .with_context(|| format!("failed while streaming download from {url}"))?;
     writer.flush()?;
     if copied != expected_bytes {
-        bail!(
-            "downloaded size mismatch for {url}: expected {expected_bytes} bytes, got {copied} bytes"
-        );
+        bail!("downloaded size mismatch for {url}: expected {expected_bytes} bytes, got {copied} bytes");
     }
     Ok(())
 }
 
 /// Verifies that an archive on disk matches both the pinned byte count and SHA-256 digest.
 pub fn verify_archive_file(path: &Path, expected_bytes: u64, expected_sha256: &str) -> Result<()> {
-    let meta = std::fs::metadata(path)
-        .with_context(|| format!("failed to stat archive {:?}", path))?;
+    let meta = std::fs::metadata(path).with_context(|| format!("failed to stat archive {:?}", path))?;
     if meta.len() != expected_bytes {
-        bail!(
-            "archive byte size mismatch: expected {expected_bytes}, got {}",
-            meta.len()
-        );
+        bail!("archive byte size mismatch: expected {expected_bytes}, got {}", meta.len());
     }
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
+    let mut reader = BufReader::new(File::open(path)?);
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 64 * 1024];
     loop {
@@ -552,29 +508,18 @@ pub fn verify_archive_file(path: &Path, expected_bytes: u64, expected_sha256: &s
     }
     let actual_sha = format!("{:x}", hasher.finalize());
     if !actual_sha.eq_ignore_ascii_case(expected_sha256) {
-        bail!(
-            "SHA-256 mismatch for {:?}: expected {}, got {}",
-            path,
-            expected_sha256,
-            actual_sha
-        );
+        bail!("SHA-256 mismatch for {:?}: expected {}, got {}", path, expected_sha256, actual_sha);
     }
     Ok(())
 }
 
-/// Extracts matching runtime shared libraries from a verified ZIP archive into `drivers_dir`
-/// using atomic `.part` renames.
+/// Extracts matching runtime shared libraries from a verified ZIP archive into `drivers_dir`.
 pub fn extract_component_from_zip(
     archive_path: &Path,
     drivers_dir: &Path,
     source: &CudaComponentPlatformSource,
 ) -> Result<usize> {
-    extract_libraries_from_zip(
-        archive_path,
-        drivers_dir,
-        &source.library_prefix,
-        &source.library_extension,
-    )
+    extract_libraries_from_zip(archive_path, drivers_dir, &source.library_prefix, &source.library_extension)
 }
 
 /// Extracts matching cuDNN runtime shared libraries from a verified ZIP archive into `drivers_dir`.
@@ -583,12 +528,7 @@ pub fn extract_cudnn_from_zip(
     drivers_dir: &Path,
     source: &CudnnPlatformSource,
 ) -> Result<usize> {
-    extract_libraries_from_zip(
-        archive_path,
-        drivers_dir,
-        &source.library_prefix,
-        &source.library_extension,
-    )
+    extract_libraries_from_zip(archive_path, drivers_dir, &source.library_prefix, &source.library_extension)
 }
 
 fn extract_libraries_from_zip(
@@ -608,9 +548,8 @@ fn extract_libraries_from_zip(
         if !entry.is_file() {
             continue;
         }
-        let enclosed = match entry.enclosed_name() {
-            Some(path) => path.to_path_buf(),
-            None => continue,
+        let Some(enclosed) = entry.enclosed_name().map(|p| p.to_path_buf()) else {
+            continue;
         };
         let Some(file_name) = enclosed.file_name().and_then(|n| n.to_str()) else {
             continue;
@@ -619,10 +558,7 @@ fn extract_libraries_from_zip(
             let s = c.as_os_str().to_string_lossy();
             s.eq_ignore_ascii_case("bin") || s.eq_ignore_ascii_case("lib")
         });
-        if !in_bin_or_lib
-            || !file_name.starts_with(library_prefix)
-            || !file_name.contains(library_extension)
-        {
+        if !in_bin_or_lib || !file_name.starts_with(library_prefix) || !file_name.contains(library_extension) {
             continue;
         }
 
@@ -641,11 +577,7 @@ fn extract_libraries_from_zip(
     }
 
     if extracted_count == 0 {
-        bail!(
-            "no runtime libraries matching prefix '{}' found inside {:?}",
-            library_prefix,
-            archive_path
-        );
+        bail!("no runtime libraries matching prefix '{}' found inside {:?}", library_prefix, archive_path);
     }
     Ok(extracted_count)
 }
@@ -676,19 +608,13 @@ fn extract_component_from_tar_xz(
     while let Some(dir) = stack.pop() {
         for entry in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
             let path = entry.path();
-            let Ok(ft) = entry.file_type() else {
-                continue;
-            };
+            let Ok(ft) = entry.file_type() else { continue };
             if ft.is_dir() {
                 stack.push(path);
                 continue;
             }
-            let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
-                continue;
-            };
-            if !file_name.starts_with(&source.library_prefix)
-                || !file_name.contains(&source.library_extension)
-            {
+            let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else { continue };
+            if !file_name.starts_with(&source.library_prefix) || !file_name.contains(&source.library_extension) {
                 continue;
             }
             if let Ok(meta) = std::fs::metadata(&path) {
@@ -704,11 +630,7 @@ fn extract_component_from_tar_xz(
 
     let _ = std::fs::remove_dir_all(&temp_extract);
     if extracted_count == 0 {
-        bail!(
-            "no shared libraries matching prefix '{}' found in {:?}",
-            source.library_prefix,
-            archive_path
-        );
+        bail!("no shared libraries matching prefix '{}' found in {:?}", source.library_prefix, archive_path);
     }
     Ok(extracted_count)
 }
@@ -724,24 +646,13 @@ mod tests {
         assert_eq!(m.cuda_variants.len(), 2);
 
         for variant_key in ["cuda12", "cuda13"] {
-            let vm = variant_manifest(variant_key)
-                .unwrap_or_else(|| panic!("missing variant {variant_key}"));
+            let vm = variant_manifest(variant_key).unwrap_or_else(|| panic!("missing variant {variant_key}"));
             let comp_names: Vec<&str> = vm.components.iter().map(|c| c.component.as_str()).collect();
-            assert_eq!(
-                comp_names,
-                vec!["cuda_cudart", "libcublas", "libcufft", "cudnn"],
-                "unexpected components for {variant_key}"
-            );
+            assert_eq!(comp_names, vec!["cuda_cudart", "libcublas", "libcufft", "cudnn"]);
             for comp in &vm.components {
                 assert!(comp.base_url.starts_with("https://developer.download.nvidia.com/"));
                 for plat in &comp.platforms {
-                    assert_eq!(
-                        plat.sha256.len(),
-                        64,
-                        "invalid sha256 for {variant_key}/{}/{}",
-                        comp.component,
-                        plat.platform
-                    );
+                    assert_eq!(plat.sha256.len(), 64);
                     assert!(plat.bytes > 500_000);
                     assert!(!plat.sentinel_libraries.is_empty());
                 }
@@ -751,24 +662,9 @@ mod tests {
 
     #[test]
     fn provider_binary_inspection_distinguishes_cuda12_and_cuda13() {
-        let fake_cuda12_pe = b"MZ\x90\x00...import_table...cublas64_12.dll\0cudart64_12.dll\0";
-        assert_eq!(
-            detect_cuda_variant_from_provider_bytes(fake_cuda12_pe),
-            Some("cuda12")
-        );
-
-        let fake_cuda13_pe = b"MZ\x90\x00...import_table...cublas64_13.dll\0cudart64_13.dll\0";
-        assert_eq!(
-            detect_cuda_variant_from_provider_bytes(fake_cuda13_pe),
-            Some("cuda13")
-        );
-
-        let fake_linux_cuda13 = b"\x7fELF...libcublas.so.13\0libcudart.so.13\0";
-        assert_eq!(
-            detect_cuda_variant_from_provider_bytes(fake_linux_cuda13),
-            Some("cuda13")
-        );
-
+        assert_eq!(detect_cuda_variant_from_provider_bytes(b"MZ...cublas64_12.dll\0"), Some("cuda12"));
+        assert_eq!(detect_cuda_variant_from_provider_bytes(b"MZ...cublas64_13.dll\0"), Some("cuda13"));
+        assert_eq!(detect_cuda_variant_from_provider_bytes(b"\x7fELF...libcublas.so.13\0"), Some("cuda13"));
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"no_cuda_imports"), None);
     }
 
@@ -778,24 +674,19 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let src = platform_source("windows-x86_64").unwrap();
-
         assert!(!is_cudnn_in_drivers_dir(&dir, src));
-
         let sentinel = dir.join(&src.sentinel_library);
         std::fs::write(&sentinel, b"").unwrap();
         assert!(!is_cudnn_in_drivers_dir(&dir, src));
-
         std::fs::write(&sentinel, b"MZ-real-dll-bytes").unwrap();
         assert!(is_cudnn_in_drivers_dir(&dir, src));
-
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn ensure_cudnn_ready_skips_when_no_nvidia_gpu() {
         let dir = std::env::temp_dir().join(format!("cluaiz-cudnn-nogpu-{}", std::process::id()));
-        let ready = ensure_cudnn_ready(&dir, false).unwrap();
-        assert!(!ready);
+        assert!(!ensure_cudnn_ready(&dir, false).unwrap());
         assert!(!dir.exists());
     }
 
@@ -804,48 +695,102 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("cluaiz-cudnn-zip-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-
         let zip_path = dir.join("test_cudnn.zip");
         {
-            let file = File::create(&zip_path).unwrap();
-            let mut zip = zip::ZipWriter::new(file);
+            let mut zip = zip::ZipWriter::new(File::create(&zip_path).unwrap());
             let opts = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated);
-
-            zip.start_file("cudnn-archive/bin/cudnn64_9.dll", opts)
-                .unwrap();
+            zip.start_file("cudnn-archive/bin/cudnn64_9.dll", opts).unwrap();
             zip.write_all(b"cudnn64_9_binary_payload").unwrap();
-
-            zip.start_file("cudnn-archive/bin/cudnn_graph64_9.dll", opts)
-                .unwrap();
+            zip.start_file("cudnn-archive/bin/cudnn_graph64_9.dll", opts).unwrap();
             zip.write_all(b"cudnn_graph64_9_payload").unwrap();
-
-            zip.start_file("cudnn-archive/include/cudnn.h", opts)
-                .unwrap();
+            zip.start_file("cudnn-archive/include/cudnn.h", opts).unwrap();
             zip.write_all(b"#define CUDNN_MAJOR 9").unwrap();
-
-            zip.start_file("cudnn-archive/lib/x64/cudnn.lib", opts)
-                .unwrap();
+            zip.start_file("cudnn-archive/lib/x64/cudnn.lib", opts).unwrap();
             zip.write_all(b"import_lib").unwrap();
-
             zip.finish().unwrap();
         }
-
         let bytes = std::fs::read(&zip_path).unwrap();
         let sha = format!("{:x}", Sha256::digest(&bytes));
         verify_archive_file(&zip_path, bytes.len() as u64, &sha).unwrap();
         assert!(verify_archive_file(&zip_path, bytes.len() as u64 + 1, &sha).is_err());
         assert!(verify_archive_file(&zip_path, bytes.len() as u64, &"0".repeat(64)).is_err());
-
         let out_dir = dir.join("drivers");
         let src = platform_source("windows-x86_64").unwrap();
-        let count = extract_cudnn_from_zip(&zip_path, &out_dir, src).unwrap();
-        assert_eq!(count, 2);
+        assert_eq!(extract_cudnn_from_zip(&zip_path, &out_dir, src).unwrap(), 2);
         assert!(is_cudnn_in_drivers_dir(&out_dir, src));
         assert!(out_dir.join("cudnn_graph64_9.dll").exists());
         assert!(!out_dir.join("cudnn.h").exists());
         assert!(!out_dir.join("cudnn.lib").exists());
-
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    #[ignore]
+    fn live_provision_and_verify_cuda_ep() {
+        let drivers_dir = default_drivers_dir();
+        eprintln!("=== [LIVE GPU VERIFICATION] Target drivers_dir: {:?} ===", drivers_dir);
+        let provisioned = provision_cuda_runtime_at_setup()
+            .expect("provision_cuda_runtime_at_setup must succeed on NVIDIA hardware");
+        assert!(provisioned, "Expected NVIDIA GPU to be detected and CUDA+cuDNN9 provisioned");
+        assert!(is_cuda_runtime_available_in(&drivers_dir));
+
+        let mut files: Vec<(String, u64)> = std::fs::read_dir(&drivers_dir)
+            .expect("drivers_dir must exist")
+            .flatten()
+            .filter_map(|e| {
+                let meta = e.metadata().ok()?;
+                Some((e.file_name().to_string_lossy().into_owned(), meta.len()))
+            })
+            .collect();
+        files.sort_by(|a, b| a.0.cmp(&b.0));
+        eprintln!("=== [LIVE GPU VERIFICATION] Installed files in {:?} ({}) ===", drivers_dir, files.len());
+        for (name, bytes) in &files {
+            eprintln!("  {:<42} {:>12} bytes", name, bytes);
+        }
+
+        // Verify strict ONNX Runtime CUDA Execution Provider session creation + forward pass on GPU
+        const IDENTITY_GRAPH: &[u8] = &[
+            8, 8, 58, 55, 10, 16, 10, 1, b'x', 18, 1, b'y', 34, 8, b'I', b'd', b'e', b'n', b't', b'i',
+            b't', b'y', 18, 1, b'g', 90, 15, 10, 1, b'x', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 98,
+            15, 10, 1, b'y', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 66, 2, 16, 13,
+        ];
+        ort::init().with_name("cluaiz_live_cuda_verify").commit();
+        let mut session = ort::session::Session::builder()
+            .expect("Session::builder")
+            .with_execution_providers([ort::ep::CUDA::default().build().error_on_failure()])
+            .expect("Strict CUDA EP registration must succeed with provisioned DLLs")
+            .commit_from_memory(IDENTITY_GRAPH)
+            .expect("Strict CUDA EP session commit must succeed on physical NVIDIA GPU");
+        let input = ort::value::Tensor::from_array(([1usize], vec![7.5f32])).unwrap();
+        let outputs = session.run(ort::inputs!["x" => input]).expect("CUDA EP forward pass");
+        assert_eq!(outputs["y"].try_extract_tensor::<f32>().unwrap().1, &[7.5]);
+        eprintln!("=== [LIVE GPU VERIFICATION] Strict CUDA Execution Provider forward pass PASSED ===");
+
+        let models_dir = cluaiz_core::EnvironmentManager::current().models_dir();
+        let onnx_files = crate::OnnxEngine::scan_onnx_files_recursive(&models_dir);
+        for onnx_path in &onnx_files {
+            let path_str = onnx_path.to_string_lossy().to_lowercase();
+            if path_str.contains("kokoro") || path_str.contains("tts") || path_str.contains("bge_m3") {
+                eprintln!("=== [LIVE GPU VERIFICATION] Committing strict CUDA EP session for {:?} ===", onnx_path);
+                let t0 = std::time::Instant::now();
+                let mut model_sess = ort::session::Session::builder()
+                    .expect("Session::builder")
+                    .with_execution_providers([ort::ep::CUDA::default().build().error_on_failure()])
+                    .expect("Strict CUDA EP registration")
+                    .commit_from_file(onnx_path)
+                    .unwrap_or_else(|e| panic!("Strict CUDA EP commit failed for {:?}: {:?}", onnx_path, e));
+                eprintln!("=== [LIVE GPU VERIFICATION] Committed {:?} on CUDA EP in {:?} ===", onnx_path.file_name().unwrap_or_default(), t0.elapsed());
+                if path_str.contains("kokoro") {
+                    let mut eng = crate::OnnxEngine::new().expect("OnnxEngine::new");
+                    eng.model_dir = onnx_path.parent().map(|p| p.to_path_buf());
+                    let t_syn = std::time::Instant::now();
+                    let wav_uri = crate::audio::tts::tts_router::route_tts_with(&eng, &mut model_sess, "NVIDIA CUDA and cuDNN 9 speech synthesis verified on GPU.", Some("af_heart"), 1.0, None).expect("Kokoro CUDA GPU synthesis");
+                    assert!(wav_uri.starts_with("data:audio/wav;base64,") && wav_uri.len() > 10_000);
+                    eprintln!("=== [LIVE GPU VERIFICATION] Kokoro TTS synthesized {} base64 chars on NVIDIA CUDA GPU in {:?} ===", wav_uri.len(), t_syn.elapsed());
+                }
+            }
+        }
+    }
 }
+
