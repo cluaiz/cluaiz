@@ -209,6 +209,15 @@ pub fn word_to_ipa(word: &str, lang: &str) -> Option<(String, &'static str)> {
     Some((set.convert(word), set.language()))
 }
 
+/// Whether `lang` has letter-to-sound rules for the script `word` is written in (Italian rules
+/// read Latin letters; Hindi rules do not, so an English word in Hindi text is not Hindi).
+pub fn has_rules_for(word: &str, lang: &str) -> bool {
+    let lang = base(lang).to_lowercase();
+    rule_sets()
+        .iter()
+        .any(|s| s.language() == lang && word.chars().any(|c| in_ranges(c, s.script_ranges())))
+}
+
 /// Select an abugida script's language using the same rule data and model preference as G2P.
 pub(super) fn script_language(text: &str, preferred: &str) -> Option<&'static str> {
     let preferred = base(preferred).to_lowercase();
