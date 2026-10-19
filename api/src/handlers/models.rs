@@ -37,13 +37,32 @@ pub async fn hardware_status() -> Json<Value> {
 /// GET /v1/models/installed
 pub async fn list_installed_models() -> Json<Value> {
     let registry = InstalledStateRegistry::load();
-    let installed_vec: Vec<_> = registry.installed_models.values().cloned().collect();
+    // `experimental`: a TTS family whose runtime is unfinished (data/tts_families.json); clients
+    // keep it out of default choices and label it, it still runs when chosen by name
+    let with_flags = |entry: &cluaiz_models::types::manifest::ModelRegistryEntry| {
+        let mut value = serde_json::to_value(entry).unwrap_or(Value::Null);
+        if let Some(object) = value.as_object_mut() {
+            let experimental = entry
+                .metadata
+                .tts_family
+                .as_deref()
+                .is_some_and(cluaiz_runtime::onnx_host::is_experimental_family);
+            object.insert("experimental".into(), Value::Bool(experimental));
+        }
+        value
+    };
+    let installed_vec: Vec<Value> = registry.installed_models.values().map(with_flags).collect();
+    let installed_map: serde_json::Map<String, Value> = registry
+        .installed_models
+        .iter()
+        .map(|(id, entry)| (id.clone(), with_flags(entry)))
+        .collect();
     Json(json!({
         "status": "success",
         "count": installed_vec.len(),
         "installed": installed_vec.clone(),
         "models": installed_vec,
-        "installed_models": registry.installed_models
+        "installed_models": installed_map
     }))
 }
 

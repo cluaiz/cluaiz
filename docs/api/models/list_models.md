@@ -41,6 +41,8 @@ if data.get("status") == "success":
 
 ## 📤 Response Format (`/v1/models/installed`)
 
+Each model also has `experimental`: `true` for a text-to-speech family whose engine support is unfinished (Audio8, Supertonic, Matcha, CosyVoice, Chatterbox, OmniVoice; list in `engine/onnx/src/audio/tts/data/tts_families.json`). Such a model still runs when chosen by name, but the engine never picks it automatically, and clients should label it and keep it out of default choices.
+
 ```json
 {
   "status": "success",
@@ -63,6 +65,7 @@ if data.get("status") == "success":
         "chat-completion"
       ],
       "requires_gpu": false,
+      "experimental": false,
       "metadata": {
         "architecture": "qwen2",
         "parameters": "7B",
