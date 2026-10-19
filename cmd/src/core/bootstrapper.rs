@@ -33,6 +33,9 @@ impl Bootstrapper {
             tracing::info!("⚙️ [DevSync] Basic Configuration generated. Skipping network and registry sync for local deployment.");
             return Ok(());
         }
+
+        // 🎯 1. Hardware Acceleration & Dynamic Driver Verification (runs before optional registry sync)
+        Self::sync_neural_stack().await?;
         
         // Every command runs this: a slow or missing network must not hold the command up
         let client = reqwest::Client::builder()
@@ -41,7 +44,7 @@ impl Bootstrapper {
             .timeout(std::time::Duration::from_secs(3))
             .build()?;
 
-        // 🎯 1. Fetch Master Registry (package.json)
+        // 🎯 2. Fetch Master Registry (package.json)
         tracing::info!("🛰️ [cluaiz] Synchronizing Neural Registry...");
         
         let master_registry_res = client.get(Self::MASTER_REGISTRY_URL).send().await;
@@ -75,7 +78,7 @@ impl Bootstrapper {
         }
         tracing::debug!("✅ [Registry] Binary Truth sealed and verified.");
 
-        // 🎯 2. CLI Lifecycle Check
+        // 🎯 3. CLI Lifecycle Check
         let cli_info = &master_registry["components"]["cli"];
         let latest_cli = cli_info["version"].as_str().unwrap_or("");
         let current_cli = env!("CARGO_PKG_VERSION");
@@ -87,7 +90,7 @@ impl Bootstrapper {
             tracing::debug!("[cluaiz] Registry CLI version '{}' (this build {})", latest_cli, current_cli);
         }
 
-        // 🎯 3. Unified Binary Verification (Single Binary Architecture)
+        // 🎯 4. Unified Binary Verification (Single Binary Architecture)
         let bin_dir = cluaiz_core::EnvironmentManager::current().bin_dir();
         let exe_name = if cfg!(windows) { "cluaiz.exe" } else { "cluaiz" };
         let exe_path = bin_dir.join(exe_name);
@@ -96,9 +99,6 @@ impl Bootstrapper {
         } else {
             tracing::debug!("ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.");
         }
-
-        // 🎯 4. Hardware Acceleration & Dynamic Driver Verification
-        Self::sync_neural_stack().await?;
 
         Ok(())
     }
