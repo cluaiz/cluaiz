@@ -136,6 +136,8 @@ impl OnnxEngine {
         self.tokenizer = Some(Arc::new(tokenizer));
         let mut decoder = None;
         let mut encoder = None;
+        let mut cached_decoder = None;
+        self.cached_decoder_session = None;
         for path in graphs {
             let session = self.build_session(path)?;
             if session.inputs().len() == 1 && session.inputs()[0].name() == "input_features" {
@@ -175,6 +177,10 @@ impl OnnxEngine {
                 if encoder.replace(session).is_some() {
                     bail!("Ambiguous STT encoder graphs");
                 }
+            } else if is_cached_decoder(&session) {
+                if cached_decoder.replace(session).is_some() {
+                    bail!("Ambiguous cached STT decoder graphs");
+                }
             } else if is_uncached_decoder(&session) {
                 for input in session.inputs() {
                     if input.name() == "input_ids" {
@@ -205,6 +211,29 @@ impl OnnxEngine {
             bail!("Invalid encoder output");
         };
         validate_tensor(hidden.dtype(), TensorElementType::Float32, shape)?;
+        // The cached decoder is used only when every cached value it reads is produced: the first
+        // (uncached) step yields all `present.*`, each cached step its own decoder ones
+        self.cached_decoder_session = cached_decoder
+            .filter(|cached| {
+                let produced = |session: &Session, name: &str| {
+                    session.outputs().iter().any(|o| o.name() == name.replacen("past_key_values.", "present.", 1))
+                };
+                let complete = cached
+                    .inputs()
+                    .iter()
+                    .filter(|i| i.name().starts_with("past_key_values."))
+                    .all(|i| produced(&decoder, i.name()))
+                    && cached
+                        .outputs()
+                        .iter()
+                        .filter_map(|o| o.name().strip_prefix("present."))
+                        .all(|rest| cached.inputs().iter().any(|i| i.name() == format!("past_key_values.{rest}")));
+                if !complete {
+                    tracing::warn!("STT cached decoder does not match the decoder's cache outputs; decoding without the cache");
+                }
+                complete
+            })
+            .map(|cached| Arc::new(Mutex::new(cached)));
         self.encoder_session = Some(Arc::new(Mutex::new(encoder)));
         self.session_pool = vec![Arc::new(Mutex::new(decoder))];
         Ok(())
@@ -256,6 +285,20 @@ pub(crate) fn is_uncached_decoder(session: &Session) -> bool {
             .iter()
             .any(|i| i.name() == "encoder_hidden_states")
         && session.outputs().iter().any(|o| o.name() == "logits")
+}
+
+/// A decoder that continues from cached keys/values: the new token ids plus `past_key_values.*`
+/// (cross-attention comes from the cache, so no `encoder_hidden_states`), returning logits and
+/// `present.*`. A merged graph (`use_cache_branch`) is a different contract and is not this.
+pub(crate) fn is_cached_decoder(session: &Session) -> bool {
+    let inputs = session.inputs();
+    inputs.iter().any(|i| i.name() == "input_ids")
+        && inputs.iter().any(|i| i.name().starts_with("past_key_values."))
+        && inputs.iter().all(|i| {
+            i.name() == "input_ids" || i.name().starts_with("past_key_values.")
+        })
+        && session.outputs().iter().any(|o| o.name() == "logits")
+        && session.outputs().iter().any(|o| o.name().starts_with("present."))
 }
 
 pub(crate) fn validate_tensor(

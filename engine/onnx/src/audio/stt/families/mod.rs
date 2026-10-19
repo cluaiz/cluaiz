@@ -81,6 +81,36 @@ impl SttFamilyProfile {
     }
 }
 
+/// Splits `samples` into windows of at most `max_samples` (the model's input window, Whisper
+/// 30 s). Each cut is placed at the quietest 20 ms in the last 5 s before the limit, so a word is
+/// rarely cut in two. Audio that fits is one window.
+pub fn split_windows(samples: &[f32], sample_rate: u32, max_samples: usize) -> Vec<std::ops::Range<usize>> {
+    let frame = (sample_rate as usize / 50).max(1);
+    let search = (sample_rate as usize * 5).min(max_samples / 3);
+    let mut windows = Vec::new();
+    let mut start = 0usize;
+    while samples.len() - start > max_samples {
+        let limit = start + max_samples;
+        let mut cut = limit;
+        let mut quietest = f32::INFINITY;
+        let mut at = limit.saturating_sub(search).max(start + frame);
+        while at + frame <= limit {
+            let energy: f32 = samples[at..at + frame].iter().map(|s| s * s).sum();
+            if energy < quietest {
+                quietest = energy;
+                cut = at + frame / 2;
+            }
+            at += frame;
+        }
+        windows.push(start..cut);
+        start = cut;
+    }
+    if start < samples.len() || windows.is_empty() {
+        windows.push(start..samples.len());
+    }
+    windows
+}
+
 /// The language code of a language token (`<|hi|>`, `<|code_hi|>` → `hi`); None for other tokens.
 pub fn language_of_token(token: &str) -> Option<&str> {
     let inner = token.strip_prefix("<|")?.strip_suffix("|>")?;
@@ -163,6 +193,26 @@ mod tests {
         }
         assert_eq!(base_language(" hi-IN "), "hi");
         assert_eq!(base_language("EN_us"), "en");
+    }
+
+    #[test]
+    fn long_audio_is_split_at_the_quietest_moment_before_each_window_limit() {
+        let rate = 100u32; // 2-sample frames, a 500-sample (5 s) search span
+        let max = 3000; // 30 s windows
+        assert_eq!(split_windows(&vec![0.5; 2500], rate, max), vec![0..2500]);
+        assert_eq!(split_windows(&[], rate, max), vec![0..0]);
+
+        // 70 s of sound with a quiet gap at 27 s and another at 55 s
+        let mut samples = vec![0.5f32; 7000];
+        samples[2700..2710].fill(0.0);
+        samples[5500..5510].fill(0.0);
+        let windows = split_windows(&samples, rate, max);
+        assert_eq!(windows.len(), 3);
+        assert!((2700..2710).contains(&windows[0].end), "{windows:?}");
+        assert!((5500..5510).contains(&windows[1].end), "{windows:?}");
+        assert_eq!(windows[2].end, 7000);
+        assert!(windows.iter().all(|w| w.len() <= max && !w.is_empty()));
+        assert!(windows.windows(2).all(|p| p[0].end == p[1].start));
     }
 
     #[test]

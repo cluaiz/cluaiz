@@ -85,7 +85,8 @@ impl OnnxModel {
         if !graphs.contains(&primary) {
             bail!("Primary asset is not a declared ONNX graph");
         }
-        let missing = PackageCapabilities::inspect(&primary)?.missing_onnx_assets();
+        let snapshot = PackageCapabilities::asset_snapshot(&dir);
+        let missing = missing_assets(&primary, &snapshot)?;
         if !missing.is_empty() {
             bail!(
                 "Required ONNX helper assets are missing: {}",
@@ -94,8 +95,7 @@ impl OnnxModel {
         }
         graphs.sort_by_key(|p| (p != &primary, p.clone()));
         stamps.sort_by(|a, b| a.0.cmp(&b.0));
-        let asset_key =
-            serde_json::to_string(&(entry, stamps, PackageCapabilities::asset_snapshot(&dir)))?;
+        let asset_key = serde_json::to_string(&(entry, stamps, snapshot))?;
         Ok(Self {
             id: entry.id.clone(),
             dir,
@@ -107,17 +107,40 @@ impl OnnxModel {
     }
 }
 
-/// Speech-to-text runs the encoder and the uncached decoder, so a package's cached decoders
-/// (`past_key_values` inputs: `decoder_with_past`, `decoder_model_merged`) are not loaded and take
-/// no GPU memory or load time. Signatures are read without the weights; an unreadable graph is kept.
-fn uncached_stt_graphs(graphs: &[PathBuf]) -> Vec<PathBuf> {
+/// The package's missing helper assets. Reading every graph's signature takes a noticeable part
+/// of a second for large models and every request validates its package, so the answer is kept
+/// for as long as the package's files (names, sizes, times) stay the same.
+fn missing_assets(
+    primary: &std::path::Path,
+    snapshot: &[cluaiz_models::capabilities::PackageAssetStamp],
+) -> Result<Vec<String>> {
+    static KNOWN: Mutex<Vec<(String, Vec<String>)>> = Mutex::new(Vec::new());
+    let key = format!("{}|{}", primary.display(), serde_json::to_string(snapshot)?);
+    if let Some(missing) = KNOWN
+        .lock()
+        .ok()
+        .and_then(|known| known.iter().find(|(k, _)| *k == key).map(|(_, m)| m.clone()))
+    {
+        return Ok(missing);
+    }
+    let missing = PackageCapabilities::inspect(primary)?.missing_onnx_assets();
+    if let Ok(mut known) = KNOWN.lock() {
+        known.retain(|(k, _)| !k.starts_with(&format!("{}|", primary.display())));
+        known.push((key, missing.clone()));
+    }
+    Ok(missing)
+}
+
+/// Speech-to-text runs the encoder, the uncached decoder and (when packaged) the decoder that
+/// continues from cached keys/values. A merged decoder (`use_cache_branch`) repeats both and is
+/// not loaded, so it takes no GPU memory or load time. Signatures are read without the weights;
+/// an unreadable graph is kept.
+fn stt_graphs(graphs: &[PathBuf]) -> Vec<PathBuf> {
     graphs
         .iter()
         .filter(|path| {
             OnnxProber::read_signature(path).map_or(true, |signature| {
-                !signature.inputs.iter().any(|input| {
-                    input.name.starts_with("past_key_values") || input.name == "use_cache_branch"
-                })
+                !signature.inputs.iter().any(|input| input.name == "use_cache_branch")
             })
         })
         .cloned()
@@ -231,7 +254,7 @@ impl OnnxHost {
             |engine| {
                 let graphs = match task {
                     AudioTask::TextToSpeech => model.graphs.clone(),
-                    _ => uncached_stt_graphs(&model.graphs),
+                    _ => stt_graphs(&model.graphs),
                 };
                 engine.load_audio_package(&model.dir, &model.primary, &graphs, task)
             },
