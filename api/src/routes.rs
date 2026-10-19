@@ -77,11 +77,15 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/audio/speech", post(handlers::audio::speech))
         .route("/v1/audio/voices", get(handlers::audio::voices))
         .route("/v1/audio/languages", get(handlers::audio::languages))
+        // Audio arrives inline as a data URI, so it gets the same size limit as chat attachments
         .route(
             "/v1/audio/transcriptions",
-            post(handlers::audio::transcriptions),
+            post(handlers::audio::transcriptions).layer(from_fn(attachment_body_limit)),
         )
-        .route("/v1/audio/execute", post(handlers::audio::execute_audio))
+        .route(
+            "/v1/audio/execute",
+            post(handlers::audio::execute_audio).layer(from_fn(attachment_body_limit)),
+        )
         // ── 3. External Compatible & Legacy Models API ──
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
