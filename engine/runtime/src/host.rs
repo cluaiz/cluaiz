@@ -70,6 +70,8 @@ pub struct EngineHost {
     pub media_admission: crate::media_admission::MediaAdmission,
     /// Audio sessions have their own lifecycle and never evict the chat owner.
     pub onnx: crate::onnx_host::OnnxHost,
+    /// GGUF speech models (llama.cpp audio generation), also apart from the chat owner.
+    pub speech: crate::speech_host::SpeechHost,
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
     /// Settings the loaded model was loaded with (user settings + request llama params)
     pub loaded_settings: Arc<Mutex<Option<ActiveUserSettings>>>,
@@ -105,6 +107,7 @@ impl EngineHost {
         Self {
             media_admission: crate::media_admission::MediaAdmission::default(),
             onnx: crate::onnx_host::OnnxHost::default(),
+            speech: crate::speech_host::SpeechHost::default(),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
             active_session: Arc::new(Mutex::new(None)),

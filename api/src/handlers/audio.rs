@@ -83,8 +83,10 @@ fn select_model<'a>(
     slot: Option<&str>,
     task: AudioTask,
 ) -> anyhow::Result<&'a ModelRegistryEntry> {
+    // ONNX audio packages, and GGUF speech models (llama.cpp audio generation) for text-to-speech
     let supports = |entry: &&ModelRegistryEntry| {
-        entry.format_type.eq_ignore_ascii_case("onnx")
+        (entry.format_type.eq_ignore_ascii_case("onnx")
+            || (task == AudioTask::TextToSpeech && entry.format_type.eq_ignore_ascii_case("gguf")))
             && entry
                 .supported_tasks
                 .iter()
@@ -268,6 +270,14 @@ pub async fn execute_audio(
     };
     drop(schema);
     let model_id = entry.id.clone();
+    let stream = payload.stream.unwrap_or(true);
+    if entry.format_type.eq_ignore_ascii_case("gguf") {
+        if task != AudioTask::TextToSpeech {
+            return error(StatusCode::BAD_REQUEST, "model_contract_error", "A GGUF speech model makes speech; speech-to-text needs an ONNX model");
+        }
+        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, options.language.clone(), payload.keep_alive);
+        return respond(events, task, model_id, stream).await;
+    }
     let model = match OnnxModel::from_registry(entry, task) {
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
@@ -340,12 +350,21 @@ pub async fn execute_audio(
             }
         }
     };
-    let mut events =
-        state
-            .host
-            .onnx
-            .dispatch(model, task, input, options, settings, payload.keep_alive);
-    if payload.stream.unwrap_or(true) {
+    let events = state
+        .host
+        .onnx
+        .dispatch(model, task, input, options, settings, payload.keep_alive);
+    respond(events, task, model_id, stream).await
+}
+
+/// The task's events as Server-Sent Events (`stream`) or one JSON result.
+async fn respond(
+    mut events: tokio::sync::mpsc::Receiver<Result<AudioEvent, String>>,
+    task: AudioTask,
+    model_id: String,
+    stream: bool,
+) -> Response {
+    if stream {
         let stream = async_stream::stream! {
             let mut terminal_seen = false;
             let mut audio_index = 0_u64;
@@ -470,11 +489,15 @@ pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<Voic
         Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
     };
     drop(schema);
+    let mut data = vec![json!({"id": "default", "language": null, "default": true})];
+    // A GGUF speech model has no voice files (its voice comes from a speaker sample, later)
+    if entry.format_type.eq_ignore_ascii_case("gguf") {
+        return Json(json!({"object": "list", "model": entry.id, "data": data})).into_response();
+    }
     let model = match OnnxModel::from_registry(entry, task) {
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
     };
-    let mut data = vec![json!({"id": "default", "language": null, "default": true})];
     data.extend(
         model
             .voices()
