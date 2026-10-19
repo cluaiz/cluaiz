@@ -1,0 +1,158 @@
+{
+  "kind": "alphabet",
+  "language": "sl",
+  "_about": "Spelling rules for Slovenian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Plain e and o are read open. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiou"
+  },
+  "rules": [
+    {
+      "g": "lj",
+      "p": "ʎ"
+    },
+    {
+      "g": "nj",
+      "p": "ɲ"
+    },
+    {
+      "g": "dž",
+      "p": "dʒ"
+    },
+    {
+      "g": "č",
+      "p": "tʃ"
+    },
+    {
+      "g": "š",
+      "p": "ʃ"
+    },
+    {
+      "g": "ž",
+      "p": "ʒ"
+    },
+    {
+      "g": "ć",
+      "p": "tɕ"
+    },
+    {
+      "g": "đ",
+      "p": "dʑ"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "e",
+      "p": "ɛ"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "o",
+      "p": "ɔ"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "ts"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "h",
+      "p": "x"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "ʋ"
+    },
+    {
+      "g": "w",
+      "p": "ʋ"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    }
+  ],
+  "examples": {
+    "hvala": "xʋala",
+    "dober": "dɔbɛr",
+    "čaj": "tʃaj",
+    "ljubezen": "ʎubɛzɛn"
+  }
+}

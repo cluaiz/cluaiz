@@ -1,0 +1,147 @@
+{
+  "kind": "alphabet",
+  "language": "id",
+  "_about": "Spelling rules for Indonesian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Plain e is read as schwa (the commoner sound). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiou"
+  },
+  "rules": [
+    {
+      "g": "ng",
+      "p": "ŋ"
+    },
+    {
+      "g": "ny",
+      "p": "ɲ"
+    },
+    {
+      "g": "sy",
+      "p": "ʃ"
+    },
+    {
+      "g": "kh",
+      "p": "x"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "e",
+      "p": "ə"
+    },
+    {
+      "g": "é",
+      "p": "e"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "tʃ"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "j",
+      "p": "dʒ"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "f"
+    },
+    {
+      "g": "w",
+      "p": "w"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "y",
+      "p": "j"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    }
+  ],
+  "examples": {
+    "selamat": "səlamat",
+    "saya": "saja",
+    "cinta": "tʃinta",
+    "nyanyi": "ɲaɲi",
+    "terima": "tərima"
+  }
+}

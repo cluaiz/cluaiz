@@ -1,0 +1,142 @@
+{
+ "language": "id",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "titik",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} Rupee India",
+  "$": "{0} Dolar Amerika Serikat",
+  "€": "{0} Euro",
+  "£": "{0} Pound Inggris",
+  "¥": "{0} Yen Jepang"
+ },
+ "suffixes": {
+  "%": "{0} persen"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal=;"
+    ]
+   ],
+   "%spellout-cardinal": [
+    [
+     "-x",
+     "negatif →→;"
+    ],
+    [
+     "x.x",
+     "←← titik →→;"
+    ],
+    [
+     "x,x",
+     "←← koma →→;"
+    ],
+    [
+     "0",
+     "nol;"
+    ],
+    [
+     "1",
+     "satu;"
+    ],
+    [
+     "2",
+     "dua;"
+    ],
+    [
+     "3",
+     "tiga;"
+    ],
+    [
+     "4",
+     "empat;"
+    ],
+    [
+     "5",
+     "lima;"
+    ],
+    [
+     "6",
+     "enam;"
+    ],
+    [
+     "7",
+     "tujuh;"
+    ],
+    [
+     "8",
+     "delapan;"
+    ],
+    [
+     "9",
+     "sembilan;"
+    ],
+    [
+     "10",
+     "sepuluh;"
+    ],
+    [
+     "11",
+     "sebelas;"
+    ],
+    [
+     "12",
+     "→→ belas;"
+    ],
+    [
+     "20",
+     "←← puluh[ →→];"
+    ],
+    [
+     "100",
+     "seratus[ →→];"
+    ],
+    [
+     "200",
+     "←← ratus[ →→];"
+    ],
+    [
+     "1000",
+     "seribu[ →→];"
+    ],
+    [
+     "2000",
+     "←← ribu[ →→];"
+    ],
+    [
+     "1000000",
+     "←← juta[ →→];"
+    ],
+    [
+     "1000000000",
+     "←← miliar[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←← triliun[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←← kuadriliun[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0.#=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "dua ribu dua puluh enam"
+ }
+}

@@ -1,0 +1,220 @@
+{
+ "language": "nl",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "komma",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} Indiase roepie",
+  "$": "{0} Amerikaanse dollar",
+  "€": "{0} euro",
+  "£": "{0} Britse pond",
+  "¥": "{0} Japanse yen"
+ },
+ "suffixes": {
+  "%": "{0} procent"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal=;"
+    ]
+   ],
+   "%spellout-cardinal": [
+    [
+     "-x",
+     "min →→;"
+    ],
+    [
+     "x.x",
+     "←← komma →→;"
+    ],
+    [
+     "0",
+     "nul;"
+    ],
+    [
+     "1",
+     "een;"
+    ],
+    [
+     "2",
+     "twee;"
+    ],
+    [
+     "3",
+     "drie;"
+    ],
+    [
+     "4",
+     "vier;"
+    ],
+    [
+     "5",
+     "vijf;"
+    ],
+    [
+     "6",
+     "zes;"
+    ],
+    [
+     "7",
+     "zeven;"
+    ],
+    [
+     "8",
+     "acht;"
+    ],
+    [
+     "9",
+     "negen;"
+    ],
+    [
+     "10",
+     "tien;"
+    ],
+    [
+     "11",
+     "elf;"
+    ],
+    [
+     "12",
+     "twaalf;"
+    ],
+    [
+     "13",
+     "dertien;"
+    ],
+    [
+     "14",
+     "veertien;"
+    ],
+    [
+     "15",
+     "vijftien;"
+    ],
+    [
+     "16",
+     "zestien;"
+    ],
+    [
+     "17",
+     "zeventien;"
+    ],
+    [
+     "18",
+     "achttien;"
+    ],
+    [
+     "19",
+     "negentien;"
+    ],
+    [
+     "20",
+     "[→%%number-en→]twintig;"
+    ],
+    [
+     "30",
+     "[→%%number-en→]dertig;"
+    ],
+    [
+     "40",
+     "[→%%number-en→]veertig;"
+    ],
+    [
+     "50",
+     "[→%%number-en→]vijftig;"
+    ],
+    [
+     "60",
+     "[→%%number-en→]zestig;"
+    ],
+    [
+     "70",
+     "[→%%number-en→]zeventig;"
+    ],
+    [
+     "80",
+     "[→%%number-en→]tachtig;"
+    ],
+    [
+     "90",
+     "[→%%number-en→]negentig;"
+    ],
+    [
+     "100",
+     "honderd[→→];"
+    ],
+    [
+     "200",
+     "←←­honderd[­→→];"
+    ],
+    [
+     "1000",
+     "duizend[­→→];"
+    ],
+    [
+     "2000",
+     "←←­duizend[­→→];"
+    ],
+    [
+     "100000/1000",
+     "←←­duizend[­→→];"
+    ],
+    [
+     "1000000",
+     "←← miljoen[ →→];"
+    ],
+    [
+     "1000000000",
+     "←← miljard[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←← biljoen[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←← biljard[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%%number-en": [
+    [
+     "1",
+     "een­en­;"
+    ],
+    [
+     "2",
+     "twee­ën­;"
+    ],
+    [
+     "3",
+     "drie­ën­;"
+    ],
+    [
+     "4",
+     "=%spellout-cardinal=­en­;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "one",
+    "i = 1 and v = 0"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "21": "eenentwintig"
+ }
+}
