@@ -93,14 +93,21 @@ pub fn list_voices(model_dir: &Path) -> Vec<Voice> {
     ids.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| a.cmp(b)));
     ids.into_iter()
         .map(|id| {
-            let language = id
-                .chars()
-                .next()
-                .and_then(|prefix| languages.voice_prefix_languages.get(&prefix.to_string()))
-                .cloned();
+            let language = voice_language(&id).map(str::to_owned);
             Voice { id, language }
         })
         .collect()
+}
+
+/// The language code declared by a voice file name's prefix in `data/languages.json`
+/// (e.g. `"if_sara"` -> `Some("it")`, `"ef_dora"` -> `Some("es")`, `"hf_alpha"` -> `Some("hi")`).
+pub fn voice_language(voice_id: &str) -> Option<&'static str> {
+    let languages = languages()?;
+    let prefix = voice_id.trim().chars().next()?.to_ascii_lowercase();
+    languages
+        .voice_prefix_languages
+        .get(&prefix.to_string())
+        .map(String::as_str)
 }
 
 /// The voice file (stem in `voices/`) to use for `lang`: an exact language match first, then the
@@ -124,4 +131,19 @@ mod tests {
         assert_eq!(script_language("नमस्ते दुनिया, hello"), Some("hi"));
         assert_eq!(script_language("hello world"), None);
     }
+
+    #[test]
+    fn voice_prefix_resolves_declared_language() {
+        assert_eq!(voice_language("af_heart"), Some("en-us"));
+        assert_eq!(voice_language("bf_emma"), Some("en-gb"));
+        assert_eq!(voice_language("ef_dora"), Some("es"));
+        assert_eq!(voice_language("ff_siwis"), Some("fr"));
+        assert_eq!(voice_language("hf_alpha"), Some("hi"));
+        assert_eq!(voice_language("if_sara"), Some("it"));
+        assert_eq!(voice_language("jf_alpha"), Some("ja"));
+        assert_eq!(voice_language("pf_dora"), Some("pt-br"));
+        assert_eq!(voice_language("zf_xiaobei"), Some("zh"));
+        assert_eq!(voice_language(""), None);
+    }
 }
+
