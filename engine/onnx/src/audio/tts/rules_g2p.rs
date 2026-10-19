@@ -202,6 +202,13 @@ pub fn word_to_ipa(word: &str, lang: &str) -> Option<(String, &'static str)> {
                 };
                 default && covers(s)
             })
+        })
+        // A script only one language's rules read (Tamil, Bengali, Serbian Cyrillic) is that
+        // language whatever the voice; a shared script (Latin) needs the language to be known
+        .or_else(|| {
+            let mut covering = sets.iter().filter(|s| covers(s));
+            let only = covering.next()?;
+            covering.next().is_none().then_some(only)
         })?;
     if !covers(set) {
         return None;
