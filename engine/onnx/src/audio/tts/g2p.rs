@@ -3,12 +3,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex};
 
-static DYNAMIC_LEXICON: RwLock<Option<HashMap<String, String>>> = RwLock::new(None);
-static CURRENT_LOADED_MODEL_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
-/// Language of the loaded model (picks letter-to-sound rules for scripts several languages share)
-static CURRENT_MODEL_LANGUAGE: RwLock<String> = RwLock::new(String::new());
+type Lexicon = Arc<HashMap<String, String>>;
 
 /// Dynamically process and normalize text for any TTS architecture family
 /// using model directory manifest assets (`lexicon.txt`, `dict_*.json`).
@@ -19,20 +16,38 @@ pub fn process_text_for_family(text: &str, family: &TtsFamily, model_dir: &Path)
     process_text_for_family_with_lang(text, family, model_dir, None)
 }
 
-/// Process and normalize text using either an explicit voice/script language override or the model's default language.
+/// Process and normalize text in the voice's language (`lang_override`), else the model's.
+/// Words the voice's language does not write (English inside Hindi text) keep the model's dictionary.
 pub fn process_text_for_family_with_lang(
     text: &str,
     _family: &TtsFamily,
     model_dir: &Path,
     lang_override: Option<&str>,
 ) -> String {
-    let effective_lang = lang_override
+    let model_lang = get_model_language(model_dir);
+    let voice_lang = lang_override
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(str::to_lowercase)
-        .unwrap_or_else(|| get_model_language(model_dir));
-    load_lexicon_for_lang(model_dir, &effective_lang);
-    lexicon_text_to_ipa(text, model_dir, &effective_lang)
+        .unwrap_or_else(|| model_lang.clone());
+    lexicon_text_to_ipa(text, model_dir, &voice_lang, &model_lang)
+}
+
+/// The pronunciation dictionary for `lang`, built once per model folder and language. The model's
+/// own language also takes the model folder's lexicon files; a voice's other language only its
+/// downloaded dictionary. Switching to another model folder drops the previous folder's dictionaries.
+fn lexicon(model_dir: &Path, lang: &str, model_lang: &str) -> Lexicon {
+    static LEXICONS: Mutex<Option<HashMap<(PathBuf, String), Lexicon>>> = Mutex::new(None);
+    let mut guard = LEXICONS.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let cache = guard.get_or_insert_with(HashMap::new);
+    cache.retain(|(dir, _), _| dir == model_dir);
+    let key = (model_dir.to_path_buf(), lang.to_owned());
+    if let Some(found) = cache.get(&key) {
+        return found.clone();
+    }
+    let built = Arc::new(build_lexicon(model_dir, lang, lang == model_lang));
+    cache.insert(key, built.clone());
+    built
 }
 
 /// Dynamically resolve model language code from config.json or any sibling JSON manifest file
@@ -108,18 +123,9 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
     "en-us".to_string()
 }
 
-/// Dynamically load dictionary/lexicon files from model directory assets for `lang`.
-/// Scans for `lexicon.txt`, `lexicon_en.txt`, `dict_en.json`, `ipa_dict.json`, etc.
-fn load_lexicon_for_lang(model_dir: &Path, lang: &str) {
-    if let (Ok(dir_guard), Ok(lang_guard)) = (
-        CURRENT_LOADED_MODEL_DIR.read(),
-        CURRENT_MODEL_LANGUAGE.read(),
-    ) {
-        if dir_guard.as_deref() == Some(model_dir) && lang_guard.as_str() == lang {
-            return;
-        }
-    }
-
+/// Builds the dictionary for `lang`; with `model_files`, also the model directory's lexicon assets
+/// (`lexicon.txt`, `lexicon_en.txt`, `dict_en.json`, `ipa_dict.json`, etc.).
+fn build_lexicon(model_dir: &Path, lang: &str, model_files: bool) -> HashMap<String, String> {
     let candidates = [
         model_dir.join("lexicon.txt"),
         model_dir.join("lexicon_en.txt"),
@@ -134,7 +140,9 @@ fn load_lexicon_for_lang(model_dir: &Path, lang: &str) {
     // 0. The language's pronunciation dictionary (downloaded on first use); the model's own data
     //    below overrides it. Dictionary copies older engines left in the model folder are moved out.
     //    Its plain IPA is rewritten into the symbols this model was trained on.
-    super::ipa_dictionary::retire_engine_lexicons(model_dir);
+    if model_files {
+        super::ipa_dictionary::retire_engine_lexicons(model_dir);
+    }
     let mut combined_dict = super::ipa_dictionary::load_language_lexicon(lang);
     if let Some(converter) = super::phoneme_sets::converter_for(model_dir, lang)
         .filter(|_| !combined_dict.is_empty())
@@ -146,6 +154,9 @@ fn load_lexicon_for_lang(model_dir: &Path, lang: &str) {
             "🔤 [G2P Router] Dictionary rewritten into the model's '{}' phoneme symbols",
             converter.name()
         );
+    }
+    if !model_files {
+        return combined_dict;
     }
 
     // 1. Parse phoneme_map metadata directly from model config JSON files
@@ -234,28 +245,25 @@ fn load_lexicon_for_lang(model_dir: &Path, lang: &str) {
         }
     }
 
-    if let Ok(mut guard) = DYNAMIC_LEXICON.write() {
-        *guard = Some(combined_dict);
-    }
-    if let Ok(mut guard) = CURRENT_LOADED_MODEL_DIR.write() {
-        *guard = Some(model_dir.to_path_buf());
-    }
-    if let Ok(mut guard) = CURRENT_MODEL_LANGUAGE.write() {
-        *guard = lang.to_owned();
-    }
+    combined_dict
 }
 
 /// Convert input text using dynamic lexicon assets or clean word fallback.
-fn lexicon_text_to_ipa(text: &str, model_dir: &Path, model_lang: &str) -> String {
+///
+/// A word is looked up in the voice language's dictionary, then read by that language's rules when
+/// it writes the word's script; a word it does not write (English in Hindi text) uses the model
+/// language's dictionary. Other scripts use their default rules, then dictionary pieces.
+fn lexicon_text_to_ipa(text: &str, model_dir: &Path, voice_lang: &str, model_lang: &str) -> String {
     let clean_text = text.to_lowercase();
     let words: Vec<&str> = clean_text.split_whitespace().collect();
 
-    let lexicon_guard = DYNAMIC_LEXICON.read().ok();
-    let dict = lexicon_guard.as_ref().and_then(|g| g.as_ref());
+    let voice_dict = lexicon(model_dir, voice_lang, model_lang);
+    let same_language = voice_lang == model_lang;
+    // The model language's dictionary, loaded only when a word needs it
+    let mut model_dict: Option<Lexicon> = same_language.then(|| voice_dict.clone());
 
     let mut output_phonemes = Vec::new();
     let (mut known, mut unknown) = (0usize, 0usize);
-
 
     for word in words {
         let clean_word = word.trim_matches(|c: char| {
@@ -272,17 +280,30 @@ fn lexicon_text_to_ipa(text: &str, model_dir: &Path, model_lang: &str) -> String
         let trailing = &word[end..];
 
         // 1. Try lexicon lookup for the clean word
-        let ipa = match dict.and_then(|d| d.get(clean_word)) {
+        let mut lookup = voice_dict.get(clean_word).cloned();
+        if lookup.is_none()
+            && !same_language
+            && !super::rules_g2p::has_rules_for(clean_word, voice_lang)
+        {
+            let dict = model_dict.get_or_insert_with(|| lexicon(model_dir, model_lang, model_lang));
+            lookup = dict.get(clean_word).cloned();
+        }
+        let ipa = match lookup {
             Some(lookup_ipa) => {
                 known += 1;
-                lookup_ipa.clone()
+                lookup_ipa
             }
             None => {
                 unknown += 1;
                 // Letter-to-sound rules for its script, else dictionary pieces, else as written
-                super::rules_g2p::word_to_ipa(clean_word, &model_lang)
+                super::rules_g2p::word_to_ipa(clean_word, voice_lang)
                     .map(|(ipa, lang)| convert_for_model(model_dir, lang, &ipa))
-                    .or_else(|| dict.and_then(|d| ipa_from_pieces(clean_word, d)))
+                    .or_else(|| ipa_from_pieces(clean_word, &voice_dict))
+                    .or_else(|| {
+                        let dict = model_dict
+                            .get_or_insert_with(|| lexicon(model_dir, model_lang, model_lang));
+                        ipa_from_pieces(clean_word, dict)
+                    })
                     .unwrap_or_else(|| clean_word.to_string())
             }
         };

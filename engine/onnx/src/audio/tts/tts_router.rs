@@ -578,6 +578,28 @@ mod tests {
     }
 
     #[test]
+    fn test_english_words_in_hindi_voice_text_keep_the_model_dictionary() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-voice-mixed-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("tokenizer.json"),
+            r#"{"vocab":{"$":0,"A":1,"I":2,"O":3,"W":4,"Y":5,"ʧ":6,"a":7,"o":8,"l":9,"n":10,"m":11,"ə":12,"s":13,"t":14,"e":15,"ː":16,"h":17}}"#,
+        )
+        .unwrap();
+        // A model language with no downloadable dictionary, so only the model's own lexicon counts
+        std::fs::write(dir.join("config.json"), r#"{"espeak":{"voice":"qx"}}"#).unwrap();
+        std::fs::write(dir.join("lexicon.txt"), "hello həlO\n").unwrap();
+
+        let kokoro = &super::super::family_adapter::TtsFamily::Kokoro;
+        let hindi_only = super::super::g2p::process_text_for_family_with_lang("नमस्ते", kokoro, &dir, Some("hi"));
+        let mixed = super::super::g2p::process_text_for_family_with_lang("hello नमस्ते", kokoro, &dir, Some("hi"));
+        assert_eq!(mixed, format!("həlO {hindi_only}"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     #[ignore = "requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata"]
     fn test_long_sentence_model_token_counts() {
         let (text, limit, language) = fixture();
