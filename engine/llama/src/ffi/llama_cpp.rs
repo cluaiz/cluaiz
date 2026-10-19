@@ -220,6 +220,8 @@ extern "C" {
 
     /// 📐 Extract Embeddings
     pub fn llama_get_embeddings(ctx: *mut std::ffi::c_void) -> *mut c_float;
+    /// Hidden state of output `i` (negative counts from the end); needs `embeddings` on the context
+    pub fn llama_get_embeddings_ith(ctx: *mut std::ffi::c_void, i: i32) -> *mut c_float;
     pub fn llama_model_n_embd(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_n_head(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_is_recurrent(model: *const std::ffi::c_void) -> bool;

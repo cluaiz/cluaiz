@@ -17,6 +17,74 @@ extern "C" {
     );
 }
 
+// Audio generation (tools/mtmd/mtmd.h, mtmd-helper.h; upstream marks it experimental). Used only
+// by native::speech, so an upstream change touches these declarations and that module.
+
+/// `enum mtmd_gen_audio_type`: 0 = the projector cannot generate audio
+pub const MTMD_GEN_AUDIO_TYPE_NONE: i32 = 0;
+/// `MTMD_HELPER_GEN_AUDIO_OUTTYPE_WAV`: 16-bit PCM WAV, mono
+pub const MTMD_HELPER_GEN_AUDIO_OUTTYPE_WAV: i32 = 1;
+
+/// `struct mtmd_gen_audio_info`
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct mtmd_gen_audio_info {
+    pub type_: i32,
+    pub sample_rate: i32,
+    pub model_variant: *const std::ffi::c_char,
+}
+
+/// `struct mtmd_helper_gen_audio` (opaque)
+#[repr(C)]
+pub struct mtmd_helper_gen_audio {
+    _private: [u8; 0],
+}
+
+/// `struct mtmd_helper_gen_audio_inp`
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct mtmd_helper_gen_audio_inp {
+    pub seq_id: i32,
+    pub prompt: *const std::ffi::c_char,
+    pub prompt_len: usize,
+    pub speaker_ref: *mut mtmd_bitmap,
+    pub lang: *const std::ffi::c_char,
+    pub top_k: i32,
+    pub top_p: f32,
+    pub seed: u32,
+    pub out_type: i32,
+}
+
+extern "C" {
+    pub fn mtmd_gen_audio_get_info(ctx: *const mtmd_context) -> mtmd_gen_audio_info;
+    pub fn mtmd_helper_gen_audio_init(
+        lctx: *mut std::ffi::c_void,
+        mctx: *mut mtmd_context,
+    ) -> *mut mtmd_helper_gen_audio;
+    pub fn mtmd_helper_gen_audio_free(ctx: *mut mtmd_helper_gen_audio);
+    pub fn mtmd_helper_gen_audio_set_input(
+        ctx: *mut mtmd_helper_gen_audio,
+        inp: *const mtmd_helper_gen_audio_inp,
+    ) -> i32;
+    /// >0: prompt tokens left, 0: done, <0: error
+    pub fn mtmd_helper_gen_audio_step_prompt(ctx: *mut mtmd_helper_gen_audio, n_batch: i32) -> i32;
+    /// One audio frame; `h_state_out` is null when no frame was made, `out_stop` set at the end
+    pub fn mtmd_helper_gen_audio_step_gen(
+        ctx: *mut mtmd_helper_gen_audio,
+        sampled: i32,
+        h_state_in: *const f32,
+        h_state_out: *mut *const f32,
+        out_stop: *mut bool,
+    ) -> i32;
+    pub fn mtmd_helper_gen_audio_get_output(
+        ctx: *mut mtmd_helper_gen_audio,
+        out_sample_rate: *mut i32,
+        out_data: *mut *const std::ffi::c_char,
+        out_data_len: *mut usize,
+        out_n_samples: *mut i64,
+    ) -> i32;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
