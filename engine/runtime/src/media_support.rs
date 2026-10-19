@@ -250,6 +250,7 @@ mod tests {
                 audio_projector_type: None,
                 vision_projection_dim: None,
                 audio_projection_dim: None,
+                audio_generation: None,
             },
             compatibility: CapabilityState::Unknown,
         };
