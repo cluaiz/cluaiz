@@ -38,6 +38,9 @@ pub struct ProjectorProfile {
     pub audio_projector_type: Option<String>,
     pub vision_projection_dim: Option<u64>,
     pub audio_projection_dim: Option<u64>,
+    /// `clip.has_gen_audio_encoder`: the projector turns the model's output into speech (TTS)
+    #[serde(default)]
+    pub audio_generation: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -307,7 +310,8 @@ impl PackageCapabilities {
                         Ok(companion) => {
                             let vision_encoder = flag(&companion, "clip.has_vision_encoder");
                             let audio_encoder = flag(&companion, "clip.has_audio_encoder");
-                            if vision_encoder.is_none() && audio_encoder.is_none() {
+                            let audio_generation = flag(&companion, "clip.has_gen_audio_encoder");
+                            if vision_encoder.is_none() && audio_encoder.is_none() && audio_generation.is_none() {
                                 continue;
                             }
                             let dimension = |key: &str| {
@@ -334,6 +338,7 @@ impl PackageCapabilities {
                                     .cloned(),
                                 vision_projection_dim: dimension("clip.vision.projection_dim"),
                                 audio_projection_dim: dimension("clip.audio.projection_dim"),
+                                audio_generation,
                             };
                             candidates.push(ProjectorAsset {
                                 path,
@@ -390,6 +395,20 @@ impl PackageCapabilities {
             diagnostics,
             asset_snapshot: Self::asset_snapshot(dir),
             onnx_graphs: Vec::new(),
+        }
+    }
+
+    /// A GGUF whose projector declares audio generation (`clip.has_gen_audio_encoder`) speaks text.
+    pub fn gguf_tasks(&self) -> Vec<String> {
+        let speaks = self
+            .projector
+            .iter()
+            .chain(&self.projector_candidates)
+            .any(|p| p.profile.audio_generation == Some(true));
+        if speaks {
+            vec!["text-to-speech".into()]
+        } else {
+            Vec::new()
         }
     }
 

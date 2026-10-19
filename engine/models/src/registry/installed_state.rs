@@ -170,11 +170,13 @@ impl InstalledStateRegistry {
                 continue;
             }
             let package = crate::capabilities::PackageCapabilities::inspect(&primary).ok();
-            if entry.format_type == "onnx" {
-                for task in package.as_ref().map(|p| p.onnx_tasks()).unwrap_or_default() {
-                    if !entry.supported_tasks.contains(&task) {
-                        entry.supported_tasks.push(task);
-                    }
+            let tasks = match entry.format_type.as_str() {
+                "onnx" => package.as_ref().map(|p| p.onnx_tasks()),
+                _ => package.as_ref().map(|p| p.gguf_tasks()),
+            };
+            for task in tasks.unwrap_or_default() {
+                if !entry.supported_tasks.contains(&task) {
+                    entry.supported_tasks.push(task);
                 }
             }
             if entry.category == "chat" {
@@ -301,16 +303,16 @@ impl InstalledStateRegistry {
             .collect();
 
         let mut supported_tasks = slot_type.supported_tasks(&caps);
-        if format_type == "onnx" {
-            for task in metadata
-                .capabilities
-                .as_ref()
-                .map(|p| p.onnx_tasks())
-                .unwrap_or_default()
-            {
-                if !supported_tasks.contains(&task) {
-                    supported_tasks.push(task);
-                }
+        let package_tasks = metadata.capabilities.as_ref().map(|p| {
+            if format_type == "onnx" {
+                p.onnx_tasks()
+            } else {
+                p.gguf_tasks()
+            }
+        });
+        for task in package_tasks.unwrap_or_default() {
+            if !supported_tasks.contains(&task) {
+                supported_tasks.push(task);
             }
         }
         Some(ModelRegistryEntry {
