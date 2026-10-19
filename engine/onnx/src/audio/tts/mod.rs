@@ -7,6 +7,7 @@ pub mod languages;
 pub mod rules_g2p;
 pub mod romanized;
 mod numbers;
+mod rbnf;
 mod reading;
 pub mod tts_router;
 pub mod vocoder;

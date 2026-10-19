@@ -1,0 +1,221 @@
+{
+ "language": "zh",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand. Editorial overrides: suffixes (said aloud differently from CLDR's written form).",
+ "point": "点",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0}印度卢比",
+  "$": "{0}美元",
+  "€": "{0}欧元",
+  "£": "{0}英镑",
+  "¥": "{0}日元"
+ },
+ "suffixes": {
+  "%": "百分之{0}"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "-x",
+     "负→→;"
+    ],
+    [
+     "x.x",
+     "←←点→→→;"
+    ],
+    [
+     "0",
+     "〇;"
+    ],
+    [
+     "1",
+     "一;"
+    ],
+    [
+     "2",
+     "二;"
+    ],
+    [
+     "3",
+     "三;"
+    ],
+    [
+     "4",
+     "四;"
+    ],
+    [
+     "5",
+     "五;"
+    ],
+    [
+     "6",
+     "六;"
+    ],
+    [
+     "7",
+     "七;"
+    ],
+    [
+     "8",
+     "八;"
+    ],
+    [
+     "9",
+     "九;"
+    ],
+    [
+     "10",
+     "十[→→];"
+    ],
+    [
+     "20",
+     "←←十[→→];"
+    ],
+    [
+     "100",
+     "←←百[→%%number2→];"
+    ],
+    [
+     "1000",
+     "←←千[→%%number3→];"
+    ],
+    [
+     "10000",
+     "←←万[→%%number4→];"
+    ],
+    [
+     "100000000",
+     "←←亿[→%%number5→];"
+    ],
+    [
+     "1000000000000",
+     "←←兆[→%%number8→];"
+    ],
+    [
+     "10000000000000000",
+     "←←京[→%%number13→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%%number13": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "〇一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "1000000000000",
+     "=%spellout-numbering=;"
+    ]
+   ],
+   "%%number8": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "〇一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10000000",
+     "=%spellout-numbering=;"
+    ]
+   ],
+   "%%number5": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "〇一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10000",
+     "=%spellout-numbering=;"
+    ]
+   ],
+   "%%number4": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "〇一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "1000",
+     "=%spellout-numbering=;"
+    ]
+   ],
+   "%%number3": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "〇一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "100",
+     "=%spellout-numbering=;"
+    ]
+   ],
+   "%%number2": [
+    [
+     "1",
+     "〇=%spellout-numbering=;"
+    ],
+    [
+     "10",
+     "一=%spellout-numbering=;"
+    ],
+    [
+     "20",
+     "=%spellout-numbering=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "300": "三百",
+  "15%": "百分之十五"
+ }
+}

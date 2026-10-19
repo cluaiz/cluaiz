@@ -10,11 +10,19 @@ use std::sync::OnceLock;
 struct Numbers {
     language: String,
     /// Words for these numbers (Hindi lists 0–99, English 0–19 and the tens)
+    #[serde(default)]
     small: HashMap<u64, String>,
     /// Between a tens word and a unit word ("twenty-one")
+    #[serde(default)]
     tens_join: String,
     /// (value, word), largest first
+    #[serde(default)]
     scales: Vec<(u64, String)>,
+    /// CLDR spell-out rules (generated files): whole numbers come from these instead
+    #[serde(default)]
+    spellout: Option<SpelloutData>,
+    #[serde(skip)]
+    compiled: OnceLock<Option<super::rbnf::Spellout>>,
     point: String,
     /// Digit runs at least this long (phone numbers) are read digit by digit
     read_digits_from: usize,
@@ -30,6 +38,27 @@ struct Numbers {
     #[serde(default)]
     #[cfg_attr(not(test), allow(dead_code))]
     examples: HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
+struct SpelloutData {
+    /// The rule set for plain numbers
+    entry: String,
+    /// Rule set name → `[descriptor, rule]` pairs, as in cldr-json
+    sets: HashMap<String, Vec<(String, String)>>,
+    /// Cardinal plural category → CLDR condition
+    #[serde(default)]
+    plural: Vec<(String, String)>,
+}
+
+/// A currency or suffix word around a number: a pattern with `{0}` places the number ("yüzde {0}",
+/// "{0} por ciento"); a plain word follows it.
+fn place(word: &str, number: &str) -> String {
+    if word.contains("{0}") {
+        word.replace("{0}", number)
+    } else {
+        format!("{number} {word}")
+    }
 }
 
 fn all() -> &'static [Numbers] {
@@ -78,18 +107,18 @@ pub(super) fn expand(text: &str, language: &str) -> String {
             i += 1;
             continue;
         }
-        let (spoken, end) = numbers.read_number(&chars, start);
-        push_word(&mut out, &spoken);
+        let (mut spoken, end) = numbers.read_number(&chars, start);
         // "₹300 रुपये": the currency word is said once
         let next: String = chars[end..].iter().skip_while(|c| c.is_whitespace()).collect();
-        if let Some(word) = currency.filter(|w| !next.starts_with(w.as_str())) {
-            push_word(&mut out, word);
+        if let Some(word) = currency.filter(|w| !next.starts_with(w.replace("{0}", "").trim())) {
+            spoken = place(word, &spoken);
         }
         i = end;
         if let Some(word) = chars.get(i).and_then(|c| numbers.suffixes.get(c)) {
-            push_word(&mut out, word);
+            spoken = place(word, &spoken);
             i += 1;
         }
+        push_word(&mut out, &spoken);
         // "2*2": an operator only numbers stand around
         if let Some(word) = chars.get(i).and_then(|c| numbers.between_numbers.get(c)) {
             if chars.get(i + 1).is_some_and(char::is_ascii_digit) {
@@ -162,12 +191,26 @@ impl Numbers {
     fn digit_by_digit(&self, digits: &str) -> String {
         digits
             .chars()
-            .filter_map(|d| d.to_digit(10).and_then(|d| self.small.get(&u64::from(d))).cloned())
+            .filter_map(|d| d.to_digit(10).map(u64::from))
+            .filter_map(|d| self.small.get(&d).cloned().or_else(|| self.spellout()?.words(d)))
             .collect::<Vec<_>>()
             .join(" ")
     }
 
+    /// The CLDR rules of a generated file, compiled once
+    fn spellout(&self) -> Option<&super::rbnf::Spellout> {
+        self.compiled
+            .get_or_init(|| {
+                let data = self.spellout.as_ref()?;
+                super::rbnf::Spellout::new(&data.sets, &data.entry, &data.plural)
+            })
+            .as_ref()
+    }
+
     fn words(&self, n: u64) -> String {
+        if let Some(word) = self.spellout().and_then(|s| s.words(n)) {
+            return word;
+        }
         if let Some(word) = self.small.get(&n) {
             return word.clone();
         }
@@ -209,5 +252,17 @@ mod tests {
         assert_eq!(expand("No numbers here.", "en"), "No numbers here.");
         assert_eq!(expand("minus 2 and 7 minus 3", "en").split_whitespace().collect::<Vec<_>>().join(" "),
                    "minus two and seven minus three");
+    }
+
+    #[test]
+    #[ignore = "prints every language's readings for review"]
+    fn print_readings() {
+        for numbers in all() {
+            let said: Vec<String> = ["7", "15", "21", "80", "101", "300", "2026", "1000000", "₹300", "15%", "3.5"]
+                .iter()
+                .map(|n| format!("{n}={}", expand(n, &numbers.language).trim()))
+                .collect();
+            eprintln!("{}: {}", numbers.language, said.join(" | "));
+        }
     }
 }

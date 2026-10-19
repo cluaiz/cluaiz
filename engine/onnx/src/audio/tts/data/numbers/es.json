@@ -1,0 +1,384 @@
+{
+ "language": "es",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand.",
+ "point": "punto",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} rupias indias",
+  "$": "{0} dólares estadounidenses",
+  "€": "{0} euros",
+  "£": "{0} libras esterlinas",
+  "¥": "{0} yenes japoneses"
+ },
+ "suffixes": {
+  "%": "{0} por ciento"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "-x",
+     "menos →→;"
+    ],
+    [
+     "x.x",
+     "←← punto →→;"
+    ],
+    [
+     "x,x",
+     "←← coma →→;"
+    ],
+    [
+     "0",
+     "cero;"
+    ],
+    [
+     "1",
+     "uno;"
+    ],
+    [
+     "2",
+     "dos;"
+    ],
+    [
+     "3",
+     "tres;"
+    ],
+    [
+     "4",
+     "cuatro;"
+    ],
+    [
+     "5",
+     "cinco;"
+    ],
+    [
+     "6",
+     "seis;"
+    ],
+    [
+     "7",
+     "siete;"
+    ],
+    [
+     "8",
+     "ocho;"
+    ],
+    [
+     "9",
+     "nueve;"
+    ],
+    [
+     "10",
+     "diez;"
+    ],
+    [
+     "11",
+     "once;"
+    ],
+    [
+     "12",
+     "doce;"
+    ],
+    [
+     "13",
+     "trece;"
+    ],
+    [
+     "14",
+     "catorce;"
+    ],
+    [
+     "15",
+     "quince;"
+    ],
+    [
+     "16",
+     "dieciséis;"
+    ],
+    [
+     "17",
+     "dieci→→;"
+    ],
+    [
+     "20",
+     "veinte;"
+    ],
+    [
+     "21",
+     "veintiuno;"
+    ],
+    [
+     "22",
+     "veintidós;"
+    ],
+    [
+     "23",
+     "veintitrés;"
+    ],
+    [
+     "24",
+     "veinticuatro;"
+    ],
+    [
+     "25",
+     "veinticinco;"
+    ],
+    [
+     "26",
+     "veintiséis;"
+    ],
+    [
+     "27",
+     "veinti→→;"
+    ],
+    [
+     "30",
+     "treinta[ y →→];"
+    ],
+    [
+     "40",
+     "cuarenta[ y →→];"
+    ],
+    [
+     "50",
+     "cincuenta[ y →→];"
+    ],
+    [
+     "60",
+     "sesenta[ y →→];"
+    ],
+    [
+     "70",
+     "setenta[ y →→];"
+    ],
+    [
+     "80",
+     "ochenta[ y →→];"
+    ],
+    [
+     "90",
+     "noventa[ y →→];"
+    ],
+    [
+     "100",
+     "cien;"
+    ],
+    [
+     "101",
+     "ciento →→;"
+    ],
+    [
+     "200",
+     "doscientos[ →→];"
+    ],
+    [
+     "300",
+     "trescientos[ →→];"
+    ],
+    [
+     "400",
+     "cuatrocientos[ →→];"
+    ],
+    [
+     "500",
+     "quinientos[ →→];"
+    ],
+    [
+     "600",
+     "seiscientos[ →→];"
+    ],
+    [
+     "700",
+     "setecientos[ →→];"
+    ],
+    [
+     "800",
+     "ochocientos[ →→];"
+    ],
+    [
+     "900",
+     "novecientos[ →→];"
+    ],
+    [
+     "1000",
+     "mil[ →→];"
+    ],
+    [
+     "2000",
+     "←%spellout-cardinal-masculine← mil[ →→];"
+    ],
+    [
+     "1000000",
+     "un millón[ →→];"
+    ],
+    [
+     "2000000",
+     "←%spellout-cardinal-masculine← millones[ →→];"
+    ],
+    [
+     "1000000000000",
+     "un billón[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←%spellout-cardinal-masculine← billones[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%spellout-cardinal-masculine": [
+    [
+     "-x",
+     "menos →→;"
+    ],
+    [
+     "x.x",
+     "←← punto →→;"
+    ],
+    [
+     "x,x",
+     "←← coma →→;"
+    ],
+    [
+     "0",
+     "cero;"
+    ],
+    [
+     "1",
+     "un;"
+    ],
+    [
+     "2",
+     "=%spellout-numbering=;"
+    ],
+    [
+     "21",
+     "veintiún;"
+    ],
+    [
+     "22",
+     "=%spellout-numbering=;"
+    ],
+    [
+     "30",
+     "treinta[ y →→];"
+    ],
+    [
+     "40",
+     "cuarenta[ y →→];"
+    ],
+    [
+     "50",
+     "cincuenta[ y →→];"
+    ],
+    [
+     "60",
+     "sesenta[ y →→];"
+    ],
+    [
+     "70",
+     "setenta[ y →→];"
+    ],
+    [
+     "80",
+     "ochenta[ y →→];"
+    ],
+    [
+     "90",
+     "noventa[ y →→];"
+    ],
+    [
+     "100",
+     "cien;"
+    ],
+    [
+     "101",
+     "ciento →→;"
+    ],
+    [
+     "200",
+     "doscientos[ →→];"
+    ],
+    [
+     "300",
+     "trescientos[ →→];"
+    ],
+    [
+     "400",
+     "cuatrocientos[ →→];"
+    ],
+    [
+     "500",
+     "quinientos[ →→];"
+    ],
+    [
+     "600",
+     "seis­cientos[ →→];"
+    ],
+    [
+     "700",
+     "sete­cientos[ →→];"
+    ],
+    [
+     "800",
+     "ocho­cientos[ →→];"
+    ],
+    [
+     "900",
+     "nove­cientos[ →→];"
+    ],
+    [
+     "1000",
+     "mil[ →→];"
+    ],
+    [
+     "2000",
+     "←%spellout-cardinal-masculine← mil[ →→];"
+    ],
+    [
+     "1000000",
+     "un millón[ →→];"
+    ],
+    [
+     "2000000",
+     "←%spellout-cardinal-masculine← millones[ →→];"
+    ],
+    [
+     "1000000000000",
+     "un billón[ →→];"
+    ],
+    [
+     "2000000000000",
+     "←%spellout-cardinal-masculine← billones[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "one",
+    "n = 1"
+   ],
+   [
+    "many",
+    "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "dos mil veintiséis",
+  "101": "ciento uno",
+  "15%": "quince por ciento"
+ }
+}
