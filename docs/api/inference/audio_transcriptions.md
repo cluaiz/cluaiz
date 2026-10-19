@@ -54,6 +54,8 @@ A model that reads one language only (Moonshine) returns an empty list.
 > [!IMPORTANT]
 > **No Multipart Uploads:** Unlike OpenAI's standard multipart endpoint, Cluaiz Engine uses a unified, secure **pure JSON contract**. Audio files must be encoded as Base64 Data URIs (`data:audio/wav;base64,...`) or passed as local authorized file paths.
 
+**Long recordings:** audio longer than the model's window (Whisper: 30 s) is split at its quietest moment near each 30 s mark, and the windows are transcribed in order into one text (as whisper.cpp and OpenAI do). Without `language`, each window's language is identified on its own (among `languages` when given). The size limit is the engine's media input limit (`settings.media.limits`, 64 MiB of audio by default), the same as chat attachments.
+
 ---
 
 ## 💻 Code Examples
