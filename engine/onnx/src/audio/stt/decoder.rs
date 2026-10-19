@@ -55,6 +55,9 @@ impl OnnxEngine {
         let audio = decode_audio(bytes, limits)?;
         let options = crate::media::SttOptions {
             language: extract_parameter(prompt, "LANGUAGE"),
+            languages: extract_parameter(prompt, "LANGUAGES")
+                .map(|list| list.split(',').map(|code| code.trim().to_owned()).collect())
+                .unwrap_or_default(),
             translate: extract_parameter(prompt, "TRANSLATE_TO")
                 .is_some_and(|value| !value.is_empty() && value != "false"),
             ..Default::default()
@@ -177,32 +180,33 @@ impl OnnxEngine {
         ) {
             let mut chosen_lang_token: Option<i64> = None;
 
-            // 🌐 Dynamic Language Vocabulary Discovery (Zero Hardcoding)
+            // 🌐 Dynamic Language Vocabulary Discovery (Zero Hardcoding), narrowed to the speaker's
+            // languages when given: a phrase is then detected among only those
+            let wanted: Vec<String> = options
+                .languages
+                .iter()
+                .map(|code| families::base_language(code))
+                .filter(|code| !code.is_empty())
+                .collect();
             let mut lang_token_ids: Vec<i64> = Vec::new();
             if let Some(tokenizer) = &self.tokenizer {
                 let vocab = tokenizer.get_vocab(true);
                 for (tok_str, &tok_id) in vocab.iter() {
-                    if (tok_str.starts_with("<|") && tok_str.ends_with("|>"))
-                        || (tok_str.starts_with("<|code_") && tok_str.ends_with("|>"))
-                    {
-                        let inner = tok_str
-                            .trim_start_matches("<|")
-                            .trim_start_matches("code_")
-                            .trim_end_matches("|>");
-                        if inner.len() >= 2
-                            && inner.len() <= 5
-                            && inner.chars().all(|c| c.is_ascii_lowercase())
-                        {
-                            if !inner.contains("transcribe")
-                                && !inner.contains("translate")
-                                && !inner.contains("notimestamps")
-                                && !inner.contains("startof")
-                            {
-                                lang_token_ids.push(tok_id as i64);
-                            }
+                    if let Some(code) = families::language_of_token(tok_str) {
+                        if wanted.is_empty() || wanted.iter().any(|w| w == code) {
+                            lang_token_ids.push(tok_id as i64);
                         }
                     }
                 }
+            }
+            if !wanted.is_empty() && lang_token_ids.is_empty() {
+                return Err(anyhow!(
+                    "None of the speaker's languages is known to this STT model"
+                ));
+            }
+            // One language left: it is the language, no detection needed
+            if lang_token_ids.len() == 1 && (clean_lang.is_empty() || clean_lang == "auto") {
+                chosen_lang_token = lang_token_ids.first().copied();
             }
 
             // 1. Explicit Language Mode Resolution
