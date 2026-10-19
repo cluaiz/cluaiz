@@ -15,9 +15,24 @@ static CURRENT_MODEL_LANGUAGE: RwLock<String> = RwLock::new(String::new());
 ///
 /// Enforces 100% Zero-Hardcoding Law: Dynamic lexicon files are read dynamically from disk.
 /// All 8 TTS families and 300+ languages execute through this single universal pipeline.
-pub fn process_text_for_family(text: &str, _family: &TtsFamily, model_dir: &Path) -> String {
-    load_lexicon(model_dir);
-    lexicon_text_to_ipa(text, model_dir)
+pub fn process_text_for_family(text: &str, family: &TtsFamily, model_dir: &Path) -> String {
+    process_text_for_family_with_lang(text, family, model_dir, None)
+}
+
+/// Process and normalize text using either an explicit voice/script language override or the model's default language.
+pub fn process_text_for_family_with_lang(
+    text: &str,
+    _family: &TtsFamily,
+    model_dir: &Path,
+    lang_override: Option<&str>,
+) -> String {
+    let effective_lang = lang_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_lowercase)
+        .unwrap_or_else(|| get_model_language(model_dir));
+    load_lexicon_for_lang(model_dir, &effective_lang);
+    lexicon_text_to_ipa(text, model_dir, &effective_lang)
 }
 
 /// Dynamically resolve model language code from config.json or any sibling JSON manifest file
@@ -93,14 +108,15 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
     "en-us".to_string()
 }
 
-/// Dynamically load dictionary/lexicon files from model directory assets.
+/// Dynamically load dictionary/lexicon files from model directory assets for `lang`.
 /// Scans for `lexicon.txt`, `lexicon_en.txt`, `dict_en.json`, `ipa_dict.json`, etc.
-fn load_lexicon(model_dir: &Path) {
-    if let Ok(guard) = CURRENT_LOADED_MODEL_DIR.read() {
-        if let Some(ref current_dir) = *guard {
-            if current_dir == model_dir {
-                return;
-            }
+fn load_lexicon_for_lang(model_dir: &Path, lang: &str) {
+    if let (Ok(dir_guard), Ok(lang_guard)) = (
+        CURRENT_LOADED_MODEL_DIR.read(),
+        CURRENT_MODEL_LANGUAGE.read(),
+    ) {
+        if dir_guard.as_deref() == Some(model_dir) && lang_guard.as_str() == lang {
+            return;
         }
     }
 
@@ -119,9 +135,8 @@ fn load_lexicon(model_dir: &Path) {
     //    below overrides it. Dictionary copies older engines left in the model folder are moved out.
     //    Its plain IPA is rewritten into the symbols this model was trained on.
     super::ipa_dictionary::retire_engine_lexicons(model_dir);
-    let lang = get_model_language(model_dir);
-    let mut combined_dict = super::ipa_dictionary::load_language_lexicon(&lang);
-    if let Some(converter) = super::phoneme_sets::converter_for(model_dir, &lang)
+    let mut combined_dict = super::ipa_dictionary::load_language_lexicon(lang);
+    if let Some(converter) = super::phoneme_sets::converter_for(model_dir, lang)
         .filter(|_| !combined_dict.is_empty())
     {
         for ipa in combined_dict.values_mut() {
@@ -226,21 +241,21 @@ fn load_lexicon(model_dir: &Path) {
         *guard = Some(model_dir.to_path_buf());
     }
     if let Ok(mut guard) = CURRENT_MODEL_LANGUAGE.write() {
-        *guard = lang;
+        *guard = lang.to_owned();
     }
 }
 
 /// Convert input text using dynamic lexicon assets or clean word fallback.
-fn lexicon_text_to_ipa(text: &str, model_dir: &Path) -> String {
+fn lexicon_text_to_ipa(text: &str, model_dir: &Path, model_lang: &str) -> String {
     let clean_text = text.to_lowercase();
     let words: Vec<&str> = clean_text.split_whitespace().collect();
 
-    let model_lang = CURRENT_MODEL_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
     let lexicon_guard = DYNAMIC_LEXICON.read().ok();
     let dict = lexicon_guard.as_ref().and_then(|g| g.as_ref());
 
     let mut output_phonemes = Vec::new();
     let (mut known, mut unknown) = (0usize, 0usize);
+
 
     for word in words {
         let clean_word = word.trim_matches(|c: char| {

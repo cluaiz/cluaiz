@@ -146,12 +146,25 @@ fn route_tts_input(
     let model_dir = engine.model_dir.as_deref()
         .ok_or_else(|| anyhow!("TTS model directory not set"))?;
     let model_language = super::g2p::get_model_language(model_dir);
+    let voice_lang = requested_voice.and_then(super::languages::voice_language);
+    let base_language = voice_lang.unwrap_or(&model_language);
+    let base_code = base_language.split(['-', '_']).next().unwrap_or(base_language);
+    let allow_romanized = voice_lang.is_none()
+        || base_code.eq_ignore_ascii_case("en")
+        || super::rules_g2p::TRANSLITERATION_FILES
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case(base_code));
     // Hindi typed in Latin letters (and other romanized languages) is read in its own script
-    let romanized = super::romanized::to_native_script(raw_text_input, &model_language);
+    let romanized = if allow_romanized {
+        super::romanized::to_native_script(raw_text_input, base_language)
+    } else {
+        std::borrow::Cow::Borrowed(raw_text_input)
+    };
     let raw_text_input = romanized.as_ref();
-    let language = super::rules_g2p::script_language(raw_text_input, &model_language)
+    let language = super::rules_g2p::script_language(raw_text_input, base_language)
         .or_else(|| super::languages::script_language(raw_text_input))
-        .map(str::to_owned).unwrap_or(model_language);
+        .map(str::to_owned)
+        .unwrap_or_else(|| base_language.to_owned());
     let text_chunks = reading::prepare(raw_text_input, &language)?;
     let normalized_text = text_chunks.iter().map(|chunk| chunk.text.as_str()).collect::<Vec<_>>().join(" ");
     let raw_text_input = normalized_text.as_str();
@@ -390,12 +403,14 @@ fn handle_kokoro(
     // A requested voice, else one whose name says it speaks the text's language (its script, or the
     // model's language), else the first voice (data/languages.json)
     let text_lang = super::languages::script_language(&full_text)
+        .or_else(|| requested_voice.and_then(super::languages::voice_language))
         .map(str::to_owned)
         .unwrap_or_else(|| super::g2p::get_model_language(model_dir));
     let selected_voice = requested_voice.map(str::to_owned)
         .or_else(|| super::languages::voice_for_language(model_dir, &text_lang))
         .unwrap_or_default();
-    tracing::info!("🎙️ [Kokoro Handler] Voice '{selected_voice}' for language '{text_lang}'");
+    let active_lang = super::languages::voice_language(&selected_voice).unwrap_or(&text_lang);
+    tracing::info!("🎙️ [Kokoro Handler] Voice '{selected_voice}' for language '{active_lang}'");
 
     // Load style vector from voices/ directory
     let style_vector = super::families::kokoro::load_style_vector(model_dir, &selected_voice)
@@ -404,10 +419,11 @@ fn handle_kokoro(
 
     let mut pause_before_ms = 0;
     for (chunk_idx, text_chunk) in text_chunks.iter().enumerate() {
-        let processed_text = super::g2p::process_text_for_family(
+        let processed_text = super::g2p::process_text_for_family_with_lang(
             text_chunk.text.trim(),
             &super::family_adapter::TtsFamily::Kokoro,
             model_dir,
+            Some(active_lang),
         );
         let mut token_ids: Vec<i64> = if let Some(ref pmap) = phoneme_map {
             let ids = pmap.text_to_ids_no_pad(&processed_text);
@@ -526,6 +542,42 @@ mod tests {
     }
 
     #[test]
+    fn test_voice_language_routes_latin_and_non_english_g2p_correctly() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-voice-g2p-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // Minimal Kokoro vocab with misaki markers A, I, O, W, Y and affricate ʧ
+        std::fs::write(
+            dir.join("tokenizer.json"),
+            r#"{"vocab":{"$":0,"A":1,"I":2,"O":3,"W":4,"Y":5,"ʧ":6,"a":7,"o":8,"l":9,"n":10,"m":11,"ə":12,"s":13,"t":14,"e":15,"ː":16}}"#,
+        )
+        .unwrap();
+
+        let it_lang = super::super::languages::voice_language("if_sara").unwrap();
+        assert_eq!(it_lang, "it");
+        let it_ipa = super::super::g2p::process_text_for_family_with_lang(
+            "ciao",
+            &super::super::family_adapter::TtsFamily::Kokoro,
+            &dir,
+            Some(it_lang),
+        );
+        // Italian G2P ("ciao" -> "tʃao") converted via misaki-espeak ("tʃ" -> "ʧ")
+        assert_eq!(it_ipa, "ʧao");
+
+        let hi_lang = super::super::languages::voice_language("hf_alpha").unwrap();
+        assert_eq!(hi_lang, "hi");
+        let hi_ipa = super::super::g2p::process_text_for_family_with_lang(
+            "नमस्ते",
+            &super::super::family_adapter::TtsFamily::Kokoro,
+            &dir,
+            Some(hi_lang),
+        );
+        assert_eq!(hi_ipa, "nəməsteː");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     #[ignore = "requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata"]
     fn test_long_sentence_model_token_counts() {
         let (text, limit, language) = fixture();
@@ -543,3 +595,4 @@ mod tests {
         assert!(chunks.len() > 1);
     }
 }
+
