@@ -261,6 +261,7 @@ impl OnnxEngine {
                     &mut session,
                     text,
                     options.voice.as_deref(),
+                    options.language.as_deref(),
                     options.speed.unwrap_or(1.0),
                     callback,
                 )?;

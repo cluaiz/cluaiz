@@ -23,6 +23,7 @@ Synthesizes high-fidelity natural speech audio from input text using ONNX-accele
 | **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
 | **`model`** | String | No | `"piper-en-us-ryan-medium"` | Installed TTS package ID | Neural TTS voice model package ID. |
 | **`voice`** | String | No | `"default"` | `"default"`, or a voice file name of the model (Kokoro: `af_heart`, `am_adam`, `hf_alpha`, `hm_omega` …) | `"default"`/`"auto"` picks a voice that speaks the text's language. Single-voice models (Piper) ignore it. |
+| **`language`** | String | No | from the text | Language code (`"cs"`, `"pl"`, `"hi"`, `"en-US"` …) | Cluaiz extension (like Google/Azure `languageCode`): the text's language. Numbers and spelling are read by its rules even when no voice of the model speaks it (Czech with Kokoro). Omitted: from the text's script (Devanagari, Tamil …), else the voice, else the model. |
 | **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Speaking rate (1.0 = the model's normal pace; 1.25 = faster, 0.8 = slower). |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Each finished sentence arrives as its own small WAV (`speech.audio.delta`) while the next one is made, so playback can start after the first sentence; the last event holds the whole WAV. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |

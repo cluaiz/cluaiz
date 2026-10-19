@@ -898,7 +898,7 @@ mod tests {
                     let mut eng = crate::OnnxEngine::new().expect("OnnxEngine::new");
                     eng.model_dir = onnx_path.parent().map(|p| p.to_path_buf());
                     let t_syn = std::time::Instant::now();
-                    let wav_uri = crate::audio::tts::tts_router::route_tts_with(&eng, &mut model_sess, "NVIDIA CUDA and cuDNN 9 speech synthesis verified on GPU.", Some("af_heart"), 1.0, None).expect("Kokoro CUDA GPU synthesis");
+                    let wav_uri = crate::audio::tts::tts_router::route_tts_with(&eng, &mut model_sess, "NVIDIA CUDA and cuDNN 9 speech synthesis verified on GPU.", Some("af_heart"), None, 1.0, None).expect("Kokoro CUDA GPU synthesis");
                     assert!(wav_uri.starts_with("data:audio/wav;base64,") && wav_uri.len() > 10_000);
                     eprintln!("=== [LIVE GPU VERIFICATION] Kokoro TTS synthesized {} base64 chars on NVIDIA CUDA GPU in {:?} ===", wav_uri.len(), t_syn.elapsed());
                 }

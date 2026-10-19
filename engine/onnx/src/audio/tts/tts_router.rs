@@ -54,7 +54,7 @@ pub fn route_tts_inference(
     // Only the legacy envelope prefix can select a voice; user text is never metadata.
     let voice = prompt.find("[TEXT_INPUT")
         .and_then(|start| extract_parameter(&prompt[..start], "voice"));
-    route_tts_input(engine, session, &raw_text_input, voice.as_deref(), 1.0, None)
+    route_tts_input(engine, session, &raw_text_input, voice.as_deref(), None, 1.0, None)
 }
 
 /// Synthesize actual text without interpreting transport tags as user content.
@@ -63,24 +63,26 @@ pub fn route_tts_text(
     session: &mut Session,
     raw_text_input: &str,
 ) -> Result<String> {
-    route_tts_input(engine, session, raw_text_input, None, 1.0, None)
+    route_tts_input(engine, session, raw_text_input, None, None, 1.0, None)
 }
 
 /// Receives each part of the audio as soon as it is final, as a WAV data URI; false stops sending.
 pub type AudioSink<'a> = &'a mut (dyn FnMut(String) -> bool + Send);
 
-/// Synthesize text with a requested voice (None: by language) and speaking rate (1.0 = normal).
-/// With `on_audio`, Kokoro and Piper send each phrase while the next one is synthesized; the
-/// returned WAV is the whole text either way.
+/// Synthesize text with a requested voice (None: by language), the text's language (None: from
+/// its script, the voice or the model) and speaking rate (1.0 = normal). With `on_audio`, Kokoro
+/// and Piper send each phrase while the next one is synthesized; the returned WAV is the whole
+/// text either way.
 pub fn route_tts_with(
     engine: &crate::engine::OnnxEngine,
     session: &mut Session,
     raw_text_input: &str,
     voice: Option<&str>,
+    language: Option<&str>,
     speed: f32,
     on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
-    route_tts_input(engine, session, raw_text_input, voice, speed, on_audio)
+    route_tts_input(engine, session, raw_text_input, voice, language, speed, on_audio)
 }
 
 /// Sends the part of the audio that later phrases can no longer change. Joining the next phrase
@@ -136,6 +138,7 @@ fn route_tts_input(
     session: &mut Session,
     raw_text_input: &str,
     requested_voice: Option<&str>,
+    requested_language: Option<&str>,
     speed: f32,
     on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
@@ -146,7 +149,11 @@ fn route_tts_input(
     let model_dir = engine.model_dir.as_deref()
         .ok_or_else(|| anyhow!("TTS model directory not set"))?;
     let model_language = super::g2p::get_model_language(model_dir);
-    let voice_lang = requested_voice.and_then(super::languages::voice_language);
+    let requested_language = requested_language
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.eq_ignore_ascii_case("auto"));
+    // The text's language when the caller says it, else the one the voice speaks
+    let voice_lang = requested_language.or_else(|| requested_voice.and_then(super::languages::voice_language));
     let base_language = voice_lang.unwrap_or(&model_language);
     let base_code = base_language.split(['-', '_']).next().unwrap_or(base_language);
     let allow_romanized = voice_lang.is_none()
@@ -210,7 +217,7 @@ fn route_tts_input(
             handle_vits_piper(engine, session, &text_chunks, &manifest, sample_rate, speed, on_audio)
         }
         super::family_adapter::TtsFamily::Kokoro => {
-            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice, speed, on_audio)
+            handle_kokoro(engine, session, &text_chunks, sample_rate, requested_voice, requested_language, speed, on_audio)
         }
         super::family_adapter::TtsFamily::Matcha => {
             let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
@@ -381,6 +388,7 @@ fn handle_kokoro(
     text_chunks: &[Chunk],
     sample_rate: usize,
     requested_voice: Option<&str>,
+    requested_language: Option<&str>,
     speed: f32,
     on_audio: Option<AudioSink<'_>>,
 ) -> Result<String> {
@@ -400,16 +408,24 @@ fn handle_kokoro(
     let phoneme_map = super::phoneme_map::PhonemeMap::from_model_dir(model_dir);
 
     let full_text = text_chunks.iter().map(|chunk| chunk.text.as_str()).collect::<Vec<_>>().join(" ");
-    // A requested voice, else one whose name says it speaks the text's language (its script, or the
-    // model's language), else the first voice (data/languages.json)
+    // A requested voice, else one whose name says it speaks the text's language (its script, the
+    // requested language, or the model's language), else the model's own voice, else the first
+    // voice (data/languages.json)
+    let model_language = super::g2p::get_model_language(model_dir);
     let text_lang = super::languages::script_language(&full_text)
+        .or_else(|| super::rules_g2p::script_language(&full_text, &model_language))
+        .or(requested_language)
         .or_else(|| requested_voice.and_then(super::languages::voice_language))
         .map(str::to_owned)
-        .unwrap_or_else(|| super::g2p::get_model_language(model_dir));
+        .unwrap_or_else(|| model_language.clone());
     let selected_voice = requested_voice.map(str::to_owned)
         .or_else(|| super::languages::voice_for_language(model_dir, &text_lang))
+        .or_else(|| super::languages::voice_for_language(model_dir, &model_language))
         .unwrap_or_default();
-    let active_lang = super::languages::voice_language(&selected_voice).unwrap_or(&text_lang);
+    // The requested language reads the text (Czech with an English voice); else the voice's
+    let active_lang = requested_language
+        .or_else(|| super::languages::voice_language(&selected_voice))
+        .unwrap_or(&text_lang);
     tracing::info!("🎙️ [Kokoro Handler] Voice '{selected_voice}' for language '{active_lang}'");
 
     // Load style vector from voices/ directory
