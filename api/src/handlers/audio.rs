@@ -28,6 +28,9 @@ pub struct InputSource {
 pub struct AudioParameters {
     pub temperature: Option<f32>,
     pub language: Option<String>,
+    /// The speaker's languages (ISO 639-1): without `language`, speech is detected among only these
+    #[serde(default)]
+    pub languages: Vec<String>,
     pub speed: Option<f32>,
     pub voice_id: Option<String>,
     pub translate_to: Option<String>,
@@ -152,9 +155,16 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
         anyhow::bail!("speed must be between {} and {}", SPEED_RANGE.0, SPEED_RANGE.1);
     }
     if task == AudioTask::TextToSpeech
-        && (params.language.is_some() || params.translate_to.is_some())
+        && (params.language.is_some() || params.translate_to.is_some() || !params.languages.is_empty())
     {
         anyhow::bail!("Language/translation options are not implemented for TTS");
+    }
+    if params.languages.len() > MAX_SPEAKER_LANGUAGES
+        || params.languages.iter().any(|code| {
+            !(2..=5).contains(&code.len()) || !code.chars().all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
+        })
+    {
+        anyhow::bail!("languages must be at most {MAX_SPEAKER_LANGUAGES} language codes such as \"hi\" or \"en\"");
     }
     if let Some(target) = params
         .translate_to
@@ -167,6 +177,7 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
     }
     Ok(SttOptions {
         language: params.language,
+        languages: params.languages,
         translate: task == AudioTask::SpeechTranslation,
         voice: params.voice_id.filter(|v| !is_default_voice(v)),
         speed: params.speed,
@@ -175,6 +186,9 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
 
 /// Speaking rates accepted for text_to_speech (OpenAI's /v1/audio/speech range)
 const SPEED_RANGE: (f32, f32) = (0.25, 4.0);
+
+/// A speaker's languages per request (a person rarely speaks more; detection gets less reliable)
+const MAX_SPEAKER_LANGUAGES: usize = 10;
 
 fn is_default_voice(voice: &str) -> bool {
     let voice = voice.trim();
@@ -390,6 +404,9 @@ struct TranscriptionRequest {
     input_source: Option<InputSource>,
     prompt: Option<String>,
     language: Option<String>,
+    /// Cluaiz extension: the speaker's languages; each request is detected among only these
+    #[serde(default)]
+    languages: Vec<String>,
     temperature: Option<f32>,
     timestamps: Option<bool>,
     stream: Option<bool>,
@@ -459,6 +476,29 @@ pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<Voic
     Json(json!({"object": "list", "model": model.id, "data": data})).into_response()
 }
 
+/// GET /v1/audio/languages?model=<id>: the languages a speech-to-text model can transcribe (codes
+/// for `language` and `languages`). Empty for a model that reads a single language.
+pub async fn languages(State(state): State<Arc<AppState>>, Query(query): Query<VoicesQuery>) -> Response {
+    let task = AudioTask::SpeechToText;
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    let schema = state.permission_schema.read().await;
+    let slot_id = schema
+        .active_slots
+        .get(task.slot())
+        .or_else(|| schema.active_slots.get("audio_slot"))
+        .and_then(|s| s.model_id.as_deref());
+    let entry = match select_model(&registry, query.model.as_deref(), slot_id, task) {
+        Ok(entry) => entry,
+        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
+    };
+    drop(schema);
+    let model = match OnnxModel::from_registry(entry, task) {
+        Ok(model) => model,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+    };
+    Json(json!({"object": "list", "model": model.id, "data": model.stt_languages()})).into_response()
+}
+
 pub async fn transcriptions(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -479,6 +519,7 @@ pub async fn transcriptions(
         input_source,
         parameters: Some(AudioParameters {
             language: payload.language,
+            languages: payload.languages,
             temperature: payload.temperature,
             timestamps: payload.timestamps,
             ..Default::default()

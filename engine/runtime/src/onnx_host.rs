@@ -31,6 +31,11 @@ impl OnnxModel {
         onnx_engine::audio::tts::languages::list_voices(&self.dir)
     }
 
+    /// The languages this speech-to-text package can transcribe (empty for a one-language model).
+    pub fn stt_languages(&self) -> Vec<String> {
+        onnx_engine::audio::stt::families::tokenizer_languages(&self.dir)
+    }
+
     /// Resolve declared assets inside the selected installed package only.
     pub fn from_registry(entry: &ModelRegistryEntry, task: AudioTask) -> Result<Self> {
         if !entry

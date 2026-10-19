@@ -46,6 +46,9 @@ impl AudioTask {
 #[derive(Debug, Clone, Default)]
 pub struct SttOptions {
     pub language: Option<String>,
+    /// Languages the speaker uses: with no `language`, each request is detected among only these
+    /// (empty: among all the model knows)
+    pub languages: Vec<String>,
     pub translate: bool,
     /// TTS voice name (a model's voice file, e.g. Kokoro "hf_alpha"); None picks one by language
     pub voice: Option<String>,
@@ -98,12 +101,12 @@ impl OnnxEngine {
                         Err(error) => {
                             tracing::warn!(%error, "CUDA session creation failed; trying fallback")
                         }
-                    }
-                }
-            }
                     },
                     Err(error) => {
                         tracing::warn!(%error, "CUDA provider could not be registered; trying fallback")
+                    }
+                }
+            }
             if let Some(session) = try_directml_session(&builder, path, &cpu) {
                 return Ok(session);
             }

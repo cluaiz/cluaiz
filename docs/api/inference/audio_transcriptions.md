@@ -24,10 +24,23 @@ Transcribes spoken audio, voice notes, and audio clips into clean text using ONN
 | **`file`** | String | No* | — | Local file path or URI | Direct file path shortcut (OpenAI-compatible alternative to `input_source`). |
 | **`model`** | String | No | `"whisper-large-v3-turbo-INT8"` | Installed STT model ID | Model identifier. Defaults to active or installed Whisper package (`whisper-large-v3-turbo-INT8`). |
 | **`language`** | String | No | `"auto"` | ISO-639-1 code (e.g. `"en"`, `"hi"`, `"es"`, `"fr"`, `"auto"`) | Target spoken language. Setting `"auto"` runs Whisper language identification. |
+| **`languages`** | String[] | No | `[]` | Up to 10 ISO-639-1 codes (e.g. `["hi", "en"]`) | Cluaiz extension: the languages the speaker uses. Without `language`, each request is identified among only these, so a speaker who switches between Hindi and English sentences gets each in its own language and never an unrelated one (Hindi written in Urdu script, a stray Vietnamese line). One code works like `language`. Empty: all languages the model knows. Like Google STT `alternativeLanguageCodes` and Azure candidate languages. |
 | **`temperature`** | Float | No | `0.0` | `0.0 - 1.0` | Sampling temperature for greedy decoding. `0.0` is recommended for maximum transcription accuracy. |
 | **`timestamps`** | Boolean | No | `false` | `true`, `false` | Whether to return word/segment timestamps in output (default: `false` for raw text). |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session cache lifetime in memory before automatic session cleanup. |
+
+---
+
+### Which languages a model can transcribe
+
+`GET /v1/audio/languages?model=<id>` (model optional: the active or first installed STT model) lists the codes accepted by `language` and `languages`:
+
+```json
+{ "object": "list", "model": "whisper-large-v3-turbo-FP16", "data": ["af", "am", "ar", "...", "hi", "...", "zh"] }
+```
+
+A model that reads one language only (Moonshine) returns an empty list.
 
 ---
 
