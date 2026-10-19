@@ -1,7 +1,9 @@
 //! Serialized ONNX task lifecycle, typed results and request-specific retention.
 use anyhow::{bail, Context, Result};
 use cluaiz_core::ActiveUserSettings;
-use cluaiz_models::{capabilities::PackageCapabilities, types::manifest::ModelRegistryEntry};
+use cluaiz_models::{
+    capabilities::PackageCapabilities, prober::OnnxProber, types::manifest::ModelRegistryEntry,
+};
 pub use onnx_engine::media::{AudioInput, AudioOutput, AudioTask, SttOptions};
 pub use onnx_engine::audio::tts::is_experimental_family;
 pub use onnx_engine::text::{EmbeddingInput, EmbeddingOutput};
@@ -98,6 +100,23 @@ impl OnnxModel {
             entry: entry.clone(),
         })
     }
+}
+
+/// Speech-to-text runs the encoder and the uncached decoder, so a package's cached decoders
+/// (`past_key_values` inputs: `decoder_with_past`, `decoder_model_merged`) are not loaded and take
+/// no GPU memory or load time. Signatures are read without the weights; an unreadable graph is kept.
+fn uncached_stt_graphs(graphs: &[PathBuf]) -> Vec<PathBuf> {
+    graphs
+        .iter()
+        .filter(|path| {
+            OnnxProber::read_signature(path).map_or(true, |signature| {
+                !signature.inputs.iter().any(|input| {
+                    input.name.starts_with("past_key_values") || input.name == "use_cache_branch"
+                })
+            })
+        })
+        .cloned()
+        .collect()
 }
 
 #[derive(Debug)]
@@ -204,7 +223,13 @@ impl OnnxHost {
                 keep_alive,
                 handle,
             },
-            |engine| engine.load_audio_package(&model.dir, &model.primary, &model.graphs, task),
+            |engine| {
+                let graphs = match task {
+                    AudioTask::TextToSpeech => model.graphs.clone(),
+                    _ => uncached_stt_graphs(&model.graphs),
+                };
+                engine.load_audio_package(&model.dir, &model.primary, &graphs, task)
+            },
             |engine| {
                 engine.execute_prepared_audio(
                     task,
