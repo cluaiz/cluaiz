@@ -206,9 +206,15 @@ impl ModelDownloader {
             .map_err(|e| e.to_string())?;
 
         let mut created: Vec<PathBuf> = Vec::new();
+        // `huggingface_filename` is the primary's flat name; its repository path (e.g.
+        // `onnx/encoder_model.onnx`) decides which folder is placed at the top of the vault folder
+        let primary_repo_path = files
+            .iter()
+            .find(|path| Path::new(path).file_name() == Some(std::ffi::OsStr::new(&primary_name)))
+            .unwrap_or(&manifest.huggingface_filename);
         let mapped = files
             .iter()
-            .map(|path| AssetBundler::local_asset_path(path, &manifest.huggingface_filename))
+            .map(|path| AssetBundler::local_asset_path(path, primary_repo_path))
             .collect::<Result<Vec<_>, _>>()?;
         let mut unique = std::collections::HashSet::new();
         if mapped.iter().any(|path| !unique.insert(path.clone())) {
