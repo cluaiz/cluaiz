@@ -1,5 +1,5 @@
 {
-  "_about": "Dictionary IPA (ipa-dict) differs from the phoneme symbols a TTS model was trained on. Each set says how to recognise such a model (its symbol table or its config's phoneme_type), which languages it applies to (empty = all), and the rewrites applied in order to every dictionary pronunciation. stress_before_vowel moves a stress mark from the start of the syllable to its vowel, as espeak-ng and misaki write it. missing_symbol_fallback rewrites a symbol only for a model whose symbol table lacks it (e.g. Kokoro has no ɦ or dental mark). Chao tone letters (˥˥ ˧˥ ˨˩˦ ˥˩) become tone arrows for a model without them.",
+  "_about": "Dictionary IPA (ipa-dict) differs from the phoneme symbols a TTS model was trained on. Each set says how to recognise such a model (its symbol table or its config's phoneme_type), which languages it applies to (empty = all), and the rewrites applied in order to every dictionary pronunciation. stress_before_vowel moves a stress mark from the start of the syllable to its vowel, as espeak-ng and misaki write it. missing_symbol_fallback rewrites a symbol only for a model whose symbol table lacks it (e.g. Kokoro has no ɦ or dental mark, nor the Polish/Serbian ʐ ʑ or the German ʏ, said with the nearest symbol it has). Chao tone letters (˥˥ ˧˥ ˨˩˦ ˥˩) become tone arrows for a model without them.",
   "vowels": "aeiouyæɐɑɒɔəɘɚɛɜɞɤɨɪɯɵɶʉʊʌʏøœAIOQWY",
   "missing_symbol_fallback": [
     [
@@ -49,6 +49,18 @@
     [
       "ɫ",
       "l"
+    ],
+    [
+      "ʐ",
+      "ʒ"
+    ],
+    [
+      "ʑ",
+      "ʒ"
+    ],
+    [
+      "ʏ",
+      "y"
     ]
   ],
   "sets": [
