@@ -194,4 +194,14 @@ mod tests {
         assert_eq!(espeak.convert("əˈdɛɫfə"), "ədˈɛlfə");
         assert_eq!(espeak.convert("ˈbɝd"), "bˈɜːd");
     }
+
+    #[test]
+    fn test_missing_tone_sequences_keep_long_contours_and_glottal_stops() {
+        let data: serde_json::Value = serde_json::from_str(SETS_JSON).unwrap();
+        let mut actual = converter("espeak");
+        actual.missing = sets().unwrap().missing_symbol_fallback.iter().collect();
+        for pair in data["fallback_examples"].as_array().unwrap() {
+            assert_eq!(actual.convert(pair[0].as_str().unwrap()), pair[1].as_str().unwrap());
+        }
+    }
 }

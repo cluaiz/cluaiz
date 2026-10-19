@@ -30,6 +30,7 @@
     "z": "zh"
   },
   "nearest_voice_languages": {
+    "vi": ["zh"],
     "bn": ["hi"], "gu": ["hi"], "pa": ["hi"], "mr": ["hi"], "ne": ["hi"], "or": ["hi"], "as": ["hi"],
     "ta": ["hi"], "te": ["hi"], "kn": ["hi"], "ml": ["hi"], "ur": ["hi"], "sa": ["hi"],
     "ar": ["hi"], "fa": ["hi"],

@@ -60,6 +60,12 @@ Hindi examples include decomposed nasal vowels (`में`, `एँ`), anusvara
 
 Run `cargo test -p onnx-engine --offline --lib -- audio::tts` in an isolated home. The ignored `actual_pronunciations_fit_installed_model_symbols` test additionally requires `CLUAIZ_TTS_TEST_MODEL` pointing to a staged genuine package and checks actual symbol coverage. Real waveform/listening acceptance is separate from IPA, token-count and HTTP-success tests.
 
+### Dutch context and Vietnamese syllable data
+
+Alphabet JSON rules may use `before_sequence`/`after_sequence` for consecutive neighboring classes without consuming them. Dutch uses this for the open-syllable vowel approximation and a limited unstressed ending; doubled written consonants emit one consonant. This does not replace stress/morphology or dictionary lookup. Sources: [official open-syllable spelling](https://woordenlijst.org/zoeken/leidraad/2/1.html), [consonant doubling](https://woordenlijst.org/zoeken/leidraad/2/2.html).
+
+Vietnamese OOV syllables use canonical decomposition to extract tone marks, reconstruct the remaining vowel-quality letters, then append the configured tone after the segmental sequence. `suffix_marks`, `default_suffix`, `checked_endings` and `checked_suffixes` are data-owned; existing languages keep empty defaults. The Northern/Hanoi-oriented data follows [Kirby2011](https://doi.org/10.1017/S0025100311000181), with documented segmental approximations. Model-specific missing-symbol fallbacks keep longer tone sequences ahead of their shorter prefixes and retain glottal stops. A model's tone arrows approximate pitch contours and do not certify Vietnamese phonation, intelligibility or all dialects. Existing dictionary lookup remains first; native WAV/transcription acceptance is separate. When no Vietnamese voice exists, the language data prefers an available Chinese voice; this remains a fallback, not a native Vietnamese voice or listening certification.
+
 ### Reading punctuation, parentheses and operators
 
 `tts/reading.rs` is the shared text preparation owner. `data/reading_rules.json` stores spoken operator labels, Unicode aliases and phrase-break policy. Brackets become parenthetical boundaries; their contents are retained. The typed text path never extracts voice commands from user text. The legacy adapter unwraps nested text envelopes and accepts a voice only in the envelope prefix; typed API voice transport remains separate work.

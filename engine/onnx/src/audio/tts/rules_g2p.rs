@@ -111,6 +111,18 @@ struct Alphabet {
     /// Named letter sets the rules refer to ("V": vowels)
     #[serde(default)]
     classes: HashMap<String, String>,
+    /// Canonical spelling when a rule set handles precomposed accented letters.
+    #[serde(default)]
+    normalize_unicode: bool,
+    /// Combining marks extracted as one syllable's prosodic suffix before letter rewriting.
+    #[serde(default)]
+    suffix_marks: HashMap<char, String>,
+    #[serde(default)]
+    default_suffix: Option<String>,
+    #[serde(default)]
+    checked_endings: Vec<String>,
+    #[serde(default)]
+    checked_suffixes: HashMap<String, String>,
     rules: Vec<Rewrite>,
     /// Word → expected IPA, checked by the tests
     #[serde(default)]
@@ -130,6 +142,12 @@ struct Rewrite {
     /// The previous letter must be in this class (name or letters); "#" = start of word
     #[serde(default)]
     after: Option<String>,
+    /// Consecutive following classes (e.g. consonant then vowel), without consuming them.
+    #[serde(default)]
+    before_sequence: Vec<String>,
+    /// Consecutive preceding classes, in written order.
+    #[serde(default)]
+    after_sequence: Vec<String>,
 }
 
 fn rule_sets() -> &'static [RuleSet] {
@@ -481,7 +499,17 @@ impl Alphabet {
     }
 
     fn convert(&self, word: &str) -> String {
-        let word = word.to_lowercase();
+        let mut normalized = tokenizers::NormalizedString::from(word.to_lowercase());
+        let mut suffix = self.default_suffix.clone();
+        if !self.suffix_marks.is_empty() {
+            normalized.nfd();
+            let letters: String = normalized.get().chars().filter(|c| {
+                if let Some(mark) = self.suffix_marks.get(c) { suffix = Some(mark.clone()); false } else { true }
+            }).collect();
+            normalized = tokenizers::NormalizedString::from(letters);
+            normalized.nfc();
+        } else if self.normalize_unicode { normalized.nfc(); }
+        let word = normalized.get();
         let chars: Vec<char> = word.chars().collect();
         // Longest spelling first; file order decides between rules of the same length
         let mut rules: Vec<&Rewrite> = self.rules.iter().collect();
@@ -498,6 +526,14 @@ impl Alphabet {
                     && r.after.as_deref().map_or(true, |a| {
                         self.class_has(a, i.checked_sub(1).map(|p| chars[p]))
                     })
+                    && r.before_sequence.iter().enumerate().all(|(offset, class)| {
+                        self.class_has(class, chars.get(end + offset).copied())
+                    })
+                    && i.checked_sub(r.after_sequence.len()).is_some_and(|start| {
+                        r.after_sequence.iter().enumerate().all(|(offset, class)| {
+                            self.class_has(class, chars.get(start + offset).copied())
+                        })
+                    })
             });
             match found {
                 Some(rule) => {
@@ -506,6 +542,11 @@ impl Alphabet {
                 }
                 None => i += 1,
             }
+        }
+        if let Some(suffix) = suffix {
+            let checked = self.checked_endings.iter().any(|ending| word.ends_with(ending));
+            let suffix = if checked { self.checked_suffixes.get(&suffix).unwrap_or(&suffix) } else { &suffix };
+            out.push_str(suffix);
         }
         out
     }

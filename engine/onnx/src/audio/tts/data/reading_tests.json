@@ -23,6 +23,8 @@
     {"name":"english-words","text":"A plus B equals C","expected_status":200,"models":["Kokoro-82M-v1.0-ONNX-UINT8"]}
   ],
   "cases": [
+    {"language":"vi","input":"A+B=C.","contains":["A cộng B bằng C"],"not_contains":["+","="]},
+    {"language":"nl","input":"A+B=C.","contains":["A plus B is gelijk aan C"],"not_contains":["+","="]},
     {"language":"en","input":"Read [the whole] message.","contains":["Read","the whole","message"],"not_contains":["[","]"]},
     {"language":"hi","input":"क्षमा(क्ष+मा)=क्षमा।","contains":["क्षमा","क्ष","प्लस","मा","बराबर"],"not_contains":["+","="]},
     {"language":"en-us","input":"A+B=C.","contains":["A plus B equals C"],"not_contains":["+","="]},

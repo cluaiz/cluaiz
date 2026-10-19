@@ -48,6 +48,8 @@
     "hi": ["डॉ.","प्रो."]
   },
   "operator_words": {
+    "nl": {"+":"plus","=":"is gelijk aan","-":"min","×":"maal","÷":"gedeeld door"},
+    "vi": {"+":"cộng","=":"bằng","-":"trừ","×":"nhân","÷":"chia"},
     "en": {"=":"equals","+":"plus","÷":"divided by","-":"minus","×":"times"},
     "bn": {"+":"যোগ চিহ্ন","=":"সমান চিহ্ন","-":"বিয়োগ চিহ্ন","×":"গুণচিহ্ন","÷":"ভাগ চিহ্ন"},
     "bs": {"+":"plus","=":"jednako","-":"minus","×":"znak za množenje","÷":"znak za dijeljenje"},
@@ -72,5 +74,5 @@
     "te": {"+":"కూడిక చిహ్నం","=":"సమానం","-":"తీసివేత చిహ్నం","×":"గుణింతపు గుర్తు","÷":"విభజన గుర్తు"},
     "tr": {"+":"artı işareti","=":"eşittir","-":"eksi işareti","×":"çarpma işareti","÷":"bölme işareti"}
   },
-  "_source": {"license":"Unicode-3.0; see CLDR-LICENSE.txt","commit":"91c267402229a59e3ef2774544f001bf959e8809","repository":"https://github.com/unicode-org/cldr-json","path":"cldr-json/cldr-annotations-full/annotations/{language}/annotations.json","editorial_overrides":"English/Hindi use shorter spoken operator names. Other locales retain CLDR tts labels."}
+  "_source": {"license":"Unicode-3.0; see CLDR-LICENSE.txt","commit":"91c267402229a59e3ef2774544f001bf959e8809","repository":"https://github.com/unicode-org/cldr-json","path":"cldr-json/cldr-annotations-full/annotations/{language}/annotations.json","editorial_overrides":"English/Hindi/Dutch/Vietnamese use shorter spoken operator names. Other locales retain CLDR tts labels. Dutch and Vietnamese shorten symbol descriptions to mathematical readings rather than saying bold sign."}
 }
