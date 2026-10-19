@@ -1,13 +1,9 @@
-use crate::{state::AppState, utils::prepare_authorized_media};
+use crate::{state::AppState, utils::prepare_authorized_audio};
 use axum::{
     extract::{Query, State},
     http::{HeaderMap, StatusCode},
     response::{sse::Event, IntoResponse, Response, Sse},
     Json,
-};
-use cluaiz_core::{
-    media::{InputPart, PreparedPart},
-    ChatEnvelope, ChatMessage,
 };
 use cluaiz_models::types::manifest::{ModelRegistry, ModelRegistryEntry};
 use cluaiz_runtime::onnx_host::{
@@ -271,18 +267,33 @@ pub async fn execute_audio(
     drop(schema);
     let model_id = entry.id.clone();
     let stream = payload.stream.unwrap_or(true);
+    let settings = cluaiz_core::Settings::current();
     if entry.format_type.eq_ignore_ascii_case("gguf") {
         if task != AudioTask::TextToSpeech {
             return error(StatusCode::BAD_REQUEST, "model_contract_error", "A GGUF speech model makes speech; speech-to-text needs an ONNX model");
         }
-        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, options.language.clone(), payload.keep_alive);
+        if options.speed.is_some_and(|speed| speed != 1.0) {
+            return error(StatusCode::BAD_REQUEST, "unsupported_parameter", "GGUF speech does not implement speed control; use speed 1.0");
+        }
+        let speaker_reference = if let Some(source) = options.voice {
+            match prepare_authorized_audio(&state, &headers, source, &settings).await {
+                Ok(audio) => Some(audio),
+                Err((kind, message)) => return error(if kind == "permission_error" {StatusCode::FORBIDDEN} else {StatusCode::BAD_REQUEST}, kind, message),
+            }
+        } else { None };
+        let speech_options = cluaiz_runtime::speech_host::SpeechOptions {
+            language: options.language,
+            speaker_reference,
+            limits: settings.media.limits,
+            ..Default::default()
+        };
+        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, speech_options, payload.keep_alive);
         return respond(events, task, model_id, stream).await;
     }
     let model = match OnnxModel::from_registry(entry, task) {
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
     };
-    let settings = cluaiz_core::Settings::current();
     let input = if is_text {
         AudioInput::Text(payload.input_source.data)
     } else {
@@ -311,22 +322,8 @@ pub async fn execute_audio(
                 )
             }
         };
-        let request = ChatEnvelope {
-            messages: vec![ChatMessage {
-                role: "user".into(),
-                content: vec![InputPart::Audio { source }],
-            }],
-            samplers: Default::default(),
-            think_mode: "off".into(),
-            reasoning_effort: Default::default(),
-            reasoning_budget_message: None,
-            chat_template_kwargs: None,
-            grammar: None,
-            response_format: None,
-        };
-        let prepared =
-            match prepare_authorized_media(&state, &headers, request, &settings, None, None).await {
-                Ok(request) => request,
+        match prepare_authorized_audio(&state, &headers, source, &settings).await {
+                Ok(audio) => AudioInput::Pcm(audio),
                 Err((kind, message)) => {
                     return error(
                         if kind == "permission_error" {
@@ -338,16 +335,6 @@ pub async fn execute_audio(
                         message,
                     )
                 }
-            };
-        match prepared.messages.into_iter().flat_map(|m| m.content).next() {
-            Some(PreparedPart::Audio { audio }) => AudioInput::Pcm(audio),
-            _ => {
-                return error(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_input",
-                    "Audio source did not produce PCM",
-                )
-            }
         }
     };
     let events = state
@@ -490,7 +477,7 @@ pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<Voic
     };
     drop(schema);
     let mut data = vec![json!({"id": "default", "language": null, "default": true})];
-    // A GGUF speech model has no voice files (its voice comes from a speaker sample, later)
+    // A GGUF speech model has no voice files; a nondefault voice is a reference audio source.
     if entry.format_type.eq_ignore_ascii_case("gguf") {
         return Json(json!({"object": "list", "model": entry.id, "data": data})).into_response();
     }

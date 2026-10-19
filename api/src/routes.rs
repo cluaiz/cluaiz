@@ -74,7 +74,10 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/embeddings",
             post(handlers::embeddings::generate_embeddings),
         )
-        .route("/v1/audio/speech", post(handlers::audio::speech))
+        .route(
+            "/v1/audio/speech",
+            post(handlers::audio::speech).layer(from_fn(attachment_body_limit)),
+        )
         .route("/v1/audio/voices", get(handlers::audio::voices))
         .route("/v1/audio/languages", get(handlers::audio::languages))
         // Audio arrives inline as a data URI, so it gets the same size limit as chat attachments

@@ -1,5 +1,17 @@
 use super::*;
 
+#[test]
+fn test_shared_audio_bitmap_prepares_stereo_and_checks_copy_budget() -> Result<()> {
+    let audio = DecodedAudio::new(24_000, 2, vec![0.25; 96].into())?;
+    let (_bitmap, prepared) = Bitmap::from_audio(&audio, 16_000, MediaLimits::default())?;
+    assert_eq!(prepared.channels(), 1);
+    assert_eq!(prepared.sample_rate(), 16_000);
+    assert_eq!(prepared.samples().len(), 32);
+    assert!(prepared.samples().iter().all(|v| *v == 0.25));
+    assert!(Bitmap::from_audio(&audio, 16_000, MediaLimits::new(1024, 1)?).is_err());
+    Ok(())
+}
+
 fn request(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
     ChatEnvelope {
         messages: vec![ChatMessage {

@@ -39,8 +39,23 @@ graph TD
 | [`native/session.rs`](src/native/session.rs) | Paired model/projector lifetime, memory preflight, prepared media/text generation and pointer-free model telemetry used by EngineHost. |
 | [`native/media.rs`](src/native/media.rs) | Private projector/bitmap/chunk owners, queried audio preparation, template association and native encoder prefill. |
 | [`native/context.rs`](src/native/context.rs) | Shared native batch ownership and context shifting. |
+| [`native/speech.rs`](src/native/speech.rs) | Experimental libmtmd speech generator, independent backbone/projector, vocabulary-derived language guard and optional authorized speaker PCM through the shared bitmap owner. |
 | [`ffi/reasoning.rs`](src/ffi/reasoning.rs), [`ffi/reasoning_bridge.cpp`](src/ffi/reasoning_bridge.cpp) | Narrow C ABI to the pinned upstream reasoning-budget sampler; no copied budget state machine. |
 | [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches. |
+
+## GGUF speech ownership
+
+```mermaid
+graph LR
+    API["Authorized text and optional decoded reference"] --> Speech["SpeechModel: own backbone/context/projector"]
+    Speech --> Language["Actual codec-language tokens + data-owned ISO aliases"]
+    Speech --> Bitmap["Shared Bitmap::from_audio: bounded mono/resampling"]
+    Language --> Generator["libmtmd generator borrows strings and bitmap"]
+    Bitmap --> Generator
+    Generator --> WAV["Completed native WAV copied before generator destruction"]
+```
+
+`SpeechModel` does not borrow or evict the chat model. Speaker sources are authorized/decoded above this layer; it never opens arbitrary user paths. Native input rate is queried from the projector and shared PCM conversion/copy budgets apply. The reference bitmap and input strings outlive the generator. The generator is dropped before the projector/context/model; a frame-limit failure returns an error instead of truncated success. Language support is queried from actual codec-language vocabulary tokens; ISO aliases are data in `native/data/speech_languages.json`. The pinned API is experimental, and arbitrary voice/model/language quality needs native acceptance rather than a registry declaration.
 
 ## Native reasoning control
 

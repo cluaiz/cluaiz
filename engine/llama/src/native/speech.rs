@@ -8,7 +8,8 @@
 use crate::ffi::llama_cpp;
 use crate::ffi::mtmd;
 use anyhow::{bail, Context, Result};
-use std::ffi::{c_void, CString};
+use cluaiz_core::{media::DecodedAudio, media_limits::MediaLimits};
+use std::ffi::{c_void, CStr, CString};
 use std::path::Path;
 use std::ptr::NonNull;
 
@@ -29,6 +30,7 @@ pub struct SpeechModel {
     context: NonNull<c_void>,
     projector: NonNull<mtmd::mtmd_context>,
     sample_rate: u32,
+    languages: Vec<String>,
 }
 
 // SAFETY: the native handles are owned by this value and used by one thread at a time (callers
@@ -44,6 +46,9 @@ pub struct SpeechOptions {
     pub max_frames: Option<usize>,
     /// None: a new random voice each time (the model's own behaviour without a speaker sample)
     pub seed: Option<u32>,
+    /// Already decoded/authorized audio; the native speaker encoder conditions this utterance.
+    pub speaker_reference: Option<DecodedAudio>,
+    pub limits: MediaLimits,
 }
 
 impl SpeechModel {
@@ -86,7 +91,7 @@ impl SpeechModel {
         let projector = NonNull::new(unsafe {
             mtmd::mtmd_init_from_file(projector_c.as_ptr(), model.as_ptr().cast(), projector_params)
         });
-        let owner = |projector| Self { model, context, projector, sample_rate: 0 };
+        let owner = |projector| Self { model, context, projector, sample_rate: 0, languages: Vec::new() };
         let Some(projector) = projector else {
             // SAFETY: handles owned here and not used after.
             unsafe {
@@ -102,6 +107,20 @@ impl SpeechModel {
             bail!("This projector does not generate audio");
         }
         speech.sample_rate = info.sample_rate as u32;
+        // SAFETY: vocabulary and its returned token strings are borrowed from the owned live model.
+        unsafe {
+            let vocab = llama_cpp::llama_model_get_vocab(model.as_ptr());
+            for token in 0..llama_cpp::llama_vocab_n_tokens(vocab) {
+                let text = llama_cpp::llama_vocab_get_text(vocab, token);
+                if !text.is_null() {
+                    if let Ok(text) = CStr::from_ptr(text).to_str() {
+                        if let Some(name) = text.strip_prefix("<|codec_language_").and_then(|s| s.strip_suffix("|>")) {
+                            speech.languages.push(name.to_owned());
+                        }
+                    }
+                }
+            }
+        }
         Ok(speech)
     }
 
@@ -119,14 +138,26 @@ impl SpeechModel {
         // SAFETY: live context.
         unsafe { llama_cpp::llama_memory_clear(llama_cpp::llama_get_memory(ctx), true) };
 
-        let generator = Generator::new(ctx, self.projector.as_ptr())?;
         let text_c = CString::new(text).context("Text contains a NUL character")?;
-        let language_c = options.language.as_deref().map(CString::new).transpose()?;
+        let language = options.language.as_deref().map(|l| resolve_language(l, &self.languages)).transpose()?;
+        let language_c = language.as_deref().map(CString::new).transpose()?;
+        let speaker = options.speaker_reference.as_ref().map(|audio| {
+            // SAFETY: owned live projector; query its input rate, not its output WAV rate.
+            let (rate, supports_audio) = unsafe {
+                (mtmd::mtmd_get_audio_sample_rate(self.projector.as_ptr()), mtmd::mtmd_support_audio(self.projector.as_ptr()))
+            };
+            if rate <= 0 || !supports_audio {
+                bail!("This speech projector has no speaker-reference encoder");
+            }
+            super::media::Bitmap::from_audio(audio, rate as u32, options.limits).map(|(bitmap, _)| bitmap)
+        }).transpose()?;
+        // Declared after strings/bitmap so the generator is freed before its borrowed inputs.
+        let generator = Generator::new(ctx, self.projector.as_ptr())?;
         let input = mtmd::mtmd_helper_gen_audio_inp {
             seq_id: 0,
             prompt: text_c.as_ptr(),
             prompt_len: text.len(),
-            speaker_ref: std::ptr::null_mut(),
+            speaker_ref: speaker.as_ref().map_or(std::ptr::null_mut(), |b| b.0.as_ptr()),
             lang: language_c.as_ref().map_or(std::ptr::null(), |l| l.as_ptr()),
             top_k: TOP_K,
             top_p: TOP_P,
@@ -152,6 +183,7 @@ impl SpeechModel {
         let mut sampled = sampler.sample(ctx);
         // SAFETY: live context with embeddings on; the pointer is read before the next step.
         let mut hidden: *const f32 = unsafe { llama_cpp::llama_get_embeddings_ith(ctx, -1) };
+        if hidden.is_null() { bail!("Speech prompt produced no hidden state"); }
         let mut frames = 0usize;
         let mut stop = false;
         while !stop && frames < max_frames {
@@ -167,12 +199,15 @@ impl SpeechModel {
             hidden = next;
             sampled = sampler.sample(ctx);
         }
+        if !stop && frames >= max_frames { bail!("Speech reached its frame limit before completion; shorten the input"); }
 
         let (mut rate, mut data, mut len, mut samples) = (0i32, std::ptr::null(), 0usize, 0i64);
         // SAFETY: live generator; data stays valid until the generator is freed (below, after the copy).
         if unsafe { mtmd::mtmd_helper_gen_audio_get_output(generator.0.as_ptr(), &mut rate, &mut data, &mut len, &mut samples) } != 0
             || data.is_null()
             || len == 0
+            || rate <= 0
+            || samples <= 0
         {
             bail!("Speech produced no audio");
         }
@@ -180,6 +215,34 @@ impl SpeechModel {
         let wav = unsafe { std::slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec();
         tracing::debug!("🗣️ [Speech] {frames} frames, {samples} samples at {rate} Hz");
         Ok(wav)
+    }
+}
+
+fn resolve_language(requested: &str, supported: &[String]) -> Result<String> {
+    let code = requested.split(['-', '_']).next().unwrap_or(requested).to_ascii_lowercase();
+    let data: serde_json::Value = serde_json::from_str(include_str!("data/speech_languages.json"))?;
+    let name = data["aliases"][&code].as_str().unwrap_or(&code);
+    if !supported.iter().any(|l| l == name) {
+        bail!("Speech model does not support language '{requested}'. Supported languages: {}. Select a model that supports the requested language.", supported.join(", "));
+    }
+    Ok(name.to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_requested_language_uses_actual_vocabulary_not_an_assumed_model_list() -> Result<()> {
+        let data: serde_json::Value = serde_json::from_str(include_str!("data/speech_languages.json"))?;
+        for case in data["tests"].as_array().context("Missing language cases")? {
+            let requested = case["requested"].as_str().context("Missing request")?;
+            let supported: Vec<String> = serde_json::from_value(case["supported"].clone())?;
+            let result = resolve_language(requested, &supported);
+            if case["error"].as_bool().unwrap_or(false) {
+                assert!(result.unwrap_err().to_string().contains(requested));
+            } else { assert_eq!(result?, case["expected"].as_str().context("Missing expected language")?); }
+        }
+        Ok(())
     }
 }
 

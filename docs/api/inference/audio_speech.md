@@ -2,7 +2,7 @@
 
 `POST /v1/audio/speech` (alias: `POST /v1/audio/execute` with task `text_to_speech`)
 
-Synthesizes high-fidelity natural speech audio from input text using ONNX-accelerated neural voice engines (Piper, VITS). Outputs playable Base64 WAV Data URIs ready for instant browser playback or file saving without intermediate disk writes.
+Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone and its audio-generation projector. Returns a Base64 WAV data URI in JSON. Model/language coverage and audible quality depend on the selected package.
 
 ---
 
@@ -21,12 +21,12 @@ Synthesizes high-fidelity natural speech audio from input text using ONNX-accele
 | Parameter | Type | Required | Default | Allowed Values | Description |
 |:---|:---|:---:|:---|:---|:---|
 | **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
-| **`model`** | String | No | `"piper-en-us-ryan-medium"` | Installed TTS package ID | Neural TTS voice model package ID. |
-| **`voice`** | String | No | `"default"` | `"default"`, or a voice file name of the model (Kokoro: `af_heart`, `am_adam`, `hf_alpha`, `hm_omega` …) | `"default"`/`"auto"` picks a voice that speaks the text's language. Single-voice models (Piper) ignore it. |
-| **`language`** | String | No | from the text | Language code (`"cs"`, `"pl"`, `"hi"`, `"en-US"` …) | Cluaiz extension (like Google/Azure `languageCode`): the text's language. Numbers and spelling are read by its rules even when no voice of the model speaks it (Czech with Kokoro). Omitted: from the text's script (Devanagari, Tamil …), else the voice, else the model. |
-| **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Speaking rate (1.0 = the model's normal pace; 1.25 = faster, 0.8 = slower). |
-| **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Each finished sentence arrives as its own small WAV (`speech.audio.delta`) while the next one is made, so playback can start after the first sentence; the last event holds the whole WAV. |
-| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
+| **`model`** | String | No | active TTS slot, else first eligible installed package | Installed TTS package ID | ONNX TTS or GGUF speech model with an audio-generation projector. |
+| **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
+| **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | ONNX: rules for the text's spelling/numbers, inferred from script/voice/model. GGUF: native language selector with explicit unsupported-language errors; Qwen's default is English. |
+| **`speed`** | Float | No | `1.0` | ONNX: `0.25` – `4.0`; GGUF: `1.0` only | GGUF does not expose pace control; any other speed returns HTTP400 rather than being silently ignored. |
+| **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Kokoro/Piper emit a WAV per finished sentence (`speech.audio.delta`), then the whole WAV. GGUF and other families currently send only the final result. |
+| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` to retain) | GGUF: positive minutes after successful completion; `0` unloads after the request; omitted/`-1` retains until replacement or shutdown. Native load/generation failure releases the speech model; validation rejected before dispatch leaves any existing resident unchanged. New requests invalidate older expiry timers. Chat and ONNX have separate owners. |
 
 ---
 
@@ -53,6 +53,30 @@ The following official Piper ONNX voice packages are available out-of-the-box:
 ```
 
 A single-voice model (Piper) returns only `"default"`.
+
+### GGUF speech (experimental)
+
+A GGUF speech package needs its backbone and matching audio-generation mmproj. This uses the pinned llama.cpp `libmtmd` audio-generation API; it does not load the speech model into the chat context. The test package is `Qwen3-TTS-12Hz-1.7B-Base-GGUF-Q4_K_M` (Q4_K_M backbone plus Q8 projector).
+
+Qwen3-TTS supports en, zh, ja, ko, de, fr, ru, pt, es and it. It does not support Hindi. Supply `language` explicitly for non-English speech; omitted/`auto` uses the native default (English for this package), rather than ONNX script detection. An unsupported language returns an error naming the requested language and the supported names queried from the loaded vocabulary. The engine does not silently switch the selected model. These model capabilities come from the [official model card](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base), not a claim that each language has passed local listening acceptance.
+
+```json
+{
+  "model": "Qwen3-TTS-12Hz-1.7B-Base-GGUF-Q4_K_M",
+  "input": "Hello, welcome to the local speech engine.",
+  "language": "en",
+  "voice": "default",
+  "speed": 1.0,
+  "stream": false,
+  "keep_alive": 5
+}
+```
+
+For speaker conditioning, set `voice` to an audio data URI or audio source, for example `"data:audio/wav;base64,<reference PCM WAV bytes>"`. Local sources use the normal filesystem authorization/approval path; remote and inline sources use shared media limits and format decoding. The input is converted to mono at the projector's queried input rate and encoded by its real speaker encoder. Missing/unsupported encoders and corrupt/oversized references error. A reference influences the voice; it does not prove speaker identity or guarantee similarity. Without a reference the Base model may choose a different voice on each generation.
+
+Inline references use the same configured attachment request limit as transcription and `/v1/audio/execute`, including Base64 expansion and JSON envelope space. Requests beyond that limit return HTTP413 with `request_too_large`.
+
+GGUF generation is currently buffered: `stream:true` sends the final SSE result, with no intermediate `speech.audio.delta` parts. Native model loading/generation may take time before that event. Long inputs that hit the frame limit error instead of returning a silently truncated utterance. The native API is experimental and may change with the pinned library.
 
 ---
 
