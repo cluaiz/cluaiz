@@ -50,6 +50,8 @@ pub struct OnnxEngine {
     pub(crate) session_pool: Vec<Arc<std::sync::Mutex<Session>>>,
     // 🎧 Encoder Session: Whisper encoder (input_features -> encoder_hidden_states)
     pub(crate) encoder_session: Option<Arc<std::sync::Mutex<Session>>>,
+    // 🔁 STT decoder that continues from cached keys/values (`past_key_values.*`), when packaged
+    pub(crate) cached_decoder_session: Option<Arc<std::sync::Mutex<Session>>>,
     pub(crate) tokenizer: Option<Arc<Tokenizer>>,
     // 🔢 Active Inference Counter: tracks in-flight requests for safe hot swap
     pub(crate) active_inferences: Arc<AtomicUsize>,
@@ -107,6 +109,7 @@ impl OnnxEngine {
         Ok(Self {
             session_pool: Vec::new(),
             encoder_session: None,
+            cached_decoder_session: None,
             tokenizer: None,
             active_inferences: Arc::new(AtomicUsize::new(0)),
             active_kv_cache: None,

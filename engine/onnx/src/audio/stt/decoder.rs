@@ -66,6 +66,11 @@ impl OnnxEngine {
     }
 
     /// Consume shared PCM directly; HTTP/file decoding belongs to the caller.
+    ///
+    /// Audio longer than the model's window (Whisper: 30 s) is split at its quietest moment near
+    /// each window's end and the windows are transcribed in order, as whisper.cpp and OpenAI do.
+    /// Without an explicit `language`, each window's language is identified on its own (among the
+    /// speaker's `languages` when given), so a recording that changes language is followed.
     pub fn execute_stt_prepared(
         &self,
         audio: &cluaiz_core::media::DecodedAudio,
@@ -77,18 +82,22 @@ impl OnnxEngine {
             .acquire_session()
             .map_err(|e| anyhow!("Failed to acquire audio session: {}", e))?;
 
-        let mut session_guard = session_arc
+        let mut decoder = session_arc
             .lock()
             .map_err(|_| anyhow!("Failed to lock ONNX audio decoder session mutex"))?;
-        if !crate::media::is_uncached_decoder(&session_guard) {
+        if !crate::media::is_uncached_decoder(&decoder) {
             return Err(anyhow!("STT requires a validated uncached decoder; unsupported cache inputs are not synthesized"));
         }
-
-        let decoder_input_names: Vec<String> = session_guard
-            .inputs()
-            .iter()
-            .map(|i| i.name().to_string())
-            .collect();
+        // The decoder that continues from cached keys/values (one token per step), when the
+        // package has one; without it every step re-reads the whole transcript so far
+        let cached_arc = self.cached_decoder_session.clone();
+        let mut cached = match &cached_arc {
+            Some(arc) => Some(
+                arc.lock()
+                    .map_err(|_| anyhow!("Failed to lock ONNX cached decoder session mutex"))?,
+            ),
+            None => None,
+        };
 
         let t_start = std::time::Instant::now();
 
@@ -111,79 +120,124 @@ impl OnnxEngine {
         let pcm = resample_linear(&mono, profile.sample_rate, limits)?;
         drop(mono);
         let pcm_samples = pcm.samples();
-        if pcm_samples.len() > profile.max_samples {
-            return Err(anyhow!(
-                "Audio exceeds this STT processor's supported window; split it into chunks"
-            ));
-        }
+        let windows = families::split_windows(pcm_samples, profile.sample_rate, profile.max_samples);
         tracing::debug!(
-            "⏱️ [BENCHMARK STT] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {})",
+            "⏱️ [BENCHMARK STT] Step A - PCM Load Time: {:?} (Audio Duration: {:.2}s, Samples: {}, Windows: {})",
             t_pcm.elapsed(),
             pcm_samples.len() as f32 / profile.sample_rate as f32,
-            pcm_samples.len()
+            pcm_samples.len(),
+            windows.len()
         );
 
-        let t_enc = std::time::Instant::now();
-        let real_encoder_hidden_states = match profile.encoder_kind {
-            SttEncoderKind::MelSpectrogram { .. } => {
-                families::whisper::encode_whisper_features(
-                    &mut encoder,
-                    pcm_samples,
-                    &profile,
-                    limits,
-                )?
-            }
-            SttEncoderKind::RawWaveform { .. } => {
-                families::moonshine::encode_moonshine_waveform(
-                    &mut encoder,
-                    pcm_samples,
-                    &profile,
-                    limits,
-                )?
-            }
-        };
-        drop(encoder);
-        tracing::debug!(
-            "⏱️ [BENCHMARK STT] Step C - Encoder ONNX Model Inference Time: {:?}",
-            t_enc.elapsed()
-        );
-
-        let audio_duration_secs = (pcm_samples.len() as f32) / (profile.sample_rate as f32);
-        let max_speech_len = profile.max_decode_steps(audio_duration_secs);
-
-        let mut speech_tokens: Vec<u32> = Vec::new();
-        let mut speech_tokens_set: std::collections::HashSet<u32> =
-            std::collections::HashSet::new();
-
-        let clean_lang = req_lang.trim().to_lowercase();
-
-        let encoder_val: Value = {
-            Value::from_array(real_encoder_hidden_states)
+        let tokenizer = self
+            .tokenizer
+            .as_deref()
+            .ok_or_else(|| anyhow!("STT tokenizer missing"))?;
+        let mut texts: Vec<String> = Vec::new();
+        for window in windows {
+            let samples = &pcm_samples[window];
+            let t_enc = std::time::Instant::now();
+            let hidden_states = match profile.encoder_kind {
+                SttEncoderKind::MelSpectrogram { .. } => {
+                    families::whisper::encode_whisper_features(&mut encoder, samples, &profile, limits)?
+                }
+                SttEncoderKind::RawWaveform { .. } => {
+                    families::moonshine::encode_moonshine_waveform(&mut encoder, samples, &profile, limits)?
+                }
+            };
+            tracing::debug!(
+                "⏱️ [BENCHMARK STT] Step C - Encoder ONNX Model Inference Time: {:?}",
+                t_enc.elapsed()
+            );
+            let encoder_val: Value = Value::from_array(hidden_states)
                 .map(|v| v.into())
-                .map_err(|e| anyhow!("Failed to construct encoder hidden states tensor: {}", e))?
-        };
+                .map_err(|e| anyhow!("Failed to construct encoder hidden states tensor: {}", e))?;
 
-        let is_decoder_ids_name: Vec<bool> = decoder_input_names
-            .iter()
-            .map(|n| {
-                let n_str = n.as_str();
-                n_str.contains("input_ids") || n_str.contains("decoder_input_ids")
-            })
-            .collect();
+            let prompt = self.decoder_prompt(&mut decoder, &encoder_val, &profile, options)?;
+            let window_secs = samples.len() as f32 / profile.sample_rate as f32;
+            // Later windows continue the text after a space
+            let separator = if texts.is_empty() { "" } else { " " };
+            let tokens = decode_window(
+                &mut decoder,
+                cached.as_deref_mut(),
+                &encoder_val,
+                prompt,
+                &profile,
+                profile.max_decode_steps(window_secs),
+                tokenizer,
+                separator,
+                &mut callback,
+            )?;
+            let text = tokenizer
+                .decode(&tokens, true)
+                .map_err(|e| anyhow!(e.to_string()))?
+                .trim()
+                .to_string();
+            if !text.is_empty() {
+                texts.push(text);
+            }
+        }
 
-        let mut current_decoder_ids: Vec<i64> = vec![profile.decoder_start_token];
+        tracing::debug!(
+            "⏱️ [BENCHMARK STT] Total STT Execution Time: {:?}",
+            t_start.elapsed()
+        );
+        if texts.is_empty() {
+            return Err(anyhow!("STT produced no transcript text"));
+        }
+        Ok(texts.join(" "))
+    }
 
-        if let (Some(transcribe), Some(translate), Some(no_timestamps)) = (
+    /// The decoder's starting tokens for one window: start of transcript, then (Whisper) the
+    /// language, the task and "no timestamps". The language is the requested one, else the one the
+    /// decoder rates most likely for this window among the speaker's languages (or all it knows).
+    fn decoder_prompt(
+        &self,
+        decoder: &mut ort::session::Session,
+        encoder_val: &Value,
+        profile: &families::SttFamilyProfile,
+        options: &crate::media::SttOptions,
+    ) -> Result<Vec<i64>> {
+        let mut prompt: Vec<i64> = vec![profile.decoder_start_token];
+        let (Some(transcribe), Some(translate), Some(no_timestamps)) = (
             profile.transcribe_token,
             profile.translate_token,
             profile.no_timestamps_token,
-        ) {
-            let mut chosen_lang_token: Option<i64> = None;
+        ) else {
+            if options.translate {
+                return Err(anyhow!("Speech translation is not supported by this STT model"));
+            }
+            return Ok(prompt);
+        };
+        let tokenizer = self
+            .tokenizer
+            .as_deref()
+            .ok_or_else(|| anyhow!("STT tokenizer missing"))?;
+        let vocab = tokenizer.get_vocab(true);
+        let clean_lang = options
+            .language
+            .as_deref()
+            .unwrap_or("auto")
+            .trim()
+            .to_lowercase();
 
-            // 🌐 Dynamic Language Vocabulary Discovery (Zero Hardcoding), narrowed to the speaker's
-            // languages when given: a phrase is then detected among only those. Languages this model
-            // does not know are skipped; when it knows none of them, every language is considered
-            // (a changed model never makes the microphone fail).
+        let mut chosen: Option<i64> = None;
+        // 1. Explicit language
+        if !clean_lang.is_empty() && clean_lang != "auto" {
+            chosen = [
+                format!("<|{clean_lang}|>"),
+                clean_lang.clone(),
+                format!("<|code_{clean_lang}|>"),
+            ]
+            .iter()
+            .find_map(|token| vocab.get(token).map(|&id| id as i64));
+            if chosen.is_none() {
+                return Err(anyhow!("Requested language is not present in the STT tokenizer"));
+            }
+        }
+
+        // 2. The speaker's languages this model knows (unknown ones are skipped; none known: all)
+        if chosen.is_none() {
             let wanted: Vec<String> = options
                 .languages
                 .iter()
@@ -192,14 +246,11 @@ impl OnnxEngine {
                 .collect();
             let mut all_lang_ids: Vec<i64> = Vec::new();
             let mut lang_token_ids: Vec<i64> = Vec::new();
-            if let Some(tokenizer) = &self.tokenizer {
-                let vocab = tokenizer.get_vocab(true);
-                for (tok_str, &tok_id) in vocab.iter() {
-                    if let Some(code) = families::language_of_token(tok_str) {
-                        all_lang_ids.push(tok_id as i64);
-                        if wanted.iter().any(|w| w == code) {
-                            lang_token_ids.push(tok_id as i64);
-                        }
+            for (tok_str, &tok_id) in vocab.iter() {
+                if let Some(code) = families::language_of_token(tok_str) {
+                    all_lang_ids.push(tok_id as i64);
+                    if wanted.iter().any(|w| w == code) {
+                        lang_token_ids.push(tok_id as i64);
                     }
                 }
             }
@@ -209,284 +260,216 @@ impl OnnxEngine {
                 }
                 lang_token_ids = all_lang_ids;
             }
-            // One language left: it is the language, no detection needed
-            if lang_token_ids.len() == 1 && (clean_lang.is_empty() || clean_lang == "auto") {
-                chosen_lang_token = lang_token_ids.first().copied();
-            }
-
-            // 1. Explicit Language Mode Resolution
-            if !clean_lang.is_empty() && clean_lang != "auto" {
-                if let Some(tokenizer) = &self.tokenizer {
-                    let vocab = tokenizer.get_vocab(true);
-                    let target1 = format!("<|{}|>", clean_lang);
-                    let target2 = clean_lang.clone();
-                    let target3 = format!("<|code_{}|>", clean_lang);
-
-                    if let Some(&id) = vocab.get(&target1) {
-                        chosen_lang_token = Some(id as i64);
-                    } else if let Some(&id) = vocab.get(&target2) {
-                        chosen_lang_token = Some(id as i64);
-                    } else if let Some(&id) = vocab.get(&target3) {
-                        chosen_lang_token = Some(id as i64);
-                    }
-                }
-                if chosen_lang_token.is_none() {
-                    return Err(anyhow!(
-                        "Requested language is not present in the STT tokenizer"
-                    ));
-                }
-            }
-
-            // 2. Auto-Detect Mode: Dynamic Step-0 Logits Probing across ONNX decoder
-            if chosen_lang_token.is_none() && !lang_token_ids.is_empty() {
-                let probe_ids = vec![profile.decoder_start_token];
-                if let Ok(input_ids_val) = Value::from_array(([1usize, 1usize], probe_ids)) {
-                    let input_ids_dyn: Value = input_ids_val.into();
-
-                    let mut probe_inputs = HashMap::with_capacity(decoder_input_names.len());
-                    for (idx, name) in decoder_input_names.iter().enumerate() {
-                        let n_str = name.as_str();
-                        if is_decoder_ids_name[idx] {
-                            probe_inputs.insert(n_str, &input_ids_dyn);
-                        } else if n_str.contains("encoder_hidden_states") {
-                            probe_inputs.insert(n_str, &encoder_val);
-                        }
-                    }
-
-                    if let Ok(output_tensors) = session_guard.run(probe_inputs) {
-                        let mut probe_data: Option<(Vec<usize>, Vec<f32>)> = None;
-                        if let Some(logits) = output_tensors.get("logits") {
-                            if let Ok((shape, data)) = logits.try_extract_tensor::<f32>() {
-                                probe_data = Some((
-                                    shape.iter().map(|&s| s as usize).collect(),
-                                    data.to_vec(),
-                                ));
-                            }
-                        }
-                        if probe_data.is_none() {
-                            for (_, v) in output_tensors.iter() {
-                                if let Ok((shape, data)) = v.try_extract_tensor::<f32>() {
-                                    probe_data = Some((
-                                        shape.iter().map(|&s| s as usize).collect(),
-                                        data.to_vec(),
-                                    ));
-                                    break;
-                                }
-                            }
-                        }
-
-                        if let Some((shape, data)) = probe_data {
-                            let vocab_size = *shape.last().unwrap_or(&51866);
-                            let offset =
-                                (shape.get(1).cloned().unwrap_or(1).saturating_sub(1)) * vocab_size;
-                            if offset + vocab_size <= data.len() {
-                                let logits_slice = &data[offset..offset + vocab_size];
-                                let mut max_score = f32::NEG_INFINITY;
-                                let mut best_lang_id = None;
-
-                                for &tid in &lang_token_ids {
-                                    let idx = tid as usize;
-                                    if idx < logits_slice.len() {
-                                        let score = logits_slice[idx];
-                                        if score > max_score {
-                                            max_score = score;
-                                            best_lang_id = Some(tid);
-                                        }
-                                    }
-                                }
-
-                                if let Some(detected_id) = best_lang_id {
-                                    if let Some(tokenizer) = &self.tokenizer {
-                                        if let Ok(lang_name) =
-                                            tokenizer.decode(&[detected_id as u32], false)
-                                        {
-                                            tracing::debug!("🌍 [STT Dynamic Probing] Auto-Detected Language Token: '{}' (ID: {}, Score: {:.4})", lang_name.trim(), detected_id, max_score);
-                                        }
-                                    }
-                                    chosen_lang_token = Some(detected_id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            let task_token = if options.translate {
-                translate
+            chosen = if lang_token_ids.len() == 1 {
+                // One language left: it is the language, no detection needed
+                lang_token_ids.first().copied()
             } else {
-                transcribe
+                detect_language(decoder, encoder_val, profile.decoder_start_token, &lang_token_ids, tokenizer)
             };
-            if let Some(lang_id) = chosen_lang_token {
-                current_decoder_ids.push(lang_id);
-            }
-            current_decoder_ids.push(task_token);
-            current_decoder_ids.push(no_timestamps);
-        } else {
-            if options.translate {
-                return Err(anyhow!(
-                    "Speech translation is not supported by this STT model"
-                ));
-            }
         }
 
-        tracing::debug!("🔍 [STT Decoder Inputs]: {:?}", decoder_input_names);
+        if let Some(lang_id) = chosen {
+            prompt.push(lang_id);
+        }
+        prompt.push(if options.translate { translate } else { transcribe });
+        prompt.push(no_timestamps);
+        Ok(prompt)
+    }
+}
 
-        let mut emitted_bytes_offset = 0usize;
-        let mut ended = false;
+/// The language token the decoder rates highest right after "start of transcript" (Whisper's
+/// language identification), among `candidates`.
+fn detect_language(
+    decoder: &mut ort::session::Session,
+    encoder_val: &Value,
+    start_token: i64,
+    candidates: &[i64],
+    tokenizer: &tokenizers::Tokenizer,
+) -> Option<i64> {
+    let ids: Value = Value::from_array(([1usize, 1usize], vec![start_token])).ok()?.into();
+    let outputs = decoder.run(decoder_inputs(decoder, &ids, encoder_val)).ok()?;
+    let (shape, data) = outputs.get("logits")?.try_extract_tensor::<f32>().ok()?;
+    let logits = last_position(&shape.iter().map(|&s| s as usize).collect::<Vec<_>>(), data)?;
+    let best = candidates
+        .iter()
+        .copied()
+        .filter(|&id| (id as usize) < logits.len())
+        .max_by(|&a, &b| logits[a as usize].total_cmp(&logits[b as usize]))?;
+    if let Ok(name) = tokenizer.decode(&[best as u32], false) {
+        tracing::debug!("🌍 [STT Dynamic Probing] Auto-Detected Language Token: '{}' (ID: {})", name.trim(), best);
+    }
+    Some(best)
+}
 
-        for step in 0..max_speech_len {
-            let seq_len = current_decoder_ids.len();
-            let input_ids_val =
-                Value::from_array(([1usize, seq_len], current_decoder_ids.clone()))?;
-            let input_ids_dyn: Value = input_ids_val.into();
-
-            let mut step_inputs: HashMap<&str, &Value> =
-                HashMap::with_capacity(decoder_input_names.len());
-
-            for (idx, name) in decoder_input_names.iter().enumerate() {
-                let n_str = name.as_str();
-                if is_decoder_ids_name[idx] {
-                    step_inputs.insert(n_str, &input_ids_dyn);
-                } else if n_str.contains("encoder_hidden_states") {
-                    step_inputs.insert(n_str, &encoder_val);
-                }
-            }
-
-            tracing::debug!(
-                "🎙️ [STT Decoder] Step {}/{} running session with {} inputs...",
-                step,
-                max_speech_len,
-                step_inputs.len()
-            );
-
-            let output_tensors = session_guard.run(step_inputs)?;
-
-            let mut raw_extracted: Option<(Vec<usize>, Vec<f32>)> = None;
-
-            if let Some(logits) = output_tensors.get("logits") {
-                if let Ok((shape, data)) = logits.try_extract_tensor::<f32>() {
-                    raw_extracted =
-                        Some((shape.iter().map(|&s| s as usize).collect(), data.to_vec()));
-                }
-            }
-
-            if raw_extracted.is_none() {
-                for (k, v) in output_tensors.iter() {
-                    tracing::debug!("🔍 [STT Decoder] ONNX Output key: '{}'", k);
-                    if let Ok((shape, data)) = v.try_extract_tensor::<f32>() {
-                        raw_extracted =
-                            Some((shape.iter().map(|&s| s as usize).collect(), data.to_vec()));
-                        break;
-                    }
-                }
-            }
-
-            let next_tok = if let Some((shape, data)) = raw_extracted {
-                let (seq_len, vocab_size) = if shape.len() >= 3 {
-                    (shape[1], shape[2])
-                } else if shape.len() == 2 {
-                    (shape[0], shape[1])
-                } else {
-                    (1, shape.last().cloned().unwrap_or(51866))
-                };
-                let offset = (seq_len.saturating_sub(1)) * vocab_size;
-
-                if offset + vocab_size > data.len() {
-                    tracing::debug!("⚠️ [STT Decoder] Logits offset out of bounds: shape={:?}, seq_len={}, vocab_size={}, data.len()={}", shape, seq_len, vocab_size, data.len());
-                    return Err(anyhow!("STT logits tensor shape is out of bounds"));
-                }
-                let step_logits = &data[offset..offset + vocab_size];
-
-                let mut best_idx = 0usize;
-                let mut max_val = f32::NEG_INFINITY;
-
-                let max_allowed_tok = (step_logits.len().saturating_sub(1)) as u32;
-                let rep_penalty = 1.25f32;
-
-                for (idx, &val) in step_logits.iter().enumerate() {
-                    let tok_id = idx as u32;
-                    if tok_id <= max_allowed_tok && tok_id != profile.decoder_start_token as u32 {
-                        let mut adjusted_val = val;
-                        if speech_tokens_set.contains(&tok_id) {
-                            adjusted_val = if adjusted_val < 0.0 {
-                                adjusted_val * rep_penalty
-                            } else {
-                                adjusted_val / rep_penalty
-                            };
-                        }
-
-                        if adjusted_val > max_val {
-                            max_val = adjusted_val;
-                            best_idx = idx;
-                        }
-                    }
-                }
-                if !max_val.is_finite() {
-                    return Err(anyhow!("STT logits contain no finite selectable score"));
-                }
-                best_idx as u32
+/// Inputs of the uncached decoder: the token ids and the encoder's hidden states.
+fn decoder_inputs<'v>(
+    decoder: &ort::session::Session,
+    ids: &'v Value,
+    encoder_val: &'v Value,
+) -> HashMap<String, &'v Value> {
+    decoder
+        .inputs()
+        .iter()
+        .filter_map(|input| {
+            let name = input.name();
+            if name.contains("input_ids") {
+                Some((name.to_owned(), ids))
+            } else if name.contains("encoder_hidden_states") {
+                Some((name.to_owned(), encoder_val))
             } else {
-                return Err(anyhow!("STT decoder returned no usable logits"));
-            };
-
-            let is_eot = next_tok == profile.eos_token as u32;
-
-            if is_eot {
-                ended = true;
-                break;
+                None
             }
+        })
+        .collect()
+}
 
-            speech_tokens.push(next_tok);
-            speech_tokens_set.insert(next_tok);
-            current_decoder_ids.push(next_tok as i64);
+/// The logits of the last position of a `[batch, sequence, vocab]` (or `[sequence, vocab]`) tensor.
+fn last_position<'d>(shape: &[usize], data: &'d [f32]) -> Option<&'d [f32]> {
+    let vocab = *shape.last()?;
+    let rows = match shape.len() {
+        0 | 1 => 1,
+        2 => shape[0],
+        _ => shape[shape.len() - 2],
+    };
+    let offset = rows.checked_sub(1)?.checked_mul(vocab)?;
+    data.get(offset..offset.checked_add(vocab)?)
+}
 
-            if let Some(cb) = callback.as_mut() {
-                if let Some(tokenizer) = &self.tokenizer {
-                    if let Ok(full_text) = tokenizer.decode(&speech_tokens, false) {
-                        // Universal Multi-Byte UTF-8 Boundary Guard:
-                        // Defer emission if the token sequence ends in incomplete multi-byte bytes ('\u{FFFD}')
-                        if !full_text.ends_with('\u{FFFD}')
-                            && full_text.len() > emitted_bytes_offset
-                        {
-                            let delta = &full_text[emitted_bytes_offset..];
-                            if !delta.is_empty() && !cb(delta.to_string()) {
-                                return Err(anyhow!("STT output consumer stopped"));
-                            }
-                            emitted_bytes_offset = full_text.len();
-                        }
-                    }
-                }
-            }
+/// Greedy choice of the next token: the highest score, never the start token, scores of tokens
+/// already said lowered (so the decoder does not repeat itself).
+fn next_token(
+    logits: &[f32],
+    start_token: i64,
+    said: &std::collections::HashSet<u32>,
+) -> Result<u32> {
+    const REPETITION_PENALTY: f32 = 1.25;
+    let mut best: Option<(u32, f32)> = None;
+    for (idx, &val) in logits.iter().enumerate() {
+        let tok = idx as u32;
+        if tok == start_token as u32 {
+            continue;
         }
-
-        tracing::debug!(
-            "⏱️ [BENCHMARK STT] Total STT Execution Time: {:?}",
-            t_start.elapsed()
-        );
-
-        if !ended {
-            return Err(anyhow!(
-                "STT decoder token budget exhausted before end of transcript"
-            ));
-        }
-        if speech_tokens.is_empty() {
-            return Err(anyhow!("STT Decoder failed to produce tokens."));
-        }
-
-        if let Some(tokenizer) = &self.tokenizer {
-            let decoded = tokenizer
-                .decode(&speech_tokens, true)
-                .map_err(|e| anyhow!(e.to_string()))?;
-            let cleaned = decoded.trim().to_string();
-            if cleaned.is_empty() {
-                Err(anyhow!("STT produced no transcript text"))
-            } else {
-                Ok(cleaned)
-            }
+        let score = if said.contains(&tok) {
+            if val < 0.0 { val * REPETITION_PENALTY } else { val / REPETITION_PENALTY }
         } else {
-            Err(anyhow!("STT tokenizer missing"))
+            val
+        };
+        if best.is_none_or(|(_, b)| score > b) {
+            best = Some((tok, score));
         }
     }
+    match best {
+        Some((tok, score)) if score.is_finite() => Ok(tok),
+        _ => Err(anyhow!("STT logits contain no finite selectable score")),
+    }
+}
+
+/// Decodes one window's transcript tokens (after `prompt`) until end of text.
+///
+/// With `cached` (a decoder taking `past_key_values.*`), the first step runs the full decoder,
+/// which also returns every layer's keys/values (`present.*`); each later step feeds only the new
+/// token plus those keys/values, so a step costs the same however long the transcript is. Without
+/// it, every step re-reads the whole sequence. New text reaches `callback` as it is decoded.
+#[allow(clippy::too_many_arguments)]
+fn decode_window(
+    decoder: &mut ort::session::Session,
+    mut cached: Option<&mut ort::session::Session>,
+    encoder_val: &Value,
+    prompt: Vec<i64>,
+    profile: &families::SttFamilyProfile,
+    max_steps: usize,
+    tokenizer: &tokenizers::Tokenizer,
+    separator: &str,
+    callback: &mut Option<&mut (dyn FnMut(String) -> bool + Send)>,
+) -> Result<Vec<u32>> {
+    let mut ids = prompt;
+    let mut speech_tokens: Vec<u32> = Vec::new();
+    let mut said: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    // Keys/values by the cached decoder's input name (`past_key_values.<layer>.<kind>.<key|value>`)
+    let mut past: HashMap<String, Value> = HashMap::new();
+    let mut emitted_bytes = 0usize;
+    let mut ended = false;
+
+    for step in 0..max_steps {
+        let use_cache = cached.is_some() && !past.is_empty();
+        tracing::debug!("🎙️ [STT Decoder] Step {}/{} (cached: {})", step, max_steps, use_cache);
+        let logits: Vec<f32> = if let (true, Some(cached_decoder)) = (use_cache, cached.as_deref_mut()) {
+            let last = *ids.last().ok_or_else(|| anyhow!("STT decoder has no token to continue from"))?;
+            let new_id: Value = Value::from_array(([1usize, 1usize], vec![last]))?.into();
+            let mut inputs: HashMap<String, &Value> = HashMap::new();
+            for input in cached_decoder.inputs() {
+                let name = input.name();
+                if name.contains("input_ids") {
+                    inputs.insert(name.to_owned(), &new_id);
+                } else if let Some(value) = past.get(name) {
+                    inputs.insert(name.to_owned(), value);
+                } else {
+                    return Err(anyhow!("STT cached decoder input {name} has no cached value"));
+                }
+            }
+            let outputs = cached_decoder.run(inputs)?;
+            let mut logits = None;
+            let mut updates = Vec::new();
+            for (name, value) in outputs {
+                if name == "logits" {
+                    let (shape, data) = value.try_extract_tensor::<f32>()?;
+                    let shape: Vec<usize> = shape.iter().map(|&s| s as usize).collect();
+                    logits = last_position(&shape, data).map(<[f32]>::to_vec);
+                } else if let Some(rest) = name.strip_prefix("present.") {
+                    updates.push((format!("past_key_values.{rest}"), value));
+                }
+            }
+            past.extend(updates);
+            logits.ok_or_else(|| anyhow!("STT cached decoder returned no usable logits"))?
+        } else {
+            let seq: Value = Value::from_array(([1usize, ids.len()], ids.clone()))?.into();
+            let outputs = decoder.run(decoder_inputs(decoder, &seq, encoder_val))?;
+            let mut logits = None;
+            for (name, value) in outputs {
+                if name == "logits" {
+                    let (shape, data) = value.try_extract_tensor::<f32>()?;
+                    let shape: Vec<usize> = shape.iter().map(|&s| s as usize).collect();
+                    logits = last_position(&shape, data).map(<[f32]>::to_vec);
+                } else if let Some(rest) = name.strip_prefix("present.") {
+                    if cached.is_some() {
+                        past.insert(format!("past_key_values.{rest}"), value);
+                    }
+                }
+            }
+            logits.ok_or_else(|| anyhow!("STT logits tensor shape is out of bounds"))?
+        };
+
+        let next = next_token(&logits, profile.decoder_start_token, &said)?;
+        if next == profile.eos_token as u32 {
+            ended = true;
+            break;
+        }
+        speech_tokens.push(next);
+        said.insert(next);
+        ids.push(next as i64);
+
+        if let Some(cb) = callback.as_mut() {
+            if let Ok(full_text) = tokenizer.decode(&speech_tokens, false) {
+                // Multi-byte guard: wait while the text ends in an incomplete character
+                if !full_text.ends_with('\u{FFFD}') && full_text.len() > emitted_bytes {
+                    let delta = &full_text[emitted_bytes..];
+                    let delta = if emitted_bytes == 0 {
+                        format!("{separator}{}", delta.trim_start())
+                    } else {
+                        delta.to_string()
+                    };
+                    if !delta.is_empty() && !cb(delta) {
+                        return Err(anyhow!("STT output consumer stopped"));
+                    }
+                    emitted_bytes = full_text.len();
+                }
+            }
+        }
+    }
+    if !ended {
+        return Err(anyhow!("STT decoder token budget exhausted before end of transcript"));
+    }
+    Ok(speech_tokens)
 }
 
 fn extract_audio_path(prompt: &str) -> Option<String> {

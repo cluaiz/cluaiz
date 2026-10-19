@@ -731,6 +731,8 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
             .as_u64()
             .context("Processor sample limit")?,
     )? + 1;
+    // Longer than the model's window: split into windows, never refused for its length (silence
+    // has no transcript, so it ends with that error instead)
     let too_long = cluaiz_core::media::DecodedAudio::new(rate, 1, Arc::from(vec![0.0f32; count]))?;
     let mut events = state.host.onnx.dispatch(
         OnnxModel::from_registry(entry, AudioTask::SpeechToText)?,
@@ -740,9 +742,11 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         cluaiz_core::Settings::current(),
         Some(0),
     );
-    assert!(
-        matches!(events.recv().await,Some(Err(message)) if message.contains("supported window"))
-    );
+    match events.recv().await {
+        Some(Err(message)) => assert!(!message.contains("supported window"), "{message}"),
+        Some(Ok(_)) => {}
+        None => anyhow::bail!("STT produced no event"),
+    }
     assert!(state.host.onnx.resident_model().await?.is_none());
     let bad_source = json!({"model":ids[1],"input_source":{"type":"audio","data":"data:audio/wav;base64,AAAA"},"stream":false});
     let (status, _) = post(&router, "/v1/audio/execute", bad_source, "user").await?;
