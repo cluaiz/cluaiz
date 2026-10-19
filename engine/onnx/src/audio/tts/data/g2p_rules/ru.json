@@ -1,0 +1,258 @@
+{
+  "kind": "alphabet",
+  "language": "ru",
+  "_about": "Spelling rules for Russian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Default rules for Cyrillic text (Serbian and Ukrainian need their language). Unstressed vowels are not reduced (stress is not written). е, ё, ю, я soften the consonant before them or add j; final consonants are devoiced. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0400",
+      "04FF"
+    ]
+  ],
+  "default_for_script": true,
+  "classes": {
+    "V": "аеёиоуыэюя",
+    "S": "ьъ"
+  },
+  "rules": [
+    {
+      "g": "ого",
+      "p": "ovo",
+      "before": "#"
+    },
+    {
+      "g": "его",
+      "p": "jevo",
+      "before": "#"
+    },
+    {
+      "g": "е",
+      "p": "je",
+      "after": "#"
+    },
+    {
+      "g": "ё",
+      "p": "jo",
+      "after": "#"
+    },
+    {
+      "g": "ю",
+      "p": "ju",
+      "after": "#"
+    },
+    {
+      "g": "я",
+      "p": "ja",
+      "after": "#"
+    },
+    {
+      "g": "е",
+      "p": "je",
+      "after": "V"
+    },
+    {
+      "g": "ё",
+      "p": "jo",
+      "after": "V"
+    },
+    {
+      "g": "ю",
+      "p": "ju",
+      "after": "V"
+    },
+    {
+      "g": "я",
+      "p": "ja",
+      "after": "V"
+    },
+    {
+      "g": "е",
+      "p": "je",
+      "after": "S"
+    },
+    {
+      "g": "ё",
+      "p": "jo",
+      "after": "S"
+    },
+    {
+      "g": "ю",
+      "p": "ju",
+      "after": "S"
+    },
+    {
+      "g": "я",
+      "p": "ja",
+      "after": "S"
+    },
+    {
+      "g": "е",
+      "p": "ʲe"
+    },
+    {
+      "g": "ё",
+      "p": "ʲo"
+    },
+    {
+      "g": "ю",
+      "p": "ʲu"
+    },
+    {
+      "g": "я",
+      "p": "ʲa"
+    },
+    {
+      "g": "и",
+      "p": "ʲi"
+    },
+    {
+      "g": "б",
+      "p": "p",
+      "before": "#"
+    },
+    {
+      "g": "в",
+      "p": "f",
+      "before": "#"
+    },
+    {
+      "g": "г",
+      "p": "k",
+      "before": "#"
+    },
+    {
+      "g": "д",
+      "p": "t",
+      "before": "#"
+    },
+    {
+      "g": "ж",
+      "p": "ʂ",
+      "before": "#"
+    },
+    {
+      "g": "з",
+      "p": "s",
+      "before": "#"
+    },
+    {
+      "g": "а",
+      "p": "a"
+    },
+    {
+      "g": "б",
+      "p": "b"
+    },
+    {
+      "g": "в",
+      "p": "v"
+    },
+    {
+      "g": "г",
+      "p": "ɡ"
+    },
+    {
+      "g": "д",
+      "p": "d"
+    },
+    {
+      "g": "ж",
+      "p": "ʐ"
+    },
+    {
+      "g": "з",
+      "p": "z"
+    },
+    {
+      "g": "й",
+      "p": "j"
+    },
+    {
+      "g": "к",
+      "p": "k"
+    },
+    {
+      "g": "л",
+      "p": "l"
+    },
+    {
+      "g": "м",
+      "p": "m"
+    },
+    {
+      "g": "н",
+      "p": "n"
+    },
+    {
+      "g": "о",
+      "p": "o"
+    },
+    {
+      "g": "п",
+      "p": "p"
+    },
+    {
+      "g": "р",
+      "p": "r"
+    },
+    {
+      "g": "с",
+      "p": "s"
+    },
+    {
+      "g": "т",
+      "p": "t"
+    },
+    {
+      "g": "у",
+      "p": "u"
+    },
+    {
+      "g": "ф",
+      "p": "f"
+    },
+    {
+      "g": "х",
+      "p": "x"
+    },
+    {
+      "g": "ц",
+      "p": "ts"
+    },
+    {
+      "g": "ч",
+      "p": "tɕ"
+    },
+    {
+      "g": "ш",
+      "p": "ʂ"
+    },
+    {
+      "g": "щ",
+      "p": "ɕː"
+    },
+    {
+      "g": "ъ",
+      "p": ""
+    },
+    {
+      "g": "ы",
+      "p": "ɨ"
+    },
+    {
+      "g": "ь",
+      "p": "ʲ"
+    },
+    {
+      "g": "э",
+      "p": "e"
+    }
+  ],
+  "examples": {
+    "мама": "mama",
+    "дом": "dom",
+    "нет": "nʲet",
+    "хлеб": "xlʲep",
+    "я": "ja",
+    "мир": "mʲir"
+  }
+}

@@ -1,0 +1,241 @@
+{
+  "kind": "alphabet",
+  "language": "nl",
+  "_about": "Spelling rules for Dutch written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Vowels are short unless doubled or in a digraph. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiouy",
+    "F": "eiy"
+  },
+  "rules": [
+    {
+      "g": "sch",
+      "p": "sx"
+    },
+    {
+      "g": "aai",
+      "p": "aːi"
+    },
+    {
+      "g": "ooi",
+      "p": "oːi"
+    },
+    {
+      "g": "oei",
+      "p": "ui"
+    },
+    {
+      "g": "ch",
+      "p": "x"
+    },
+    {
+      "g": "ij",
+      "p": "ɛi"
+    },
+    {
+      "g": "ei",
+      "p": "ɛi"
+    },
+    {
+      "g": "ui",
+      "p": "œy"
+    },
+    {
+      "g": "ou",
+      "p": "ʌu"
+    },
+    {
+      "g": "au",
+      "p": "ʌu"
+    },
+    {
+      "g": "oe",
+      "p": "u"
+    },
+    {
+      "g": "eu",
+      "p": "øː"
+    },
+    {
+      "g": "aa",
+      "p": "aː"
+    },
+    {
+      "g": "ee",
+      "p": "eː"
+    },
+    {
+      "g": "oo",
+      "p": "oː"
+    },
+    {
+      "g": "uu",
+      "p": "y"
+    },
+    {
+      "g": "ie",
+      "p": "i"
+    },
+    {
+      "g": "ng",
+      "p": "ŋ"
+    },
+    {
+      "g": "nk",
+      "p": "ŋk"
+    },
+    {
+      "g": "th",
+      "p": "t"
+    },
+    {
+      "g": "en",
+      "p": "ə",
+      "before": "#"
+    },
+    {
+      "g": "e",
+      "p": "ə",
+      "before": "#"
+    },
+    {
+      "g": "d",
+      "p": "t",
+      "before": "#"
+    },
+    {
+      "g": "c",
+      "p": "s",
+      "before": "F"
+    },
+    {
+      "g": "a",
+      "p": "ɑ"
+    },
+    {
+      "g": "e",
+      "p": "ɛ"
+    },
+    {
+      "g": "i",
+      "p": "ɪ"
+    },
+    {
+      "g": "o",
+      "p": "ɔ"
+    },
+    {
+      "g": "u",
+      "p": "ʏ"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "é",
+      "p": "eː"
+    },
+    {
+      "g": "ë",
+      "p": "ɛ"
+    },
+    {
+      "g": "ï",
+      "p": "i"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɣ"
+    },
+    {
+      "g": "h",
+      "p": "h"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "ʋ"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    }
+  ],
+  "examples": {
+    "huis": "hœys",
+    "goed": "ɣut",
+    "schip": "sxɪp",
+    "kat": "kɑt",
+    "wij": "ʋɛi",
+    "boek": "buk"
+  }
+}

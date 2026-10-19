@@ -1,0 +1,405 @@
+{
+  "kind": "alphabet",
+  "language": "pt",
+  "_about": "Spelling rules for Brazilian Portuguese written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Unstressed final e/o are said i/u and t/d before i are tʃ/dʒ (Brazilian). Nasal vowels use the combining tilde. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiouáàâãéêíóôõúü",
+    "F": "eiéêí",
+    "C": "bcçdfghjklmnpqrstvwxz",
+    "I": "i"
+  },
+  "rules": [
+    {
+      "g": "ão",
+      "p": "ɐ̃w̃"
+    },
+    {
+      "g": "ãe",
+      "p": "ɐ̃j̃"
+    },
+    {
+      "g": "õe",
+      "p": "õj̃"
+    },
+    {
+      "g": "am",
+      "p": "ɐ̃w̃",
+      "before": "#"
+    },
+    {
+      "g": "em",
+      "p": "ẽj̃",
+      "before": "#"
+    },
+    {
+      "g": "ens",
+      "p": "ẽj̃s",
+      "before": "#"
+    },
+    {
+      "g": "an",
+      "p": "ɐ̃",
+      "before": "C"
+    },
+    {
+      "g": "am",
+      "p": "ɐ̃",
+      "before": "C"
+    },
+    {
+      "g": "en",
+      "p": "ẽ",
+      "before": "C"
+    },
+    {
+      "g": "em",
+      "p": "ẽ",
+      "before": "C"
+    },
+    {
+      "g": "in",
+      "p": "ĩ",
+      "before": "C"
+    },
+    {
+      "g": "im",
+      "p": "ĩ",
+      "before": "C"
+    },
+    {
+      "g": "im",
+      "p": "ĩ",
+      "before": "#"
+    },
+    {
+      "g": "on",
+      "p": "õ",
+      "before": "C"
+    },
+    {
+      "g": "om",
+      "p": "õ",
+      "before": "C"
+    },
+    {
+      "g": "om",
+      "p": "õ",
+      "before": "#"
+    },
+    {
+      "g": "un",
+      "p": "ũ",
+      "before": "C"
+    },
+    {
+      "g": "um",
+      "p": "ũ",
+      "before": "C"
+    },
+    {
+      "g": "um",
+      "p": "ũ",
+      "before": "#"
+    },
+    {
+      "g": "ã",
+      "p": "ɐ̃"
+    },
+    {
+      "g": "õ",
+      "p": "õ"
+    },
+    {
+      "g": "lh",
+      "p": "ʎ"
+    },
+    {
+      "g": "nh",
+      "p": "ɲ"
+    },
+    {
+      "g": "ch",
+      "p": "ʃ"
+    },
+    {
+      "g": "rr",
+      "p": "x"
+    },
+    {
+      "g": "ss",
+      "p": "s"
+    },
+    {
+      "g": "qu",
+      "p": "k",
+      "before": "F"
+    },
+    {
+      "g": "gu",
+      "p": "ɡ",
+      "before": "F"
+    },
+    {
+      "g": "tes",
+      "p": "tʃis",
+      "before": "#"
+    },
+    {
+      "g": "des",
+      "p": "dʒis",
+      "before": "#"
+    },
+    {
+      "g": "te",
+      "p": "tʃi",
+      "before": "#"
+    },
+    {
+      "g": "de",
+      "p": "dʒi",
+      "before": "#"
+    },
+    {
+      "g": "es",
+      "p": "is",
+      "before": "#"
+    },
+    {
+      "g": "os",
+      "p": "us",
+      "before": "#"
+    },
+    {
+      "g": "e",
+      "p": "i",
+      "before": "#"
+    },
+    {
+      "g": "o",
+      "p": "u",
+      "before": "#"
+    },
+    {
+      "g": "t",
+      "p": "tʃ",
+      "before": "iíI"
+    },
+    {
+      "g": "d",
+      "p": "dʒ",
+      "before": "iíI"
+    },
+    {
+      "g": "c",
+      "p": "s",
+      "before": "F"
+    },
+    {
+      "g": "g",
+      "p": "ʒ",
+      "before": "F"
+    },
+    {
+      "g": "ç",
+      "p": "s"
+    },
+    {
+      "g": "r",
+      "p": "x",
+      "after": "#"
+    },
+    {
+      "g": "r",
+      "p": "x",
+      "after": "lns"
+    },
+    {
+      "g": "r",
+      "p": "x",
+      "before": "#"
+    },
+    {
+      "g": "s",
+      "p": "z",
+      "before": "V",
+      "after": "V"
+    },
+    {
+      "g": "l",
+      "p": "w",
+      "before": "C"
+    },
+    {
+      "g": "l",
+      "p": "w",
+      "before": "#"
+    },
+    {
+      "g": "x",
+      "p": "ʃ"
+    },
+    {
+      "g": "j",
+      "p": "ʒ"
+    },
+    {
+      "g": "h",
+      "p": ""
+    },
+    {
+      "g": "z",
+      "p": "s",
+      "before": "#"
+    },
+    {
+      "g": "á",
+      "p": "a"
+    },
+    {
+      "g": "à",
+      "p": "a"
+    },
+    {
+      "g": "â",
+      "p": "ɐ"
+    },
+    {
+      "g": "é",
+      "p": "ɛ"
+    },
+    {
+      "g": "ê",
+      "p": "e"
+    },
+    {
+      "g": "í",
+      "p": "i"
+    },
+    {
+      "g": "ó",
+      "p": "ɔ"
+    },
+    {
+      "g": "ô",
+      "p": "o"
+    },
+    {
+      "g": "ú",
+      "p": "u"
+    },
+    {
+      "g": "ü",
+      "p": "u"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "e",
+      "p": "e"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "r",
+      "p": "ɾ"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "w"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    }
+  ],
+  "examples": {
+    "obrigado": "obɾiɡadu",
+    "cidade": "sidadʒi",
+    "trabalho": "tɾabaʎu",
+    "coração": "koɾasɐ̃w̃",
+    "noite": "noitʃi",
+    "casa": "kaza",
+    "carro": "kaxu",
+    "bom": "bõ",
+    "brasil": "bɾaziw",
+    "rio": "xiu"
+  }
+}

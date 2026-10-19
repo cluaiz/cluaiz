@@ -1,0 +1,228 @@
+{
+  "kind": "alphabet",
+  "language": "sk",
+  "_about": "Spelling rules for Slovak written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). d, t, n, l before e/i are softened. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aáäeéiíoóôuúyý",
+    "F": "eéiíě"
+  },
+  "rules": [
+    {
+      "g": "dž",
+      "p": "dʒ"
+    },
+    {
+      "g": "dz",
+      "p": "dz"
+    },
+    {
+      "g": "ch",
+      "p": "x"
+    },
+    {
+      "g": "d",
+      "p": "ɟ",
+      "before": "F"
+    },
+    {
+      "g": "t",
+      "p": "c",
+      "before": "F"
+    },
+    {
+      "g": "n",
+      "p": "ɲ",
+      "before": "F"
+    },
+    {
+      "g": "l",
+      "p": "ʎ",
+      "before": "F"
+    },
+    {
+      "g": "á",
+      "p": "aː"
+    },
+    {
+      "g": "ä",
+      "p": "ɛ"
+    },
+    {
+      "g": "é",
+      "p": "eː"
+    },
+    {
+      "g": "í",
+      "p": "iː"
+    },
+    {
+      "g": "ó",
+      "p": "oː"
+    },
+    {
+      "g": "ô",
+      "p": "uo"
+    },
+    {
+      "g": "ú",
+      "p": "uː"
+    },
+    {
+      "g": "ý",
+      "p": "iː"
+    },
+    {
+      "g": "ŕ",
+      "p": "rː"
+    },
+    {
+      "g": "ĺ",
+      "p": "lː"
+    },
+    {
+      "g": "č",
+      "p": "tʃ"
+    },
+    {
+      "g": "š",
+      "p": "ʃ"
+    },
+    {
+      "g": "ž",
+      "p": "ʒ"
+    },
+    {
+      "g": "ť",
+      "p": "c"
+    },
+    {
+      "g": "ď",
+      "p": "ɟ"
+    },
+    {
+      "g": "ň",
+      "p": "ɲ"
+    },
+    {
+      "g": "ľ",
+      "p": "ʎ"
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "e",
+      "p": "ɛ"
+    },
+    {
+      "g": "i",
+      "p": "i"
+    },
+    {
+      "g": "o",
+      "p": "o"
+    },
+    {
+      "g": "u",
+      "p": "u"
+    },
+    {
+      "g": "y",
+      "p": "i"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "ts"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "h",
+      "p": "ɦ"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "q",
+      "p": "k"
+    },
+    {
+      "g": "r",
+      "p": "r"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "v"
+    },
+    {
+      "g": "w",
+      "p": "v"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "z",
+      "p": "z"
+    }
+  ],
+  "examples": {
+    "dobrý": "dobriː",
+    "deň": "ɟɛɲ",
+    "škola": "ʃkola",
+    "chlieb": "xʎiɛb",
+    "ďakujem": "ɟakujɛm"
+  }
+}

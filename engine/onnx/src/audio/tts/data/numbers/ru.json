@@ -1,0 +1,359 @@
+{
+ "language": "ru",
+ "_about": "Generated from CLDR (cldr-json 91c2674, Unicode-3.0, see ../CLDR-LICENSE.txt). Whole numbers use the RBNF rule sets reachable from %spellout-numbering ('spellout'), with the cardinal plural rules; 'point' is the decimal word of the x.x rule; currency words are CLDR currency names placed by the currency unit pattern ({0} = the number); '%' is the percent unit pattern. Regenerate rather than edit by hand. Editorial overrides: point (said aloud differently from CLDR's written form).",
+ "point": "запятая",
+ "read_digits_from": 10,
+ "currency": {
+  "₹": "{0} индийской рупии",
+  "$": "{0} доллара США",
+  "€": "{0} евро",
+  "£": "{0} британского фунта стерлингов",
+  "¥": "{0} японской иены"
+ },
+ "suffixes": {
+  "%": "{0} процента"
+ },
+ "spellout": {
+  "entry": "%spellout-numbering",
+  "sets": {
+   "%spellout-numbering": [
+    [
+     "0",
+     "=%spellout-cardinal-masculine=;"
+    ]
+   ],
+   "%spellout-cardinal-masculine": [
+    [
+     "-x",
+     "минус →→;"
+    ],
+    [
+     "x.x",
+     "=%spellout-cardinal-feminine=;"
+    ],
+    [
+     "0",
+     "ноль;"
+    ],
+    [
+     "1",
+     "один;"
+    ],
+    [
+     "2",
+     "два;"
+    ],
+    [
+     "3",
+     "три;"
+    ],
+    [
+     "4",
+     "четыре;"
+    ],
+    [
+     "5",
+     "пять;"
+    ],
+    [
+     "6",
+     "шесть;"
+    ],
+    [
+     "7",
+     "семь;"
+    ],
+    [
+     "8",
+     "восемь;"
+    ],
+    [
+     "9",
+     "девять;"
+    ],
+    [
+     "10",
+     "десять;"
+    ],
+    [
+     "11",
+     "одиннадцать;"
+    ],
+    [
+     "12",
+     "двенадцать;"
+    ],
+    [
+     "13",
+     "тринадцать;"
+    ],
+    [
+     "14",
+     "четырнадцать;"
+    ],
+    [
+     "15",
+     "пятнадцать;"
+    ],
+    [
+     "16",
+     "шестнадцать;"
+    ],
+    [
+     "17",
+     "семнадцать;"
+    ],
+    [
+     "18",
+     "восемнадцать;"
+    ],
+    [
+     "19",
+     "девятнадцать;"
+    ],
+    [
+     "20",
+     "двадцать[ →→];"
+    ],
+    [
+     "30",
+     "тридцать[ →→];"
+    ],
+    [
+     "40",
+     "сорок[ →→];"
+    ],
+    [
+     "50",
+     "пятьдесят[ →→];"
+    ],
+    [
+     "60",
+     "шестьдесят[ →→];"
+    ],
+    [
+     "70",
+     "семьдесят[ →→];"
+    ],
+    [
+     "80",
+     "восемьдесят[ →→];"
+    ],
+    [
+     "90",
+     "девяносто[ →→];"
+    ],
+    [
+     "100",
+     "сто[ →→];"
+    ],
+    [
+     "200",
+     "←%spellout-cardinal-feminine←сти[ →→];"
+    ],
+    [
+     "300",
+     "←%spellout-cardinal-feminine←ста[ →→];"
+    ],
+    [
+     "500",
+     "←%spellout-cardinal-feminine←сот[ →→];"
+    ],
+    [
+     "1000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{тысяча}few{тысячи}other{тысяч})$[ →→];"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{миллион}few{миллиона}other{миллионов})$[ →→];"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{миллиард}few{миллиарда}other{миллиардов})$[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{триллион}few{триллиона}other{триллионов})$[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{квадриллион}few{квадриллиона}other{квадриллионов})$[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%spellout-cardinal-feminine": [
+    [
+     "-x",
+     "минус →→;"
+    ],
+    [
+     "x.x",
+     "[←← $(cardinal,one{целая}other{целых})$ ]→%%fractions-feminine→;"
+    ],
+    [
+     "0",
+     "ноль;"
+    ],
+    [
+     "1",
+     "одна;"
+    ],
+    [
+     "2",
+     "две;"
+    ],
+    [
+     "3",
+     "=%spellout-cardinal-masculine=;"
+    ],
+    [
+     "20",
+     "двадцать[ →→];"
+    ],
+    [
+     "30",
+     "тридцать[ →→];"
+    ],
+    [
+     "40",
+     "сорок[ →→];"
+    ],
+    [
+     "50",
+     "пятьдесят[ →→];"
+    ],
+    [
+     "60",
+     "шестьдесят[ →→];"
+    ],
+    [
+     "70",
+     "семьдесят[ →→];"
+    ],
+    [
+     "80",
+     "восемьдесят[ →→];"
+    ],
+    [
+     "90",
+     "девяносто[ →→];"
+    ],
+    [
+     "100",
+     "сто[ →→];"
+    ],
+    [
+     "200",
+     "←%spellout-cardinal-feminine←сти[ →→];"
+    ],
+    [
+     "300",
+     "←%spellout-cardinal-feminine←ста[ →→];"
+    ],
+    [
+     "500",
+     "←%spellout-cardinal-feminine←сот[ →→];"
+    ],
+    [
+     "1000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{тысяча}few{тысячи}other{тысяч})$[ →→];"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{миллион}few{миллиона}other{миллионов})$[ →→];"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{миллиард}few{миллиарда}other{миллиардов})$[ →→];"
+    ],
+    [
+     "1000000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{триллион}few{триллиона}other{триллионов})$[ →→];"
+    ],
+    [
+     "1000000000000000",
+     "←%spellout-cardinal-masculine← $(cardinal,one{квадриллион}few{квадриллиона}other{квадриллионов})$[ →→];"
+    ],
+    [
+     "1000000000000000000",
+     "=#,##0=;"
+    ]
+   ],
+   "%%fractions-feminine": [
+    [
+     "10",
+     "←%spellout-cardinal-feminine← $(cardinal,one{десятая}other{десятых})$;"
+    ],
+    [
+     "100",
+     "←%spellout-cardinal-feminine← $(cardinal,one{сотая}other{сотых})$;"
+    ],
+    [
+     "1000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{тысячная}other{тысячных})$;"
+    ],
+    [
+     "10000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{десятитысячная}other{десятитысячных})$;"
+    ],
+    [
+     "100000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{стотысячная}other{стотысячных})$;"
+    ],
+    [
+     "1000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{миллионная}other{миллионных})$;"
+    ],
+    [
+     "10000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{десятимиллионная}other{десятимиллионных})$;"
+    ],
+    [
+     "100000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{стомиллионная}other{стомиллионных})$;"
+    ],
+    [
+     "1000000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{миллиардная}other{миллиардных})$;"
+    ],
+    [
+     "10000000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{десятимиллиардная}other{десятимиллиардных})$;"
+    ],
+    [
+     "100000000000",
+     "←%spellout-cardinal-feminine← $(cardinal,one{стомиллиардная}other{стомиллиардных})$;"
+    ],
+    [
+     "1000000000000",
+     "←0←;"
+    ]
+   ]
+  },
+  "plural": [
+   [
+    "one",
+    "v = 0 and i % 10 = 1 and i % 100 != 11"
+   ],
+   [
+    "few",
+    "v = 0 and i % 10 = 2..4 and i % 100 != 12..14"
+   ],
+   [
+    "many",
+    "v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14"
+   ],
+   [
+    "other",
+    ""
+   ]
+  ]
+ },
+ "examples": {
+  "2026": "две тысячи двадцать шесть",
+  "3.5": "три запятая пять"
+ }
+}

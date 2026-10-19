@@ -1,0 +1,350 @@
+{
+  "kind": "alphabet",
+  "language": "de",
+  "_about": "Spelling rules for German written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). Vowels are short unless a digraph or a lengthening h makes them long; final -e/-er/-en are reduced and final b/d/g devoiced. Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "0041",
+      "024F"
+    ]
+  ],
+  "classes": {
+    "V": "aeiouäöüy"
+  },
+  "rules": [
+    {
+      "g": "tsch",
+      "p": "tʃ"
+    },
+    {
+      "g": "sch",
+      "p": "ʃ"
+    },
+    {
+      "g": "chs",
+      "p": "ks"
+    },
+    {
+      "g": "ch",
+      "p": "x",
+      "after": "aouAOU"
+    },
+    {
+      "g": "ch",
+      "p": "ç"
+    },
+    {
+      "g": "sp",
+      "p": "ʃp",
+      "after": "#"
+    },
+    {
+      "g": "st",
+      "p": "ʃt",
+      "after": "#"
+    },
+    {
+      "g": "ig",
+      "p": "ɪç",
+      "before": "#"
+    },
+    {
+      "g": "dt",
+      "p": "t"
+    },
+    {
+      "g": "ck",
+      "p": "k"
+    },
+    {
+      "g": "ph",
+      "p": "f"
+    },
+    {
+      "g": "th",
+      "p": "t"
+    },
+    {
+      "g": "qu",
+      "p": "kv"
+    },
+    {
+      "g": "ng",
+      "p": "ŋ"
+    },
+    {
+      "g": "nk",
+      "p": "ŋk"
+    },
+    {
+      "g": "tz",
+      "p": "ts"
+    },
+    {
+      "g": "ss",
+      "p": "s"
+    },
+    {
+      "g": "ß",
+      "p": "s"
+    },
+    {
+      "g": "ei",
+      "p": "aɪ"
+    },
+    {
+      "g": "ai",
+      "p": "aɪ"
+    },
+    {
+      "g": "ey",
+      "p": "aɪ"
+    },
+    {
+      "g": "eu",
+      "p": "ɔʏ"
+    },
+    {
+      "g": "äu",
+      "p": "ɔʏ"
+    },
+    {
+      "g": "au",
+      "p": "aʊ"
+    },
+    {
+      "g": "ie",
+      "p": "iː"
+    },
+    {
+      "g": "ee",
+      "p": "eː"
+    },
+    {
+      "g": "aa",
+      "p": "aː"
+    },
+    {
+      "g": "oo",
+      "p": "oː"
+    },
+    {
+      "g": "ah",
+      "p": "aː"
+    },
+    {
+      "g": "eh",
+      "p": "eː"
+    },
+    {
+      "g": "ih",
+      "p": "iː"
+    },
+    {
+      "g": "oh",
+      "p": "oː"
+    },
+    {
+      "g": "uh",
+      "p": "uː"
+    },
+    {
+      "g": "äh",
+      "p": "ɛː"
+    },
+    {
+      "g": "öh",
+      "p": "øː"
+    },
+    {
+      "g": "üh",
+      "p": "yː"
+    },
+    {
+      "g": "er",
+      "p": "ɐ",
+      "before": "#"
+    },
+    {
+      "g": "en",
+      "p": "ən",
+      "before": "#"
+    },
+    {
+      "g": "el",
+      "p": "əl",
+      "before": "#"
+    },
+    {
+      "g": "em",
+      "p": "əm",
+      "before": "#"
+    },
+    {
+      "g": "e",
+      "p": "ə",
+      "before": "#"
+    },
+    {
+      "g": "b",
+      "p": "p",
+      "before": "#"
+    },
+    {
+      "g": "d",
+      "p": "t",
+      "before": "#"
+    },
+    {
+      "g": "g",
+      "p": "k",
+      "before": "#"
+    },
+    {
+      "g": "r",
+      "p": "ɐ",
+      "before": "#"
+    },
+    {
+      "g": "s",
+      "p": "z",
+      "before": "V",
+      "after": "#"
+    },
+    {
+      "g": "s",
+      "p": "z",
+      "before": "V",
+      "after": "V"
+    },
+    {
+      "g": "h",
+      "p": "h",
+      "after": "#"
+    },
+    {
+      "g": "h",
+      "p": ""
+    },
+    {
+      "g": "a",
+      "p": "a"
+    },
+    {
+      "g": "e",
+      "p": "ɛ"
+    },
+    {
+      "g": "i",
+      "p": "ɪ"
+    },
+    {
+      "g": "o",
+      "p": "ɔ"
+    },
+    {
+      "g": "u",
+      "p": "ʊ"
+    },
+    {
+      "g": "ä",
+      "p": "ɛ"
+    },
+    {
+      "g": "ö",
+      "p": "œ"
+    },
+    {
+      "g": "ü",
+      "p": "ʏ"
+    },
+    {
+      "g": "y",
+      "p": "ʏ"
+    },
+    {
+      "g": "b",
+      "p": "b"
+    },
+    {
+      "g": "c",
+      "p": "k"
+    },
+    {
+      "g": "d",
+      "p": "d"
+    },
+    {
+      "g": "f",
+      "p": "f"
+    },
+    {
+      "g": "g",
+      "p": "ɡ"
+    },
+    {
+      "g": "j",
+      "p": "j"
+    },
+    {
+      "g": "k",
+      "p": "k"
+    },
+    {
+      "g": "l",
+      "p": "l"
+    },
+    {
+      "g": "m",
+      "p": "m"
+    },
+    {
+      "g": "n",
+      "p": "n"
+    },
+    {
+      "g": "p",
+      "p": "p"
+    },
+    {
+      "g": "r",
+      "p": "ʁ"
+    },
+    {
+      "g": "s",
+      "p": "s"
+    },
+    {
+      "g": "t",
+      "p": "t"
+    },
+    {
+      "g": "v",
+      "p": "f"
+    },
+    {
+      "g": "w",
+      "p": "v"
+    },
+    {
+      "g": "x",
+      "p": "ks"
+    },
+    {
+      "g": "z",
+      "p": "ts"
+    }
+  ],
+  "examples": {
+    "nicht": "nɪçt",
+    "tisch": "tɪʃ",
+    "stadt": "ʃtat",
+    "wasser": "vasɐ",
+    "bier": "biːɐ",
+    "haus": "haʊs",
+    "sagen": "zaɡən",
+    "ich": "ɪç",
+    "bach": "bax",
+    "zeit": "tsaɪt"
+  }
+}

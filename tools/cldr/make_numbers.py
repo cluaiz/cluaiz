@@ -2,7 +2,7 @@
 languages that have CLDR spell-out rules. Dev tool; the generated files are what ships.
 
 usage (from the repo root):
-  python -I tools/cldr/make_numbers.py engine/onnx/src/audio/tts/data/numbers es fr it pt ja zh ar fa gu ne ta cs pl ro hu fi tr hr bs sr
+  python -I tools/cldr/make_numbers.py engine/onnx/src/audio/tts/data/numbers es fr it pt ja zh ar fa gu ne ta cs pl ro hu fi tr hr bs sr de nl ru uk el id sw sk ka
 en.json and hi.json are written by hand and are not generated.
 """
 import json
@@ -18,7 +18,9 @@ ENTRY = "%spellout-numbering"
 OVERRIDES = {
     "ja": {"point": "点"},  # CLDR writes "・" between the parts; it is said 点 (ten)
     "zh": {"suffixes": {"%": "百分之{0}"}},  # CLDR's long unit is "{0}%"; it is said 百分之…
+    "ru": {"point": "запятая"},  # CLDR's decimal word depends on the plural of the whole part
 }
+# Not generated: CLDR's Slovenian spell-out reads like Croatian ("dvaset ena" for 21)
 
 
 def get(path):
@@ -45,7 +47,7 @@ for lang in langs:
     for name in [ENTRY] + sorted(reach):
         for descriptor, body in reach[name]:
             if descriptor == "x.x":
-                literal = re.sub(r"[←→<>=][^←→<>=]*[←→<>=]+", " ", body.rstrip(";"))
+                literal = re.sub(r"[←→<>=][^←→<>=]*[←→<>=]+|\$\(.*?\)\$|[\[\]]", " ", body.rstrip(";"))
                 point = " ".join(literal.split()) or None
                 break
         if point:

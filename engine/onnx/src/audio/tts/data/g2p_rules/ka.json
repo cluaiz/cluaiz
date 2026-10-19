@@ -1,0 +1,152 @@
+{
+  "kind": "alphabet",
+  "language": "ka",
+  "_about": "Spelling rules for Georgian written for Cluaiz (not copied from espeak-ng). Longest spelling first; 'before'/'after' limit a rule to the next/previous letter (a class name or letters, '#' = word edge). One letter, one sound; ejective consonants are read as plain ones (the TTS symbol sets have no ejective mark). Output is espeak-style IPA.",
+  "script_ranges": [
+    [
+      "10A0",
+      "10FF"
+    ]
+  ],
+  "default_for_script": true,
+  "classes": {},
+  "rules": [
+    {
+      "g": "ა",
+      "p": "a"
+    },
+    {
+      "g": "ბ",
+      "p": "b"
+    },
+    {
+      "g": "გ",
+      "p": "ɡ"
+    },
+    {
+      "g": "დ",
+      "p": "d"
+    },
+    {
+      "g": "ე",
+      "p": "ɛ"
+    },
+    {
+      "g": "ვ",
+      "p": "v"
+    },
+    {
+      "g": "ზ",
+      "p": "z"
+    },
+    {
+      "g": "თ",
+      "p": "tʰ"
+    },
+    {
+      "g": "ი",
+      "p": "i"
+    },
+    {
+      "g": "კ",
+      "p": "k"
+    },
+    {
+      "g": "ლ",
+      "p": "l"
+    },
+    {
+      "g": "მ",
+      "p": "m"
+    },
+    {
+      "g": "ნ",
+      "p": "n"
+    },
+    {
+      "g": "ო",
+      "p": "ɔ"
+    },
+    {
+      "g": "პ",
+      "p": "p"
+    },
+    {
+      "g": "ჟ",
+      "p": "ʒ"
+    },
+    {
+      "g": "რ",
+      "p": "r"
+    },
+    {
+      "g": "ს",
+      "p": "s"
+    },
+    {
+      "g": "ტ",
+      "p": "t"
+    },
+    {
+      "g": "უ",
+      "p": "u"
+    },
+    {
+      "g": "ფ",
+      "p": "pʰ"
+    },
+    {
+      "g": "ქ",
+      "p": "kʰ"
+    },
+    {
+      "g": "ღ",
+      "p": "ɣ"
+    },
+    {
+      "g": "ყ",
+      "p": "k"
+    },
+    {
+      "g": "შ",
+      "p": "ʃ"
+    },
+    {
+      "g": "ჩ",
+      "p": "tʃʰ"
+    },
+    {
+      "g": "ც",
+      "p": "tsʰ"
+    },
+    {
+      "g": "ძ",
+      "p": "dz"
+    },
+    {
+      "g": "წ",
+      "p": "ts"
+    },
+    {
+      "g": "ჭ",
+      "p": "tʃ"
+    },
+    {
+      "g": "ხ",
+      "p": "x"
+    },
+    {
+      "g": "ჯ",
+      "p": "dʒ"
+    },
+    {
+      "g": "ჰ",
+      "p": "h"
+    }
+  ],
+  "examples": {
+    "გამარჯობა": "ɡamardʒɔba",
+    "მადლობა": "madlɔba",
+    "წყალი": "tskali"
+  }
+}
