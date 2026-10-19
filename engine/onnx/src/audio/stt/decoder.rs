@@ -181,28 +181,33 @@ impl OnnxEngine {
             let mut chosen_lang_token: Option<i64> = None;
 
             // 🌐 Dynamic Language Vocabulary Discovery (Zero Hardcoding), narrowed to the speaker's
-            // languages when given: a phrase is then detected among only those
+            // languages when given: a phrase is then detected among only those. Languages this model
+            // does not know are skipped; when it knows none of them, every language is considered
+            // (a changed model never makes the microphone fail).
             let wanted: Vec<String> = options
                 .languages
                 .iter()
                 .map(|code| families::base_language(code))
                 .filter(|code| !code.is_empty())
                 .collect();
+            let mut all_lang_ids: Vec<i64> = Vec::new();
             let mut lang_token_ids: Vec<i64> = Vec::new();
             if let Some(tokenizer) = &self.tokenizer {
                 let vocab = tokenizer.get_vocab(true);
                 for (tok_str, &tok_id) in vocab.iter() {
                     if let Some(code) = families::language_of_token(tok_str) {
-                        if wanted.is_empty() || wanted.iter().any(|w| w == code) {
+                        all_lang_ids.push(tok_id as i64);
+                        if wanted.iter().any(|w| w == code) {
                             lang_token_ids.push(tok_id as i64);
                         }
                     }
                 }
             }
-            if !wanted.is_empty() && lang_token_ids.is_empty() {
-                return Err(anyhow!(
-                    "None of the speaker's languages is known to this STT model"
-                ));
+            if lang_token_ids.is_empty() {
+                if !wanted.is_empty() {
+                    tracing::debug!("STT model knows none of the speaker's languages; detecting among all");
+                }
+                lang_token_ids = all_lang_ids;
             }
             // One language left: it is the language, no detection needed
             if lang_token_ids.len() == 1 && (clean_lang.is_empty() || clean_lang == "auto") {
