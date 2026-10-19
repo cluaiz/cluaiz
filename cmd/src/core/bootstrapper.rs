@@ -115,31 +115,16 @@ impl Bootstrapper {
         if drivers_dir.exists() {
             tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
+        // Every command runs this, so it only checks: the ~1.4 GB of NVIDIA libraries download in the
+        // background when a GPU model first loads (ONNX runs without CUDA meanwhile), or with `cluaiz calibrate`
         if has_nvidia {
             if onnx_engine::cudnn_driver::is_cuda_runtime_available_in(&drivers_dir) {
                 onnx_engine::cudnn_driver::register_drivers_dir_in_path(&drivers_dir);
                 tracing::info!("⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.");
             } else {
                 tracing::info!(
-                    "⬇️ [Bootstrap] Provisioning NVIDIA CUDA + cuDNN 9 runtime libraries into {:?}...",
-                    drivers_dir
+                    "NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)"
                 );
-                match tokio::task::spawn_blocking(
-                    onnx_engine::cudnn_driver::provision_cuda_runtime_at_setup,
-                )
-                .await
-                {
-                    Ok(Ok(true)) => {
-                        tracing::info!("✅ NVIDIA CUDA + cuDNN 9 runtime libraries provisioned at setup.");
-                    }
-                    Ok(Ok(false)) => {}
-                    Ok(Err(err)) => {
-                        tracing::warn!("⚠️ Setup-time CUDA/cuDNN 9 provisioning skipped: {}", err);
-                    }
-                    Err(join_err) => {
-                        tracing::warn!("⚠️ Setup-time CUDA/cuDNN 9 task join error: {}", join_err);
-                    }
-                }
             }
         }
 
