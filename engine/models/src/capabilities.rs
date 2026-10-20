@@ -61,6 +61,8 @@ pub struct PackageCapabilities {
     pub asset_snapshot: Vec<PackageAssetStamp>,
     #[serde(default)]
     pub onnx_graphs: Vec<crate::prober::OnnxProbeResult>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub asset_contract: Option<cluaiz_core::model_assets::PackageAssets>,
 }
 
 /// File-stat refresh identity; not a cryptographic content hash.
@@ -79,11 +81,18 @@ impl PackageCapabilities {
             anyhow::bail!("ONNX primary must belong to its package directory");
         }
         let mut graphs = vec![crate::prober::OnnxProber::read_signature(&primary)?];
+        let asset_contract = cluaiz_core::model_assets::PackageAssets::from_directory(&dir)?;
         let mut diagnostics = Vec::new();
         for entry in std::fs::read_dir(&dir)? {
             let entry = entry?;
             let path = entry.path();
             if path == primary
+                || asset_contract.as_ref().is_some_and(|contract| {
+                    !contract
+                        .assets
+                        .values()
+                        .any(|asset| dir.join(asset) == path)
+                })
                 || !entry.file_type()?.is_file()
                 || !path
                     .extension()
@@ -93,13 +102,35 @@ impl PackageCapabilities {
             }
             match crate::prober::OnnxProber::read_signature(&path) {
                 Ok(graph) => graphs.push(graph),
-                Err(error) => diagnostics.push(format!("{}: {error}", path.display())),
+                Err(error) => {
+                    if asset_contract
+                        .as_ref()
+                        .is_some_and(|c| c.assets.values().any(|p| dir.join(p) == path))
+                    {
+                        return Err(error.context("Required package graph is invalid"));
+                    }
+                    diagnostics.push(format!("{}: {error}", path.display()));
+                }
+            }
+        }
+        if let Some(contract) = &asset_contract {
+            for relative in &contract.graphs {
+                let path = dir.join(relative);
+                if !path.is_file() || graphs.iter().any(|g| g.file == *relative) {
+                    continue;
+                }
+                if !path.canonicalize()?.starts_with(&dir) {
+                    anyhow::bail!("Package graph escapes its directory");
+                }
+                let mut graph = crate::prober::OnnxProber::read_signature(&path)?;
+                graph.file = relative.clone();
+                graphs.push(graph);
             }
         }
         let has_decoder = graphs.iter().any(|g| g.has_input("encoder_hidden_states"));
-        let audio = graphs.iter().any(|g| {
-            g.has_input("input_features") || (g.has_input("input_values") && has_decoder)
-        });
+        let audio = graphs
+            .iter()
+            .any(|g| g.has_input("input_features") || (g.has_input("input_values") && has_decoder));
         let text = !audio && (graphs[0].has_input("input_ids") || graphs[0].is_tts);
         let image = graphs[0].is_vision;
         let inputs = [
@@ -130,6 +161,7 @@ impl PackageCapabilities {
             diagnostics,
             asset_snapshot: Self::asset_snapshot(&dir),
             onnx_graphs: graphs,
+            asset_contract,
         })
     }
 
@@ -146,9 +178,10 @@ impl PackageCapabilities {
             .onnx_graphs
             .iter()
             .any(|g| g.has_input("encoder_hidden_states"));
-        let is_asr_package = self.onnx_graphs.iter().any(|g| {
-            g.has_input("input_features") || (g.has_input("input_values") && has_decoder)
-        });
+        let is_asr_package = self
+            .onnx_graphs
+            .iter()
+            .any(|g| g.has_input("input_features") || (g.has_input("input_values") && has_decoder));
         if is_asr_package {
             tasks.push("automatic-speech-recognition".into());
         }
@@ -169,9 +202,18 @@ impl PackageCapabilities {
             return vec!["package_directory".into()];
         };
         let mut required = std::collections::BTreeSet::new();
+        if let Some(contract) = &self.asset_contract {
+            required.extend(contract.required_files());
+        }
         for graph in &self.onnx_graphs {
             if graph.has_input("input_ids") {
-                required.insert("tokenizer.json".to_owned());
+                required.insert(
+                    self.asset_contract
+                        .as_ref()
+                        .and_then(|c| c.assets.get("tokenizer"))
+                        .cloned()
+                        .unwrap_or_else(|| "tokenizer.json".to_owned()),
+                );
             }
             if graph.is_vision
                 || graph.has_input("input_features")
@@ -191,7 +233,14 @@ impl PackageCapabilities {
                 required.insert("1_Pooling/config.json".to_owned());
             }
             for external in &graph.external_files {
-                required.insert(external.clone());
+                required.insert(
+                    Path::new(&graph.file)
+                        .parent()
+                        .unwrap_or_else(|| Path::new(""))
+                        .join(external)
+                        .to_string_lossy()
+                        .replace('\\', "/"),
+                );
             }
         }
         required
@@ -311,7 +360,10 @@ impl PackageCapabilities {
                             let vision_encoder = flag(&companion, "clip.has_vision_encoder");
                             let audio_encoder = flag(&companion, "clip.has_audio_encoder");
                             let audio_generation = flag(&companion, "clip.has_gen_audio_encoder");
-                            if vision_encoder.is_none() && audio_encoder.is_none() && audio_generation.is_none() {
+                            if vision_encoder.is_none()
+                                && audio_encoder.is_none()
+                                && audio_generation.is_none()
+                            {
                                 continue;
                             }
                             let dimension = |key: &str| {
@@ -395,6 +447,7 @@ impl PackageCapabilities {
             diagnostics,
             asset_snapshot: Self::asset_snapshot(dir),
             onnx_graphs: Vec::new(),
+            asset_contract: None,
         }
     }
 

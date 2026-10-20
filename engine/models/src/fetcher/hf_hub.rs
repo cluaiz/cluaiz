@@ -23,6 +23,7 @@ pub struct HfTreeItem {
 
 #[derive(Debug, Clone)]
 pub struct HfVariant {
+    pub revision: Option<String>,
     pub variant_id: String,
     pub format_type: String,
     pub quant_tag: String,
@@ -35,6 +36,73 @@ pub struct HfVariant {
 pub struct HuggingFaceHub;
 
 impl HuggingFaceHub {
+    /// Resolve an existing primary/component to exactly one full repository bundle.
+    /// Used by repair and single-primary install callers; ambiguity never picks the first model.
+    pub async fn bundle_for_manifest(
+        manifest: &ModelManifest,
+    ) -> Result<(ModelManifest, Vec<String>), String> {
+        let source = Self::primary_repository_path(manifest);
+        let variants = Self::list_variants(&manifest.huggingface_repo).await?;
+        let mut matches = variants
+            .into_iter()
+            .filter(|v| v.all_files.iter().any(|file| file == source));
+        let variant = matches
+            .next()
+            .ok_or("No compatible repair bundle; use the explicit repository and variant")?;
+        if matches.next().is_some() {
+            return Err("Ambiguous package source; choose an explicit repository variant".into());
+        }
+        let mut resolved = Self::build_manifest(&manifest.huggingface_repo, &variant, None);
+        resolved.id = manifest.id.clone();
+        resolved.category = manifest.category.clone();
+        resolved.huggingface_filename = variant
+            .primary_file
+            .rsplit('/')
+            .next()
+            .unwrap_or(&variant.primary_file)
+            .to_owned();
+        Ok((resolved, variant.all_files))
+    }
+
+    /// The existing primary download URL carries the chosen snapshot, avoiding
+    /// a registry schema migration. Legacy manifests retain their main revision.
+    pub fn manifest_revision(manifest: &ModelManifest) -> &str {
+        let prefix = format!(
+            "https://huggingface.co/{}/resolve/",
+            manifest.huggingface_repo
+        );
+        manifest
+            .download_url
+            .strip_prefix(&prefix)
+            .and_then(|path| path.split('/').next())
+            .filter(|revision| {
+                *revision == "main"
+                    || (revision.len() == 40 && revision.bytes().all(|b| b.is_ascii_hexdigit()))
+            })
+            .unwrap_or("main")
+    }
+
+    pub fn asset_url(manifest: &ModelManifest, asset: &str) -> String {
+        format!(
+            "https://huggingface.co/{}/resolve/{}/{}",
+            manifest.huggingface_repo,
+            Self::manifest_revision(manifest),
+            asset
+        )
+    }
+
+    pub fn primary_repository_path(manifest: &ModelManifest) -> &str {
+        let prefix = format!(
+            "https://huggingface.co/{}/resolve/{}/",
+            manifest.huggingface_repo,
+            Self::manifest_revision(manifest)
+        );
+        manifest
+            .download_url
+            .strip_prefix(&prefix)
+            .unwrap_or(&manifest.huggingface_filename)
+    }
+
     /// Resolves Hugging Face token from environment variables or standard cache files
     pub fn resolve_hf_token() -> Option<String> {
         if let Ok(token) = std::env::var("HF_TOKEN") {
@@ -81,10 +149,17 @@ impl HuggingFaceHub {
 
     /// Fetch raw file tree items from HuggingFace repository with pagination support
     pub async fn list_raw_tree(repo_id: &str) -> Result<Vec<HfTreeItem>, String> {
+        Self::list_raw_tree_at(repo_id, "main").await
+    }
+
+    pub async fn list_raw_tree_at(
+        repo_id: &str,
+        revision: &str,
+    ) -> Result<Vec<HfTreeItem>, String> {
         let client = Client::new();
         let mut url = format!(
-            "https://huggingface.co/api/models/{}/tree/main?recursive=true",
-            repo_id
+            "https://huggingface.co/api/models/{}/tree/{}?recursive=true",
+            repo_id, revision
         );
         let mut items = Vec::new();
         let token_opt = Self::resolve_hf_token();
@@ -228,6 +303,7 @@ impl HuggingFaceHub {
             AssetBundler::filter_duplicate_metadata_files(&mut files, &item.path);
 
             variants.push(HfVariant {
+                revision: None,
                 variant_id: fname.clone(),
                 format_type: "gguf".to_string(),
                 quant_tag,
@@ -268,6 +344,7 @@ impl HuggingFaceHub {
                 AssetBundler::filter_duplicate_metadata_files(&mut files, &first_shard.path);
 
                 variants.push(HfVariant {
+                    revision: None,
                     variant_id: fname.clone(),
                     format_type: "gguf".to_string(),
                     quant_tag,
@@ -281,6 +358,7 @@ impl HuggingFaceHub {
 
         // 2. Process ONNX models (Bundling .onnx.data companion binary shards & STT sub-graphs via SSOT)
         variants.extend(Self::bundle_onnx_variants(&items, &metadata_files));
+        super::package_bundler::complete_variants(repo_id, &items, &mut variants).await?;
 
         if variants.is_empty() {
             return Err(format!(
@@ -390,6 +468,7 @@ impl HuggingFaceHub {
                 let size_gb = total_size as f64 / (1024.0 * 1024.0 * 1024.0);
 
                 variants.push(HfVariant {
+                    revision: None,
                     variant_id: fname.clone(),
                     format_type: "onnx".to_string(),
                     quant_tag,
@@ -419,8 +498,10 @@ impl HuggingFaceHub {
 
         let safe_name = repo_id.split('/').next_back().unwrap_or(repo_id);
         let download_url = format!(
-            "https://huggingface.co/{}/resolve/main/{}",
-            repo_id, variant.primary_file
+            "https://huggingface.co/{}/resolve/{}/{}",
+            repo_id,
+            variant.revision.as_deref().unwrap_or("main"),
+            variant.primary_file
         );
         let bit_depth = UniversalQuantization::estimate_bit_depth(&variant.quant_tag);
         let parameters = UniversalQuantization::extract_parameters_from_name(
@@ -528,5 +609,3 @@ mod tests {
             .contains(&"onnx/decoder_model_merged.onnx".to_string()));
     }
 }
-
-

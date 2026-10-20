@@ -7,6 +7,65 @@ use crate::{
 };
 
 #[test]
+fn test_partial_multigraph_package_is_not_ready() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let primary = dir.path().join("fast_ar_int4.onnx");
+    crate::test_fixtures::onnx(&primary, "hidden_states", "logits", None);
+    std::fs::write(
+        dir.path().join("runtime_manifest.json"),
+        serde_json::to_vec(&crate::test_fixtures::asset_manifest())?,
+    )?;
+    let package = PackageCapabilities::inspect(&primary)?;
+    let missing = package.missing_onnx_assets();
+    assert!(
+        missing.contains(&"slow_ar_int4.onnx".to_owned()),
+        "missing stages were accepted: {missing:?}"
+    );
+    assert!(missing.contains(&"codec_decoder_fp16.onnx".to_owned()));
+    assert!(missing.contains(&"tokenizer/tokenizer.json".to_owned()));
+    assert!(crate::ModelDownloader::validate_package(&primary).is_err());
+    for file in ["slow_ar_int4.onnx", "codec_decoder_fp16.onnx"] {
+        crate::test_fixtures::onnx(
+            &dir.path().join(file),
+            "codes",
+            "audio",
+            Some(&format!("{file}.data")),
+        );
+        std::fs::write(dir.path().join(format!("{file}.data")), [0u8])?;
+    }
+    std::fs::create_dir(dir.path().join("tokenizer"))?;
+    std::fs::write(dir.path().join("tokenizer/tokenizer.json"), "{}")?;
+    // An unused registration graph is not part of the synthesis contract.
+    crate::test_fixtures::onnx(
+        &dir.path().join("codec_encoder_fp16.onnx"),
+        "audio",
+        "codes",
+        Some("optional-missing.data"),
+    );
+    crate::ModelDownloader::validate_package(&primary).map_err(anyhow::Error::msg)?;
+    let mut renamed = crate::test_fixtures::asset_manifest();
+    renamed["codec_models"]["fp16"] = "renamed-codec.bin".into();
+    std::fs::copy(
+        dir.path().join("codec_decoder_fp16.onnx"),
+        dir.path().join("renamed-codec.bin"),
+    )?;
+    std::fs::write(
+        dir.path().join("runtime_manifest.json"),
+        serde_json::to_vec(&renamed)?,
+    )?;
+    crate::ModelDownloader::validate_package(&primary).map_err(anyhow::Error::msg)?;
+    std::fs::write(dir.path().join("renamed-codec.bin"), "{}")?;
+    assert!(crate::ModelDownloader::validate_package(&primary).is_err());
+    std::fs::write(
+        dir.path().join("runtime_manifest.json"),
+        serde_json::to_vec(&crate::test_fixtures::asset_manifest())?,
+    )?;
+    std::fs::write(dir.path().join("slow_ar_int4.onnx"), "corrupt graph")?;
+    assert!(crate::ModelDownloader::validate_package(&primary).is_err());
+    Ok(())
+}
+
+#[test]
 fn test_onnx_package_helpers_nested_refresh_and_category_preservation() -> anyhow::Result<()> {
     let dir = tempfile::tempdir()?;
     let path = dir.path().join("neutral.onnx");
@@ -193,10 +252,7 @@ fn test_moonshine_raw_waveform_asr_package_detects_audio_and_asr_task() -> anyho
     let package = PackageCapabilities::inspect(&encoder_path)?;
     assert_eq!(package.supported_inputs(), [Modality::Audio]);
     assert_eq!(package.onnx_tasks(), ["automatic-speech-recognition"]);
-    assert_eq!(
-        package.missing_onnx_assets(),
-        ["preprocessor_config.json"]
-    );
+    assert_eq!(package.missing_onnx_assets(), ["preprocessor_config.json"]);
 
     std::fs::write(
         dir.path().join("preprocessor_config.json"),

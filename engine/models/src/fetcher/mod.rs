@@ -3,6 +3,7 @@ pub mod auto_heal;
 pub mod client;
 pub mod downloader;
 pub mod hf_hub;
+pub mod package_bundler;
 
 pub use asset_bundler::AssetBundler;
 pub use auto_heal::AutoHeal;
@@ -19,6 +20,27 @@ use tokio::sync::mpsc;
 pub struct ModelDownloader;
 
 impl ModelDownloader {
+    /// Read-only readiness check shared by install and CLI cache/repair decisions.
+    pub fn validate_package(primary: &Path) -> Result<(), String> {
+        if !primary.is_file() {
+            return Err("Primary model file is missing".into());
+        }
+        if primary
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("onnx"))
+        {
+            let package = crate::capabilities::PackageCapabilities::inspect(primary)
+                .map_err(|e| e.to_string())?;
+            let missing = package.missing_onnx_assets();
+            if !missing.is_empty() {
+                return Err(format!(
+                    "Required ONNX package assets are missing: {}",
+                    missing.join(", ")
+                ));
+            }
+        }
+        Ok(())
+    }
     pub fn get_models_dir() -> PathBuf {
         cluaiz_core::EnvironmentManager::current()
             .ensure_models_dir()
@@ -191,6 +213,16 @@ impl ModelDownloader {
         tx: mpsc::Sender<DownloadEvent>,
         abort: Arc<AtomicBool>,
     ) -> Result<PathBuf, String> {
+        let resolved;
+        let (manifest, files) = if files.len() == 1
+            && files[0].ends_with(".onnx")
+            && !manifest.huggingface_repo.is_empty()
+        {
+            resolved = HuggingFaceHub::bundle_for_manifest(manifest).await?;
+            (&resolved.0, resolved.1.as_slice())
+        } else {
+            (manifest, files)
+        };
         let dir = Self::model_dir(&manifest.category, &manifest.id);
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("could not create {}: {}", dir.display(), e))?;
@@ -236,10 +268,7 @@ impl ModelDownloader {
                 dispatch_model_telemetry(&manifest.id);
             }
             let url = if !manifest.huggingface_repo.is_empty() {
-                format!(
-                    "https://huggingface.co/{}/resolve/main/{}",
-                    manifest.huggingface_repo, rel_path
-                )
+                HuggingFaceHub::asset_url(manifest, rel_path)
             } else {
                 manifest.download_url.clone()
             };
@@ -281,6 +310,7 @@ impl ModelDownloader {
             Self::complete_onnx_assets(manifest, &primary, &client, tx.clone(), abort.clone())
                 .await?;
         }
+        Self::validate_package(&primary)?;
         if let Ok(json) = serde_json::to_string_pretty(manifest) {
             let _ = std::fs::write(dir.join("model_manifest.json"), json);
         }
@@ -318,80 +348,93 @@ impl ModelDownloader {
         tx: mpsc::Sender<DownloadEvent>,
         abort: Arc<AtomicBool>,
     ) -> Result<(), String> {
-        let package = crate::capabilities::PackageCapabilities::inspect(primary)
-            .map_err(|e| e.to_string())?;
-        let missing = package.missing_onnx_assets();
-        if missing.is_empty() {
-            return Ok(());
-        }
-        if manifest.huggingface_repo.is_empty() {
-            return Err(format!(
-                "ONNX assets missing and no repository is configured: {}",
-                missing.join(", ")
-            ));
-        }
-        let tree = HuggingFaceHub::list_raw_tree(&manifest.huggingface_repo).await?;
-        let dir = package
-            .primary_file
-            .parent()
-            .ok_or("ONNX package directory missing")?;
-        let graph_parent = Path::new(&manifest.huggingface_filename)
-            .parent()
-            .unwrap_or_else(|| Path::new(""));
-        for asset in &missing {
-            if abort.load(std::sync::atomic::Ordering::Relaxed) {
-                return Err("ONNX helper download cancelled".into());
+        let mut attempted = std::collections::BTreeSet::new();
+        let mut tree = None;
+        loop {
+            let package = crate::capabilities::PackageCapabilities::inspect(primary)
+                .map_err(|e| e.to_string())?;
+            let missing = package.missing_onnx_assets();
+            if missing.is_empty() {
+                return Ok(());
             }
-            let beside_graph = graph_parent
-                .join(asset)
-                .to_string_lossy()
-                .replace('\\', "/");
-            let external = package
-                .onnx_graphs
-                .iter()
-                .any(|graph| graph.external_files.contains(asset));
-            let candidates = if external {
-                vec![beside_graph.as_str()]
-            } else {
-                vec![asset.as_str(), beside_graph.as_str()]
-            };
-            let source = candidates
-                .into_iter()
-                .find(|candidate| {
-                    tree.iter().any(|item| {
-                        item.path == *candidate && item.r#type.as_deref() == Some("file")
+            if manifest.huggingface_repo.is_empty() {
+                return Err(format!(
+                    "ONNX assets missing and no repository is configured: {}",
+                    missing.join(", ")
+                ));
+            }
+            if tree.is_none() {
+                tree = Some(
+                    HuggingFaceHub::list_raw_tree_at(
+                        &manifest.huggingface_repo,
+                        HuggingFaceHub::manifest_revision(manifest),
+                    )
+                    .await?,
+                );
+            }
+            let inventory = tree.as_ref().ok_or("Repository inventory missing")?;
+            let dir = package
+                .primary_file
+                .parent()
+                .ok_or("ONNX package directory missing")?;
+            let source_primary = HuggingFaceHub::primary_repository_path(manifest);
+            let graph_parent = Path::new(source_primary)
+                .parent()
+                .unwrap_or_else(|| Path::new(""));
+            for asset in &missing {
+                if !attempted.insert(asset.clone()) {
+                    return Err(format!(
+                        "ONNX helper completion made no progress for '{asset}'"
+                    ));
+                }
+                if abort.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err("ONNX helper download cancelled".into());
+                }
+                let beside_graph = graph_parent
+                    .join(asset)
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                let external = package.onnx_graphs.iter().any(|graph| {
+                    graph.external_files.iter().any(|file| {
+                        Path::new(&graph.file)
+                            .parent()
+                            .unwrap_or_else(|| Path::new(""))
+                            .join(file)
+                            == Path::new(asset)
                     })
-                })
-                .ok_or_else(|| {
-                    format!("Required ONNX asset '{asset}' is absent in selected repository")
-                })?;
-            let local = AssetBundler::local_asset_path(source, &manifest.huggingface_filename)?;
-            if local != Path::new(asset) {
-                return Err("ONNX helper destination does not match graph contract".into());
+                });
+                let candidates = if external || package.asset_contract.is_some() {
+                    vec![beside_graph.as_str()]
+                } else {
+                    vec![asset.as_str(), beside_graph.as_str()]
+                };
+                let source = candidates
+                    .into_iter()
+                    .find(|candidate| {
+                        inventory.iter().any(|item| {
+                            item.path == *candidate && item.r#type.as_deref() == Some("file")
+                        })
+                    })
+                    .ok_or_else(|| {
+                        format!("Required ONNX asset '{asset}' is absent in selected repository")
+                    })?;
+                let local = AssetBundler::local_asset_path(source, source_primary)?;
+                if local != Path::new(asset) {
+                    return Err("ONNX helper destination does not match graph contract".into());
+                }
+                let url = HuggingFaceHub::asset_url(manifest, source);
+                FileDownloader::download_single_file(
+                    client,
+                    &url,
+                    &dir.join(local),
+                    tx.clone(),
+                    abort.clone(),
+                )
+                .await?;
             }
-            let url = format!(
-                "https://huggingface.co/{}/resolve/main/{source}",
-                manifest.huggingface_repo
-            );
-            FileDownloader::download_single_file(
-                client,
-                &url,
-                &dir.join(local),
-                tx.clone(),
-                abort.clone(),
-            )
-            .await?;
+            // Newly fetched graph headers may reveal additional external weights.
+            // Reinspect until complete; each repository-relative asset is attempted once.
         }
-        let missing = crate::capabilities::PackageCapabilities::inspect(primary)
-            .map_err(|e| e.to_string())?
-            .missing_onnx_assets();
-        if !missing.is_empty() {
-            return Err(format!(
-                "ONNX helper completion failed: {}",
-                missing.join(", ")
-            ));
-        }
-        Ok(())
     }
 
     /// Cleans up incomplete .part and .lock files in blobs directory

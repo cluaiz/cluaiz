@@ -74,6 +74,7 @@ async fn actual_same_repository_helper_completion_preserves_pooling_directory() 
         .contains(&"1_Pooling/config.json".into()));
     let remote_primary = std::env::var("CLUAIZ_FIXTURE_REMOTE_PRIMARY")?;
     let variant = HfVariant {
+        revision: None,
         variant_id: "isolated-fixture".into(),
         format_type: "onnx".into(),
         quant_tag: String::new(),
@@ -128,6 +129,7 @@ async fn actual_image_helper_completion_uses_selected_repository() -> Result<()>
     // The ONNX is a supplied local export. The caller's selected repository is
     // used only for required helpers; no remote primary weight is requested.
     let variant = HfVariant {
+        revision: None,
         variant_id: "isolated-image-export".into(),
         format_type: "onnx".into(),
         quant_tag: String::new(),

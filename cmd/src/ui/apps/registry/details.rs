@@ -146,10 +146,14 @@ pub fn show_details(
                     let install_manifest = m.clone();
                     tokio::spawn(async move {
                         // Same download + registration as `cluaiz pull`
-                        let _ = cluaiz_models::ModelDownloader::install(
+                        let result = cluaiz_models::ModelDownloader::install(
                             &install_manifest, &[install_manifest.huggingface_filename.clone()], local_tx, abort_clone
                         ).await;
-                        let _ = tx_clone.send(DownloadEvent::Complete(mid));
+                        let event = match result {
+                            Ok(_) => DownloadEvent::Complete(mid),
+                            Err(error) => DownloadEvent::Error(mid, error),
+                        };
+                        let _ = tx_clone.send(event);
                     });
 
                     let start = std::time::Instant::now();

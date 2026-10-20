@@ -163,9 +163,13 @@ impl InstalledStateRegistry {
             let dir = Path::new(&entry.local_dir);
             let snapshot = crate::capabilities::PackageCapabilities::asset_snapshot(dir);
             let canonical = primary.canonicalize().ok();
+            let contract = if entry.format_type == "onnx" {
+                cluaiz_core::model_assets::PackageAssets::from_directory(dir).ok().flatten()
+            } else { None };
             if entry.metadata.capabilities.as_ref().is_some_and(|package| {
                 package.asset_snapshot == snapshot
                     && canonical.as_ref() == Some(&package.primary_file)
+                    && package.asset_contract == contract
             }) {
                 continue;
             }
