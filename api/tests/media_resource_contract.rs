@@ -80,6 +80,45 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert!(body.contains("model_not_found"));
     }
+    // Only transport/model lookup is exercised: the absent model must prevent image decoding.
+    let embedding = json!({"model":format!("missing-{}", uuid::Uuid::new_v4()),
+        "input":[{"type":"image","source":format!("data:image/png;base64,{}",
+            "A".repeat(3 * cluaiz_core::MIB as usize))}]});
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/embeddings")
+                .header("content-type", "application/json")
+                .header("authorization", "Bearer test_session_token")
+                .body(Body::from(embedding.to_string()))?,
+        )
+        .await?;
+    let status = response.status();
+    let bytes = axum::body::to_bytes(response.into_body(), 4096).await?;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "{}",
+        String::from_utf8_lossy(&bytes)
+    );
+    let error: Value = serde_json::from_slice(&bytes)?;
+    assert_eq!(error["error"]["type"], "model_not_found");
+    let (status, body) =
+        support::post(&router, "/v1/embeddings", embedding.clone(), "user").await?;
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    let denied = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/embeddings")
+                .header("content-type", "application/json")
+                .body(Body::from(embedding.to_string()))?,
+        )
+        .await?;
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     let denied = router
         .clone()
         .oneshot(
@@ -116,10 +155,15 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
         .saturating_mul(4)
         .saturating_add(2 * cluaiz_core::MIB);
     // A declared oversize body rejects before allocation; chunked bodies cannot bypass the cap.
-    for declared in [true, false] {
+    for (route, declared) in [
+        ("/v1/ingest", true),
+        ("/v1/ingest", false),
+        ("/v1/embeddings", true),
+        ("/v1/embeddings", false),
+    ] {
         let mut request = Request::builder()
             .method("POST")
-            .uri("/v1/ingest")
+            .uri(route)
             .header("authorization", "Bearer test_session_token")
             .header("origin", "http://localhost:1420")
             .header("content-type", "application/json");
