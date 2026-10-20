@@ -12,6 +12,7 @@ use cluaiz_core::{media::DecodedAudio, media_limits::MediaLimits};
 use std::ffi::{c_void, CStr, CString};
 use std::path::Path;
 use std::ptr::NonNull;
+use std::time::Instant;
 
 /// Sampling of the backbone's speech codes; the values of llama.cpp's defaults, which `tools/tts`
 /// uses.
@@ -26,6 +27,34 @@ const PCM_POLL_FRAMES: usize = 16;
 /// Context for the prompt and the generated frames
 const CONTEXT: u32 = 4096;
 
+/// Placement is selected by the runtime's shared live-memory policy, not by model names.
+#[derive(Debug, Clone, Copy, serde::Serialize, PartialEq, Eq)]
+pub struct SpeechPlacement {
+    pub n_gpu_layers: i32,
+    pub threads: i32,
+    pub threads_batch: i32,
+    pub use_mmap: bool,
+}
+
+/// Measured successful utterance stages. Output time includes consumer backpressure.
+#[derive(Debug, Default, Clone, Copy, serde::Serialize)]
+pub struct SpeechTimings {
+    pub preparation_seconds: f64,
+    pub generation_seconds: f64,
+    pub decoder_seconds: f64,
+    pub output_seconds: f64,
+    pub total_seconds: f64,
+    pub frames: usize,
+    pub native_samples: usize,
+}
+
+/// Backbone context/logits estimate; codec workspace is supplied by the existing media policy.
+pub fn backbone_workspace_bytes(path: &Path) -> Result<u64> {
+    let geometry = cluaiz_models::GgufProber::probe_geometry(path)?;
+    geometry.kv_cache_bytes(CONTEXT, cluaiz_core::KvCacheQuantization::Kv16, BATCH as u32)
+        .checked_add(geometry.logits_buffer_bytes(BATCH as u32)).context("Speech workspace overflow")
+}
+
 /// A loaded speech backbone with its audio projector.
 pub struct SpeechModel {
     model: NonNull<c_void>,
@@ -33,6 +62,7 @@ pub struct SpeechModel {
     projector: NonNull<mtmd::mtmd_context>,
     sample_rate: u32,
     languages: Vec<String>,
+    timings: SpeechTimings,
 }
 
 // SAFETY: the native handles are owned by this value and used by one thread at a time (callers
@@ -59,13 +89,20 @@ impl SpeechModel {
     /// Loads the backbone (all layers on the GPU when `gpu`) and the projector; fails when the
     /// projector cannot generate audio.
     pub fn load(model_path: &Path, projector_path: &Path, gpu: bool, threads: i32) -> Result<Self> {
+        Self::load_with_placement(model_path, projector_path, SpeechPlacement {
+            n_gpu_layers: if gpu { -1 } else { 0 }, threads, threads_batch: threads, use_mmap: true,
+        })
+    }
+
+    pub fn load_with_placement(model_path: &Path, projector_path: &Path, placement: SpeechPlacement) -> Result<Self> {
         super::route_llama_logs();
         let model_c = CString::new(model_path.to_str().context("Model path is not UTF-8")?)?;
         let projector_c = CString::new(projector_path.to_str().context("Projector path is not UTF-8")?)?;
 
         // SAFETY: default-parameter constructors take no handles.
         let mut model_params = unsafe { llama_cpp::llama_model_default_params() };
-        model_params.n_gpu_layers = if gpu { 999 } else { 0 };
+        model_params.n_gpu_layers = placement.n_gpu_layers;
+        model_params.set_mmap(placement.use_mmap);
         // SAFETY: valid C string; the returned model is owned below.
         let model = NonNull::new(unsafe { llama_cpp::llama_model_load_from_file(model_c.as_ptr(), model_params) })
             .context("Speech model load failed; check the file and memory")?;
@@ -75,8 +112,10 @@ impl SpeechModel {
         context_params.n_ctx = CONTEXT;
         context_params.n_batch = BATCH as u32;
         context_params.n_ubatch = BATCH as u32;
-        context_params.n_threads = threads.max(1);
-        context_params.n_threads_batch = threads.max(1);
+        context_params.n_threads = placement.threads.max(1);
+        context_params.n_threads_batch = placement.threads_batch.max(1);
+        context_params.offload_kqv = u8::from(placement.n_gpu_layers != 0);
+        context_params.op_offload = u8::from(placement.n_gpu_layers != 0);
         // The audio decoder reads the backbone's hidden state after each step
         context_params.embeddings = 1;
         // SAFETY: model is live; the context is freed in Drop or on the error paths below.
@@ -88,14 +127,14 @@ impl SpeechModel {
 
         // SAFETY: default-parameter constructor.
         let mut projector_params = unsafe { mtmd::mtmd_context_params_default() };
-        projector_params.use_gpu = gpu;
-        projector_params.n_threads = threads.max(1);
+        projector_params.use_gpu = placement.n_gpu_layers != 0;
+        projector_params.n_threads = placement.threads.max(1);
         projector_params.warmup = false;
         // SAFETY: valid C string and live model.
         let projector = NonNull::new(unsafe {
             mtmd::mtmd_init_from_file(projector_c.as_ptr(), model.as_ptr().cast(), projector_params)
         });
-        let owner = |projector| Self { model, context, projector, sample_rate: 0, languages: Vec::new() };
+        let owner = |projector| Self { model, context, projector, sample_rate: 0, languages: Vec::new(), timings: SpeechTimings::default() };
         let Some(projector) = projector else {
             // SAFETY: handles owned here and not used after.
             unsafe {
@@ -118,7 +157,7 @@ impl SpeechModel {
                 let text = llama_cpp::llama_vocab_get_text(vocab, token);
                 if !text.is_null() {
                     if let Ok(text) = CStr::from_ptr(text).to_str() {
-                        if let Some(name) = text.strip_prefix("<|codec_language_").and_then(|s| s.strip_suffix("|>")) {
+                        if let Some(name) = cluaiz_models::GgufProber::speech_language_token(text) {
                             speech.languages.push(name.to_owned());
                         }
                     }
@@ -131,6 +170,8 @@ impl SpeechModel {
     pub fn sample_rate(&self) -> u32 {
         self.sample_rate
     }
+
+    pub fn timings(&self) -> SpeechTimings { self.timings }
 
     /// Speaks `text`; returns a 16-bit mono WAV.
     pub fn speak(&mut self, text: &str, options: &SpeechOptions) -> Result<Vec<u8>> {
@@ -151,6 +192,9 @@ impl SpeechModel {
         &mut self, text: &str, options: &SpeechOptions,
         mut on_pcm: impl FnMut(&[f32], u32) -> Result<()>, cancelled: impl Fn() -> bool,
     ) -> Result<()> {
+        self.timings = SpeechTimings::default();
+        let started = Instant::now();
+        let mut timings = SpeechTimings::default();
         if text.trim().is_empty() {
             bail!("Speech requires non-empty text");
         }
@@ -211,33 +255,54 @@ impl SpeechModel {
         let mut frames = 0usize;
         let mut stop = false;
         let mut emitted_native = 0;
+        timings.preparation_seconds = started.elapsed().as_secs_f64();
         while !stop && frames < max_frames {
             if cancelled() { bail!("Speech request cancelled"); }
             let mut next: *const f32 = std::ptr::null();
+            let frame_started = Instant::now();
             // SAFETY: hidden comes from the context or the previous step and is valid until this call.
             if unsafe { mtmd::mtmd_helper_gen_audio_step_gen(generator.0.as_ptr(), sampled, hidden, &mut next, &mut stop) } != 0 {
                 bail!("Speech generation failed at frame {frames}");
             }
+            timings.generation_seconds += frame_started.elapsed().as_secs_f64();
             if next.is_null() {
                 break;
             }
             frames += 1;
             hidden = next;
+            let sampler_started = Instant::now();
             sampled = sampler.sample(ctx);
+            timings.generation_seconds += sampler_started.elapsed().as_secs_f64();
             if frames % PCM_POLL_FRAMES == 0 {
-                generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm)?;
+                generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm, &mut timings)?;
             }
         }
         if !stop && frames >= max_frames { bail!("Speech reached its frame limit before completion; shorten the input"); }
 
         if cancelled() { bail!("Speech request cancelled"); }
-        generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm)?;
+        generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm, &mut timings)?;
         if emitted_native == 0 { bail!("Speech produced no audio"); }
+        let output_started = Instant::now();
         let tail = tempo.finish()?;
         if !tail.is_empty() { on_pcm(&tail, self.sample_rate)?; }
-        tracing::debug!("Speech generated {frames} frames, {emitted_native} native samples");
+        timings.output_seconds += output_started.elapsed().as_secs_f64();
+        timings.total_seconds = started.elapsed().as_secs_f64();
+        timings.frames = frames;
+        timings.native_samples = emitted_native;
+        self.timings = timings;
+        tracing::info!(?timings, sample_rate = self.sample_rate, "Native speech stage timings");
         Ok(())
     }
+}
+
+/// ISO codes for the codec language names found in the actual model vocabulary.
+pub fn language_codes(supported: &[String]) -> Result<Vec<String>> {
+    let data: serde_json::Value = serde_json::from_str(include_str!("data/speech_languages.json"))?;
+    let mut codes: Vec<_> = data["aliases"].as_object().context("Missing speech language aliases")?
+        .iter().filter(|(_, name)| name.as_str().is_some_and(|name| supported.iter().any(|s| s == name)))
+        .map(|(code, _)| code.clone()).collect();
+    codes.sort();
+    Ok(codes)
 }
 
 fn resolve_language(requested: &str, supported: &[String]) -> Result<String> {
@@ -255,6 +320,8 @@ mod tests {
     use super::*;
     #[test]
     fn test_requested_language_uses_actual_vocabulary_not_an_assumed_model_list() -> Result<()> {
+        assert_eq!(language_codes(&["english".into(), "spanish".into()])?, ["en", "es"]);
+        assert!(language_codes(&[])?.is_empty());
         let data: serde_json::Value = serde_json::from_str(include_str!("data/speech_languages.json"))?;
         for case in data["tests"].as_array().context("Missing language cases")? {
             let requested = case["requested"].as_str().context("Missing request")?;
@@ -293,13 +360,16 @@ impl Generator {
     fn emit_delta(
         &self, emitted: &mut usize, expected_rate: u32, limits: MediaLimits,
         tempo: &mut cluaiz_media::tempo::Tempo, on_pcm: &mut impl FnMut(&[f32], u32) -> Result<()>,
+        timings: &mut SpeechTimings,
     ) -> Result<()> {
         let (mut rate, mut data, mut len, mut samples) = (0i32, std::ptr::null(), 0usize, 0i64);
+        let decoder_started = Instant::now();
         // SAFETY: owned live generator in PCM mode; the returned buffer is borrowed only below,
         // before another generation/decoder call. get_output retains code2wav state across flushes.
         if unsafe { mtmd::mtmd_helper_gen_audio_get_output(self.0.as_ptr(), &mut rate, &mut data, &mut len, &mut samples) } != 0 {
             bail!("Speech PCM output failed");
         }
+        timings.decoder_seconds += decoder_started.elapsed().as_secs_f64();
         let count = usize::try_from(samples).context("Invalid native speech sample count")?;
         if rate <= 0 || rate as u32 != expected_rate || count < *emitted
             || count.checked_mul(std::mem::size_of::<f32>()) != Some(len) {
@@ -313,9 +383,11 @@ impl Generator {
         // SAFETY: native PCM mode supplies count aligned F32 values, verified against byte length;
         // its lifetime ends before this method returns and no native generator call occurs meanwhile.
         let pcm = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), count) };
+        let output_started = Instant::now();
         let output = tempo.write(&pcm[*emitted..])?;
         *emitted = count;
         if !output.is_empty() { on_pcm(&output, expected_rate)?; }
+        timings.output_seconds += output_started.elapsed().as_secs_f64();
         Ok(())
     }
 }
