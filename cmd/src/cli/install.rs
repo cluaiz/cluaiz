@@ -127,7 +127,8 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
                 .sum();
             let size_gb = total_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
-            HfVariant {
+            let custom = HfVariant {
+                revision: None,
                 variant_id: "UNFILTERED CUSTOM BUNDLE".to_string(),
                 format_type: if primary_file.ends_with(".onnx") { "onnx".to_string() } else { "gguf".to_string() },
                 quant_tag: "CUSTOM".to_string(),
@@ -135,7 +136,9 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
                 all_files: selected_files,
                 filename: primary_file,
                 size_gb,
-            }
+            };
+            cluaiz_models::fetcher::package_bundler::complete_custom(&repo_id, &raw_tree, custom).await
+                .map_err(|e| color_eyre::eyre::eyre!(e))?
         } else {
             let variants = HuggingFaceHub::list_variants(&repo_id).await
                 .map_err(|e| color_eyre::eyre::eyre!(e))?;
@@ -198,7 +201,11 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
         
         // 🚀 Check if this specific variant is already in the local roster!
         if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
-            return Ok(Resolved::AlreadyInstalled(existing.id.clone()));
+            let primary = ModelDownloader::model_dir(&existing.category, &existing.id).join(&existing.huggingface_filename);
+            if ModelDownloader::validate_package(&primary).is_ok() {
+                return Ok(Resolved::AlreadyInstalled(existing.id.clone()));
+            }
+            println!("  Existing package is incomplete; keeping valid files and preparing repair.");
         }
 
         println!("  {} Fetching precise metadata...", "📡".cyan());
@@ -247,8 +254,14 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
 
     let manifest = manifest.ok_or_else(|| color_eyre::eyre::eyre!("ID '{}' not found in any registry.", model_id))?;
     let model_file = ModelDownloader::model_dir(&manifest.category, &manifest.id).join(&manifest.huggingface_filename);
-    if is_local && model_file.exists() {
+    if is_local && ModelDownloader::validate_package(&model_file).is_ok() {
         return Ok(Resolved::OnDisk(model_file));
+    }
+    if is_local && selected_variant_bundle.is_none() {
+        let (repaired, files) = HuggingFaceHub::bundle_for_manifest(&manifest).await
+            .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        let quant = cluaiz_models::taxonomy::quantization::UniversalQuantization::extract_quant_tag(&repaired.huggingface_filename);
+        return Ok(Resolved::Download(DownloadPlan { manifest: repaired, files, quant }));
     }
     let quant = selected_variant_bundle.as_ref().map(|v| v.quant_tag.clone()).unwrap_or_else(|| "DEFAULT".to_string());
     let files = selected_variant_bundle

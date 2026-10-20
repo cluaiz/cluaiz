@@ -2,6 +2,15 @@
 
 use std::path::{Path, PathBuf};
 
+pub(crate) fn asset_manifest() -> serde_json::Value {
+    serde_json::json!({
+        "model_family":"audio8_tts", "activation_dtype":"float16",
+        "slow_logits_layout":"semantic_then_eos", "kv_attention_layout":"valid_prefix",
+        "default_precision":"int4", "available_precisions":["int4"],
+        "default_codec_precision":"fp16", "codec_models":{"fp16":"codec_decoder_fp16.onnx"}
+    })
+}
+
 /// Signature-only protobuf fixture; never a claimed inference result.
 pub(crate) fn onnx(path: &Path, input: &str, output: &str, external: Option<&str>) {
     fn varint(mut value: u64) -> Vec<u8> {

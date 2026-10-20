@@ -187,13 +187,7 @@ impl AssetBundler {
     /// Graph-parent files are relocated together to the package root; shared
     /// module folders keep their hierarchy. Validate before joining any path.
     pub fn local_asset_path(asset: &str, primary: &str) -> Result<std::path::PathBuf, String> {
-        let safe = |value: &str| {
-            !value.is_empty()
-                && !value.contains(['\\', ':'])
-                && Path::new(value)
-                    .components()
-                    .all(|part| matches!(part, std::path::Component::Normal(_)))
-        };
+        let safe = |value: &str| cluaiz_core::model_assets::safe_asset_path(value).is_ok();
         if !safe(asset) || !safe(primary) {
             return Err("Invalid repository-relative asset path".into());
         }

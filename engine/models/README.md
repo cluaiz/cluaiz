@@ -21,7 +21,7 @@ graph TD
 
 | Module | Responsibility |
 |---|---|
-| [`fetcher/`](src/fetcher/) | HuggingFace parallel chunk downloader with auto-heal and integrity checking. |
+| [`fetcher/`](src/fetcher/) | HuggingFace file selection, download, required-asset completion and installation gates. |
 | [`registry/`](src/registry/) | Installed models catalog, local vault, and state management. |
 | [`taxonomy/`](src/taxonomy/) | Audio STT/TTS family classification (Kokoro, Whisper, CosyVoice, etc.). |
 | [`prober/`](src/prober/) | Vision mmproj projector and format detection. |
@@ -43,6 +43,28 @@ graph TD
 - **Remaining:** ONNX input-signature verification is a later backend phase. Raw declarations are not proof of model execution; loaded native capabilities, typed API dispatch, real media inference and document/video providers remain pending.
 
 ## ONNX graph and helper evidence
+
+### Manifest-owned multi-graph exports
+
+`cluaiz-core::model_assets` owns the supported asset manifest descriptions. Discovery, `PackageCapabilities` and the native Audio8 runtime consume the same asset definition; they do not maintain separate generator/codec/tokenizer filename lists. The initial descriptor covers the Audio8 FP16 valid-prefix export. Unknown manifest families retain generic discovery; this is not automatic support for arbitrary custom ONNX pipelines.
+
+`fetcher/package_bundler.rs` reads bounded manifest metadata, validates its declared layout/default precision and replaces that export's component choices with one full synthesis bundle. Generator precision and codec precision are independent. Optional registration graphs are not standalone synthesis variants. Existing generic ONNX/STT and GGUF shard/projector grouping remain separate owners. Only the manifest default is exposed until runtime selection can share additional precision choices.
+
+The manifest response's `x-repo-commit` pins its graph/weight tree and URLs to one commit. The primary `download_url` carries that revision without a required registry-field migration; older manifests retain `main`. The selected-file size includes metadata and weights. Nonstandard external-data references discovered from graph headers can require additional helpers during installation, so the initial preview is not a universal full-size guarantee.
+
+Normal CLI and manual file selection share contract reconciliation. Single-primary install callers resolve the same full bundle. `validate_package` gates installation and CLI cache decisions; an incomplete cached package enters repair instead of returning “already downloaded”. Known required corrupt graph headers fail. Helper completion re-inspects newly fetched graphs for further external weights, attempting each missing asset once. Valid existing files are reused. Registry success is emitted only after completion; the registry terminal propagates installation errors.
+
+Serialized capability records add an optional `asset_contract`. Refresh compares the current contract as well as file stats, so older records gain the contract without deleting registrations. File/asset presence still does not establish numerical execution, provider support, voice quality or realtime playback.
+
+```mermaid
+flowchart LR
+    A["Pinned HF manifest and file tree"] --> C["Shared supported asset contract"]
+    C --> P["One synthesis bundle and file preview"]
+    P --> D["Existing file downloader and safe layout"]
+    D --> G["Graph references and complete-package gate"]
+    G --> R["Registry success"]
+    C --> N["Native package paths and execution validation"]
+```
 
 Document extraction/chunking now belongs to `cluaiz-media::documents`, rather than model discovery. API and CLI consumers import that implementation directly; this crate has no forwarding ingestion module. Model registry/package discovery remains here.
 

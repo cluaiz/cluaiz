@@ -1,6 +1,35 @@
 use super::*;
 use crate::test_fixtures::{config, primary, projector};
 
+#[test]
+fn test_registry_old_capability_snapshot_gains_shared_contract_without_file_change() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("fast_ar_int4.onnx");
+    crate::test_fixtures::onnx(&path, "hidden_states", "logits", None);
+    std::fs::write(
+        dir.path().join("runtime_manifest.json"),
+        serde_json::to_vec(&crate::test_fixtures::asset_manifest()).unwrap(),
+    )
+    .unwrap();
+    let mut entry =
+        InstalledStateRegistry::entry_for_folder("tts", dir.path(), Some("fast_ar_int4.onnx"), "")
+            .unwrap();
+    entry.metadata.capabilities.as_mut().unwrap().asset_contract = None;
+    let id = entry.id.clone();
+    let mut reg = ModelRegistry {
+        installed_models: [(id.clone(), entry)].into_iter().collect(),
+    };
+    assert!(InstalledStateRegistry::refresh_capabilities(&mut reg));
+    assert!(reg.installed_models[&id]
+        .metadata
+        .capabilities
+        .as_ref()
+        .unwrap()
+        .asset_contract
+        .is_some());
+    assert!(!InstalledStateRegistry::refresh_capabilities(&mut reg));
+}
+
 fn legacy_registry(dir: &Path) -> ModelRegistry {
     serde_json::from_value(serde_json::json!({"installed_models":{"opaque":{
         "id":"opaque","category":"chat","format_type":"gguf","huggingface_repo":"",
