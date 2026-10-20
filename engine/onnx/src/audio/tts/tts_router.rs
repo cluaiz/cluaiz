@@ -104,32 +104,33 @@ impl<'a> AudioStream<'a> {
         Self { sink, sample_rate, sent: 0 }
     }
 
-    fn settled(&mut self, all: &[f32]) {
+    fn settled(&mut self, all: &[f32]) -> Result<()> {
         let quiet_end = all.iter().rev().take_while(|v| v.abs() <= QUIET_LEVEL).count();
-        self.send(all, all.len().saturating_sub(quiet_end + JOIN_OVERLAP));
+        self.send(all, all.len().saturating_sub(quiet_end + JOIN_OVERLAP))
     }
 
-    fn finish(&mut self, all: &[f32]) {
-        self.send(all, all.len());
+    fn finish(&mut self, all: &[f32]) -> Result<()> {
+        self.send(all, all.len())
     }
 
-    fn send(&mut self, all: &[f32], end: usize) {
+    fn send(&mut self, all: &[f32], end: usize) -> Result<()> {
         let Some(sink) = self.sink.as_mut() else {
-            return;
+            return Ok(());
         };
         if end <= self.sent {
-            return;
+            return Ok(());
         }
         // Each part is its own small WAV; the level is clamped, not normalised (the whole text's
         // peak is not known yet)
         let part: Vec<f32> = all[self.sent..end].iter().map(|v| v.clamp(-0.95, 0.95)).collect();
-        let wav = super::vocoder::NativeVocoder::new(self.sample_rate, 1920, 480, 80).encode_wav_bytes(&part);
+        let wav = super::vocoder::NativeVocoder::new(self.sample_rate, 1920, 480, 80).encode_wav_bytes(&part)?;
         use base64::Engine;
         let uri = format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(&wav));
         if !sink(uri) {
             self.sink = None; // the client left: stop sending parts
         }
         self.sent = end;
+        Ok(())
     }
 }
 
@@ -222,7 +223,7 @@ fn route_tts_input(
         super::family_adapter::TtsFamily::Matcha => {
             let pcm = super::families::matcha::execute(engine, session, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
             use base64::Engine;
             Ok(format!(
                 "data:audio/wav;base64,{}",
@@ -232,7 +233,7 @@ fn route_tts_input(
         super::family_adapter::TtsFamily::CosyVoice => {
             let pcm = super::families::cosyvoice::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
             use base64::Engine;
             Ok(format!(
                 "data:audio/wav;base64,{}",
@@ -242,7 +243,7 @@ fn route_tts_input(
         super::family_adapter::TtsFamily::Supertonic => {
             let pcm = super::families::supertonic::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
             use base64::Engine;
             Ok(format!(
                 "data:audio/wav;base64,{}",
@@ -250,19 +251,13 @@ fn route_tts_input(
             ))
         }
         super::family_adapter::TtsFamily::Audio8 => {
-            let pcm = super::families::audio8::execute(engine, raw_text_input)?;
-            let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
-            use base64::Engine;
-            Ok(format!(
-                "data:audio/wav;base64,{}",
-                base64::engine::general_purpose::STANDARD.encode(&wav_bytes)
-            ))
+            super::families::audio8::execute(engine, raw_text_input, requested_voice, speed,
+                cluaiz_core::Settings::current().media.limits, on_audio)
         }
         super::family_adapter::TtsFamily::Chatterbox => {
             let pcm = super::families::chatterbox::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
             use base64::Engine;
             Ok(format!(
                 "data:audio/wav;base64,{}",
@@ -272,7 +267,7 @@ fn route_tts_input(
         super::family_adapter::TtsFamily::OmniVoice => {
             let pcm = super::families::omnivoice::execute(engine, raw_text_input)?;
             let sanitized_pcm = sanitize_audio_pcm(pcm)?;
-            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+            let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
             use base64::Engine;
             Ok(format!(
                 "data:audio/wav;base64,{}",
@@ -368,14 +363,14 @@ fn handle_vits_piper(
             }
 
             reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
-            stream.settled(&all_pcm_samples);
+            stream.settled(&all_pcm_samples)?;
             pause_before_ms = text_chunk.pause_after_ms;
         }
     }
 
-    stream.finish(&all_pcm_samples);
+    stream.finish(&all_pcm_samples)?;
     let sanitized_pcm = sanitize_audio_pcm(all_pcm_samples)?;
-    let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+    let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
     use base64::Engine;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&wav_bytes);
     Ok(format!("data:audio/wav;base64,{}", b64))
@@ -473,13 +468,13 @@ fn handle_kokoro(
             super::families::kokoro::execute(session, &token_ids, &style_vector, speed)?;
 
         reading::append_audio(&mut all_pcm_samples, &chunk_pcm, sample_rate, pause_before_ms)?;
-        stream.settled(&all_pcm_samples);
+        stream.settled(&all_pcm_samples)?;
         pause_before_ms = text_chunk.pause_after_ms;
     }
 
-    stream.finish(&all_pcm_samples);
+    stream.finish(&all_pcm_samples)?;
     let sanitized_pcm = sanitize_audio_pcm(all_pcm_samples)?;
-    let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm);
+    let wav_bytes = vocoder_wav.encode_wav_bytes(&sanitized_pcm)?;
     use base64::Engine;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&wav_bytes);
     Ok(format!("data:audio/wav;base64,{}", b64))

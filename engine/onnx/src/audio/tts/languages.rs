@@ -94,12 +94,16 @@ pub fn list_voices(model_dir: &Path) -> Vec<Voice> {
             .unwrap_or(usize::MAX)
     };
     ids.sort_by(|a, b| rank(a).cmp(&rank(b)).then_with(|| a.cmp(b)));
-    ids.into_iter()
+    let mut voices: Vec<_> = ids.into_iter()
         .map(|id| {
             let language = voice_language(&id).map(str::to_owned);
             Voice { id, language }
         })
-        .collect()
+        .collect();
+    let mut references = super::families::audio8::registered_voices(model_dir);
+    references.sort_by(|a, b| a.id.cmp(&b.id));
+    voices.extend(references);
+    voices
 }
 
 /// The language code declared by a voice file name's prefix in `data/languages.json`

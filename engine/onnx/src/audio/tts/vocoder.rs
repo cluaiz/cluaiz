@@ -138,37 +138,9 @@ impl NativeVocoder {
     }
 
     /// Encode raw PCM f32 samples to standard 16-bit PCM WAV byte array
-    pub fn encode_wav_bytes(&self, pcm_samples: &[f32]) -> Vec<u8> {
-        let num_channels: u16 = 1;
-        let bits_per_sample: u16 = 16;
-        let byte_rate = (self.sample_rate as u32) * (num_channels as u32) * (bits_per_sample as u32 / 8);
-        let block_align = num_channels * (bits_per_sample / 8);
-        let data_len = (pcm_samples.len() * 2) as u32;
-        let chunk_size = 36 + data_len;
-
-        let mut header = Vec::with_capacity(44 + data_len as usize);
-
-        header.extend_from_slice(b"RIFF");
-        header.extend_from_slice(&chunk_size.to_le_bytes());
-        header.extend_from_slice(b"WAVE");
-
-        header.extend_from_slice(b"fmt ");
-        header.extend_from_slice(&16u32.to_le_bytes());
-        header.extend_from_slice(&1u16.to_le_bytes());
-        header.extend_from_slice(&num_channels.to_le_bytes());
-        header.extend_from_slice(&(self.sample_rate as u32).to_le_bytes());
-        header.extend_from_slice(&byte_rate.to_le_bytes());
-        header.extend_from_slice(&block_align.to_le_bytes());
-        header.extend_from_slice(&bits_per_sample.to_le_bytes());
-
-        header.extend_from_slice(b"data");
-        header.extend_from_slice(&data_len.to_le_bytes());
-
-        for &sample in pcm_samples {
-            let s = (sample * 32767.0).max(-32768.0).min(32767.0) as i16;
-            header.extend_from_slice(&s.to_le_bytes());
-        }
-
-        header
+    pub fn encode_wav_bytes(&self, pcm_samples: &[f32]) -> anyhow::Result<Vec<u8>> {
+        cluaiz_media::wav::encode_pcm16(
+            pcm_samples, u32::try_from(self.sample_rate)?, cluaiz_core::Settings::current().media.limits,
+        )
     }
 }
