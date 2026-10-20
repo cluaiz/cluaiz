@@ -1,4 +1,5 @@
 pub mod family_adapter;
+pub mod capabilities;
 pub mod flow_matching;
 pub mod neural_vocoder;
 pub mod phoneme_map;
