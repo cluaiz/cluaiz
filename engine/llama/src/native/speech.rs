@@ -21,6 +21,8 @@ const MIN_P: f32 = 0.05;
 const TEMPERATURE: f32 = 0.8;
 /// Prompt tokens evaluated per step
 const BATCH: i32 = 512;
+/// Consumer polling cadence in generated frames; independent of the native codec's own batching.
+const PCM_POLL_FRAMES: usize = 16;
 /// Context for the prompt and the generated frames
 const CONTEXT: u32 = 4096;
 
@@ -49,6 +51,8 @@ pub struct SpeechOptions {
     /// Already decoded/authorized audio; the native speaker encoder conditions this utterance.
     pub speaker_reference: Option<DecodedAudio>,
     pub limits: MediaLimits,
+    /// Output speaking rate; shared streaming tempo changes duration without changing sample rate.
+    pub speed: Option<f32>,
 }
 
 impl SpeechModel {
@@ -130,9 +134,28 @@ impl SpeechModel {
 
     /// Speaks `text`; returns a 16-bit mono WAV.
     pub fn speak(&mut self, text: &str, options: &SpeechOptions) -> Result<Vec<u8>> {
+        let mut samples = Vec::new();
+        self.speak_pcm(text, options, |part, _| {
+            let retained = samples.len().checked_add(part.len()).and_then(|n| n.checked_mul(8))
+                .context("Speech output budget overflow")?;
+            options.limits.check_decoded_bytes(u64::try_from(retained)?)?;
+            samples.extend_from_slice(part);
+            Ok(())
+        }, || false)?;
+        cluaiz_media::wav::encode_pcm16(&samples, self.sample_rate, options.limits)
+    }
+
+    /// Emits actual new PCM while generating. Callback/receiver failures and cancellation stop
+    /// at prompt/frame boundaries; a single native step cannot be interrupted by this adapter.
+    pub fn speak_pcm(
+        &mut self, text: &str, options: &SpeechOptions,
+        mut on_pcm: impl FnMut(&[f32], u32) -> Result<()>, cancelled: impl Fn() -> bool,
+    ) -> Result<()> {
         if text.trim().is_empty() {
             bail!("Speech requires non-empty text");
         }
+        if cancelled() { bail!("Speech request cancelled"); }
+        let mut tempo = cluaiz_media::tempo::Tempo::new(self.sample_rate, options.speed.unwrap_or(1.0), options.limits)?;
         let ctx = self.context.as_ptr();
         // A fresh utterance: nothing of the previous one stays in the cache
         // SAFETY: live context.
@@ -162,13 +185,14 @@ impl SpeechModel {
             top_k: TOP_K,
             top_p: TOP_P,
             seed: options.seed.unwrap_or(u32::MAX),
-            out_type: mtmd::MTMD_HELPER_GEN_AUDIO_OUTTYPE_WAV,
+            out_type: mtmd::MTMD_HELPER_GEN_AUDIO_OUTTYPE_PCM,
         };
         // SAFETY: the input's strings outlive the generation (they live until this call returns).
         if unsafe { mtmd::mtmd_helper_gen_audio_set_input(generator.0.as_ptr(), &input) } != 0 {
             bail!("Speech input was refused (text or language not supported by this model)");
         }
         loop {
+            if cancelled() { bail!("Speech request cancelled"); }
             // SAFETY: live generator.
             match unsafe { mtmd::mtmd_helper_gen_audio_step_prompt(generator.0.as_ptr(), BATCH) } {
                 left if left < 0 => bail!("Speech prompt processing failed"),
@@ -186,7 +210,9 @@ impl SpeechModel {
         if hidden.is_null() { bail!("Speech prompt produced no hidden state"); }
         let mut frames = 0usize;
         let mut stop = false;
+        let mut emitted_native = 0;
         while !stop && frames < max_frames {
+            if cancelled() { bail!("Speech request cancelled"); }
             let mut next: *const f32 = std::ptr::null();
             // SAFETY: hidden comes from the context or the previous step and is valid until this call.
             if unsafe { mtmd::mtmd_helper_gen_audio_step_gen(generator.0.as_ptr(), sampled, hidden, &mut next, &mut stop) } != 0 {
@@ -198,23 +224,19 @@ impl SpeechModel {
             frames += 1;
             hidden = next;
             sampled = sampler.sample(ctx);
+            if frames % PCM_POLL_FRAMES == 0 {
+                generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm)?;
+            }
         }
         if !stop && frames >= max_frames { bail!("Speech reached its frame limit before completion; shorten the input"); }
 
-        let (mut rate, mut data, mut len, mut samples) = (0i32, std::ptr::null(), 0usize, 0i64);
-        // SAFETY: live generator; data stays valid until the generator is freed (below, after the copy).
-        if unsafe { mtmd::mtmd_helper_gen_audio_get_output(generator.0.as_ptr(), &mut rate, &mut data, &mut len, &mut samples) } != 0
-            || data.is_null()
-            || len == 0
-            || rate <= 0
-            || samples <= 0
-        {
-            bail!("Speech produced no audio");
-        }
-        // SAFETY: data/len describe the generator's output buffer.
-        let wav = unsafe { std::slice::from_raw_parts(data.cast::<u8>(), len) }.to_vec();
-        tracing::debug!("🗣️ [Speech] {frames} frames, {samples} samples at {rate} Hz");
-        Ok(wav)
+        if cancelled() { bail!("Speech request cancelled"); }
+        generator.emit_delta(&mut emitted_native, self.sample_rate, options.limits, &mut tempo, &mut on_pcm)?;
+        if emitted_native == 0 { bail!("Speech produced no audio"); }
+        let tail = tempo.finish()?;
+        if !tail.is_empty() { on_pcm(&tail, self.sample_rate)?; }
+        tracing::debug!("Speech generated {frames} frames, {emitted_native} native samples");
+        Ok(())
     }
 }
 
@@ -266,6 +288,35 @@ impl Generator {
         NonNull::new(unsafe { mtmd::mtmd_helper_gen_audio_init(ctx, projector) })
             .map(Self)
             .context("Speech generator could not be created")
+    }
+
+    fn emit_delta(
+        &self, emitted: &mut usize, expected_rate: u32, limits: MediaLimits,
+        tempo: &mut cluaiz_media::tempo::Tempo, on_pcm: &mut impl FnMut(&[f32], u32) -> Result<()>,
+    ) -> Result<()> {
+        let (mut rate, mut data, mut len, mut samples) = (0i32, std::ptr::null(), 0usize, 0i64);
+        // SAFETY: owned live generator in PCM mode; the returned buffer is borrowed only below,
+        // before another generation/decoder call. get_output retains code2wav state across flushes.
+        if unsafe { mtmd::mtmd_helper_gen_audio_get_output(self.0.as_ptr(), &mut rate, &mut data, &mut len, &mut samples) } != 0 {
+            bail!("Speech PCM output failed");
+        }
+        let count = usize::try_from(samples).context("Invalid native speech sample count")?;
+        if rate <= 0 || rate as u32 != expected_rate || count < *emitted
+            || count.checked_mul(std::mem::size_of::<f32>()) != Some(len) {
+            bail!("Native speech PCM layout/rate changed during generation");
+        }
+        if count == *emitted { return Ok(()); }
+        if data.is_null() || (data as usize) % std::mem::align_of::<f32>() != 0 {
+            bail!("Native speech PCM buffer is invalid");
+        }
+        limits.check_decoded_bytes(u64::try_from(len.checked_mul(2).context("Speech PCM budget overflow")?)?)?;
+        // SAFETY: native PCM mode supplies count aligned F32 values, verified against byte length;
+        // its lifetime ends before this method returns and no native generator call occurs meanwhile.
+        let pcm = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), count) };
+        let output = tempo.write(&pcm[*emitted..])?;
+        *emitted = count;
+        if !output.is_empty() { on_pcm(&output, expected_rate)?; }
+        Ok(())
     }
 }
 

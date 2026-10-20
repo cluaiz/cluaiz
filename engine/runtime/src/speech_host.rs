@@ -29,7 +29,7 @@ struct Resident<T> {
 }
 
 impl SpeechHost {
-    /// Speaks `text` with the GGUF speech model `entry`; the result arrives as one WAV data URI.
+    /// Emits distinct WAV parts during generation, then the whole utterance's WAV data URI.
     pub fn dispatch(
         &self,
         entry: ModelRegistryEntry,
@@ -42,7 +42,7 @@ impl SpeechHost {
         let handle = tokio::runtime::Handle::current();
         tokio::task::spawn_blocking(move || {
             let lease = Arc::new(());
-            let result = speak(&loaded, &entry, &text, options, keep_alive, Arc::clone(&lease))
+            let result = speak(&loaded, &entry, &text, options, keep_alive, Arc::clone(&lease), &tx)
                 .map(|uri| AudioEvent::Completed(AudioOutput::WavDataUri(uri)))
                 .map_err(|e| format!("{e:#}"));
             if result.is_ok() {
@@ -74,8 +74,11 @@ fn speak(
     mut options: SpeechOptions,
     keep_alive: Option<i32>,
     lease: Arc<()>,
+    tx: &mpsc::Sender<Result<AudioEvent, String>>,
 ) -> Result<String> {
+    if tx.is_closed() { anyhow::bail!("Speech request cancelled"); }
     let mut slot = loaded.lock().map_err(|_| anyhow::anyhow!("Speech host lock poisoned"))?;
+    if tx.is_closed() { anyhow::bail!("Speech request cancelled"); }
     if slot.as_ref().map(|r| r.id != entry.id).unwrap_or(true) {
         // Free the previous model before loading the next one
         *slot = None;
@@ -104,13 +107,21 @@ fn speak(
     options.language = options.language
         .map(|l| l.split(['-', '_']).next().unwrap_or(&l).to_ascii_lowercase())
         .filter(|l| !l.is_empty() && l != "auto");
-    let result = resident.model.speak(text, &options);
+    let mut samples = Vec::new();
+    let rate = resident.model.sample_rate();
+    let result = resident.model.speak_pcm(text, &options, |part, sample_rate| {
+        let retained = samples.len().checked_add(part.len()).and_then(|n| n.checked_mul(24))
+            .and_then(|n| n.checked_add(part.len().checked_mul(16)?)).context("Speech output budget overflow")?;
+        options.limits.check_decoded_bytes(u64::try_from(retained)?)?;
+        samples.extend_from_slice(part);
+        let uri = cluaiz_media::wav::encode_data_uri(part, sample_rate, options.limits)?;
+        tx.blocking_send(Ok(AudioEvent::Chunk(uri)))
+            .map_err(|_| anyhow::anyhow!("Speech request cancelled"))
+    }, || tx.is_closed()).and_then(|()| cluaiz_media::wav::encode_data_uri(&samples, rate, options.limits));
     if result.is_err() || keep_alive == Some(0) {
         *slot = None;
     }
-    let wav = result?;
-    use base64::Engine;
-    Ok(format!("data:audio/wav;base64,{}", base64::engine::general_purpose::STANDARD.encode(wav)))
+    result
 }
 
 fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) -> Result<bool> {
