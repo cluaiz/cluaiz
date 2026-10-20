@@ -5,6 +5,8 @@
 - **Platform Support:** Linux x86_64, macOS ARM64, Windows x86_64, Android AArch64.
 - **Reusability Level:** Backend-owned model processing; common audio preparation is imported directly from cluaiz-media.
 
+Audio8 required asset paths come from `cluaiz-core::model_assets`, shared with discovery/installation. The backend keeps numerical layout/dimension checks, actual graph sessions, voice conditioning and sampling. Prompt/sampler data remains in its backend protocol JSON; generator/decoder/tokenizer filenames have one shared owner.
+
 ---
 
 ## Architectural Flow
