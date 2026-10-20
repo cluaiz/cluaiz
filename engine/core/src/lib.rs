@@ -9,6 +9,7 @@ pub mod chat;
 pub mod media;
 pub mod media_limits;
 pub mod processing;
+pub mod model_assets;
 
 pub use env::{EnvironmentManager, EnvironmentMode};
 pub use settings::{

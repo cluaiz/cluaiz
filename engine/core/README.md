@@ -2,6 +2,8 @@
 
 Central foundational module for the Cluaiz compute engine. Responsible for single-source-of-truth configuration, paths, unit conversion, and core engine contracts.
 
+`model_assets` describes required files of explicitly supported export manifests. Its data-owned selector, layout requirements, default precision and asset roles are shared by model discovery and native loading. The initial asset descriptor covers the Audio8 valid-prefix FP16 export; prompts, samplers and tensor execution remain backend-owned. Paths pass a shared lexical check plus canonical containment at filesystem consumers. This introduces no models/ONNX dependency cycle or GPU dependency in core.
+
 ## 📐 Architecture
 
 ```mermaid

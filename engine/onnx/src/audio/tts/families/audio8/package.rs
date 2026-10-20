@@ -2,10 +2,7 @@
 //! Dimensions and assets of the upstream valid-prefix FP16 export, never guessed KV tensors.
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize)]
 pub(super) struct Manifest {
@@ -29,18 +26,11 @@ pub(super) struct Manifest {
     pub codec_hop_length: usize,
     pub stream_context_frames: usize,
     pub stream_guard_frames: usize,
-    pub default_precision: String,
-    pub available_precisions: Vec<String>,
-    pub default_codec_precision: String,
-    pub codec_models: HashMap<String, String>,
     pub model_fingerprint: String,
 }
 
 #[derive(Deserialize)]
 pub(super) struct Protocol {
-    pub slow_graph: String,
-    pub fast_graph: String,
-    pub tokenizer: String,
     pub prompt: Vec<String>,
     pub reference_prefix: Vec<String>,
     pub reference_suffix: Vec<String>,
@@ -64,8 +54,10 @@ pub(super) struct Package {
 
 impl Package {
     pub fn read(dir: &Path) -> Result<Self> {
+        let assets = cluaiz_core::model_assets::PackageAssets::from_directory(dir)?
+            .context("Audio8 package requires a supported asset manifest")?;
         let manifest: Manifest = serde_json::from_slice(
-            &std::fs::read(dir.join("runtime_manifest.json"))
+            &std::fs::read(dir.join(&assets.manifest))
                 .context("Audio8 package requires runtime_manifest.json")?,
         )?;
         let protocol: Protocol = serde_json::from_str(include_str!("protocol.json"))?;
@@ -102,32 +94,13 @@ impl Package {
                 .and_then(|n| n.checked_add(1))
                 != Some(i64::try_from(manifest.codebook_size)?)
             || (manifest.semantic_begin_id..=manifest.semantic_end_id).contains(&manifest.im_end_id)
-            || !manifest
-                .available_precisions
-                .contains(&manifest.default_precision)
         {
             bail!("Invalid Audio8 token/rate/precision contract");
         }
-        let slow = asset(
-            dir,
-            &protocol
-                .slow_graph
-                .replace("{precision}", &manifest.default_precision),
-        )?;
-        let fast = asset(
-            dir,
-            &protocol
-                .fast_graph
-                .replace("{precision}", &manifest.default_precision),
-        )?;
-        let decoder = asset(
-            dir,
-            manifest
-                .codec_models
-                .get(&manifest.default_codec_precision)
-                .context("Audio8 manifest codec precision has no decoder graph")?,
-        )?;
-        let tokenizer = asset(dir, &protocol.tokenizer)?;
+        let slow = asset(dir, assets.file("slow")?)?;
+        let fast = asset(dir, assets.file("fast")?)?;
+        let decoder = asset(dir, assets.file("decoder")?)?;
+        let tokenizer = asset(dir, assets.file("tokenizer")?)?;
         Ok(Self {
             manifest,
             protocol,

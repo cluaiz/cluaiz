@@ -1,0 +1,23 @@
+[
+  {
+    "manifest": "runtime_manifest.json",
+    "max_manifest_bytes": 65536,
+    "selector": {"/model_family": "audio8_tts"},
+    "requires": {
+      "/activation_dtype": "float16",
+      "/slow_logits_layout": "semantic_then_eos",
+      "/kv_attention_layout": "valid_prefix"
+    },
+    "precision": "/default_precision",
+    "precisions": "/available_precisions",
+    "primary_role": "slow",
+    "graph_roles": ["slow", "fast", "decoder"],
+    "auxiliary_roots": ["registration"],
+    "assets": {
+      "slow": {"template": "slow_ar_{precision}.onnx"},
+      "fast": {"template": "fast_ar_{precision}.onnx"},
+      "decoder": {"map": "/codec_models", "key": "/default_codec_precision"},
+      "tokenizer": {"template": "tokenizer/tokenizer.json"}
+    }
+  }
+]
