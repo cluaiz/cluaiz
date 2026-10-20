@@ -2,6 +2,8 @@
 
 Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro, CosyVoice, Matcha, Chatterbox, Vits), and Multimodal Vision.
 
+TTS control discovery lives in `audio/tts/capabilities.rs`: languages are separate from named voices, using the existing family/configuration/voice metadata owners. Audio8's protocol declares automatic text-language selection; the API rejects an explicit language-forcing option instead of silently ignoring it. Audio8 stage logs separate prefill, Slow AR, Fast AR and codec/output, including tensor transfers and sink backpressure. The runtime applies shared package admission to graph and external-weight bytes before loading sessions; estimates are not peak-memory guarantees or realtime claims.
+
 ## 📐 Architecture
 
 ```mermaid
@@ -46,7 +48,7 @@ STT input preparation directly imports shared source/audio/resample functions. O
 - **STT graph selection:** `load_audio_package` probes actual sessions from the selected package for either `input_features` (Mel-spectrogram encoder, e.g. Whisper) or `input_values` (raw-waveform encoder, e.g. Moonshine) paired with an uncached decoder declaring `input_ids`, `encoder_hidden_states` and `logits`. Dtypes, ranks, static dimensions and encoder/decoder hidden-state compatibility are checked. Ambiguous/missing graphs or cache-only packages return errors. No fixed empty KV tensor is injected.
 - **Processor:** For `input_features` encoders, `preprocessor_config.json` must supply positive feature size, sampling rate, hop, FFT, sample count and frame count. For `input_values` encoders, `preprocessor_config.json` supplies `sampling_rate` (and optional `do_normalize` / `n_samples`), while `config.json` / `tokenizer.json` supply `decoder_start_token_id` (`bos_token_id`), `eos_token_id`, and `max_position_embeddings`. Unsupported lengths fail instead of silently discarding recording tails.
 - **Failures:** encoder/decoder run errors, invalid tensor extraction, missing tokenizer/text and stopped output consumer propagate. Existing spectrogram, language probing and greedy sampling remain model-owned routines; universal language/quality equivalence is not asserted.
-- **Audio8:** its former single-shot guessed inputs and fabricated codec expansion do not implement the exported stateful AR contract and are removed. Synthesis explicitly returns not implemented. The installed package also lacks tokenizer/reference-voice assets; adding those alone does not supply the missing native runtime.
+- **Audio8:** the native family owner executes the exported Slow/Fast AR graphs, FP16 cache deltas and codec decoder with the package tokenizer/protocol. Registered reference profiles are optional; reference-free generation does not establish a persistent speaker identity. Required graphs, external weights and tokenizer are validated before loading. Successful English fixtures do not certify every language, export layout or device.
 
 ## Embedding execution contract
 

@@ -70,9 +70,9 @@ pub struct OnnxEngine {
 }
 
 impl OnnxEngine {
-    /// Retry only known GPU execution-provider failures, never tensor/package errors.
-    pub fn permits_cpu_execution_retry(&self, error: &anyhow::Error) -> bool {
-        if self.settings.n_gpu_layers == 0 {
+    /// Retry only known provider faults before output; never restart delivered/cancelled audio.
+    pub fn permits_cpu_execution_retry(&self, error: &anyhow::Error, retry_blocked: bool) -> bool {
+        if retry_blocked || self.settings.n_gpu_layers == 0 {
             return false;
         }
         let message = format!("{error:#}");
@@ -652,7 +652,8 @@ mod provider_tests {
         ];
         for message in failures {
             let error = anyhow::anyhow!(message).context("TTS execution");
-            assert!(gpu.permits_cpu_execution_retry(&error));
+            assert!(gpu.permits_cpu_execution_retry(&error, false));
+            assert!(!gpu.permits_cpu_execution_retry(&error, true), "Delivered/cancelled speech must not restart from the beginning");
         }
         for message in [
             "Unexpected input data type: int64, expected float16",
@@ -660,11 +661,11 @@ mod provider_tests {
             "Required tokenizer missing",
             "Audio contains NaN",
         ] {
-            assert!(!gpu.permits_cpu_execution_retry(&anyhow::anyhow!(message)));
+            assert!(!gpu.permits_cpu_execution_retry(&anyhow::anyhow!(message), false));
         }
         settings.n_gpu_layers = 0;
         let cpu = OnnxEngine::with_settings(settings)?;
-        assert!(!cpu.permits_cpu_execution_retry(&anyhow::anyhow!(failures[0])));
+        assert!(!cpu.permits_cpu_execution_retry(&anyhow::anyhow!(failures[0]), false));
         Ok(())
     }
 }

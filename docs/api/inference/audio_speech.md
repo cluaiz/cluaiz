@@ -23,10 +23,10 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 | **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
 | **`model`** | String | No | active TTS slot, else first eligible installed package | Installed TTS package ID | ONNX TTS or GGUF speech model with an audio-generation projector. |
 | **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
-| **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | ONNX: rules for the text's spelling/numbers, inferred from script/voice/model. GGUF: native language selector with explicit unsupported-language errors; Qwen's default is English. |
+| **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | Phoneme runtimes: spelling/number rules from script/voice/model. GGUF: native selector; unsupported vocabulary languages return HTTP400 before model load. Audio8 determines language from text and rejects forcing; omit language or use `"auto"`. |
 | **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Kokoro/Piper use model duration controls. GGUF applies shared pitch-preserving output tempo at the native sample rate; this is not a native model prosody control. Other families' support depends on their runtime. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Kokoro/Piper emit WAV parts per settled sentence; GGUF emits new generated PCM as WAV parts (`speech.audio.delta`), then the whole WAV. Other families depend on their runtime. |
-| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` to retain) | GGUF: positive minutes after successful completion; `0` unloads after the request; omitted/`-1` retains until replacement or shutdown. Native load/generation failure releases the speech model; validation rejected before dispatch leaves any existing resident unchanged. New requests invalidate older expiry timers. Chat and ONNX have separate owners. |
+| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` to retain) | Positive minutes after successful completion; `0` unloads after the request; omitted/`-1` retains until replacement/shutdown. Execution failures release the selected resident; validation rejected before dispatch preserves existing residency. New requests invalidate older expiry timers. Changing TTS backends releases the previous TTS resident before loading its replacement, while preserving chat and non-TTS ONNX residents. |
 
 ---
 
@@ -41,6 +41,24 @@ The following official Piper ONNX voice packages are available out-of-the-box:
 | **`piper-voices-hi_in-rohan-medium`** | Hindi (India) / Hinglish | Male | 22.05 kHz | Native Indian accent Hindi & Hinglish voice. |
 
 ### Which voices a model has
+
+The existing `data` array now has an additive sibling `capabilities` object:
+
+```json
+{"languages":["en","es"],"language_control":"explicit","voice_mode":"reference_source","coherent_input":true}
+```
+
+This is a schema example, not a named model's complete inventory. A default-only model can support multiple languages. Count named speakers from `data` entries with `default:false`; `default` is a control. GGUF languages come from actual header codec tokens and native ISO aliases without loading weights. ONNX languages come from voices/configuration; Audio8's automatic-language list comes from its export protocol. `GET /v1/audio/languages` remains STT-only.
+
+`language_control` is `explicit` or `auto`. `voice_mode` is `preset`, `embedded`, `generated` (no declared reference encoder), `reference_source` (authorized GGUF audio), or `reference_profile` (package-local encoded profile). `coherent_input:true` tells clients to keep a narration together: independent unconditioned requests may choose different speakers. It does not guarantee speaker identity. A reference encoder is advertised only when the inspected matching projector declares one.
+
+One TTS request is admitted at a time across ONNX/GGUF, before reference decoding. Overlap returns HTTP429 `speech_busy`; stopping a client releases admission after outstanding preparation/native work finishes. Native load/frame operations remain non-preemptible.
+
+GGUF speech honors captured `optimization.n_gpu_layers` (null Auto, 0 CPU, -1 all GPU layers, positive exact count), generation/batch threads and mmap preference. CPU mode disables GPU operation/KV offload and GPU speaker encoding. Changing load settings or backbone/projector path/size/mtime replaces the resident. ONNX uses `onnx.n_gpu_layers` and its existing provider configuration.
+
+Loads share the chat/ONNX/GGUF transition lock. Preflight uses the shared live-memory reserve policy, complete package bytes and configured media workspace; GGUF adds its fixed context/logits estimate. These estimates are not OS reservations or measured peaks. Explicit GPU admission failure errors; automatic native GPU-load failure may retry CPU after a new memory check. Other applications and later allocations can still change free memory.
+
+Stage logs separate native preparation/generation/decoder/output and Audio8 prefill/Slow AR/Fast AR/decode-output. They exclude model loading; output includes sink backpressure and Audio8 stages include tensor transfers. They do not establish realtime speed. Buffering complete speech trades startup delay for uninterrupted playback; streaming can underrun when synthesis is slower than playback.
 
 `GET /v1/audio/voices?model=<id>` (model optional: the active or first installed TTS model) lists the values accepted by `voice`. `"default"` comes first; each voice carries the language its name declares (Kokoro: `a` American English, `b` British English, `h` Hindi, …), `null` when unknown:
 

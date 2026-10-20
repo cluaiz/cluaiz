@@ -26,6 +26,9 @@ pub struct OnnxModel {
 }
 
 impl OnnxModel {
+    pub fn tts_capabilities(&self) -> Result<onnx_engine::audio::tts::capabilities::TtsCapabilities> {
+        onnx_engine::audio::tts::capabilities::discover(&self.dir)
+    }
     /// The package's TTS voices (empty for a single-voice model).
     pub fn voices(&self) -> Vec<onnx_engine::audio::tts::languages::Voice> {
         onnx_engine::audio::tts::languages::list_voices(&self.dir)
@@ -155,6 +158,7 @@ pub enum AudioEvent {
 
 struct Resident {
     key: String,
+    task: String,
     id: String,
     generation: u64,
     engine: OnnxEngine,
@@ -173,6 +177,7 @@ struct AudioState {
 #[derive(Clone, Default)]
 pub struct OnnxHost {
     state: Arc<Mutex<AudioState>>,
+    transition: Arc<tokio::sync::Mutex<()>>,
 }
 
 struct AudioExecution {
@@ -190,9 +195,56 @@ struct OnnxLease<'a> {
     settings: &'a ActiveUserSettings,
     keep_alive: Option<i32>,
     handle: &'a tokio::runtime::Handle,
+    retry_blocked: Option<&'a dyn Fn() -> bool>,
+}
+
+/// Shared additive admission for the complete TTS package, rather than each graph independently.
+fn tts_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettings) -> Result<cluaiz_core::OnnxSettings> {
+    let mut effective = settings.onnx.clone();
+    if task != "text_to_speech" { return Ok(effective); }
+    let package = PackageCapabilities::inspect(&model.primary)?;
+    let weights_bytes = graph_asset_bytes(&model.dir, &package.onnx_graphs)?;
+    let needs = cluaiz_plan::media_budget::MediaRequirements {
+        weights_bytes, workspace_bytes: settings.media.projector_workspace_bytes.get(), decoded_bytes: 0,
+    };
+    let budget = cluaiz_plan::media_budget::MediaBudget::plan(needs,
+        &cluaiz_hw::HardwareProber::with_live_memory(), settings, effective.n_gpu_layers != 0)?;
+    if budget.placement() == cluaiz_plan::media_budget::ProjectorPlacement::Cpu {
+        if effective.n_gpu_layers > 0 { bail!("Requested ONNX speech GPU placement exceeds the current shared memory budget"); }
+        effective.n_gpu_layers = 0;
+    }
+    tracing::info!(model = %model.id, gpu = effective.n_gpu_layers != 0, host_estimate_bytes = budget.host_bytes(),
+        device_estimate_bytes = budget.device_bytes(), "TTS package load admission (estimates, not a reservation)");
+    Ok(effective)
+}
+
+fn graph_asset_bytes(dir: &std::path::Path, graphs: &[cluaiz_models::prober::OnnxProbeResult]) -> Result<u64> {
+    let mut paths = std::collections::BTreeSet::new();
+    for graph in graphs {
+        let graph_path = dir.join(&graph.file).canonicalize()?;
+        let parent = graph_path.parent().context("Graph parent missing")?;
+        paths.insert(graph_path.clone());
+        for file in &graph.external_files { paths.insert(parent.join(file).canonicalize()?); }
+    }
+    paths.iter().try_fold(0_u64, |total, path| -> Result<u64> {
+        if !path.starts_with(dir) { bail!("TTS graph weights escape the selected package"); }
+        total.checked_add(std::fs::metadata(path)?.len()).context("TTS package size overflow")
+    })
 }
 
 impl OnnxHost {
+    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
+        Self { transition, ..Default::default() }
+    }
+
+    /// Release only an inactive ONNX TTS resident when the GGUF speech backend is selected.
+    pub fn unload_tts(&self) -> Result<bool> {
+        let mut state = self.state.lock().map_err(|_| anyhow::anyhow!("ONNX owner mutex poisoned"))?;
+        if !state.resident.as_ref().is_some_and(|r| r.task == "text_to_speech") { return Ok(false); }
+        state.resident = None;
+        Ok(true)
+    }
+
     pub fn dispatch(
         &self,
         model: OnnxModel,
@@ -201,11 +253,13 @@ impl OnnxHost {
         options: SttOptions,
         settings: ActiveUserSettings,
         keep_alive: Option<i32>,
+        admission: Option<crate::media_admission::MediaLease>,
     ) -> mpsc::Receiver<Result<AudioEvent, String>> {
         let (tx, rx) = mpsc::channel(8);
         let owner = self.clone();
         let handle = tokio::runtime::Handle::current();
         tokio::task::spawn_blocking(move || {
+            let _admission = admission;
             let result = owner.execute(
                 AudioExecution {
                     model,
@@ -242,7 +296,12 @@ impl OnnxHost {
         if tx.is_closed() {
             bail!("Audio output consumer stopped before execution");
         }
-        let mut emit = |chunk| tx.blocking_send(Ok(AudioEvent::Chunk(chunk))).is_ok();
+        let output_started = std::sync::atomic::AtomicBool::new(false);
+        let mut emit = |chunk| {
+            output_started.store(true, std::sync::atomic::Ordering::Relaxed);
+            tx.blocking_send(Ok(AudioEvent::Chunk(chunk))).is_ok()
+        };
+        let retry_blocked = || output_started.load(std::sync::atomic::Ordering::Relaxed) || tx.is_closed();
         let output = self.with_engine(
             OnnxLease {
                 model: &model,
@@ -250,6 +309,7 @@ impl OnnxHost {
                 settings: &settings,
                 keep_alive,
                 handle,
+                retry_blocked: Some(&retry_blocked),
             },
             |engine| {
                 let graphs = match task {
@@ -291,6 +351,7 @@ impl OnnxHost {
                     settings: &settings,
                     keep_alive,
                     handle: &handle,
+                    retry_blocked: None,
                 },
                 |engine| engine.load_embedding_package(&model.dir, &model.primary),
                 |engine| {
@@ -324,6 +385,7 @@ impl OnnxHost {
             settings,
             keep_alive,
             handle,
+            retry_blocked,
         } = lease;
         let mut state = self
             .state
@@ -340,10 +402,13 @@ impl OnnxHost {
         let generation = state.generation;
         if state.resident.as_ref().is_none_or(|r| r.key != key) {
             state.resident = None; // Free the previous graph before allocating its replacement.
-            let mut engine = OnnxEngine::with_settings(settings.onnx.clone())?;
+            let _transition = self.transition.blocking_lock();
+            let effective = tts_load_settings(model, task, settings)?;
+            let mut engine = OnnxEngine::with_settings(effective)?;
             load(&mut engine)?;
             state.resident = Some(Resident {
                 key: key.clone(),
+                task: task.to_owned(),
                 id: model.id.clone(),
                 generation,
                 engine,
@@ -357,13 +422,21 @@ impl OnnxHost {
             .as_mut()
             .context("ONNX session was not published")?;
         resident.generation = generation;
+        if task == "text_to_speech" {
+            if let Err(error) = cluaiz_plan::media_budget::check_request_ram(settings.media.projector_workspace_bytes.get(), 0,
+                &cluaiz_hw::HardwareProber::with_live_memory(), settings) {
+                state.resident = None;
+                return Err(error);
+            }
+        }
+        let resident = state.resident.as_mut().context("ONNX session was not published")?;
         let mut result = execute(&resident.engine);
-        // TTS has not delivered output yet; a retry cannot duplicate partial STT text.
+        // Never restart speech after a part was emitted or its consumer disconnected.
         if task == "text_to_speech"
             && result
                 .as_ref()
                 .err()
-                .is_some_and(|error| resident.engine.permits_cpu_execution_retry(error))
+                .is_some_and(|error| resident.engine.permits_cpu_execution_retry(error, retry_blocked.is_some_and(|blocked| blocked())))
         {
             let provider_error = result
                 .as_ref()
@@ -372,15 +445,20 @@ impl OnnxHost {
                 .unwrap_or_default();
             tracing::warn!(model = %model.id, error = %provider_error, "TTS GPU execution failed; releasing session before CPU retry");
             state.resident = None;
-            let mut cpu_settings = settings.onnx.clone();
-            cpu_settings.n_gpu_layers = 0;
-            let mut engine = OnnxEngine::with_settings(cpu_settings)?;
-            load(&mut engine)
-                .with_context(|| format!("TTS CPU retry load failed after: {provider_error}"))?;
+            let engine = {
+                let _transition = self.transition.blocking_lock();
+                let mut cpu_request = settings.clone();
+                cpu_request.onnx.n_gpu_layers = 0;
+                let cpu_settings = tts_load_settings(model, task, &cpu_request)?;
+                let mut engine = OnnxEngine::with_settings(cpu_settings)?;
+                load(&mut engine).with_context(|| format!("TTS CPU retry load failed after: {provider_error}"))?;
+                engine
+            };
             result = execute(&engine)
                 .with_context(|| format!("TTS CPU retry failed after: {provider_error}"));
             state.resident = Some(Resident {
                 key: key.clone(),
+                task: task.to_owned(),
                 id: model.id.clone(),
                 generation,
                 engine,
@@ -496,6 +574,22 @@ impl OnnxHost {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_tts_budget_counts_external_weights_once_and_rejects_escape() -> Result<()> {
+        let temp = tempfile::tempdir()?;
+        let dir = temp.path().canonicalize()?;
+        std::fs::write(dir.join("graph"), b"1234")?;
+        std::fs::write(dir.join("weights"), vec![0_u8; 128])?;
+        let graph = cluaiz_models::prober::OnnxProbeResult {
+            file: "graph".into(), external_files: vec!["weights".into(), "weights".into()], ..Default::default()
+        };
+        assert_eq!(graph_asset_bytes(&dir, &[graph.clone(), graph.clone()])?, 132);
+        let outside = tempfile::NamedTempFile::new()?;
+        let mut escaping = graph;
+        escaping.external_files = vec![outside.path().to_string_lossy().into_owned()];
+        assert!(graph_asset_bytes(&dir, &[escaping]).unwrap_err().to_string().contains("escape"));
+        Ok(())
+    }
 
     #[test]
     fn test_expiry_rejects_old_request_and_different_model() -> Result<()> {
@@ -504,6 +598,7 @@ mod tests {
             .lock()
             .map_err(|_| anyhow::anyhow!("Test mutex poisoned"))?
             .resident = Some(Resident {
+            task: "embedding".into(),
             key: "current".into(),
             id: "selected".into(),
             generation: 2,
@@ -513,9 +608,11 @@ mod tests {
             provider_settings_key: "fixture".into(),
         });
         assert!(!host.unload_if_current("current", 1)?);
+        assert!(!host.unload_tts()?, "Switching TTS backends must preserve an embedding/STT resident");
         assert!(!host.unload_if_current("previous", 2)?);
         assert!(host.unload_if_current("current", 2)?);
         assert!(!host.unload_if_current("current", 2)?);
+        assert!(!host.unload_tts()?);
         Ok(())
     }
 }

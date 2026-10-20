@@ -741,6 +741,7 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         Default::default(),
         cluaiz_core::Settings::current(),
         Some(0),
+        None,
     );
     match events.recv().await {
         Some(Err(message)) => assert!(!message.contains("supported window"), "{message}"),

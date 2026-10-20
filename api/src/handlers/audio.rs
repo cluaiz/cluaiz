@@ -268,12 +268,42 @@ pub async fn execute_audio(
     let model_id = entry.id.clone();
     let stream = payload.stream.unwrap_or(true);
     let settings = cluaiz_core::Settings::current();
+    let admission = if task == AudioTask::TextToSpeech {
+        match state.host.speech.try_acquire() {
+            Ok(lease) => Some(lease),
+            Err(e) => return error(StatusCode::TOO_MANY_REQUESTS, "speech_busy", e),
+        }
+    } else { None };
     if entry.format_type.eq_ignore_ascii_case("gguf") {
         if task != AudioTask::TextToSpeech {
             return error(StatusCode::BAD_REQUEST, "model_contract_error", "A GGUF speech model makes speech; speech-to-text needs an ONNX model");
         }
+        if let Some(language) = options.language.as_deref().filter(|l| !l.eq_ignore_ascii_case("auto")) {
+            let caps = match cluaiz_runtime::speech_host::capabilities(entry) {
+                Ok(caps) => caps,
+                Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+            };
+            if let Err(e) = caps.validate_language_control(Some(language)) {
+                return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e);
+            }
+            let base = language.split(['-', '_']).next().unwrap_or(language).to_ascii_lowercase();
+            if !caps.languages.is_empty() && !caps.languages.contains(&base) {
+                return error(StatusCode::BAD_REQUEST, "unsupported_language", format!("Selected speech model does not support language '{language}'. Supported languages: {}", caps.languages.join(", ")));
+            }
+        }
+        let Some(admission) = admission else {
+            return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_admission_error", "Missing speech admission");
+        };
         let speaker_reference = if let Some(source) = options.voice {
-            match prepare_authorized_audio(&state, &headers, source, &settings).await {
+            let (owner, request_headers, request_settings) = (Arc::clone(&state), headers.clone(), settings.clone());
+            let preparation = admission.clone().prepare(Arc::new(std::sync::atomic::AtomicBool::new(false)), async move {
+                prepare_authorized_audio(&owner, &request_headers, source, &request_settings).await
+            }).await;
+            let prepared = match preparation {
+                Ok((result, _lease)) => result,
+                Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, "audio_decode_error", e),
+            };
+            match prepared {
                 Ok(audio) => Some(audio),
                 Err((kind, message)) => return error(if kind == "permission_error" {StatusCode::FORBIDDEN} else {StatusCode::BAD_REQUEST}, kind, message),
             }
@@ -285,13 +315,25 @@ pub async fn execute_audio(
             limits: settings.media.limits,
             ..Default::default()
         };
-        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, speech_options, payload.keep_alive);
+        let onnx = state.host.onnx.clone();
+        let release_lease = admission.clone();
+        match tokio::task::spawn_blocking(move || { let _lease = release_lease; onnx.unload_tts() }).await {
+            Ok(Ok(_)) => {},
+            result => return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_transition_error", format!("{result:?}")),
+        }
+        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, speech_options, settings, payload.keep_alive, admission);
         return respond(events, task, model_id, stream).await;
     }
     let model = match OnnxModel::from_registry(entry, task) {
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
     };
+    if task == AudioTask::TextToSpeech {
+        match model.tts_capabilities().and_then(|caps| caps.validate_language_control(options.language.as_deref())) {
+            Ok(()) => {},
+            Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e),
+        }
+    }
     let input = if is_text {
         AudioInput::Text(payload.input_source.data)
     } else {
@@ -335,10 +377,18 @@ pub async fn execute_audio(
                 }
         }
     };
+    if task == AudioTask::TextToSpeech {
+        let speech = state.host.speech.clone();
+        let release_lease = admission.clone();
+        match tokio::task::spawn_blocking(move || { let _lease = release_lease; speech.unload() }).await {
+            Ok(Ok(())) => {},
+            result => return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_transition_error", format!("{result:?}")),
+        }
+    }
     let events = state
         .host
         .onnx
-        .dispatch(model, task, input, options, settings, payload.keep_alive);
+        .dispatch(model, task, input, options, settings, payload.keep_alive, admission);
     respond(events, task, model_id, stream).await
 }
 
@@ -477,7 +527,10 @@ pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<Voic
     let mut data = vec![json!({"id": "default", "language": null, "default": true})];
     // A GGUF speech model has no voice files; a nondefault voice is a reference audio source.
     if entry.format_type.eq_ignore_ascii_case("gguf") {
-        return Json(json!({"object": "list", "model": entry.id, "data": data})).into_response();
+        return match cluaiz_runtime::speech_host::capabilities(entry) {
+            Ok(capabilities) => Json(json!({"object":"list", "model":entry.id, "data":data, "capabilities":capabilities})).into_response(),
+            Err(e) => error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+        };
     }
     let model = match OnnxModel::from_registry(entry, task) {
         Ok(model) => model,
@@ -489,7 +542,10 @@ pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<Voic
             .into_iter()
             .map(|v| json!({"id": v.id, "language": v.language, "default": false})),
     );
-    Json(json!({"object": "list", "model": model.id, "data": data})).into_response()
+    match model.tts_capabilities() {
+        Ok(capabilities) => Json(json!({"object":"list", "model":model.id, "data":data, "capabilities":capabilities})).into_response(),
+        Err(e) => error(StatusCode::BAD_REQUEST, "model_contract_error", e),
+    }
 }
 
 /// GET /v1/audio/languages?model=<id>: the languages a speech-to-text model can transcribe (codes

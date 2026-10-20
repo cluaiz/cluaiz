@@ -7,42 +7,77 @@ use crate::onnx_host::{AudioEvent, AudioOutput};
 use anyhow::{Context, Result};
 use cluaiz_models::types::manifest::ModelRegistryEntry;
 use llama_engine::native::speech::SpeechModel;
+use cluaiz_core::ActiveUserSettings;
+use cluaiz_plan::media_budget::{MediaBudget, MediaRequirements, ProjectorPlacement};
 pub use llama_engine::native::speech::SpeechOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-/// GPU memory kept free beside the speech model's own files
-const GPU_HEADROOM_BYTES: u64 = 768 * 1024 * 1024;
+/// Read only the backbone header: listing controls must never load model weights or a GPU session.
+pub fn capabilities(entry: &ModelRegistryEntry) -> Result<onnx_engine::audio::tts::capabilities::TtsCapabilities> {
+    let (model, projector) = speech_files(entry)?;
+    let header = cluaiz_models::GgufProber::read_header(&model)?;
+    let package = cluaiz_models::capabilities::PackageCapabilities::inspect(&model)?;
+    let reference = package.projector.iter().chain(&package.projector_candidates)
+        .any(|p| p.path == projector && p.profile.audio_encoder == Some(true));
+    Ok(onnx_engine::audio::tts::capabilities::TtsCapabilities {
+        languages: llama_engine::native::speech::language_codes(&header.speech_languages)?,
+        language_control: if header.speech_languages.is_empty() { "auto" } else { "explicit" },
+        voice_mode: if reference { "reference_source" } else { "generated" }, coherent_input: true,
+    })
+}
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SpeechHost {
     loaded: Arc<Mutex<Option<Resident<SpeechModel>>>>,
+    admission: crate::media_admission::MediaAdmission,
+    transition: Arc<tokio::sync::Mutex<()>>,
 }
 
 struct Resident<T> {
     id: String,
+    settings_key: String,
     model: T,
     /// Identity changes even when the next request uses the same model/retention value.
     lease: Arc<()>,
 }
 
 impl SpeechHost {
+    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
+        Self { transition, ..Default::default() }
+    }
+
+    /// Called under speech admission when another TTS backend replaces this resident.
+    pub fn unload(&self) -> Result<()> {
+        *self.loaded.lock().map_err(|_| anyhow::anyhow!("Speech host lock poisoned"))? = None;
+        Ok(())
+    }
+
+    /// Admit before decoding reference audio; the lease stays owned by the native worker.
+    pub fn try_acquire(&self) -> Result<crate::media_admission::MediaLease, tokio::sync::TryAcquireError> {
+        self.admission.try_acquire()
+    }
+
     /// Emits distinct WAV parts during generation, then the whole utterance's WAV data URI.
     pub fn dispatch(
         &self,
         entry: ModelRegistryEntry,
         text: String,
         options: SpeechOptions,
+        settings: ActiveUserSettings,
         keep_alive: Option<i32>,
+        admission: crate::media_admission::MediaLease,
     ) -> mpsc::Receiver<Result<AudioEvent, String>> {
         let (tx, rx) = mpsc::channel(2);
         let loaded = Arc::clone(&self.loaded);
+        let transition = Arc::clone(&self.transition);
         let handle = tokio::runtime::Handle::current();
         tokio::task::spawn_blocking(move || {
+            let _admission = admission;
             let lease = Arc::new(());
-            let result = speak(&loaded, &entry, &text, options, keep_alive, Arc::clone(&lease), &tx)
+            let result = speak(&loaded, &transition, &entry, &text, options, &settings, keep_alive, Arc::clone(&lease), &tx)
                 .map(|uri| AudioEvent::Completed(AudioOutput::WavDataUri(uri)))
                 .map_err(|e| format!("{e:#}"));
             if result.is_ok() {
@@ -69,9 +104,11 @@ impl SpeechHost {
 
 fn speak(
     loaded: &Mutex<Option<Resident<SpeechModel>>>,
+    transition: &tokio::sync::Mutex<()>,
     entry: &ModelRegistryEntry,
     text: &str,
     mut options: SpeechOptions,
+    settings: &ActiveUserSettings,
     keep_alive: Option<i32>,
     lease: Arc<()>,
     tx: &mpsc::Sender<Result<AudioEvent, String>>,
@@ -79,28 +116,37 @@ fn speak(
     if tx.is_closed() { anyhow::bail!("Speech request cancelled"); }
     let mut slot = loaded.lock().map_err(|_| anyhow::anyhow!("Speech host lock poisoned"))?;
     if tx.is_closed() { anyhow::bail!("Speech request cancelled"); }
-    if slot.as_ref().map(|r| r.id != entry.id).unwrap_or(true) {
+    let (model, projector) = speech_files(entry)?;
+    let settings_key = load_key(&model, &projector, settings)?;
+    if slot.as_ref().map(|r| r.id != entry.id || r.settings_key != settings_key).unwrap_or(true) {
         // Free the previous model before loading the next one
         *slot = None;
-        let (model, projector) = speech_files(entry)?;
-        let size: u64 = [&model, &projector]
-            .iter()
-            .filter_map(|p| std::fs::metadata(p).ok())
-            .map(|m| m.len())
-            .sum();
-        let (_ram_free, vram_free) = cluaiz_hw::HardwareProber::probe_live_memory();
-        let gpu = vram_free > size.saturating_add(GPU_HEADROOM_BYTES);
-        let threads = std::thread::available_parallelism().map_or(4, |n| (n.get() / 2).max(1)) as i32;
-        tracing::info!("🗣️ [Speech] Loading {} on {}", entry.id, if gpu { "the GPU" } else { "the CPU" });
-        let speech = match SpeechModel::load(&model, &projector, gpu, threads) {
+        // Share the chat/ONNX load-transition owner so two loads cannot plan the same free bytes.
+        let _transition = transition.blocking_lock();
+        let size = std::fs::metadata(&model)?.len().checked_add(std::fs::metadata(&projector)?.len()).context("Speech weight size overflow")?;
+        let live = cluaiz_hw::HardwareProber::with_live_memory();
+        let workspace = settings.media.projector_workspace_bytes.get()
+            .checked_add(llama_engine::native::speech::backbone_workspace_bytes(&model)?).context("Speech workspace overflow")?;
+        let decoded = options.speaker_reference.as_ref().map_or(0, |a| a.samples().len().saturating_mul(std::mem::size_of::<f32>()) as u64);
+        let needs = MediaRequirements { weights_bytes: size, workspace_bytes: workspace, decoded_bytes: decoded };
+        let (mut placement, budget) = select_placement(needs, &live, settings)?;
+        let gpu = placement.n_gpu_layers != 0;
+        tracing::info!(model = %entry.id, ?placement, host_estimate_bytes = budget.host_bytes(), device_estimate_bytes = budget.device_bytes(), "Speech load admission (estimates, not a reservation)");
+        let speech = match SpeechModel::load_with_placement(&model, &projector, placement) {
             Ok(speech) => speech,
-            Err(error) if gpu => {
-                tracing::warn!(%error, "Speech model did not load on the GPU; using the CPU");
-                SpeechModel::load(&model, &projector, false, threads)?
+            Err(error) if gpu && settings.optimization.n_gpu_layers.is_none() => {
+                tracing::warn!(%error, "Automatic speech GPU load failed; checking CPU admission");
+                MediaBudget::plan(needs, &cluaiz_hw::HardwareProber::with_live_memory(), settings, false)?;
+                placement.n_gpu_layers = 0;
+                SpeechModel::load_with_placement(&model, &projector, placement)?
             }
             Err(error) => return Err(error),
         };
-        *slot = Some(Resident { id: entry.id.clone(), model: speech, lease: Arc::clone(&lease) });
+        *slot = Some(Resident { id: entry.id.clone(), settings_key, model: speech, lease: Arc::clone(&lease) });
+    }
+    if let Err(error) = check_request_budget(settings, 0) {
+        *slot = None;
+        return Err(error);
     }
     let resident = slot.as_mut().context("Speech model is not loaded")?;
     resident.lease = lease;
@@ -113,15 +159,48 @@ fn speak(
         let retained = samples.len().checked_add(part.len()).and_then(|n| n.checked_mul(24))
             .and_then(|n| n.checked_add(part.len().checked_mul(16)?)).context("Speech output budget overflow")?;
         options.limits.check_decoded_bytes(u64::try_from(retained)?)?;
+        check_request_budget(settings, u64::try_from(part.len().checked_mul(16).context("Speech part budget overflow")?)?)?;
         samples.extend_from_slice(part);
         let uri = cluaiz_media::wav::encode_data_uri(part, sample_rate, options.limits)?;
         tx.blocking_send(Ok(AudioEvent::Chunk(uri)))
             .map_err(|_| anyhow::anyhow!("Speech request cancelled"))
-    }, || tx.is_closed()).and_then(|()| cluaiz_media::wav::encode_data_uri(&samples, rate, options.limits));
+    }, || tx.is_closed()).and_then(|()| {
+        check_request_budget(settings, u64::try_from(samples.len().checked_mul(8).context("Speech WAV budget overflow")?)?)?;
+        cluaiz_media::wav::encode_data_uri(&samples, rate, options.limits)
+    });
     if result.is_err() || keep_alive == Some(0) {
         *slot = None;
     }
     result
+}
+
+fn check_request_budget(settings: &ActiveUserSettings, additional: u64) -> Result<()> {
+    cluaiz_plan::media_budget::check_request_ram(settings.media.projector_workspace_bytes.get(), additional,
+        &cluaiz_hw::HardwareProber::with_live_memory(), settings)
+}
+
+fn select_placement(needs: MediaRequirements, live: &cluaiz_hw::SystemInfo, settings: &ActiveUserSettings)
+    -> Result<(llama_engine::native::speech::SpeechPlacement, MediaBudget)> {
+    let budget = MediaBudget::plan(needs, live, settings, settings.optimization.n_gpu_layers != Some(0))?;
+    let gpu = budget.placement() == ProjectorPlacement::Gpu;
+    if !gpu && settings.optimization.n_gpu_layers.is_some_and(|n| n != 0) {
+        anyhow::bail!("Requested speech GPU placement exceeds the current shared memory budget; unload another model or select CPU/Auto");
+    }
+    let (threads, threads_batch) = settings.optimization.resolved_threads(live.cpu.physical_cores);
+    Ok((llama_engine::native::speech::SpeechPlacement {
+        n_gpu_layers: if gpu { settings.optimization.n_gpu_layers.unwrap_or(-1) } else { 0 },
+        threads, threads_batch, use_mmap: settings.optimization.resolved_use_mmap(),
+    }, budget))
+}
+
+fn load_key(model: &std::path::Path, projector: &std::path::Path, settings: &ActiveUserSettings) -> Result<String> {
+    let stamp = |path: &std::path::Path| -> Result<_> {
+        let metadata = std::fs::metadata(path)?;
+        Ok((metadata.len(), metadata.modified()?.duration_since(std::time::UNIX_EPOCH)?))
+    };
+    let opt = &settings.optimization;
+    Ok(serde_json::to_string(&(model, projector, stamp(model)?, stamp(projector)?, opt.n_gpu_layers, opt.n_threads,
+        opt.n_threads_batch, opt.use_mmap, opt.custom_ram_buffer_gb, opt.custom_vram_buffer_gb, settings.media.projector_workspace_bytes))?)
 }
 
 fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) -> Result<bool> {
@@ -136,15 +215,103 @@ fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) ->
 mod tests {
     use super::*;
     #[test]
+    fn test_speech_placement_honors_cpu_threads_and_explicit_gpu_budget() -> Result<()> {
+        let mut live = cluaiz_hw::SystemInfo::default();
+        live.memory.total_gb = 8.0;
+        live.memory.available_gb = 8.0;
+        live.cpu.physical_cores = 8;
+        live.gpus.push(cluaiz_hw::GpuSubsystem { vram_available_gb: 4.0, ..Default::default() });
+        let needs = MediaRequirements { weights_bytes: cluaiz_core::GIB, workspace_bytes: cluaiz_core::GIB, decoded_bytes: 0 };
+        let mut settings = ActiveUserSettings::default();
+        settings.optimization.custom_ram_buffer_gb = Some(0.0);
+        settings.optimization.custom_vram_buffer_gb = Some(0.5);
+        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, -1);
+        settings.optimization.n_gpu_layers = Some(0);
+        settings.optimization.n_threads = Some(3);
+        settings.optimization.n_threads_batch = Some(4);
+        let placement = select_placement(needs, &live, &settings)?.0;
+        assert_eq!((placement.n_gpu_layers, placement.threads, placement.threads_batch), (0, 3, 4));
+        settings.optimization.n_gpu_layers = Some(5);
+        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, 5);
+        live.gpus[0].vram_available_gb = 1.0;
+        assert!(select_placement(needs, &live, &settings).unwrap_err().to_string().contains("Requested speech GPU"));
+        settings.optimization.n_gpu_layers = None;
+        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, 0);
+        live.memory.available_gb = 1.0;
+        assert!(select_placement(needs, &live, &settings).is_err());
+        live.memory.available_gb = f64::NAN;
+        assert!(select_placement(needs, &live, &settings).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_speech_residency_key_tracks_assets_and_load_settings_only() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let model = dir.path().join("backbone");
+        let projector = dir.path().join("codec");
+        std::fs::write(&model, b"model")?;
+        std::fs::write(&projector, b"projector")?;
+        let mut settings = ActiveUserSettings::default();
+        let first = load_key(&model, &projector, &settings)?;
+        settings.optimization.n_gpu_layers = Some(0);
+        assert_ne!(first, load_key(&model, &projector, &settings)?);
+        let cpu = load_key(&model, &projector, &settings)?;
+        settings.optimization.n_threads = Some(3);
+        assert_ne!(cpu, load_key(&model, &projector, &settings)?);
+        let threads = load_key(&model, &projector, &settings)?;
+        std::fs::write(&projector, b"changed projector")?;
+        assert_ne!(threads, load_key(&model, &projector, &settings)?);
+        std::fs::remove_file(&projector)?;
+        assert!(load_key(&model, &projector, &settings).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn test_speech_admission_is_bounded_and_released_with_worker_lease() -> Result<()> {
+        let host = SpeechHost::default();
+        let caller = host.try_acquire()?;
+        let worker = caller.clone();
+        drop(caller);
+        assert!(host.try_acquire().is_err());
+        drop(worker);
+        assert!(host.try_acquire().is_ok());
+        Ok(())
+    }
+
+    #[test]
+    fn test_speech_assets_cannot_escape_the_selected_package() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let model = dir.path().join("backbone");
+        let projector = dir.path().join("projector");
+        std::fs::write(&model, b"metadata-only fixture, never loaded")?;
+        std::fs::write(&projector, b"metadata-only fixture, never loaded")?;
+        let mut entry: ModelRegistryEntry = serde_json::from_value(serde_json::json!({
+            "id":"fixture", "category":"tts", "format_type":"gguf", "huggingface_repo":"", "local_dir":dir.path(),
+            "files":[{"name":"backbone","size_bytes":1,"is_primary":true}], "supported_tasks":["text-to-speech"], "requires_gpu":false,
+            "metadata":{"architecture":"fixture","parameters":"","context_window":"", "capabilities":{
+                "primary_file":model,"inputs":[],"projector":{"path":projector,"profile":{"audio_generation":true},"compatibility":"unknown"},
+                "projector_candidates":[],"diagnostics":[],"asset_snapshot":[]
+            }}
+        }))?;
+        assert_eq!(speech_files(&entry)?.0, model.canonicalize()?);
+        let outside = tempfile::NamedTempFile::new()?;
+        entry.files[0].name = outside.path().to_string_lossy().into_owned();
+        assert!(speech_files(&entry).unwrap_err().to_string().contains("outside"));
+        entry.files[0].name = "backbone".into();
+        entry.metadata.capabilities.as_mut().context("Fixture capabilities")?.projector.as_mut().context("Fixture projector")?.path = outside.path().to_owned();
+        assert!(speech_files(&entry).unwrap_err().to_string().contains("outside"));
+        Ok(())
+    }
+    #[test]
     fn test_expiry_cannot_unload_a_newer_request_or_replacement() -> Result<()> {
         let old = Arc::new(());
         let current = Arc::new(());
-        let loaded = Mutex::new(Some(Resident { id: String::new(), model: (), lease: Arc::clone(&current) }));
+        let loaded = Mutex::new(Some(Resident { id: String::new(), settings_key: String::new(), model: (), lease: Arc::clone(&current) }));
         assert!(!unload_if_current(&loaded, &old)?);
         assert!(unload_if_current(&loaded, &current)?);
         assert!(!unload_if_current(&loaded, &current)?);
         *loaded.lock().map_err(|_| anyhow::anyhow!("Test lock poisoned"))? =
-            Some(Resident { id: String::new(), model: (), lease: Arc::new(()) });
+            Some(Resident { id: String::new(), settings_key: String::new(), model: (), lease: Arc::new(()) });
         assert!(!unload_if_current(&loaded, &current)?);
         Ok(())
     }
@@ -172,5 +339,11 @@ fn speech_files(entry: &ModelRegistryEntry) -> Result<(PathBuf, PathBuf)> {
                 .map(|p| p.path.clone())
         })
         .context("Speech model has no audio projector (mmproj) in its folder")?;
+    let root = dir.canonicalize()?;
+    let model = model.canonicalize()?;
+    let projector = if projector.is_absolute() { projector } else { dir.join(projector) }.canonicalize()?;
+    if !model.starts_with(&root) || !projector.starts_with(&root) {
+        anyhow::bail!("Speech asset is outside the selected package");
+    }
     Ok((model, projector))
 }

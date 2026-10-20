@@ -9,13 +9,16 @@ use cluaiz_models::ModelGeometry;
 use cluaiz_plan::{ExecutionPlan, Planner};
 use llama_engine::native::session::NativeSession;
 use llama_engine::{
-    extract_thinking_tags_native, ContextReport, GenerationTimings, NativeLlama, ThinkingReport,
+    extract_thinking_tags_native, ContextReport, GenerationTimings, ThinkingReport,
 };
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
 #[path = "media_generation.rs"]
 mod media_generation;
+#[path = "native_load.rs"]
+mod native_load;
+use native_load::load_with_plan;
 
 enum GenerationRequest {
     Text {
@@ -27,7 +30,6 @@ enum GenerationRequest {
     },
     Media(Box<MediaGeneration>),
 }
-
 // Keep the large media/options payload out of every legacy text request's enum slot.
 struct MediaGeneration {
     request: ChatEnvelope<Vec<PreparedPart>>,
@@ -77,7 +79,7 @@ pub struct EngineHost {
     pub loaded_settings: Arc<Mutex<Option<ActiveUserSettings>>>,
     active_session: Arc<Mutex<Option<NativeSession>>>,
     /// Serialize load/unload transitions, including native allocations before publication.
-    model_transition: Mutex<()>,
+    model_transition: Arc<Mutex<()>>,
     pub active_model_path: Arc<Mutex<Option<String>>>,
     pub active_fingerprint: Arc<Mutex<Option<String>>>,
     pub dna: Arc<Mutex<StructuralDNA>>,
@@ -104,14 +106,15 @@ impl EngineHost {
         unsafe {
             llama_engine::ffi::llama_cpp::llama_backend_init();
         }
+        let model_transition = Arc::new(Mutex::new(()));
         Self {
             media_admission: crate::media_admission::MediaAdmission::default(),
-            onnx: crate::onnx_host::OnnxHost::default(),
-            speech: crate::speech_host::SpeechHost::default(),
+            onnx: crate::onnx_host::OnnxHost::with_transition(Arc::clone(&model_transition)),
+            speech: crate::speech_host::SpeechHost::with_transition(Arc::clone(&model_transition)),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
             active_session: Arc::new(Mutex::new(None)),
-            model_transition: Mutex::new(()),
+            model_transition,
             active_model_path: Arc::new(Mutex::new(None)),
             active_fingerprint: Arc::new(Mutex::new(None)),
             dna: Arc::new(Mutex::new(StructuralDNA::default())),
@@ -772,66 +775,4 @@ impl EngineHost {
         })
         .await?
     }
-}
-
-/// Builds the llama.cpp model/context params from the plan and loads the model.
-/// Synchronous on purpose: the params and the MoE override list hold raw C pointers,
-/// which must not live inside an async state machine.
-fn load_with_plan(
-    model_path: &str,
-    plan: &ExecutionPlan,
-    settings: &ActiveUserSettings,
-    hw: &SystemInfo,
-    dna: &mut StructuralDNA,
-) -> anyhow::Result<NativeLlama> {
-    let n_gpu_layers = plan.n_gpu_layers;
-    let (type_k, type_v) = plan.kv_cache_type.to_ggml_types();
-    let (mut model_params, mut ctx_params) = unsafe {
-        (
-            llama_engine::ffi::llama_cpp::llama_model_default_params(),
-            llama_engine::ffi::llama_cpp::llama_context_default_params(),
-        )
-    };
-    model_params.n_gpu_layers = n_gpu_layers;
-    // STEP 3: MoE over the RAM limit reads experts from disk -> mmap on, CPU repack off
-    model_params.set_mmap(plan.use_mmap(settings));
-    if plan.disk_stream_gb > 0.0 {
-        model_params.use_extra_bufts = false;
-    }
-    // MoE split: experts of the first n_cpu_moe blocks in RAM (llama.cpp --n-cpu-moe)
-    let moe_overrides = llama_engine::moe_override::CpuMoeOverrides::new(plan.n_cpu_moe as usize);
-    model_params.tensor_buft_overrides = moe_overrides.as_ptr();
-
-    ctx_params.n_ctx = plan.context_window;
-    ctx_params.n_batch = settings.optimization.resolved_batch_size();
-    ctx_params.n_ubatch = settings.optimization.resolved_ubatch_size();
-    ctx_params.type_k = type_k;
-    ctx_params.type_v = type_v;
-    // llama.cpp flash_attn_type: -1 = auto (llama.cpp checks the device), 0 = off, 1 = on
-    ctx_params.flash_attn_type = match settings.optimization.flash_attention {
-        cluaiz_core::FeatureState::On => 1,
-        cluaiz_core::FeatureState::Off => 0,
-        cluaiz_core::FeatureState::Auto => -1,
-    };
-    // KV next to its GPU layers, except CTX rule 5B (weights on GPU, whole KV in RAM)
-    ctx_params.offload_kqv = if n_gpu_layers != 0 && plan.kv_offload {
-        1
-    } else {
-        0
-    };
-    ctx_params.op_offload = if n_gpu_layers != 0 && plan.op_offload {
-        1
-    } else {
-        0
-    };
-    // Same default as llama.cpp's CLI (physical cores); llama_context_default_params alone gives 4
-    let (n_threads, n_threads_batch) = settings
-        .optimization
-        .resolved_threads(hw.cpu.physical_cores);
-    ctx_params.n_threads = n_threads;
-    ctx_params.n_threads_batch = n_threads_batch;
-    ctx_params.no_perf = 0; // keep llama.cpp's timing counters for the speed report
-
-    // llama.cpp only reads the override list during load; `moe_overrides` lives until this returns
-    NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, 0, None)
 }
