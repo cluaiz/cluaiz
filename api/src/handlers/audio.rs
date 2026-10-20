@@ -187,7 +187,7 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
 }
 
 /// Speaking rates accepted for text_to_speech (OpenAI's /v1/audio/speech range)
-const SPEED_RANGE: (f32, f32) = (0.25, 4.0);
+const SPEED_RANGE: (f32, f32) = cluaiz_media::tempo::SPEED_RANGE;
 
 /// A speaker's languages per request (a person rarely speaks more; detection gets less reliable)
 const MAX_SPEAKER_LANGUAGES: usize = 10;
@@ -272,9 +272,6 @@ pub async fn execute_audio(
         if task != AudioTask::TextToSpeech {
             return error(StatusCode::BAD_REQUEST, "model_contract_error", "A GGUF speech model makes speech; speech-to-text needs an ONNX model");
         }
-        if options.speed.is_some_and(|speed| speed != 1.0) {
-            return error(StatusCode::BAD_REQUEST, "unsupported_parameter", "GGUF speech does not implement speed control; use speed 1.0");
-        }
         let speaker_reference = if let Some(source) = options.voice {
             match prepare_authorized_audio(&state, &headers, source, &settings).await {
                 Ok(audio) => Some(audio),
@@ -283,6 +280,7 @@ pub async fn execute_audio(
         } else { None };
         let speech_options = cluaiz_runtime::speech_host::SpeechOptions {
             language: options.language,
+            speed: options.speed,
             speaker_reference,
             limits: settings.media.limits,
             ..Default::default()

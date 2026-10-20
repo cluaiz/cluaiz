@@ -22,6 +22,8 @@ extern "C" {
 
 /// `enum mtmd_gen_audio_type`: 0 = the projector cannot generate audio
 pub const MTMD_GEN_AUDIO_TYPE_NONE: i32 = 0;
+/// `MTMD_HELPER_GEN_AUDIO_OUTTYPE_PCM`: native mono F32 PCM (mtmd-helper.h enum's first value).
+pub const MTMD_HELPER_GEN_AUDIO_OUTTYPE_PCM: i32 = 0;
 /// `MTMD_HELPER_GEN_AUDIO_OUTTYPE_WAV`: 16-bit PCM WAV, mono
 pub const MTMD_HELPER_GEN_AUDIO_OUTTYPE_WAV: i32 = 1;
 

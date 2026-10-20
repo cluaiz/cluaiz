@@ -52,10 +52,12 @@ graph LR
     Speech --> Bitmap["Shared Bitmap::from_audio: bounded mono/resampling"]
     Language --> Generator["libmtmd generator borrows strings and bitmap"]
     Bitmap --> Generator
-    Generator --> WAV["Completed native WAV copied before generator destruction"]
+    Generator --> PCM["Native cumulative PCM / new deltas only"]
+    PCM --> Tempo["Shared tempo stream / original sample rate"]
+    Tempo --> WAV["PCM callback and checked final WAV collector"]
 ```
 
-`SpeechModel` does not borrow or evict the chat model. Speaker sources are authorized/decoded above this layer; it never opens arbitrary user paths. Native input rate is queried from the projector and shared PCM conversion/copy budgets apply. The reference bitmap and input strings outlive the generator. The generator is dropped before the projector/context/model; a frame-limit failure returns an error instead of truncated success. Language support is queried from actual codec-language vocabulary tokens; ISO aliases are data in `native/data/speech_languages.json`. The pinned API is experimental, and arbitrary voice/model/language quality needs native acceptance rather than a registry declaration.
+`SpeechModel` does not borrow or evict the chat model. Speaker sources are authorized/decoded above this layer; it never opens arbitrary user paths. Native input rate is queried from the projector and shared PCM conversion/copy budgets apply. The reference bitmap and input strings outlive the generator. `speak_pcm` polls the existing public native helper every 16 generated frames and once at the end, validates its cumulative F32 layout/rate, and forwards only newly generated samples through shared tempo. Native decoder state is retained across flushes; more frequent flushing can affect quality/performance and requires model acceptance. The old `speak` entry collects the same output as a checked PCM16 WAV. Cancellation and callback errors stop at prompt/frame boundaries; a single native operation/load is not preempted. The generator is dropped before the projector/context/model; a frame-limit failure returns an error instead of truncated success (a streaming caller may already have received earlier valid parts). Language support is queried from actual codec-language vocabulary tokens; ISO aliases are data in `native/data/speech_languages.json`. The pinned API is experimental, and arbitrary voice/model/language quality needs native acceptance rather than a registry declaration.
 
 ## Native reasoning control
 
