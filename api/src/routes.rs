@@ -72,7 +72,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/v1/embeddings",
-            post(handlers::embeddings::generate_embeddings),
+            post(handlers::embeddings::generate_embeddings).layer(from_fn(attachment_body_limit)),
         )
         .route(
             "/v1/audio/speech",

@@ -13,6 +13,7 @@ Generates dense floating-point vector representations for text documents, search
 * **Content-Type:** `application/json`
 * **Authentication:** `Authorization: Bearer <session-token>` (Optional header: `x-caller: user`)
 * **Output Format:** Normalized F32 floating point vector arrays (`data[].embedding`)
+* **Request Body Limit:** `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB` for inline JSON, refreshed from current settings per request. Oversized bodies return HTTP413 `request_too_large`; source/decoded byte limits and native resource checks remain separate.
 
 ---
 
