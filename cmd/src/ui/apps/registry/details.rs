@@ -21,12 +21,6 @@ pub fn show_details(
     let m = &rec.manifest;
     let mut lines_printed = 0;
 
-    let vram_str = if m.is_cloud_api {
-        "CLOUD".to_string()
-    } else {
-        format!("{:.2} GB", m.ram_required_gb)
-    };
-
     let size_str = if m.is_cloud_api {
         "N/A".to_string()
     } else {
@@ -56,7 +50,6 @@ pub fn show_details(
     print_row("PARAMS:", m.parameters.cyan(), &mut lines_printed);
     print_row("TRAINING:", m.training_tokens.white(), &mut lines_printed);
     print_row("CONTEXT:", m.context_window.white(), &mut lines_printed);
-    print_row("VRAM/RAM:", vram_str.yellow(), &mut lines_printed);
     print_row("DISK SIZE:", size_str.white(), &mut lines_printed);
     print_row(
         "STATUS:",
