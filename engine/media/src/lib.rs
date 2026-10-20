@@ -9,3 +9,5 @@ pub mod request;
 pub mod resample;
 pub mod source;
 pub mod video;
+pub mod wav;
+pub mod tempo;
