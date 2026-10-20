@@ -5,6 +5,15 @@
 - **Purpose:** shared bounded source preparation, extensible format detection, owned temporary assets, image-to-RGB8 and audio-to-PCM F32 decoding, and model-independent document text extraction/chunking. Core remains the sole owner of decoded-buffer and settings/limit contracts.
 - **Platform evidence:** unit tests target the available Windows host. Opus decoding uses native libopus through the existing audiopus dependency; its other-platform build/package/runtime behavior remains unverified.
 - **Reuse:** imported directly by API/CLI consumers and either inference backend, without depending on a model registry or inference engine.
+- **Speech output:** `wav::encode_pcm16` writes checked mono PCM16 WAV and rejects invalid samples/rates/RIFF sizes or configured decoded-buffer budgets. ONNX and native GGUF speech share it. Encoding failures propagate to the request.
+- **Tempo:** `tempo::Tempo` owns one Sonic native stream through pinned `sonic-rs-sys` bindings (MIT bindings, Apache-2.0 Sonic). Speed 1 bypasses transformation; other supported speeds use pitch-preserving tempo at the original sample rate. Writes are buffered into Sonic-derived analysis quanta so caller chunk sizes do not change output; `finish` drains the tail once. Byte preflights bound Rust output and estimate native workspace, not an OS memory reservation. Other-platform native builds and human quality need separate acceptance.
+
+```mermaid
+flowchart LR
+    PCM["Generated mono F32 PCM"] --> Tempo["Owned tempo stream / identity bypass"]
+    Tempo --> WAV["Checked PCM16 WAV encoder"]
+    WAV --> Parts["WAV parts and final result"]
+```
 
 ## Architectural flow
 
