@@ -71,9 +71,20 @@ pub enum AudioOutput {
 impl OnnxEngine {
     /// One auxiliary/session probing policy, using this owner's captured settings.
     pub fn build_session(&self, path: &Path) -> Result<Session> {
+        self.build_session_with_optimization(
+            path,
+            ort::session::builder::GraphOptimizationLevel::Level3,
+        )
+    }
+
+    pub(crate) fn build_session_with_optimization(
+        &self,
+        path: &Path,
+        optimization: ort::session::builder::GraphOptimizationLevel,
+    ) -> Result<Session> {
         let settings = &self.settings;
         let builder = Session::builder()?
-            .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
+            .with_optimization_level(optimization)
             .map_err(|e| anyhow::anyhow!(e.to_string()))?
             .with_intra_threads(settings.intra_op_num_threads)
             .map_err(|e| anyhow::anyhow!(e.to_string()))?
@@ -250,6 +261,17 @@ impl OnnxEngine {
         match (task, input) {
             (AudioTask::TextToSpeech, AudioInput::Text(text)) => {
                 limits.check_input_bytes(text.len() as u64)?;
+                if self.audio8_runtime.is_some() {
+                    return crate::audio::tts::families::audio8::execute(
+                        self,
+                        text,
+                        options.voice.as_deref(),
+                        options.speed.unwrap_or(1.0),
+                        limits,
+                        callback,
+                    )
+                    .map(AudioOutput::WavDataUri);
+                }
                 let session = self
                     .acquire_session()
                     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -294,12 +316,17 @@ pub(crate) fn is_uncached_decoder(session: &Session) -> bool {
 pub(crate) fn is_cached_decoder(session: &Session) -> bool {
     let inputs = session.inputs();
     inputs.iter().any(|i| i.name() == "input_ids")
-        && inputs.iter().any(|i| i.name().starts_with("past_key_values."))
-        && inputs.iter().all(|i| {
-            i.name() == "input_ids" || i.name().starts_with("past_key_values.")
-        })
+        && inputs
+            .iter()
+            .any(|i| i.name().starts_with("past_key_values."))
+        && inputs
+            .iter()
+            .all(|i| i.name() == "input_ids" || i.name().starts_with("past_key_values."))
         && session.outputs().iter().any(|o| o.name() == "logits")
-        && session.outputs().iter().any(|o| o.name().starts_with("present."))
+        && session
+            .outputs()
+            .iter()
+            .any(|o| o.name().starts_with("present."))
 }
 
 pub(crate) fn validate_tensor(

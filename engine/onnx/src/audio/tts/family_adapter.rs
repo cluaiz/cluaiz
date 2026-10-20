@@ -104,12 +104,7 @@ impl FamilyAdapter {
                 }
             }
             TtsFamily::Audio8 => {
-                let has_slow_ar = model_dir.join("slow_ar_int4.onnx").exists() || model_dir.join("slow_ar.onnx").exists();
-                if !has_slow_ar {
-                    return Err(anyhow!(
-                        "PackageContractException: Audio8 Codec-LM model missing required 'slow_ar.onnx' model graph. Boot aborted."
-                    ));
-                }
+                super::families::audio8::validate_package(model_dir)?;
             }
             TtsFamily::Chatterbox => {
                 let entries: Vec<String> = std::fs::read_dir(model_dir)

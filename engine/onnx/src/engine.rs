@@ -46,6 +46,7 @@ pub(crate) fn try_directml_session(
 
 /// ONNX Multimodal Router (Core Engine)
 pub struct OnnxEngine {
+    pub(crate) audio8_runtime: Option<std::sync::Mutex<crate::audio::tts::families::audio8::Runtime>>,
     // 🏊 Session Pool: N concurrent sessions for parallel embedding requests
     pub(crate) session_pool: Vec<Arc<std::sync::Mutex<Session>>>,
     // 🎧 Encoder Session: Whisper encoder (input_features -> encoder_hidden_states)
@@ -107,6 +108,7 @@ impl OnnxEngine {
         ort::init().with_name("cluaiz_onnx_env").commit();
 
         Ok(Self {
+            audio8_runtime: None,
             session_pool: Vec::new(),
             encoder_session: None,
             cached_decoder_session: None,
@@ -158,6 +160,7 @@ impl OnnxEngine {
         );
 
         self.session_pool.clear();
+        self.audio8_runtime = None;
         self.vocoder_session = None;
         self.text_encoder_session = None;
         self.duration_predictor_session = None;
@@ -171,6 +174,11 @@ impl OnnxEngine {
         }
 
         if let Some(ref mdir) = self.model_dir {
+            use crate::audio::tts::{family_adapter::{FamilyAdapter, TtsFamily}, families::audio8::Runtime};
+            if FamilyAdapter::detect_family(mdir, &[]) == TtsFamily::Audio8 {
+                self.audio8_runtime = Some(std::sync::Mutex::new(Runtime::load(self, mdir)?));
+                return Ok(());
+            }
             let tok_path = mdir.join("tokenizer.json");
             if tok_path.exists() {
                 match Tokenizer::from_file(&tok_path) {
