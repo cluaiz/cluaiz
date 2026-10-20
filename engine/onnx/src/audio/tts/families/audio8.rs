@@ -23,6 +23,7 @@ use cluaiz_core::media_limits::MediaLimits;
 use ort::{session::Session, value::TensorElementType};
 use package::{Manifest, Package, Protocol};
 use std::path::Path;
+use std::time::Instant;
 use tokenizers::Tokenizer;
 
 pub(crate) struct Runtime {
@@ -190,6 +191,10 @@ impl Runtime {
         limits: MediaLimits,
         mut sink: Option<AudioSink<'_>>,
     ) -> Result<String> {
+        let started = Instant::now();
+        let mut slow_ar_seconds = 0.0;
+        let mut fast_ar_seconds = 0.0;
+        let mut decode_output_seconds = 0.0;
         let m = &self.manifest;
         let p = &self.protocol;
         let (prompt, prompt_len) = self.prompt(text, voice, limits)?;
@@ -226,8 +231,10 @@ impl Runtime {
         slow_cache.validate(&self.slow)?;
         fast_cache.validate(&self.fast)?;
         let positions: Vec<_> = (0..prompt_len).map(|n| n as i64).collect();
+        let prefill_started = Instant::now();
         let (mut logits, mut hidden) =
             steps::slow(&mut self.slow, &prompt, &positions, &mut slow_cache, m)?;
+        let prefill_seconds = prefill_started.elapsed().as_secs_f64();
         let mut rng = rand::thread_rng();
         let mut previous = Vec::new();
         let mut frames: Vec<Vec<i64>> = Vec::new();
@@ -252,6 +259,7 @@ impl Runtime {
             if previous.len() > p.repeat_window {
                 previous.remove(0);
             }
+            let fast_started = Instant::now();
             fast_cache.reset();
             let _priming = steps::fast(&mut self.fast, &hidden, 0, true, 0, &mut fast_cache, m)?;
             let mut token = i64::try_from(semantic)?;
@@ -275,8 +283,10 @@ impl Runtime {
                 )?)?;
                 frame.push(token);
             }
+            fast_ar_seconds += fast_started.elapsed().as_secs_f64();
             frames.push(frame);
             if frames.len() % p.chunk_frames == 0 {
+                let output_started = Instant::now();
                 output::emit(
                     &mut self.decoder,
                     &frames,
@@ -290,9 +300,11 @@ impl Runtime {
                     cache_bytes,
                     limits,
                 )?;
+                decode_output_seconds += output_started.elapsed().as_secs_f64();
             }
             let mut column = vec![m.semantic_begin_id + i64::try_from(semantic)?];
             column.extend(frames.last().context("Missing generated Audio8 frame")?);
+            let slow_started = Instant::now();
             (logits, hidden) = steps::slow(
                 &mut self.slow,
                 &column,
@@ -300,6 +312,7 @@ impl Runtime {
                 &mut slow_cache,
                 m,
             )?;
+            slow_ar_seconds += slow_started.elapsed().as_secs_f64();
         }
         if !ended {
             bail!("Audio8 exhausted its context before end-of-speech; no complete utterance was produced");
@@ -307,6 +320,7 @@ impl Runtime {
         if frames.is_empty() {
             bail!("Audio8 produced no codec frames");
         }
+        let output_started = Instant::now();
         output::emit(
             &mut self.decoder,
             &frames,
@@ -327,6 +341,11 @@ impl Runtime {
             m.codec_sample_rate,
             limits,
         )?;
+        decode_output_seconds += output_started.elapsed().as_secs_f64();
+        tracing::info!(prefill_seconds, slow_ar_seconds, fast_ar_seconds, decode_output_seconds,
+            total_seconds = started.elapsed().as_secs_f64(), frames = frames.len(),
+            audio_seconds = all_pcm.len() as f64 / m.codec_sample_rate as f64,
+            "Audio8 stage timings (tensor transfers included; decode/output includes consumer backpressure)");
         cluaiz_media::wav::encode_data_uri(&all_pcm, m.codec_sample_rate, limits)
     }
 }

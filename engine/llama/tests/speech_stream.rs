@@ -12,7 +12,13 @@ fn test_native_speech_progressive_speed_cancel_recovery() -> Result<()> {
     let text = std::fs::read_to_string(std::env::var("CLUAIZ_TTS_TEXT_FILE")?)?;
     let output = PathBuf::from(std::env::var("CLUAIZ_TTS_OUT_DIR")?);
     std::fs::create_dir_all(&output)?;
-    let mut model = SpeechModel::load(&backbone, &projector, false, 2)?;
+    let threads = std::env::var("CLUAIZ_TTS_TEST_THREADS").ok()
+        .map(|value| value.parse::<i32>()).transpose()?.unwrap_or(2);
+    let gpu = std::env::var("CLUAIZ_TTS_TEST_GPU").ok()
+        .map(|value| value.parse::<bool>()).transpose()?.unwrap_or(false);
+    let load_start = Instant::now();
+    let mut model = SpeechModel::load(&backbone, &projector, gpu, threads)?;
+    println!("Native speech profile: gpu {gpu}, threads {threads}, load {:.3}s", load_start.elapsed().as_secs_f64());
     let options = SpeechOptions {
         language: Some("en".into()),
         seed: Some(42),
@@ -51,6 +57,9 @@ fn test_native_speech_progressive_speed_cancel_recovery() -> Result<()> {
     )?;
     assert!(count > 1, "fixture must produce PCM before the final flush");
     assert!(normal.iter().any(|v| v.abs() > 0.001));
+    println!("Native speech normal complete: {} samples, rate {rate}, synthesis {:.3}s", normal.len(), start.elapsed().as_secs_f64());
+    println!("Native speech stages: {}", serde_json::to_string(&model.timings())?);
+    std::fs::write(output.join("native-stages.json"), serde_json::to_vec_pretty(&model.timings())?)?;
     std::fs::write(
         output.join("gguf-stream.wav"),
         cluaiz_media::wav::encode_pcm16(&normal, rate, options.limits)?,
@@ -58,7 +67,7 @@ fn test_native_speech_progressive_speed_cancel_recovery() -> Result<()> {
     // Upstream clip.cpp reseeds Fast AR only when the seed changes, and its RNG survives an
     // utterance reset. Compare pace on fresh owners so both runs generate the same source codes.
     drop(model);
-    let mut model = SpeechModel::load(&backbone, &projector, false, 2)?;
+    let mut model = SpeechModel::load(&backbone, &projector, gpu, threads)?;
     let mut fast = Vec::new();
     model.speak_pcm(
         &text,

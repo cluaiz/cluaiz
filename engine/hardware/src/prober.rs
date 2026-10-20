@@ -72,31 +72,40 @@ impl HardwareProber {
     }
 
     fn apply_live_memory(info: &mut SystemInfo) {
-        let (ram_free, vram_free) = Self::probe_live_memory();
-        if ram_free > 0 {
+        Self::apply_memory_snapshot(info, Self::live_memory_snapshot());
+    }
+
+    fn apply_memory_snapshot(info: &mut SystemInfo, snapshot: (Option<u64>, Option<u64>)) {
+        let (ram_free, vram_free) = snapshot;
+        if let Some(ram_free) = ram_free {
             info.memory.available_bytes = ram_free;
-            info.memory.available_gb = ram_free as f64 / (1024.0 * 1024.0 * 1024.0);
+            info.memory.available_gb = cluaiz_core::bytes_to_gib(ram_free);
         }
-        // probe_live_memory returns 0 when the live query is unavailable (e.g. no NVML); keep the snapshot then
-        if let (Some(gpu), true) = (info.gpus.first_mut(), vram_free > 0) {
+        // Zero is a valid exhausted-memory result. Only an unavailable query keeps the snapshot.
+        if let (Some(gpu), Some(vram_free)) = (info.gpus.first_mut(), vram_free) {
             gpu.vram_free_bytes = vram_free;
-            gpu.vram_available_gb = vram_free as f64 / (1024.0 * 1024.0 * 1024.0);
+            gpu.vram_available_gb = cluaiz_core::bytes_to_gib(vram_free);
         }
     }
 
     /// Live query of available RAM and VRAM (fast <5ms path).
     pub fn probe_live_memory() -> (u64, u64) {
+        let (ram, vram) = Self::live_memory_snapshot();
+        (ram.unwrap_or(0), vram.unwrap_or(0))
+    }
+
+    fn live_memory_snapshot() -> (Option<u64>, Option<u64>) {
         let mut sys = System::new();
         sys.refresh_memory();
-        let ram_free = sys.available_memory();
+        let ram_free = (sys.total_memory() > 0).then(|| sys.available_memory());
 
-        let mut vram_free = 0u64;
+        let mut vram_free = None;
         #[cfg(not(target_os = "macos"))]
         {
             if let Ok(nvml) = nvml_wrapper::Nvml::init() {
                 if let Ok(device) = nvml.device_by_index(0) {
                     if let Ok(mem) = device.memory_info() {
-                        vram_free = mem.free;
+                        vram_free = Some(mem.free);
                     }
                 }
             }
@@ -525,5 +534,25 @@ impl HardwareProber {
         }
 
         "".into()
+    }
+}
+
+#[cfg(test)]
+mod live_memory_tests {
+    use super::*;
+    #[test]
+    fn test_zero_free_memory_is_not_replaced_by_stale_startup_values() {
+        let mut info = SystemInfo::default();
+        info.memory.available_bytes = cluaiz_core::GIB;
+        info.memory.available_gb = 1.0;
+        info.gpus.push(crate::GpuSubsystem { vram_free_bytes: cluaiz_core::GIB, vram_available_gb: 1.0, ..Default::default() });
+        HardwareProber::apply_memory_snapshot(&mut info, (None, None));
+        assert_eq!(info.memory.available_gb, 1.0);
+        assert_eq!(info.gpus[0].vram_available_gb, 1.0);
+        HardwareProber::apply_memory_snapshot(&mut info, (Some(0), Some(0)));
+        assert_eq!((info.memory.available_bytes, info.memory.available_gb), (0, 0.0));
+        assert_eq!((info.gpus[0].vram_free_bytes, info.gpus[0].vram_available_gb), (0, 0.0));
+        HardwareProber::apply_memory_snapshot(&mut info, (Some(cluaiz_core::GIB), Some(cluaiz_core::GIB)));
+        assert_eq!((info.memory.available_gb, info.gpus[0].vram_available_gb), (1.0, 1.0));
     }
 }
