@@ -4,7 +4,7 @@
 
 use color_eyre::Result;
 use colored::Colorize;
-use cluaiz_models::{CoreRoster, HardwareAuditor, HealthStatus, HfTreeItem, HfVariant, HuggingFaceHub, ModelDownloader, ModelManifest, resolve_model_repo};
+use cluaiz_models::{CoreRoster, HfTreeItem, HfVariant, HuggingFaceHub, ModelDownloader, ModelManifest, resolve_model_repo};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -270,8 +270,8 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
     Ok(Resolved::Download(DownloadPlan { manifest, files, quant }))
 }
 
-/// Shows what will be downloaded and asks to go on. The hardware check only warns: the planner
-/// decides the placement (GPU, RAM split, disk streaming) when the model is loaded.
+/// Shows what will be downloaded and asks to go on. Memory placement is decided when loading;
+/// download metadata is not a runtime memory requirement.
 pub fn confirm(plan: &DownloadPlan) -> Result<()> {
     let manifest = &plan.manifest;
     let is_onnx = manifest.huggingface_filename.ends_with(".onnx") || manifest.architecture_type == "onnx";
@@ -286,7 +286,6 @@ pub fn confirm(plan: &DownloadPlan) -> Result<()> {
     if !manifest.parameters.is_empty() && manifest.parameters != "Unknown" {
         println!("    ├─ 🧩 Parameters: {}", manifest.parameters.green());
     }
-    println!("    ├─ 🧮 RAM Projected: {:.2} GB", manifest.ram_required_gb);
     println!("    ├─ 💾 Total Download Size: {:.2} GB", manifest.download_size_gb);
     let total = plan.files.len();
     println!("    └─ 📁 Files to Download ({} files):", total.to_string().cyan().bold());
@@ -304,9 +303,6 @@ pub fn confirm(plan: &DownloadPlan) -> Result<()> {
 
     if manifest.bit_depth > 0.0 && manifest.bit_depth < 3.0 {
         println!("\n  {} {:.2}-bit quantization (e.g. Q2_0 or BitNet): the backend may not support these weights.", "⚠️".yellow(), manifest.bit_depth);
-    }
-    if HardwareAuditor.audit_performance(manifest.ram_required_gb as f32, manifest.requires_gpu) == HealthStatus::Disabled {
-        println!("  {} This model needs more memory than this machine has; it may load very slowly or not at all.", "⚠️".yellow());
     }
 
     let go_on = non_interactive() || inquire::Confirm::new("Proceed with model download?").with_default(true).prompt()?;

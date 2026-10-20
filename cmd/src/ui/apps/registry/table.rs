@@ -4,7 +4,6 @@ use cluaiz_models::ModelRecommendation;
 pub struct ColumnWidths {
     pub name: usize,
     pub size: usize,
-    pub ram: usize,
     pub params: usize,
     pub tokens: usize,
     pub ctx: usize,
@@ -20,7 +19,6 @@ impl ColumnWidths {
         let mut widths = Self {
             name: 24,
             size: 8,
-            ram: 6,
             params: 10,
             tokens: 10,
             ctx: 8,
@@ -34,9 +32,6 @@ impl ColumnWidths {
             widths.size = widths
                 .size
                 .max(format!("{:.1} GB", m.manifest.download_size_gb).len());
-            widths.ram = widths
-                .ram
-                .max(format!("{:.0} GB", m.manifest.ram_required_gb).len());
             widths.params = widths.params.max(m.manifest.parameters.len());
             widths.tokens = widths.tokens.max(m.manifest.training_tokens.len());
             widths.ctx = widths.ctx.max(m.manifest.context_window.len());
@@ -56,24 +51,20 @@ pub struct RegistryTable;
 impl RegistryTable {
     pub fn get_header_string(w: &ColumnWidths) -> String {
         let mut header = format!(
-            "  {:<2}  {:<name_w$}  {:<size_w$}  {:<ram_w$}",
+            "  {:<2}  {:<name_w$}  {:<size_w$}",
             "ID",
             "MODEL NAME",
             "SIZE",
-            "RAM",
             name_w = w.name,
-            size_w = w.size,
-            ram_w = w.ram
+            size_w = w.size
         );
         let mut sep = format!(
-            "  {:-<2}  {:-<name_w$}  {:-<size_w$}  {:-<ram_w$}",
-            "",
+            "  {:-<2}  {:-<name_w$}  {:-<size_w$}",
             "",
             "",
             "",
             name_w = w.name,
-            size_w = w.size,
-            ram_w = w.ram
+            size_w = w.size
         );
 
         if w.show_params {
@@ -102,7 +93,6 @@ impl RegistryTable {
         hardware: &cluaiz_hw::SystemInfo,
     ) -> String {
         let size = format!("{:.1} GB", model.manifest.download_size_gb);
-        let ram = format!("{:.1} GB", model.manifest.ram_required_gb);
 
         let mut name = model.manifest.name.clone();
         if name.len() > w.name {
@@ -111,14 +101,12 @@ impl RegistryTable {
         }
 
         let mut row = format!(
-            "{:02}  {:<name_w$}  {:<size_w$}  {:<ram_w$}",
+            "{:02}  {:<name_w$}  {:<size_w$}",
             idx + 1,
             name,
             size,
-            ram,
             name_w = w.name,
-            size_w = w.size,
-            ram_w = w.ram
+            size_w = w.size
         );
 
         if w.show_params {
