@@ -4,6 +4,7 @@
   "reference_prefix": ["<|im_start|>system\n", "convert the provided text to speech reference to the following:\n\nText:\n", "{reference_text}", "\n\nSpeech:\n"],
   "reference_suffix": ["<|im_end|>\n", "<|im_start|>user\n", "{text}", "<|im_end|>\n", "<|im_start|>assistant\n<|voice|>"],
   "default_speaker": "<|speaker:0|>",
+  "supported_languages": ["en", "zh", "nl", "fr", "de", "it", "ja", "ko", "pl", "es", "yue"],
   "temperature": 0.7,
   "top_p": 0.9,
   "top_k": 50,

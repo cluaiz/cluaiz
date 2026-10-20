@@ -43,6 +43,8 @@ pub struct GgufHeader {
     pub metadata: HashMap<String, String>,
     /// Integer / bool arrays up to MAX_STORED_ARRAY_LEN items (e.g. per-layer head_count_kv, sliding_window_pattern)
     pub int_arrays: HashMap<String, Vec<i64>>,
+    /// Codec language names actually present in tokenizer control tokens; no weights loaded.
+    pub speech_languages: Vec<String>,
     pub tensors: Vec<GgufTensor>,
 }
 
@@ -64,6 +66,11 @@ static HEADER_CACHE: LazyLock<Mutex<VecDeque<CachedHeader>>> =
 pub struct GgufProber;
 
 impl GgufProber {
+    /// Codec language control token, independent of a particular model name.
+    pub fn speech_language_token(token: &str) -> Option<&str> {
+        token.strip_prefix("<|codec_language_")?.strip_suffix("|>")
+            .filter(|name| !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphabetic() || b == b'_' || b == b'-'))
+    }
     /// Probes a GGUF file and extracts architectural metadata
     pub fn probe_file(path: &Path) -> Result<GgufProbeResult, String> {
         let header = Self::read_header(path).map_err(|e| e.to_string())?;
@@ -182,7 +189,7 @@ impl GgufProber {
         for _ in 0..metadata_kv_count {
             let key = Self::read_string(&mut file)?;
             let value_type = Self::read_u32(&mut file)?;
-            let (value, array) = Self::read_value(&mut file, value_type)?;
+            let (value, array) = Self::read_value(&mut file, value_type, &mut header.speech_languages, key == "tokenizer.ggml.tokens")?;
             if let Some(values) = array {
                 header.int_arrays.insert(key.clone(), values);
             }
@@ -268,9 +275,11 @@ impl GgufProber {
     fn read_value(
         file: &mut std::io::BufReader<File>,
         value_type: u32,
+        languages: &mut Vec<String>,
+        vocabulary: bool,
     ) -> Result<(String, Option<Vec<i64>>)> {
         if value_type == 9 {
-            return Self::read_array(file);
+            return Self::read_array(file, languages, vocabulary);
         }
         Ok((Self::read_scalar(file, value_type)?, None))
     }
@@ -318,7 +327,7 @@ impl GgufProber {
         }
     }
 
-    fn read_array(file: &mut std::io::BufReader<File>) -> Result<(String, Option<Vec<i64>>)> {
+    fn read_array(file: &mut std::io::BufReader<File>, languages: &mut Vec<String>, vocabulary: bool) -> Result<(String, Option<Vec<i64>>)> {
         let item_type = Self::read_u32(file)?;
         let len = Self::read_u64(file)?;
         match item_type {
@@ -326,12 +335,29 @@ impl GgufProber {
                 // String array (vocab, merges): read past it, keep a short summary
                 let mut first = Vec::new();
                 for i in 0..len {
-                    if i < 10 {
-                        first.push(Self::read_string(file)?);
+                    let length = Self::read_u64(file)?;
+                    // Control tokens are short. Keep at most a bounded set, never the full vocab.
+                    if vocabulary && length <= 128 {
+                        let mut bytes = [0_u8; 128];
+                        let bytes = &mut bytes[..length as usize];
+                        file.read_exact(bytes)?;
+                        if let Ok(token) = std::str::from_utf8(bytes) {
+                            if let Some(name) = Self::speech_language_token(token) {
+                                if languages.len() < MAX_STORED_ARRAY_LEN as usize && !languages.iter().any(|v| v == name) {
+                                    languages.push(name.to_owned());
+                                }
+                            }
+                        }
+                        if i < 10 { first.push(String::from_utf8_lossy(bytes).into_owned()); }
+                    } else if i < 10 {
+                        let mut bytes = vec![0; usize::try_from(length)?];
+                        file.read_exact(&mut bytes)?;
+                        let token = String::from_utf8_lossy(&bytes).into_owned();
+                        first.push(token);
                     } else {
                         // Discard unretained vocabulary strings without allocating/converting each one.
                         // fill_buf/consume still detects a truncated last string (a seek would not).
-                        let mut remaining = Self::read_u64(file)?;
+                        let mut remaining = length;
                         while remaining > 0 {
                             let available = file.fill_buf()?;
                             if available.is_empty() {
@@ -627,7 +653,7 @@ mod tests {
         bytes.extend(8u32.to_le_bytes());
         bytes.extend(20u64.to_le_bytes());
         for index in 0..20 {
-            let value = format!("token-{index}");
+            let value = if index == 12 { "<|codec_language_english|>".to_owned() } else { format!("token-{index}") };
             bytes.extend((value.len() as u64).to_le_bytes());
             bytes.extend(value.as_bytes());
         }
@@ -636,6 +662,9 @@ mod tests {
         assert!(header.metadata[key].contains("len=20"));
         assert!(header.metadata[key].contains("token-9"));
         assert!(!header.metadata[key].contains("token-19"));
+        assert_eq!(header.speech_languages, ["english"]);
+        assert!(GgufProber::speech_language_token("<|codec_language_|>").is_none());
+        assert!(GgufProber::speech_language_token("ordinary text").is_none());
         bytes.pop();
         std::fs::write(&path, bytes)?;
         assert!(GgufProber::read_header(&path).is_err());

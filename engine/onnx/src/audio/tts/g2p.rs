@@ -52,6 +52,14 @@ fn lexicon(model_dir: &Path, lang: &str, model_lang: &str) -> Lexicon {
 
 /// Dynamically resolve model language code from config.json or any sibling JSON manifest file
 pub(crate) fn get_model_language(model_dir: &Path) -> String {
+    declared_model_language(model_dir).or_else(|| {
+        let name = model_dir.file_name()?.to_str()?.to_lowercase();
+        name.split(['-', '_', ' ']).find(|part| part.len() == 2 && part.chars().all(|c| c.is_ascii_lowercase())).map(str::to_owned)
+    }).unwrap_or_else(|| "en-us".to_owned())
+}
+
+/// Explicit package language only; discovery must not advertise the synthesis fallback as fact.
+pub(super) fn declared_model_language(model_dir: &Path) -> Option<String> {
     if let Ok(entries) = fs::read_dir(model_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -80,7 +88,7 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
                             {
                                 let v = voice.trim();
                                 if !v.is_empty() {
-                                    return v.to_lowercase();
+                                    return Some(v.to_lowercase());
                                 }
                             }
                             // 2. Priority 2: Language code (e.g. "hi_IN", "en_US", "fr_FR", "de_DE", "zh_CN")
@@ -89,7 +97,7 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
                             {
                                 let c = code.trim();
                                 if !c.is_empty() {
-                                    return c.to_lowercase().replace('_', "-");
+                                    return Some(c.to_lowercase().replace('_', "-"));
                                 }
                             }
                             // 3. Priority 3: Language family/name (e.g. "hi", "en", "fr")
@@ -98,7 +106,7 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
                             {
                                 let f = family.trim();
                                 if !f.is_empty() {
-                                    return f.to_lowercase();
+                                    return Some(f.to_lowercase());
                                 }
                             }
                         }
@@ -108,19 +116,7 @@ pub(crate) fn get_model_language(model_dir: &Path) -> String {
         }
     }
 
-    // Dynamic Fallback: Extract 2-letter ISO language prefix from folder name if present
-    let folder_name = model_dir
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-    for part in folder_name.split(&['-', '_', ' '][..]) {
-        if part.len() == 2 && part.chars().all(|c| c.is_ascii_lowercase()) {
-            return part.to_string();
-        }
-    }
-
-    "en-us".to_string()
+    None
 }
 
 /// Builds the dictionary for `lang`; with `model_files`, also the model directory's lexicon assets
