@@ -24,8 +24,8 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 | **`model`** | String | No | active TTS slot, else first eligible installed package | Installed TTS package ID | ONNX TTS or GGUF speech model with an audio-generation projector. |
 | **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
 | **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | ONNX: rules for the text's spelling/numbers, inferred from script/voice/model. GGUF: native language selector with explicit unsupported-language errors; Qwen's default is English. |
-| **`speed`** | Float | No | `1.0` | ONNX: `0.25` – `4.0`; GGUF: `1.0` only | GGUF does not expose pace control; any other speed returns HTTP400 rather than being silently ignored. |
-| **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Kokoro/Piper emit a WAV per finished sentence (`speech.audio.delta`), then the whole WAV. GGUF and other families currently send only the final result. |
+| **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Kokoro/Piper use model duration controls. GGUF applies shared pitch-preserving output tempo at the native sample rate; this is not a native model prosody control. Other families' support depends on their runtime. |
+| **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Kokoro/Piper emit WAV parts per settled sentence; GGUF emits new generated PCM as WAV parts (`speech.audio.delta`), then the whole WAV. Other families depend on their runtime. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` to retain) | GGUF: positive minutes after successful completion; `0` unloads after the request; omitted/`-1` retains until replacement or shutdown. Native load/generation failure releases the speech model; validation rejected before dispatch leaves any existing resident unchanged. New requests invalidate older expiry timers. Chat and ONNX have separate owners. |
 
 ---
@@ -76,7 +76,13 @@ For speaker conditioning, set `voice` to an audio data URI or audio source, for 
 
 Inline references use the same configured attachment request limit as transcription and `/v1/audio/execute`, including Base64 expansion and JSON envelope space. Requests beyond that limit return HTTP413 with `request_too_large`.
 
-GGUF generation is currently buffered: `stream:true` sends the final SSE result, with no intermediate `speech.audio.delta` parts. Native model loading/generation may take time before that event. Long inputs that hit the frame limit error instead of returning a silently truncated utterance. The native API is experimental and may change with the pinned library.
+GGUF generation emits new native PCM as WAV parts during generation and then the whole utterance. Model loading and prompt evaluation still precede the first part; polling can also flush the native codec's pending frames. `speed` uses a streaming Sonic tempo processor with the sample rate unchanged. Closing the consumer cancels at prompt/frame boundaries; native load/generation failures release the resident speech model. Long inputs that hit the frame limit error instead of returning a silently truncated utterance. The native API is experimental and may change with the pinned library.
+
+### Audio8 exported package (experimental)
+
+The native ORT route requires `runtime_manifest.json`, its declared Slow AR/Fast AR and codec graphs with external data, and `tokenizer/tokenizer.json`. Only the inspected FP16 `valid_prefix` KV-cache and `semantic_then_eos` logits contract is accepted. Missing assets or incompatible tensor layouts return errors before synthesis; an older incomplete installation needs its missing package files restored.
+
+Omit `voice` for the official processor's no-reference prompt. A named voice selects package-local `voices/<id>/meta.json` with nonempty `reference_text`, a matching `model_fingerprint`, and `codes.npy` containing a C-order little-endian uint16 or int64 `[num_codebooks,T]` reference matrix. Unknown voices, escaping paths and invalid code ranges error. It does not accept arbitrary speaker audio through this named-voice route. The generation uses genuine Slow/Fast AR logits and codec books, retaining typed FP16 cache deltas at the evaluated positions. `stream:true` sends guarded codec-window WAV parts; the final WAV joins those same parts. Speed uses the shared output tempo processor. A generation/context limit is an error, not successful truncated speech. These implementation paths do not certify multilingual listening quality or speaker similarity.
 
 ---
 
@@ -170,7 +176,7 @@ data: {"status":"chunk","type":"speech.audio.delta","index":1,"format":"wav","au
 data: {"status":"done","result":{"status":"success","task":"text_to_speech","model":"...","output":{"audio_data":"data:audio/wav;base64,..."}}}
 ```
 
-Play the `audio` parts in `index` order, back to back (each is a complete WAV). Parts are clamped, not loudness-normalised; the final `audio_data` is the whole text normalised. Other TTS families send only the final event.
+Play the `audio` parts in `index` order, back to back (each is a complete WAV). ONNX sentence parts are clamped, not loudness-normalised; the final `audio_data` is the whole text normalised. GGUF parts and final audio use the same PCM16 encoding/tempo stream without per-part normalization. A failed/cancelled native generation can deliver earlier valid parts followed by an error; it does not deliver a successful final result. Remaining families' progressive output depends on their runtime.
 
 ## 📤 Response Schema & Fields
 
