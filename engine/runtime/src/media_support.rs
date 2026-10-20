@@ -269,6 +269,7 @@ mod tests {
             diagnostics: Vec::new(),
             asset_snapshot: Vec::new(),
             onnx_graphs: Vec::new(),
+            asset_contract: None,
         };
         let report = resolve_support(&package, CURRENT_NATIVE_CHAT_INPUTS, None, &[]);
         assert_eq!(report.available_inputs, [Modality::Text]);

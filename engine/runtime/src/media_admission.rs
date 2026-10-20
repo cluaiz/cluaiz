@@ -8,6 +8,7 @@ use tokio::sync::{OwnedSemaphorePermit, Semaphore, TryAcquireError};
 
 /// One decoded request matches the host's one serialized native chat session.
 /// This limits concurrency; byte limits and live-memory checks remain separate.
+#[derive(Clone)]
 pub struct MediaAdmission(Arc<Semaphore>);
 
 impl Default for MediaAdmission {

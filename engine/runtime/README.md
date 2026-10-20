@@ -2,6 +2,23 @@
 
 Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
 
+## Speech admission and shared load transitions
+
+```mermaid
+graph LR
+    R["TTS request"] --> A["One speech lease before reference decoding"]
+    A --> C["Release only the previous TTS backend resident"]
+    C --> L["Shared chat / ONNX / GGUF load transition"]
+    L --> B["Live-memory policy: complete package + workspace estimate"]
+    B --> W["Worker retains lease through cancellation / completion"]
+```
+
+The API uses `SpeechHost` admission for both TTS backends; overlapping requests return `speech_busy`. Preparation and backend-release workers keep a cloned lease if their caller disconnects, so prepared speech references do not accumulate behind an unbounded native queue. Chat/STT generation is independent. Only load decisions/allocations share `EngineHost::model_transition`, not all inference.
+
+GGUF load identity includes relevant captured settings and backbone/projector path, size and mtime; CPU selection also disables operation/KV/projector GPU offload. ONNX TTS admission counts the complete installed package, with the same configurable media workspace/reserve policy. Live checks and estimates do not reserve OS memory or establish native peak usage.
+
+Switching to GGUF releases only an ONNX `text_to_speech` resident, preserving an STT/embedding resident. Switching to ONNX TTS releases the GGUF speech resident. Chat remains loaded. The voices API exposes independent languages, explicit/automatic language control, reference mode and coherent-input guidance without loading inference sessions.
+
 ## GGUF speech retention
 
 ```mermaid
@@ -41,6 +58,7 @@ graph TD
 | Module | Responsibility |
 |---|---|
 | [`host.rs`](src/host.rs) | Unified engine host for model preparation and streaming dispatch. |
+| [`native_load.rs`](src/native_load.rs) | Synchronous translation of the chat execution plan into native model/context parameters. |
 | [`media_admission.rs`](src/media_admission.rs) | Per-host prepared-chat permit and owned preparation lifetime; separate from byte budgets and model planning. |
 | [`media_generation.rs`](src/media_generation.rs) | Native prepared dispatch, retained admission and selected-package execution, as a child of the host. |
 | [`media_support.rs`](src/media_support.rs) | Effective request input/attachment availability from declared capability, real assets and trusted backend evidence. |
@@ -65,8 +83,8 @@ graph TD
 - **Package identity:** declared asset paths must resolve inside the selected package. An explicit primary ONNX graph and its known required helper/external files must be present. The existing `PackageCapabilities` inventory is reused before a lease/native load and again when a queued request begins. Registry metadata, listed asset stamps, package snapshots, task and provider settings form the reuse key. This is cache invalidation, not cryptographic integrity; snapshot traversal has a depth ceiling and does not follow directory symlinks.
 - **Concurrency:** one blocking worker holds the audio mutex through load and execution. Old sessions are dropped before replacement. Decoded input is retained by the queued request; it is not fetched again inside the ONNX backend. Model switches do not publish partially loaded sessions.
 - **Retention:** zero unloads the audio owner after execution; null/-1 retain it until replacement. Positive minutes schedule expiry after completion. A key and monotonically increasing request generation must still match when the timer runs; old timers cannot unload a newer request's resident session. Execution errors discard the failed resident owner. An incomplete package rejected before the lease does not unload the existing valid resident.
-- **Output:** `AudioEvent::Chunk` carries real incremental STT text. `Completed` carries a transcript or the existing TTS WAV data URI. Native/model failures are errors. TTS currently completes a whole WAV rather than streaming PCM chunks.
-- **Limits:** a dropped STT output consumer stops at the callback boundary. Deep encoder interruption, TTS mid-synthesis cancellation, process peak bounds, concurrent chat/audio resource coordination, positive-GPU/other-OS execution and comprehensive multi-family quality remain unverified.
+- **Output:** `AudioEvent::Chunk` carries real incremental STT text or completed ONNX speech parts when supported by the selected family. `Completed` carries a transcript or the complete TTS WAV data URI. Native/model failures are errors; earlier speech parts may precede a terminal error.
+- **Limits:** a dropped output consumer stops at a supported callback boundary. Deep encoder interruption, cancellation latency inside one native step, process peak bounds, positive-GPU/other-OS execution and comprehensive multi-family quality remain unverified. Shared load admission coordinates decisions; it does not reserve all concurrent inference memory.
 
 ## Native request continuation and resource policy
 
@@ -81,7 +99,7 @@ graph TD
 ## ONNX task lease
 
 - **Owner:** `OnnxModel` validates the selected package/primary/assets. `OnnxHost::with_engine` is the single serialized load/reuse/replace/error/unload implementation shared by audio dispatch and embedding batches.
-- **TTS provider recovery:** After an observed missing-cuDNN or DirectML operator failure, the owner releases the failed GPU session before loading the same package on CPU and executing once more. The effective CPU owner retains the requested package/settings key, so a retained session does not retry the failed GPU on every utterance. Original settings are unchanged. CPU execution can be slower; unrecognized failures propagate. STT and embeddings do not retry after execution because this path has only been validated for whole-WAV TTS delivery.
+- **TTS provider recovery:** Before any audio part is emitted, an observed missing-cuDNN or DirectML operator failure can release the failed GPU session and retry the same package once on CPU, after fresh CPU admission. Once output starts, or the receiver closes, failure propagates without replaying the utterance from the start. The effective CPU owner retains the requested package/settings key, so a retained session does not retry the failed GPU on every utterance. Original settings are unchanged. CPU execution can be slower; unrecognized failures, STT and embedding execution do not retry.
 - **Identity:** resident reuse includes declared asset/config stamps, task and captured provider settings. The existing generation guard protects newer requests from old positive keep-alive timers. This is cache identity, not cryptographic file integrity.
 - **Embedding:** `embed` sends typed text/RGB to a blocking worker and returns actual vector/token results. Its byte and graph errors propagate to the API. Audio and embedding replace each other's ONNX resident task; neither calls chat unload. Simultaneously loaded chat/ONNX memory scheduling remains separate work.
 
