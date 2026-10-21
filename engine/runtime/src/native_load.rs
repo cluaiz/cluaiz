@@ -15,6 +15,34 @@ pub(super) fn load_with_plan(
     hw: &SystemInfo,
     dna: &mut StructuralDNA,
 ) -> anyhow::Result<NativeLlama> {
+    load_native(model_path, plan, settings, hw, dna, false)
+}
+
+/// Same placement/thread/parameter owner, with whole-sequence embedding output enabled.
+pub(crate) fn load_embedding_with_plan(
+    model_path: &str,
+    plan: &ExecutionPlan,
+    settings: &ActiveUserSettings,
+    hw: &SystemInfo,
+) -> anyhow::Result<llama_engine::native::embedding::EmbeddingModel> {
+    llama_engine::native::embedding::EmbeddingModel::new(load_native(
+        model_path,
+        plan,
+        settings,
+        hw,
+        &mut StructuralDNA::default(),
+        true,
+    )?)
+}
+
+fn load_native(
+    model_path: &str,
+    plan: &ExecutionPlan,
+    settings: &ActiveUserSettings,
+    hw: &SystemInfo,
+    dna: &mut StructuralDNA,
+    embedding: bool,
+) -> anyhow::Result<NativeLlama> {
     let n_gpu_layers = plan.n_gpu_layers;
     let (type_k, type_v) = plan.kv_cache_type.to_ggml_types();
     // SAFETY: native default-parameter constructors take no handles or borrowed inputs.
@@ -63,6 +91,12 @@ pub(super) fn load_with_plan(
     ctx_params.n_threads = n_threads;
     ctx_params.n_threads_batch = n_threads_batch;
     ctx_params.no_perf = 0; // keep llama.cpp's timing counters for the speed report
+    if embedding {
+        ctx_params.embeddings = 1;
+        // Non-causal pooling must evaluate the entire sequence in one physical batch.
+        ctx_params.n_batch = plan.context_window;
+        ctx_params.n_ubatch = plan.context_window;
+    }
 
     // llama.cpp only reads the override list during load; `moe_overrides` lives until this returns
     NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, 0, None)

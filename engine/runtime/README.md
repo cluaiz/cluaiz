@@ -96,6 +96,25 @@ graph TD
 - **Observations:** optional shared processing reporters cross the serialized native worker separately from token strings. The shared source decoder reports reads/decodes; the native adapter reports actual encode slices and prefill batches. API observation queues are bounded and opt-in. The separate ONNX task transport has not been changed.
 - **Delivery:** the worker sends its existing error token on failure. The API interprets it as an SSE error object or a non-success JSON response, clears stale generation telemetry and retains decoded media across tool continuation requests.
 
+## GGUF embedding lease
+
+- **Owner:** `embedding_host::EmbeddingHost` keeps a separate native embedding model/context, leaving chat KV and speech residency intact. It reuses `MediaAdmission`, the shared load-transition lock, live `Planner` feasibility and `host::native_load` parameter translation. Whole-sequence context/batch settings are captured by one helper shared with plan preview.
+- **Identity:** selected entry, complete package asset snapshot and load-setting fingerprint determine reuse. This is a metadata identity check, not a cryptographic integrity guarantee.
+- **Execution:** one blocking worker evaluates text batches in order, checks output bytes and preserves actual tokenizer counts. Dropping its async caller sets cancellation; the worker retains admission and stops between native operations. An in-flight load/evaluation is not preempted. Status probing uses a nonblocking lock.
+- **Retention:** zero unloads after execution, negative-one retains until replacement, and positive minutes start after successful completion. Weak timers compare the latest request lease before unloading; an old timer cannot expire a newer lease. Failures release the embedding resident. Neither this owner nor its expiry timer unloads chat or speech.
+- **Limits:** text-only compatible native sequence pooling; image requests remain ONNX. Unsupported native architectures and oversized sequences return errors. Admission/planning are estimates and concurrency bounds, not OS reservations or all-device memory/performance certification.
+
+```mermaid
+graph LR
+    API["Validated GGUF text batch"] --> Permit["Embedding admission"]
+    Permit --> Worker["Blocking embedding owner"]
+    Worker --> Identity["Package and settings identity"]
+    Identity --> Planner["Existing live planner and load parameters"]
+    Planner --> Native["Owned native sequence embeddings"]
+    Native --> Result["Shared vector and token result"]
+    Worker --> Lease["Request identity and retention timer"]
+```
+
 ## ONNX task lease
 
 - **Owner:** `OnnxModel` validates the selected package/primary/assets. `OnnxHost::with_engine` is the single serialized load/reuse/replace/error/unload implementation shared by audio dispatch and embedding batches.
