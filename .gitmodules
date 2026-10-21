@@ -1,0 +1,3 @@
+[submodule "engine/llama/llama.cpp"]
+	path = engine/llama/llama.cpp
+	url = https://github.com/cluaiz/llama.cpp.git
