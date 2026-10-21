@@ -107,12 +107,23 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
     assert_eq!(state.host.speech.resident_model().as_deref(), Some(gguf.as_str()));
     let reference = serde_json::from_str::<Value>(&body)?["output"]["audio_data"].clone();
     settings.optimization.n_threads = Some(4);
-    Settings::update(settings)?;
+    Settings::update(settings.clone())?;
     let mut conditioned = payload(&gguf, -1);
     conditioned["voice"] = reference;
     let (status, body) = support::post(&router, "/v1/audio/speech", conditioned, "user").await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     std::fs::write(output.join("cpu-reconfigured.wav"), wav(&body)?)?;
+    if std::env::var("CLUAIZ_TTS_TEST_GPU").as_deref() == Ok("true") {
+        for layers in [None, Some(8)] {
+            settings.optimization.n_gpu_layers = layers;
+            Settings::update(settings.clone())?;
+            let (status, body) = support::post(&router, "/v1/audio/speech", payload(&gguf, 0), "user").await?;
+            assert_eq!(status, StatusCode::OK, "{body}");
+            std::fs::write(output.join(format!("gpu-{layers:?}.wav")), wav(&body)?)?;
+            assert!(state.host.speech.resident_model().is_none());
+            println!("Real speech HTTP GPU setting {layers:?}: generated PCM and zero-retention release passed");
+        }
+    }
     let (status, body) = support::post(&router, "/v1/audio/speech", payload(&onnx, -1), "user").await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     std::fs::write(output.join("onnx-swap.wav"), wav(&body)?)?;

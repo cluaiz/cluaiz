@@ -220,3 +220,5 @@ Play the `audio` parts in `index` order, back to back (each is a complete WAV). 
 * **`task`**: Task discriminator (`"text_to_speech"`).
 * **`model`**: Actual executed voice package ID.
 * **`output.audio_data`**: Standard RFC 2397 Data URI containing `audio/wav` header and Base64-encoded PCM bytes.
+
+GGUF speech placement follows captured engine optimization settings: CPU stays CPU; Auto can split backbone layers across GPU/RAM with the codec placed independently. The existing host/device reserves and media limits still apply, and an explicit GPU placement that exceeds admission returns an error. Placement is selected at load time; unload/reload a retained speech model to reconsider newly freed VRAM. These estimates do not guarantee native peak memory or uninterrupted realtime playback.

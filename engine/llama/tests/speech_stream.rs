@@ -1,7 +1,7 @@
 //! Opt-in acceptance of real generated PCM, tempo and frame-boundary cancellation.
 use anyhow::Result;
 use cluaiz_core::media_limits::MediaLimits;
-use llama_engine::native::speech::{SpeechModel, SpeechOptions};
+use llama_engine::native::speech::{SpeechModel, SpeechOptions, SpeechPlacement};
 use std::{cell::Cell, path::PathBuf, time::Instant};
 
 #[test]
@@ -16,9 +16,16 @@ fn test_native_speech_progressive_speed_cancel_recovery() -> Result<()> {
         .map(|value| value.parse::<i32>()).transpose()?.unwrap_or(2);
     let gpu = std::env::var("CLUAIZ_TTS_TEST_GPU").ok()
         .map(|value| value.parse::<bool>()).transpose()?.unwrap_or(false);
+    let layers = std::env::var("CLUAIZ_TTS_TEST_GPU_LAYERS").ok()
+        .map(|value| value.parse::<i32>()).transpose()?.unwrap_or(if gpu { -1 } else { 0 });
+    let projector_gpu = std::env::var("CLUAIZ_TTS_TEST_CODEC_GPU").ok()
+        .map(|value| value.parse::<bool>()).transpose()?.unwrap_or(gpu);
+    let placement = SpeechPlacement { n_gpu_layers: layers, projector_gpu,
+        offload_kqv: layers != 0, op_offload: layers != 0,
+        threads, threads_batch: threads, use_mmap: true };
     let load_start = Instant::now();
-    let mut model = SpeechModel::load(&backbone, &projector, gpu, threads)?;
-    println!("Native speech profile: gpu {gpu}, threads {threads}, load {:.3}s", load_start.elapsed().as_secs_f64());
+    let mut model = SpeechModel::load_with_placement(&backbone, &projector, placement)?;
+    println!("Native speech profile: {placement:?}, load {:.3}s", load_start.elapsed().as_secs_f64());
     let options = SpeechOptions {
         language: Some("en".into()),
         seed: Some(42),
@@ -67,7 +74,7 @@ fn test_native_speech_progressive_speed_cancel_recovery() -> Result<()> {
     // Upstream clip.cpp reseeds Fast AR only when the seed changes, and its RNG survives an
     // utterance reset. Compare pace on fresh owners so both runs generate the same source codes.
     drop(model);
-    let mut model = SpeechModel::load(&backbone, &projector, gpu, threads)?;
+    let mut model = SpeechModel::load_with_placement(&backbone, &projector, placement)?;
     let mut fast = Vec::new();
     model.speak_pcm(
         &text,

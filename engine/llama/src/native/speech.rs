@@ -31,6 +31,9 @@ const CONTEXT: u32 = 4096;
 #[derive(Debug, Clone, Copy, serde::Serialize, PartialEq, Eq)]
 pub struct SpeechPlacement {
     pub n_gpu_layers: i32,
+    pub projector_gpu: bool,
+    pub offload_kqv: bool,
+    pub op_offload: bool,
     pub threads: i32,
     pub threads_batch: i32,
     pub use_mmap: bool,
@@ -49,10 +52,20 @@ pub struct SpeechTimings {
 }
 
 /// Backbone context/logits estimate; codec workspace is supplied by the existing media policy.
-pub fn backbone_workspace_bytes(path: &Path) -> Result<u64> {
-    let geometry = cluaiz_models::GgufProber::probe_geometry(path)?;
+pub fn backbone_workspace_bytes(geometry: &cluaiz_models::ModelGeometry) -> Result<u64> {
     geometry.kv_cache_bytes(CONTEXT, cluaiz_core::KvCacheQuantization::Kv16, BATCH as u32)
         .checked_add(geometry.logits_buffer_bytes(BATCH as u32)).context("Speech workspace overflow")
+}
+
+/// Planning must match this owner's fixed context, batch and native default F16 KV storage.
+pub fn planning_settings(settings: &cluaiz_core::ActiveUserSettings) -> cluaiz_core::ActiveUserSettings {
+    let mut captured = settings.clone();
+    captured.optimization.custom_context_window = Some(CONTEXT);
+    captured.optimization.batch_size = Some(BATCH as u32);
+    captured.optimization.ubatch_size = Some(BATCH as u32);
+    captured.optimization.kv_cache_quantization = cluaiz_core::KvCacheQuantization::Kv16;
+    captured.optimization.n_cpu_moe = None;
+    captured
 }
 
 /// A loaded speech backbone with its audio projector.
@@ -90,7 +103,8 @@ impl SpeechModel {
     /// projector cannot generate audio.
     pub fn load(model_path: &Path, projector_path: &Path, gpu: bool, threads: i32) -> Result<Self> {
         Self::load_with_placement(model_path, projector_path, SpeechPlacement {
-            n_gpu_layers: if gpu { -1 } else { 0 }, threads, threads_batch: threads, use_mmap: true,
+            n_gpu_layers: if gpu { -1 } else { 0 }, projector_gpu: gpu, offload_kqv: gpu,
+            op_offload: gpu, threads, threads_batch: threads, use_mmap: true,
         })
     }
 
@@ -114,8 +128,8 @@ impl SpeechModel {
         context_params.n_ubatch = BATCH as u32;
         context_params.n_threads = placement.threads.max(1);
         context_params.n_threads_batch = placement.threads_batch.max(1);
-        context_params.offload_kqv = u8::from(placement.n_gpu_layers != 0);
-        context_params.op_offload = u8::from(placement.n_gpu_layers != 0);
+        context_params.offload_kqv = u8::from(placement.n_gpu_layers != 0 && placement.offload_kqv);
+        context_params.op_offload = u8::from(placement.n_gpu_layers != 0 && placement.op_offload);
         // The audio decoder reads the backbone's hidden state after each step
         context_params.embeddings = 1;
         // SAFETY: model is live; the context is freed in Drop or on the error paths below.
@@ -127,7 +141,7 @@ impl SpeechModel {
 
         // SAFETY: default-parameter constructor.
         let mut projector_params = unsafe { mtmd::mtmd_context_params_default() };
-        projector_params.use_gpu = placement.n_gpu_layers != 0;
+        projector_params.use_gpu = placement.projector_gpu;
         projector_params.n_threads = placement.threads.max(1);
         projector_params.warmup = false;
         // SAFETY: valid C string and live model.
