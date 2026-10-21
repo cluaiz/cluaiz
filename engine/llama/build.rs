@@ -4,6 +4,7 @@ use std::process::Command;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=llama-revision.txt");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let mut llama_path = Path::new(&out_dir).join("llama.cpp");
@@ -12,7 +13,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // PHASE 1: REPOSITORY INITIALIZATION (Prioritize local cached copy)
     // ═══════════════════════════════════════════════════════════════
     let local_cache_path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("llama.cpp");
-    if local_cache_path.exists() {
+    let use_local_cache = local_cache_path.join("CMakeLists.txt").is_file();
+    if use_local_cache {
         println!("cargo:warning=🔩 Found local cached llama.cpp at {:?}", local_cache_path);
         // Rebuild when the fork's sources change, not only when this script does
         for dir in ["include", "src", "common", "ggml/include", "ggml/src", "tools/mtmd", "vendor", "CMakeLists.txt"] {
@@ -26,6 +28,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .status()
             .expect("Failed to clone llama.cpp");
         if !status.success() { panic!("Clone failed"); }
+    }
+
+    if !use_local_cache {
+        // Generated fallback checkouts must match the native revision reviewed with this Rust ABI.
+        let revision = include_str!("llama-revision.txt").trim();
+        let head = Command::new("git").args(["rev-parse", "HEAD"]).current_dir(&llama_path).output()?;
+        if !head.status.success() { return Err("Cannot read fallback native revision".into()); }
+        if String::from_utf8(head.stdout)?.trim() != revision {
+            let dirty = Command::new("git").args(["status", "--porcelain"]).current_dir(&llama_path).output()?;
+            if !dirty.status.success() || !dirty.stdout.is_empty() {
+                return Err("Fallback native checkout has local changes; preserve them before updating its revision".into());
+            }
+            for args in [vec!["fetch", "--depth", "1", "origin", revision], vec!["checkout", "--detach", revision]] {
+                if !Command::new("git").args(args).current_dir(&llama_path).status()?.success() {
+                    return Err("Cannot prepare pinned fallback native checkout".into());
+                }
+            }
+        }
     }
 
     generate_mtmd_bindings(&llama_path, Path::new(&out_dir))?;
