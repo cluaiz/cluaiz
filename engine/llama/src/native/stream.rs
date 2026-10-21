@@ -3,7 +3,7 @@ use crate::native::context::SafeBatch;
 use crate::native::core::{ContextExceeded, ContextReport, NativeLlama};
 use crate::native::media::{MediaInput, Projector};
 use cluaiz_models::types::StructuralDNA;
-use std::ffi::CString;
+use super::tokenizer::tokenize;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
 use tracing::info;
@@ -740,54 +740,6 @@ pub(crate) fn stream_tokens_with_media(
 
 /// Smallest shared chunk `--cache-reuse` moves instead of reprocessing (llama-server's preset value)
 const CACHE_REUSE_MIN_CHUNK: usize = 256;
-
-/// The model's tokens for `text`. `add_special` adds BOS when the model wants one; `parse_special`
-/// reads control tokens written as text (rendered templates), off for raw message content.
-///
-/// # Safety
-/// `vocab` belongs to a loaded model.
-unsafe fn tokenize(
-    vocab: *const std::ffi::c_void,
-    text: &str,
-    add_special: bool,
-    parse_special: bool,
-) -> anyhow::Result<Vec<i32>> {
-    let c_text = CString::new(text)?;
-    let mut tokens = vec![0i32; text.len() + 8];
-    let mut n_tokens = llama_cpp::llama_tokenize(
-        vocab,
-        c_text.as_ptr(),
-        text.len() as i32,
-        tokens.as_mut_ptr(),
-        tokens.len() as i32,
-        add_special,
-        parse_special,
-    );
-    if n_tokens < 0 {
-        tokens.resize(n_tokens.unsigned_abs() as usize, 0);
-        n_tokens = llama_cpp::llama_tokenize(
-            vocab,
-            c_text.as_ptr(),
-            text.len() as i32,
-            tokens.as_mut_ptr(),
-            tokens.len() as i32,
-            add_special,
-            parse_special,
-        );
-    }
-    if n_tokens < 0 {
-        return Err(anyhow::anyhow!(
-            "Tokenization failed even after resizing buffer"
-        ));
-    }
-    tokens.truncate(n_tokens as usize);
-    // A prompt that already carried the BOS text now holds it twice: keep one (compared by token id)
-    let bos = llama_cpp::llama_vocab_bos(vocab);
-    if add_special && bos >= 0 && tokens.len() >= 2 && tokens[0] == bos && tokens[1] == bos {
-        tokens.remove(0);
-    }
-    Ok(tokens)
-}
 
 /// `messages` through the model's chat template (llama.cpp's common template engine). A continuation
 /// (pivot) first closes an open thinking block.

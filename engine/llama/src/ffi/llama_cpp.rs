@@ -176,6 +176,7 @@ extern "C" {
 
     pub fn llama_vocab_bos(vocab: *const std::ffi::c_void) -> i32;
     pub fn llama_model_has_encoder(model: *const std::ffi::c_void) -> bool;
+    pub fn llama_model_has_decoder(model: *const std::ffi::c_void) -> bool;
     /// Clears the KV / recurrent memory (data = true also zeroes the buffers).
     pub fn llama_memory_clear(mem: *mut std::ffi::c_void, data: bool);
     pub fn llama_synchronize(ctx: *mut std::ffi::c_void);
@@ -219,6 +220,11 @@ extern "C" {
 
     /// ⚡ Execute a decode pass.
     pub fn llama_decode(ctx: *mut std::ffi::c_void, batch: LlamaBatch) -> i32;
+    pub fn llama_encode(ctx: *mut std::ffi::c_void, batch: LlamaBatch) -> i32;
+    /// Actual context pooling enum from the pinned llama.h.
+    pub fn llama_pooling_type(ctx: *const std::ffi::c_void) -> i32;
+    pub fn llama_get_embeddings_seq(ctx: *mut std::ffi::c_void, seq_id: i32) -> *mut c_float;
+    pub fn llama_model_n_embd_out(model: *const std::ffi::c_void) -> i32;
 
     /// 📐 Extract Embeddings
     pub fn llama_get_embeddings(ctx: *mut std::ffi::c_void) -> *mut c_float;

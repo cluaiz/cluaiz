@@ -9,6 +9,8 @@ pub mod templater;
 pub mod media;
 pub mod session;
 pub mod speech;
+pub mod embedding;
+mod tokenizer;
 
 pub use core::{route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;
