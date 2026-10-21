@@ -196,7 +196,6 @@ impl PreparedChatContext {
             ));
         }
 
-        // Load settings for this request: the user's settings + the request's "llama" params on top
         let mut settings = cluaiz_core::Settings::current();
         if let Some(params) = &request.llama {
             if let Err(e) = params.apply_to(&mut settings.optimization) {
@@ -217,65 +216,72 @@ impl PreparedChatContext {
             .and_then(|e| e.to_str())
             .map(|e| e.eq_ignore_ascii_case("gguf"))
             .unwrap_or(false);
-        if has_media {
-            let capability_check = (|| -> anyhow::Result<()> {
-                if !is_gguf {
-                    anyhow::bail!("Typed ONNX chat media dispatch is not implemented yet");
-                }
-                let model = active_model_path
-                    .as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("No selected model"))?;
-                let package = cluaiz_models::capabilities::PackageCapabilities::inspect(model)?;
-                let supported = package.supported_inputs();
-                let mut requires_projector = false;
-                for message in &request.messages {
-                    for part in message.content.input_parts()? {
-                        let input = match part {
-                            cluaiz_core::media::InputPart::Image { .. }
-                            | cluaiz_core::media::InputPart::Video { .. } => {
-                                cluaiz_core::Modality::Image
+        let document_images = if has_media {
+            let capability_check =
+                (|| -> anyhow::Result<bool> {
+                    if !is_gguf {
+                        anyhow::bail!("Typed ONNX chat media dispatch is not implemented yet");
+                    }
+                    let model = active_model_path
+                        .as_ref()
+                        .ok_or_else(|| anyhow::anyhow!("No selected model"))?;
+                    let package = cluaiz_models::capabilities::PackageCapabilities::inspect(model)?;
+                    let supported = package.supported_inputs();
+                    let mut requires_projector = false;
+                    for message in &request.messages {
+                        for part in message.content.input_parts()? {
+                            let input = match part {
+                                cluaiz_core::media::InputPart::Image { .. }
+                                | cluaiz_core::media::InputPart::Video { .. } => {
+                                    cluaiz_core::Modality::Image
+                                }
+                                cluaiz_core::media::InputPart::Audio { .. } => {
+                                    cluaiz_core::Modality::Audio
+                                }
+                                _ => cluaiz_core::Modality::Text,
+                            };
+                            requires_projector |= input != cluaiz_core::Modality::Text;
+                            if matches!(
+                                part,
+                                cluaiz_core::media::InputPart::Video {
+                                    include_audio: true,
+                                    ..
+                                }
+                            ) && !supported.contains(&cluaiz_core::Modality::Audio)
+                            {
+                                anyhow::bail!(
+                                    "Video soundtrack requires selected model audio input support"
+                                );
                             }
-                            cluaiz_core::media::InputPart::Audio { .. } => {
-                                cluaiz_core::Modality::Audio
+                            if !supported.contains(&input) {
+                                anyhow::bail!(
+                                    "Selected model does not declare {:?} input support",
+                                    input
+                                );
                             }
-                            _ => cluaiz_core::Modality::Text,
-                        };
-                        requires_projector |= input != cluaiz_core::Modality::Text;
-                        if matches!(
-                            part,
-                            cluaiz_core::media::InputPart::Video {
-                                include_audio: true,
-                                ..
-                            }
-                        ) && !supported.contains(&cluaiz_core::Modality::Audio)
-                        {
-                            anyhow::bail!(
-                                "Video soundtrack requires selected model audio input support"
-                            );
-                        }
-                        if !supported.contains(&input) {
-                            anyhow::bail!(
-                                "Selected model does not declare {:?} input support",
-                                input
-                            );
                         }
                     }
+                    if requires_projector && package.projector.is_none() {
+                        anyhow::bail!("Media projector is missing or ambiguous");
+                    }
+                    Ok(supported.contains(&cluaiz_core::Modality::Image)
+                        && package.projector.is_some())
+                })();
+            match capability_check {
+                Ok(document_images) => document_images,
+                Err(error) => {
+                    return Err(error_response(
+                        request,
+                        request_id,
+                        error.to_string(),
+                        "invalid_request_error",
+                        Some("unsupported_media"),
+                    ))
                 }
-                if requires_projector && package.projector.is_none() {
-                    anyhow::bail!("Media projector is missing or ambiguous");
-                }
-                Ok(())
-            })();
-            if let Err(error) = capability_check {
-                return Err(error_response(
-                    request,
-                    request_id,
-                    error.to_string(),
-                    "invalid_request_error",
-                    Some("unsupported_media"),
-                ));
             }
-        }
+        } else {
+            false
+        };
         let load_started = std::time::Instant::now();
         if let Some(p) = &progress {
             p.emit(
@@ -313,7 +319,6 @@ impl PreparedChatContext {
         }
         let start_time = std::time::Instant::now();
 
-        // 🛡️ Dynamic Context Limit: Resolved from InstalledStateRegistry or active slot (Min 2k Floor)
         let after_load = std::time::Instant::now();
         let installed_registry = cluaiz_models::registry::InstalledStateRegistry::load();
         let active_model_entry = installed_registry
@@ -331,7 +336,6 @@ impl PreparedChatContext {
                 installed_registry.installed_models.get(clean)
             });
 
-        // Context of the loaded model as created by llama.cpp (set by EngineHost after load)
         // GGUF: context llama.cpp created at load. Other formats: the registry's context window.
         let dynamic_context_limit = match (is_gguf, cluaiz_core::active_context_tokens()) {
             (true, Some(n)) => n as usize,
@@ -638,6 +642,7 @@ impl PreparedChatContext {
                         &owned_headers,
                         typed,
                         &owned_settings,
+                        document_images,
                         Some(cancellation),
                         observer,
                     )

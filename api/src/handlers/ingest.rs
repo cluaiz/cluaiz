@@ -1,5 +1,6 @@
 //! Shared document extraction API. Filesystem policy and source decoding have one owner.
 
+use super::ingest_model::{document_item, ModelFailure, Processor};
 use crate::{
     utils::{authorize_source, task_error},
     AppState,
@@ -11,7 +12,7 @@ use axum::{
     Json,
 };
 use cluaiz_media::{
-    documents::{self, chunker::SemanticChunker, DEFAULT_CHUNK_BYTES},
+    documents::{self, DEFAULT_CHUNK_BYTES},
     source::SourceResolver,
 };
 use serde::{Deserialize, Serialize};
@@ -32,12 +33,13 @@ pub struct ChunkingStrategy {
     pub max_chunk_size: Option<usize>,
     pub overlap: Option<usize>,
 }
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 #[serde(deny_unknown_fields)]
 pub struct VisionSettings {
     pub use_vision: Option<bool>,
     pub detail_level: Option<String>,
     pub system_instruction: Option<String>,
+    pub max_tokens: Option<usize>,
 }
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(untagged)]
@@ -63,6 +65,10 @@ pub async fn file_ingest(
     headers: HeaderMap,
     Json(payload): Json<IngestPayload>,
 ) -> Response {
+    let processor = match Processor::select(&payload) {
+        Ok(processor) => processor,
+        Err(response) => return response,
+    };
     let sources = match payload.source {
         SourceInput::Single(source) => vec![source],
         SourceInput::Multiple(sources) => sources,
@@ -74,21 +80,6 @@ pub async fn file_ingest(
     }
     if payload.namespace.is_some() {
         return invalid("Persistent namespaces are not implemented by document extraction");
-    }
-    if payload.model.is_some() {
-        return invalid("Native document extraction needs no model; use /v1/embeddings with an explicit model for vectors");
-    }
-    if payload
-        .output_controls
-        .as_ref()
-        .is_some_and(|c| c.return_embeddings == Some(true))
-    {
-        return invalid("Embedding output is not implemented by this route; use /v1/embeddings with the extracted chunks");
-    }
-    if payload.vision_settings.as_ref().is_some_and(|v| {
-        v.use_vision == Some(true) || v.detail_level.is_some() || v.system_instruction.is_some()
-    }) {
-        return invalid("Model vision dispatch is not implemented by this extraction route; packaged native OCR is used automatically when needed");
     }
     let strategy = payload.chunking_strategy.as_ref();
     if strategy.is_some_and(|s| {
@@ -136,40 +127,55 @@ pub async fn file_ingest(
             }
         };
         let result = async {
-            let resolved = resolver.resolve(&source, |path| {
-                if allowed.as_deref() == Some(path) { Ok(()) } else { anyhow::bail!("Document source was not authorized") }
-            }).await?;
-            input_bytes = input_bytes.checked_add(resolved.input_bytes).ok_or_else(|| anyhow::anyhow!("Document batch size overflow"))?;
+            let resolved = resolver
+                .resolve(&source, |path| {
+                    if allowed.as_deref() == Some(path) {
+                        Ok(())
+                    } else {
+                        anyhow::bail!("Document source was not authorized")
+                    }
+                })
+                .await?;
+            input_bytes = input_bytes
+                .checked_add(resolved.input_bytes)
+                .ok_or_else(|| anyhow::anyhow!("Document batch size overflow"))?;
             settings.media.limits.check_input_bytes(input_bytes)?;
             let bytes = resolved.read_bytes(settings.media.limits).await?;
             let format = resolved.format.clone();
             drop(resolved);
-            let limits = settings.media.limits;
-            let document = tokio::task::spawn_blocking(move || documents::extract(&bytes, &format, limits)).await??;
-            let complete = document.complete();
-            let mut item = json!({"source":original, "status":if complete {"ingested"} else {"partial"},
-                "mime_type":document.mime_type, "chunk_size":chunk_size});
-            let chunks = match document.text(limits, false) {
-                Ok(text) => SemanticChunker::chunk(&text, chunk_size)?,
-                Err(_) if !complete => Vec::new(),
-                Err(error) => return Err(error),
-            };
-            item["chunks_count"] = json!(chunks.len());
-            if return_text {
-                item["parts"] = serde_json::to_value(document.parts)?;
-                item["chunks"] = json!(chunks);
+            let mut item = if let Some(processor) = &processor {
+                processor
+                    .process(
+                        &state,
+                        bytes,
+                        format,
+                        settings.clone(),
+                        chunk_size,
+                        return_text,
+                    )
+                    .await?
             } else {
-                item["parts"] = json!(document.parts.iter().map(|part| json!({
-                    "page":part.page, "method":part.method, "omissions":part.omissions,
-                    "warnings":part.warnings, "ocr_confidence":part.ocr_confidence
-                })).collect::<Vec<_>>());
-            }
+                let limits = settings.media.limits;
+                let document = tokio::task::spawn_blocking(move || {
+                    documents::extract(&bytes, &format, limits)
+                })
+                .await??;
+                document_item(document, limits, chunk_size, return_text)?
+            };
+            item["source"] = json!(original);
             Ok::<_, anyhow::Error>(item)
-        }.await;
+        }
+        .await;
         let item = match result {
             Ok(item) => item,
             Err(error) => {
-                json!({"source":original, "status":"error", "error":format!("{error:#}")})
+                let mut item =
+                    json!({"source":original, "status":"error", "error":format!("{error:#}")});
+                if let Some(failure) = error.downcast_ref::<ModelFailure>() {
+                    item["http_status"] = json!(failure.status.as_u16());
+                    item["model_error"] = failure.body.clone();
+                }
+                item
             }
         };
         let serialized = match serde_json::to_vec(&item) {
@@ -208,7 +214,12 @@ pub async fn file_ingest(
         "partial"
     };
     let http = if status == "error" {
-        StatusCode::BAD_REQUEST
+        processed
+            .first()
+            .and_then(|item| item["http_status"].as_u64())
+            .and_then(|code| u16::try_from(code).ok())
+            .and_then(|code| StatusCode::from_u16(code).ok())
+            .unwrap_or(StatusCode::BAD_REQUEST)
     } else {
         StatusCode::OK
     };

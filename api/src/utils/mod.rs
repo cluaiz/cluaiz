@@ -48,6 +48,7 @@ pub(crate) async fn prepare_authorized_media(
     headers: &axum::http::HeaderMap,
     mut request: cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::InputPart>>,
     settings: &cluaiz_core::ActiveUserSettings,
+    document_images: bool,
     cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
     progress: Option<cluaiz_core::processing::ProcessingReporter>,
 ) -> Result<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>, (&'static str, String)>
@@ -71,7 +72,8 @@ pub(crate) async fn prepare_authorized_media(
         }
     }
     let mut resolver = cluaiz_media::source::SourceResolver::from_environment(settings.media)
-        .map_err(|error| ("invalid_request_error", error.to_string()))?;
+        .map_err(|error| ("invalid_request_error", error.to_string()))?
+        .with_document_images(document_images);
     if let Some(signal) = cancellation {
         resolver = resolver.with_cancellation(signal);
     }
@@ -94,13 +96,25 @@ pub(crate) async fn prepare_authorized_audio(
     source: String,
     settings: &cluaiz_core::ActiveUserSettings,
 ) -> Result<cluaiz_core::media::DecodedAudio, (&'static str, String)> {
-    use cluaiz_core::{ChatEnvelope, ChatMessage, media::{InputPart, PreparedPart}};
-    let request = ChatEnvelope {
-        messages: vec![ChatMessage { role: "user".into(), content: vec![InputPart::Audio { source }] }],
-        samplers: Default::default(), think_mode: "off".into(), reasoning_effort: Default::default(),
-        reasoning_budget_message: None, chat_template_kwargs: None, grammar: None, response_format: None,
+    use cluaiz_core::{
+        media::{InputPart, PreparedPart},
+        ChatEnvelope, ChatMessage,
     };
-    let prepared = prepare_authorized_media(state, headers, request, settings, None, None).await?;
+    let request = ChatEnvelope {
+        messages: vec![ChatMessage {
+            role: "user".into(),
+            content: vec![InputPart::Audio { source }],
+        }],
+        samplers: Default::default(),
+        think_mode: "off".into(),
+        reasoning_effort: Default::default(),
+        reasoning_budget_message: None,
+        chat_template_kwargs: None,
+        grammar: None,
+        response_format: None,
+    };
+    let prepared =
+        prepare_authorized_media(state, headers, request, settings, false, None, None).await?;
     match prepared.messages.into_iter().flat_map(|m| m.content).next() {
         Some(PreparedPart::Audio { audio }) => Ok(audio),
         _ => Err(("invalid_input", "Audio source did not produce PCM".into())),

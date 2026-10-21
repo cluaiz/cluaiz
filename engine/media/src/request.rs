@@ -177,6 +177,7 @@ async fn prepare_part(
         p.emit(Stage::Decoding, State::Running, Some(target), None);
     }
     let video_settings = resolver.video_settings();
+    let document_images = resolver.document_images();
     let cancellation = resolver.cancellation();
     let decoded = tokio::task::spawn_blocking(move || match input_kind {
         Some(cluaiz_core::Modality::Image) => {
@@ -186,6 +187,10 @@ async fn prepare_part(
             decode_audio(bytes, decode_limits).map(|audio| vec![PreparedPart::Audio { audio }])
         }
         Some(cluaiz_core::Modality::Text) => {
+            if document_images && format.document_kind(&bytes)? == crate::formats::DocumentKind::Pdf
+            {
+                return prepare_pdf_pages(&bytes, decode_limits, &cancellation);
+            }
             let document = crate::documents::extract(&bytes, &format, decode_limits)?;
             let text = document.text(decode_limits, true)?;
             Ok(vec![PreparedPart::Text { text }])
@@ -225,6 +230,46 @@ async fn prepare_part(
         p.emit(Stage::Decoding, State::Completed, Some(target), None);
     }
     Ok(decoded)
+}
+
+/// Reuse serialized PDFium; native bitmaps are temporary, retained RGB pages are bounded.
+fn prepare_pdf_pages(
+    bytes: &[u8],
+    limits: MediaLimits,
+    cancellation: &AtomicBool,
+) -> Result<Vec<PreparedPart>> {
+    let assets = crate::native_assets::NativeAssets::from_environment()?;
+    crate::documents::pdf_render::with_document(bytes, &assets, |document| {
+        let mut parts = Vec::new();
+        let mut retained = 0_u64;
+        for page in 1..=document.page_count()? {
+            if cancellation.load(Ordering::Acquire) {
+                anyhow::bail!("PDF preparation cancelled");
+            }
+            let label = PreparedPart::Text {
+                text: format!("Document page {page}:\n"),
+            };
+            retained = retained
+                .checked_add(label.retained_bytes() as u64)
+                .context("PDF page label size overflow")?;
+            let remaining = limits
+                .max_decoded_bytes()
+                .checked_sub(retained)
+                .filter(|remaining| *remaining > 0)
+                .context("PDF pages exceed the decoded byte budget")?;
+            let page_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
+            let image = PreparedPart::Image {
+                image: document.render_page(page, page_limits)?,
+            };
+            retained = retained
+                .checked_add(image.retained_bytes() as u64)
+                .context("PDF page buffer size overflow")?;
+            limits.check_decoded_bytes(retained)?;
+            parts.try_reserve(2)?;
+            parts.extend([label, image]);
+        }
+        Ok(parts)
+    })
 }
 
 #[cfg(test)]

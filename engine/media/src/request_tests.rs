@@ -54,6 +54,25 @@ fn png() -> Vec<u8> {
 }
 
 #[tokio::test]
+async fn test_document_image_policy_keeps_source_code_as_text() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    let resolver = resolver(dir.path(), 256).with_document_images(true);
+    let prepared = prepare_chat(
+        request(vec![InputPart::Document {
+            source: "data:text/plain;base64,Y29uc3QgdmFsdWUgPSA3Ow==".into(),
+        }]),
+        &resolver,
+        |_| Ok(()),
+    )
+    .await?;
+    assert!(
+        matches!(&prepared.messages[1].content[..], [PreparedPart::Text { text }]
+        if text.contains("const value = 7;"))
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_preparation_reports_each_real_attachment_and_preserves_origin() -> Result<()> {
     use cluaiz_core::processing::{ProcessingReporter, ProcessingStage, ProcessingState};
     let events = Arc::new(std::sync::Mutex::new(Vec::new()));
