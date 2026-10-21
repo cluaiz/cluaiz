@@ -37,6 +37,29 @@ Unknown/completed IDs return HTTP404 `stream_not_found`; streams without enabled
 
 ## Attachment client examples
 
+### Optional selected-model ingestion
+
+`/v1/ingest` keeps one source authorization/resolution loop. Native mode uses the shared document service. Selected text embedding models receive real extracted chunks; selected ONNX image graphs receive decoded images or sequentially rendered PDF pages. Generative GGUF processing uses `EngineHost` directly, with its existing planner, media admission and fingerprint checks. It does not enter the chat agent/tool controller or create a persistent chat session. A missing vision projector is rejected before visual model loading; explicit native-first text processing can still use a text-capable backbone.
+
+```mermaid
+flowchart TD
+    A["Ingest source + optional installed model"] --> B["Shared source authorization and byte limits"]
+    B --> C["Native PDF / OCR / Word / text extraction"]
+    B --> D["Image decode or one rendered PDF page"]
+    C --> E["Native text/chunks without a model"]
+    C --> F["Shared ONNX/GGUF text embedding executor"]
+    C --> G["Selected GGUF backbone processes extracted text"]
+    D --> H["Shared ONNX image embedding executor"]
+    D --> I["Selected GGUF vision model + matching projector"]
+    E --> J["Bounded per-source results, warnings and errors"]
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+```
+
+The implementation is in `handlers/ingest.rs`, `handlers/ingest_model.rs` and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/inference/ingest.md).
+
 For live attachment stages on chat SSE, add `return_progress:true` and handle named `cluaiz.progress` events separately from answer deltas. Read the exact fields, attachment indices, limits and terminal ordering in the [chat processing reference](../docs/api/inference/chat_completions.md#attachment-processing-events). The default contract and ONNX task SSE remain separate.
 
 Use the App's configured engine URL and session/API Bearer token. These JSON requests go to that URL, with `Content-Type: application/json`, `Authorization: Bearer <token>` and `x-caller: user`. `agent` requests follow the stricter file approval policy. Do not hardcode a port or model ID. Chat, ingest, audio and embedding routes use a bounded inline-JSON ceiling of `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`, allowing base64 expansion plus the ordinary JSON/text envelope. It refreshes from current settings on each request. Larger requests return HTTP413 with `error.type:request_too_large`; decoded-media, context and live-memory checks still apply separately. Other JSON routes retain Axum's default ceiling. Multipart upload/file-ID storage is not provided by these routes.
@@ -52,7 +75,7 @@ The daemon and CLI resolve `session.token` through the same `EnvironmentManager`
 | Speech generation | `POST /v1/audio/speech` | Selected supported ONNX TTS package |
 | Text vectors | `POST /v1/embeddings` | Selected compatible ONNX graph or GGUF sequence-embedding model |
 | Image vectors | `POST /v1/embeddings` | Selected supported ONNX image embedding graph |
-| Document content preview | `POST /v1/ingest` or `/v1/ingest/file` | No model required for native text extraction |
+| Document content preview | `POST /v1/ingest` or `/v1/ingest/file` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/inference/ingest.md) |
 
 Image chat (`image_url.url` can also be an authorized path or HTTP URL):
 

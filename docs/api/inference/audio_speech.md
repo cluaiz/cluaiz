@@ -30,9 +30,24 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ---
 
-## 🎙️ Installed Voice Models
+## Choose the model, language and voice
 
-The following official Piper ONNX voice packages are available out-of-the-box:
+Read `GET /v1/models/installed` and select an exact installed TTS ID. The API Explorer Model dropdown writes it into the JSON `model` field; its Voice dropdown reads `/v1/audio/voices?model=<id>` for that package. Switching models resets the previous package's speaker selection. A Hugging Face repository ID is not necessarily the installed ID.
+
+| Package behavior | `voice` | `language` | Example |
+|:---|:---|:---|:---|
+| One embedded speaker | Omit or `default` | Package-supported language | Piper |
+| Preset speaker bank | ID from `data[].id` in voice discovery | Supported explicit language, or inferred default | Kokoro |
+| Generated voice with optional reference | `default`, or an authorized audio source if `voice_mode` is `reference_source` | Supported native language | Qwen3-TTS Base GGUF |
+| Encoded reference profiles | Package-local profile ID when provided; otherwise omit/default | Automatic when capability says `auto` | Audio8 export |
+
+Do not send a Kokoro speaker ID to Qwen or Audio8. Do not force a language absent from the selected package. A default-only voice list can still support several languages. These examples describe compatible package contracts; installation and subjective voice quality are separate checks.
+
+For generated voices, send a complete narration in one request when `capabilities.coherent_input` is true. Separate unconditioned sentence/paragraph requests can choose different speakers. A speaker reference can influence consistency, but does not guarantee identity or remove all model noise. `stream:false` returns the completed utterance; `stream:true` can underrun when generation is slower than playback.
+
+## Example voice packages
+
+The following are example Piper packages. Install a compatible package first and use its exact registry ID; they are not bundled with every engine installation:
 
 | Model ID | Language | Gender / Style | Sampling Rate | Description |
 |:---|:---|:---|:---|:---|
@@ -74,7 +89,7 @@ A single-voice model (Piper) returns only `"default"`.
 
 ### GGUF speech (experimental)
 
-A GGUF speech package needs its backbone and matching audio-generation mmproj. This uses the pinned llama.cpp `libmtmd` audio-generation API; it does not load the speech model into the chat context. The test package is `Qwen3-TTS-12Hz-1.7B-Base-GGUF-Q4_K_M` (Q4_K_M backbone plus Q8 projector).
+A GGUF speech package needs its backbone and matching audio-generation mmproj. This uses the pinned llama.cpp `libmtmd` audio-generation API; it does not load the speech model into the chat context. The exercised local package used a Qwen3-TTS Base Q4_K_M backbone plus a BF16 projector. Other compatible exports can have different projector precision; use the matching assets for the installed package.
 
 Qwen3-TTS supports en, zh, ja, ko, de, fr, ru, pt, es and it. It does not support Hindi. Supply `language` explicitly for non-English speech; omitted/`auto` uses the native default (English for this package), rather than ONNX script detection. An unsupported language returns an error naming the requested language and the supported names queried from the loaded vocabulary. The engine does not silently switch the selected model. These model capabilities come from the [official model card](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base), not a claim that each language has passed local listening acceptance.
 
@@ -154,7 +169,7 @@ else:
     print("TTS Error:", data.get("error"))
 ```
 
-### 3. JavaScript / Browser (Instant Web Audio Playback)
+### 3. JavaScript / Browser (Play Completed WAV)
 
 ```javascript
 async function playSpeech(text, token) {
@@ -173,11 +188,12 @@ async function playSpeech(text, token) {
     })
   });
 
+  if (!res.ok) throw new Error(await res.text());
   const json = await res.json();
   if (json.status === "success") {
     // Directly play the returned WAV Data URI
     const audio = new Audio(json.output.audio_data);
-    audio.play();
+    await audio.play(); // Call from a user gesture if the browser blocks autoplay.
   }
 }
 ```
@@ -222,3 +238,59 @@ Play the `audio` parts in `index` order, back to back (each is a complete WAV). 
 * **`output.audio_data`**: Standard RFC 2397 Data URI containing `audio/wav` header and Base64-encoded PCM bytes.
 
 GGUF speech placement follows captured engine optimization settings: CPU stays CPU; Auto can split backbone layers across GPU/RAM with the codec placed independently. The existing host/device reserves and media limits still apply, and an explicit GPU placement that exceeds admission returns an error. Placement is selected at load time; unload/reload a retained speech model to reconsider newly freed VRAM. These estimates do not guarantee native peak memory or uninterrupted realtime playback.
+
+## More payload examples
+
+Use your exact installed IDs if they differ from the examples.
+
+### Kokoro preset speaker and Hindi text
+
+```json
+{
+  "model": "Kokoro-82M-v1.0-ONNX-UINT8",
+  "input": "नमस्ते। आज हम स्थानीय इंजन का उपयोग कर रहे हैं।",
+  "voice": "hf_alpha",
+  "language": "hi",
+  "speed": 1,
+  "stream": false,
+  "keep_alive": 0
+}
+```
+
+Use `hf_alpha` only if this installed package lists it. For Piper, use its matching language package and `default`; the voice ID cannot turn an English Piper package into a Hindi package.
+
+### Qwen Base with speaker conditioning
+
+```json
+{
+  "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M",
+  "input": "Read this complete paragraph with the reference voice.",
+  "voice": "C:/audio/reference.wav",
+  "language": "en",
+  "speed": 1,
+  "stream": true,
+  "keep_alive": 5
+}
+```
+
+The projector must declare a speaker encoder. The reference path is on the server and must pass filesystem policy; a real audio data URI or allowed remote source is an alternative. Omit `voice` for unconditioned output. The backbone's quantization and the codec/projector precision can differ; the locally exercised package used a BF16 projector. Download size is not peak runtime memory.
+
+### Audio8 without a reference profile
+
+```json
+{
+  "model": "audio8-tts-preview-0.6b-onnx-int4",
+  "input": "Keep this narration together in one request.",
+  "speed": 1,
+  "stream": false,
+  "keep_alive": 0
+}
+```
+
+Omit `voice` and `language` for this example. Audio8's manifest-selected package includes Slow AR, Fast AR, codec, external tensor data and tokenizer; selecting one graph alone is not a complete installation. A named reference profile must already exist in the package. These examples do not certify realtime performance or voice similarity.
+
+## Common request errors
+
+Missing/invalid authentication returns HTTP 401 when required. An uninstalled model returns HTTP 404 `model_not_found`. Wrong-task packages, unsupported language/voice controls, invalid speed, incompatible assets and unknown top-level fields return errors. `response_format`, `device` and chat `messages` are not fields of this route. Concurrent TTS returns HTTP 429 `speech_busy`. A frame/context limit is a failure, not a successful shortened narration.
+
+An SSE response can start with HTTP 200 and later emit `status:"error"`; only the terminal `done` event carries the successful complete result. The abbreviated Base64 strings in response examples illustrate the schema and are not playable WAV fixtures.

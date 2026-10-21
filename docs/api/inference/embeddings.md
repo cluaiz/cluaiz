@@ -8,6 +8,19 @@ GGUF execution has its own serialized resident, preserving chat KV and speech st
 
 Unsupported GGUF architectures, models without supported sequence pooling, rerankers and encoder-decoder models do not produce substitute vectors. Installation alone is not proof of runtime compatibility. In particular, a newer model architecture may require a separately reviewed native backend update.
 
+## Choose the model and input
+
+Read `GET /v1/models/installed` with your Bearer token and copy an exact `models[].id`. A Hugging Face repository name or a guessed quantization suffix is not an installed ID. In the API Explorer, the Model dropdown writes this ID into the JSON `model` field. Reset Payload restores the shipped example; a previously saved body otherwise stays in the editor.
+
+| Task | Model required | Request input | Result |
+|:---|:---|:---|:---|
+| One text | Compatible ONNX or GGUF text embedding package | `"input": "Find similar documents"` | One vector at `data[0].embedding` |
+| Text batch | Same text embedding package for the whole batch | `"input": ["First chunk", "Second chunk"]` | One vector per string, in input order |
+| Image | ONNX image embedding graph and its processor assets | `"input": [{"type":"image","source":"<source>"}]` | One image vector |
+| Document | `/v1/ingest` can extract and run a selected embedding model; alternatively send its returned chunks here | `"input": ["extracted chunk"]` on this route | Text vectors; no document storage is created |
+
+The pinned native backend now supports `gemma-embedding2`. The locally exercised EmbeddingGemma-2 Q8_0 package returns its projected 768-dimensional **text** vector; its 512-wide hidden state is not the API output. The exercised BGE packages return 1024 dimensions, and the ONNX FashionCLIP package returns 512 image dimensions. These are package examples, not a fixed width for every model. GGUF image/audio/video embeddings are not implemented, even if an installed package advertises a visual task.
+
 ---
 
 ## 📌 Endpoint Information
@@ -29,6 +42,9 @@ Unsupported GGUF architectures, models without supported sequence pooling, reran
 | **`model`** | String | No | Active slot model | Installed compatible embedding model ID | Exact selected ONNX or GGUF model; GGUF accepts text only. |
 | **`encoding_format`** | String | No | `"float"` | `"float"` | Numerical encoding format for vectors. Non-float encodings are rejected. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
+| **`user`** | String | No | — | Caller identifier | Accepted for compatibility; does not create a namespace or user-specific vector store. |
+
+Unknown top-level fields are rejected. There is no `dimensions` override, base64 output encoding, token-ID input, document-source input, or streaming response on this route. Keep vectors from different models/dimensions in separate indexes; equal vector lengths alone do not make their spaces compatible.
 
 ---
 
@@ -56,11 +72,41 @@ Unsupported GGUF architectures, models without supported sequence pooling, reran
     "input": [
       {
         "type": "image",
-        "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        "source": "data:image/png;base64,<actual-base64-png-bytes>"
       }
     ]
   }
   ```
+
+### 3. GGUF text embeddings (EmbeddingGemma-2)
+
+Replace the example ID with the exact installed package ID when yours differs:
+
+```json
+{
+  "model": "embeddinggemma-2-GGUF",
+  "input": ["How do I run a local model?", "Local inference runs on your own computer."],
+  "encoding_format": "float",
+  "keep_alive": 0
+}
+```
+
+The engine uses the selected tokenizer and pooling/projected output. Supply the query/document formatting recommended for your model yourself; this API does not invent retrieval instruction prefixes. `keep_alive: 0` releases the resident after this request. A positive value retains it for that many minutes; `-1`/omission retains it until replacement or shutdown.
+
+### 4. Image with optional text parts (ONNX only)
+
+```json
+{
+  "model": "<installed-onnx-graph-with-image-and-text-inputs>",
+  "input": [
+    {"type": "text", "text": "A blue jacket"},
+    {"type": "image", "source": "https://example.com/jacket.png"}
+  ],
+  "encoding_format": "float"
+}
+```
+
+Use this mixed-input example only for a graph that actually accepts both `pixel_values` and `input_ids`. The installed FashionCLIP graph declares both inputs and image/text embedding outputs; this route selects its image vector when an image is supplied. It does not generate captions or OCR text. Use exactly one image; this is not a batch of independent image vectors. `source` can be an allowed HTTP(S) URL, an authorized server-local path, or a real image data URI. `image_url` is the chat content shape, not the embeddings shape. Audio, video and document parts are rejected on this route; document sources use `/v1/ingest`.
 
 ---
 
@@ -92,7 +138,7 @@ curl -X POST http://localhost:8000/v1/embeddings \
     "input": [
       {
         "type": "image",
-        "source": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        "source": "data:image/png;base64,<actual-base64-png-bytes>"
       }
     ]
   }'
@@ -124,11 +170,58 @@ for item in data.get("data", []):
     print(f"Index {item['index']} | Dimension: {len(vec)} | Sample: {vec[:3]}")
 ```
 
+### 4. Python (Encode a real image)
+
+```python
+import base64
+import os
+from pathlib import Path
+import requests
+
+source = "data:image/png;base64," + base64.b64encode(Path("jacket.png").read_bytes()).decode("ascii")
+response = requests.post("http://127.0.0.1:8000/v1/embeddings",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json={"model": os.environ["CLUAIZ_IMAGE_EMBEDDING_MODEL"],
+          "input": [{"type": "image", "source": source}], "keep_alive": 0})
+response.raise_for_status()
+print(len(response.json()["data"][0]["embedding"]))
+```
+
+Use an installed ONNX image embedding ID and a real PNG file. Placeholders and shortened Base64 strings elsewhere in this page illustrate the source shape; they are not executable image fixtures.
+
+### 5. PDF file directly to text vectors: send this to `/v1/ingest`
+
+```json
+{
+  "model": "embeddinggemma-2-GGUF",
+  "source": "C:/documents/report.pdf",
+  "output_controls": {"return_text": true, "return_embeddings": true}
+}
+```
+
+The ingest endpoint performs native PDF text/OCR extraction, chunks the extracted text, and runs the selected text embedding executor. Read `processed_sources[].embeddings[].data[].embedding`. Do not send a raw PDF as an `input` string here: a string on `/v1/embeddings` is text to tokenize, not a file locator.
+
+### 6. DOCX file directly to text vectors: send this to `/v1/ingest`
+
+```json
+{
+  "model": "bge_m3-unknown-onnx-fp32",
+  "source": "C:/documents/report.docx",
+  "output_controls": {"return_text": false, "return_embeddings": true}
+}
+```
+
+Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `/v1/ingest`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest payload types](ingest.md#payload-examples-by-file-type).
+
+The Explorer's Body Payload menu also provides separate single-text, batch, extracted-document chunks, local image, data-URI image and remote-image templates. Switching an example resolves an installed model of its declared task; it does not invent or install a model.
+
 ---
 
 ## 📤 Response Schema & Fields
 
 ### Success Response (`HTTP 200`)
+
+The numerical arrays below are shortened illustrations, not complete model output or measured samples. Real arrays have the selected model's full dimension.
 
 ```json
 {
@@ -172,3 +265,18 @@ for item in data.get("data", []):
 * **`data[].index`**: Zero-based item index matching input order.
 * **`data[].embedding`**: Finite normalized float array (L2 normalized vector).
 * **`usage.prompt_tokens`**: Actual tokenizer count from the selected backend: ONNX attention-mask tokens or native GGUF token IDs.
+
+## Errors and resource behavior
+
+| Condition | Response / behavior |
+|:---|:---|
+| Missing/invalid Bearer token when API authentication is required | HTTP 401 |
+| Explicit model is not installed | HTTP 404 `model_not_found` |
+| Selected package does not declare an embedding task | HTTP 400 `unsupported_task` |
+| GGUF receives object parts | HTTP 400 `unsupported_input`; use text strings or an ONNX image graph |
+| Empty batch/text, unsupported encoding or unknown fields | HTTP 400 |
+| Input exceeds the selected GGUF sequence limit | Error; no silent truncation |
+| Another GGUF embedding operation is active | HTTP 429 `embedding_busy` |
+| Inline JSON exceeds the configured transport ceiling | HTTP 413 `request_too_large` |
+
+Host/device memory admission can reject a load even when the download is small. GGUF embeddings use a separate resident from chat and speech; all still share the same physical RAM/VRAM and load-transition checks. Device placement comes from engine settings, not a `device` field in this payload. This endpoint computes vectors; saving, indexing and searching those vectors belong to your application.
