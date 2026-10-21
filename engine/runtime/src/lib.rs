@@ -8,6 +8,7 @@ pub mod media_admission;
 pub mod media_support;
 pub mod onnx_host;
 pub mod speech_host;
+mod speech_plan;
 
 pub use host::{stream_error, EngineHost, HostResponse, ModelDescription};
 pub use llama_engine::{ContextReport, GenerationTimings, ThinkingReport};

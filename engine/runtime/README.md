@@ -17,6 +17,8 @@ The API uses `SpeechHost` admission for both TTS backends; overlapping requests 
 
 GGUF load identity includes relevant captured settings and backbone/projector path, size and mtime; CPU selection also disables operation/KV/projector GPU offload. ONNX TTS admission counts the complete installed package, with the same configurable media workspace/reserve policy. Live checks and estimates do not reserve OS memory or establish native peak usage.
 
+`speech_plan.rs` composes the same complete-package host check with the existing tensor/KV `Planner`. Codec GPU weights/workspace are subtracted from the live device snapshot before planning the backbone; codec CPU is the next option. The selected backbone may use partial GPU layers independently of codec placement. Speech keeps its existing 4096 context, 512 batch and F16 KV. Explicit CPU stays CPU; explicit GPU overcommit is refused even though the generic manual planner permits it. Auto driver-load failure rechecks CPU admission before retrying. Logs show selected flags and estimated bytes; these are not measured allocations or a realtime promise. A retained owner changes placement after a relevant settings change or unload/reload, not merely because another application frees VRAM.
+
 Switching to GGUF releases only an ONNX `text_to_speech` resident, preserving an STT/embedding resident. Switching to ONNX TTS releases the GGUF speech resident. Chat remains loaded. The voices API exposes independent languages, explicit/automatic language control, reference mode and coherent-input guidance without loading inference sessions.
 
 ## GGUF speech retention

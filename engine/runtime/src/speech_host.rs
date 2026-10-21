@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use cluaiz_models::types::manifest::ModelRegistryEntry;
 use llama_engine::native::speech::SpeechModel;
 use cluaiz_core::ActiveUserSettings;
-use cluaiz_plan::media_budget::{MediaBudget, MediaRequirements, ProjectorPlacement};
+use crate::speech_plan::select_placement;
 pub use llama_engine::native::speech::SpeechOptions;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -123,22 +123,25 @@ fn speak(
         *slot = None;
         // Share the chat/ONNX load-transition owner so two loads cannot plan the same free bytes.
         let _transition = transition.blocking_lock();
-        let size = std::fs::metadata(&model)?.len().checked_add(std::fs::metadata(&projector)?.len()).context("Speech weight size overflow")?;
+        let geometry = cluaiz_models::GgufProber::probe_geometry(&model)?;
+        let codec_bytes = std::fs::metadata(&projector)?.len();
         let live = cluaiz_hw::HardwareProber::with_live_memory();
-        let workspace = settings.media.projector_workspace_bytes.get()
-            .checked_add(llama_engine::native::speech::backbone_workspace_bytes(&model)?).context("Speech workspace overflow")?;
         let decoded = options.speaker_reference.as_ref().map_or(0, |a| a.samples().len().saturating_mul(std::mem::size_of::<f32>()) as u64);
-        let needs = MediaRequirements { weights_bytes: size, workspace_bytes: workspace, decoded_bytes: decoded };
-        let (mut placement, budget) = select_placement(needs, &live, settings)?;
-        let gpu = placement.n_gpu_layers != 0;
-        tracing::info!(model = %entry.id, ?placement, host_estimate_bytes = budget.host_bytes(), device_estimate_bytes = budget.device_bytes(), "Speech load admission (estimates, not a reservation)");
+        let plan = select_placement(&geometry, codec_bytes, decoded, &live, settings)?;
+        let placement = plan.placement;
+        let gpu = placement.n_gpu_layers != 0 || placement.projector_gpu;
+        tracing::info!(model = %entry.id, ?placement, host_estimate_bytes = plan.host_bytes,
+            device_estimate_bytes = plan.device_bytes, "Speech load admission (estimates, not a reservation)");
         let speech = match SpeechModel::load_with_placement(&model, &projector, placement) {
             Ok(speech) => speech,
             Err(error) if gpu && settings.optimization.n_gpu_layers.is_none() => {
                 tracing::warn!(%error, "Automatic speech GPU load failed; checking CPU admission");
-                MediaBudget::plan(needs, &cluaiz_hw::HardwareProber::with_live_memory(), settings, false)?;
-                placement.n_gpu_layers = 0;
-                SpeechModel::load_with_placement(&model, &projector, placement)?
+                let mut cpu_settings = settings.clone();
+                cpu_settings.optimization.n_gpu_layers = Some(0);
+                let cpu = select_placement(&geometry, codec_bytes, decoded,
+                    &cluaiz_hw::HardwareProber::with_live_memory(), &cpu_settings)?;
+                tracing::info!(model = %entry.id, ?cpu, "Speech CPU retry admission (estimates, not a reservation)");
+                SpeechModel::load_with_placement(&model, &projector, cpu.placement)?
             }
             Err(error) => return Err(error),
         };
@@ -179,28 +182,15 @@ fn check_request_budget(settings: &ActiveUserSettings, additional: u64) -> Resul
         &cluaiz_hw::HardwareProber::with_live_memory(), settings)
 }
 
-fn select_placement(needs: MediaRequirements, live: &cluaiz_hw::SystemInfo, settings: &ActiveUserSettings)
-    -> Result<(llama_engine::native::speech::SpeechPlacement, MediaBudget)> {
-    let budget = MediaBudget::plan(needs, live, settings, settings.optimization.n_gpu_layers != Some(0))?;
-    let gpu = budget.placement() == ProjectorPlacement::Gpu;
-    if !gpu && settings.optimization.n_gpu_layers.is_some_and(|n| n != 0) {
-        anyhow::bail!("Requested speech GPU placement exceeds the current shared memory budget; unload another model or select CPU/Auto");
-    }
-    let (threads, threads_batch) = settings.optimization.resolved_threads(live.cpu.physical_cores);
-    Ok((llama_engine::native::speech::SpeechPlacement {
-        n_gpu_layers: if gpu { settings.optimization.n_gpu_layers.unwrap_or(-1) } else { 0 },
-        threads, threads_batch, use_mmap: settings.optimization.resolved_use_mmap(),
-    }, budget))
-}
-
 fn load_key(model: &std::path::Path, projector: &std::path::Path, settings: &ActiveUserSettings) -> Result<String> {
     let stamp = |path: &std::path::Path| -> Result<_> {
         let metadata = std::fs::metadata(path)?;
         Ok((metadata.len(), metadata.modified()?.duration_since(std::time::UNIX_EPOCH)?))
     };
-    let opt = &settings.optimization;
-    Ok(serde_json::to_string(&(model, projector, stamp(model)?, stamp(projector)?, opt.n_gpu_layers, opt.n_threads,
-        opt.n_threads_batch, opt.use_mmap, opt.custom_ram_buffer_gb, opt.custom_vram_buffer_gb, settings.media.projector_workspace_bytes))?)
+    let captured = llama_engine::native::speech::planning_settings(settings);
+    let opt = &captured.optimization;
+    Ok(serde_json::to_string(&(model, projector, stamp(model)?, stamp(projector)?, opt.load_fingerprint(),
+        opt.custom_ram_buffer_gb, settings.media.projector_workspace_bytes))?)
 }
 
 fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) -> Result<bool> {
@@ -214,36 +204,6 @@ fn unload_if_current<T>(loaded: &Mutex<Option<Resident<T>>>, lease: &Arc<()>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_speech_placement_honors_cpu_threads_and_explicit_gpu_budget() -> Result<()> {
-        let mut live = cluaiz_hw::SystemInfo::default();
-        live.memory.total_gb = 8.0;
-        live.memory.available_gb = 8.0;
-        live.cpu.physical_cores = 8;
-        live.gpus.push(cluaiz_hw::GpuSubsystem { vram_available_gb: 4.0, ..Default::default() });
-        let needs = MediaRequirements { weights_bytes: cluaiz_core::GIB, workspace_bytes: cluaiz_core::GIB, decoded_bytes: 0 };
-        let mut settings = ActiveUserSettings::default();
-        settings.optimization.custom_ram_buffer_gb = Some(0.0);
-        settings.optimization.custom_vram_buffer_gb = Some(0.5);
-        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, -1);
-        settings.optimization.n_gpu_layers = Some(0);
-        settings.optimization.n_threads = Some(3);
-        settings.optimization.n_threads_batch = Some(4);
-        let placement = select_placement(needs, &live, &settings)?.0;
-        assert_eq!((placement.n_gpu_layers, placement.threads, placement.threads_batch), (0, 3, 4));
-        settings.optimization.n_gpu_layers = Some(5);
-        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, 5);
-        live.gpus[0].vram_available_gb = 1.0;
-        assert!(select_placement(needs, &live, &settings).unwrap_err().to_string().contains("Requested speech GPU"));
-        settings.optimization.n_gpu_layers = None;
-        assert_eq!(select_placement(needs, &live, &settings)?.0.n_gpu_layers, 0);
-        live.memory.available_gb = 1.0;
-        assert!(select_placement(needs, &live, &settings).is_err());
-        live.memory.available_gb = f64::NAN;
-        assert!(select_placement(needs, &live, &settings).is_err());
-        Ok(())
-    }
-
     #[test]
     fn test_speech_residency_key_tracks_assets_and_load_settings_only() -> Result<()> {
         let dir = tempfile::tempdir()?;
