@@ -171,4 +171,4 @@ for item in data.get("data", []):
 * **`data[].object`**: Item type (`"embedding"`).
 * **`data[].index`**: Zero-based item index matching input order.
 * **`data[].embedding`**: Finite normalized float array (L2 normalized vector).
-* **`usage.prompt_tokens`**: Total tokens consumed by the tokenizer attention mask.
+* **`usage.prompt_tokens`**: Actual tokenizer count from the selected backend: ONNX attention-mask tokens or native GGUF token IDs.

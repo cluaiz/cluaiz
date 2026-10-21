@@ -56,6 +56,18 @@ The child inherits the isolated home and uses an ephemeral loopback port. Its bo
 
 ## Assertions and failure handling
 
+### Focused embedding and vision executable acceptance
+
+`embedding_acceptance.rs` reuses the existing daemon/client owner and is filtered as `embedding_acceptance::real_final_executable_embeddings_and_vision` in the same integration target. Supply a fresh isolated `CLUAIZ_HOME`/`CLUAIZ_MEDIA_TEST_HOME`, `CLUAIZ_ARTIFACT_EXE`, `CLUAIZ_GGUF_EMBEDDING_MODEL`, `CLUAIZ_ONNX_TEXT_MODEL`, `CLUAIZ_ONNX_IMAGE_MODEL`, `CLUAIZ_MEDIA_MODEL` and `CLUAIZ_EMBEDDING_TEST_TEXT`. Weights remain external and are never downloaded by this test.
+
+The focused case uses CPU/two threads/context512, the default resource guards, actual text/image vectors, extraction-to-vector dispatch, no-token401, unsupported GGUF media400, repeated native color-image answers and subsequent text recovery. Image-vector sessions finish before loading native chat; this does not certify concurrent large-model residency. The supplied executable is tested as a separate process on an ephemeral loopback port. Cleanup terminates only that owned process; it does not restart the user's engine or prove graceful daemon shutdown. Native-media provider staging and the broader speech/video/document cases belong to the separate existing suite.
+
+~~~text
+cargo test -p cluaiz-api --release --offline --test artifact_acceptance embedding_acceptance::real_final_executable_embeddings_and_vision -- --ignored --exact --nocapture --test-threads=1
+~~~
+
+### Broader attachment suite assertions
+
 - Before spawning, token-path resolution must point into the selected test home. The user's default session-token bytes are compared without printing them, both after daemon startup and after cleanup.
 - HTTP authentication, corrupt extraction, strict agent source denial and body-size rejection must return their actual failure status.
 - A separate incomplete ONNX package must return HTTP400 `invalid_model` with required helper names before its deliberately unusable attachment source is read. The valid installed image package is exercised separately.
