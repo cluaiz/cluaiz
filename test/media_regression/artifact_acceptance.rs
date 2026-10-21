@@ -563,14 +563,22 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         .post("/v1/ingest", json!({"source":outside_image}), "agent")
         .await?;
     assert_eq!(denied.0, 403, "{}", denied.1);
+    let transport_limit = cluaiz_api::routes::inline_body_bytes(
+        cluaiz_core::Settings::current()
+            .media
+            .limits
+            .max_input_bytes(),
+    );
     let oversized = client
         .post(
             "/v1/ingest",
-            json!({"source":"x".repeat(2*cluaiz_core::MIB as usize)}),
+            json!({"source":"x".repeat(transport_limit)}),
             "user",
         )
         .await?;
-    assert_eq!(oversized.0, 413);
+    assert_eq!(oversized.0, 413, "{}", oversized.1);
+    let error: Value = serde_json::from_str(&oversized.1)?;
+    assert_eq!(error["error"]["type"], "request_too_large");
     println!("FINAL EXECUTABLE NEGATIVE: corrupt PDF -> 400; unauthorized agent path -> 403; oversized JSON -> 413");
 
     let answer = client

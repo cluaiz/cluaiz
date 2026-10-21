@@ -150,10 +150,7 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
         .media
         .limits
         .max_input_bytes();
-    let limit = input
-        .div_ceil(3)
-        .saturating_mul(4)
-        .saturating_add(2 * cluaiz_core::MIB);
+    let limit = cluaiz_api::routes::inline_body_bytes(input);
     // A declared oversize body rejects before allocation; chunked bodies cannot bypass the cap.
     for (route, declared) in [
         ("/v1/ingest", true),
@@ -172,7 +169,7 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
             Body::empty()
         } else {
             let chunk = axum::body::Bytes::from(vec![b' '; 64 * 1024]);
-            let count = limit as usize / chunk.len() + 1;
+            let count = limit / chunk.len() + 1;
             Body::from_stream(futures::stream::iter(
                 (0..count).map(move |_| Ok::<_, std::io::Error>(chunk.clone())),
             ))
