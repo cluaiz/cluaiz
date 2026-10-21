@@ -275,7 +275,8 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
 // Base64 transport is larger than the actual source; decoding/admission retain their own limits.
 const JSON_ENVELOPE_BYTES: u64 = 2 * cluaiz_core::MIB;
 
-fn inline_body_bytes(input_bytes: u64) -> usize {
+/// JSON transport ceiling for bounded inline attachments, including base64 and envelope bytes.
+pub fn inline_body_bytes(input_bytes: u64) -> usize {
     usize::try_from(
         input_bytes
             .div_ceil(3)
