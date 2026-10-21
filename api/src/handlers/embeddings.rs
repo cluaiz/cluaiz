@@ -51,6 +51,21 @@ pub struct EmbeddingResponse {
     pub usage: EmbeddingUsage,
 }
 use crate::utils::task_error as error;
+
+pub(super) fn is_embedding_model(
+    entry: &cluaiz_models::types::manifest::ModelRegistryEntry,
+) -> bool {
+    entry.supported_tasks.iter().any(|task| {
+        matches!(
+            task.replace('-', "_").to_ascii_lowercase().as_str(),
+            "embedding"
+                | "feature_extraction"
+                | "sentence_similarity"
+                | "vision_embedding"
+                | "image_feature_extraction"
+        )
+    })
+}
 fn validate(payload: &EmbeddingRequest) -> anyhow::Result<()> {
     if payload
         .encoding_format
@@ -131,27 +146,26 @@ pub async fn generate_embeddings(
             "Selected embedding model is not installed",
         );
     };
-    if !entry.supported_tasks.iter().any(|t| {
-        matches!(
-            t.replace('-', "_").as_str(),
-            "embedding"
-                | "feature_extraction"
-                | "sentence_similarity"
-                | "vision_embedding"
-                | "image_feature_extraction"
-        )
-    }) {
+    if !is_embedding_model(entry) {
         return error(
             StatusCode::BAD_REQUEST,
             "unsupported_task",
             "Selected model does not declare an embedding task",
         );
     }
-    let model = match OnnxModel::from_package(entry) {
-        Ok(model) => model,
-        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_model", e),
+    let native = entry.format_type.eq_ignore_ascii_case("gguf");
+    if native && matches!(&payload.input, EmbeddingInput::Parts(_)) {
+        return error(StatusCode::BAD_REQUEST, "unsupported_input", "GGUF embeddings currently accept text or text batches; image embeddings require an ONNX graph");
+    }
+    let model = if native {
+        None
+    } else {
+        match OnnxModel::from_package(entry) {
+            Ok(model) => Some(model),
+            Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_model", e),
+        }
     };
-    let id = model.id.clone();
+    let id = entry.id.clone();
     let inputs = match payload.input {
         EmbeddingInput::Single(text) => vec![PreparedEmbedding::Text(text)],
         EmbeddingInput::Multiple(texts) => texts.into_iter().map(PreparedEmbedding::Text).collect(),
@@ -170,7 +184,9 @@ pub async fn generate_embeddings(
                 response_format: None,
             };
             let request =
-                match prepare_authorized_media(&state, &headers, request, &settings, None, None).await {
+                match prepare_authorized_media(&state, &headers, request, &settings, None, None)
+                    .await
+                {
                     Ok(request) => request,
                     Err((kind, message)) => {
                         return error(
@@ -222,19 +238,57 @@ pub async fn generate_embeddings(
             "Embedding batch exceeds the media byte limit",
         );
     }
-    let outputs = match state
-        .host
-        .onnx
-        .embed(model, inputs, settings.clone(), payload.keep_alive)
-        .await
-    {
+    let result = if let Some(model) = model {
+        state
+            .host
+            .onnx
+            .embed(model, inputs, settings.clone(), payload.keep_alive)
+            .await
+    } else {
+        let admission = match state.host.embeddings.try_acquire() {
+            Ok(admission) => admission,
+            Err(_) => {
+                return error(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "embedding_busy",
+                    "Another GGUF embedding request is still active",
+                )
+            }
+        };
+        let texts: anyhow::Result<Vec<_>> = inputs
+            .into_iter()
+            .map(|input| match input {
+                PreparedEmbedding::Text(text) => Ok(text),
+                _ => anyhow::bail!("GGUF embeddings require text input"),
+            })
+            .collect();
+        let texts = match texts {
+            Ok(texts) => texts,
+            Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_input", e),
+        };
+        state
+            .host
+            .embeddings
+            .embed(
+                entry.clone(),
+                texts,
+                settings.clone(),
+                payload.keep_alive,
+                admission,
+            )
+            .await
+    };
+    let outputs = match result {
         Ok(outputs) => outputs,
         Err(e) => {
+            if e.is::<cluaiz_core::contracts::InvalidEmbeddingInput>() {
+                return error(StatusCode::BAD_REQUEST, "invalid_request_error", e);
+            }
             return error(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "embedding_failed",
                 format!("{e:#}"),
-            )
+            );
         }
     };
     let mut data = Vec::new();

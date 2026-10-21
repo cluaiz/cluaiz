@@ -23,6 +23,181 @@ fn vector(body: &str, index: usize) -> Result<Vec<f32>> {
     assert!((norm - 1.0).abs() < 1e-4);
     Ok(values)
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires isolated home, CLUAIZ_GGUF_EMBEDDING_MODEL and test texts"]
+async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
+    let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
+    if home.as_path() != std::path::Path::new(&std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
+        || home.join("engine/config/model_registry.json").exists()
+    {
+        bail!("Empty isolated fixture home required");
+    }
+    let path = PathBuf::from(std::env::var("CLUAIZ_GGUF_EMBEDDING_MODEL")?);
+    let directory = path.parent().context("Model parent")?;
+    if directory.starts_with(&home) {
+        bail!("Weights must stay outside the test home");
+    }
+    let entry = InstalledStateRegistry::entry_for_folder(
+        "embedding",
+        directory,
+        path.file_name().and_then(|name| name.to_str()),
+        "",
+    )
+    .context("Embedding entry")?;
+    let id = entry.id.clone();
+    let mut registry = ModelRegistry::default();
+    registry.installed_models.insert(id.clone(), entry);
+    InstalledStateRegistry::save(&registry).map_err(anyhow::Error::msg)?;
+    let mut settings = cluaiz_core::ActiveUserSettings::default();
+    settings.optimization.n_gpu_layers = Some(0);
+    settings.optimization.custom_context_window = Some(512);
+    settings.optimization.n_threads = Some(2);
+    settings.optimization.n_threads_batch = Some(2);
+    cluaiz_core::Settings::update(settings.clone())?;
+    let policy = cluaiz_security::PermissionSchema {
+        agent_security_mode: "strict".into(),
+        api_auth: cluaiz_security::ApiAuth {
+            required: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    policy.save()?;
+    let workspace = tempfile::tempdir()?;
+    let state = Arc::new(AppState::new_test_state(workspace.path().to_path_buf()));
+    *state.permission_schema.write().await = policy;
+    let router = cluaiz_api::routes::build_api_router(state.clone());
+    let (status, body) = post(&router, "/v1/system/plan", json!({"model":id}), "user").await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let preview: Value = serde_json::from_str(&body)?;
+    assert_eq!(preview["model_info"]["outputs"], json!(["embedding"]));
+    assert_eq!(preview["execution_plan"]["context_window"], 512);
+    assert!(state.host.embeddings.resident_model().is_none());
+    let first = std::env::var("CLUAIZ_EMBEDDING_TEST_TEXT")?;
+    let other = std::env::var("CLUAIZ_EMBEDDING_TEST_OTHER")?;
+    let query = std::env::var("CLUAIZ_EMBEDDING_TEST_QUERY")?;
+    let request = json!({"model":id,"input":[first,first,other,query],"keep_alive":-1});
+    let unauth = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/v1/embeddings")
+                .header("content-type", "application/json")
+                .body(Body::from(request.to_string()))?,
+        )
+        .await?;
+    assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
+    let (status, body) = post(&router, "/v1/embeddings", request.clone(), "user").await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let a = vector(&body, 0)?;
+    assert_eq!(a, vector(&body, 1)?);
+    let b = vector(&body, 2)?;
+    let q = vector(&body, 3)?;
+    assert_ne!(a, b);
+    let similarity = |v: &[f32]| q.iter().zip(v).map(|(q, v)| q * v).sum::<f32>();
+    assert!(similarity(&a) > similarity(&b));
+    let response: Value = serde_json::from_str(&body)?;
+    assert_eq!(response["model"], id);
+    assert!(
+        response["usage"]["prompt_tokens"]
+            .as_u64()
+            .context("Token usage")?
+            > 0
+    );
+    assert_eq!(state.host.embeddings.resident_model(), Some(id.clone()));
+    assert!(
+        !state
+            .host
+            .is_model_loaded(path.to_str().context("UTF-8 model")?)
+            .await
+    );
+    for input in [
+        json!([]),
+        json!(""),
+        json!(" a".repeat(2048)),
+        json!([{"type":"image","source":"https://invalid.example/not-fetched.png"}]),
+    ] {
+        let (status, body) = post(
+            &router,
+            "/v1/embeddings",
+            json!({"model":id,"input":input}),
+            "agent",
+        )
+        .await?;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    }
+    let admission = state.host.embeddings.try_acquire()?;
+    let (status, body) = post(&router, "/v1/embeddings", request.clone(), "user").await?;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
+    assert_eq!(
+        serde_json::from_str::<Value>(&body)?["error"]["type"],
+        "embedding_busy"
+    );
+    drop(admission);
+    // Abandoning the async caller must not release its permit until the native worker exits.
+    let owner = state.host.embeddings.clone();
+    let admission = owner.try_acquire()?;
+    let entry = registry.installed_models[&id].clone();
+    let texts = vec![first.clone(); 256];
+    let captured = settings.clone();
+    let pending = tokio::spawn(async move {
+        owner
+            .embed(entry, texts, captured, Some(-1), admission)
+            .await
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    pending.abort();
+    assert!(pending.await.unwrap_err().is_cancelled());
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            if state.host.embeddings.try_acquire().is_ok() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await?;
+    let (status, body) = post(
+        &router,
+        "/v1/embeddings",
+        json!({"model":id,"input":first,"keep_alive":1}),
+        "user",
+    )
+    .await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    println!("REAL GGUF RETENTION: waiting for actual one-minute expiry");
+    tokio::time::sleep(std::time::Duration::from_secs(61)).await;
+    assert!(state.host.embeddings.resident_model().is_none());
+    let (status, body) = post(
+        &router,
+        "/v1/embeddings",
+        json!({"model":id,"input":first,"keep_alive":1}),
+        "user",
+    )
+    .await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, body) = post(&router, "/v1/embeddings", request, "user").await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    println!("REAL GGUF RETENTION: waiting for old timer after indefinite renewal");
+    tokio::time::sleep(std::time::Duration::from_secs(61)).await;
+    assert_eq!(state.host.embeddings.resident_model(), Some(id.clone()));
+    settings.optimization.n_threads = Some(3);
+    cluaiz_core::Settings::update(settings)?;
+    let (status, body) = post(
+        &router,
+        "/v1/embeddings",
+        json!({"model":id,"input":first,"keep_alive":0}),
+        "user",
+    )
+    .await?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(vector(&body, 0)?.len(), a.len());
+    assert!(state.host.embeddings.resident_model().is_none());
+    println!("REAL GGUF API: {} dimensions; auth/batch/rank/overflow/media/busy/cancel/expiry/renewal/settings/recovery/unload passed", a.len());
+    Ok(())
+}
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "requires isolated home, real ONNX image/text packages and test text"]
 async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {

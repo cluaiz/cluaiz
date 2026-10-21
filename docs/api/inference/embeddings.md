@@ -2,7 +2,11 @@
 
 `POST /v1/embeddings`
 
-Generates dense floating-point vector representations for text documents, search queries, and images. Backed by ONNX execution graphs with automatic mean pooling, tokenizer attention masking, and L2 normalization for semantic search and RAG retrieval pipelines.
+Returns vectors computed by the selected installed model. Text and text batches support compatible ONNX graphs or GGUF sequence-embedding models; image input requires an ONNX image graph. ONNX uses its declared output and pooling configuration; GGUF uses native mean, CLS or last-token pooling from model metadata. Both return finite L2-normalized vectors. Vector dimensions and retrieval quality depend on the selected model.
+
+GGUF execution has its own serialized resident, preserving chat KV and speech state. Placement and threads use the existing planner/settings. The active sequence limit is the explicit context setting within the model's limit, or the configured batch size when no context is selected. Inputs beyond that limit are rejected without truncation. A second active GGUF embedding request receives HTTP429 `embedding_busy`; cancelling the caller keeps admission held until its blocking worker exits. A native operation in progress is not preempted.
+
+Unsupported GGUF architectures, models without supported sequence pooling, rerankers and encoder-decoder models do not produce substitute vectors. Installation alone is not proof of runtime compatibility. In particular, a newer model architecture may require a separately reviewed native backend update.
 
 ---
 
@@ -22,7 +26,7 @@ Generates dense floating-point vector representations for text documents, search
 | Parameter | Type | Required | Default | Allowed Values / Formats | Description |
 |:---|:---|:---:|:---|:---|:---|
 | **`input`** | String, Array of Strings, or Array of Objects | **Yes** | — | Non-empty string, string array, or image object array | The data to vectorize. For text, pass a string or array of strings. For images, pass `[{"type": "image", "source": "<uri-or-path>"}]`. |
-| **`model`** | String | No | Active slot model | Installed embedding model ID (e.g. `bge_m3-unknown-onnx-fp32`, `fashion_clip-unknown-onnx-fp32`) | Exact model ID to execute. |
+| **`model`** | String | No | Active slot model | Installed compatible embedding model ID | Exact selected ONNX or GGUF model; GGUF accepts text only. |
 | **`encoding_format`** | String | No | `"float"` | `"float"` | Numerical encoding format for vectors. Non-float encodings are rejected. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
 
