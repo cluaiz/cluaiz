@@ -1,6 +1,7 @@
 //! Real ONNX embedding execution, tokenizer inputs and explicit pooling contracts.
 use crate::{media::validate_tensor, OnnxEngine};
 use anyhow::{bail, Context, Result};
+use cluaiz_core::contracts::normalize_embedding as normalize;
 use cluaiz_core::{media::DecodedImage, media_limits::MediaLimits, EngineError};
 use ort::{
     session::SessionInputValue,
@@ -13,11 +14,7 @@ pub enum EmbeddingInput {
     Text(String),
     Image { image: DecodedImage, text: String },
 }
-#[derive(Debug)]
-pub struct EmbeddingOutput {
-    pub vector: Vec<f32>,
-    pub tokens: usize,
-}
+pub use cluaiz_core::contracts::EmbeddingOutput;
 
 impl OnnxEngine {
     /// Load the selected primary graph without audio-family/name routing.
@@ -262,20 +259,6 @@ fn pool_output(
         }
         _ => bail!("Graph output is not a supported embedding vector/sequence"),
     }
-}
-fn normalize(mut vector: Vec<f32>) -> Result<Vec<f32>> {
-    let norm = vector
-        .iter()
-        .map(|&v| f64::from(v).powi(2))
-        .sum::<f64>()
-        .sqrt();
-    if !norm.is_finite() || norm <= 0.0 {
-        bail!("Embedding vector has zero or invalid norm");
-    }
-    for value in &mut vector {
-        *value = (f64::from(*value) / norm) as f32;
-    }
-    Ok(vector)
 }
 #[cfg(test)]
 mod tests {

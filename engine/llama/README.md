@@ -45,6 +45,21 @@ graph TD
 | [`ffi/reasoning.rs`](src/ffi/reasoning.rs), [`ffi/reasoning_bridge.cpp`](src/ffi/reasoning_bridge.cpp) | Narrow C ABI to the pinned upstream reasoning-budget sampler; no copied budget state machine. |
 | [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches. |
 
+## Native text embedding boundary
+
+`native::embedding::EmbeddingModel` takes an embedding-enabled `NativeLlama`, retaining its existing model/context destructor. It queries native pooling and output width rather than selecting a model by name. Mean, CLS and last-token sequence pooling are accepted; no-pooling, reranking and encoder-decoder models return an error. Whole-sequence evaluation uses the existing RAII batch and tokenizer; inputs beyond the active sequence limit are rejected without truncation. Sequence output is copied before the next native operation and normalized through `cluaiz_core::contracts::normalize_embedding`. This boundary alone does not wire the HTTP endpoint or certify arbitrary GGUF exports.
+
+```mermaid
+graph LR
+    Text["Bounded text"] --> Tokens["Existing native tokenizer"]
+    Tokens --> Batch["Owned whole-sequence batch"]
+    Batch --> Native["Selected GGUF context and native pooling"]
+    Native --> Copy["Copy queried-width sequence vector"]
+    Copy --> Normalize["Shared finite L2 normalization"]
+```
+
+The opt-in `tests/embedding.rs` fixture takes external model paths/text, checks repeated and distinct inputs, one supplied semantic ranking, normalized finite output, oversize refusal and recovery. This is selected-model acceptance, not general retrieval quality or GPU/platform certification.
+
 ## GGUF speech ownership
 
 ```mermaid
