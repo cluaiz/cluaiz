@@ -17,7 +17,7 @@ use tokio::sync::{mpsc, Mutex};
 #[path = "media_generation.rs"]
 mod media_generation;
 #[path = "native_load.rs"]
-mod native_load;
+pub(crate) mod native_load;
 use native_load::load_with_plan;
 
 enum GenerationRequest {
@@ -72,6 +72,8 @@ pub struct EngineHost {
     pub media_admission: crate::media_admission::MediaAdmission,
     /// Audio sessions have their own lifecycle and never evict the chat owner.
     pub onnx: crate::onnx_host::OnnxHost,
+    /// Pooled GGUF embeddings have separate state and never overwrite chat KV.
+    pub embeddings: crate::embedding_host::EmbeddingHost,
     /// GGUF speech models (llama.cpp audio generation), also apart from the chat owner.
     pub speech: crate::speech_host::SpeechHost,
     pub current_plan: Arc<Mutex<Option<ExecutionPlan>>>,
@@ -110,6 +112,7 @@ impl EngineHost {
         Self {
             media_admission: crate::media_admission::MediaAdmission::default(),
             onnx: crate::onnx_host::OnnxHost::with_transition(Arc::clone(&model_transition)),
+            embeddings: crate::embedding_host::EmbeddingHost::with_transition(Arc::clone(&model_transition)),
             speech: crate::speech_host::SpeechHost::with_transition(Arc::clone(&model_transition)),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
