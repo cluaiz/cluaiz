@@ -50,7 +50,8 @@ The daemon and CLI resolve `session.token` through the same `EnvironmentManager`
 | Extracted-document chat | Same chat route, `file_url` | Selected text-capable GGUF; no projector required for text-only requests |
 | Speech recognition | `POST /v1/audio/transcriptions` | Selected supported ONNX STT package |
 | Speech generation | `POST /v1/audio/speech` | Selected supported ONNX TTS package |
-| Text/image vectors | `POST /v1/embeddings` | Selected supported ONNX embedding graph |
+| Text vectors | `POST /v1/embeddings` | Selected compatible ONNX graph or GGUF sequence-embedding model |
+| Image vectors | `POST /v1/embeddings` | Selected supported ONNX image embedding graph |
 | Document content preview | `POST /v1/ingest` or `/v1/ingest/file` | No model required for native text extraction |
 
 Image chat (`image_url.url` can also be an authorized path or HTTP URL):

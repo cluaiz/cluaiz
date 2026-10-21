@@ -278,6 +278,19 @@ pub async fn plan_execution(
             .into_response(),
         };
 
+    let embedding = entry
+        .as_ref()
+        .is_some_and(super::embeddings::is_embedding_model);
+    let settings = if embedding {
+        match cluaiz_runtime::embedding_host::capture_settings(&geometry, &settings) {
+            Ok(settings) => settings,
+            Err(error) => {
+                return Json(json!({"status":"error","code":"embedding_context_invalid","message":error.to_string()})).into_response()
+            }
+        }
+    } else {
+        settings
+    };
     let plan = cluaiz_plan::Planner::create_plan(model_id, &geometry, &hw, &settings);
 
     let model_size_gb = cluaiz_core::bytes_to_gib(geometry.file_size_bytes);
@@ -383,7 +396,7 @@ pub async fn plan_execution(
             "context_window": geometry.context_length,
             "model_size_gb": (model_size_gb * 100.0).round() / 100.0,
             "inputs": inputs,
-            "outputs": vec!["text"]
+            "outputs": if embedding { vec!["embedding"] } else { vec!["text"] }
         },
         "candidates": plan.candidates
     });
