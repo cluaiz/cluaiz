@@ -2,6 +2,7 @@
 #[path = "../../engine/media/tests/support/mod.rs"]
 #[allow(dead_code)]
 mod documents;
+mod embedding_acceptance;
 #[path = "processing_acceptance.rs"]
 mod processing_acceptance;
 

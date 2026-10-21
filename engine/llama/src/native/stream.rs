@@ -1,9 +1,9 @@
+use super::tokenizer::tokenize;
 use crate::ffi::llama_cpp;
 use crate::native::context::SafeBatch;
 use crate::native::core::{ContextExceeded, ContextReport, NativeLlama};
 use crate::native::media::{MediaInput, Projector};
 use cluaiz_models::types::StructuralDNA;
-use super::tokenizer::tokenize;
 use std::os::raw::c_char;
 use std::sync::atomic::Ordering;
 use tracing::info;

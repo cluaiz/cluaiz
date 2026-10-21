@@ -112,7 +112,9 @@ impl EngineHost {
         Self {
             media_admission: crate::media_admission::MediaAdmission::default(),
             onnx: crate::onnx_host::OnnxHost::with_transition(Arc::clone(&model_transition)),
-            embeddings: crate::embedding_host::EmbeddingHost::with_transition(Arc::clone(&model_transition)),
+            embeddings: crate::embedding_host::EmbeddingHost::with_transition(Arc::clone(
+                &model_transition,
+            )),
             speech: crate::speech_host::SpeechHost::with_transition(Arc::clone(&model_transition)),
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
