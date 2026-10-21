@@ -1,6 +1,6 @@
 # Cluaiz Engine REST API Reference
 
-Welcome to the Cluaiz Engine REST API documentation. The engine provides high-performance, hardware-agnostic local inference for Large Language Models (LLMs), Vision-Language Models (VLMs), Embedding models, Speech-to-Text (STT), Text-to-Speech (TTS), and a secure agentic execution runtime with workspace containment.
+Reference for the engine's HTTP routes, model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and current limitations.
 
 ---
 
@@ -8,9 +8,9 @@ Welcome to the Cluaiz Engine REST API documentation. The engine provides high-pe
 
 | Protocol | Default Local Endpoint | Description |
 |:---|:---|:---|
-| **HTTP REST** | `http://localhost:8080` | Core inference and management endpoints |
-| **WebSocket / SSE** | `http://localhost:8080/v1/chat/completions` | Real-time token streaming with HITL approval events |
-| **Developer Hub** | `http://localhost:8080/devhub` | Embedded management and testing interface |
+| **HTTP REST** | `http://127.0.0.1:8000` | Default engine address; use your configured host/port |
+| **SSE** | `http://127.0.0.1:8000/v1/chat/completions` | Chat token streaming over HTTP; audio routes have their own event schema |
+| **API Explorer** | App API workspace | Ships endpoint definitions from `public/data` and Markdown copies from `public/docs/api` |
 
 ---
 
@@ -32,10 +32,46 @@ Authorization: Bearer <TOKEN>
 |---|---|---|---|
 | **Public Probes** | `GET /health`, `GET /info` | Public (200 OK) | Public (200 OK) |
 | **General Inference** | `POST /v1/chat/completions`, `GET /v1/models` | Open for prototyping (200 OK) | **Bearer Token Required (401)** |
-| **Sensitive Filesystem** | `POST /v1/fs/read`, `/v1/fs/write`, `/v1/fs/delete` | **Bearer Token Required (401)** | **Bearer Token Required (401)** |
-| **Host Terminal Exec** | `POST /v1/system/cmd` | **Bearer Token Required (401)** | **Bearer Token Required (401)** |
+| **Sensitive Filesystem** | `POST /v1/fs/read`, `/v1/fs/write`, `/v1/fs/delete` | Auth middleware bypassed; filesystem policy still applies | **Bearer Token Required (401)** |
+| **Host Terminal Exec** | `POST /v1/system/cmd` | Auth middleware bypassed; command policy still applies | **Bearer Token Required (401)** |
 
-> **Critical Security Guarantee:** Sensitive routes (`/v1/fs/*` and `/v1/system/cmd`) **NEVER** run without a valid Bearer token, protecting developer workstations from malicious cross-origin scripts even when general inference is open.
+The current middleware bypasses Bearer checks when `api_auth.required` is false. Examples use a real session/configured token; placeholder API keys are not valid authentication. Source-path authorization is a separate check and is not replaced by a Bearer token or `x-caller: user`.
+
+## Model selection and media routes
+
+`GET /v1/models/installed` returns `models`/`installed` arrays and an `installed_models` map. Use an exact `id`; inspect `format_type`, `supported_tasks`, `metadata` and `experimental`. Task names can use hyphens or underscores. Registry declarations identify candidates; runtime assets still determine compatibility.
+
+PowerShell discovery on the engine's own computer (the configured token/home may differ):
+
+```powershell
+$base = 'http://127.0.0.1:8000'
+$tokenPath = Join-Path $env:USERPROFILE '.cluaiz/session.token'
+$token = (Get-Content -LiteralPath $tokenPath -Raw).Trim()
+$headers = @{ Authorization = "Bearer $token" }
+$catalog = Invoke-RestMethod "$base/v1/models/installed" -Headers $headers
+$catalog.models | Select-Object id, category, format_type, supported_tasks, experimental
+# Save the Body Payload as request.json after selecting your installed model.
+# Replace /v1/embeddings below with the POST endpoint you are testing.
+$body = Get-Content -LiteralPath './request.json' -Raw
+Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
+    -ContentType 'application/json' -Body $body
+```
+
+| Goal | Route | Which model to choose |
+|:---|:---|:---|
+| Chat / document questions | `POST /v1/chat/completions` | `file_url`: native document text; PDF page images for a selected image-capable package with projector |
+| Image / video questions | Same chat route, `image_url` / `video_url` | Chat/vision model with matching projector; video audio also requires audio capability |
+| Audio questions | Same chat route, `audio_url` / `input_audio` | Audio-capable chat model, not TTS |
+| Make speech | `POST /v1/audio/speech` | Compatible ONNX TTS or GGUF speech package |
+| Transcribe a recording | `POST /v1/audio/transcriptions` | Compatible ONNX STT package |
+| Text vectors | `POST /v1/embeddings` | Compatible ONNX/GGUF text embedding package, including supported EmbeddingGemma-2 text projection |
+| Image vectors | Same embeddings route, `{type:"image",source:...}` input | ONNX image embedding graph; GGUF multimodal embeddings are not implemented |
+| Extract document text/chunks | `POST /v1/ingest`, omit model | Native PDF/OCR/DOCX/DOC/text extraction |
+| Document or image model processing | `POST /v1/ingest`, select model | Text embedding model for native chunks; ONNX image graph for images/PDF pages; generative GGUF vision model for text |
+
+The Explorer Model dropdown writes the installed ID into POST payloads, or into `?model=` on GET voice/language discovery. Ingest also offers Native extraction, which omits the model. Body Payload has a separate example menu for document/image/text formats and model modes. TTS voices come from the selected package. The editor restores locally saved bodies; use Reset Payload to load a new shipped example. Hand-edited JSON remains authoritative; verify the model/source before sending.
+
+`/v1/ingest` extracts chunks and can run a selected embedding/vision model; `/v1/embeddings` accepts prepared text or image inputs directly. Your application stores/indexes/searches the returned vectors. These routes do not automatically create a persistent RAG database. Retention for chat, speech, STT and direct embeddings is specified in **minutes** (`0` unloads, positive expires, `-1` retains). Ingest has no per-request retention field; its selected model uses the existing owner's cached lifecycle.
 
 ---
 

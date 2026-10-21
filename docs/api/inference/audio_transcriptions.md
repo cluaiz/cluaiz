@@ -2,7 +2,13 @@
 
 `POST /v1/audio/transcriptions` (alias: `POST /v1/audio/execute` with task `speech_to_text`)
 
-Transcribes spoken audio, voice notes, and audio clips into clean text using ONNX-accelerated Whisper acoustic neural models. Supports multi-threaded Mel-spectrogram processing, automatic language detection, and Server-Sent Events (SSE) streaming tokens.
+Transcribes a recording using a compatible installed ONNX STT package (for example Whisper or a supported Moonshine export). Returns text, rather than synthesized speech or an audio chat answer. Graph/tokenizer assets and language behavior depend on the package. Installing an arbitrary ONNX file does not establish compatibility.
+
+## Choose an installed model
+
+Read `GET /v1/models/installed` with your Bearer token and copy an exact `models[].id` that declares an STT task. The API Explorer Model dropdown updates the JSON `model`; on `/v1/audio/languages` it updates the URL's `?model=` instead. STT has language controls, not speaker voices. Use `/v1/audio/speech` for TTS and `/v1/chat/completions` for audio questions with a compatible multimodal chat model.
+
+An explicit ID selects that installed package. Omission/`auto` uses the active eligible STT slot, otherwise an eligible installed package. The example IDs below are examples, not packages bundled with every installation. Paths are read on the engine's computer; browser clients normally send a data URI.
 
 ---
 
@@ -22,13 +28,15 @@ Transcribes spoken audio, voice notes, and audio clips into clean text using ONN
 |:---|:---|:---:|:---|:---|:---|
 | **`input_source`** | Object | No* | — | `{"type": "file" \| "audio" \| "base64" \| "url", "data": "..."}` | Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted). |
 | **`file`** | String | No* | — | Local file path or URI | Direct file path shortcut (OpenAI-compatible alternative to `input_source`). |
-| **`model`** | String | No | `"whisper-large-v3-turbo-INT8"` | Installed STT model ID | Model identifier. Defaults to active or installed Whisper package (`whisper-large-v3-turbo-INT8`). |
+| **`model`** | String | No | Active/eligible installed STT package | Installed STT model ID | Exact registry ID. Do not send a Hugging Face repository name or invent a quantization suffix. |
 | **`language`** | String | No | `"auto"` | ISO-639-1 code (e.g. `"en"`, `"hi"`, `"es"`, `"fr"`, `"auto"`) | Target spoken language. Setting `"auto"` runs Whisper language identification. |
-| **`languages`** | String[] | No | `[]` | Up to 10 ISO-639-1 codes (e.g. `["hi", "en"]`) | Cluaiz extension: the languages the speaker uses. Without `language`, each request is identified among only these, so a speaker who switches between Hindi and English sentences gets each in its own language and never an unrelated one (Hindi written in Urdu script, a stray Vietnamese line). One code works like `language`. Empty: all languages the model knows. Codes the model does not know are skipped, and when it knows none of them every language is considered, so a request never fails because of this list (a one-language model such as Moonshine ignores it). Like Google STT `alternativeLanguageCodes` and Azure candidate languages. |
-| **`temperature`** | Float | No | `0.0` | `0.0 - 1.0` | Sampling temperature for greedy decoding. `0.0` is recommended for maximum transcription accuracy. |
-| **`timestamps`** | Boolean | No | `false` | `true`, `false` | Whether to return word/segment timestamps in output (default: `false` for raw text). |
+| **`languages`** | String[] | No | `[]` | Up to 10 language codes (e.g. `["hi", "en"]`) | Candidate languages for automatic identification; prefer omitting `language` when using this list. Unknown candidates are skipped; if none match, available model languages are considered. Monolingual packages ignore this list. Identification and mixed-language accuracy are not guaranteed. |
+| **`temperature`** | Float | No | `0.0` | `0.0` only | Nonzero sampling temperature is not implemented and is rejected. |
+| **`timestamps`** | Boolean | No | `false` | `false` only | `true` is rejected; `output.segments` is currently null. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session cache lifetime in memory before automatic session cleanup. |
+
+Use one of `input_source` and `file`; if both are present, `input_source` wins. A bare Base64 string is not a source URI: include `data:audio/<format>;base64,`. `prompt` is accepted by the wrapper, but a nonempty prompt is rejected by the current graph contract. Unknown fields, timestamps, VAD, diarization, and beam search beyond one beam are not implemented. This endpoint processes a recording; SSE is not a bidirectional live-microphone protocol.
 
 ---
 
@@ -46,7 +54,7 @@ A model that reads one language only (Moonshine) returns an empty list.
 
 ## 🎵 Supported Audio Formats
 
-* **WAV (`audio/wav`)**: Recommended for zero-decode latency (PCM 16-bit 16kHz mono).
+* **WAV (`audio/wav`)**: A practical recording format (for example PCM 16-bit 16kHz mono); shared decoding/resampling still applies.
 * **MP3 (`audio/mp3`, `audio/mpeg`)**: Supported via built-in audio decoders.
 * **OGG / Opus (`audio/ogg`, `audio/opus`)**: Supported.
 * **FLAC (`audio/flac`)**: Supported.
@@ -60,7 +68,9 @@ A model that reads one language only (Moonshine) returns an empty list.
 
 ## 💻 Code Examples
 
-### 1. cURL (Base64 WAV Data URI - Non-streaming)
+### 1. cURL (Actual WAV Data URI - Non-streaming)
+
+Replace `<actual-base64-wav-bytes>` with bytes from a real recording. An empty WAV header is not a speech fixture. A complete file-encoding example appears below.
 
 ```bash
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
@@ -70,7 +80,7 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
     "model": "whisper-large-v3-turbo-INT8",
     "input_source": {
       "type": "audio",
-      "data": "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+      "data": "data:audio/wav;base64,<actual-base64-wav-bytes>"
     },
     "language": "auto",
     "temperature": 0.0,
@@ -89,7 +99,7 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -H "x-caller: user" \
   -d '{
     "model": "whisper-large-v3-turbo-INT8",
-    "file": "C:/Users/Aryan/Downloads/harvard.mp3",
+    "file": "C:/audio/voice_memo.mp3",
     "language": "en",
     "temperature": 0.0,
     "stream": false,
@@ -97,7 +107,7 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
   }'
 ```
 
-### 3. Python (Microphone Recording / File Upload)
+### 3. Python (Encode an Existing Recording)
 
 ```python
 import requests
@@ -127,6 +137,7 @@ payload = {
 }
 
 response = requests.post("http://localhost:8000/v1/audio/transcriptions", json=payload, headers=headers)
+response.raise_for_status()
 data = response.json()
 
 if data.get("status") == "success":
@@ -174,6 +185,22 @@ async function transcribeBlob(blob: Blob, token: string): Promise<string> {
 }
 ```
 
+### 5. Automatic identification among candidate languages
+
+```json
+{
+  "model": "whisper-large-v3-turbo-INT8",
+  "input_source": {"type":"url","data":"https://example.com/voice_memo.wav"},
+  "languages": ["hi", "en"],
+  "temperature": 0,
+  "timestamps": false,
+  "stream": true,
+  "keep_alive": 0
+}
+```
+
+Use an allowed URL serving real audio. Set `language: "en"` instead of the candidate list when the spoken language is known. A model that reads one language only can return an empty language list; that does not mean it supports every language.
+
 ---
 
 ## 📤 Response Schema & Fields
@@ -206,3 +233,11 @@ data: {"status":"chunk","token":" is a test"}
 
 data: {"status":"done","result":{"output":{"text":"Hello, this is a test"}}}
 ```
+
+Read records separated by blank lines and wait for the terminal `done` or `error` event. Post-start failures can arrive as `{"status":"error","error":{"type":"engine_error","message":"..."}}` after HTTP 200. Audio SSE uses `token`/`result`, not chat's `choices[].delta` or `[DONE]`. The done result has the same complete response schema as `stream:false`.
+
+## Errors, device placement and limits
+
+Missing/invalid Bearer tokens return HTTP 401 when API authentication is required. An uninstalled explicit model returns HTTP 404 `model_not_found`; a wrong-task/incomplete package, unsupported option, corrupt audio or unauthorized source returns an error with details. The engine does not substitute a placeholder transcript.
+
+Inline transport capacity includes Base64 expansion and JSON envelope space: `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`. Over-limit JSON returns HTTP 413 `request_too_large`. Encoded source bytes, decoded audio and live memory admission have separate limits. `x-caller: user` does not replace authentication or filesystem policy. ONNX provider/device settings apply; `device` is not a field in this payload. A small download does not establish peak RAM/VRAM requirements or realtime speed.
