@@ -10,6 +10,7 @@ pub mod embeddings;
 pub mod fs;
 pub mod fs_jail;
 pub mod ingest;
+mod ingest_model;
 pub mod mcp;
 pub mod models;
 pub mod optimization;

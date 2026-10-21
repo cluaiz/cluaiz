@@ -54,11 +54,22 @@ pub struct SourceResolver {
     limits: MediaLimits,
     formats: FormatRegistry,
     video: cluaiz_core::media::VideoSettings,
+    document_images: bool,
     cancellation: Arc<std::sync::atomic::AtomicBool>,
     pub(crate) progress: Option<cluaiz_core::processing::ProcessingReporter>,
 }
 
 impl SourceResolver {
+    /// The request boundary enables PDF pixels only for a compatible selected model.
+    pub fn with_document_images(mut self, enabled: bool) -> Self {
+        self.document_images = enabled;
+        self
+    }
+
+    pub(crate) fn document_images(&self) -> bool {
+        self.document_images
+    }
+
     pub fn with_progress(
         mut self,
         progress: Option<cluaiz_core::processing::ProcessingReporter>,
@@ -109,6 +120,7 @@ impl SourceResolver {
             limits: settings.limits,
             formats,
             video: settings.video,
+            document_images: false,
             cancellation: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             progress: None,
         })

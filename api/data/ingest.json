@@ -1,0 +1,3 @@
+{
+  "instruction": "Extract the readable text from the supplied document or image in reading order. Preserve useful structure. Return only the extracted content. Do not invent unreadable or missing words."
+}

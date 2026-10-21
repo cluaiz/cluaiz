@@ -157,15 +157,10 @@ pub async fn generate_embeddings(
     if native && matches!(&payload.input, EmbeddingInput::Parts(_)) {
         return error(StatusCode::BAD_REQUEST, "unsupported_input", "GGUF embeddings currently accept text or text batches; image embeddings require an ONNX graph");
     }
-    let model = if native {
-        None
-    } else {
-        match OnnxModel::from_package(entry) {
-            Ok(model) => Some(model),
-            Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_model", e),
-        }
+    let executor = match EmbeddingExecutor::new(entry.clone()) {
+        Ok(executor) => executor,
+        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_model", e),
     };
-    let id = entry.id.clone();
     let inputs = match payload.input {
         EmbeddingInput::Single(text) => vec![PreparedEmbedding::Text(text)],
         EmbeddingInput::Multiple(texts) => texts.into_iter().map(PreparedEmbedding::Text).collect(),
@@ -183,23 +178,24 @@ pub async fn generate_embeddings(
                 grammar: None,
                 response_format: None,
             };
-            let request =
-                match prepare_authorized_media(&state, &headers, request, &settings, None, None)
-                    .await
-                {
-                    Ok(request) => request,
-                    Err((kind, message)) => {
-                        return error(
-                            if kind == "permission_error" {
-                                StatusCode::FORBIDDEN
-                            } else {
-                                StatusCode::BAD_REQUEST
-                            },
-                            kind,
-                            message,
-                        )
-                    }
-                };
+            let request = match prepare_authorized_media(
+                &state, &headers, request, &settings, false, None, None,
+            )
+            .await
+            {
+                Ok(request) => request,
+                Err((kind, message)) => {
+                    return error(
+                        if kind == "permission_error" {
+                            StatusCode::FORBIDDEN
+                        } else {
+                            StatusCode::BAD_REQUEST
+                        },
+                        kind,
+                        message,
+                    )
+                }
+            };
             let mut image = None;
             let mut text = Vec::new();
             for part in request.messages.into_iter().flat_map(|m| m.content) {
@@ -222,127 +218,158 @@ pub async fn generate_embeddings(
             }]
         }
     };
-    let bytes = inputs.iter().try_fold(0u64, |bytes, input| {
-        let len = match input {
-            PreparedEmbedding::Text(text) => text.len(),
-            PreparedEmbedding::Image { image, text } => {
-                image.pixels().len().checked_add(text.len())?
-            }
-        };
-        bytes.checked_add(u64::try_from(len).ok()?)
-    });
-    if bytes.is_none_or(|n| settings.media.limits.check_decoded_bytes(n).is_err()) {
-        return error(
-            StatusCode::BAD_REQUEST,
-            "input_limit",
-            "Embedding batch exceeds the media byte limit",
-        );
-    }
-    let result = if let Some(model) = model {
-        state
-            .host
-            .onnx
-            .embed(model, inputs, settings.clone(), payload.keep_alive)
-            .await
-    } else {
-        let admission = match state.host.embeddings.try_acquire() {
-            Ok(admission) => admission,
-            Err(_) => {
-                return error(
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "embedding_busy",
-                    "Another GGUF embedding request is still active",
-                )
-            }
-        };
-        let texts: anyhow::Result<Vec<_>> = inputs
-            .into_iter()
-            .map(|input| match input {
-                PreparedEmbedding::Text(text) => Ok(text),
-                _ => anyhow::bail!("GGUF embeddings require text input"),
-            })
-            .collect();
-        let texts = match texts {
-            Ok(texts) => texts,
-            Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_input", e),
-        };
-        state
-            .host
-            .embeddings
-            .embed(
-                entry.clone(),
-                texts,
-                settings.clone(),
-                payload.keep_alive,
-                admission,
-            )
-            .await
-    };
-    let outputs = match result {
-        Ok(outputs) => outputs,
-        Err(e) => {
-            if e.is::<cluaiz_core::contracts::InvalidEmbeddingInput>() {
-                return error(StatusCode::BAD_REQUEST, "invalid_request_error", e);
-            }
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "embedding_failed",
-                format!("{e:#}"),
-            );
-        }
-    };
-    let mut data = Vec::new();
-    let mut total_tokens = 0usize;
-    let mut output_bytes = 0u64;
-    for (index, output) in outputs.into_iter().enumerate() {
-        let Some(tokens) = total_tokens.checked_add(output.tokens) else {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "embedding_failed",
-                "Token count overflow",
-            );
-        };
-        total_tokens = tokens;
-        let Some(bytes) = (output.vector.len() as u64)
-            .checked_mul(4)
-            .and_then(|n| output_bytes.checked_add(n))
-        else {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "embedding_failed",
-                "Output size overflow",
-            );
-        };
-        output_bytes = bytes;
-        if settings
-            .media
-            .limits
-            .check_decoded_bytes(output_bytes)
-            .is_err()
-        {
-            return error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "output_limit",
-                "Embedding batch output exceeds byte limit",
-            );
-        }
-        data.push(EmbeddingData {
-            object: "embedding",
-            embedding: output.vector,
-            index,
-        });
-    }
-    Json(EmbeddingResponse {
-        object: "list",
-        data,
-        model: id,
-        usage: EmbeddingUsage {
-            prompt_tokens: total_tokens,
-            total_tokens,
-        },
-    })
-    .into_response()
+    executor
+        .execute(&state, inputs, settings, payload.keep_alive)
+        .await
 }
+
+/// Shared prepared-input execution; callers own source authorization and decoding.
+pub(super) struct EmbeddingExecutor {
+    entry: cluaiz_models::types::manifest::ModelRegistryEntry,
+    model: Option<OnnxModel>,
+}
+impl EmbeddingExecutor {
+    pub(super) fn new(
+        entry: cluaiz_models::types::manifest::ModelRegistryEntry,
+    ) -> anyhow::Result<Self> {
+        let model = if entry.format_type.eq_ignore_ascii_case("gguf") {
+            None
+        } else {
+            Some(OnnxModel::from_package(&entry)?)
+        };
+        Ok(Self { entry, model })
+    }
+
+    pub(super) async fn execute(
+        &self,
+        state: &AppState,
+        inputs: Vec<PreparedEmbedding>,
+        settings: cluaiz_core::ActiveUserSettings,
+        keep_alive: Option<i32>,
+    ) -> Response {
+        let bytes = inputs.iter().try_fold(0u64, |bytes, input| {
+            let len = match input {
+                PreparedEmbedding::Text(text) => text.len(),
+                PreparedEmbedding::Image { image, text } => {
+                    image.pixels().len().checked_add(text.len())?
+                }
+            };
+            bytes.checked_add(u64::try_from(len).ok()?)
+        });
+        if bytes.is_none_or(|n| settings.media.limits.check_decoded_bytes(n).is_err()) {
+            return error(
+                StatusCode::BAD_REQUEST,
+                "input_limit",
+                "Embedding batch exceeds the media byte limit",
+            );
+        }
+        let result = if let Some(model) = self.model.clone() {
+            state
+                .host
+                .onnx
+                .embed(model, inputs, settings.clone(), keep_alive)
+                .await
+        } else {
+            let admission = match state.host.embeddings.try_acquire() {
+                Ok(admission) => admission,
+                Err(_) => {
+                    return error(
+                        StatusCode::TOO_MANY_REQUESTS,
+                        "embedding_busy",
+                        "Another GGUF embedding request is still active",
+                    )
+                }
+            };
+            let texts: anyhow::Result<Vec<_>> = inputs
+                .into_iter()
+                .map(|input| match input {
+                    PreparedEmbedding::Text(text) => Ok(text),
+                    _ => anyhow::bail!("GGUF embeddings require text input"),
+                })
+                .collect();
+            let texts = match texts {
+                Ok(texts) => texts,
+                Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_input", e),
+            };
+            state
+                .host
+                .embeddings
+                .embed(
+                    self.entry.clone(),
+                    texts,
+                    settings.clone(),
+                    keep_alive,
+                    admission,
+                )
+                .await
+        };
+        let outputs = match result {
+            Ok(outputs) => outputs,
+            Err(e) => {
+                if e.is::<cluaiz_core::contracts::InvalidEmbeddingInput>() {
+                    return error(StatusCode::BAD_REQUEST, "invalid_request_error", e);
+                }
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "embedding_failed",
+                    format!("{e:#}"),
+                );
+            }
+        };
+        let mut data = Vec::new();
+        let mut total_tokens = 0usize;
+        let mut output_bytes = 0u64;
+        for (index, output) in outputs.into_iter().enumerate() {
+            let Some(tokens) = total_tokens.checked_add(output.tokens) else {
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "embedding_failed",
+                    "Token count overflow",
+                );
+            };
+            total_tokens = tokens;
+            let Some(bytes) = (output.vector.len() as u64)
+                .checked_mul(4)
+                .and_then(|n| output_bytes.checked_add(n))
+            else {
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "embedding_failed",
+                    "Output size overflow",
+                );
+            };
+            output_bytes = bytes;
+            if settings
+                .media
+                .limits
+                .check_decoded_bytes(output_bytes)
+                .is_err()
+            {
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "output_limit",
+                    "Embedding batch output exceeds byte limit",
+                );
+            }
+            data.push(EmbeddingData {
+                object: "embedding",
+                embedding: output.vector,
+                index,
+            });
+        }
+        Json(EmbeddingResponse {
+            object: "list",
+            data,
+            model: self.entry.id.clone(),
+            usage: EmbeddingUsage {
+                prompt_tokens: total_tokens,
+                total_tokens,
+            },
+        })
+        .into_response()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
