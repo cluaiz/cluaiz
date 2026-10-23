@@ -4,7 +4,7 @@
 
 use color_eyre::Result;
 use colored::Colorize;
-use cluaiz_models::{CoreRoster, HfTreeItem, HfVariant, HuggingFaceHub, ModelDownloader, ModelManifest, resolve_model_repo};
+use cluaiz_models::{CoreRoster, HfTreeItem, HfVariant, HuggingFaceHub, ModelDownloader, ModelManifest, parse_hf_repository, resolve_model_repo_with_fallback, RegistryResolveError};
 use std::io::{self, Write};
 use std::path::PathBuf;
 
@@ -42,7 +42,7 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
 
     let mut manifest: Option<ModelManifest>;
     let mut selected_variant_bundle: Option<HfVariant> = None;
-    let mut is_local = false;
+    let is_local;
 
     let roster = CoreRoster::load_roster();
 
@@ -58,6 +58,7 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
     };
 
     let mut target_hf_repo: Option<String> = None;
+    let mut registry_failure: Option<String> = None;
     if !base_input.contains('/') && !base_input.starts_with("hf://") && !base_input.starts_with("https://") {
         // Check if model already exists locally
         let safe_id = model_id.replace(':', "-");
@@ -72,33 +73,34 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
             }
         });
 
-        if !local_exists {
+        let locally_known = roster.iter().any(|model| model.id.eq_ignore_ascii_case(model_id));
+        if !local_exists && !locally_known {
             // Short ID given and not present locally -> Resolve upstream Hugging Face repo from Registry
             print!("  {} Resolving model ID '{}' via Registry...", "🔍".cyan(), base_input.bold());
             let _ = std::io::Write::flush(&mut std::io::stdout());
-            let resolved_res = match resolve_model_repo(model_id).await {
-                Ok(Some(repo)) => Ok(Some(repo)),
-                _ => resolve_model_repo(base_input).await,
-            };
-
-            if let Ok(Some(hf_repo)) = resolved_res {
-                println!(" -> Found HuggingFace Repo: '{}'", hf_repo.yellow().bold());
-                target_hf_repo = Some(hf_repo);
-            } else {
-                println!(" (using local/external catalog)");
+            let fallback = (base_input != model_id).then_some(base_input);
+            match resolve_model_repo_with_fallback(model_id, fallback).await {
+                Ok(Some(hf_repo)) => {
+                    println!(" -> Found HuggingFace Repo: '{}'", hf_repo.yellow().bold());
+                    target_hf_repo = Some(hf_repo);
+                }
+                Ok(None) => {
+                    println!(" -> no matching catalogue ID");
+                    registry_failure = Some(RegistryResolveError::NotFound(model_id.to_string()).to_string());
+                }
+                Err(error) => {
+                    println!(" -> request failed");
+                    registry_failure = Some(error.to_string());
+                }
             }
         }
     }
 
     if base_input.contains('/') || target_hf_repo.is_some() {
         // HUGGINGFACE REQUEST (EXPLICIT OR RESOLVED)
-        let mut resolved_id = target_hf_repo.unwrap_or_else(|| base_input.to_string());
-        if !resolved_id.starts_with("hf://") && !resolved_id.starts_with("https://") {
-            resolved_id = format!("hf://{}", resolved_id);
-        }
-        
-        let repo_id = resolved_id.replace("hf://", "").replace("https://huggingface.co/", "");
-        let repo_id = if repo_id.ends_with('/') { repo_id[..repo_id.len()-1].to_string() } else { repo_id };
+        let resolved_id = target_hf_repo.unwrap_or_else(|| base_input.to_string());
+        let repo_id = parse_hf_repository(&resolved_id)
+            .ok_or(RegistryResolveError::InvalidInput)?;
         
         println!("  {} Scanning HuggingFace Hub for '{}'...", "🔍".cyan(), repo_id);
         
@@ -245,10 +247,10 @@ pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
                 is_local = false;
             }
         } else {
-            // Not in local vault, fetch from external registry
-            println!("  {} Model missing in local vault. Synchronizing with Registry...", "🌐".yellow());
-            let remote_models = CoreRoster::fetch_external_registry(None).await.map_err(|e| color_eyre::eyre::eyre!(e))?;
-            manifest = remote_models.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase());
+            // The one resolver request already covered the remote catalogue.
+            return Err(color_eyre::eyre::eyre!(registry_failure.unwrap_or_else(|| {
+                RegistryResolveError::NotFound(model_id.to_string()).to_string()
+            })));
         }
     }
 

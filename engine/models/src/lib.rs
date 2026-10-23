@@ -15,7 +15,8 @@ mod test_fixtures;
 pub use crate as models;
 
 pub use fetcher::{
-    resolve_model_repo, AutoHeal, DownloadEvent, HfTreeItem, HfVariant, HuggingFaceHub,
+    parse_hf_repository, resolve_model_repo, resolve_model_repo_with_fallback, RegistryResolveError,
+    AutoHeal, DownloadEvent, HfTreeItem, HfVariant, HuggingFaceHub,
     ModelDownloader,
 };
 pub use gguf::{GgufProber, ModelGeometry, WeightBytes, KV_CELL_PAD};

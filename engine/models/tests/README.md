@@ -22,6 +22,8 @@ flowchart LR
 
 ## Failure and Boundaries
 
+- **registry_resolution.rs:** loopback-only acceptance checks one HTTP request with original/base IDs, client hints, missing/invalid/oversized responses, 429/401/403/503 handling, redirect refusal, connection failure and timeout. Full HF coordinates bypass the registry endpoint. Run `cargo test -p cluaiz-models --test registry_resolution --offline`; no model weights or public service calls are needed.
+
 - `package_install.rs` is an opt-in real fresh package download/repair acceptance. It requires a nonexistent isolated `CLUAIZ_HOME`, `CLUAIZ_PACKAGE_REPO`, and `CLUAIZ_ALLOW_PACKAGE_DOWNLOAD=1`. It checks the manifest-owned plan, complete install gate, upstream LFS SHA256 identities and missing-tokenizer repair without rewriting retained valid weights. It does not modify the normal installed vault or run inference; native speech acceptance is separate. Run it with `cargo test -p cluaiz-models --test package_install -- --ignored --nocapture` only when that download is intended.
 - **Errors:** missing environment/assets, corrupt graph and HTTP errors fail instead of returning mock success. Normal tests skip the external fixtures.
 - **Not established:** full CLI/HTTP installer workflow, numerical inference, semantic quality, native EP support, all external-reference forms or all TTS helpers.
