@@ -971,8 +971,41 @@ impl PreparedChatContext {
                 Arc::clone(&self.cancel_signal),
                 Arc::clone(&self.skip_reasoning),
                 self.chat_id.as_deref(),
+                // Saved once when the turn ends (`TurnMemory`), not after every tool step
+                false,
             )
             .await
+        }
+    }
+}
+
+/// Saves the chat's KV once its turn has ended: on `finish` at the normal end, or when dropped
+/// (the client went away, or the answer ended early). Tool steps in between are not saved.
+pub struct TurnMemory {
+    state: Arc<crate::state::AppState>,
+    chat: Option<String>,
+}
+
+impl TurnMemory {
+    pub fn new(state: Arc<crate::state::AppState>, ctx: &PreparedChatContext) -> Self {
+        Self { state, chat: ctx.chat_id.clone() }
+    }
+
+    /// Saves now, before anything that may unload the model (`keep_alive: 0`)
+    pub async fn finish(mut self) {
+        if let Some(chat) = self.chat.take() {
+            self.state.host.save_chat_memory(&chat).await;
+        }
+    }
+}
+
+impl Drop for TurnMemory {
+    fn drop(&mut self) {
+        if let Some(chat) = self.chat.take() {
+            let state = Arc::clone(&self.state);
+            if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                runtime.spawn(async move { state.host.save_chat_memory(&chat).await });
+            }
         }
     }
 }

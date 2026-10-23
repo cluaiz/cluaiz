@@ -79,6 +79,8 @@ impl EngineHost {
                         expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
                         media_lease,
                         chat: chat.map(str::to_owned),
+                        // Media requests keep saving after each generation, as before
+                        persist: true,
                     },
                     max_tokens,
                     cancel,
