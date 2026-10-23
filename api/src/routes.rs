@@ -118,6 +118,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         )
         // ── 5. Unified Tools & Session Governance API ──
         .route("/v1/tools", get(handlers::session_tools::get_all_tools))
+        .route("/v1/tools/discover", post(handlers::session_tools::discover_tools))
         .route(
             "/v1/chat/{session_id}/tools",
             get(handlers::session_tools::get_session_tools)
