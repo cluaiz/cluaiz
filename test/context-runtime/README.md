@@ -44,7 +44,7 @@ current rule. Still missed: "look at the diff between the main and dev branches"
 and vulnerabilities in my function"; both need the `git` function list (its server cannot start
 without `uvx` here) or a trigger on `code-reviewer`.
 
-# KV correctness after an edit (`kv_equality.py`)
+## KV correctness after an edit (`kv_equality.py`)
 
 A chat carries a "skill" that says to answer only in French; then the skill is unloaded and the
 same chat comes back without it. The answer computed on the cached KV must equal the answer from
@@ -72,7 +72,7 @@ With chunk reuse the unloaded instruction keeps its effect: the answer stays Fre
 ("La Terre est la plus grande planète…", where the clean answer is "Jupiter is the largest
 planet…"). That is why chunks are now moved only after the Engine dropped old turns to fit.
 
-# Long tool session and equality after compaction (`long_session.py`)
+## Long tool session and equality after compaction (`long_session.py`)
 
 LONG1: one chat of 24 turns on `n_ctx` 4096, each turn asks about a file and usually reads it
 with the filesystem tool, sent like the App sends it (`session_id`, plain-text history). KV3: a
