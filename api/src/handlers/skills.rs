@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
-use super::components::install_component_response;
+use super::components::{clear_cache_response, install_component_response, list_cache_response, remove_component_response};
 
 // ─── GET /v1/skills/list ──────────────────────────────────────────────
 pub async fn list_skills(State(_state): State<Arc<AppState>>) -> Json<Value> {
@@ -27,30 +27,20 @@ pub async fn install_skill(
 }
 
 // ─── GET /v1/skills/cache ─────────────────────────────────────────────
-pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    match ToolsInstaller::list_component_cache("skill") {
-        Ok(report) => Json(json!({"status": "success", "message": report})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list cache: {}", e)}))
-    }
+pub async fn list_cache(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    list_cache_response("skill")
 }
 
 // ─── DELETE /v1/skills/cache ──────────────────────────────────────────
-pub async fn clear_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    match ToolsInstaller::clear_component_cache("skill", None, true, true) {
-        Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} caches.", wiped)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear cache: {}", e)}))
-    }
+pub async fn clear_cache(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    clear_cache_response("skill", None, true)
 }
 
 // ─── DELETE /v1/skills/remove ─────────────────────────────────────────
 pub async fn remove_skill(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallSkillPayload>
-) -> Json<Value> {
-    let skill_name = payload.skill_name.clone();
-    match ToolsInstaller::remove_component("skill", &skill_name).await {
-        Ok(_) => Json(json!({"status": "success", "message": format!("WASM skill '{}' removed natively.", skill_name)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove skill: {}", e)}))
-    }
+) -> (StatusCode, Json<Value>) {
+    remove_component_response("skill", payload.skill_name).await
 }
 

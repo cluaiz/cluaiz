@@ -44,7 +44,7 @@ async fn handle_cache_command(component_type: &str, command: crate::ComponentCac
         crate::ComponentCacheCommand::Clear { component_id, all, force } => {
             println!("\n  {} [Cluaiz Dual-Cache] Initiating Global Wipe for {}...", "🧹".yellow(), component_type.to_uppercase());
             match ToolsInstaller::clear_component_cache(component_type, component_id, all, force) {
-                Ok(wiped) => println!("\n    Successfully wiped {} caches.\n", wiped),
+                Ok(report) => println!("\n    Removed {} cached files ({} bytes).\n", report.files, report.bytes),
                 Err(e) => println!("Error clearing cache: {}", e),
             }
         }
