@@ -134,13 +134,13 @@ impl ToolsEngine {
 
     /// Matches user query against skill keyword triggers
     pub fn match_skills(query: &str) -> Vec<String> {
-        let router = SkillRouter::new();
+        let router = SkillRouter::shared();
         router.match_query(query)
     }
 
     /// Retrieves instructions for a skill to inject into LLM system prompt
     pub fn get_skill_instructions(skill_id: &str) -> Option<String> {
-        let router = SkillRouter::new();
+        let router = SkillRouter::shared();
         router.get_instructions(skill_id).map(|s| s.to_string())
     }
 

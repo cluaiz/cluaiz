@@ -11,7 +11,10 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock, Mutex};
+
+/// The catalog built for one registry generation
+static CATALOG: LazyLock<Mutex<Option<(u64, Arc<Vec<CatalogEntry>>)>>> = LazyLock::new(|| Mutex::new(None));
 use serde_json::{json, Value};
 use crate::tools::mcp::McpClient;
 use crate::tools::prompt_compiler::ToolPromptCompiler;
@@ -177,7 +180,6 @@ pub struct CatalogEntry {
     pub name: String,
     pub title: String,
     pub description: String,
-    local_dir: PathBuf,
     id_terms: Vec<String>,
     name_terms: HashSet<String>,
     trigger_terms: HashSet<String>,
@@ -185,6 +187,8 @@ pub struct CatalogEntry {
     function_terms: HashSet<String>,
     function_description_terms: HashSet<String>,
     description_terms: HashSet<String>,
+    /// Estimated tokens `load_tool` adds (instructions plus known functions)
+    load_cost: usize,
 }
 
 impl CatalogEntry {
@@ -232,7 +236,7 @@ impl CatalogEntry {
             function_terms,
             function_description_terms,
             description_terms: terms(&format!("{} {}", entry.description, manifest_title_or_empty(&manifest))).into_iter().collect(),
-            local_dir,
+            load_cost: estimate_load_cost(&local_dir, &functions),
         }
     }
 
@@ -416,20 +420,35 @@ impl ToolSearch {
         ]
     }
 
-    /// Switched-on skills, plugins and MCP servers, except `exclude` (already loaded)
+    /// Switched-on skills, plugins and MCP servers, except `exclude` (already loaded). Built once
+    /// per registry change and kept in RAM.
     pub fn catalog(exclude: &[String]) -> Vec<CatalogEntry> {
-        let Ok(registry) = ToolsRegistry::load() else {
-            return Vec::new();
-        };
-        let mut entries: Vec<CatalogEntry> = registry
-            .installed_tools
-            .values()
-            .filter(|entry| entry.enabled && !exclude.iter().any(|id| id.eq_ignore_ascii_case(&entry.id)))
-            .filter(|entry| matches!(entry.category.as_str(), "skill" | "plugin" | "mcp"))
-            .map(CatalogEntry::from_registry)
-            .collect();
-        entries.sort_by(|a, b| a.id.cmp(&b.id));
-        entries
+        let generation = ToolsRegistry::generation();
+        let mut guard = CATALOG.lock().unwrap_or_else(|e| e.into_inner());
+        let stale = guard.as_ref().is_none_or(|(built_for, _)| *built_for != generation);
+        if stale {
+            let Ok(registry) = ToolsRegistry::load() else {
+                return Vec::new();
+            };
+            let mut entries: Vec<CatalogEntry> = registry
+                .installed_tools
+                .values()
+                .filter(|entry| entry.enabled && matches!(entry.category.as_str(), "skill" | "plugin" | "mcp"))
+                .map(CatalogEntry::from_registry)
+                .collect();
+            entries.sort_by(|a, b| a.id.cmp(&b.id));
+            *guard = Some((generation, Arc::new(entries)));
+        }
+        guard
+            .as_ref()
+            .map(|(_, entries)| {
+                entries
+                    .iter()
+                    .filter(|entry| !exclude.iter().any(|id| id.eq_ignore_ascii_case(&entry.id)))
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Tools worth showing with this message. `previous` is the user's previous message, used
@@ -653,19 +672,20 @@ pub fn tokens(chars: usize) -> usize {
     (chars as f64 / CHARS_PER_TOKEN).ceil() as usize
 }
 
-/// Estimated tokens `load_tool` adds for this tool (instructions plus known functions)
-fn load_cost_tokens(entry: &CatalogEntry) -> usize {
-    let instructions = std::fs::read_to_string(entry.local_dir.join("SKILL.md"))
+/// Estimated tokens `load_tool` adds for a tool (instructions plus known functions), rounded
+/// so the number reads as an estimate
+fn estimate_load_cost(local_dir: &Path, functions: &[Value]) -> usize {
+    let instructions = std::fs::read_to_string(local_dir.join("SKILL.md"))
         .ok()
         .and_then(|content| crate::tools::skills::SkillParser::parse_content(&content))
         .map_or(0, |parsed| parsed.prompt_instructions.len());
-    let functions: usize = listed_functions(&entry.category, &entry.local_dir, read_manifest(&entry.local_dir).as_ref())
-        .iter()
-        .map(|f| f.to_string().len() + 40)
-        .sum();
+    let functions: usize = functions.iter().map(|f| f.to_string().len() + 40).sum();
     let total = tokens(instructions + functions);
-    // Round so the number reads as an estimate
     if total >= 100 { total / 50 * 50 } else { total.max(10) }
+}
+
+fn load_cost_tokens(entry: &CatalogEntry) -> usize {
+    entry.load_cost
 }
 
 fn function_name(schema: &Value) -> String {
@@ -693,7 +713,6 @@ mod tests {
             name: name.into(),
             title: String::new(),
             description: description.into(),
-            local_dir: PathBuf::new(),
             id_terms: terms(id),
             name_terms: terms(name).into_iter().chain(terms(id)).collect(),
             trigger_terms,
@@ -701,6 +720,7 @@ mod tests {
             function_terms: functions.iter().flat_map(|f| terms(f)).collect(),
             function_description_terms: HashSet::new(),
             description_terms: terms(description).into_iter().collect(),
+            load_cost: 0,
         }
     }
 

@@ -50,19 +50,15 @@ fn test_registry_legacy_json_and_versioned_cache_preserve_records() {
         .metadata
         .capabilities
         .is_none());
-    // Existing positional cache cannot deserialize arbitrary serde_json::Value and
-    // fields conditionally skipped by this schema. Reproduce before claiming migration.
-    let old = bincode::serialize(&reg).unwrap();
-    assert!(bincode::deserialize::<ModelRegistry>(&old).is_err());
-    assert!(InstalledStateRegistry::decode_cache(&old).is_err());
-    let bytes = InstalledStateRegistry::encode_cache(&reg).unwrap();
-    let loaded = InstalledStateRegistry::decode_cache(&bytes).unwrap();
+    // The JSON is the only copy on disk; reading it back keeps every record and field
+    let json_path = dir.path().join("registry.json");
+    std::fs::write(&json_path, serde_json::to_vec(&reg).unwrap()).unwrap();
+    let loaded = InstalledStateRegistry::read_snapshot_at(&json_path);
     assert_eq!(
         serde_json::to_value(&loaded).unwrap(),
         serde_json::to_value(&reg).unwrap()
     );
     assert_eq!(loaded.installed_models["opaque"].files[0].name, "main.gguf");
-    assert!(InstalledStateRegistry::decode_cache(b"CLREG999\n{}").is_err());
 }
 
 #[test]
@@ -116,8 +112,8 @@ fn test_registry_refresh_added_removed_projector_changed_config_and_primary() {
         .unwrap()
         .primary_file
         .ends_with("alternate.gguf"));
-    let bytes = InstalledStateRegistry::encode_cache(&reg).unwrap();
-    assert!(InstalledStateRegistry::decode_cache(&bytes)
+    let bytes = serde_json::to_vec(&reg).unwrap();
+    assert!(serde_json::from_slice::<ModelRegistry>(&bytes)
         .unwrap()
         .installed_models["opaque"]
         .metadata
@@ -155,10 +151,9 @@ fn test_selected_lookup_reads_new_registry_without_refreshing_unrelated_packages
     unrelated.local_dir = dir.path().join("absent").to_string_lossy().into();
     reg.installed_models.insert(unrelated.id.clone(), unrelated);
     let json_path = dir.path().join("registry.json");
-    let bin_path = dir.path().join("registry.bin");
     let bytes = serde_json::to_vec(&reg).unwrap();
     std::fs::write(&json_path, &bytes).unwrap();
-    let (snapshot, _) = InstalledStateRegistry::read_snapshot_at(&json_path, &bin_path);
+    let snapshot = InstalledStateRegistry::read_snapshot_at(&json_path);
     assert!(InstalledStateRegistry::find_in(&snapshot, "OPAQUE.gguf").is_some());
     assert_eq!(snapshot.installed_models.len(), 2);
     assert!(snapshot.installed_models["opaque"]
@@ -166,10 +161,12 @@ fn test_selected_lookup_reads_new_registry_without_refreshing_unrelated_packages
         .capabilities
         .is_none());
     assert_eq!(std::fs::read(&json_path).unwrap(), bytes);
-    assert!(!bin_path.exists());
+    // Only the JSON exists on disk
+    let files = std::fs::read_dir(dir.path()).unwrap().filter(|e| e.as_ref().unwrap().path().is_file()).count();
+    assert_eq!(files, 1);
     reg.installed_models.get_mut("opaque").unwrap().id = "changed-id".into();
     std::fs::write(&json_path, serde_json::to_vec(&reg).unwrap()).unwrap();
-    let (changed, _) = InstalledStateRegistry::read_snapshot_at(&json_path, &bin_path);
+    let changed = InstalledStateRegistry::read_snapshot_at(&json_path);
     assert!(InstalledStateRegistry::find_in(&changed, "changed-id").is_some());
     std::fs::remove_file(primary).unwrap();
     assert!(InstalledStateRegistry::find_in(&changed, "changed-id").is_none());

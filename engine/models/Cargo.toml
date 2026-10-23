@@ -25,4 +25,3 @@ cluaiz-hw = { path = "../hardware" }
 
 [dev-dependencies]
 tempfile = "3"
-bincode = "1.3"
