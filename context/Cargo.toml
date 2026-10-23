@@ -1,0 +1,9 @@
+[package]
+name = "cluaiz-context"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Pure context planning for the Cluaiz Engine: no I/O, no model, no database"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
