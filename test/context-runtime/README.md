@@ -43,3 +43,31 @@ held-out half and nearly doubles the noise there (22 against 12), so the Engine 
 current rule. Still missed: "look at the diff between the main and dev branches" and "find bugs
 and vulnerabilities in my function"; both need the `git` function list (its server cannot start
 without `uvx` here) or a trigger on `code-reviewer`.
+
+# KV correctness after an edit (`kv_equality.py`)
+
+A chat carries a "skill" that says to answer only in French; then the skill is unloaded and the
+same chat comes back without it. The answer computed on the cached KV must equal the answer from
+a clean prefill of the same prompt (KV1) and must not be in French (KV2). Temperature 0, seed 42,
+thinking off; every run also does the clean prefill.
+
+- `start`: the skill is the system prompt; unloading deletes it, a deep edit at position 1.
+- `tail`: the skill was loaded in the last turn; the long history before it stays cached.
+- `start, chunk`: the same edit with `kv_reuse: "chunk"`, which was the behaviour for every
+  request before 2026-10-24.
+
+```bash
+CLUAIZ_MODEL=<model id> python test/context-runtime/kv_equality.py --url http://127.0.0.1:8011 --token <token> --runs 10
+```
+
+Results (2026-10-24, Qwen3-4B Q4_K_M, isolated 8011 server, 10 runs each):
+
+| Case | KV1 equal to clean | KV2 not French | cache_n |
+| --- | --- | --- | --- |
+| start, default (prefix) | 10/10 | 10/10 | 1 |
+| start, chunk | 0/10 | 0/10 | 1371 (all moved chunks) |
+| tail, default (prefix) | 10/10 | 10/10 | 1347 |
+
+With chunk reuse the unloaded instruction keeps its effect: the answer stays French and is wrong
+("La Terre est la plus grande planète…", where the clean answer is "Jupiter is the largest
+planet…"). That is why chunks are now moved only after the Engine dropped old turns to fit.
