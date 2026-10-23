@@ -16,6 +16,11 @@ pub struct SessionToolBinding {
 pub static SESSION_TOOL_REGISTRY: LazyLock<RwLock<HashMap<String, Vec<SessionToolBinding>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
+/// Tools the model unloaded in a session, with the answers left before they may be suggested
+/// again (session id -> tool id -> answers)
+pub static SUPPRESSED_TOOLS: LazyLock<RwLock<HashMap<String, HashMap<String, u32>>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
 pub struct SessionToolManager;
 
 impl SessionToolManager {
@@ -53,5 +58,21 @@ impl SessionToolManager {
         }
 
         entry.clone()
+    }
+
+    /// Keeps a tool the model unloaded out of the suggestions for the next `answers` answers
+    pub fn suppress(session_id: &str, tool_id: &str, answers: u32) {
+        let mut suppressed = SUPPRESSED_TOOLS.write().unwrap();
+        suppressed.entry(session_id.to_string()).or_default().insert(tool_id.to_string(), answers);
+    }
+
+    /// Tools that must not be suggested in this session right now
+    pub fn suppressed_tool_ids(session_id: &str) -> Vec<String> {
+        SUPPRESSED_TOOLS
+            .read()
+            .unwrap()
+            .get(session_id)
+            .map(|tools| tools.keys().cloned().collect())
+            .unwrap_or_default()
     }
 }

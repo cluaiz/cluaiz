@@ -59,11 +59,11 @@ impl SkillRouter {
 
     /// Matches a user query against known triggers and returns matching skill IDs
     pub fn match_query(&self, user_query: &str) -> Vec<String> {
-        let query_lower = user_query.to_lowercase();
         let mut matched = Vec::new();
 
+        // Whole words only: the trigger "rust" must not match "trust"
         for (trigger, skill_id) in &self.keyword_map {
-            if query_lower.contains(trigger) {
+            if crate::tool_search::contains_phrase(user_query, trigger) {
                 if !matched.contains(skill_id) {
                     matched.push(skill_id.clone());
                 }

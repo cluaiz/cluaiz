@@ -22,5 +22,13 @@ impl TurnLifecycleEngine {
             }
             *bindings = updated;
         }
+        drop(registry);
+        let mut suppressed = super::session_map::SUPPRESSED_TOOLS.write().unwrap();
+        if let Some(tools) = suppressed.get_mut(session_id) {
+            tools.retain(|_, answers| {
+                *answers = answers.saturating_sub(1);
+                *answers > 0
+            });
+        }
     }
 }

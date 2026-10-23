@@ -74,8 +74,8 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0`, `-1`) | Positive minutes retain after completion; `0` unloads, omission/`-1` retains. This value is not seconds. |
 | **`response_format`** | Object | No | `null` | Object | Enforces structured JSON output schema (e.g. `{"type": "json_object"}`). |
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) via `<tool_call>` XML. |
-| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, bound or `tool_search`) for this request; any other value lets the model decide. |
-| **`tool_search`** | Boolean | No | `true` | `true`, `false` | Installed, switched-on tools that are not in the prompt are listed by id and loaded on demand with the `tool_search` tool. `false` leaves them out. See [Tool search](#-tool-search). |
+| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
+| **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
 | **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
 | **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). |
@@ -344,16 +344,19 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
 
 ---
 
-## 🔎 Tool search
+## 🔎 Tools on demand
 
-Tools switched off in the App's Tools page are never offered and cannot run. Every other installed skill, plugin and MCP server is available without binding it to the chat first:
+Tools switched off in the App's Tools page are never offered and cannot run. Every other installed skill, plugin and MCP server can be used without binding it to the chat first, and none of them is put into the prompt in full unless the model asks for it:
 
-1. Tools bound to the chat (`/v1/chat/{session_id}/tools`, `tools`) go into the prompt with their full schemas.
-2. The rest, and bound tools left out for lack of room, are listed by id and one-line description, together with a `tool_search` tool.
-3. The model calls `tool_search` with what it needs (`{"query": "read a file"}`) or with ids (`{"query": "select:filesystem,git"}`). The engine answers it itself, without an approval prompt: the result holds the schemas of the best matches (skills: their instructions). Only the MCP servers of those matches are started.
-4. The model then calls the loaded tools as usual; those still ask for approval under the agent security mode. In a chat with `session_id`, loaded tools are bound to the session for the tool's default number of turns, so later messages have them in the prompt.
+1. **Loaded tools.** Tools bound to the chat (`/v1/chat/{session_id}/tools`, `tools`, or loaded earlier with `load_tool`) go into the system prompt with their whole schemas and instructions. A tool that does not fit is left out whole; nothing is cut in the middle.
+2. **Suggestions.** The engine matches the user's message against the other tools on whole words (never parts of words, so "trust" does not match "rust"), including common Hinglish and Devanagari words ("padho" → read, "chalao" → run). A tool with clear evidence (its name, a trigger phrase, or two separate matches on its name, function names or trigger words) is shown as a short card with its load cost; weaker matches as a one-line title. Suggestions go into the current user message inside `<tools_hint>`, not into the system prompt. An ordinary message ("Hi") gets no tool text at all.
+3. **Meta-tools.** With suggestions the model gets three functions, answered by the engine itself without an approval prompt:
+   - `load_tool` (`{"id": "filesystem"}`, optional `"functions": [...]`): returns the tool's instructions and function schemas, whole, within the room left in the context. A tool that does not fit is refused with the reason, never cut. The tool's MCP server is started only now.
+   - `unload_tool` (`{"id": "..."}`): removes the tool from the chat. Its earlier load result in the same answer is replaced by a short note, and it is not suggested again for 3 answers.
+   - `find_tools` (`{"query": "read a file"}`): searches the other installed tools and returns cards. `tool_search` is still accepted as its old name.
+4. **Calling.** Calling a loaded tool's functions asks for approval under the agent security mode, in streaming and non-streaming requests alike: a non-streaming request waits until the call is approved or rejected through `/v1/system/permission/approve|reject` (it is listed under `/v1/system/permission/pending`) or the 120-second timeout passes. A tool called by its id before it was loaded is loaded instead, so the model can call the right function next.
 
-The stream reports the search like any tool call (`tool_calls`, then `tool_result`, with category `search`). Send `tool_search: false` to turn it off, or `tool_choice: "none"` for no tools at all.
+In a chat with `session_id`, a loaded tool stays bound for the tool's default number of turns (3 when the manifest sets none), so later messages have it in the prompt. The stream reports meta-tool calls like any tool call (`tool_calls`, then `tool_result`, with category `tools`). Send `tool_search: false` to turn suggestions off, or `tool_choice: "none"` for no tools at all.
 
 ---
 

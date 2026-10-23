@@ -37,6 +37,46 @@ impl ToolTurns {
         });
     }
 
+    /// Replaces the results of earlier `load_tool` calls for `id` in this answer with a short
+    /// note, so the next step no longer carries the unloaded tool
+    pub fn tombstone(&mut self, id: &str) {
+        for step in &mut self.steps {
+            let call: Value = serde_json::from_str(
+                step.call_xml.trim_start_matches("<tool_call>").trim_end_matches("</tool_call>").trim(),
+            )
+            .unwrap_or_default();
+            let loads_it = call.get("name").and_then(Value::as_str) == Some(cluaiz_agents::LOAD_TOOL_NAME)
+                && call
+                    .pointer("/arguments/id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|loaded| loaded.trim().eq_ignore_ascii_case(id.trim()));
+            if loads_it {
+                step.result = format!("[Tool '{}' was unloaded.]", id.trim());
+            }
+        }
+    }
+
+    /// Tools loaded with `load_tool` in this answer (and not unloaded since)
+    pub fn loaded_ids(&self) -> Vec<String> {
+        self.steps
+            .iter()
+            .filter(|step| step.result.starts_with("Loaded tool"))
+            .filter_map(|step| {
+                let call: Value = serde_json::from_str(
+                    step.call_xml.trim_start_matches("<tool_call>").trim_end_matches("</tool_call>").trim(),
+                )
+                .ok()?;
+                call.pointer("/arguments/id").and_then(Value::as_str).map(str::to_string)
+                    .or_else(|| call.get("name").and_then(Value::as_str).map(str::to_string))
+            })
+            .collect()
+    }
+
+    /// Characters the steps of this answer added
+    pub fn chars(&self) -> usize {
+        self.steps.iter().map(|step| step.call_xml.len() + step.result.len()).sum()
+    }
+
     /// The prompt that continues the answer after the tool calls so far.
     pub fn continuation(&self, ctx: &PreparedChatContext) -> String {
         if ctx.prepared_media.is_some() {
@@ -90,37 +130,99 @@ impl ToolTurns {
     }
 }
 
-/// Runs a `tool_search` call: finds the tools for its query and returns their schemas as the
-/// tool result. In a chat they are also bound to the session (for the tool's default number
-/// of turns), so the next messages have them in the prompt.
-pub async fn run_tool_search(ctx: &PreparedChatContext, session_id: Option<&str>, payload: &str) -> String {
-    let query = serde_json::from_str::<Value>(payload)
-        .ok()
-        .and_then(|args| args.get("query").and_then(Value::as_str).map(str::to_string))
-        .unwrap_or_else(|| payload.to_string());
-    let found = cluaiz_agents::ToolSearch::search(
-        &query,
-        &ctx.tool_search_exclude,
-        ctx.tool_search_room.unwrap_or_default(),
-    )
-    .await;
-    tracing::info!("🔎 [ToolSearch] \"{}\" loaded {:?}", query, found.loaded_ids);
-    if let Some(session_id) = session_id {
-        let bindings = found
-            .loaded_ids
-            .iter()
-            .map(|id| cluaiz_agents::SessionToolBinding {
-                id: id.clone(),
-                turns: cluaiz_agents::ToolsEngine::get_tool(id)
+/// What a tool meta-tool call produced
+pub struct MetaOutcome {
+    /// The tool result for the model
+    pub text: String,
+    /// A tool the model unloaded: its earlier load results in this answer become tombstones
+    pub unloaded: Option<String>,
+}
+
+/// Answers the Engine's own tool meta-tools (`find_tools`, `load_tool`, `unload_tool`). In a chat
+/// a loaded tool is bound to the session, so the next messages carry it; an unloaded one is
+/// unbound and kept out of the suggestions for a few answers.
+pub async fn run_meta_tool(
+    ctx: &PreparedChatContext,
+    turns: &ToolTurns,
+    session_id: Option<&str>,
+    name: &str,
+    payload: &str,
+) -> MetaOutcome {
+    let args = serde_json::from_str::<Value>(payload).unwrap_or_else(|_| json!({}));
+    let text_arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    match name {
+        cluaiz_agents::LOAD_TOOL_NAME => {
+            let id = text_arg("id");
+            let implicit = args.get("implicit").and_then(Value::as_bool) == Some(true);
+            let functions: Vec<String> = args
+                .get("functions")
+                .and_then(Value::as_array)
+                .map(|f| f.iter().filter_map(Value::as_str).map(str::to_string).collect())
+                .unwrap_or_default();
+            // Room left for tools in this answer, after what earlier steps added
+            let room = ctx.tool_load_room.unwrap_or_default().saturating_sub(turns.chars());
+            let loaded = cluaiz_agents::ToolSearch::load(&id, &functions, &ctx.initial_user_query, room).await;
+            tracing::info!("📦 [Tools] load_tool(\"{}\") -> {:?}", id, loaded.loaded);
+            if let (Some(tool_id), Some(session_id)) = (&loaded.loaded, session_id) {
+                // A loaded tool stays while it is used; a few idle answers unbind it
+                let idle_turns = cluaiz_agents::ToolsEngine::get_tool(tool_id)
                     .ok()
                     .flatten()
-                    .map_or(-1, |entry| entry.default_turns),
-            })
-            .collect();
-        cluaiz_agents::SessionToolManager::update_session_tools(session_id, bindings, Vec::new());
+                    .map(|entry| entry.default_turns)
+                    .filter(|turns| *turns > 0)
+                    .unwrap_or(LOADED_TOOL_TURNS);
+                cluaiz_agents::SessionToolManager::update_session_tools(
+                    session_id,
+                    vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: idle_turns }],
+                    Vec::new(),
+                );
+            }
+            let text = if implicit && loaded.loaded.is_some() {
+                format!("'{}' is a tool, not a function, and it was not loaded yet. It is loaded now; call one of its functions.
+{}", id, loaded.text)
+            } else {
+                loaded.text
+            };
+            MetaOutcome { text, unloaded: None }
+        }
+        cluaiz_agents::UNLOAD_TOOL_NAME => {
+            let id = text_arg("id");
+            tracing::info!("📤 [Tools] unload_tool(\"{}\")", id);
+            if let Some(session_id) = session_id {
+                cluaiz_agents::SessionToolManager::update_session_tools(session_id, Vec::new(), vec![id.clone()]);
+                cluaiz_agents::SessionToolManager::suppress(session_id, &id, UNLOADED_TOOL_ANSWERS);
+            }
+            MetaOutcome { text: format!("Tool '{}' unloaded.", id), unloaded: Some(id) }
+        }
+        _ => {
+            let query = Some(text_arg("query")).filter(|q| !q.is_empty()).unwrap_or_else(|| payload.to_string());
+            tracing::info!("🔎 [Tools] find_tools(\"{}\")", query);
+            MetaOutcome { text: cluaiz_agents::ToolSearch::find(&query, &ctx.loaded_tool_ids), unloaded: None }
+        }
     }
-    found.text
 }
+
+/// Whether the model called an installed tool by its id although it is not loaded (small
+/// models skip `load_tool`). The call is then answered as `load_tool`, so the model gets the
+/// tool's functions and calls the right one next.
+pub fn needs_load(ctx: &PreparedChatContext, turns: &ToolTurns, session_id: Option<&str>, name: &str) -> bool {
+    if ctx.tool_load_room.is_none() || cluaiz_agents::ToolSearch::is_meta_tool(name) {
+        return false;
+    }
+    let loaded = |id: &String| id.eq_ignore_ascii_case(name.trim());
+    let bound = session_id
+        .map(cluaiz_agents::SessionToolManager::get_active_tool_ids)
+        .unwrap_or_default();
+    !ctx.loaded_tool_ids.iter().any(loaded)
+        && !bound.iter().any(loaded)
+        && !turns.loaded_ids().iter().any(loaded)
+        && cluaiz_agents::ToolSearch::is_installed_tool_id(name)
+}
+
+/// Answers a tool stays bound to the chat after `load_tool` when its manifest sets no limit
+const LOADED_TOOL_TURNS: i32 = 3;
+/// Answers an unloaded tool is kept out of the suggestions
+const UNLOADED_TOOL_ANSWERS: u32 = 3;
 
 /// Whether a Jinja chat template has its own branch for `tool` messages (Qwen, Llama 3, Hermes...).
 fn template_renders_tool_role(template: &str) -> bool {

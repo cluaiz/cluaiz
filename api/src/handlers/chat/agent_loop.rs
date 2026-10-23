@@ -198,9 +198,17 @@ pub async fn execute_streaming_loop(
                     let raw_fn_name = tool_call.raw_fn_name.as_str();
                     let payload_str = tool_call.payload_str;
 
-                    // tool_search loads installed tools; it is answered by the engine itself
-                    let is_tool_search = ctx.tool_search_room.is_some() && raw_fn_name == cluaiz_agents::TOOL_SEARCH_NAME;
-                    let resolved_target = if is_tool_search {
+                    // find_tools / load_tool / unload_tool are answered by the engine itself
+                    // A tool called by its id before it was loaded is answered as load_tool
+                    let implicit_load = super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
+                    let is_meta_tool = implicit_load
+                        || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name));
+                    let (meta_name, meta_payload) = if implicit_load {
+                        (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
+                    } else {
+                        (raw_fn_name, payload_str.clone())
+                    };
+                    let resolved_target = if is_meta_tool {
                         None
                     } else if let Some(ref sid) = req_session_id {
                         cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
@@ -209,8 +217,8 @@ pub async fn execute_streaming_loop(
                         cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
                     };
 
-                    let (comp_type, comp_name, tool_sub_func) = if is_tool_search {
-                        ("search".to_string(), raw_fn_name.to_string(), None)
+                    let (comp_type, comp_name, tool_sub_func) = if is_meta_tool {
+                        ("tools".to_string(), raw_fn_name.to_string(), None)
                     } else if let Some(target) = resolved_target {
                         (target.category, target.component_id, target.sub_function)
                     } else {
@@ -267,70 +275,21 @@ pub async fn execute_streaming_loop(
                     yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
 
                     let tool_start_time = std::time::Instant::now();
-                    let tool_entry_opt = cluaiz_agents::ToolsEngine::get_tool(&comp_name)
+                    let sec_mode = cluaiz_agents::ToolsEngine::get_tool(&comp_name)
                         .ok()
-                        .flatten();
-                    let sec_mode = tool_entry_opt
-                        .as_ref()
+                        .flatten()
                         .map(|t| t.security_mode)
                         .unwrap_or(cluaiz_agents::SecurityMode::Inherit);
 
-                    // 🛡️ Human-In-The-Loop (HITL) Permission Gate
-                    let global_perms = cluaiz_security::PermissionSchema::load();
-                    let master_mode = global_perms.agent_security_mode.to_lowercase();
-
-                    // Directive 1 & 2: Capability-Based Approval Gate
-                    // - full_access: bypass all prompts
-                    // - strict: prompt for everything
-                    // - sandboxed:
-                    //     * MCP tools always require approval
-                    //     * undeclared tool (not in registry or empty capabilities) = require approval by default
-                    //     * dangerous capabilities ("exec", "fs_write", "network", etc.) = require approval
-                    //     * safe declared tools ("fs_read", "read_only") = run without prompt
-                    let (requires_approval, tool_capabilities) = if is_tool_search {
-                        (false, vec!["tools:load".to_string()])
-                    } else if let Some(ref entry) = tool_entry_opt {
-                        (entry.requires_approval(&master_mode), entry.effective_capabilities())
-                    } else if comp_type == "mcp" {
-                        (true, vec!["mcp:external".to_string()])
-                    } else if master_mode == "full_access" {
-                        (false, vec!["full_access_override".to_string()])
-                    } else {
-                        // Undeclared tool not found in registry -> default to requiring approval
-                        (true, vec!["undeclared".to_string()])
-                    };
-
+                    // 🛡️ Human-In-The-Loop (HITL) Permission Gate (shared with the non-streaming path)
+                    let assessment = super::authorize::assess(&comp_type, &comp_name, is_meta_tool);
                     let mut permission_granted = true;
                     let mut user_denial_feedback: Option<String> = None;
 
-                    if requires_approval {
-                        let req_id = format!("perm_{}", uuid::Uuid::new_v4());
-                        let (tx, rx) = tokio::sync::oneshot::channel::<crate::state::ApprovalDecision>();
+                    if assessment.requires_approval {
+                        let pending = super::authorize::request(&state_clone, &comp_type, &public_call_name, &payload_str).await;
 
-                        // 1. Register approval channel
-                        {
-                            let mut lock = state_clone.active_approvals.write().await;
-                            lock.insert(req_id.clone(), tx);
-                        }
-
-                        // 2. Register persistent pending request for UI (storing full script payload)
-                        {
-                            let now_ms = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .map(|d| d.as_millis() as u64)
-                                .unwrap_or(0);
-                            let mut lock = state_clone.pending_permissions.write().await;
-                            lock.insert(req_id.clone(), crate::state::PendingPermissionRequest {
-                                id: req_id.clone(),
-                                action: format!("{}:{}", comp_type, public_call_name),
-                                target: payload_str.clone(),
-                                caller: "agent".to_string(),
-                                timestamp_ms: now_ms,
-                                status: "pending".to_string(),
-                            });
-                        }
-
-                        // 3. Yield Real-Time SSE Permission Request to Client with Full Script Transparency & Capabilities
+                        // Real-time permission request with the full parameters and capabilities
                         let perm_chunk = json!({
                             "id": req_id_stream.clone(),
                             "object": "chat.completion.chunk",
@@ -340,46 +299,22 @@ pub async fn execute_streaming_loop(
                                 "index": 0,
                                 "delta": {
                                     "permission_request": {
-                                        "request_id": req_id.clone(),
+                                        "request_id": pending.request_id.clone(),
                                         "tool_name": public_call_name.clone(),
                                         "category": comp_type.clone(),
-                                        "capabilities": tool_capabilities,
+                                        "capabilities": assessment.capabilities,
                                         "parameters": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
                                         "status": "pending_approval",
-                                        "timeout_seconds": 120
+                                        "timeout_seconds": super::authorize::APPROVAL_TIMEOUT_SECS
                                     }
                                 }
                             }]
                         });
                         yield Ok::<_, Infallible>(Event::default().data(perm_chunk.to_string()));
 
-                        // 4. Real-Time Pause: Await user decision (120s timeout)
-                        match tokio::time::timeout(std::time::Duration::from_secs(120), rx).await {
-                            Ok(Ok(decision)) => {
-                                if decision.approved {
-                                    permission_granted = true;
-                                    tracing::info!("✅ [API] User approved execution of tool '{}'", public_call_name);
-                                } else {
-                                    permission_granted = false;
-                                    user_denial_feedback = decision.feedback;
-                                    tracing::warn!("🛑 [API] User rejected tool '{}': {:?}", public_call_name, user_denial_feedback);
-                                }
-                            }
-                            Ok(Err(_)) => {
-                                permission_granted = false;
-                                user_denial_feedback = Some("Approval channel disconnected".to_string());
-                            }
-                            Err(_) => {
-                                permission_granted = false;
-                                user_denial_feedback = Some("User confirmation timed out after 120 seconds. Operation skipped.".to_string());
-                                tracing::warn!("⏱️ [API] Confirmation timed out for tool '{}'", public_call_name);
-                            }
-                        }
-
-                        // Cleanup channel from active registry
-                        {
-                            let mut lock = state_clone.active_approvals.write().await;
-                            lock.remove(&req_id);
+                        if let Err(reason) = super::authorize::wait(&state_clone, pending, &public_call_name).await {
+                            permission_granted = false;
+                            user_denial_feedback = Some(reason);
                         }
                     } else {
                         // Stage 1: Auto-approved / Safe inspection -> Tool is queued and authorized
@@ -404,6 +339,7 @@ pub async fn execute_streaming_loop(
                         yield Ok::<_, Infallible>(Event::default().data(pending_chunk.to_string()));
                     }
 
+                    let mut unloaded_tool: Option<String> = None;
                     let execution_result = if permission_granted {
                         // Stage 2: Tool execution actively running in background process
                         let running_chunk = json!({
@@ -426,8 +362,10 @@ pub async fn execute_streaming_loop(
                         });
                         yield Ok::<_, Infallible>(Event::default().data(running_chunk.to_string()));
 
-                        let executed = if is_tool_search {
-                            Ok(super::tool_turns::run_tool_search(&ctx, req_session_id.as_deref(), &payload_str).await)
+                        let executed = if is_meta_tool {
+                            let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
+                            unloaded_tool = outcome.unloaded;
+                            Ok(outcome.text)
                         } else {
                             cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await
                         };
@@ -443,11 +381,7 @@ pub async fn execute_streaming_loop(
                         }
                     } else {
                         let reason = user_denial_feedback.unwrap_or_else(|| "User denied permission to execute this tool.".to_string());
-                        json!({
-                            "status": "denied",
-                            "error": format!("Permission Denied: {}", reason),
-                            "message": reason
-                        }).to_string()
+                        super::authorize::denied_result(&reason)
                     };
                     let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
 
@@ -504,7 +438,11 @@ pub async fn execute_streaming_loop(
                     });
                     yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
 
-                    // The call and its result join the conversation once; the next step renders it again
+                    // The call and its result join the conversation once; the next step renders it again.
+                    // An unloaded tool's earlier load result in this answer becomes a short note.
+                    if let Some(id) = &unloaded_tool {
+                        tool_turns.tombstone(id);
+                    }
                     tool_turns.push(raw_json, raw_fn_name, &execution_result);
                     current_prompt = tool_turns.continuation(&ctx);
 

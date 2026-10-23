@@ -71,7 +71,7 @@ pub struct ExternalChatRequest {
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
     pub tools: Option<Vec<serde_json::Value>>,
     pub tool_choice: Option<serde_json::Value>,
-    /// false: installed tools outside the prompt are not offered through `tool_search` (default true)
+    /// false: installed tools that fit the message are not suggested (default true)
     pub tool_search: Option<bool>,
     /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).
     /// A value different from the loaded model's reloads it; n_gpu_layers / n_cpu_moe / offload_kqv bypass the planner.
