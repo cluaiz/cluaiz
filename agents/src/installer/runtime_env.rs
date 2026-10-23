@@ -5,6 +5,15 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use cluaiz_core::EnvironmentManager;
 
+/// True when `package.json` lists npm packages (`"name": "version"`). Cluaiz's own manifest
+/// uses `dependencies` for `{plugins, mcp, skills}` objects, which npm cannot install.
+fn has_npm_dependencies(manifest: &serde_json::Value) -> bool {
+    manifest
+        .get("dependencies")
+        .and_then(|deps| deps.as_object())
+        .is_some_and(|deps| deps.values().any(|version| version.is_string()))
+}
+
 /// The detected runtime environment requirement for a tool
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -95,8 +104,7 @@ impl RuntimeEnvironmentManager {
                 let pkg_json = tool_dir.join("package.json");
                 if let Ok(content) = std::fs::read_to_string(&pkg_json) {
                     if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let has_deps = val.get("dependencies").and_then(|d| d.as_object()).map_or(false, |o| !o.is_empty());
-                        if has_deps {
+                        if has_npm_dependencies(&val) {
                             return tool_dir.join("node_modules").exists();
                         }
                     }
@@ -160,8 +168,7 @@ impl RuntimeEnvironmentManager {
                 let has_deps = if let Ok(content) = std::fs::read_to_string(&pkg_json) {
                     serde_json::from_str::<serde_json::Value>(&content)
                         .ok()
-                        .and_then(|v| v.get("dependencies").and_then(|d| d.as_object()).map(|o| !o.is_empty()))
-                        .unwrap_or(false)
+                        .is_some_and(|v| has_npm_dependencies(&v))
                 } else {
                     false
                 };

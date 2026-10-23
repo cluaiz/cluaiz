@@ -6,11 +6,31 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use cluaiz_agents::{SessionToolBinding, ToolsEngine};
 
+/// A tool to attach: `{"id", "turns"}`, or just its id to use the tool's default turns.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SessionToolInput {
+    Binding(SessionToolBinding),
+    Id(String),
+}
+
+impl SessionToolInput {
+    fn into_binding(self) -> SessionToolBinding {
+        match self {
+            Self::Binding(binding) => binding,
+            Self::Id(id) => {
+                let turns = ToolsEngine::get_tool(&id).ok().flatten().map(|tool| tool.default_turns).unwrap_or(-1);
+                SessionToolBinding { id, turns }
+            }
+        }
+    }
+}
+
 /// Request payload to attach, update, or detach tools for a session
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionToolsUpdateRequest {
     #[serde(default)]
-    pub tools: Vec<SessionToolBinding>,
+    pub tools: Vec<SessionToolInput>,
     #[serde(default)]
     pub detach: Vec<String>,
 }
@@ -43,7 +63,8 @@ pub async fn update_session_tools(
     Path(session_id): Path<String>,
     Json(payload): Json<SessionToolsUpdateRequest>,
 ) -> impl IntoResponse {
-    let updated = ToolsEngine::update_session_tools(&session_id, payload.tools, payload.detach);
+    let tools = payload.tools.into_iter().map(SessionToolInput::into_binding).collect();
+    let updated = ToolsEngine::update_session_tools(&session_id, tools, payload.detach);
 
     Json(json!({
         "session_id": session_id,

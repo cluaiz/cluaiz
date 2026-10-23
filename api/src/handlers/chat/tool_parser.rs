@@ -97,9 +97,75 @@ pub fn extract_tool_call(text: &str) -> Option<ExtractedToolCall> {
     })
 }
 
+/// Holds back streamed answer text that is, or may become, a `<tool_call>` block, so the call
+/// markup reaches the client as a parsed `tool_calls` delta rather than as answer text
+/// (llama-server streams parsed calls the same way).
+#[derive(Debug, Default)]
+pub struct ToolCallTextGuard {
+    held: String,
+}
+
+impl ToolCallTextGuard {
+    const START_TAG: &'static str = "<tool_call>";
+
+    /// Adds streamed content and returns the part that is safe to show now.
+    pub fn push(&mut self, content: &str) -> Option<String> {
+        self.held.push_str(content);
+        let emit_len = match self.held.find(Self::START_TAG) {
+            // A call has started: everything from its tag waits for the parser.
+            Some(start) => start,
+            // Keep a trailing fragment that could still grow into the tag. The tag is ASCII,
+            // so a matching suffix always starts on a character boundary.
+            None => {
+                let partial = (1..Self::START_TAG.len())
+                    .rev()
+                    .find(|&n| self.held.ends_with(&Self::START_TAG[..n]))
+                    .unwrap_or(0);
+                self.held.len() - partial
+            }
+        };
+        let emitted: String = self.held.drain(..emit_len).collect();
+        (!emitted.is_empty()).then_some(emitted)
+    }
+
+    /// Drops the held markup of a tool call that was parsed and executed.
+    pub fn clear(&mut self) {
+        self.held.clear();
+    }
+
+    /// Text still held when generation ends, e.g. a `<tool_call>` that never closed.
+    pub fn flush(&mut self) -> Option<String> {
+        let rest = std::mem::take(&mut self.held);
+        (!rest.is_empty()).then_some(rest)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_guard_hides_tool_call_markup() {
+        let mut guard = ToolCallTextGuard::default();
+        let mut shown = String::new();
+        for piece in ["I will read it.", "\n<tool", "_call>\n{\"name\": \"read\"", "}\n</tool_call>"] {
+            if let Some(text) = guard.push(piece) {
+                shown.push_str(&text);
+            }
+        }
+        guard.clear();
+        assert_eq!(shown, "I will read it.\n");
+        assert_eq!(guard.flush(), None);
+    }
+
+    #[test]
+    fn test_guard_releases_text_that_is_not_a_call() {
+        let mut guard = ToolCallTextGuard::default();
+        assert_eq!(guard.push("a < b and <tool"), Some("a < b and ".to_string()));
+        assert_eq!(guard.push("s>"), Some("<tools>".to_string()));
+        assert_eq!(guard.push("<tool_call> unfinished"), None);
+        assert_eq!(guard.flush(), Some("<tool_call> unfinished".to_string()));
+    }
 
     #[test]
     fn test_extract_clean_tool_call() {

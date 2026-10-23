@@ -459,9 +459,15 @@ impl PreparedChatContext {
 
         const TOOLS_HEADER: &str = "# Available Tools\nYou have access to the following tools:\n";
         const TOOLS_CALL_FORMAT: &str = "\n\nWhen you need to call a tool, you MUST output a <tool_call> XML block with a JSON object containing \"name\" and \"arguments\":\n<tool_call>\n{\"name\": \"tool_name\", \"arguments\": {\"arg_name\": \"value\"}}\n</tool_call>\nDo not output conversational filler text before or after the <tool_call> block.";
+        // Tools run in the open workspace; name it so the model uses paths relative to it.
+        let workspace_note = format!(
+            "\nTools run in the project folder {}. Use paths relative to it (\".\" is the project folder).",
+            cluaiz_agents::ToolsEngine::workspace_dir().display()
+        );
         // Whole tool schemas are kept or left out; cutting the text would break the JSON and
         // drop the call-format instructions that follow it.
-        let tools_budget = max_tool_chars.saturating_sub(TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len());
+        let tools_budget = max_tool_chars
+            .saturating_sub(TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len());
         let (tools_xml, dropped_tools) = compiled_tools.tools_xml_within(tools_budget);
         if !dropped_tools.is_empty() {
             tracing::warn!(
@@ -470,7 +476,7 @@ impl PreparedChatContext {
             );
         }
         if !tools_xml.is_empty() {
-            prompt_tool_sections.push(format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}"));
+            prompt_tool_sections.push(format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}"));
         }
 
         if !compiled_tools.skill_instructions.is_empty() {
