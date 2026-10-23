@@ -434,6 +434,7 @@ impl PreparedChatContext {
         // put in front of it, followed by that turn's tool steps
         let tool_role = super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
         let history_mode = context_plan::HistoryMode::parse(request.history_mode.as_deref());
+        let policy = context_plan::policy(request.context_policy.as_ref());
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode);
         let mut augmented_messages = rendered.messages;
         let current_turn_key = rendered.current_key;
@@ -506,20 +507,23 @@ impl PreparedChatContext {
         // back old tool hints and old tool results (batched, at least clear_at_least tokens)
         let mut compaction = None;
         if let (Some(chat), Some(saved)) = (&ledger_chat, &ledger) {
-            if let Ok(plan) = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks) {
+            if let Ok(plan) = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy) {
                 if plan.needs_compaction {
                     let clear_at_least = (n_ctx_limit / 10).max(512);
                     let over: usize = plan.dropped.iter().map(|d| d.tokens).sum();
                     let count_one = |text: &str| context_plan::count(&state.host, &[text]).0[0];
                     if let Some((compacted, report)) =
-                        context_plan::compact(saved, &rendered.earlier_keys, &count_one, clear_at_least, over)
+                        context_plan::compact(saved, &rendered.earlier_keys, &count_one, clear_at_least, over, &policy)
                     {
                         tracing::info!(
                             "🗜️ [Context] Compacted chat {}: {} tokens freed ({} tool hints, {} tool results)",
                             chat, report.freed_tokens, report.blocks_removed, report.results_cleared
                         );
-                        cluaiz_agents::ChatLedger::put(chat, compacted.clone());
-                        if !report.unloaded_tools.is_empty() {
+                        // A preview reports the compaction without making it
+                        if !request.preview {
+                            cluaiz_agents::ChatLedger::put(chat, compacted.clone());
+                        }
+                        if !report.unloaded_tools.is_empty() && !request.preview {
                             cluaiz_agents::SessionToolManager::update_session_tools(chat, Vec::new(), report.unloaded_tools.clone());
                             inline_tool_ids.retain(|id| !report.unloaded_tools.contains(id));
                         }
@@ -710,8 +714,9 @@ impl PreparedChatContext {
         // The plan of the final prompt, for the context report (the engine drops the oldest turns
         // itself when the history does not fit)
         let plan_report = context_plan::report(
-            &context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks),
+            &context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy),
             history_mode,
+            &policy,
             compaction.as_ref(),
         );
 
@@ -1063,7 +1068,12 @@ pub fn media_continuation(
 pub fn context_report(ctx: &PreparedChatContext, tool_events: &[serde_json::Value]) -> serde_json::Value {
     let mut tools = ctx.tools_report.clone();
     tools["events"] = serde_json::Value::Array(tool_events.to_vec());
-    json!({ "tools": tools, "plan": ctx.plan_report })
+    let report = json!({ "tools": tools, "plan": ctx.plan_report });
+    // Kept with the chat for GET /v1/chat/{id}/context/report/{request_id}
+    if let Some(chat) = &ctx.chat_id {
+        context_plan::remember(chat, &ctx.request_id, &report);
+    }
+    report
 }
 
 /// A tool meta-tool call for the report

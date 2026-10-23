@@ -119,6 +119,17 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         // ── 5. Unified Tools & Session Governance API ──
         .route("/v1/tools", get(handlers::session_tools::get_all_tools))
         .route("/v1/tools/discover", post(handlers::session_tools::discover_tools))
+        // Context runtime: planner settings, plan preview, kept reports
+        .route(
+            "/v1/context/settings",
+            get(handlers::context::get_context_settings).post(handlers::context::update_context_settings),
+        )
+        .route("/v1/chat/{session_id}/context/preview", post(handlers::context::preview_context))
+        .route("/v1/chat/{session_id}/context/report", get(handlers::context::list_context_reports))
+        .route(
+            "/v1/chat/{session_id}/context/report/{request_id}",
+            get(handlers::context::get_context_report),
+        )
         .route(
             "/v1/chat/{session_id}/tools",
             get(handlers::session_tools::get_session_tools)

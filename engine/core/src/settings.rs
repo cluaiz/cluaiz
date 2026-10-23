@@ -655,6 +655,10 @@ pub struct ActiveUserSettings {
     /// Chat memory: each chat's KV cache saved to disk so it resumes without being processed again.
     #[serde(default)]
     pub chat_memory: ChatMemorySettings,
+    /// Context runtime: how the planner shares the context (a request's `context_policy`
+    /// overrides single fields)
+    #[serde(default)]
+    pub context_runtime: cluaiz_context::Policy,
 }
 
 /// Chat memory on disk (llama-server `--slot-save-path`, managed per chat). After every answer the
@@ -761,6 +765,7 @@ impl Default for ActiveUserSettings {
             onnx: OnnxSettings::default(),
             media: MediaSettings::default(),
             chat_memory: ChatMemorySettings::default(),
+            context_runtime: cluaiz_context::Policy::default(),
         }
     }
 }
