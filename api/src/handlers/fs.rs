@@ -133,6 +133,7 @@ pub async fn set_workspace_dir(
             let clean = strip_verbatim(&canon);
             let mut ws = state.current_workspace_dir.write().await;
             *ws = clean.clone();
+            cluaiz_agents::ToolsEngine::set_workspace_dir(clean.clone());
             (
                 StatusCode::OK,
                 Json(json!({
@@ -729,6 +730,7 @@ pub async fn pick_folder(
             let clean = strip_verbatim(&path);
             let mut ws = state.current_workspace_dir.write().await;
             *ws = clean.clone();
+            cluaiz_agents::ToolsEngine::set_workspace_dir(clean.clone());
             (
                 StatusCode::OK,
                 Json(json!({

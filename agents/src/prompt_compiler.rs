@@ -21,8 +21,11 @@ pub struct ResolvedToolTarget {
 /// Output of compiling tools and skills for a specific chat prompt
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CompiledPromptTools {
-    /// Formatted `<tools> [ ... ] </tools>` block or empty string if no executable tools are active
+    /// `<tools>` block with one JSON function schema per line, or empty if no executable tools are active
     pub tools_xml: String,
+    /// The function schemas in `tools_xml`, in order
+    #[serde(default)]
+    pub function_schemas: Vec<Value>,
     /// Joined system instruction guidelines from active skills
     pub skill_instructions: String,
     /// List of active tool IDs included in this compilation
@@ -31,6 +34,36 @@ pub struct CompiledPromptTools {
     pub estimated_tokens: usize,
 }
 
+
+/// `<tools>` block with one compact JSON schema per line (the Hermes/Qwen tool-prompt layout).
+fn tools_block(schemas: &[Value]) -> String {
+    if schemas.is_empty() {
+        return String::new();
+    }
+    let lines: Vec<String> = schemas.iter().map(|schema| schema.to_string()).collect();
+    format!("<tools>\n{}\n</tools>", lines.join("\n"))
+}
+
+impl CompiledPromptTools {
+    /// The `<tools>` block limited to `max_chars`, keeping whole schemas in their order.
+    /// Returns the block and the names of the tools that did not fit.
+    pub fn tools_xml_within(&self, max_chars: usize) -> (String, Vec<String>) {
+        if self.tools_xml.len() <= max_chars {
+            return (self.tools_xml.clone(), Vec::new());
+        }
+        let mut kept: Vec<Value> = Vec::new();
+        let mut dropped = Vec::new();
+        for schema in &self.function_schemas {
+            kept.push(schema.clone());
+            if !dropped.is_empty() || tools_block(&kept).len() > max_chars {
+                kept.pop();
+                let name = schema.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).unwrap_or("?");
+                dropped.push(name.to_string());
+            }
+        }
+        (tools_block(&kept), dropped)
+    }
+}
 
 /// Dynamic compiler that aggregates active Skills, Plugins (WASM/Native), and MCP Tools
 /// into standard ChatML / OpenAI JSON schemas for LLM prompts.
@@ -174,13 +207,7 @@ impl ToolPromptCompiler {
             });
         }
 
-        // Format standard `<tools> [ ... ] </tools>` container
-        let tools_xml = if !function_schemas.is_empty() {
-            let json_formatted = serde_json::to_string_pretty(&function_schemas).unwrap_or_else(|_| "[]".to_string());
-            format!("<tools>\n{}\n</tools>", json_formatted)
-        } else {
-            String::new()
-        };
+        let tools_xml = tools_block(&function_schemas);
 
         let skill_instructions = skill_instructions_vec.join("\n\n---\n\n");
         let raw_char_len = tools_xml.len() + skill_instructions.len();
@@ -188,6 +215,7 @@ impl ToolPromptCompiler {
 
         CompiledPromptTools {
             tools_xml,
+            function_schemas,
             skill_instructions,
             active_tool_ids,
             estimated_tokens,

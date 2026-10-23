@@ -4,7 +4,7 @@ use std::process::Stdio;
 use std::time::Duration;
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::Command;
+use tokio::process::{ChildStdin, Command};
 use tokio::time::timeout;
 use super::manifest::McpManifestParser;
 use std::sync::Arc;
@@ -36,6 +36,36 @@ fn program_path(command: &str) -> PathBuf {
         })
         .find(|candidate| candidate.is_file())
         .unwrap_or_else(|| path.to_path_buf())
+}
+
+/// `file://` URI of a local folder, as MCP roots expect.
+fn file_uri(path: &Path) -> String {
+    let mut text = path.to_string_lossy().replace('\\', "/");
+    for (raw, encoded) in [("%", "%25"), (" ", "%20"), ("#", "%23"), ("?", "%3F")] {
+        text = text.replace(raw, encoded);
+    }
+    if text.starts_with('/') { format!("file://{text}") } else { format!("file:///{text}") }
+}
+
+/// Answers a request the server sends while the client waits for a response. `roots/list`
+/// returns the open workspace; other methods get JSON-RPC "method not found".
+/// Returns false when `message` is not a server request.
+async fn answer_server_request(stdin: &mut ChildStdin, message: &Value) -> Result<bool> {
+    let (Some(method), Some(id)) = (message.get("method").and_then(|m| m.as_str()), message.get("id")) else {
+        return Ok(false);
+    };
+    let reply = if method == "roots/list" {
+        let workspace = crate::ToolsEngine::workspace_dir();
+        let name = workspace.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        json!({"jsonrpc": "2.0", "id": id, "result": {"roots": [{"uri": file_uri(&workspace), "name": name}]}})
+    } else {
+        json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("Method not found: {method}")}})
+    };
+    let mut line = serde_json::to_string(&reply)?;
+    line.push('\n');
+    stdin.write_all(line.as_bytes()).await?;
+    stdin.flush().await?;
+    Ok(true)
 }
 
 /// Subprocess IPC client communicating with external MCP servers over stdio with full JSON-RPC 2.0 protocol handshake
@@ -82,8 +112,10 @@ impl McpClient {
             manifest.name, exec.command, exec.args);
 
         let mut cmd = Command::new(program_path(&exec.command));
+        // Servers start in the open workspace, as other MCP clients do. The package folder
+        // holds Cluaiz's own package.json, which npm would read as an npm project.
         cmd.args(&exec.args)
-            .current_dir(mcp_dir)
+            .current_dir(crate::ToolsEngine::workspace_dir())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
@@ -134,6 +166,7 @@ impl McpClient {
                 let trimmed = line.trim();
                 if trimmed.is_empty() { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+                    if answer_server_request(&mut stdin, &val).await? { continue; }
                     if val.get("id").and_then(|id| id.as_i64()) == Some(1) {
                         return Ok(val);
                     }
@@ -169,6 +202,7 @@ impl McpClient {
                 let trimmed = line.trim();
                 if trimmed.is_empty() { continue; }
                 if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+                    if answer_server_request(&mut stdin, &val).await? { continue; }
                     if val.get("id").and_then(|id| id.as_i64()) == Some(2) {
                         return Ok(val);
                     }
@@ -219,8 +253,10 @@ impl McpClient {
             manifest.name, exec.command, exec.args);
 
         let mut cmd = Command::new(program_path(&exec.command));
+        // Servers start in the open workspace, as other MCP clients do. The package folder
+        // holds Cluaiz's own package.json, which npm would read as an npm project.
         cmd.args(&exec.args)
-            .current_dir(mcp_dir)
+            .current_dir(crate::ToolsEngine::workspace_dir())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -260,8 +296,7 @@ impl McpClient {
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {
-                    "roots": { "listChanged": true },
-                    "sampling": {}
+                    "roots": { "listChanged": true }
                 },
                 "clientInfo": {
                     "name": "cluaiz-engine",
@@ -290,6 +325,7 @@ impl McpClient {
                             val = inner_val;
                         }
                     }
+                    if answer_server_request(&mut stdin, &val).await? { continue; }
                     if val.get("id").and_then(|id| id.as_i64()) == Some(1) {
                         return Ok(val);
                     }
@@ -356,6 +392,7 @@ impl McpClient {
                     continue;
                 }
                 if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+                    if answer_server_request(&mut stdin, &val).await? { continue; }
                     if val.get("id").and_then(|id| id.as_i64()) == Some(2) {
                         return Ok(val);
                     }
@@ -375,6 +412,13 @@ impl McpClient {
         }
 
         if let Some(result_val) = response_json.get("result") {
+            // A tool-level failure is a result with `isError: true` (MCP spec).
+            if result_val.get("isError").and_then(|e| e.as_bool()) == Some(true) {
+                let texts: Vec<&str> = result_val.get("content").and_then(|c| c.as_array())
+                    .map(|items| items.iter().filter_map(|c| c.get("text").and_then(|t| t.as_str())).collect())
+                    .unwrap_or_default();
+                return Err(anyhow!("MCP tool '{}' failed: {}", tool_name, if texts.is_empty() { result_val.to_string() } else { texts.join("\n") }));
+            }
             Ok(result_val.clone())
         } else {
             Ok(response_json)
