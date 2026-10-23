@@ -47,6 +47,7 @@ first change. The API applies the decision to the chat's ledger
 | `suggestions_cap_pct` | 5 |
 | `margin_pct` | 2 |
 | `compact_at_pct` | 85 |
+| `compact_to_pct` | 60 |
 
 ## Tests
 
