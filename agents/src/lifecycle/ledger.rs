@@ -29,6 +29,16 @@ pub struct RecordedStep {
     pub result: String,
 }
 
+impl RecordedStep {
+    /// The tool this step loaded (a `load_tool` call, or a call by the tool's id that loaded it)
+    pub fn loaded_tool(&self) -> Option<String> {
+        if !self.result.starts_with("Loaded tool") && !self.result.contains("It is loaded now") {
+            return None;
+        }
+        loaded_tool_id(&self.call_xml)
+    }
+}
+
 /// What the Engine added to one user message's turn
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct TurnRecord {
@@ -138,10 +148,7 @@ impl ChatLedger {
     pub fn tombstone(&mut self, tool_id: &str) -> bool {
         let mut changed = false;
         for step in self.turns.iter_mut().flat_map(|turn| turn.steps.iter_mut()) {
-            if !step.result.starts_with("Loaded tool") && !step.result.contains("It is loaded now") {
-                continue;
-            }
-            if loaded_tool_id(&step.call_xml).is_some_and(|id| id.eq_ignore_ascii_case(tool_id.trim())) {
+            if step.loaded_tool().is_some_and(|id| id.eq_ignore_ascii_case(tool_id.trim())) {
                 step.result = format!("[Tool '{}' was unloaded.]", tool_id.trim());
                 changed = true;
             }

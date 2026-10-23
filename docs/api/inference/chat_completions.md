@@ -76,6 +76,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) via `<tool_call>` XML. |
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
+| **`history_mode`** | String | No | `"recent"` | `"recent"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat (see [Context plan and compaction](#-context-plan-and-compaction)), then drops the oldest turns. `none`: only the system prompt and the current message. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
@@ -189,6 +190,39 @@ What happened is reported in the closing `engine.context` object (and `usage.pro
 ```
 
 `cache_n` = prompt tokens reused from the KV cache (`reused_chunk_tokens` of them by moving shared chunks, `kv_reuse: "chunk"`); `truncated` = the context cut the history or the answer (llama-server's field); `stop` = `eos`, `limit` (max_tokens or the context; `finish_reason: "length"`), `cancel` or `error`.
+
+---
+
+## 🗜️ Context plan and compaction
+
+Every response carries `context_report.plan`: how the context is shared, in the loaded model's tokens.
+
+```json
+"plan": {
+  "history_mode": "recent",
+  "n_ctx": 4096,
+  "reserve": { "answer": 600, "thinking": 600, "margin": 81 },
+  "protected_tokens": 329,
+  "available_tokens": 2486,
+  "used_tokens": 1793,
+  "messages_over_budget": 0,
+  "needs_compaction": false,
+  "compaction": null
+}
+```
+
+- `reserve`: kept for the answer, again for thinking models, and 2% of the context for template tokens.
+- `protected_tokens`: the system prompt and the current message, which must fit.
+- `available_tokens` / `used_tokens`: room for the history and what it uses.
+- `needs_compaction`: the history uses 85% of the room or more, or does not fit.
+
+**Compaction.** In a chat with `session_id`, when the history needs it, the Engine changes what it added to earlier turns, cheapest loss first:
+
+1. Tool hints in front of user messages outside the newest 2 turns are removed.
+2. Results of older tool steps become a short placeholder, such as `[Result of read_text_file cleared to save context (412 tokens).]`. The newest 3 steps stay whole.
+3. A cleared `load_tool` result unloads that tool: the note says so, and the tool can be suggested and loaded again.
+
+A compaction happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
 
 ---
 

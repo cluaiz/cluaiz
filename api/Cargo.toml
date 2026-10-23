@@ -13,6 +13,7 @@ cluaiz-runtime = { path = "../engine/runtime", default-features = false }
 cluaiz-media = { path = "../engine/media" }
 cluaiz-agents = { path = "../agents" }
 cluaiz-security = { path = "../security" }
+cluaiz-context = { path = "../context" }
 
 axum = { version = "0.8", features = ["macros"] }
 tower-http = { version = "0.6", features = ["cors"] }

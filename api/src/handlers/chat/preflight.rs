@@ -1,3 +1,4 @@
+use super::context_plan;
 use super::types::{ExternalChatRequest, MessageContent, TemporaryChatMode};
 use crate::state::AppState;
 use crate::utils::prepare_authorized_media;
@@ -41,6 +42,8 @@ pub struct PreparedChatContext {
     pub tool_hint: String,
     /// What the Engine chose about tools for this request (the tools part of `context_report`)
     pub tools_report: serde_json::Value,
+    /// The plan of the prompt (the plan part of `context_report`)
+    pub plan_report: serde_json::Value,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -430,35 +433,10 @@ impl PreparedChatContext {
         // Earlier turns as the model saw them: each user message gets back the block the Engine
         // put in front of it, followed by that turn's tool steps
         let tool_role = super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
-        let mut augmented_messages = Vec::with_capacity(request.messages.len());
-        let mut occurrences: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-        let last_index = request.messages.len().saturating_sub(1);
-        let mut current_turn_key = None;
-        for (index, original) in request.messages.iter().enumerate() {
-            let mut message = original.clone();
-            let mut steps = Vec::new();
-            if message.role.eq_ignore_ascii_case("user") {
-                let text = message.content.text_content();
-                let seen = occurrences.entry(text.trim().to_string()).or_insert(0);
-                let key = cluaiz_agents::turn_key(&text, *seen);
-                *seen += 1;
-                if index == last_index {
-                    current_turn_key = Some(key);
-                } else if let Some(record) = ledger.as_ref().and_then(|saved| saved.record(&key)) {
-                    if !record.block.is_empty() {
-                        prepend_text(&mut message.content, &record.block);
-                    }
-                    steps = super::tool_turns::step_messages(&record.steps, tool_role);
-                }
-            }
-            augmented_messages.push(message);
-            for (role, content) in steps {
-                augmented_messages.push(super::types::ExternalMessage {
-                    role: role.to_string(),
-                    content: MessageContent::Text(content),
-                });
-            }
-        }
+        let history_mode = context_plan::HistoryMode::parse(request.history_mode.as_deref());
+        let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode);
+        let mut augmented_messages = rendered.messages;
+        let current_turn_key = rendered.current_key;
         let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
 
         if let Some(ref tools_vec) = request.tools {
@@ -523,13 +501,36 @@ impl PreparedChatContext {
         let thinks = dyn_think_start.as_ref().is_some_and(|tag| !tag.is_empty());
         let reserve_tokens = if thinks { answer_reserve * 2 } else { answer_reserve };
         // Token counts from the loaded model's tokenizer (characters ÷ 3.5 when none is loaded)
-        let count_tokens = |texts: &[&str]| -> (Vec<usize>, bool) {
-            match state.host.count_tokens(texts) {
-                Some(counts) => (counts, true),
-                None => (texts.iter().map(|t| cluaiz_agents::tool_search::tokens(t.len())).collect(), false),
+        let count_tokens = |texts: &[&str]| context_plan::count(&state.host, texts);
+        // Compaction: when the rendered chat would use most of the room, the chat's ledger gives
+        // back old tool hints and old tool results (batched, at least clear_at_least tokens)
+        let mut compaction = None;
+        if let (Some(chat), Some(saved)) = (&ledger_chat, &ledger) {
+            if let Ok(plan) = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks) {
+                if plan.needs_compaction {
+                    let clear_at_least = (n_ctx_limit / 10).max(512);
+                    let over: usize = plan.dropped.iter().map(|d| d.tokens).sum();
+                    let count_one = |text: &str| context_plan::count(&state.host, &[text]).0[0];
+                    if let Some((compacted, report)) =
+                        context_plan::compact(saved, &rendered.earlier_keys, &count_one, clear_at_least, over)
+                    {
+                        tracing::info!(
+                            "🗜️ [Context] Compacted chat {}: {} tokens freed ({} tool hints, {} tool results)",
+                            chat, report.freed_tokens, report.blocks_removed, report.results_cleared
+                        );
+                        cluaiz_agents::ChatLedger::put(chat, compacted.clone());
+                        if !report.unloaded_tools.is_empty() {
+                            cluaiz_agents::SessionToolManager::update_session_tools(chat, Vec::new(), report.unloaded_tools.clone());
+                            inline_tool_ids.retain(|id| !report.unloaded_tools.contains(id));
+                        }
+                        augmented_messages =
+                            context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode).messages;
+                        compaction = Some(report);
+                    }
+                }
             }
-        };
-        let conversation_texts: Vec<String> = request.messages.iter().map(|m| m.content.text_content()).collect();
+        }
+        let conversation_texts: Vec<String> = augmented_messages.iter().map(|m| m.content.text_content()).collect();
         let count_started = std::time::Instant::now();
         let (conversation_counts, counted) =
             count_tokens(&conversation_texts.iter().map(String::as_str).collect::<Vec<_>>());
@@ -670,7 +671,7 @@ impl PreparedChatContext {
 
         if !hint.is_empty() {
             match augmented_messages.last_mut() {
-                Some(last) if last.role.eq_ignore_ascii_case("user") => prepend_text(&mut last.content, &hint),
+                Some(last) if last.role.eq_ignore_ascii_case("user") => context_plan::prepend_text(&mut last.content, &hint),
                 _ => tracing::warn!("⚠️ [ChatHandler] Last message is not the user's; tool hint left out"),
             }
         }
@@ -705,6 +706,14 @@ impl PreparedChatContext {
                 });
             }
         }
+
+        // The plan of the final prompt, for the context report (the engine drops the oldest turns
+        // itself when the history does not fit)
+        let plan_report = context_plan::report(
+            &context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks),
+            history_mode,
+            compaction.as_ref(),
+        );
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request
@@ -921,6 +930,7 @@ impl PreparedChatContext {
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             tool_hint: hint.clone(),
             tools_report,
+            plan_report,
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
             json_prompt,
@@ -1048,19 +1058,12 @@ pub fn media_continuation(
 }
 
 /// Puts `block` in front of a message's text (as a first text part for multi-part content)
-fn prepend_text(content: &mut MessageContent, block: &str) {
-    match content {
-        MessageContent::Text(text) => *text = format!("{block}\n\n{text}"),
-        MessageContent::Array(parts) => parts.insert(0, super::types::ContentPart::Text { text: block.to_string() }),
-    }
-}
-
 /// The `context_report` of a request: the tools chosen at the start and the tool meta-tool
 /// calls made while answering
 pub fn context_report(ctx: &PreparedChatContext, tool_events: &[serde_json::Value]) -> serde_json::Value {
     let mut tools = ctx.tools_report.clone();
     tools["events"] = serde_json::Value::Array(tool_events.to_vec());
-    json!({ "tools": tools })
+    json!({ "tools": tools, "plan": ctx.plan_report })
 }
 
 /// A tool meta-tool call for the report
