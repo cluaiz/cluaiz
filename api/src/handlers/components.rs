@@ -230,21 +230,42 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
     }))
 }
 
-pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
+/// Folder of an installed component: `~/.cluaiz/tools/<type>s/<id>`, falling back to the
+/// legacy `~/.cluaiz/<type>s/<id>` location when the tools folder has no such component.
+fn resolve_component_dir(comp_type: &str, comp_id: &str) -> std::path::PathBuf {
+    let env = cluaiz_core::EnvironmentManager::current();
+    let target_dir = match comp_type {
+        "skill" => env.skills_dir().join(comp_id),
+        "plugin" => env.plugins_dir().join(comp_id),
+        "mcp" => env.mcp_dir().join(comp_id),
+        _ => env.tools_dir().join(format!("{}s", comp_type)).join(comp_id),
+    };
+    if target_dir.exists() {
+        target_dir
+    } else {
+        env.global_dir.join(format!("{}s", comp_type)).join(comp_id)
+    }
+}
+
+pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> (StatusCode, Json<Value>) {
     let comp_type = payload.get("component_type").and_then(|v| v.as_str()).unwrap_or("").trim_end_matches('s');
     let comp_id = payload.get("component_id").and_then(|v| v.as_str()).unwrap_or("");
     let content = payload.get("content").and_then(|v| v.as_str());
 
-    if comp_type.is_empty() || comp_id.is_empty() || content.is_none() {
-        return Json(serde_json::json!({
+    let Some(content) = content.filter(|_| !comp_type.is_empty() && !comp_id.is_empty()) else {
+        return (StatusCode::BAD_REQUEST, Json(json!({
             "status": "error",
             "message": "Missing component_type, component_id, or content"
-        }));
+        })));
+    };
+    if !cluaiz_agents::installer::ToolsInstaller::is_valid_component_id(comp_id) {
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "status": "error",
+            "message": format!("Invalid component_id '{}'", comp_id)
+        })));
     }
 
-    let env = cluaiz_core::EnvironmentManager::current();
-    let base_dir = env.global_dir.join(format!("{}s", comp_type));
-    let comp_dir = base_dir.join(comp_id);
+    let comp_dir = resolve_component_dir(comp_type, comp_id);
     let file_path = if comp_type == "skill" {
         comp_dir.join("SKILL.md")
     } else {
@@ -252,20 +273,20 @@ pub async fn update_file(State(_state): State<Arc<AppState>>, Json(payload): Jso
     };
 
     if !file_path.exists() {
-        return Json(serde_json::json!({
+        return (StatusCode::NOT_FOUND, Json(json!({
             "status": "error",
             "message": format!("File not found at {}", file_path.display())
-        }));
+        })));
     }
 
-    if let Err(e) = std::fs::write(&file_path, content.unwrap()) {
-        return Json(serde_json::json!({
+    if let Err(e) = std::fs::write(&file_path, content) {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
             "status": "error",
             "message": format!("Failed to write file: {}", e)
-        }));
+        })));
     }
 
-    Json(serde_json::json!({"status": "success"}))
+    (StatusCode::OK, Json(json!({"status": "success"})))
 }
 
 #[derive(serde::Deserialize)]
@@ -276,19 +297,8 @@ pub struct GetFileQuery {
 }
 
 pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
-    let env = cluaiz_core::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
-    let target_dir = match comp_type {
-        "skill" => env.skills_dir().join(&query.component_id),
-        "plugin" => env.plugins_dir().join(&query.component_id),
-        "mcp" => env.mcp_dir().join(&query.component_id),
-        _ => env.tools_dir().join(format!("{}s", comp_type)).join(&query.component_id),
-    };
-    let comp_dir = if target_dir.exists() {
-        target_dir
-    } else {
-        env.global_dir.join(format!("{}s", comp_type)).join(&query.component_id)
-    };
+    let comp_dir = resolve_component_dir(comp_type, &query.component_id);
 
     if !comp_dir.exists() {
         return Json(serde_json::json!({"status": "error", "message": "Component directory not found"}));

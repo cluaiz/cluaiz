@@ -304,12 +304,11 @@ For a deeper dive into how this relates to model loading and multimodal routing,
 *   **Response Schema (200 OK):**
     ```json
     {
-      "status": "loaded",
-      "model_id": "bonsai:8b",
-      "time_elapsed_ms": 1420
+      "status": "success",
+      "message": "Model 'bonsai:8b' loaded successfully from '...'."
     }
     ```
-*   **Error Response (500 Internal Server Error - VRAM Allocation Failure):**
+*   **Errors:** `404` when the model is not installed. `500` when loading fails, for example:
     ```json
     {
       "status": "error",
@@ -324,9 +323,10 @@ For a deeper dive into how this relates to model loading and multimodal routing,
     ```json
     {
       "status": "success",
-      "message": "Model removed"
+      "message": "Model 'bonsai:8b' deleted (C:\Users\...\models\...)."
     }
     ```
+*   **Errors:** `404` when the model is not installed. `500` with the reason when the folder or registry entry cannot be removed.
 
 ---
 
