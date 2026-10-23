@@ -3,7 +3,66 @@ use anyhow::Result;
 use cluaiz_core::EnvironmentManager;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant, SystemTime};
+
+/// The registry as last read, kept in RAM so a chat turn does not read and parse the tool
+/// folders again on every lookup
+struct Snapshot {
+    registry: ToolsRegistry,
+    /// Sizes and change times of the registry file and every tool's manifest files
+    fingerprint: u64,
+    /// When the fingerprint was last compared with the disk
+    checked: Instant,
+}
+
+static SNAPSHOT: LazyLock<Mutex<Option<Snapshot>>> = LazyLock::new(|| Mutex::new(None));
+/// Increases whenever the snapshot is replaced, so caches built from it know to rebuild
+static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+/// How often the disk is checked for manual edits (installs and setting changes through the
+/// Engine replace the snapshot at once)
+const RECHECK: Duration = Duration::from_secs(2);
+
+fn file_stamp(path: &Path, hasher: &mut impl Hasher) {
+    if let Ok(meta) = std::fs::metadata(path) {
+        meta.len().hash(hasher);
+        meta.modified().unwrap_or(SystemTime::UNIX_EPOCH).hash(hasher);
+    }
+}
+
+/// A cheap hash of what the registry is built from: the registry file and, for every
+/// installed tool folder, its manifest files (metadata only, no reading)
+fn disk_fingerprint() -> u64 {
+    let env = EnvironmentManager::current();
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    file_stamp(&env.tools_registry_json_path(), &mut hasher);
+    for dir in [env.skills_dir(), env.plugins_dir(), env.mcp_dir()] {
+        let mut folders: Vec<PathBuf> = std::fs::read_dir(&dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        folders.sort();
+        for folder in folders {
+            folder.hash(&mut hasher);
+            for file in ["SKILL.md", "package.json", ".cache/tools_list.json"] {
+                file_stamp(&folder.join(file), &mut hasher);
+            }
+        }
+    }
+    hasher.finish()
+}
+
+fn store_snapshot(registry: &ToolsRegistry) {
+    let fingerprint = disk_fingerprint();
+    *SNAPSHOT.lock().unwrap_or_else(|e| e.into_inner()) =
+        Some(Snapshot { registry: registry.clone(), fingerprint, checked: Instant::now() });
+    GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+}
 
 /// Master Tools Registry (Single Source of Truth for all Skills, Plugins, and MCP connectors)
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
@@ -25,49 +84,44 @@ impl ToolsRegistry {
         EnvironmentManager::current().tools_registry_json_path()
     }
 
-    /// Returns canonical path to binary cache `tools_registry.bin` (~/.cluaiz/engine/config/tools_registry.bin)
-    pub fn registry_bin_path() -> PathBuf {
-        EnvironmentManager::current().tools_registry_bin_path()
+    /// Changes whenever the registry in RAM is replaced (an install, a setting change, a manual
+    /// edit on disk). Caches derived from the registry rebuild when it changes.
+    pub fn generation() -> u64 {
+        let _ = Self::load();
+        GENERATION.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    /// Load the tools registry.
-    /// Fast Path: Tries ~/.cluaiz/engine/config/tools_registry.bin (Bincode deserialization, 0-ms load).
-    /// Slow Path: Falls back to tools_registry.json or legacy registry.yaml if .bin does not exist.
-    /// Cold Path: Auto-probes filesystem and creates new registry.
+    /// The tools registry. It is kept in RAM and read from `tools_registry.json` (plus the tool
+    /// folders) only when something there changed; changes made through the Engine replace it
+    /// at once, manual edits are seen within a few seconds.
     pub fn load() -> Result<Self> {
-        let bin_path = Self::registry_bin_path();
-        let json_path = Self::registry_path();
-        let env = EnvironmentManager::current();
-
-        // 1. Fast binary cache path (loads cache if fresh, otherwise falls through to JSON)
-        let bin_is_fresh = if bin_path.exists() && json_path.exists() {
-            match (bin_path.metadata(), json_path.metadata()) {
-                (Ok(bm), Ok(jm)) => match (bm.modified(), jm.modified()) {
-                    (Ok(bt), Ok(jt)) => bt >= jt,
-                    _ => true,
-                },
-                _ => true,
-            }
-        } else {
-            bin_path.exists()
-        };
-
-        if bin_is_fresh && bin_path.exists() {
-            if let Ok(bytes) = std::fs::read(&bin_path) {
-                if let Ok(mut reg) = bincode::deserialize::<ToolsRegistry>(&bytes) {
-                    // sync saves .json and .bin together when something changed
-                    let _ = reg.sync_with_filesystem();
-                    return Ok(reg);
+        {
+            let mut guard = SNAPSHOT.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(snapshot) = guard.as_mut() {
+                if snapshot.checked.elapsed() < RECHECK {
+                    return Ok(snapshot.registry.clone());
+                }
+                if disk_fingerprint() == snapshot.fingerprint {
+                    snapshot.checked = Instant::now();
+                    return Ok(snapshot.registry.clone());
                 }
             }
         }
+        let registry = Self::load_from_disk()?;
+        store_snapshot(&registry);
+        Ok(registry)
+    }
 
-        // 2. Standard JSON path
+    /// Reads `tools_registry.json` (or migrates the legacy YAML, or builds it from the tool
+    /// folders) and brings it in line with the installed folders
+    fn load_from_disk() -> Result<Self> {
+        let json_path = Self::registry_path();
+        let env = EnvironmentManager::current();
+
         if json_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&json_path) {
                 if let Ok(mut reg) = serde_json::from_str::<ToolsRegistry>(&content) {
                     let _ = reg.sync_with_filesystem();
-                    let _ = reg.save_bin_cache();
                     return Ok(reg);
                 }
             }
@@ -228,7 +282,7 @@ impl ToolsRegistry {
         Ok(reg)
     }
 
-    /// Save the registry to `tools_registry.json` and sync the binary cache
+    /// Save the registry to `tools_registry.json` and make it the registry in RAM
     pub fn save(&self) -> Result<()> {
         let json_path = Self::registry_path();
         if let Some(parent) = json_path.parent() {
@@ -240,21 +294,7 @@ impl ToolsRegistry {
 
         let json_str = serde_json::to_string_pretty(&updated)?;
         std::fs::write(&json_path, json_str)?;
-
-        // Update fast binary cache
-        updated.save_bin_cache()?;
-        Ok(())
-    }
-
-    /// Save fast binary cache for 0-ms cold boots
-    pub fn save_bin_cache(&self) -> Result<()> {
-        let bin_path = Self::registry_bin_path();
-        if let Some(parent) = bin_path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let bytes = bincode::serialize(self)
-            .map_err(|e| anyhow::anyhow!("Failed to serialize tools_registry to binary: {}", e))?;
-        std::fs::write(&bin_path, bytes)?;
+        store_snapshot(&updated);
         Ok(())
     }
 

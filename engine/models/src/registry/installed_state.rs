@@ -4,12 +4,21 @@
 
 use crate::models::types::entities::{SlotType, SlotTypeTasksExt};
 use crate::models::types::manifest::{ModelRegistry, ModelRegistryEntry, RegistryModelFile};
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
 use tracing::info;
 
-// Versioned compact JSON avoids positional binary layout and serde_json::Value
-// deserialize_any incompatibility. The human-readable registry remains authoritative.
-const REGISTRY_CACHE_HEADER: &[u8] = b"CLREG003\n";
+/// The registry as last parsed, with the file it came from and a hash of its bytes: a lookup
+/// reads the JSON (cheap) and parses it again only when it changed. The JSON is the only copy
+/// on disk.
+static PARSED: LazyLock<Mutex<Option<(PathBuf, u64, ModelRegistry)>>> = LazyLock::new(|| Mutex::new(None));
+
+fn content_hash(bytes: &[u8]) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    bytes.hash(&mut hasher);
+    hasher.finish()
+}
 
 pub struct InstalledStateRegistry;
 
@@ -19,19 +28,12 @@ impl InstalledStateRegistry {
         cluaiz_core::EnvironmentManager::current().model_registry_json_path()
     }
 
-    /// Resolves the versioned snapshot cache path through EnvironmentManager.
-    pub fn get_registry_bin_path() -> PathBuf {
-        cluaiz_core::EnvironmentManager::current().model_registry_bin_path()
-    }
-
-    /// Loads a compatible snapshot or migrates from authoritative JSON.
+    /// Loads the registry from `model_registry.json` (parsed again only when it changed).
     pub fn load() -> ModelRegistry {
-        let (mut reg, rebuild_cache) = Self::read_snapshot();
+        let mut reg = Self::read_snapshot();
         let removed = Self::drop_missing(&mut reg);
         if Self::refresh_capabilities(&mut reg) || removed {
             let _ = Self::save(&reg);
-        } else if rebuild_cache {
-            let _ = Self::save_bin_cache(&reg);
         }
         reg
     }
@@ -39,7 +41,7 @@ impl InstalledStateRegistry {
     /// Resolve one installed model without refreshing/writing every other package.
     /// The caller inspects the selected package; the authoritative registry is reread each call.
     pub fn find(model_id: &str) -> Option<ModelRegistryEntry> {
-        let (reg, _) = Self::read_snapshot();
+        let reg = Self::read_snapshot();
         Self::find_in(&reg, model_id).cloned()
     }
 
@@ -56,40 +58,28 @@ impl InstalledStateRegistry {
             .filter(|entry| entry.primary_path().is_some_and(|path| path.is_file()))
     }
 
-    fn read_snapshot() -> (ModelRegistry, bool) {
-        Self::read_snapshot_at(&Self::get_registry_path(), &Self::get_registry_bin_path())
+    fn read_snapshot() -> ModelRegistry {
+        Self::read_snapshot_at(&Self::get_registry_path())
     }
 
-    fn read_snapshot_at(path: &Path, bin_path: &Path) -> (ModelRegistry, bool) {
-        // The .json is the source; the .bin is only a cache of it, used while it is not older than the .json
-        let modified = |p: &Path| p.metadata().and_then(|m| m.modified()).ok();
-        let bin_is_fresh = match (modified(bin_path), modified(path)) {
-            (Some(bin), Some(json)) => bin >= json,
-            (Some(_), None) => true,
-            _ => false,
+    fn read_snapshot_at(path: &Path) -> ModelRegistry {
+        let Ok(bytes) = std::fs::read(path) else {
+            return ModelRegistry::default();
         };
-        if bin_is_fresh {
-            if let Ok(bytes) = std::fs::read(bin_path) {
-                if let Ok(reg) = Self::decode_cache(&bytes) {
-                    return (reg, false);
+        let hash = content_hash(&bytes);
+        {
+            let parsed = PARSED.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some((cached_path, cached_hash, reg)) = parsed.as_ref() {
+                if cached_path == path && *cached_hash == hash {
+                    return reg.clone();
                 }
             }
         }
-
-        if !path.exists() {
-            return (ModelRegistry::default(), false);
-        }
-
-        let content = match std::fs::read_to_string(path) {
-            Ok(c) => c,
-            Err(_) => return (ModelRegistry::default(), false),
+        let Ok(reg) = serde_json::from_slice::<ModelRegistry>(&bytes) else {
+            return ModelRegistry::default();
         };
-
-        let reg: ModelRegistry = match serde_json::from_str(&content) {
-            Ok(r) => r,
-            Err(_) => return (ModelRegistry::default(), false),
-        };
-        (reg, true)
+        *PARSED.lock().unwrap_or_else(|e| e.into_inner()) = Some((path.to_path_buf(), hash, reg.clone()));
+        reg
     }
 
     /// Removes entries whose folder or primary weight file is gone (deleted outside Cluaiz).
@@ -109,7 +99,7 @@ impl InstalledStateRegistry {
         reg.installed_models.len() != before
     }
 
-    /// Persists the active ModelRegistry to disk (.json and .bin)
+    /// Persists the active ModelRegistry to `model_registry.json`
     pub fn save(reg: &ModelRegistry) -> Result<(), String> {
         let path = Self::get_registry_path();
         if let Some(parent) = path.parent() {
@@ -119,35 +109,10 @@ impl InstalledStateRegistry {
         let content =
             serde_json::to_string_pretty(reg).map_err(|e| format!("Serialization error: {}", e))?;
 
-        std::fs::write(&path, content).map_err(|e| format!("Write error: {}", e))?;
-
-        // Sync fast binary cache
-        let _ = Self::save_bin_cache(reg);
+        std::fs::write(&path, &content).map_err(|e| format!("Write error: {}", e))?;
+        *PARSED.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some((path, content_hash(content.as_bytes()), reg.clone()));
         Ok(())
-    }
-
-    /// Saves a schema-versioned compact snapshot; no read-speed claim is made.
-    pub fn save_bin_cache(reg: &ModelRegistry) -> Result<(), String> {
-        let bin_path = Self::get_registry_bin_path();
-        if let Some(parent) = bin_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        let bytes = Self::encode_cache(reg)?;
-        std::fs::write(&bin_path, bytes).map_err(|e| format!("Binary write error: {}", e))?;
-        Ok(())
-    }
-
-    fn encode_cache(reg: &ModelRegistry) -> Result<Vec<u8>, String> {
-        let mut bytes = REGISTRY_CACHE_HEADER.to_vec();
-        bytes.extend(serde_json::to_vec(reg).map_err(|error| error.to_string())?);
-        Ok(bytes)
-    }
-
-    fn decode_cache(bytes: &[u8]) -> Result<ModelRegistry, String> {
-        let payload = bytes
-            .strip_prefix(REGISTRY_CACHE_HEADER)
-            .ok_or_else(|| "Incompatible registry cache version".to_string())?;
-        serde_json::from_slice(payload).map_err(|error| error.to_string())
     }
 
     fn refresh_capabilities(reg: &mut ModelRegistry) -> bool {

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use cluaiz_core::EnvironmentManager;
+use std::sync::{Arc, LazyLock, Mutex};
 use crate::tools::registry::ToolsRegistry;
 use super::parser::{SkillParser, ParsedSkill};
 
@@ -18,7 +18,25 @@ impl Default for SkillRouter {
     }
 }
 
+/// The router built for the current registry generation (parsing every SKILL.md once per
+/// registry change instead of on every lookup)
+static SHARED: LazyLock<Mutex<Option<(u64, Arc<SkillRouter>)>>> = LazyLock::new(|| Mutex::new(None));
+
 impl SkillRouter {
+    /// The router for the registry as it is now, rebuilt only when the registry changed
+    pub fn shared() -> Arc<SkillRouter> {
+        let generation = ToolsRegistry::generation();
+        let mut guard = SHARED.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((built_for, router)) = guard.as_ref() {
+            if *built_for == generation {
+                return router.clone();
+            }
+        }
+        let router = Arc::new(Self::new());
+        *guard = Some((generation, router.clone()));
+        router
+    }
+
     pub fn new() -> Self {
         let mut router = Self {
             keyword_map: HashMap::new(),
@@ -34,7 +52,6 @@ impl SkillRouter {
         self.parsed_cache.clear();
 
         let registry = ToolsRegistry::load()?;
-        let env = EnvironmentManager::current();
 
         for (id, entry) in &registry.installed_tools {
             if entry.category == "skill" && entry.enabled {

@@ -114,7 +114,7 @@ impl ToolPromptCompiler {
 
         let registry = ToolsRegistry::load().ok();
         let env = EnvironmentManager::current();
-        let skill_router = SkillRouter::new();
+        let skill_router = SkillRouter::shared();
 
         let mut skill_instructions_vec = Vec::new();
         let mut function_schemas: Vec<Value> = Vec::new();
