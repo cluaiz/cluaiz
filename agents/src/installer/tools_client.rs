@@ -263,7 +263,7 @@ impl ToolsInstaller {
 
     /// A component id must be one plain folder name, so it can never point at its
     /// category folder itself or outside it (`""`, `..`, `a/b`, drive prefixes).
-    fn is_valid_component_id(id: &str) -> bool {
+    pub fn is_valid_component_id(id: &str) -> bool {
         let mut parts = Path::new(id).components();
         matches!((parts.next(), parts.next()), (Some(Component::Normal(_)), None))
     }

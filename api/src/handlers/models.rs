@@ -3,6 +3,7 @@
 use crate::AppState;
 use axum::{
     extract::{Path, Query, State},
+    http::StatusCode,
     Json,
 };
 use cluaiz_core::EnvironmentManager;
@@ -176,7 +177,7 @@ pub struct LoadPayload {
 pub async fn load_model(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<LoadPayload>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
     let model_path = crate::utils::slots::resolve_model_by_id(&payload.model_id)
         .or_else(|| {
             let env = EnvironmentManager::current();
@@ -203,20 +204,20 @@ pub async fn load_model(
             .ensure_loaded(&payload.model_id, &path, &cluaiz_core::Settings::current())
             .await
         {
-            Ok(_) => Json(json!({
+            Ok(_) => (StatusCode::OK, Json(json!({
                 "status": "success",
                 "message": format!("Model '{}' loaded successfully from '{:?}'.", payload.model_id, path)
-            })),
-            Err(e) => Json(json!({
+            }))),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "status": "error",
                 "message": format!("Failed to load model '{}': {}", payload.model_id, e)
-            })),
+            }))),
         }
     } else {
-        Json(json!({
+        (StatusCode::NOT_FOUND, Json(json!({
             "status": "error",
             "message": format!("Model '{}' not found in vault.", payload.model_id)
-        }))
+        })))
     }
 }
 
@@ -257,28 +258,34 @@ pub async fn inspect_raw_header(
 pub async fn rm_model(
     State(state): State<Arc<AppState>>,
     Path(model_id): Path<String>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
     // A loaded model keeps its file open (Windows cannot delete it): unload it first
-    let model_dir = InstalledStateRegistry::load()
+    let Some(model_dir) = InstalledStateRegistry::load()
         .installed_models
         .get(&model_id)
-        .map(|e| std::path::PathBuf::from(&e.local_dir));
+        .map(|e| std::path::PathBuf::from(&e.local_dir))
+    else {
+        return (StatusCode::NOT_FOUND, Json(json!({
+            "status": "error",
+            "message": format!("model '{}' is not installed (see `cluaiz list`)", model_id)
+        })));
+    };
     let loaded = state.host.active_model_path.lock().await.clone();
-    if let (Some(dir), Some(loaded)) = (model_dir, loaded) {
-        if std::path::Path::new(&loaded).starts_with(&dir) {
+    if let Some(loaded) = loaded {
+        if std::path::Path::new(&loaded).starts_with(&model_dir) {
             state.host.unload_model().await;
         }
     }
     // Same delete as `cluaiz rm`: the model's folder and its model_registry.json entry
     match cluaiz_models::ModelDownloader::uninstall(&model_id) {
-        Ok(dir) => Json(json!({
+        Ok(dir) => (StatusCode::OK, Json(json!({
             "status": "success",
             "message": format!("Model '{}' deleted ({}).", model_id, dir.display())
-        })),
-        Err(e) => Json(json!({
+        }))),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
             "status": "error",
             "message": e
-        })),
+        }))),
     }
 }
 
