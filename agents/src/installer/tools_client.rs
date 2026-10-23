@@ -249,6 +249,10 @@ impl ToolsInstaller {
             }
             return Err(e);
         }
+        if component_type == "mcp" {
+            // A running server of the previous version must not keep serving.
+            crate::McpClient::stop_server(&component_dir).await;
+        }
 
         // 4. Sync with filesystem and seal tools_registry.json & tools_registry.bin.
         //    The package is already in place, so a registry problem is logged, not fatal.
@@ -362,6 +366,9 @@ impl ToolsInstaller {
         })?;
         if !component_dir.is_dir() {
             return Err(anyhow::anyhow!("{} '{}' is not installed.", component_type, component_id));
+        }
+        if component_type == "mcp" {
+            crate::McpClient::stop_server(&component_dir).await;
         }
         std::fs::remove_dir_all(&component_dir)?;
 
