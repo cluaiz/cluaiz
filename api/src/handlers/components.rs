@@ -236,6 +236,10 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
             tracing::error!("Failed to set tool enabled for '{}': {}", comp_id, e);
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update enabled status for '{}': {}", comp_id, e));
         }
+        // A switched-off MCP server does not keep running in the background
+        if !enabled_val {
+            cluaiz_agents::ToolsEngine::stop_mcp_server_by_name(comp_id).await;
+        }
     }
 
     // 2. Sync security_mode directly to ToolsRegistry (tools_registry.json)

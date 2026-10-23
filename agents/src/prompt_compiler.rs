@@ -121,6 +121,12 @@ impl ToolPromptCompiler {
                 continue;
             }
 
+            // A tool switched off in Tools is never offered to the model, even when a session binds it
+            if registry.as_ref().and_then(|reg| reg.get_tool(normalized_id)).is_some_and(|entry| !entry.enabled) {
+                tracing::info!("⏸️ [ToolCompiler] '{}' is turned off; left out of the prompt", normalized_id);
+                continue;
+            }
+
             // 1. Resolve metadata from registry or filesystem
             let (category, local_dir, name, description) = if let Some(ref reg) = registry {
                 if let Some(entry) = reg.get_tool(normalized_id) {

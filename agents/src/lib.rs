@@ -196,6 +196,18 @@ impl ToolsEngine {
         Err(anyhow::anyhow!("MCP server '{}' not found in {:?}", mcp_name, mcp_dir))
     }
 
+    /// Stops the running process of an MCP server (wherever `call_mcp_by_name` would find it)
+    pub async fn stop_mcp_server_by_name(mcp_name: &str) {
+        let env = cluaiz_core::EnvironmentManager::current();
+        let mut dirs = vec![env.mcp_dir().join(mcp_name), env.global_dir.join("mcp").join(mcp_name)];
+        if let Ok(Some(entry)) = Self::get_tool(mcp_name) {
+            dirs.push(std::path::PathBuf::from(entry.local_dir));
+        }
+        for dir in dirs {
+            McpClient::stop_server(&dir).await;
+        }
+    }
+
     /// Discovers MCP tools dynamically by server name
     pub async fn list_mcp_tools_by_name(mcp_name: &str) -> Result<Vec<Value>> {
         let env = cluaiz_core::EnvironmentManager::current();
@@ -293,12 +305,12 @@ impl ToolsEngine {
 
     /// Unified DRY executor across plugins, MCP servers, skills, and sandboxed terminal commands
     pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
+        let entry = Self::get_tool(name).ok().flatten();
+        if entry.as_ref().is_some_and(|t| !t.enabled) {
+            anyhow::bail!("Tool '{}' is turned off. Turn it on in Tools to use it.", name);
+        }
         let cwd_path = Self::workspace_dir();
-        let sec_mode = Self::get_tool(name)
-            .ok()
-            .flatten()
-            .map(|t| t.security_mode)
-            .unwrap_or(SecurityMode::Inherit);
+        let sec_mode = entry.map(|t| t.security_mode).unwrap_or(SecurityMode::Inherit);
 
         // 1. Declarative Execution Manifest check (dynamic from tool package.json).
         //    An MCP manifest's `execution` block launches its stdio server, so MCP calls

@@ -151,7 +151,7 @@ pub async fn execute_streaming_loop(
         // 🔄 AUTONOMOUS MULTI-TURN AGENT EXECUTION LOOP
         // Chaining consecutive tool executions up to 15 turns without halting prematurely
         let mut max_iters = 15;
-        let mut agent_turn_history: Vec<(String, String)> = Vec::new();
+        let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.chat_tmpl.as_deref());
 
         while max_iters > 0 {
             max_iters -= 1;
@@ -491,34 +491,9 @@ pub async fn execute_streaming_loop(
                     });
                     yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
 
-                    // 🔄 Continuous Multi-Turn Agent Turn Recording
-                    let tool_call_xml = format!("<tool_call>\n{}\n</tool_call>", raw_json);
-                    let tool_response_xml = cluaiz_agents::ToolsEngine::format_tool_response_raw(
-                        raw_fn_name,
-                        &execution_result,
-                    );
-                    agent_turn_history.push((tool_call_xml, tool_response_xml));
-
-                    // Construct cumulative agent history prompt
-                    let mut cumulative_history = String::new();
-                    for (c_xml, r_xml) in &agent_turn_history {
-                        cumulative_history.push_str(c_xml);
-                        cumulative_history.push('\n');
-                        cumulative_history.push_str(r_xml);
-                        cumulative_history.push_str("\n\n");
-                    }
-
-                    let pivot_envelope = json!({
-                        "pivot_prompt": format!(
-                            "<user_query>\n{}\n</user_query>\n{}\nReview the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.\n",
-                            ctx.initial_user_query, cumulative_history
-                        ),
-                        "samplers": ctx.samplers,
-                        "think_mode": &ctx.active_think_mode,
-                        "reasoning_effort": &ctx.active_reasoning_effort,
-                        "reasoning_budget_message": &ctx.reasoning_budget_message
-                    });
-                    current_prompt = format!("[PIVOT_CONTINUE]{}", serde_json::to_string(&pivot_envelope).unwrap_or_default());
+                    // The call and its result join the conversation once; the next step renders it again
+                    tool_turns.push(raw_json, raw_fn_name, &execution_result);
+                    current_prompt = tool_turns.continuation(&ctx);
 
                     tool_executed = true;
                     token_accumulator.clear();
