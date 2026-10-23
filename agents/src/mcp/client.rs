@@ -289,6 +289,16 @@ impl McpClient {
         let result = session.request("tools/list", json!({}), REQUEST_TIMEOUT).await?;
         let tools = result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default();
 
+        // Kept on disk so tool matching knows the functions after a restart, without starting
+        // the server. It is only read for matching; loading always asks the running server.
+        let saved = tools_list_cache(mcp_dir);
+        if let Some(dir) = saved.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Err(e) = std::fs::write(&saved, serde_json::to_vec(&tools).unwrap_or_default()) {
+            tracing::warn!("⚠️ [McpClient] Could not save the tool list of {:?}: {}", mcp_dir, e);
+        }
+
         let mut cache = MCP_TOOL_CACHE.write().await;
         cache.insert(cache_key, tools.clone());
         Ok(tools)
@@ -333,6 +343,12 @@ impl McpClient {
                 return Some(tools.clone());
             }
         }
+        if let Some(tools) = std::fs::read(tools_list_cache(mcp_dir))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<Vec<Value>>(&bytes).ok())
+        {
+            return Some(tools);
+        }
         let manifest_path = mcp_dir.join("package.json");
         if let Ok(content) = std::fs::read_to_string(&manifest_path) {
             if let Ok(val) = serde_json::from_str::<Value>(&content) {
@@ -345,4 +361,10 @@ impl McpClient {
         }
         None
     }
+}
+
+/// The server's last tool list on disk (inside the package's cache folder, so a reinstall or
+/// a full cache clear removes it)
+fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
+    mcp_dir.join(".cache").join("tools_list.json")
 }

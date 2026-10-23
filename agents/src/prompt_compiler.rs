@@ -119,7 +119,6 @@ impl ToolPromptCompiler {
         let mut skill_instructions_vec = Vec::new();
         let mut function_schemas: Vec<Value> = Vec::new();
         let mut active_tool_ids = Vec::new();
-        let mut allowed_tools_whitelist: Option<std::collections::HashSet<String>> = None;
 
         for tool_id in tool_ids {
             let normalized_id = tool_id.trim();
@@ -165,26 +164,8 @@ impl ToolPromptCompiler {
                         }
                     }
 
-                    if let Some(allowed) = skill_router.get_allowed_tools(normalized_id) {
-                        let mut set = allowed_tools_whitelist.unwrap_or_default();
-                        for tool in allowed {
-                            set.insert(tool.to_lowercase().trim().to_string());
-                        }
-                        allowed_tools_whitelist = Some(set);
-                    } else {
-                        let skill_file = local_dir.join("SKILL.md");
-                        if let Ok(content) = std::fs::read_to_string(&skill_file) {
-                            if let Some(parsed) = crate::tools::skills::SkillParser::parse_content(&content) {
-                                if !parsed.metadata.allowed_tools.is_empty() {
-                                    let mut set = allowed_tools_whitelist.unwrap_or_default();
-                                    for tool in &parsed.metadata.allowed_tools {
-                                        set.insert(tool.to_lowercase().trim().to_string());
-                                    }
-                                    allowed_tools_whitelist = Some(set);
-                                }
-                            }
-                        }
-                    }
+                    // `allowed-tools` lists tools the skill wants pre-approved (Agent Skills spec,
+                    // experimental). It never removes the other tools from the prompt.
 
                     // Check if skill provides executable function tools in package.json
                     let pkg_json = local_dir.join("package.json");
@@ -222,24 +203,6 @@ impl ToolPromptCompiler {
                     }
                 }
             }
-        }
-
-        // Filter function schemas if an active skill restricts allowed-tools
-        if let Some(ref whitelist) = allowed_tools_whitelist {
-            function_schemas.retain(|schema| {
-                let tool_fn_name = schema.get("function")
-                    .and_then(|f| f.get("name"))
-                    .and_then(|n| n.as_str())
-                    .or_else(|| schema.get("name").and_then(|n| n.as_str()));
-
-                if let Some(name) = tool_fn_name {
-                    let name_lower = name.to_lowercase();
-                    whitelist.contains(&name_lower)
-                        || whitelist.iter().any(|allowed| name_lower.ends_with(&format!("__{}", allowed)) || name_lower.contains(allowed))
-                } else {
-                    true
-                }
-            });
         }
 
         let tools_xml = tools_block(&function_schemas);

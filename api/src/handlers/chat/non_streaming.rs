@@ -66,10 +66,18 @@ pub async fn execute_non_streaming(
             let raw_fn_name = tool_call.raw_fn_name.as_str();
             let payload_str = tool_call.payload_str;
 
-            // tool_search loads installed tools; it is answered by the engine itself
-            let is_tool_search =
-                ctx.tool_search_room.is_some() && raw_fn_name == cluaiz_agents::TOOL_SEARCH_NAME;
-            let resolved_target = if is_tool_search {
+            // find_tools / load_tool / unload_tool are answered by the engine itself
+            // A tool called by its id before it was loaded is answered as load_tool
+            let implicit_load =
+                super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
+            let is_meta_tool = implicit_load
+                || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name));
+            let (meta_name, meta_payload) = if implicit_load {
+                (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
+            } else {
+                (raw_fn_name, payload_str.clone())
+            };
+            let resolved_target = if is_meta_tool {
                 None
             } else if let Some(ref sid) = req_session_id {
                 cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
@@ -80,8 +88,8 @@ pub async fn execute_non_streaming(
                 cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
             };
 
-            let (comp_type, comp_name, tool_sub_func) = if is_tool_search {
-                ("search".to_string(), raw_fn_name.to_string(), None)
+            let (comp_type, comp_name, tool_sub_func) = if is_meta_tool {
+                ("tools".to_string(), raw_fn_name.to_string(), None)
             } else if let Some(target) = resolved_target {
                 (target.category, target.component_id, target.sub_function)
             } else {
@@ -96,8 +104,28 @@ pub async fn execute_non_streaming(
                 payload_str
             );
 
-            let executed = if is_tool_search {
-                Ok(super::tool_turns::run_tool_search(&ctx, req_session_id.as_deref(), &payload_str).await)
+            // Same approval gate as streaming: the call waits for the user's decision, which the
+            // App sees under /v1/system/permission/pending
+            let assessment = super::authorize::assess(&comp_type, &comp_name, is_meta_tool);
+            let denial = if assessment.requires_approval {
+                let pending = super::authorize::request(&state, &comp_type, public_call_name, &payload_str).await;
+                tracing::info!(
+                    "🛡️ [API/NonStreaming] Waiting for approval of '{}' ({})",
+                    public_call_name,
+                    pending.request_id
+                );
+                super::authorize::wait(&state, pending, public_call_name).await.err()
+            } else {
+                None
+            };
+
+            let mut unloaded_tool: Option<String> = None;
+            let executed = if let Some(reason) = denial {
+                Ok(super::authorize::denied_result(&reason))
+            } else if is_meta_tool {
+                let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
+                unloaded_tool = outcome.unloaded;
+                Ok(outcome.text)
             } else {
                 cluaiz_agents::ToolsEngine::execute_tool_by_name(
                     &comp_type,
@@ -126,6 +154,9 @@ pub async fn execute_non_streaming(
                 }
             };
 
+            if let Some(id) = &unloaded_tool {
+                tool_turns.tombstone(id);
+            }
             tool_turns.push(raw_json, public_call_name, &execution_result);
             let current_prompt = tool_turns.continuation(&ctx);
 

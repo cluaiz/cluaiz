@@ -29,7 +29,7 @@ pub use prompt_compiler::{CompiledPromptTools, ResolvedToolTarget, ToolPromptCom
 pub use registry::{ExecutionMode, LoadStrategy, SecurityMode, ToolCategory, ToolEntry, ToolsRegistry};
 pub use skills::{ParsedSkill, SkillParser, SkillRouter};
 pub use telemetry::{ContextBreakdown, ContextTracker, SystemContextTelemetry};
-pub use tool_search::{CatalogEntry, ToolSearch, ToolSearchResult, TOOL_SEARCH_NAME};
+pub use tool_search::{Candidate, CatalogEntry, Level as ToolLevel, LoadResult, ToolSearch, FIND_TOOLS_NAME, LOAD_TOOL_NAME, TOOL_SEARCH_NAME, UNLOAD_TOOL_NAME};
 
 pub use crate as tools;
 

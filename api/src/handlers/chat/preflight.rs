@@ -30,10 +30,10 @@ pub struct PreparedChatContext {
     pub history_chars: usize,
     pub user_prompt_chars: usize,
     pub active_tool_ids: Vec<String>,
-    /// Tools already in the prompt, which `tool_search` does not offer again
-    pub tool_search_exclude: Vec<String>,
-    /// Characters a `tool_search` result may use; None when the model has no tool_search
-    pub tool_search_room: Option<usize>,
+    /// Tools bound to the chat (already in the prompt), which `find_tools` does not offer again
+    pub loaded_tool_ids: Vec<String>,
+    /// Characters `load_tool` results may use; None when the model was not given the tool meta-tools
+    pub tool_load_room: Option<usize>,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -442,29 +442,38 @@ impl PreparedChatContext {
             .map(|m| m.content.clone())
             .unwrap_or_default();
         let initial_user_query = last_message.text_content();
-        let prompt_lower = initial_user_query.to_lowercase();
+        // The user's previous message, for short follow-ups ("phir se", "isko chalao")
+        let previous_user_query = request
+            .messages
+            .iter()
+            .rev()
+            .skip(1)
+            .find(|m| m.role.eq_ignore_ascii_case("user"))
+            .map(|m| m.content.text_content());
         let before_tools = std::time::Instant::now();
-        let matched_skills = cluaiz_agents::ToolsEngine::match_skills(&prompt_lower);
-        for skill_id in matched_skills {
-            if !tool_ids_to_compile.contains(&skill_id) {
-                tool_ids_to_compile.push(skill_id);
-                break;
-            }
-        }
 
         // tool_choice "none" (OpenAI): the model gets no tools for this request
         let tools_allowed = request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
         if !tools_allowed {
             tool_ids_to_compile.clear();
         }
+        // Tools bound to the chat (loaded earlier, or named in the request) go in whole
         let compiled_tools =
             cluaiz_agents::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
-        let after_tools = std::time::Instant::now();
 
+        // Room for tools: what the context has left after the answer's reserve and the
+        // conversation, but never less than a quarter of it (the engine drops the oldest turns
+        // before it drops tools the model needs)
         let n_ctx_limit = dynamic_context_limit;
-        let max_tool_chars = (n_ctx_limit * 4 * 35) / 100;
-
-        let mut prompt_tool_sections = Vec::new();
+        let answer_reserve = cluaiz_core::answer_reserve(request.max_tokens.unwrap_or(n_ctx_limit), n_ctx_limit);
+        let thinks = dyn_think_start.as_ref().is_some_and(|tag| !tag.is_empty());
+        let reserve_tokens = if thinks { answer_reserve * 2 } else { answer_reserve };
+        let conversation_chars: usize = request.messages.iter().map(|m| m.content.text_content().len()).sum();
+        let tool_tokens = n_ctx_limit
+            .saturating_sub(reserve_tokens + cluaiz_agents::tool_search::tokens(conversation_chars))
+            .max(n_ctx_limit / 4)
+            .min(n_ctx_limit.saturating_sub(reserve_tokens));
+        let max_tool_chars = (tool_tokens as f64 * cluaiz_agents::tool_search::CHARS_PER_TOKEN) as usize;
 
         const TOOLS_HEADER: &str = "# Available Tools\nYou have access to the following tools:\n";
         const TOOLS_CALL_FORMAT: &str = "\n\nWhen you need to call a tool, you MUST output a <tool_call> XML block with a JSON object containing \"name\" and \"arguments\":\n<tool_call>\n{\"name\": \"tool_name\", \"arguments\": {\"arg_name\": \"value\"}}\n</tool_call>\nDo not output conversational filler text before or after the <tool_call> block.";
@@ -473,79 +482,117 @@ impl PreparedChatContext {
             "\nTools run in the project folder {}. Use paths relative to it (\".\" is the project folder).",
             cluaiz_agents::ToolsEngine::workspace_dir().display()
         );
-        // Whole tool schemas are kept or left out; cutting the text would break the JSON and
-        // drop the call-format instructions that follow it.
-        let tools_budget = max_tool_chars
-            .saturating_sub(TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len());
-        let (mut kept_schemas, mut dropped_tools) =
-            compiled_tools.schemas_within(tools_budget, &initial_user_query);
 
-        // Tool search: switched-on tools outside the prompt (not bound to the chat, or left out
-        // for room) are listed by id, and the model loads the ones it needs with `tool_search`
-        const CATALOG_HEADER: &str = "\n\nMore installed tools are not loaded yet. To use one, call tool_search first:\n";
-        let mut tool_search_exclude = tool_ids_to_compile.clone();
-        let mut tool_search_room = None;
-        let mut catalog_note = String::new();
-        if tools_allowed && request.tool_search != Some(false) {
-            let catalog = cluaiz_agents::ToolSearch::catalog(&tool_search_exclude);
-            if !catalog.is_empty() || !dropped_tools.is_empty() {
-                let search_schema = cluaiz_agents::ToolSearch::schema();
-                let catalog_room = tools_budget / 4;
-                let reserve = search_schema.to_string().len() + 1 + CATALOG_HEADER.len() + catalog_room;
-                (kept_schemas, dropped_tools) = compiled_tools
-                    .schemas_within(tools_budget.saturating_sub(reserve), &initial_user_query);
-                // A component that lost tools to the budget stays loadable
-                for name in &dropped_tools {
-                    if let Some(target) = cluaiz_agents::ToolPromptCompiler::resolve_target(name, &tool_ids_to_compile) {
-                        tool_search_exclude.retain(|id| id != &target.component_id);
-                    }
-                }
-                let catalog = cluaiz_agents::ToolSearch::catalog(&tool_search_exclude);
-                catalog_note = format!(
-                    "{CATALOG_HEADER}{}",
-                    cluaiz_agents::ToolSearch::catalog_lines(&catalog, catalog_room)
+        // Suggestions (cards and titles) for tools that are installed but not loaded. The model
+        // loads one with load_tool when it needs it; nothing goes in whole on its own.
+        let discovery = tools_allowed && request.tool_search != Some(false);
+        let mut hint_lines = String::new();
+        let mut offer_meta_tools = false;
+        if discovery {
+            let mut exclude = tool_ids_to_compile.clone();
+            if let Some(ref sid) = request.session_id {
+                exclude.extend(cluaiz_agents::SessionToolManager::suppressed_tool_ids(sid));
+            }
+            let catalog = cluaiz_agents::ToolSearch::catalog(&exclude);
+            let candidates = cluaiz_agents::ToolSearch::suggest(&catalog, &initial_user_query, previous_user_query.as_deref());
+            if !candidates.is_empty() {
+                tracing::info!(
+                    "🧰 [Tools] Suggested: {}",
+                    candidates
+                        .iter()
+                        .map(|c| format!("{} {:?} {:?}", c.id, c.level, c.matched))
+                        .collect::<Vec<_>>()
+                        .join("; ")
                 );
-                kept_schemas.push(search_schema);
-                tool_search_room = Some(max_tool_chars / 2);
+                hint_lines = cluaiz_agents::ToolSearch::hint_lines(&catalog, &candidates);
+            } else if tool_ids_to_compile.is_empty()
+                && !catalog.is_empty()
+                && cluaiz_agents::tool_search::is_actionable(&initial_user_query)
+            {
+                hint_lines = "Installed tools are not loaded. If one would help, search them with find_tools.\n".to_string();
+            }
+            offer_meta_tools = !hint_lines.is_empty() || !tool_ids_to_compile.is_empty();
+        }
+        let meta_schemas = if offer_meta_tools { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
+
+        // Bound tools: whole schemas and whole skill instructions, or left out; never cut
+        let mut system_tools = String::new();
+        if !compiled_tools.tools_xml.is_empty() || !compiled_tools.skill_instructions.is_empty() {
+            let meta_chars: usize = meta_schemas.iter().map(|m| m.to_string().len() + 1).sum();
+            let tools_budget = max_tool_chars.saturating_sub(
+                TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len() + meta_chars,
+            );
+            let (mut kept_schemas, dropped_tools) =
+                compiled_tools.schemas_within(tools_budget, &initial_user_query);
+            if !dropped_tools.is_empty() {
+                tracing::warn!(
+                    "⚠️ [ChatHandler] Tool list exceeds the prompt budget ({} chars); left out: {:?}",
+                    tools_budget, dropped_tools
+                );
+            }
+            kept_schemas.extend(meta_schemas.iter().cloned());
+            let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
+            if !tools_xml.is_empty() {
+                system_tools = format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}");
+            }
+            let instructions = &compiled_tools.skill_instructions;
+            if !instructions.is_empty() {
+                if system_tools.len() + instructions.len() + 7 <= max_tool_chars {
+                    system_tools = [system_tools, instructions.clone()]
+                        .into_iter()
+                        .filter(|part| !part.is_empty())
+                        .collect::<Vec<_>>()
+                        .join("\n\n---\n\n");
+                } else {
+                    tracing::warn!(
+                        "⚠️ [ChatHandler] Skill instructions ({} chars) do not fit the {} chars left for tools; left out whole",
+                        instructions.len(),
+                        max_tool_chars.saturating_sub(system_tools.len())
+                    );
+                }
             }
         }
-        if !dropped_tools.is_empty() {
-            tracing::warn!(
-                "⚠️ [ChatHandler] Tool list exceeds the prompt budget ({} chars); left out: {:?}",
-                tools_budget, dropped_tools
-            );
+
+        // The hint goes into the current user message (not the system prompt), so the system
+        // prompt and the earlier turns stay the same for the KV cache
+        let mut hint = String::new();
+        if !hint_lines.is_empty() {
+            hint.push_str("<tools_hint>\n");
+            hint.push_str(&hint_lines);
+            if system_tools.is_empty() {
+                hint.push_str(&format!(
+                    "To call a function, reply with only:\n<tool_call>\n{{\"name\": \"function_name\", \"arguments\": {{\"arg\": \"value\"}}}}\n</tool_call>\nFunctions you can call now:\n{}\n{}",
+                    cluaiz_agents::prompt_compiler::tools_block(&meta_schemas),
+                    workspace_note.trim_start()
+                ));
+                hint.push('\n');
+            }
+            hint.push_str("</tools_hint>");
         }
-        let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
-        if !tools_xml.is_empty() {
-            prompt_tool_sections.push(format!(
-                "{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{}{workspace_note}",
-                catalog_note.trim_end()
-            ));
+        let tool_load_room = offer_meta_tools.then(|| max_tool_chars.saturating_sub(system_tools.len() + hint.len()));
+        let after_tools = std::time::Instant::now();
+
+        if !hint.is_empty() {
+            match augmented_messages.last_mut() {
+                Some(last) if last.role.eq_ignore_ascii_case("user") => match &mut last.content {
+                    MessageContent::Text(text) => *text = format!("{hint}\n\n{text}"),
+                    MessageContent::Array(parts) => parts.insert(0, super::types::ContentPart::Text { text: hint.clone() }),
+                },
+                _ => tracing::warn!("⚠️ [ChatHandler] Last message is not the user's; tool hint left out"),
+            }
         }
 
-        if !compiled_tools.skill_instructions.is_empty() {
-            prompt_tool_sections.push(compiled_tools.skill_instructions);
-        }
-
-        let mut combined_instructions = prompt_tool_sections.join("\n\n---\n\n");
-        if combined_instructions.len() > max_tool_chars {
-            tracing::warn!("⚠️ [ChatHandler] Tool prompt truncated to prevent Context Window overflow (budget limit: {} chars)", max_tool_chars);
-            combined_instructions.truncate(max_tool_chars);
-        }
-
-        let _tool_instruction_chars = combined_instructions.len();
-
-        if !combined_instructions.is_empty() {
+        if !system_tools.is_empty() {
             if let Some(first_msg) = augmented_messages.first_mut() {
                 if first_msg.role.eq_ignore_ascii_case("system") {
                     match &mut first_msg.content {
                         MessageContent::Text(text) => {
                             text.push_str("\n\n");
-                            text.push_str(&combined_instructions);
+                            text.push_str(&system_tools);
                         }
                         MessageContent::Array(parts) => {
                             parts.push(super::types::ContentPart::Text {
-                                text: combined_instructions,
+                                text: system_tools,
                             })
                         }
                     }
@@ -554,14 +601,14 @@ impl PreparedChatContext {
                         0,
                         super::types::ExternalMessage {
                             role: "system".to_string(),
-                            content: MessageContent::Text(combined_instructions),
+                            content: MessageContent::Text(system_tools),
                         },
                     );
                 }
             } else {
                 augmented_messages.push(super::types::ExternalMessage {
                     role: "system".to_string(),
-                    content: MessageContent::Text(combined_instructions),
+                    content: MessageContent::Text(system_tools),
                 });
             }
         }
@@ -764,9 +811,9 @@ impl PreparedChatContext {
             system_prompt_chars,
             history_chars,
             user_prompt_chars,
+            loaded_tool_ids: tool_ids_to_compile.clone(),
             active_tool_ids: tool_ids_to_compile,
-            tool_search_exclude,
-            tool_search_room,
+            tool_load_room,
             json_prompt,
             prepared_media,
             media_lease,
