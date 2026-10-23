@@ -84,6 +84,13 @@ impl NativeSession {
         self.llama.last_context.clone()
     }
 
+    /// The vocabulary, for counting tokens outside the generation lock. Valid while this session
+    /// lives: the host clears its copy before dropping the session.
+    pub fn vocab(&self) -> super::VocabHandle {
+        // SAFETY: the model is loaded for this session's whole life; the call only reads it.
+        super::VocabHandle::new(unsafe { crate::ffi::llama_cpp::llama_model_get_vocab(self.llama.model_ptr) })
+    }
+
     /// Native model description without exposing its pointers.
     pub fn describe(&self) -> (String, u64, u64) {
         self.llama.describe()

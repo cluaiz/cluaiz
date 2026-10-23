@@ -6,6 +6,34 @@ use std::ffi::CString;
 ///
 /// # Safety
 /// The vocabulary must belong to a live model throughout this call.
+/// The loaded model's vocabulary, for counting tokens without the generation lock.
+/// llama.cpp's tokenizer only reads the vocabulary; its server tokenizes on HTTP threads while a
+/// slot decodes (`post_tokenize`, `handle_completions_impl`), so counting here does the same.
+#[derive(Clone, Copy)]
+pub struct VocabHandle(*const std::ffi::c_void);
+
+// SAFETY: the handle is only read by llama_tokenize; its owner clears it before the model is freed.
+unsafe impl Send for VocabHandle {}
+unsafe impl Sync for VocabHandle {}
+
+impl VocabHandle {
+    pub(crate) fn new(vocab: *const std::ffi::c_void) -> Self {
+        Self(vocab)
+    }
+
+    /// Tokens of `text` as it appears inside a rendered prompt: special tokens are parsed and no
+    /// BOS is added, so the parts of a prompt add up to the whole.
+    ///
+    /// # Safety
+    /// The model this handle came from must stay loaded throughout the call.
+    pub unsafe fn count(&self, text: &str) -> anyhow::Result<usize> {
+        if text.is_empty() {
+            return Ok(0);
+        }
+        tokenize(self.0, text, false, true).map(|tokens| tokens.len())
+    }
+}
+
 pub(crate) unsafe fn tokenize(
     vocab: *const std::ffi::c_void,
     text: &str,

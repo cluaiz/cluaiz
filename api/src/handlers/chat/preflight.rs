@@ -522,9 +522,28 @@ impl PreparedChatContext {
         let answer_reserve = cluaiz_core::answer_reserve(request.max_tokens.unwrap_or(n_ctx_limit), n_ctx_limit);
         let thinks = dyn_think_start.as_ref().is_some_and(|tag| !tag.is_empty());
         let reserve_tokens = if thinks { answer_reserve * 2 } else { answer_reserve };
-        let conversation_chars: usize = request.messages.iter().map(|m| m.content.text_content().len()).sum();
+        // Token counts from the loaded model's tokenizer (characters ÷ 3.5 when none is loaded)
+        let count_tokens = |texts: &[&str]| -> (Vec<usize>, bool) {
+            match state.host.count_tokens(texts) {
+                Some(counts) => (counts, true),
+                None => (texts.iter().map(|t| cluaiz_agents::tool_search::tokens(t.len())).collect(), false),
+            }
+        };
+        let conversation_texts: Vec<String> = request.messages.iter().map(|m| m.content.text_content()).collect();
+        let count_started = std::time::Instant::now();
+        let (conversation_counts, counted) =
+            count_tokens(&conversation_texts.iter().map(String::as_str).collect::<Vec<_>>());
+        let conversation_tokens: usize = conversation_counts.iter().sum();
+        if counted {
+            tracing::info!(
+                "🧮 [Tokens] Conversation {} tokens ({} messages) counted in {:.2} ms",
+                conversation_tokens,
+                conversation_texts.len(),
+                count_started.elapsed().as_secs_f64() * 1000.0
+            );
+        }
         let tool_tokens = n_ctx_limit
-            .saturating_sub(reserve_tokens + cluaiz_agents::tool_search::tokens(conversation_chars))
+            .saturating_sub(reserve_tokens + conversation_tokens)
             .max(n_ctx_limit / 4)
             .min(n_ctx_limit.saturating_sub(reserve_tokens));
         let max_tool_chars = (tool_tokens as f64 * cluaiz_agents::tool_search::CHARS_PER_TOKEN) as usize;
@@ -633,16 +652,19 @@ impl PreparedChatContext {
         }
         let tool_load_room = offer_meta_tools.then(|| max_tool_chars.saturating_sub(system_tools.len() + hint.len()));
         let tokens = cluaiz_agents::tool_search::tokens;
+        let (part_tokens, _) = count_tokens(&[&hint, &system_tools]);
         let tools_report = json!({
             "suggested": suggested,
             "search_offered": search_offered,
             "loaded_in_chat": inline_tool_ids.clone(),
             "bound": tool_ids_to_compile.clone(),
             "meta_tools": offer_meta_tools,
-            "hint_tokens": tokens(hint.len()),
-            "system_tools_tokens": tokens(system_tools.len()),
+            "hint_tokens": part_tokens[0],
+            "system_tools_tokens": part_tokens[1],
+            "conversation_tokens": conversation_tokens,
             "load_room_tokens": tool_load_room.map(tokens),
-            "estimate": "tokens are estimated from characters"
+            "token_counts": if counted { "tokenizer" } else { "estimated from characters" },
+            "estimate": "load costs and load room are estimated from characters"
         });
         let after_tools = std::time::Instant::now();
 
