@@ -44,8 +44,10 @@ struct Words {
     aliases: HashMap<String, Vec<String>>,
     stopwords: HashSet<String>,
     actions: HashSet<String>,
-    /// Words that point back at the previous message ("isko", "phir se", "again")
+    /// Words that point back at the previous message ("isko", "that")
     followup: HashSet<String>,
+    /// Words that ask for the previous request again ("phir se", "again")
+    repeat: HashSet<String>,
 }
 
 static WORDS: LazyLock<Words> = LazyLock::new(|| {
@@ -68,7 +70,7 @@ static WORDS: LazyLock<Words> = LazyLock::new(|| {
                 .collect()
         })
         .unwrap_or_default();
-    Words { aliases, stopwords: list("stopwords"), actions: list("actions"), followup: list("followup") }
+    Words { aliases, stopwords: list("stopwords"), actions: list("actions"), followup: list("followup"), repeat: list("repeat") }
 });
 
 fn is_word_char(c: char) -> bool {
@@ -102,9 +104,11 @@ fn raw_words(text: &str) -> Vec<String> {
     words
 }
 
-/// Plural `s` is dropped so "files" and "file" meet
+/// Plural `s` is dropped so "files" and "file" meet ("vulnerabilities" and "vulnerability" too)
 fn stem(word: &str) -> String {
-    if word.len() > 3 && word.ends_with('s') && !word.ends_with("ss") && word.is_ascii() {
+    if word.len() > 4 && word.ends_with("ies") && word.is_ascii() {
+        format!("{}y", &word[..word.len() - 3])
+    } else if word.len() > 3 && word.ends_with('s') && !word.ends_with("ss") && word.is_ascii() {
         word[..word.len() - 1].to_string()
     } else {
         word.to_string()
@@ -132,12 +136,7 @@ pub fn terms(text: &str) -> Vec<String> {
 /// a link means the web, code means code
 fn entity_terms(text: &str) -> Vec<String> {
     let mut out = Vec::new();
-    let has_file = text.split_whitespace().any(|token| {
-        let token = token.trim_matches(|c: char| !c.is_alphanumeric() && c != '.' && c != '/' && c != '\\');
-        token.contains('/') || token.contains('\\') || token.rsplit_once('.').is_some_and(|(stem, ext)| {
-            !stem.is_empty() && (1..=5).contains(&ext.len()) && ext.chars().all(|c| c.is_ascii_alphanumeric()) && !ext.chars().all(|c| c.is_ascii_digit())
-        })
-    });
+    let has_file = text.split_whitespace().any(is_file_token);
     if has_file && !text.contains("://") {
         out.push("file".to_string());
     }
@@ -148,6 +147,19 @@ fn entity_terms(text: &str) -> Vec<String> {
         out.push("code".to_string());
     }
     out
+}
+
+/// A file name or path ("notes.txt", "src/main.rs")
+fn is_file_token(token: &str) -> bool {
+    let token = token.trim_matches(|c: char| !c.is_alphanumeric() && c != '.' && c != '/' && c != '\\');
+    token.contains('/') || token.contains('\\') || token.rsplit_once('.').is_some_and(|(stem, ext)| {
+        !stem.is_empty() && (1..=5).contains(&ext.len()) && ext.chars().all(|c| c.is_ascii_alphanumeric()) && !ext.chars().all(|c| c.is_ascii_digit())
+    })
+}
+
+/// A link ("https://example.com", "www.example.com")
+fn is_link_token(token: &str) -> bool {
+    token.contains("://") || token.starts_with("www.")
 }
 
 /// Whether the message asks for something to be done (a verb like read, run or create, or a
@@ -318,6 +330,29 @@ fn phrase_in(query: &[String], phrase: &[String]) -> bool {
     })
 }
 
+/// Query terms of one message. File names and links count as what they are ("file", "web"),
+/// not by their words: "notes.txt" is a file, not a note.
+fn message_terms(message: &str) -> Vec<String> {
+    let plain: Vec<&str> = message.split_whitespace().filter(|t| !is_file_token(t) && !is_link_token(t)).collect();
+    let mut query = terms(&plain.join(" "));
+    query.extend(entity_terms(message));
+    query
+}
+
+/// Query terms of a message. A short message that asks again ("phir se", "again"), or points
+/// back and asks for something ("isko chalao"), borrows the previous one; "thanks, that's
+/// all" does not.
+fn query_terms(message: &str, previous: Option<&str>) -> Vec<String> {
+    let mut query = message_terms(message);
+    let words = raw_words(message);
+    let repeats = words.iter().any(|w| WORDS.repeat.contains(w));
+    let points = words.iter().any(|w| WORDS.followup.contains(w)) && is_actionable(message);
+    if let Some(previous) = previous.filter(|_| query.len() <= 3 && (repeats || points)) {
+        query.extend(message_terms(previous));
+    }
+    query
+}
+
 /// How well one tool matched the query terms
 struct Scored {
     score: f64,
@@ -377,7 +412,9 @@ fn score_catalog(catalog: &[CatalogEntry], query: &[String]) -> Vec<Scored> {
                 scored.score += 2.5;
                 scored.decisive = true;
             }
-            if !entry.id_terms.is_empty() && phrase_in(query, &entry.id_terms) {
+            // Naming the tool is decisive, except a one-word id said with nothing else that
+            // fits the tool ("fetch me a coffee", "that git was rude")
+            if !entry.id_terms.is_empty() && phrase_in(query, &entry.id_terms) && (entry.id_terms.len() > 1 || scored.matched.len() > 1) {
                 scored.decisive = true;
             }
             scored
@@ -484,17 +521,11 @@ impl ToolSearch {
     /// Tools worth showing with this message. `previous` is the user's previous message, used
     /// when this one is a short follow-up. Strong evidence (the tool named, a trigger phrase,
     /// or two separate matches on its name, function names or trigger words) earns a card; a
-    /// match on the tool's name, or two weaker matches, earn a title; one lone word earns
-    /// nothing.
+    /// match on the tool's name, two weaker matches, or one good match in a message that asks
+    /// for something earn a title; one lone word in a plain message earns nothing.
     pub fn suggest(catalog: &[CatalogEntry], message: &str, previous: Option<&str>) -> Vec<Candidate> {
-        let mut query = terms(message);
-        query.extend(entity_terms(message));
-        // A short message that points back ("isko chalao", "phir se") borrows the previous one
-        let points_back = query.len() <= 3 && raw_words(message).iter().any(|w| WORDS.followup.contains(w));
-        if let Some(previous) = previous.filter(|_| points_back) {
-            query.extend(terms(previous));
-            query.extend(entity_terms(previous));
-        }
+        let query = query_terms(message, previous);
+        let actionable = is_actionable(message);
         let mut candidates: Vec<Candidate> = score_catalog(catalog, &query)
             .into_iter()
             .zip(catalog)
@@ -504,7 +535,7 @@ impl ToolSearch {
                 // earns nothing
                 let level = if scored.decisive || scored.good >= 2 {
                     Level::Card
-                } else if scored.named || scored.matched.len() >= 2 {
+                } else if scored.named || scored.matched.len() >= 2 || (actionable && scored.good >= 1) {
                     Level::Title
                 } else {
                     return None;
@@ -533,6 +564,29 @@ impl ToolSearch {
             }
         });
         candidates
+    }
+
+    /// The evidence behind the suggestions, for every tool with any match (for calibrating the
+    /// levels against a labelled routing set)
+    pub fn evidence(catalog: &[CatalogEntry], message: &str, previous: Option<&str>) -> Value {
+        let query = query_terms(message, previous);
+        Value::Array(
+            score_catalog(catalog, &query)
+                .into_iter()
+                .zip(catalog)
+                .filter(|(scored, _)| !scored.matched.is_empty() || scored.decisive)
+                .map(|(scored, entry)| {
+                    json!({
+                        "id": entry.id,
+                        "score": (scored.score * 100.0).round() / 100.0,
+                        "matched": scored.matched,
+                        "good": scored.good,
+                        "named": scored.named,
+                        "decisive": scored.decisive,
+                    })
+                })
+                .collect(),
+        )
     }
 
     /// The `<tools_hint>` lines for the candidates: cards first, then titles
@@ -819,6 +873,25 @@ mod tests {
     fn test_unrelated_short_message_does_not_borrow_the_previous_one() {
         assert!(ToolSearch::suggest(&catalog(), "2+2 kitna hota hai?", Some("run this python code")).is_empty());
         assert_eq!(ToolSearch::suggest(&catalog(), "isko phir chalao", Some("run this python code"))[0].id, "code-interpreter");
+    }
+
+    #[test]
+    fn test_closing_words_do_not_borrow_the_previous_message() {
+        assert!(ToolSearch::suggest(&catalog(), "thanks, that's all", Some("read notes.txt")).is_empty());
+        assert_eq!(ToolSearch::suggest(&catalog(), "again please", Some("read notes.txt"))[0].id, "filesystem");
+    }
+
+    #[test]
+    fn test_file_names_count_as_files_not_by_their_words() {
+        assert!(message_terms("read notes.txt").iter().all(|t| t != "note"));
+        assert_eq!(terms("vulnerabilities"), ["vulnerability"]);
+    }
+
+    #[test]
+    fn test_a_one_word_id_alone_is_only_a_title() {
+        let catalog = vec![entry("fetch", "fetch", "Web content fetching", &[], &["fetch_url"])];
+        let c = ToolSearch::suggest(&catalog, "that fetch was rude", None);
+        assert!(c.iter().all(|c| c.level == Level::Title));
     }
 
     #[test]

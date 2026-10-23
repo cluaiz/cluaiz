@@ -45,7 +45,38 @@
     "launch": ["run"],
     "lookup": ["find", "search"],
     "directory": ["folder"],
-    "dir": ["folder"]
+    "dir": ["folder"],
+    "save": ["write"],
+    "running": ["run"],
+    "executing": ["run"],
+    "readme": ["file"],
+    "contain": ["read"],
+    "contains": ["read"],
+    "inside": ["read"],
+    "reviewer": ["review"],
+    "creator": ["create"],
+    "repo": ["repository"],
+    "inspection": ["inspect"],
+    "website": ["web"],
+    "webpage": ["web", "page"],
+    "samjhao": ["explain"],
+    "samjha": ["explain"],
+    "समझाओ": ["explain"],
+    "seekhna": ["learn"],
+    "seekho": ["learn"],
+    "sikhna": ["learn"],
+    "सीखना": ["learn"],
+    "सीखो": ["learn"],
+    "रिव्यू": ["review"],
+    "पायथन": ["python"],
+    "फाइलें": ["file"],
+    "वेबसाइट": ["web"],
+    "गिट": ["git"],
+    "डिफ": ["diff"],
+    "क्लुऐज़": ["cluaiz"],
+    "क्लुएज़": ["cluaiz"],
+    "क्लूएज़": ["cluaiz"],
+    "क्लुआइज़": ["cluaiz"]
   },
   "stopwords": [
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "to", "of", "in", "on", "at",
@@ -60,12 +91,12 @@
     "abhi", "phir", "bhai", "yaar", "ji", "haan", "nahi", "need", "needs", "without", "use", "using", "used", "tell",
     "give", "get", "want", "like", "also", "only", "more", "very", "much", "many", "than", "them", "let", "lets",
     "know", "kitna", "kitni", "kitne", "hota", "hoti", "hote", "raha", "rahi", "rahe", "sakta", "sakti", "chahiye", "wala",
-    "wali", "wale"
+    "wali", "wale", "s", "t", "d", "ll", "re", "ve", "m"
   ],
   "followup": [
     "isko", "ise", "isse", "iska", "iski", "usko", "use", "uska", "ye", "yeh", "wo", "woh", "it", "this",
-    "that", "again", "phir", "dobara", "wahi", "same", "above", "upar", "previous", "pichla", "pichhla", "last", "इसे", "इसको",
-    "फिर", "दोबारा"
+    "that", "above", "upar", "previous", "pichla", "pichhla", "last", "इसे", "इसको"
   ],
+  "repeat": ["again", "phir", "dobara", "wahi", "same", "फिर", "दोबारा"],
   "actions": ["read", "write", "open", "list", "show", "find", "search", "create", "make", "delete", "remove", "run", "fix", "edit", "install", "fetch", "download", "check", "calculate", "compute", "commit", "save", "rename", "move", "copy"]
 }

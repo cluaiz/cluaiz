@@ -362,7 +362,7 @@ In a chat with `session_id`, a tool loaded with `load_tool` stays in the convers
 
 **Context report.** A streaming response sends a chunk with `context.tools` before the first token: the suggested tools (id, `card` or `title`, score, matched words, estimated load cost), whether the meta-tools were offered, and the estimated tokens of the hint. The last chunk (with `engine`) and the non-streaming response carry `context_report.tools` with the same data plus `events`: every `load_tool`, `unload_tool` and `find_tools` call with its target and result size. Token numbers in this report are estimates from characters.
 
-**Dry run.** `POST /v1/tools/discover` with `{"query": "...", "previous": "..."}` returns what would be suggested for a message, without loading or starting anything.
+**Dry run.** `POST /v1/tools/discover` with `{"query": "...", "previous": "..."}` returns what would be suggested for a message, without loading or starting anything. With `"explain": true` it also returns `evidence`: for every tool with any match, its score, matched words and whether the match was on its name, a function or trigger (`good`), or decisive. A file name or link in the message counts as a file or a web address, not by its words ("notes.txt" is a file, not a note).
 
 ---
 
