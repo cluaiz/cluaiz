@@ -313,6 +313,9 @@ pub(crate) fn stream_tokens_with_media(
         } else {
             // `cached` = the tokens the KV cache holds (the previous generation's result)
             let mut cached = last_prefilled_tokens.to_vec();
+            let cached_before = cached.len();
+            // Tokens the prompt shares with the cache from the start (before any reuse rule)
+            let mut common_prefix = 0usize;
             let n_past = if is_pivot {
                 // A continuation is appended after what the context already holds; when it does not
                 // fit, the oldest tokens after BOS are shifted out first (llama-server's context shift)
@@ -365,6 +368,7 @@ pub(crate) fn stream_tokens_with_media(
                     .zip(&prompt_tokens)
                     .take_while(|(a, b)| a == b)
                     .count();
+                common_prefix = n_past;
                 // Moving chunks keeps KV that was computed with the text before it, which is
                 // right only when that text was history dropped to fit. After an edit such as
                 // unloading a tool, the text after it must be computed again, or the removed
@@ -419,6 +423,21 @@ pub(crate) fn stream_tokens_with_media(
                 n_past
             };
             report.cache_n = n_past;
+            // Why the tokens after the cache are processed (for the context report)
+            report.cause = if is_pivot {
+                if report.shifted_tokens > 0 { "shift" } else { "append" }
+            } else if report.dropped_messages > 0 {
+                "history_drop"
+            } else if cached_before == 0 {
+                "cold"
+            } else if n_past + 1 < common_prefix.min(prompt_tokens.len()) {
+                "restart"
+            } else if common_prefix >= cached_before {
+                "append"
+            } else {
+                report.edit_at = Some(common_prefix);
+                "edit"
+            };
             let new_tokens = if is_pivot {
                 prompt_tokens.clone()
             } else {
@@ -493,6 +512,7 @@ pub(crate) fn stream_tokens_with_media(
             (cached, n_cur)
         };
         report.prompt_tokens = n_cur.max(0) as usize;
+        report.processed_tokens = report.prompt_tokens.saturating_sub(report.cache_n);
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(
             dna,

@@ -185,12 +185,15 @@ What happened is reported in the closing `engine.context` object (and `usage.pro
   "truncated": true,
   "stop": "eos",
   "kv_reuse": "chunk",
-  "reused_chunk_tokens": 3975
+  "reused_chunk_tokens": 3975,
+  "processed_tokens": 140,
+  "cause": "history_drop",
+  "edit_at": null
 }
 }
 ```
 
-`cache_n` = prompt tokens reused from the KV cache (`reused_chunk_tokens` of them by moving shared chunks, `kv_reuse: "chunk"`); `truncated` = the context cut the history or the answer (llama-server's field); `stop` = `eos`, `limit` (max_tokens or the context; `finish_reason: "length"`), `cancel` or `error`.
+`cache_n` = prompt tokens reused from the KV cache (`reused_chunk_tokens` of them by moving shared chunks, `kv_reuse: "chunk"`); `processed_tokens` = prompt tokens computed for this request, and `cause` says why: `cold` (nothing cached), `append` (the prompt continues the cache), `edit` (the prompt differs inside the cache from position `edit_at`, e.g. after an unload or a compaction), `history_drop` (old turns dropped to fit), `shift` (a tool-step continuation shifted the context), `restart` (sliding-window or recurrent memory could not be cut at the change) or `media`; `truncated` = the context cut the history or the answer (llama-server's field); `stop` = `eos`, `limit` (max_tokens or the context; `finish_reason: "length"`), `cancel` or `error`.
 
 ---
 
@@ -224,7 +227,7 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 2. Results of older tool steps become a short placeholder, such as `[Result of read_text_file cleared to save context (412 tokens).]`. The newest 3 steps stay whole.
 3. A cleared `load_tool` result unloads that tool: the note says so, and the tool can be suggested and loaded again.
 
-A compaction happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
+A compaction frees enough to bring the history down to `compact_to_pct` (60%) of the room, and happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
 
 ---
 

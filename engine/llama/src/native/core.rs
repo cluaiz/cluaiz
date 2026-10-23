@@ -68,6 +68,15 @@ pub struct ContextReport {
     pub kv_reuse: &'static str,
     /// Prompt tokens kept by moving shared chunks (part of `cache_n`)
     pub reused_chunk_tokens: usize,
+    /// Prompt tokens processed for this request (`prompt_tokens - cache_n`)
+    pub processed_tokens: usize,
+    /// Why they were processed: "cold" (nothing cached), "append" (the prompt continues the
+    /// cache), "edit" (the prompt differs inside the cache from `edit_at`), "history_drop" (old
+    /// turns dropped to fit), "shift" (a continuation shifted the context), "restart" (the cache
+    /// could not be cut at the change: sliding-window or recurrent memory), "media"
+    pub cause: &'static str,
+    /// First prompt position that differs from the cache (cause "edit")
+    pub edit_at: Option<usize>,
 }
 
 impl ContextReport {

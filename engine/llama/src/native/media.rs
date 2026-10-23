@@ -601,6 +601,7 @@ impl MediaInput {
             n_ctx,
             stop: "eos",
             kv_reuse: "prefix",
+            cause: "media",
             ..Default::default()
         };
         // Same answer room as text requests: max_tokens, at most a quarter of the context
