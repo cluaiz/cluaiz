@@ -1,8 +1,9 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
+use super::components::install_component_response;
 
 // ─── GET /v1/plugins/list ──────────────────────────────────────────────
 pub async fn list_plugins(State(_state): State<Arc<AppState>>) -> Json<Value> {
@@ -21,13 +22,8 @@ pub struct InstallPluginPayload {
 pub async fn install_plugin(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallPluginPayload>
-) -> Json<Value> {
-    let plugin_name = payload.plugin_name.clone();
-    tokio::spawn(async move {
-        let _ = ToolsInstaller::install_component("plugin", &plugin_name).await;
-    });
-
-    Json(json!({"status": "success", "message": format!("Plugin '{}' installation queued natively in Engine.", payload.plugin_name)}))
+) -> (StatusCode, Json<Value>) {
+    install_component_response("plugin", payload.plugin_name).await
 }
 
 // ─── DELETE /v1/plugins/remove ─────────────────────────────────────────

@@ -1,7 +1,7 @@
-use axum::{Json, extract::{State, Query}};
+use axum::{Json, extract::{State, Query}, http::StatusCode};
 use std::sync::Arc;
 use crate::state::AppState;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let env = cluaiz_core::EnvironmentManager::current();
@@ -95,8 +95,44 @@ pub async fn list_components(State(_state): State<Arc<AppState>>) -> Json<Value>
         rich_map.insert(comp_type.to_string(), serde_json::Value::Array(rich_items));
     }
     results.insert("rich".to_string(), serde_json::Value::Object(rich_map));
-    
+
     Json(serde_json::Value::Object(results))
+}
+
+/// Installs a registry component and reports the installer's real outcome.
+/// The install runs on its own task, so a client that disconnects mid-download
+/// does not abort it and leave a half-extracted package behind.
+pub(crate) async fn install_component_response(component_type: &'static str, name: String) -> (StatusCode, Json<Value>) {
+    if name.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"status": "error", "message": format!("A {} name is required.", component_type)})),
+        );
+    }
+
+    let task_name = name.clone();
+    let outcome = tokio::spawn(async move {
+        cluaiz_agents::installer::ToolsInstaller::install_component(component_type, &task_name).await
+    })
+    .await;
+
+    match outcome {
+        Ok(Ok(())) => (
+            StatusCode::OK,
+            Json(json!({"status": "success", "message": format!("{} '{}' installed.", component_type, name)})),
+        ),
+        Ok(Err(e)) => {
+            tracing::warn!("Install of {} '{}' failed: {}", component_type, name, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "error", "message": format!("Failed to install {} '{}': {}", component_type, name, e)})),
+            )
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"status": "error", "message": format!("Install task for {} '{}' stopped unexpectedly: {}", component_type, name, e)})),
+        ),
+    }
 }
 
 #[derive(serde::Deserialize)]

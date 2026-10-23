@@ -1,8 +1,9 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
+use super::components::install_component_response;
 
 pub async fn list_mcp(State(_state): State<Arc<AppState>>) -> Json<Value> {
     match ToolsInstaller::list_installed_components("mcp") {
@@ -19,12 +20,8 @@ pub struct InstallMcpPayload {
 pub async fn install_mcp(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallMcpPayload>
-) -> Json<Value> {
-    let mcp_name = payload.mcp_name.clone();
-    tokio::spawn(async move {
-        let _ = ToolsInstaller::install_component("mcp", &mcp_name).await;
-    });
-    Json(json!({"status": "success", "message": format!("MCP server '{}' installation queued.", payload.mcp_name)}))
+) -> (StatusCode, Json<Value>) {
+    install_component_response("mcp", payload.mcp_name).await
 }
 
 pub async fn remove_mcp(

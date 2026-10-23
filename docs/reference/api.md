@@ -404,20 +404,26 @@ For a deeper dive into how this relates to model loading and multimodal routing,
     ```
 
 ### `POST /v1/skills/install`
-*   **Description:** Installs a new sandboxed WebAssembly skill.
+*   **Description:** Downloads and installs a skill from the Cluaiz Tools registry, then refreshes the tools registry. The response is sent after the install finishes. `POST /v1/plugins/install` (`plugin_name`) and `POST /v1/mcp/install` (`mcp_name`) use the same contract.
 *   **Request Format:** `POST /v1/skills/install`
-*   **Request Payload:**
+*   **Request Payload:** (`name@version` pins a version; otherwise the registry's latest version is used)
     ```json
     {
-      "skill_name": "web_search",
-      "source_url": "https://cluaiz.com/skills/web_search.wasm"
+      "skill_name": "code-reviewer"
     }
     ```
 *   **Response Schema (200 OK):**
     ```json
     {
       "status": "success",
-      "message": "WASM Skill installed"
+      "message": "skill 'code-reviewer' installed."
+    }
+    ```
+*   **Errors:** `400` when the name is empty. `500` when the install fails (unknown version, download or extraction failure), with the installer's reason:
+    ```json
+    {
+      "status": "error",
+      "message": "Failed to install skill 'code-reviewer@9.9.9': Version '9.9.9' not found for 'code-reviewer'. Available versions in Cluaiz Tools: [\"1.0.0\"]"
     }
     ```
 
