@@ -135,6 +135,62 @@ pub(crate) async fn install_component_response(component_type: &'static str, nam
     }
 }
 
+fn error_response(status: StatusCode, message: String) -> (StatusCode, Json<Value>) {
+    (status, Json(json!({"status": "error", "message": message})))
+}
+
+/// Rejects an invalid or not-installed component id with 400 / 404.
+fn check_installed(component_type: &str, name: &str) -> Result<(), (StatusCode, Json<Value>)> {
+    use cluaiz_agents::installer::ToolsInstaller;
+    if !ToolsInstaller::is_valid_component_id(name) {
+        return Err(error_response(StatusCode::BAD_REQUEST, format!("Invalid {} name '{}'.", component_type, name)));
+    }
+    if !ToolsInstaller::is_installed(component_type, name) {
+        return Err(error_response(StatusCode::NOT_FOUND, format!("{} '{}' is not installed.", component_type, name)));
+    }
+    Ok(())
+}
+
+/// Uninstalls a component and reports the real outcome.
+pub(crate) async fn remove_component_response(component_type: &'static str, name: String) -> (StatusCode, Json<Value>) {
+    if let Err(rejected) = check_installed(component_type, &name) {
+        return rejected;
+    }
+    match cluaiz_agents::installer::ToolsInstaller::remove_component(component_type, &name).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(json!({"status": "success", "message": format!("{} '{}' removed.", component_type, name)})),
+        ),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to remove {} '{}': {}", component_type, name, e)),
+    }
+}
+
+/// Lists installed components of one type for the `/cache` GET endpoints.
+pub(crate) fn list_cache_response(component_type: &str) -> (StatusCode, Json<Value>) {
+    match cluaiz_agents::installer::ToolsInstaller::list_component_cache(component_type) {
+        Ok(report) => (StatusCode::OK, Json(json!({"status": "success", "message": report}))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to list {} cache: {}", component_type, e)),
+    }
+}
+
+/// Clears cached files of one component (or all of a type) without uninstalling anything.
+pub(crate) fn clear_cache_response(component_type: &str, target: Option<String>, all: bool) -> (StatusCode, Json<Value>) {
+    if let Some(name) = &target {
+        if let Err(rejected) = check_installed(component_type, name) {
+            return rejected;
+        }
+    }
+    match cluaiz_agents::installer::ToolsInstaller::clear_component_cache(component_type, target, all, all) {
+        Ok(report) => (StatusCode::OK, Json(json!({
+            "status": "success",
+            "message": format!("Removed {} cached files.", report.files),
+            "files_removed": report.files,
+            "freed_bytes": report.bytes
+        }))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to clear {} cache: {}", component_type, e)),
+    }
+}
+
 #[derive(serde::Deserialize)]
 pub struct SettingsQuery {
     pub component_type: String,
@@ -164,15 +220,12 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
     }))
 }
 
-pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> Json<Value> {
+pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload): Json<Value>) -> (StatusCode, Json<Value>) {
     let comp_id = payload.get("component_id").and_then(|v| v.as_str()).unwrap_or("").trim();
     let settings = payload.get("settings").and_then(|v| v.as_object());
 
     if comp_id.is_empty() || settings.is_none() {
-        return Json(serde_json::json!({
-            "status": "error",
-            "message": "Missing component_id or settings"
-        }));
+        return error_response(StatusCode::BAD_REQUEST, "Missing component_id or settings".to_string());
     }
 
     let settings_map = settings.unwrap();
@@ -181,10 +234,7 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
     if let Some(enabled_val) = settings_map.get("enabled").and_then(|v| v.as_bool()) {
         if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_enabled(comp_id, enabled_val) {
             tracing::error!("Failed to set tool enabled for '{}': {}", comp_id, e);
-            return Json(serde_json::json!({
-                "status": "error",
-                "message": format!("Failed to update enabled status for '{}': {}", comp_id, e)
-            }));
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update enabled status for '{}': {}", comp_id, e));
         }
     }
 
@@ -193,16 +243,10 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
         if let Some(mode) = cluaiz_agents::SecurityMode::from_raw(mode_str) {
             if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_security_mode(comp_id, mode) {
                 tracing::error!("Failed to set security_mode for '{}': {}", comp_id, e);
-                return Json(serde_json::json!({
-                    "status": "error",
-                    "message": format!("Failed to update security_mode for '{}': {}", comp_id, e)
-                }));
+                return error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update security_mode for '{}': {}", comp_id, e));
             }
         } else {
-            return Json(serde_json::json!({
-                "status": "error",
-                "message": format!("Invalid security_mode value: '{}'", mode_str)
-            }));
+            return error_response(StatusCode::BAD_REQUEST, format!("Invalid security_mode value: '{}'", mode_str));
         }
     }
 
@@ -211,23 +255,17 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
         if let Some(exec_mode) = cluaiz_agents::ExecutionMode::from_raw(exec_str) {
             if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_execution_mode(comp_id, exec_mode) {
                 tracing::error!("Failed to set execution_mode for '{}': {}", comp_id, e);
-                return Json(serde_json::json!({
-                    "status": "error",
-                    "message": format!("Failed to update execution_mode for '{}': {}", comp_id, e)
-                }));
+                return error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update execution_mode for '{}': {}", comp_id, e));
             }
         } else {
-            return Json(serde_json::json!({
-                "status": "error",
-                "message": format!("Invalid execution_mode value: '{}'", exec_str)
-            }));
+            return error_response(StatusCode::BAD_REQUEST, format!("Invalid execution_mode value: '{}'", exec_str));
         }
     }
 
-    Json(serde_json::json!({
+    (StatusCode::OK, Json(json!({
         "status": "success",
         "message": format!("Settings for component '{}' updated successfully", comp_id)
-    }))
+    })))
 }
 
 /// Folder of an installed component: `~/.cluaiz/tools/<type>s/<id>`, falling back to the
@@ -296,12 +334,12 @@ pub struct GetFileQuery {
     pub file_path: Option<String>,
 }
 
-pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
+pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> (StatusCode, Json<Value>) {
     let comp_type = query.component_type.trim_end_matches('s');
     let comp_dir = resolve_component_dir(comp_type, &query.component_id);
 
     if !comp_dir.exists() {
-        return Json(serde_json::json!({"status": "error", "message": "Component directory not found"}));
+        return error_response(StatusCode::NOT_FOUND, "Component directory not found".to_string());
     }
 
     fn build_tree(dir: &std::path::Path, base: &std::path::Path) -> Vec<Value> {
@@ -345,25 +383,25 @@ pub async fn get_files(State(_state): State<Arc<AppState>>, Query(query): Query<
         }
     }
 
-    Json(serde_json::json!({
+    (StatusCode::OK, Json(json!({
         "status": "success",
         "files": files,
         "cache": {
             "temp_bytes": temp_cache_size,
             "all_bytes": all_cache_size
         }
-    }))
+    })))
 }
 
-pub async fn get_specific_file(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
+pub async fn get_specific_file(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> (StatusCode, Json<Value>) {
     open_component_in_editor_impl(_state, query).await
 }
 
-pub async fn open_component_in_editor(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> Json<Value> {
+pub async fn open_component_in_editor(State(_state): State<Arc<AppState>>, Query(query): Query<GetFileQuery>) -> (StatusCode, Json<Value>) {
     open_component_in_editor_impl(_state, query).await
 }
 
-async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuery) -> Json<Value> {
+async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuery) -> (StatusCode, Json<Value>) {
     let env = cluaiz_core::EnvironmentManager::current();
     let comp_type = query.component_type.trim_end_matches('s');
     
@@ -406,11 +444,13 @@ async fn open_component_in_editor_impl(_state: Arc<AppState>, query: GetFileQuer
 
     let target_file: std::path::PathBuf = match file_path {
         Some(p) if p.exists() => p,
-        _ => return Json(serde_json::json!({"status": "error", "message": "File not found"})),
+        _ => return error_response(StatusCode::NOT_FOUND, "File not found".to_string()),
     };
 
-    let content = std::fs::read_to_string(&target_file).unwrap_or_default();
-    Json(serde_json::json!({"status": "success", "content": content}))
+    match std::fs::read_to_string(&target_file) {
+        Ok(content) => (StatusCode::OK, Json(json!({"status": "success", "content": content}))),
+        Err(e) => error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read file: {}", e)),
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -420,20 +460,8 @@ pub struct ClearCachePayload {
     pub all: bool,
 }
 
-pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> Json<Value> {
+pub async fn clear_cache(State(_state): State<Arc<AppState>>, Json(payload): Json<ClearCachePayload>) -> (StatusCode, Json<Value>) {
     let comp_type = payload.component_type.trim_end_matches('s');
-    let target = if payload.component_id.is_empty() || payload.all {
-        None
-    } else {
-        Some(payload.component_id)
-    };
-    match cluaiz_agents::installer::ToolsInstaller::clear_component_cache(
-        comp_type,
-        target,
-        payload.all,
-        payload.all,
-    ) {
-        Ok(count) => Json(serde_json::json!({"status": "success", "message": format!("Cleared {} items from cache", count)})),
-        Err(e) => Json(serde_json::json!({"status": "error", "message": e.to_string()})),
-    }
+    let target = (!payload.component_id.is_empty()).then_some(payload.component_id);
+    clear_cache_response(comp_type, target, payload.all)
 }

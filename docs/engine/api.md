@@ -32,7 +32,7 @@ The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interfa
 ### 5. Skills & Plugins Hub Management
 *   **`GET /v1/skills/list`**: Returns all installed native/WASM skills across domains.
 *   **`POST /v1/skills/install`**: Downloads and installs a skill from the Cluaiz Tools registry. Responds after the install finishes: `200` on success, `400` for an empty name, `500` with the installer's error message on failure. `/v1/plugins/install` and `/v1/mcp/install` follow the same contract.
-*   **`DELETE /v1/skills/remove`**: Natively unloads and wipes a skill.
-*   **`GET /v1/skills/cache` & `DELETE /v1/skills/cache`**: Manages the loaded skill binary cache.
+*   **`DELETE /v1/skills/remove`**: Uninstalls a skill. `404` when it is not installed.
+*   **`GET /v1/skills/cache` & `DELETE /v1/skills/cache`**: Lists installed skills / removes files from each skill's `.cache` folder without uninstalling it.
 *   **`GET /v1/plugins/list`**: Returns all installed WASM and Native plugins.
 *   **`POST /v1/plugins/install`**: Downloads and sets up a plugin from the registry.

@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
-use super::components::install_component_response;
+use super::components::{clear_cache_response, install_component_response, list_cache_response, remove_component_response};
 
 // ─── GET /v1/plugins/list ──────────────────────────────────────────────
 pub async fn list_plugins(State(_state): State<Arc<AppState>>) -> Json<Value> {
@@ -30,32 +30,22 @@ pub async fn install_plugin(
 pub async fn remove_plugin(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallPluginPayload>
-) -> Json<Value> {
-    let plugin_name = payload.plugin_name.clone();
-    match ToolsInstaller::remove_component("plugin", &plugin_name).await {
-        Ok(_) => Json(json!({"status": "success", "message": format!("Plugin '{}' removed natively.", plugin_name)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove plugin: {}", e)}))
-    }
+) -> (StatusCode, Json<Value>) {
+    remove_component_response("plugin", payload.plugin_name).await
 }
 
 // ─── GET /v1/plugins/cache ─────────────────────────────────────────────
-pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    match ToolsInstaller::list_component_cache("plugin") {
-        Ok(report) => Json(json!({"status": "success", "message": report})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list plugin cache: {}", e)}))
-    }
+pub async fn list_cache(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    list_cache_response("plugin")
 }
 
 // ─── DELETE /v1/plugins/cache ──────────────────────────────────────────
 pub async fn clear_cache(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallPluginPayload>
-) -> Json<Value> {
-    let plugin_name = payload.plugin_name.clone();
-    let target = if plugin_name == "all" || plugin_name.is_empty() { None } else { Some(plugin_name) };
-    match ToolsInstaller::clear_component_cache("plugin", target, true, true) {
-        Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} plugin caches.", wiped)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear plugin cache: {}", e)}))
-    }
+) -> (StatusCode, Json<Value>) {
+    let name = payload.plugin_name;
+    let target = (name != "all" && !name.is_empty()).then_some(name);
+    clear_cache_response("plugin", target, true)
 }
 

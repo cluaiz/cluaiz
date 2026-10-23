@@ -439,19 +439,24 @@ For a deeper dive into how this relates to model loading and multimodal routing,
 *   **Response Schema (200 OK):**
     ```json
     {
-      "status": "success"
+      "status": "success",
+      "message": "skill 'web_search' removed."
     }
     ```
+*   **Errors:** `400` for an empty name or a name that is not a single folder name, `404` when the skill is not installed, `500` when removal fails. `DELETE /v1/plugins/remove` (`plugin_name`) and `DELETE /v1/mcp/remove` (`mcp_name`) follow the same contract.
 
 ### `GET /v1/skills/cache` & `DELETE /v1/skills/cache`
-*   **Description:** Fetches or clears pre-computed KV-caches associated with sandboxed agents.
+*   **Description:** `GET` lists installed skills. `DELETE` removes cached files from each skill's `.cache` folder; installed skills are kept. `DELETE /v1/plugins/cache` and `DELETE /v1/mcp/cache` accept a name (or `"all"`) to target one component. `POST /api/components/cache` with `all: false` removes only temporary files (`temp_*`, `*.tmp`).
 *   **Response Schema (200 OK):**
     ```json
     {
       "status": "success",
-      "cleared_skills": 2
+      "message": "Removed 2 cached files.",
+      "files_removed": 2,
+      "freed_bytes": 30
     }
     ```
+*   **Errors:** `400` for an invalid name, `404` when a named component is not installed, `500` when a file cannot be removed.
 
 ---
 

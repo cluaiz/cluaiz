@@ -3,7 +3,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
-use super::components::install_component_response;
+use super::components::{clear_cache_response, install_component_response, list_cache_response, remove_component_response};
 
 pub async fn list_mcp(State(_state): State<Arc<AppState>>) -> Json<Value> {
     match ToolsInstaller::list_installed_components("mcp") {
@@ -27,33 +27,23 @@ pub async fn install_mcp(
 pub async fn remove_mcp(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallMcpPayload>
-) -> Json<Value> {
-    let mcp_name = payload.mcp_name.clone();
-    match ToolsInstaller::remove_component("mcp", &mcp_name).await {
-        Ok(_) => Json(json!({"status": "success", "message": format!("MCP server '{}' removed natively.", mcp_name)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to remove MCP server: {}", e)}))
-    }
+) -> (StatusCode, Json<Value>) {
+    remove_component_response("mcp", payload.mcp_name).await
 }
 
 // ─── GET /v1/mcp/cache ─────────────────────────────────────────────
-pub async fn list_cache(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    match ToolsInstaller::list_component_cache("mcp") {
-        Ok(report) => Json(json!({"status": "success", "message": report})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to list mcp cache: {}", e)}))
-    }
+pub async fn list_cache(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    list_cache_response("mcp")
 }
 
 // ─── DELETE /v1/mcp/cache ──────────────────────────────────────────
 pub async fn clear_cache(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallMcpPayload>
-) -> Json<Value> {
-    let mcp_name = payload.mcp_name.clone();
-    let target = if mcp_name == "all" || mcp_name.is_empty() { None } else { Some(mcp_name) };
-    match ToolsInstaller::clear_component_cache("mcp", target, true, true) {
-        Ok(wiped) => Json(json!({"status": "success", "message": format!("Successfully wiped {} MCP caches.", wiped)})),
-        Err(e) => Json(json!({"status": "error", "message": format!("Failed to clear MCP cache: {}", e)}))
-    }
+) -> (StatusCode, Json<Value>) {
+    let name = payload.mcp_name;
+    let target = (name != "all" && !name.is_empty()).then_some(name);
+    clear_cache_response("mcp", target, true)
 }
 
 // ─── POST /mcp & /v1/mcp/rpc (Native MCP Server Endpoint) ───────────

@@ -1,4 +1,4 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
@@ -116,24 +116,26 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
 pub async fn update_permission(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
     let mut schema = state.permission_schema.read().await.clone();
     schema.merge_patch(&payload);
     if let Err(e) = schema.save() {
         tracing::error!("❌ Failed to save permission schema to disk: {:?}", e);
-        return Json(json!({
+        // Report the settings still in effect, not the unsaved patch.
+        let current = state.permission_schema.read().await.clone();
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
             "status": "error",
             "message": format!("Failed to save permission schema: {}", e),
-            "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
-        }));
+            "permission": serde_json::to_value(&current).unwrap_or(json!({}))
+        })));
     }
     *state.permission_schema.write().await = schema.clone();
 
-    Json(json!({
+    (StatusCode::OK, Json(json!({
         "status": "success",
         "message": "permission.json successfully updated.",
         "permission": serde_json::to_value(&schema).unwrap_or(json!({}))
-    }))
+    })))
 }
 
 // ─── POST /v1/system/auth/token/generate ─────────────────────────────
@@ -178,19 +180,19 @@ pub struct RevokeTokenRequest {
 pub async fn revoke_auth_token(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<RevokeTokenRequest>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
     let mut schema = state.permission_schema.read().await.clone();
     let target = if let Some(idx) = payload.index {
         idx.to_string()
     } else if let Some(ref tok) = payload.token {
         tok.trim().to_string()
     } else {
-        return Json(json!({
+        return (StatusCode::BAD_REQUEST, Json(json!({
             "status": "error",
             "message": "Either 'token' or 'index' must be provided to revoke.",
             "tokens": schema.api_auth.tokens,
             "api_auth_required": schema.api_auth.required
-        }));
+        })));
     };
 
     match schema.api_auth.remove_token(&target) {
@@ -199,10 +201,18 @@ pub async fn revoke_auth_token(
                 schema.api_auth.required = false;
                 tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
             }
-            let _ = schema.save();
+            if let Err(e) = schema.save() {
+                let current = state.permission_schema.read().await.clone();
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                    "status": "error",
+                    "message": format!("Failed to save permission schema: {}", e),
+                    "tokens": current.api_auth.tokens,
+                    "api_auth_required": current.api_auth.required
+                })));
+            }
             *state.permission_schema.write().await = schema.clone();
 
-            Json(json!({
+            (StatusCode::OK, Json(json!({
                 "status": "success",
                 "message": if schema.api_auth.tokens.is_empty() {
                     "API token successfully revoked. API authentication automatically disabled as no keys remain."
@@ -212,15 +222,15 @@ pub async fn revoke_auth_token(
                 "revoked_token": removed,
                 "tokens": schema.api_auth.tokens,
                 "api_auth_required": schema.api_auth.required
-            }))
+            })))
         }
         Err(err) => {
-            Json(json!({
+            (StatusCode::BAD_REQUEST, Json(json!({
                 "status": "error",
                 "message": err,
                 "tokens": schema.api_auth.tokens,
                 "api_auth_required": schema.api_auth.required
-            }))
+            })))
         }
     }
 }

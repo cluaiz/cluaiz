@@ -11,6 +11,13 @@ const READ_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub struct ToolsInstaller;
 
+/// What a cache clear removed.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct CacheClearReport {
+    pub files: usize,
+    pub bytes: u64,
+}
+
 /// Backward-compatibility alias
 pub type ToolHubInstaller = ToolsInstaller;
 
@@ -330,18 +337,33 @@ impl ToolsInstaller {
         Ok(())
     }
 
-    pub async fn remove_component(component_type: &str, component_id: &str) -> Result<()> {
-        let env = EnvironmentManager::current();
-        let component_dir = match component_type {
-            "skill" => env.skills_dir().join(component_id),
-            "plugin" => env.plugins_dir().join(component_id),
-            "mcp" => env.mcp_dir().join(component_id),
-            _ => return Err(anyhow::anyhow!("Unknown tool component type: {}", component_type)),
-        };
-
-        if component_dir.exists() {
-            std::fs::remove_dir_all(&component_dir)?;
+    /// Installed folder of a component, or `None` for an unknown type or an invalid id.
+    fn component_dir(component_type: &str, component_id: &str) -> Option<PathBuf> {
+        if !Self::is_valid_component_id(component_id) {
+            return None;
         }
+        let env = EnvironmentManager::current();
+        match component_type {
+            "skill" => Some(env.skills_dir().join(component_id)),
+            "plugin" => Some(env.plugins_dir().join(component_id)),
+            "mcp" => Some(env.mcp_dir().join(component_id)),
+            _ => None,
+        }
+    }
+
+    /// True when the component's folder exists under its category folder.
+    pub fn is_installed(component_type: &str, component_id: &str) -> bool {
+        Self::component_dir(component_type, component_id).is_some_and(|dir| dir.is_dir())
+    }
+
+    pub async fn remove_component(component_type: &str, component_id: &str) -> Result<()> {
+        let component_dir = Self::component_dir(component_type, component_id).ok_or_else(|| {
+            anyhow::anyhow!("Invalid {} name '{}'.", component_type, component_id)
+        })?;
+        if !component_dir.is_dir() {
+            return Err(anyhow::anyhow!("{} '{}' is not installed.", component_type, component_id));
+        }
+        std::fs::remove_dir_all(&component_dir)?;
 
         if let Ok(mut reg) = ToolsRegistry::load() {
             let _ = reg.sync_with_filesystem();
@@ -379,19 +401,43 @@ impl ToolsInstaller {
         Ok(format!("Cached {} components: {:?}", component_type, items))
     }
 
-    pub fn clear_component_cache(component_type: &str, target: Option<String>, _purge_logs: bool, _purge_meta: bool) -> Result<usize> {
-        let items = Self::list_installed_components(component_type)?;
-        let mut count = 0;
+    /// Deletes cached files in each component's `.cache` folder (the same folder the
+    /// component file listing measures). `all` removes every cached file; otherwise only
+    /// temporary ones (`temp_*`, `*.tmp`). The installed component itself is never removed.
+    pub fn clear_component_cache(component_type: &str, target: Option<String>, all: bool, _force: bool) -> Result<CacheClearReport> {
+        let items = match target {
+            Some(id) => {
+                if !Self::is_installed(component_type, &id) {
+                    return Err(anyhow::anyhow!("{} '{}' is not installed.", component_type, id));
+                }
+                vec![id]
+            }
+            None => Self::list_installed_components(component_type)?,
+        };
+
+        let mut report = CacheClearReport::default();
         for item in items {
-            if let Some(ref t) = target {
-                if &item != t {
+            let Some(cache_dir) = Self::component_dir(component_type, &item).map(|dir| dir.join(".cache")) else {
+                continue;
+            };
+            let Ok(entries) = std::fs::read_dir(&cache_dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let Ok(metadata) = entry.metadata() else { continue };
+                if !metadata.is_file() {
                     continue;
                 }
+                let name = entry.file_name().to_string_lossy().to_string();
+                if !all && !(name.starts_with("temp_") || name.ends_with(".tmp")) {
+                    continue;
+                }
+                std::fs::remove_file(entry.path())?;
+                report.files += 1;
+                report.bytes += metadata.len();
             }
-            let _ = Self::remove_component(component_type, &item);
-            count += 1;
         }
-        Ok(count)
+        Ok(report)
     }
 
     fn get_registry_url() -> Option<String> {

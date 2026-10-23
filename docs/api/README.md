@@ -84,6 +84,7 @@ The Explorer Model dropdown writes the installed ID into POST payloads, or into 
 * [**`GET/DELETE /v1/chat/memory`, `POST /v1/chat/memory/settings`, `DELETE /v1/chat/memory/{chat_id}`**](./inference/chat_memory.md) — Chat memory: each chat's KV cache saved to disk and restored when the chat continues.
 * [**`POST /v1/embeddings`**](./inference/embeddings.md) — High-dimensional vector generation with GGUF/ONNX routing.
 * [**`POST /v1/audio/speech`**](./inference/audio_speech.md) — Text-to-Speech (TTS) via Kokoro/Piper.
+* [**`POST /v1/audio/execute`**](./inference/audio_speech.md) — Shared speech task route: text `input_source` synthesizes speech, audio `input_source` is transcribed.
 * [**`GET /v1/audio/voices`**](./inference/audio_speech.md#which-voices-a-model-has) — Voices of a TTS model and the language each speaks.
 * [**`POST /v1/audio/transcriptions`**](./inference/audio_transcriptions.md) — Speech-to-Text (STT) via Whisper encoder/decoder.
 * [**`GET /v1/audio/languages`**](./inference/audio_transcriptions.md#which-languages-a-model-can-transcribe) — Languages an STT model can transcribe (for `language` / `languages`).
