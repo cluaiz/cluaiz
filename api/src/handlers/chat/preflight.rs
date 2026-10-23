@@ -503,37 +503,6 @@ impl PreparedChatContext {
         let reserve_tokens = if thinks { answer_reserve * 2 } else { answer_reserve };
         // Token counts from the loaded model's tokenizer (characters ÷ 3.5 when none is loaded)
         let count_tokens = |texts: &[&str]| context_plan::count(&state.host, texts);
-        // Compaction: when the rendered chat would use most of the room, the chat's ledger gives
-        // back old tool hints and old tool results (batched, at least clear_at_least tokens)
-        let mut compaction = None;
-        if let (Some(chat), Some(saved)) = (&ledger_chat, &ledger) {
-            if let Ok(plan) = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy) {
-                if plan.needs_compaction {
-                    let clear_at_least = (n_ctx_limit / 10).max(512);
-                    let over: usize = plan.dropped.iter().map(|d| d.tokens).sum();
-                    let count_one = |text: &str| context_plan::count(&state.host, &[text]).0[0];
-                    if let Some((compacted, report)) =
-                        context_plan::compact(saved, &rendered.earlier_keys, &count_one, clear_at_least, over, &policy)
-                    {
-                        tracing::info!(
-                            "🗜️ [Context] Compacted chat {}: {} tokens freed ({} tool hints, {} tool results)",
-                            chat, report.freed_tokens, report.blocks_removed, report.results_cleared
-                        );
-                        // A preview reports the compaction without making it
-                        if !request.preview {
-                            cluaiz_agents::ChatLedger::put(chat, compacted.clone());
-                        }
-                        if !report.unloaded_tools.is_empty() && !request.preview {
-                            cluaiz_agents::SessionToolManager::update_session_tools(chat, Vec::new(), report.unloaded_tools.clone());
-                            inline_tool_ids.retain(|id| !report.unloaded_tools.contains(id));
-                        }
-                        augmented_messages =
-                            context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode).messages;
-                        compaction = Some(report);
-                    }
-                }
-            }
-        }
         let conversation_texts: Vec<String> = augmented_messages.iter().map(|m| m.content.text_content()).collect();
         let count_started = std::time::Instant::now();
         let (conversation_counts, counted) =
@@ -673,52 +642,45 @@ impl PreparedChatContext {
         });
         let after_tools = std::time::Instant::now();
 
-        if !hint.is_empty() {
-            match augmented_messages.last_mut() {
-                Some(last) if last.role.eq_ignore_ascii_case("user") => context_plan::prepend_text(&mut last.content, &hint),
-                _ => tracing::warn!("⚠️ [ChatHandler] Last message is not the user's; tool hint left out"),
-            }
-        }
+        context_plan::inject(&mut augmented_messages, &hint, &system_tools);
 
-        if !system_tools.is_empty() {
-            if let Some(first_msg) = augmented_messages.first_mut() {
-                if first_msg.role.eq_ignore_ascii_case("system") {
-                    match &mut first_msg.content {
-                        MessageContent::Text(text) => {
-                            text.push_str("\n\n");
-                            text.push_str(&system_tools);
-                        }
-                        MessageContent::Array(parts) => {
-                            parts.push(super::types::ContentPart::Text {
-                                text: system_tools,
-                            })
+        // The plan of the final prompt. When the history uses most of the room, the chat's
+        // ledger gives back old tool hints and old tool results (batched, at least
+        // clear_at_least tokens) and the prompt is rendered again; the engine still drops the
+        // oldest turns when the history does not fit after that.
+        let mut plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+        let mut compaction = None;
+        if let (Some(chat), Some(saved), Ok(planned)) = (&ledger_chat, &ledger, &plan) {
+            if planned.needs_compaction {
+                let clear_at_least = (n_ctx_limit / 10).max(512);
+                // Down to compact_to_pct of the room, and at least what does not fit
+                let over: usize = planned.dropped.iter().map(|d| d.tokens).sum::<usize>().max(
+                    planned.used.saturating_sub(planned.available * policy.compact_to_pct as usize / 100),
+                );
+                let count_one = |text: &str| context_plan::count(&state.host, &[text]).0[0];
+                if let Some((compacted, report)) =
+                    context_plan::compact(saved, &rendered.earlier_keys, &count_one, clear_at_least, over, &policy)
+                {
+                    tracing::info!(
+                        "🗜️ [Context] Compacted chat {}: {} tokens freed ({} tool hints, {} tool results)",
+                        chat, report.freed_tokens, report.blocks_removed, report.results_cleared
+                    );
+                    // A preview reports the compaction without making it
+                    if !request.preview {
+                        cluaiz_agents::ChatLedger::put(chat, compacted.clone());
+                        if !report.unloaded_tools.is_empty() {
+                            cluaiz_agents::SessionToolManager::update_session_tools(chat, Vec::new(), report.unloaded_tools.clone());
                         }
                     }
-                } else {
-                    augmented_messages.insert(
-                        0,
-                        super::types::ExternalMessage {
-                            role: "system".to_string(),
-                            content: MessageContent::Text(system_tools),
-                        },
-                    );
+                    augmented_messages =
+                        context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode).messages;
+                    context_plan::inject(&mut augmented_messages, &hint, &system_tools);
+                    plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+                    compaction = Some(report);
                 }
-            } else {
-                augmented_messages.push(super::types::ExternalMessage {
-                    role: "system".to_string(),
-                    content: MessageContent::Text(system_tools),
-                });
             }
         }
-
-        // The plan of the final prompt, for the context report (the engine drops the oldest turns
-        // itself when the history does not fit)
-        let plan_report = context_plan::report(
-            &context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy),
-            history_mode,
-            &policy,
-            compaction.as_ref(),
-        );
+        let plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request

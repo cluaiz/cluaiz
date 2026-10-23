@@ -21,6 +21,7 @@ the answer, and what it did for each request. The plan itself is described in
 | `suggestions_cap_pct` | 5 | Most of the room tool suggestions may use |
 | `margin_pct` | 2 | Share of the context kept free for template tokens |
 | `compact_at_pct` | 85 | The chat is compacted when its history uses this share of the room |
+| `compact_to_pct` | 60 | A compaction frees enough to bring the history down to this share, so the next one is many turns away |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
 
@@ -32,7 +33,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85 } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60 } }
 ```
 
 ## POST /v1/context/settings

@@ -71,3 +71,33 @@ Results (2026-10-24, Qwen3-4B Q4_K_M, isolated 8011 server, 10 runs each):
 With chunk reuse the unloaded instruction keeps its effect: the answer stays French and is wrong
 ("La Terre est la plus grande planète…", where the clean answer is "Jupiter is the largest
 planet…"). That is why chunks are now moved only after the Engine dropped old turns to fit.
+
+# Long tool session and equality after compaction (`long_session.py`)
+
+LONG1: one chat of 24 turns on `n_ctx` 4096, each turn asks about a file and usually reads it
+with the filesystem tool, sent like the App sends it (`session_id`, plain-text history). KV3: a
+short chat with tool steps; the same request is compacted and answered on the cached prefix,
+then answered again on the compacted prompt from a clean KV. A control does the same without any
+edit, because llama.cpp's results can differ slightly with the batch shape.
+
+```bash
+CLUAIZ_MODEL=<model id> python test/context-runtime/long_session.py --url http://127.0.0.1:8011 --token <token> --turns 24 --n-ctx 4096
+```
+
+Results (2026-10-24, Qwen3-4B Q4_K_M, isolated 8011 server):
+
+| | First run (stop at the 512-token minimum) | With `compact_to_pct` 60 |
+| --- | --- | --- |
+| Context errors | 0 of 24 turns | 0 of 24 turns |
+| Compactions | 12 | 10 |
+| First turn the engine dropped old messages | 18 | 17 |
+| Answers | correct every turn | correct every turn |
+| KV3 compaction: incremental equals clean | no compaction (nothing left to compact at turn 24) | equal (1,600 tokens freed, edit at position 3) |
+| KV3 control (no edit): cached equals clean | differed in one word ("secret" / "गुप्त"), 3,880 cached tokens vs clean | equal (2,820 cached tokens) |
+
+The first run's no-edit difference shows that a long cached prompt and a clean prefill of the
+same prompt can give different greedy text on this GPU (different batch shapes), so KV3 compares
+against the control, not against an exact-match promise.
+
+After about 16 turns the history is mostly the client's own text (questions and answers), which
+compaction never changes, so the engine drops the oldest turns as before; no request failed.

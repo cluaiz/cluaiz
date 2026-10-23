@@ -83,7 +83,7 @@ pub struct ExternalChatRequest {
     #[serde(default)]
     pub history_mode: Option<String>,
     /// Planner fields for this request only (recent_turns_min, evidence_cap_pct,
-    /// suggestions_cap_pct, margin_pct, compact_at_pct); unknown or invalid ones are ignored
+    /// suggestions_cap_pct, margin_pct, compact_at_pct, compact_to_pct); unknown or invalid ones are ignored
     #[serde(default)]
     pub context_policy: Option<serde_json::Value>,
     /// Set by `POST /v1/chat/{id}/context/preview`: plan only, change nothing

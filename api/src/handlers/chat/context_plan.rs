@@ -94,6 +94,31 @@ pub fn render_history(
     rendered
 }
 
+/// Adds what the Engine puts into this request: the tool hint in front of the current user
+/// message, and the bound tools at the end of the system prompt (a system message is added when
+/// there is none)
+pub fn inject(messages: &mut Vec<ExternalMessage>, hint: &str, system_tools: &str) {
+    if !hint.is_empty() {
+        match messages.last_mut() {
+            Some(last) if last.role.eq_ignore_ascii_case("user") => prepend_text(&mut last.content, hint),
+            _ => tracing::warn!("⚠️ [ChatHandler] Last message is not the user's; tool hint left out"),
+        }
+    }
+    if system_tools.is_empty() {
+        return;
+    }
+    match messages.first_mut() {
+        Some(first) if first.role.eq_ignore_ascii_case("system") => match &mut first.content {
+            MessageContent::Text(text) => {
+                text.push_str("\n\n");
+                text.push_str(system_tools);
+            }
+            MessageContent::Array(parts) => parts.push(super::types::ContentPart::Text { text: system_tools.to_string() }),
+        },
+        _ => messages.insert(0, ExternalMessage { role: "system".to_string(), content: MessageContent::Text(system_tools.to_string()) }),
+    }
+}
+
 /// Puts `block` in front of a message's text
 pub fn prepend_text(content: &mut MessageContent, block: &str) {
     match content {
@@ -130,7 +155,7 @@ pub fn policy(overrides: Option<&serde_json::Value>) -> Policy {
 /// Percentages are 0–100; at most 50 recent turns are protected
 pub fn valid(policy: &Policy) -> bool {
     policy.recent_turns_min <= 50
-        && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct]
+        && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct, policy.compact_to_pct]
             .iter()
             .all(|pct| *pct <= 100)
 }
