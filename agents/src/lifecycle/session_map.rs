@@ -11,6 +11,10 @@ pub struct SessionToolBinding {
     ///  0 = Single-turn ephemeral (auto-unloaded after 1 response)
     ///  N = N-turns countdown (decrements each turn, auto-unloaded at 0)
     pub turns: i32,
+    /// Loaded by the model with `load_tool`: the tool stays in the conversation where it was
+    /// loaded (not in the system prompt)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub inline: bool,
 }
 
 pub static SESSION_TOOL_REGISTRY: LazyLock<RwLock<HashMap<String, Vec<SessionToolBinding>>>> =
@@ -58,6 +62,14 @@ impl SessionToolManager {
         }
 
         entry.clone()
+    }
+
+    /// Restores a chat's bindings saved on disk when RAM has none (after a restart)
+    pub fn restore_if_missing(session_id: &str, saved: Vec<SessionToolBinding>) {
+        let mut registry = SESSION_TOOL_REGISTRY.write().unwrap();
+        if !registry.contains_key(session_id) && !saved.is_empty() {
+            registry.insert(session_id.to_string(), saved);
+        }
     }
 
     /// Keeps a tool the model unloaded out of the suggestions for the next `answers` answers
