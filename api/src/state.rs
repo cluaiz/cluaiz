@@ -36,6 +36,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(host: Arc<EngineHost>) -> Self {
         let workspace = cluaiz_core::EnvironmentManager::current().local_dir.clone();
+        cluaiz_agents::ToolsEngine::set_workspace_dir(workspace.clone());
         Self {
             host,
             pending_permissions: Arc::new(RwLock::new(HashMap::new())),

@@ -11,9 +11,13 @@ pub mod registry;
 pub mod skills;
 pub mod telemetry;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, RwLock};
 use anyhow::Result;
 use serde_json::Value;
+
+/// Folder the App currently has open; set by the API whenever the workspace changes.
+static WORKSPACE_DIR: LazyLock<RwLock<Option<PathBuf>>> = LazyLock::new(|| RwLock::new(None));
 
 pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult, ControlOp, ControlResult, ControlDispatcher};
 pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
@@ -32,6 +36,24 @@ pub use crate as tools;
 pub struct ToolsEngine;
 
 impl ToolsEngine {
+    /// Records the open workspace. Tools run there: MCP servers start in it and receive it
+    /// as their root, and scripts / terminal commands use it as their working directory.
+    pub fn set_workspace_dir(dir: PathBuf) {
+        if let Ok(mut current) = WORKSPACE_DIR.write() {
+            *current = Some(dir);
+        }
+    }
+
+    /// The open workspace, or the process working directory before one is set.
+    pub fn workspace_dir() -> PathBuf {
+        WORKSPACE_DIR
+            .read()
+            .ok()
+            .and_then(|dir| dir.clone())
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."))
+    }
+
     /// Loads master tools registry from `~/.cluaiz/engine/config/tools_registry.json`
     pub fn registry() -> Result<ToolsRegistry> {
         ToolsRegistry::load()
@@ -271,7 +293,7 @@ impl ToolsEngine {
 
     /// Unified DRY executor across plugins, MCP servers, skills, and sandboxed terminal commands
     pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
-        let cwd_path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let cwd_path = Self::workspace_dir();
         let sec_mode = Self::get_tool(name)
             .ok()
             .flatten()
@@ -322,7 +344,7 @@ impl ToolsEngine {
             let cwd_path = parsed_payload.get("cwd")
                 .and_then(|c| c.as_str())
                 .map(std::path::PathBuf::from)
-                .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")));
+                .unwrap_or_else(Self::workspace_dir);
 
             let sec_mode = Self::get_tool(name)
                 .ok()
