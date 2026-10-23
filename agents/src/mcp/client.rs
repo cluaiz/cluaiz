@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tokio::sync::{oneshot, Mutex, RwLock};
 use tokio::time::timeout;
@@ -19,6 +19,10 @@ use once_cell::sync::Lazy;
 /// First start can include a package download (`npx -y`, `uvx`).
 const START_TIMEOUT: Duration = Duration::from_secs(90);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+/// A server with no request for this long is stopped (started again on its next call)
+const IDLE_STOP: Duration = Duration::from_secs(10 * 60);
+/// Most servers running at once; starting one more stops the least recently used
+const MAX_RUNNING: usize = 4;
 
 static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::new(|| {
     Arc::new(RwLock::new(HashMap::new()))
@@ -67,6 +71,10 @@ type PendingMap = Arc<std::sync::Mutex<HashMap<u64, oneshot::Sender<Value>>>>;
 /// stdin — so no two operations ever run on the same pipe at once.
 struct McpSession {
     name: String,
+    /// Package folder (the key of the running servers)
+    dir: PathBuf,
+    /// When the last request was sent
+    last_used: std::sync::Mutex<Instant>,
     /// Workspace the server was started in; a different workspace needs a new process.
     workspace: PathBuf,
     /// `None` once stopped: closing stdin is how a stdio server is told to exit.
@@ -121,6 +129,8 @@ impl McpSession {
 
         let session = Arc::new(Self {
             name: manifest.name.clone(),
+            dir: mcp_dir.to_path_buf(),
+            last_used: std::sync::Mutex::new(Instant::now()),
             workspace,
             stdin: std::sync::Mutex::new(Some(stdin)),
             child: std::sync::Mutex::new(child),
@@ -141,6 +151,12 @@ impl McpSession {
                         if let Err(e) = reader_session.answer_server_request(method, id) {
                             tracing::warn!("⚠️ [McpClient] '{}' could not answer {}: {}", reader_session.name, method, e);
                         }
+                    }
+                    (Some("notifications/tools/list_changed"), None) => {
+                        // The server's functions changed: the next listing asks it again
+                        tracing::info!("🔌 [McpClient] '{}' changed its tool list", reader_session.name);
+                        MCP_TOOL_CACHE.blocking_write().remove(&reader_session.dir);
+                        let _ = std::fs::remove_file(tools_list_cache(&reader_session.dir));
                     }
                     (Some(method), None) => tracing::debug!("[MCP {}] notification {}", reader_session.name, method),
                     (None, Some(id)) => {
@@ -184,6 +200,9 @@ impl McpSession {
 
     /// Sends a request and waits for its response; a JSON-RPC error becomes `Err`.
     async fn request(&self, method: &str, params: Value, limit: Duration) -> Result<Value> {
+        if let Ok(mut last_used) = self.last_used.lock() {
+            *last_used = Instant::now();
+        }
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().map_err(|_| anyhow!("MCP request table poisoned"))?.insert(id, tx);
@@ -224,6 +243,10 @@ impl McpSession {
 
     /// Closes stdin and ends the process. Launchers such as `npx.cmd` run the server as a
     /// child of their own, which exits when its stdin closes.
+    fn idle_for(&self) -> Duration {
+        self.last_used.lock().map(|t| t.elapsed()).unwrap_or_default()
+    }
+
     fn stop(&self) {
         self.alive.store(false, Ordering::SeqCst);
         if let Ok(mut stdin) = self.stdin.lock() {
@@ -239,6 +262,7 @@ impl McpSession {
 /// The running server for `mcp_dir`, started (or restarted after an exit or a workspace
 /// change) when needed.
 async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
+    start_idle_reaper();
     let workspace = crate::ToolsEngine::workspace_dir();
     let mut sessions = SESSIONS.lock().await;
     if let Some(existing) = sessions.get(mcp_dir) {
@@ -248,9 +272,41 @@ async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
         existing.stop();
         sessions.remove(mcp_dir);
     }
+    // Room for one more: stop the server that was used least recently
+    while sessions.len() >= MAX_RUNNING {
+        let Some(oldest) = sessions.iter().max_by_key(|(_, s)| s.idle_for()).map(|(dir, _)| dir.clone()) else {
+            break;
+        };
+        if let Some(stopped) = sessions.remove(&oldest) {
+            tracing::info!("🔌 [McpClient] Stopping '{}' to stay within {} running servers", stopped.name, MAX_RUNNING);
+            stopped.stop();
+        }
+    }
     let session = McpSession::start(mcp_dir).await?;
     sessions.insert(mcp_dir.to_path_buf(), session.clone());
     Ok(session)
+}
+
+/// Stops servers that have been idle for `IDLE_STOP` (checked every minute on its own thread)
+fn start_idle_reaper() {
+    static STARTED: std::sync::Once = std::sync::Once::new();
+    STARTED.call_once(|| {
+        std::thread::spawn(|| loop {
+            std::thread::sleep(Duration::from_secs(60));
+            let mut sessions = SESSIONS.blocking_lock();
+            let idle: Vec<PathBuf> = sessions
+                .iter()
+                .filter(|(_, session)| session.idle_for() >= IDLE_STOP || !session.alive.load(Ordering::SeqCst))
+                .map(|(dir, _)| dir.clone())
+                .collect();
+            for dir in idle {
+                if let Some(session) = sessions.remove(&dir) {
+                    tracing::info!("🔌 [McpClient] Stopping idle MCP server '{}'", session.name);
+                    session.stop();
+                }
+            }
+        });
+    });
 }
 
 /// Subprocess IPC client communicating with external MCP servers over stdio with full JSON-RPC 2.0 protocol handshake
