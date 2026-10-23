@@ -98,7 +98,20 @@ pub struct EngineHost {
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
     /// Full plan banner of the last load (also written to the log)
     pub plan_report: Arc<Mutex<Option<String>>>,
+    /// The loaded model's vocabulary for `count_tokens`, with the counts already made for it (text
+    /// hash -> tokens; earlier messages come back every turn). Cleared under the write lock before
+    /// the session is dropped, so no count runs on a freed model.
+    vocab: Arc<std::sync::RwLock<Option<TokenCounter>>>,
 }
+
+/// Token counting for the loaded model
+struct TokenCounter {
+    vocab: llama_engine::native::VocabHandle,
+    counted: std::sync::Mutex<std::collections::HashMap<u64, usize>>,
+}
+
+/// Counts kept per model; a long chat stays far below this
+const MAX_COUNTED_TEXTS: usize = 4096;
 
 type ThinkingTags = (Option<String>, Option<String>);
 
@@ -130,7 +143,36 @@ impl EngineHost {
             memory_owner: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
             plan_report: Arc::new(Mutex::new(None)),
+            vocab: Arc::new(std::sync::RwLock::new(None)),
         }
+    }
+
+    /// Token counts of `texts` with the loaded model's tokenizer, as parts of a prompt (special
+    /// tokens parsed, no BOS). Does not wait for a running generation. None when no text model
+    /// is loaded; the caller then estimates.
+    pub fn count_tokens(&self, texts: &[&str]) -> Option<Vec<usize>> {
+        use std::hash::{Hash, Hasher};
+        let guard = self.vocab.read().unwrap_or_else(|e| e.into_inner());
+        let counter = guard.as_ref()?;
+        texts
+            .iter()
+            .map(|text| {
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                text.hash(&mut hasher);
+                let key = hasher.finish();
+                if let Some(&n) = counter.counted.lock().unwrap_or_else(|e| e.into_inner()).get(&key) {
+                    return Some(n);
+                }
+                // SAFETY: the read lock keeps unload from freeing the model during the count.
+                let n = unsafe { counter.vocab.count(text) }.ok()?;
+                let mut counted = counter.counted.lock().unwrap_or_else(|e| e.into_inner());
+                if counted.len() >= MAX_COUNTED_TEXTS {
+                    counted.clear();
+                }
+                counted.insert(key, n);
+                Some(n)
+            })
+            .collect()
     }
 
     /// Dynamically resolves thinking start and end markers directly from llama.cpp's native template engine
@@ -362,7 +404,10 @@ impl EngineHost {
         }
 
         let mut llama_guard = self.active_session.lock().await;
-        *llama_guard = Some(NativeSession::new(llama)?);
+        let session = NativeSession::new(llama)?;
+        *self.vocab.write().unwrap_or_else(|e| e.into_inner()) =
+            Some(TokenCounter { vocab: session.vocab(), counted: Default::default() });
+        *llama_guard = Some(session);
 
         let mut path_guard = self.active_model_path.lock().await;
         *path_guard = Some(model_path.to_string());
@@ -394,6 +439,8 @@ impl EngineHost {
 
     async fn unload_model_inner(&self) {
         let mut llama_guard = self.active_session.lock().await;
+        // Counting stops before the model is freed (waits for a count already running)
+        *self.vocab.write().unwrap_or_else(|e| e.into_inner()) = None;
         *llama_guard = None;
         cluaiz_core::set_active_context(None);
         *self.current_plan.lock().await = None;
