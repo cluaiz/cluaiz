@@ -73,6 +73,11 @@ pub struct ExternalChatRequest {
     pub tool_choice: Option<serde_json::Value>,
     /// false: installed tools that fit the message are not suggested (default true)
     pub tool_search: Option<bool>,
+    /// How the KV cache is matched to the new prompt: "prefix" (only the common prefix is kept),
+    /// or "chunk" (llama-server `--cache-reuse`: shared chunks after it are moved, which keeps
+    /// their old context). Default: "chunk" only when the Engine dropped old turns to fit.
+    #[serde(default)]
+    pub kv_reuse: Option<String>,
     /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).
     /// A value different from the loaded model's reloads it; n_gpu_layers / n_cpu_moe / offload_kqv bypass the planner.
     #[serde(default)]

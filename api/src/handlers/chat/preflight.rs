@@ -868,7 +868,18 @@ impl PreparedChatContext {
         } else {
             None
         };
-        let json_prompt = envelope.to_prompt();
+        let mut json_prompt = envelope.to_prompt();
+        // The KV matching mode travels with the envelope; unknown values are ignored
+        if let Some(mode) = request.kv_reuse.as_deref() {
+            if matches!(mode, "prefix" | "chunk") {
+                if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&json_prompt) {
+                    value["kv_reuse"] = json!(mode);
+                    json_prompt = value.to_string();
+                }
+            } else {
+                tracing::warn!("⚠️ [ChatHandler] Unknown kv_reuse '{}' ignored (prefix or chunk)", mode);
+            }
+        }
 
         // Where the time before the first token goes (model load is reported on its own)
         tracing::info!(

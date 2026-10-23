@@ -63,6 +63,11 @@ pub struct ContextReport {
     pub truncated: bool,
     /// "eos" = the model ended, "limit" = max_tokens or the context ended it, "cancel", "error"
     pub stop: &'static str,
+    /// How the KV cache was matched: "prefix" (only the common prefix is kept) or "chunk"
+    /// (llama-server `--cache-reuse`: shared chunks after it are moved too)
+    pub kv_reuse: &'static str,
+    /// Prompt tokens kept by moving shared chunks (part of `cache_n`)
+    pub reused_chunk_tokens: usize,
 }
 
 impl ContextReport {

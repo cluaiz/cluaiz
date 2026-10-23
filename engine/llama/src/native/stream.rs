@@ -86,7 +86,7 @@ pub(crate) fn stream_tokens_with_media(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -127,18 +127,23 @@ pub(crate) fn stream_tokens_with_media(
                         .and_then(|m| m.as_str())
                         .filter(|m| !m.is_empty())
                         .map(|m| m.to_string());
+                    let kv_reuse = envelope
+                        .get("kv_reuse")
+                        .and_then(|m| m.as_str())
+                        .map(|m| m.to_string());
                     (
                         samplers,
                         think_mode,
                         reasoning_effort,
                         grammar,
                         budget_message,
+                        kv_reuse,
                     )
                 } else {
-                    (None, None, None, None, None)
+                    (None, None, None, None, None, None)
                 }
             } else {
-                (None, None, None, None, None)
+                (None, None, None, None, None, None)
             };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -202,6 +207,7 @@ pub(crate) fn stream_tokens_with_media(
         let mut report = ContextReport {
             n_ctx,
             stop: "eos",
+            kv_reuse: "prefix",
             ..Default::default()
         };
 
@@ -359,7 +365,18 @@ pub(crate) fn stream_tokens_with_media(
                     .zip(&prompt_tokens)
                     .take_while(|(a, b)| a == b)
                     .count();
-                if can_shift && n_past < cached.len() && n_past < prompt_tokens.len() {
+                // Moving chunks keeps KV that was computed with the text before it, which is
+                // right only when that text was history dropped to fit. After an edit such as
+                // unloading a tool, the text after it must be computed again, or the removed
+                // text keeps its influence. So: chunks only when this request dropped history
+                // or asked for `kv_reuse: "chunk"`, never with `kv_reuse: "prefix"`.
+                let chunk_reuse = match req_kv_reuse.as_deref() {
+                    Some("chunk") => true,
+                    Some("prefix") => false,
+                    _ => report.dropped_messages > 0,
+                };
+                if chunk_reuse && can_shift && n_past < cached.len() && n_past < prompt_tokens.len() {
+                    let prefix = n_past;
                     n_past = crate::native::context::reuse_cache_chunks(
                         llama.ctx_ptr,
                         &mut cached,
@@ -367,6 +384,8 @@ pub(crate) fn stream_tokens_with_media(
                         n_past,
                         CACHE_REUSE_MIN_CHUNK,
                     );
+                    report.kv_reuse = "chunk";
+                    report.reused_chunk_tokens = n_past - prefix;
                 }
                 // The sampler needs fresh logits of the last prompt token: at least one is processed
                 n_past = n_past.min(prompt_tokens.len().saturating_sub(1));
