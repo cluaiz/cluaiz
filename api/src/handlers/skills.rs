@@ -1,8 +1,9 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use crate::AppState;
 use cluaiz_agents::installer::ToolsInstaller;
+use super::components::install_component_response;
 
 // ─── GET /v1/skills/list ──────────────────────────────────────────────
 pub async fn list_skills(State(_state): State<Arc<AppState>>) -> Json<Value> {
@@ -21,13 +22,8 @@ pub struct InstallSkillPayload {
 pub async fn install_skill(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<InstallSkillPayload>
-) -> Json<Value> {
-    let skill_name = payload.skill_name.clone();
-    tokio::spawn(async move {
-        let _ = ToolsInstaller::install_component("skill", &skill_name).await;
-    });
-
-    Json(json!({"status": "success", "message": format!("WASM skill '{}' installation queued natively in Engine.", payload.skill_name)}))
+) -> (StatusCode, Json<Value>) {
+    install_component_response("skill", payload.skill_name).await
 }
 
 // ─── GET /v1/skills/cache ─────────────────────────────────────────────
