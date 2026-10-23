@@ -34,6 +34,8 @@ const MAX_CARDS: usize = 3;
 const MAX_TITLES: usize = 5;
 /// Most results `find_tools` returns
 const MAX_FOUND: usize = 5;
+/// Functions `load_tool` sends in full when no list is given
+const MAX_FUNCTIONS_PER_LOAD: usize = 6;
 /// Characters per token, for estimates before the real tokenizer is used
 pub const CHARS_PER_TOKEN: f64 = 3.5;
 
@@ -615,9 +617,12 @@ impl ToolSearch {
         let mut kept = Vec::new();
         let mut left_out = Vec::new();
         let mut used = 0;
+        // Without a list of functions, a large tool sends its most relevant functions in full
+        // and names the rest (the model asks for them with "functions")
+        let limit = if functions.is_empty() { MAX_FUNCTIONS_PER_LOAD } else { usize::MAX };
         for schema in schemas {
             let line = schema.to_string();
-            if used + line.len() + 1 <= room {
+            if kept.len() < limit && used + line.len() + 1 <= room {
                 used += line.len() + 1;
                 kept.push(line);
             } else {
@@ -647,7 +652,7 @@ impl ToolSearch {
         }
         if !left_out.is_empty() {
             text.push_str(&format!(
-                "Not loaded for lack of room (load_tool with \"functions\" to get them): {}\n",
+                "More functions (call load_tool with \"functions\" to get them): {}\n",
                 left_out.join(", ")
             ));
         }
