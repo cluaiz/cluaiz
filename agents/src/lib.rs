@@ -278,8 +278,10 @@ impl ToolsEngine {
             .map(|t| t.security_mode)
             .unwrap_or(SecurityMode::Inherit);
 
-        // 1. Declarative Execution Manifest check (dynamic from tool package.json)
-        if let Some(comp_dir) = Self::resolve_component_dir(category, name) {
+        // 1. Declarative Execution Manifest check (dynamic from tool package.json).
+        //    An MCP manifest's `execution` block launches its stdio server, so MCP calls
+        //    always go through the MCP client below.
+        if let Some(comp_dir) = Self::resolve_component_dir(category, name).filter(|_| category != "mcp") {
             let manifest_path = comp_dir.join("package.json");
             if manifest_path.exists() {
                 if let Ok(content) = std::fs::read_to_string(&manifest_path) {
