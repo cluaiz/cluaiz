@@ -29,6 +29,15 @@ Segments with the same `group` (a tool call and its result) are kept or left out
 same input gives the same plan, whatever the input order. `needs_compaction` is set when the
 plan uses `compact_at_pct` of `available` or more, or leaves out anything that is not evictable.
 
+## Compaction (`src/compaction.rs`)
+
+When a chat fills its room, `compact` decides what to give back, cheapest loss first: tool hints
+of turns outside the newest `recent_turns_min`, then results of older tool steps (the newest
+`keep_recent_steps` stay whole) as placeholders. It returns nothing unless at least
+`clear_at_least` tokens are freed, because every compaction re-processes the prompt from the
+first change. The API applies the decision to the chat's ledger
+(`api/src/handlers/chat/context_plan.rs`); a cleared tool load also unbinds that tool.
+
 ## Policy (`src/policy.rs`)
 
 | Field | Default |
@@ -41,6 +50,6 @@ plan uses `compact_at_pct` of `available` or more, or leaves out anything that i
 
 ## Tests
 
-Unit tests for the budget, caps, groups and errors, and property tests over 2,000 random inputs:
+Unit tests for the budget, caps, groups, errors and compaction, and property tests over 2,000 random inputs:
 never over `available`, never drops a protected segment, keeps the recent turns when they fit,
 same plan for the same input in any order.

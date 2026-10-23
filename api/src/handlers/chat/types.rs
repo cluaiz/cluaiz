@@ -78,6 +78,10 @@ pub struct ExternalChatRequest {
     /// their old context). Default: "chunk" only when the Engine dropped old turns to fit.
     #[serde(default)]
     pub kv_reuse: Option<String>,
+    /// "recent" (default): the whole history, the oldest turns dropped when it does not fit;
+    /// "none": only the system prompt and the current message
+    #[serde(default)]
+    pub history_mode: Option<String>,
     /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).
     /// A value different from the loaded model's reloads it; n_gpu_layers / n_cpu_moe / offload_kqv bypass the planner.
     #[serde(default)]
