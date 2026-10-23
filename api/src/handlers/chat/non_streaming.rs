@@ -66,7 +66,12 @@ pub async fn execute_non_streaming(
             let raw_fn_name = tool_call.raw_fn_name.as_str();
             let payload_str = tool_call.payload_str;
 
-            let resolved_target = if let Some(ref sid) = req_session_id {
+            // tool_search loads installed tools; it is answered by the engine itself
+            let is_tool_search =
+                ctx.tool_search_room.is_some() && raw_fn_name == cluaiz_agents::TOOL_SEARCH_NAME;
+            let resolved_target = if is_tool_search {
+                None
+            } else if let Some(ref sid) = req_session_id {
                 cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
                     .or_else(|| {
                         cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
@@ -75,7 +80,9 @@ pub async fn execute_non_streaming(
                 cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
             };
 
-            let (comp_type, comp_name, tool_sub_func) = if let Some(target) = resolved_target {
+            let (comp_type, comp_name, tool_sub_func) = if is_tool_search {
+                ("search".to_string(), raw_fn_name.to_string(), None)
+            } else if let Some(target) = resolved_target {
                 (target.category, target.component_id, target.sub_function)
             } else {
                 ("plugin".to_string(), raw_fn_name.to_string(), None)
@@ -89,14 +96,18 @@ pub async fn execute_non_streaming(
                 payload_str
             );
 
-            let execution_result = match cluaiz_agents::ToolsEngine::execute_tool_by_name(
-                &comp_type,
-                &comp_name,
-                tool_sub_func.as_deref(),
-                &payload_str,
-            )
-            .await
-            {
+            let executed = if is_tool_search {
+                Ok(super::tool_turns::run_tool_search(&ctx, req_session_id.as_deref(), &payload_str).await)
+            } else {
+                cluaiz_agents::ToolsEngine::execute_tool_by_name(
+                    &comp_type,
+                    &comp_name,
+                    tool_sub_func.as_deref(),
+                    &payload_str,
+                )
+                .await
+            };
+            let execution_result = match executed {
                 Ok(res_str) => {
                     tracing::info!(
                         "✅ [API/NonStreaming] Tool execution completed for '{}' ({} chars)",

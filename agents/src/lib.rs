@@ -10,6 +10,7 @@ pub mod prompt_compiler;
 pub mod registry;
 pub mod skills;
 pub mod telemetry;
+pub mod tool_search;
 
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, RwLock};
@@ -28,6 +29,7 @@ pub use prompt_compiler::{CompiledPromptTools, ResolvedToolTarget, ToolPromptCom
 pub use registry::{ExecutionMode, LoadStrategy, SecurityMode, ToolCategory, ToolEntry, ToolsRegistry};
 pub use skills::{ParsedSkill, SkillParser, SkillRouter};
 pub use telemetry::{ContextBreakdown, ContextTracker, SystemContextTelemetry};
+pub use tool_search::{CatalogEntry, ToolSearch, ToolSearchResult, TOOL_SEARCH_NAME};
 
 pub use crate as tools;
 
