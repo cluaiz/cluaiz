@@ -1,8 +1,13 @@
-use std::path::PathBuf;
-use std::io::Write;
+use std::path::{Component, Path, PathBuf};
+use std::time::Duration;
 use anyhow::Result;
 use cluaiz_core::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
+
+/// How long to wait for a registry or download server to accept the connection.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+/// Longest gap between received bytes before a stalled download is abandoned.
+const READ_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub struct ToolsInstaller;
 
@@ -17,6 +22,9 @@ impl ToolsInstaller {
         } else {
             (component_id_raw.to_string(), None)
         };
+        if !Self::is_valid_component_id(&component_id) {
+            return Err(anyhow::anyhow!("Invalid {} name '{}'.", component_type, component_id_raw));
+        }
 
         let env = EnvironmentManager::current();
         let _ = env.ensure_tools_dir();
@@ -30,7 +38,10 @@ impl ToolsInstaller {
         tracing::info!("📡 [ToolsEngine] Installing {} '{}'...", component_type, component_id);
 
         let registry_url_opt = Self::get_registry_url();
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .connect_timeout(CONNECT_TIMEOUT)
+            .read_timeout(READ_TIMEOUT)
+            .build()?;
 
         let mut download_url = String::new();
         let mut binary_download_url = String::new();
@@ -115,11 +126,17 @@ impl ToolsInstaller {
                                                         }
                                                     } else {
                                                         return Err(anyhow::anyhow!(
-                                                            "Component '{}' not found in Cluaiz Tools category '{}'.",
+                                                            "Could not fetch the package manifest for '{}' from '{}'.",
                                                             component_id,
-                                                            component_type
+                                                            full_package_url
                                                         ));
                                                     }
+                                                } else {
+                                                    return Err(anyhow::anyhow!(
+                                                        "Component '{}' not found in Cluaiz Tools category '{}'.",
+                                                        component_id,
+                                                        component_type
+                                                    ));
                                                 }
                                             }
                                         }
@@ -147,6 +164,7 @@ impl ToolsInstaller {
             );
         }
 
+        let binary_declared = !binary_download_url.is_empty();
         if binary_download_url.is_empty() && !component_id.is_empty() && component_type == "plugin" {
             let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
             let (os_name, ext) = if cfg!(target_os = "windows") {
@@ -170,9 +188,7 @@ impl ToolsInstaller {
             ));
         }
 
-        std::fs::create_dir_all(&component_dir)?;
-
-        // 1. Download and extract package ZIP bundle (manifest, SKILL.md, scripts)
+        // 1. Download the package ZIP bundle (manifest, SKILL.md, scripts)
         let resp = client.get(&download_url).send().await
             .map_err(|e| anyhow::anyhow!("Network request failed for '{}': {}", download_url, e))?;
 
@@ -186,14 +202,82 @@ impl ToolsInstaller {
 
         let bytes = resp.bytes().await
             .map_err(|e| anyhow::anyhow!("Failed to read downloaded bytes: {}", e))?;
-        let cursor = std::io::Cursor::new(bytes);
-        let mut zip = zip::ZipArchive::new(cursor)
+
+        // 2. Download the pre-compiled native binary. A binary declared in the package
+        //    manifest is required; the conventional release URL is only a best-effort guess.
+        let mut binary_bytes = None;
+        if !binary_download_url.is_empty() {
+            let fetched = match client.get(&binary_download_url).send().await {
+                Ok(r) if r.status().is_success() => r.bytes().await
+                    .map_err(|e| anyhow::anyhow!("Failed to read native binary from '{}': {}", binary_download_url, e)),
+                Ok(r) => Err(anyhow::anyhow!("Failed to download native binary from '{}'. HTTP Status: {}", binary_download_url, r.status())),
+                Err(e) => Err(anyhow::anyhow!("Network request failed for '{}': {}", binary_download_url, e)),
+            };
+            match fetched {
+                Ok(b) => binary_bytes = Some(b),
+                Err(e) if binary_declared => return Err(e),
+                Err(e) => tracing::debug!("No native binary for {} '{}': {}", component_type, component_id, e),
+            }
+        }
+
+        // 3. Unpack into a staging folder outside the scanned category folders, then swap it
+        //    in, so a failed install never leaves an empty or half-written component behind
+        //    and a failed update keeps the previously installed version.
+        let staging_root = env.tools_dir().join(".staging");
+        std::fs::create_dir_all(&staging_root)?;
+        let stamp = format!(
+            "{}-{}-{}",
+            component_id,
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)
+        );
+        let staging_dir = staging_root.join(&stamp);
+        let backup_dir = staging_root.join(format!("{}-previous", stamp));
+
+        let staged = Self::unpack_bundle(&bytes, binary_bytes.as_deref(), &component_id, &staging_dir)
+            .and_then(|_| Self::swap_into_place(&staging_dir, &component_dir, &backup_dir));
+        if let Err(e) = staged {
+            if staging_dir.exists() {
+                let _ = std::fs::remove_dir_all(&staging_dir);
+            }
+            return Err(e);
+        }
+
+        // 4. Sync with filesystem and seal tools_registry.json & tools_registry.bin.
+        //    The package is already in place, so a registry problem is logged, not fatal.
+        match ToolsRegistry::load() {
+            Ok(mut reg) => {
+                if let Err(e) = reg.sync_with_filesystem() {
+                    tracing::warn!("⚠️ [ToolsEngine] Registry sync after installing '{}' failed: {}", component_id, e);
+                }
+                if let Err(e) = reg.save() {
+                    tracing::warn!("⚠️ [ToolsEngine] Registry save after installing '{}' failed: {}", component_id, e);
+                }
+            }
+            Err(e) => tracing::warn!("⚠️ [ToolsEngine] Registry load after installing '{}' failed: {}", component_id, e),
+        }
+
+        tracing::info!("✅ [ToolsEngine] Successfully installed {} '{}'", component_type, component_id);
+        Ok(())
+    }
+
+    /// A component id must be one plain folder name, so it can never point at its
+    /// category folder itself or outside it (`""`, `..`, `a/b`, drive prefixes).
+    fn is_valid_component_id(id: &str) -> bool {
+        let mut parts = Path::new(id).components();
+        matches!((parts.next(), parts.next()), (Some(Component::Normal(_)), None))
+    }
+
+    /// Extracts the downloaded bundle (and native binary, if any) into `target_dir`.
+    fn unpack_bundle(bundle: &[u8], binary: Option<&[u8]>, component_id: &str, target_dir: &Path) -> Result<()> {
+        std::fs::create_dir_all(target_dir)?;
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bundle))
             .map_err(|e| anyhow::anyhow!("Downloaded archive is not a valid ZIP: {}", e))?;
 
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
             let outpath: PathBuf = match file.enclosed_name() {
-                Some(path) => component_dir.join(path),
+                Some(path) => target_dir.join(path),
                 None => continue,
             };
             if (*file.name()).ends_with('/') {
@@ -209,28 +293,40 @@ impl ToolsInstaller {
             }
         }
 
-        // 2. Download pre-compiled native binary if available
-        if !binary_download_url.is_empty() {
-            let bin_resp = client.get(&binary_download_url).send().await;
-            if let Ok(r) = bin_resp {
-                if r.status().is_success() {
-                    if let Ok(bin_bytes) = r.bytes().await {
-                        let bin_ext = if cfg!(target_os = "windows") { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
-                        let bin_filename = format!("{}.{}", component_id, bin_ext);
-                        let bin_path = component_dir.join(bin_filename);
-                        let _ = std::fs::write(bin_path, bin_bytes);
-                    }
-                }
+        if let Some(bin_bytes) = binary {
+            let bin_ext = if cfg!(target_os = "windows") { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
+            std::fs::write(target_dir.join(format!("{}.{}", component_id, bin_ext)), bin_bytes)?;
+        }
+        Ok(())
+    }
+
+    /// Moves a fully staged package into `component_dir`. An existing version is moved
+    /// aside first and restored if the new one cannot be put in place.
+    fn swap_into_place(staging_dir: &Path, component_dir: &Path, backup_dir: &Path) -> Result<()> {
+        if !component_dir.exists() {
+            return std::fs::rename(staging_dir, component_dir).map_err(|e| {
+                anyhow::anyhow!("Failed to move the new package into '{}': {}", component_dir.display(), e)
+            });
+        }
+
+        std::fs::rename(component_dir, backup_dir).map_err(|e| {
+            anyhow::anyhow!("Could not move the installed version at '{}' aside (is it in use?): {}", component_dir.display(), e)
+        })?;
+        if let Err(e) = std::fs::rename(staging_dir, component_dir) {
+            if let Err(restore) = std::fs::rename(backup_dir, component_dir) {
+                return Err(anyhow::anyhow!(
+                    "Failed to move the new version into '{}' ({}), and restoring the previous version from '{}' also failed ({}).",
+                    component_dir.display(), e, backup_dir.display(), restore
+                ));
             }
+            return Err(anyhow::anyhow!(
+                "Failed to move the new version into '{}'; the previous version is kept: {}",
+                component_dir.display(), e
+            ));
         }
-
-        // 3. Atomically sync with filesystem and seal tools_registry.json & tools_registry.bin
-        if let Ok(mut reg) = ToolsRegistry::load() {
-            let _ = reg.sync_with_filesystem();
-            let _ = reg.save();
+        if let Err(e) = std::fs::remove_dir_all(backup_dir) {
+            tracing::warn!("⚠️ [ToolsEngine] Previous version left at '{}': {}", backup_dir.display(), e);
         }
-
-        tracing::info!("✅ [ToolsEngine] Successfully installed {} '{}'", component_type, component_id);
         Ok(())
     }
 
