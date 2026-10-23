@@ -1,0 +1,165 @@
+{"id": "r001", "lang": "en", "kind": "direct", "query": "read the file notes.txt", "expect": ["filesystem"]}
+{"id": "r002", "lang": "en", "kind": "direct", "query": "list all files in the src folder", "expect": ["filesystem"]}
+{"id": "r003", "lang": "en", "kind": "direct", "query": "create a new directory called build", "expect": ["filesystem"]}
+{"id": "r004", "lang": "en", "kind": "direct", "query": "write hello world into output.txt", "expect": ["filesystem"]}
+{"id": "r005", "lang": "en", "kind": "direct", "query": "show me the directory tree of this project", "expect": ["filesystem"]}
+{"id": "r006", "lang": "en", "kind": "direct", "query": "move report.pdf to the archive folder", "expect": ["filesystem"]}
+{"id": "r007", "lang": "en", "kind": "direct", "query": "search for files named config", "expect": ["filesystem"]}
+{"id": "r008", "lang": "en", "kind": "direct", "query": "what's inside README.md?", "expect": ["filesystem"]}
+{"id": "r009", "lang": "en", "kind": "direct", "query": "edit main.py and rename the function", "expect": ["filesystem"]}
+{"id": "r010", "lang": "en", "kind": "direct", "query": "get the size of each file in downloads", "expect": ["filesystem"]}
+{"id": "r011", "lang": "en", "kind": "direct", "query": "run this python code: print(2**10)", "expect": ["code-interpreter"]}
+{"id": "r012", "lang": "en", "kind": "direct", "query": "execute a javascript snippet that sorts an array", "expect": ["code-interpreter"]}
+{"id": "r013", "lang": "en", "kind": "direct", "query": "calculate the first 20 fibonacci numbers by running code", "expect": ["code-interpreter"]}
+{"id": "r014", "lang": "en", "kind": "direct", "query": "run a quick script to compute the sha256 of 'abc'", "expect": ["code-interpreter"]}
+{"id": "r015", "lang": "en", "kind": "direct", "query": "can you execute this code and tell me the output?\n```python\nx = [1, 2, 3]\nprint(sum(x))\n```", "expect": ["code-interpreter"]}
+{"id": "r016", "lang": "en", "kind": "direct", "query": "test this node.js function by running it", "expect": ["code-interpreter"]}
+{"id": "r017", "lang": "en", "kind": "direct", "query": "show the git diff of my last commit", "expect": ["git"]}
+{"id": "r018", "lang": "en", "kind": "direct", "query": "what changed in the repository since yesterday? check git log", "expect": ["git"]}
+{"id": "r019", "lang": "en", "kind": "direct", "query": "which branch am I on in git", "expect": ["git"]}
+{"id": "r020", "lang": "en", "kind": "direct", "query": "show git status", "expect": ["git"]}
+{"id": "r021", "lang": "en", "kind": "paraphrase", "query": "inspect the commit history of this repo", "expect": ["git"]}
+{"id": "r022", "lang": "en", "kind": "direct", "query": "fetch https://example.com and summarize it", "expect": ["fetch"]}
+{"id": "r023", "lang": "en", "kind": "direct", "query": "download the content of this web page: https://news.ycombinator.com", "expect": ["fetch"]}
+{"id": "r024", "lang": "en", "kind": "direct", "query": "convert this url to markdown https://docs.rs/serde", "expect": ["fetch"]}
+{"id": "r025", "lang": "en", "kind": "direct", "query": "get the html of www.rust-lang.org", "expect": ["fetch"]}
+{"id": "r026", "lang": "en", "kind": "direct", "query": "fetch the latest release notes from the web", "expect": ["fetch"]}
+{"id": "r027", "lang": "en", "kind": "direct", "query": "review my code for security vulnerabilities", "expect": ["code-reviewer"]}
+{"id": "r028", "lang": "en", "kind": "direct", "query": "do a code review of this rust function", "expect": ["code-reviewer"]}
+{"id": "r029", "lang": "en", "kind": "direct", "query": "check this code for memory safety issues", "expect": ["code-reviewer"]}
+{"id": "r030", "lang": "en", "kind": "direct", "query": "audit the code quality of the api handlers", "expect": ["code-reviewer"]}
+{"id": "r031", "lang": "en", "kind": "direct", "query": "what is cluaiz?", "expect": ["learn-cluaiz"]}
+{"id": "r032", "lang": "en", "kind": "direct", "query": "explain the cluaiz architecture", "expect": ["learn-cluaiz"]}
+{"id": "r033", "lang": "en", "kind": "direct", "query": "how does cluaiz work internally", "expect": ["learn-cluaiz"]}
+{"id": "r034", "lang": "en", "kind": "direct", "query": "explain tools in cluaiz", "expect": ["learn-cluaiz"]}
+{"id": "r035", "lang": "en", "kind": "direct", "query": "learn AI basics with me step by step", "expect": ["learn-ai"]}
+{"id": "r036", "lang": "en", "kind": "direct", "query": "I want to learn AI from scratch", "expect": ["learn-ai"]}
+{"id": "r037", "lang": "en", "kind": "paraphrase", "query": "help me understand machine learning concepts with interactive questions", "expect": ["learn-ai"]}
+{"id": "r038", "lang": "en", "kind": "direct", "query": "create a new MCP server tool for weather", "expect": ["tool-creator"]}
+{"id": "r039", "lang": "en", "kind": "direct", "query": "scaffold a WASM plugin", "expect": ["tool-creator"]}
+{"id": "r040", "lang": "en", "kind": "direct", "query": "build me a new skill that summarizes pdfs", "expect": ["tool-creator"]}
+{"id": "r041", "lang": "en", "kind": "paraphrase", "query": "make a custom tool for my workflow", "expect": ["tool-creator"]}
+{"id": "r042", "lang": "en", "kind": "direct", "query": "read my note called groceries", "expect": ["pynotes"]}
+{"id": "r043", "lang": "en", "kind": "direct", "query": "open the note about the meeting", "expect": ["pynotes"]}
+{"id": "r044", "lang": "hi-latn", "kind": "direct", "query": "pynotes se secret note padho", "expect": ["pynotes"]}
+{"id": "r045", "lang": "en", "kind": "direct", "query": "test the everything mcp server", "expect": ["everything"]}
+{"id": "r046", "lang": "en", "kind": "paraphrase", "query": "what does config.yaml contain", "expect": ["filesystem"]}
+{"id": "r047", "lang": "en", "kind": "paraphrase", "query": "open the readme and tell me what it says", "expect": ["filesystem"]}
+{"id": "r048", "lang": "en", "kind": "paraphrase", "query": "how many lines are in app.log", "expect": ["filesystem"]}
+{"id": "r049", "lang": "en", "kind": "paraphrase", "query": "make a folder named images", "expect": ["filesystem"]}
+{"id": "r050", "lang": "en", "kind": "paraphrase", "query": "save this text to a file", "expect": ["filesystem"]}
+{"id": "r051", "lang": "en", "kind": "paraphrase", "query": "compute 17 factorial with python", "expect": ["code-interpreter"]}
+{"id": "r052", "lang": "en", "kind": "paraphrase", "query": "evaluate this expression in code: 3**45 % 7", "expect": ["code-interpreter"]}
+{"id": "r053", "lang": "en", "kind": "paraphrase", "query": "grab the contents of https://example.org/page", "expect": ["fetch"]}
+{"id": "r054", "lang": "en", "kind": "paraphrase", "query": "look at the diff between the main and dev branches", "expect": ["git"]}
+{"id": "r055", "lang": "en", "kind": "paraphrase", "query": "find bugs and vulnerabilities in my function", "expect": ["code-reviewer"]}
+{"id": "r056", "lang": "en", "kind": "paraphrase", "query": "is this code secure?", "expect": ["code-reviewer"]}
+{"id": "r057", "lang": "en", "kind": "paraphrase", "query": "summarise the page at https://blog.rust-lang.org", "expect": ["fetch"]}
+{"id": "r058", "lang": "en", "kind": "none", "query": "delete temp.txt", "expect": [], "note": "the filesystem server has no delete function"}
+{"id": "r059", "lang": "en", "kind": "paraphrase", "query": "copy the contents of a.txt into b.txt", "expect": ["filesystem"]}
+{"id": "r060", "lang": "en", "kind": "paraphrase", "query": "print the folder structure", "expect": ["filesystem"]}
+{"id": "r061", "lang": "hi-latn", "kind": "direct", "query": "notes.txt padho", "expect": ["filesystem"]}
+{"id": "r062", "lang": "hi-latn", "kind": "direct", "query": "src folder ki files dikhao", "expect": ["filesystem"]}
+{"id": "r063", "lang": "hi-latn", "kind": "direct", "query": "ek naya folder banao jiska naam test ho", "expect": ["filesystem"]}
+{"id": "r064", "lang": "hi-latn", "kind": "direct", "query": "output.txt me hello likho", "expect": ["filesystem"]}
+{"id": "r065", "lang": "hi-latn", "kind": "direct", "query": "ye python code chalao: print(7*6)", "expect": ["code-interpreter"]}
+{"id": "r066", "lang": "hi-latn", "kind": "direct", "query": "is code ko run karke output batao", "expect": ["code-interpreter"]}
+{"id": "r067", "lang": "hi-latn", "kind": "direct", "query": "git ka diff dikhao", "expect": ["git"]}
+{"id": "r068", "lang": "hi-latn", "kind": "direct", "query": "last commit me kya badla, git log dekho", "expect": ["git"]}
+{"id": "r069", "lang": "hi-latn", "kind": "direct", "query": "https://example.com khol ke summary do", "expect": ["fetch"]}
+{"id": "r070", "lang": "hi-latn", "kind": "direct", "query": "is website ka content laao https://example.com", "expect": ["fetch"]}
+{"id": "r071", "lang": "hi-latn", "kind": "direct", "query": "mera code review karo security ke liye", "expect": ["code-reviewer"]}
+{"id": "r072", "lang": "hi-latn", "kind": "direct", "query": "cluaiz kya hai samjhao", "expect": ["learn-cluaiz"]}
+{"id": "r073", "lang": "hi-latn", "kind": "direct", "query": "cluaiz ka architecture samjhao", "expect": ["learn-cluaiz"]}
+{"id": "r074", "lang": "hi-latn", "kind": "direct", "query": "ek naya tool banao weather ke liye", "expect": ["tool-creator"]}
+{"id": "r075", "lang": "hi-latn", "kind": "direct", "query": "config.json me kya hai batao", "expect": ["filesystem"]}
+{"id": "r076", "lang": "hi-latn", "kind": "direct", "query": "report.pdf ko archive folder me move karo", "expect": ["filesystem"]}
+{"id": "r077", "lang": "hi-latn", "kind": "direct", "query": "files me config naam ki file dhundo", "expect": ["filesystem"]}
+{"id": "r078", "lang": "hi-latn", "kind": "direct", "query": "javascript code chala ke dekho", "expect": ["code-interpreter"]}
+{"id": "r079", "lang": "hi-latn", "kind": "direct", "query": "mujhe AI seekhna hai", "expect": ["learn-ai"]}
+{"id": "r080", "lang": "hi-latn", "kind": "direct", "query": "pynotes ka note padho", "expect": ["pynotes"]}
+{"id": "r081", "lang": "hi-deva", "kind": "direct", "query": "notes.txt फाइल पढ़ो", "expect": ["filesystem"]}
+{"id": "r082", "lang": "hi-deva", "kind": "direct", "query": "src फोल्डर की फाइलें दिखाओ", "expect": ["filesystem"]}
+{"id": "r083", "lang": "hi-deva", "kind": "direct", "query": "यह पायथन कोड चलाओ: print(5)", "expect": ["code-interpreter"]}
+{"id": "r084", "lang": "hi-deva", "kind": "direct", "query": "नया फोल्डर बनाओ", "expect": ["filesystem"]}
+{"id": "r085", "lang": "hi-deva", "kind": "direct", "query": "मेरा कोड रिव्यू करो", "expect": ["code-reviewer"]}
+{"id": "r086", "lang": "hi-deva", "kind": "direct", "query": "क्लुऐज़ क्या है समझाओ", "expect": ["learn-cluaiz"]}
+{"id": "r087", "lang": "hi-deva", "kind": "direct", "query": "https://example.com वेबसाइट पढ़ो", "expect": ["fetch"]}
+{"id": "r088", "lang": "hi-deva", "kind": "direct", "query": "config.json फ़ाइल खोलो", "expect": ["filesystem"]}
+{"id": "r089", "lang": "hi-deva", "kind": "direct", "query": "गिट डिफ दिखाओ", "expect": ["git"]}
+{"id": "r090", "lang": "hi-deva", "kind": "direct", "query": "इस कोड को चलाओ", "expect": ["code-interpreter"]}
+{"id": "r091", "lang": "en", "kind": "multi", "query": "read data.csv and run python code to compute the average", "expect": ["filesystem", "code-interpreter"]}
+{"id": "r092", "lang": "en", "kind": "multi", "query": "fetch https://example.com and save it to page.md", "expect": ["fetch", "filesystem"]}
+{"id": "r093", "lang": "en", "kind": "multi", "query": "read main.rs and review the code", "expect": ["code-reviewer", "filesystem"]}
+{"id": "r094", "lang": "en", "kind": "multi", "query": "show the git diff and review the code changes", "expect": ["git", "code-reviewer"]}
+{"id": "r095", "lang": "hi-latn", "kind": "multi", "query": "notes.txt padho aur python code chala ke words count karo", "expect": ["filesystem", "code-interpreter"]}
+{"id": "r096", "lang": "hi-latn", "kind": "followup", "query": "phir se", "previous": "run this python code: print(1)", "expect": ["code-interpreter"]}
+{"id": "r097", "lang": "hi-latn", "kind": "followup", "query": "isko chalao", "previous": "```python\nprint('hi')\n```", "expect": ["code-interpreter"]}
+{"id": "r098", "lang": "en", "kind": "followup", "query": "again please", "previous": "read the file notes.txt", "expect": ["filesystem"]}
+{"id": "r099", "lang": "en", "kind": "followup", "query": "same for b.txt", "previous": "read a.txt", "expect": ["filesystem"]}
+{"id": "r100", "lang": "hi-latn", "kind": "followup", "query": "dobara karo", "previous": "fetch https://example.com", "expect": ["fetch"]}
+{"id": "r101", "lang": "hi-latn", "kind": "followup", "query": "2+2 kitna hota hai", "previous": "run this python code: print(1)", "expect": []}
+{"id": "r102", "lang": "en", "kind": "followup", "query": "thanks, that's all", "previous": "read notes.txt", "expect": []}
+{"id": "r103", "lang": "hi-latn", "kind": "followup", "query": "wahi file phir se padho", "previous": "notes.txt padho", "expect": ["filesystem"]}
+{"id": "r104", "lang": "en", "kind": "trap", "query": "I trust you", "expect": []}
+{"id": "r105", "lang": "en", "kind": "trap", "query": "what protocol does HTTP use?", "expect": []}
+{"id": "r106", "lang": "en", "kind": "trap", "query": "my file of complaints keeps growing, life is hard", "expect": []}
+{"id": "r107", "lang": "en", "kind": "trap", "query": "that git in the movie was so rude", "expect": []}
+{"id": "r108", "lang": "en", "kind": "trap", "query": "fetch me a coffee, haha", "expect": []}
+{"id": "r109", "lang": "en", "kind": "trap", "query": "run for your life", "expect": []}
+{"id": "r110", "lang": "en", "kind": "trap", "query": "let's review the movie plot", "expect": []}
+{"id": "r111", "lang": "en", "kind": "trap", "query": "write a poem about the sea", "expect": []}
+{"id": "r112", "lang": "en", "kind": "trap", "query": "read me a story about dragons", "expect": []}
+{"id": "r113", "lang": "en", "kind": "trap", "query": "explain the theory of relativity", "expect": []}
+{"id": "r114", "lang": "en", "kind": "trap", "query": "write a code of conduct for our team", "expect": []}
+{"id": "r115", "lang": "en", "kind": "trap", "query": "rust vs go, which is faster?", "expect": []}
+{"id": "r116", "lang": "en", "kind": "trap", "query": "I need to learn patience", "expect": []}
+{"id": "r117", "lang": "en", "kind": "trap", "query": "create a plan for my week", "expect": []}
+{"id": "r118", "lang": "en", "kind": "trap", "query": "the server at my office is down again", "expect": []}
+{"id": "r119", "lang": "en", "kind": "trap", "query": "list three fruits", "expect": []}
+{"id": "r120", "lang": "en", "kind": "trap", "query": "search your memory for my name", "expect": []}
+{"id": "r121", "lang": "en", "kind": "trap", "query": "translate 'good morning' into French", "expect": []}
+{"id": "r122", "lang": "en", "kind": "trap", "query": "what's a directory in a phone book?", "expect": []}
+{"id": "r123", "lang": "en", "kind": "trap", "query": "draw a tree", "expect": []}
+{"id": "r124", "lang": "en", "kind": "trap", "query": "move on with your life", "expect": []}
+{"id": "r125", "lang": "en", "kind": "trap", "query": "the note in that song was flat", "expect": []}
+{"id": "r126", "lang": "en", "kind": "trap", "query": "edit my essay for grammar: he go to school", "expect": []}
+{"id": "r127", "lang": "en", "kind": "trap", "query": "summarize this paragraph: The quick brown fox jumps over the lazy dog", "expect": []}
+{"id": "r128", "lang": "en", "kind": "chitchat", "query": "Hi", "expect": []}
+{"id": "r129", "lang": "en", "kind": "chitchat", "query": "hello, how are you?", "expect": []}
+{"id": "r130", "lang": "en", "kind": "chitchat", "query": "good morning!", "expect": []}
+{"id": "r131", "lang": "en", "kind": "chitchat", "query": "thank you so much", "expect": []}
+{"id": "r132", "lang": "hi-latn", "kind": "chitchat", "query": "kaise ho bhai", "expect": []}
+{"id": "r133", "lang": "hi-latn", "kind": "chitchat", "query": "aaj mausam kaisa hai", "expect": []}
+{"id": "r134", "lang": "hi-latn", "kind": "chitchat", "query": "2+2 kitna hota hai", "expect": []}
+{"id": "r135", "lang": "en", "kind": "chitchat", "query": "tell me a joke", "expect": []}
+{"id": "r136", "lang": "en", "kind": "chitchat", "query": "who are you?", "expect": []}
+{"id": "r137", "lang": "en", "kind": "chitchat", "query": "what is the capital of France?", "expect": []}
+{"id": "r138", "lang": "hi-latn", "kind": "chitchat", "query": "namaste", "expect": []}
+{"id": "r139", "lang": "hi-deva", "kind": "chitchat", "query": "नमस्ते, आप कैसे हैं?", "expect": []}
+{"id": "r140", "lang": "en", "kind": "chitchat", "query": "good night", "expect": []}
+{"id": "r141", "lang": "en", "kind": "chitchat", "query": "I am feeling sad today", "expect": []}
+{"id": "r142", "lang": "en", "kind": "chitchat", "query": "what's your favourite colour", "expect": []}
+{"id": "r143", "lang": "en", "kind": "chitchat", "query": "lol", "expect": []}
+{"id": "r144", "lang": "en", "kind": "chitchat", "query": "ok cool", "expect": []}
+{"id": "r145", "lang": "hi-latn", "kind": "chitchat", "query": "acha theek hai", "expect": []}
+{"id": "r146", "lang": "hi-latn", "kind": "chitchat", "query": "kya haal hai", "expect": []}
+{"id": "r147", "lang": "en", "kind": "chitchat", "query": "bye", "expect": []}
+{"id": "r148", "lang": "en", "kind": "chitchat", "query": "can you help me?", "expect": []}
+{"id": "r149", "lang": "en", "kind": "chitchat", "query": "what is 15% of 200?", "expect": []}
+{"id": "r150", "lang": "en", "kind": "chitchat", "query": "suggest a good book", "expect": []}
+{"id": "r151", "lang": "hi-deva", "kind": "chitchat", "query": "मुझे एक कहानी सुनाओ", "expect": []}
+{"id": "r152", "lang": "en", "kind": "chitchat", "query": "how old is the universe?", "expect": []}
+{"id": "r153", "lang": "en", "kind": "none", "query": "send an email to my boss", "expect": []}
+{"id": "r154", "lang": "en", "kind": "none", "query": "book a flight to Delhi", "expect": []}
+{"id": "r155", "lang": "en", "kind": "none", "query": "play some music", "expect": []}
+{"id": "r156", "lang": "en", "kind": "none", "query": "take a screenshot", "expect": []}
+{"id": "r157", "lang": "en", "kind": "none", "query": "set an alarm for 6am", "expect": []}
+{"id": "r158", "lang": "en", "kind": "direct", "query": "list the files in C:/Users/Aryan/Documents", "expect": ["filesystem"]}
+{"id": "r159", "lang": "en", "kind": "direct", "query": "read package.json and tell me the version", "expect": ["filesystem"]}
+{"id": "r160", "lang": "en", "kind": "paraphrase", "query": "run a bash command to count the lines", "expect": ["code-interpreter"]}
+{"id": "r161", "lang": "hi-latn", "kind": "direct", "query": "web page fetch karo https://example.com", "expect": ["fetch"]}
+{"id": "r162", "lang": "en", "kind": "direct", "query": "show me the commits in this git repo", "expect": ["git"]}
+{"id": "r163", "lang": "en", "kind": "paraphrase", "query": "review this pull request diff for bugs", "expect": ["code-reviewer"]}
+{"id": "r164", "lang": "hi-latn", "kind": "direct", "query": "python me ek script likh ke chalao jo 1 se 10 tak print kare", "expect": ["code-interpreter"]}
+{"id": "r165", "lang": "en", "kind": "direct", "query": "learn cluaiz", "expect": ["learn-cluaiz"]}

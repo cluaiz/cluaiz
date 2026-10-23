@@ -42,6 +42,9 @@ pub struct DiscoverRequest {
     pub query: String,
     #[serde(default)]
     pub previous: Option<String>,
+    /// Also return the evidence for every tool with any match (for calibration)
+    #[serde(default)]
+    pub explain: bool,
 }
 
 /// POST /v1/tools/discover: which installed tools the Engine would suggest for a message, at
@@ -49,12 +52,16 @@ pub struct DiscoverRequest {
 pub async fn discover_tools(Json(request): Json<DiscoverRequest>) -> impl IntoResponse {
     let catalog = cluaiz_agents::ToolSearch::catalog(&[]);
     let candidates = cluaiz_agents::ToolSearch::suggest(&catalog, &request.query, request.previous.as_deref());
-    Json(json!({
+    let mut response = json!({
         "query": request.query,
         "actionable": cluaiz_agents::tool_search::is_actionable(&request.query),
         "candidates": cluaiz_agents::ToolSearch::candidates_json(&catalog, &candidates),
         "installed": catalog.len()
-    }))
+    });
+    if request.explain {
+        response["evidence"] = cluaiz_agents::ToolSearch::evidence(&catalog, &request.query, request.previous.as_deref());
+    }
+    Json(response)
 }
 
 /// Decrements turns for all active tools in a session and purges tools that have reached 0 turns
