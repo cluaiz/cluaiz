@@ -7,7 +7,7 @@ pub mod package_bundler;
 
 pub use asset_bundler::AssetBundler;
 pub use auto_heal::AutoHeal;
-pub use client::{dispatch_model_telemetry, resolve_model_repo, RegistryClient};
+pub use client::{parse_hf_repository, resolve_model_repo, resolve_model_repo_with_fallback, RegistryClient, RegistryResolveError};
 pub use downloader::{DownloadEvent, FileDownloader};
 pub use hf_hub::{HfTreeItem, HfVariant, HuggingFaceHub};
 
@@ -141,9 +141,6 @@ impl ModelDownloader {
             .map_err(|e| e.to_string())?;
 
         let dest_file = dest_dir.join(file_basename);
-        if !dest_file.exists() {
-            dispatch_model_telemetry(repo_id);
-        }
         FileDownloader::download_single_file(&client, download_url, &dest_file, tx, abort).await?;
 
         // Save manifest if present
@@ -263,9 +260,6 @@ impl ModelDownloader {
                     local_name
                 );
                 continue;
-            }
-            if created.is_empty() {
-                dispatch_model_telemetry(&manifest.id);
             }
             let url = if !manifest.huggingface_repo.is_empty() {
                 HuggingFaceHub::asset_url(manifest, rel_path)

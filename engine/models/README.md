@@ -30,6 +30,10 @@ graph TD
 
 ## Native package capability contract
 
+### Anonymous registry resolution
+
+`fetcher/client.rs` owns catalogue resolution. It sends one bounded HTTP request with the original model ID and an optional distinct tagged-base fallback. Missing IDs, rate limits, client rejection and service failure remain distinct. HTTP redirects are not followed. Complete HF coordinates bypass the website; model files still use the existing downloader. No request-count telemetry or delayed batch is sent. Client markers are identification hints, not authentication. Website proxy secrets stay on the server and are never shipped in the Engine.
+
 - **Shared header lifetime:** the single `GgufProber` keeps at most16 immutable GGUF headers in an LRU cache, keyed by canonical file path, byte length and modification time. Callers receive independent copies. Failed/truncated files are not cached; changed/deleted primaries and companions are rechecked. This is a stat cache, not a cryptographic identity guarantee. Geometry can consume the same parsed header through `geometry_from_header`; vocabulary strings beyond the retained summary are consumed without allocating strings, while truncation still fails.
 - **Selected planning:** `InstalledStateRegistry::find` reuses the authoritative JSON/versioned-cache reader and resolves one existing primary without refreshing or writing other installed packages. Normal `load` retains migration/full-refresh behavior. Chat planning rebuilds selected config/projector evidence from current files and cached headers; it does not cache settings, live hardware or a complete plan.
 

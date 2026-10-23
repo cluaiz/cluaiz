@@ -23,6 +23,8 @@ llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run
 
 ## `run`
 
+`pull` and automatic installation from `run` do not require website login. A short catalogue ID uses one resolver request; failures explain whether the ID is missing, the request was limited, the client was rejected, or the registry is unavailable. To bypass the website, supply the full HF repository (`owner/repository`, optionally `:QUANT`). Existing local models and local catalogue templates remain available. Command copy and installation do not send a separate counting event.
+
 ```sh
 cluaiz run qwen3-4b-gguf-Q4_K_M "Why is the sky blue?"     # one answer
 cat notes.txt | cluaiz run qwen3 --system-prompt "Summarize" > summary.txt  # stdin is the prompt
