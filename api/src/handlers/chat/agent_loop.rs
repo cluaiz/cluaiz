@@ -146,6 +146,17 @@ pub async fn execute_streaming_loop(
         }
         yield Ok::<_, Infallible>(Event::default().data(early_context_chunk.to_string()));
 
+        // What the Engine chose about tools, before the first token
+        yield Ok::<_, Infallible>(Event::default().data(json!({
+            "id": req_id_stream.clone(),
+            "object": "chat.completion.chunk",
+            "created": Utc::now().timestamp(),
+            "model": ctx.resolved_model_name.clone(),
+            "choices": [],
+            "context": { "tools": ctx.tools_report.clone() }
+        }).to_string()));
+        let mut tool_events: Vec<serde_json::Value> = Vec::new();
+
         let mut rx = initial_rx;
 
         // 🔄 AUTONOMOUS MULTI-TURN AGENT EXECUTION LOOP
@@ -364,6 +375,7 @@ pub async fn execute_streaming_loop(
 
                         let executed = if is_meta_tool {
                             let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
+                            tool_events.push(super::preflight::tool_event(meta_name, &meta_payload, &outcome.text));
                             unloaded_tool = outcome.unloaded;
                             Ok(outcome.text)
                         } else {
@@ -634,7 +646,8 @@ pub async fn execute_streaming_loop(
             "created": Utc::now().timestamp(),
             "model": ctx.resolved_model_name.clone(),
             "choices": [],
-            "engine": super::types::engine_report(&state_clone.host).await
+            "engine": super::types::engine_report(&state_clone.host).await,
+            "context_report": super::preflight::context_report(&ctx, &tool_events)
         });
         yield Ok::<_, Infallible>(Event::default().data(engine_chunk.to_string()));
 

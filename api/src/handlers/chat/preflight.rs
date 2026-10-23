@@ -39,6 +39,8 @@ pub struct PreparedChatContext {
     pub ledger_turn: Option<(String, String)>,
     /// The tool hint put in front of the current user message
     pub tool_hint: String,
+    /// What the Engine chose about tools for this request (the tools part of `context_report`)
+    pub tools_report: serde_json::Value,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -540,6 +542,8 @@ impl PreparedChatContext {
         let discovery = tools_allowed && request.tool_search != Some(false);
         let mut hint_lines = String::new();
         let mut offer_meta_tools = false;
+        let mut suggested = serde_json::Value::Array(Vec::new());
+        let mut search_offered = false;
         if discovery {
             let mut exclude = tool_ids_to_compile.clone();
             exclude.extend(inline_tool_ids.iter().cloned());
@@ -558,11 +562,13 @@ impl PreparedChatContext {
                         .join("; ")
                 );
                 hint_lines = cluaiz_agents::ToolSearch::hint_lines(&catalog, &candidates);
+                suggested = cluaiz_agents::ToolSearch::candidates_json(&catalog, &candidates);
             } else if tool_ids_to_compile.is_empty()
                 && !catalog.is_empty()
                 && cluaiz_agents::tool_search::is_actionable(&initial_user_query)
             {
                 hint_lines = "Installed tools are not loaded. If one would help, search them with find_tools.\n".to_string();
+                search_offered = true;
             }
             offer_meta_tools = !hint_lines.is_empty()
                 || !tool_ids_to_compile.is_empty()
@@ -626,6 +632,18 @@ impl PreparedChatContext {
             hint.push_str("</tools_hint>");
         }
         let tool_load_room = offer_meta_tools.then(|| max_tool_chars.saturating_sub(system_tools.len() + hint.len()));
+        let tokens = cluaiz_agents::tool_search::tokens;
+        let tools_report = json!({
+            "suggested": suggested,
+            "search_offered": search_offered,
+            "loaded_in_chat": inline_tool_ids.clone(),
+            "bound": tool_ids_to_compile.clone(),
+            "meta_tools": offer_meta_tools,
+            "hint_tokens": tokens(hint.len()),
+            "system_tools_tokens": tokens(system_tools.len()),
+            "load_room_tokens": tool_load_room.map(tokens),
+            "estimate": "tokens are estimated from characters"
+        });
         let after_tools = std::time::Instant::now();
 
         if !hint.is_empty() {
@@ -869,6 +887,7 @@ impl PreparedChatContext {
             loaded_tool_ids: tool_ids_to_compile.clone(),
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             tool_hint: hint.clone(),
+            tools_report,
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
             json_prompt,
@@ -968,6 +987,25 @@ fn prepend_text(content: &mut MessageContent, block: &str) {
         MessageContent::Text(text) => *text = format!("{block}\n\n{text}"),
         MessageContent::Array(parts) => parts.insert(0, super::types::ContentPart::Text { text: block.to_string() }),
     }
+}
+
+/// The `context_report` of a request: the tools chosen at the start and the tool meta-tool
+/// calls made while answering
+pub fn context_report(ctx: &PreparedChatContext, tool_events: &[serde_json::Value]) -> serde_json::Value {
+    let mut tools = ctx.tools_report.clone();
+    tools["events"] = serde_json::Value::Array(tool_events.to_vec());
+    json!({ "tools": tools })
+}
+
+/// A tool meta-tool call for the report
+pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value {
+    let args: serde_json::Value = serde_json::from_str(payload).unwrap_or_default();
+    json!({
+        "op": name,
+        "target": args.get("id").or_else(|| args.get("query")).cloned(),
+        "result_tokens": cluaiz_agents::tool_search::tokens(result.len()),
+        "ok": !result.starts_with("No ") && !result.contains("does not fit") && !result.contains("needs about"),
+    })
 }
 
 /// Records what the Engine added to the turn that just ended (its tool hint and tool steps)

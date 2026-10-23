@@ -244,6 +244,11 @@ impl CatalogEntry {
         }
     }
 
+    /// Estimated tokens `load_tool` adds for this tool
+    pub fn load_cost(&self) -> usize {
+        self.load_cost
+    }
+
     /// What the tool is for, in one short line
     pub fn summary(&self) -> String {
         if !self.title.is_empty() {
@@ -383,6 +388,27 @@ fn score_catalog(catalog: &[CatalogEntry], query: &[String]) -> Vec<Scored> {
 pub struct ToolSearch;
 
 impl ToolSearch {
+    /// Candidates as JSON for reports and the discover endpoint
+    pub fn candidates_json(catalog: &[CatalogEntry], candidates: &[Candidate]) -> Value {
+        Value::Array(
+            candidates
+                .iter()
+                .map(|c| {
+                    let entry = catalog.iter().find(|e| e.id == c.id);
+                    json!({
+                        "id": c.id,
+                        "level": if c.level == Level::Card { "card" } else { "title" },
+                        "score": (c.score * 100.0).round() / 100.0,
+                        "matched": c.matched,
+                        "category": entry.map(|e| e.category.clone()),
+                        "summary": entry.map(|e| e.summary()),
+                        "load_cost_tokens": entry.map(|e| e.load_cost()),
+                    })
+                })
+                .collect(),
+        )
+    }
+
     /// Whether `name` is the id of an installed, switched-on tool (a component, not one of its
     /// functions)
     pub fn is_installed_tool_id(name: &str) -> bool {
@@ -688,7 +714,14 @@ fn estimate_load_cost(local_dir: &Path, functions: &[Value]) -> usize {
         .ok()
         .and_then(|content| crate::tools::skills::SkillParser::parse_content(&content))
         .map_or(0, |parsed| parsed.prompt_instructions.len());
-    let functions: usize = functions.iter().map(|f| f.to_string().len() + 40).sum();
+    // A load sends at most MAX_FUNCTIONS_PER_LOAD functions in full and names the rest
+    let sizes: Vec<usize> = functions.iter().map(|f| f.to_string().len() + 40).collect();
+    let full = sizes.len().min(MAX_FUNCTIONS_PER_LOAD);
+    let functions = if sizes.is_empty() {
+        0
+    } else {
+        sizes.iter().sum::<usize>() * full / sizes.len() + (sizes.len() - full) * 20
+    };
     let total = tokens(instructions + functions);
     if total >= 100 { total / 50 * 50 } else { total.max(10) }
 }

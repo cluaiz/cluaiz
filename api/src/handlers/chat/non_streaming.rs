@@ -20,6 +20,7 @@ pub async fn execute_non_streaming(
 
     let mut max_iters = 15;
     let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.chat_tmpl.as_deref());
+    let mut tool_events: Vec<serde_json::Value> = Vec::new();
     let mut final_raw_text = String::new();
 
     while max_iters > 0 {
@@ -124,6 +125,7 @@ pub async fn execute_non_streaming(
                 Ok(super::authorize::denied_result(&reason))
             } else if is_meta_tool {
                 let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
+                tool_events.push(super::preflight::tool_event(meta_name, &meta_payload, &outcome.text));
                 unloaded_tool = outcome.unloaded;
                 Ok(outcome.text)
             } else {
@@ -274,6 +276,7 @@ pub async fn execute_non_streaming(
     }
     // Engine report (llama.cpp timings + load values) is always sent, like llama-server's "timings"
     response["engine"] = super::types::engine_report(&state.host).await;
+    response["context_report"] = super::preflight::context_report(&ctx, &tool_events);
 
     // ⏳ Decrement session tool turns & purge expired ephemeral tools
     if let Some(ref sid) = req_session_id {

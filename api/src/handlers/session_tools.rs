@@ -35,6 +35,28 @@ pub struct SessionToolsUpdateRequest {
     pub detach: Vec<String>,
 }
 
+/// Request for `POST /v1/tools/discover`: the message to match, and optionally the user's
+/// previous message (used for short follow-ups such as "phir se")
+#[derive(Debug, Deserialize)]
+pub struct DiscoverRequest {
+    pub query: String,
+    #[serde(default)]
+    pub previous: Option<String>,
+}
+
+/// POST /v1/tools/discover: which installed tools the Engine would suggest for a message, at
+/// which level and why (a dry run of the matcher; nothing is loaded or started)
+pub async fn discover_tools(Json(request): Json<DiscoverRequest>) -> impl IntoResponse {
+    let catalog = cluaiz_agents::ToolSearch::catalog(&[]);
+    let candidates = cluaiz_agents::ToolSearch::suggest(&catalog, &request.query, request.previous.as_deref());
+    Json(json!({
+        "query": request.query,
+        "actionable": cluaiz_agents::tool_search::is_actionable(&request.query),
+        "candidates": cluaiz_agents::ToolSearch::candidates_json(&catalog, &candidates),
+        "installed": catalog.len()
+    }))
+}
+
 /// Decrements turns for all active tools in a session and purges tools that have reached 0 turns
 pub fn decrement_session_turns(session_id: &str) {
     ToolsEngine::decrement_session_turns(session_id);
