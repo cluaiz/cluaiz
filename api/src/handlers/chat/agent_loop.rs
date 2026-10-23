@@ -73,7 +73,9 @@ pub async fn execute_streaming_loop(
         );
     }
 
+    let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
     let stream = async_stream::stream! {
+        let turn_memory = turn_memory;
         let mut current_prompt = ctx.json_prompt.clone();
         let mut total_generated = String::new();
         let mut overall_token_count = 0;
@@ -663,6 +665,7 @@ pub async fn execute_streaming_loop(
         }
         // What the Engine added to this turn, so the next request renders it the same way
         super::preflight::record_turn(&ctx, tool_turns.steps());
+        turn_memory.finish().await;
 
         // 🧹 Auto-Cleanup: Remove completed stream from active registry
         if let Ok(mut lock) = ACTIVE_STREAMS.write() {

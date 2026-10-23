@@ -17,6 +17,7 @@ pub async fn execute_non_streaming(
     let keep_alive_val = request.keep_alive;
     let req_session_id = request.session_id.clone();
     let start_time = ctx.start_time;
+    let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
 
     let mut max_iters = 15;
     let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.chat_tmpl.as_deref());
@@ -284,6 +285,7 @@ pub async fn execute_non_streaming(
     }
     // What the Engine added to this turn, so the next request renders it the same way
     super::preflight::record_turn(&ctx, tool_turns.steps());
+    turn_memory.finish().await;
 
     // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
     if keep_alive_val == Some(0) {

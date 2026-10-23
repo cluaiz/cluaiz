@@ -27,6 +27,9 @@ enum GenerationRequest {
         media_lease: Option<crate::media_admission::MediaLease>,
         /// Chat the request belongs to (the API's session_id), for chat memory on disk
         chat: Option<String>,
+        /// Save the chat's KV right after this generation. False for the steps of a turn: the
+        /// API saves once when the turn ends (`save_chat_memory`).
+        persist: bool,
     },
     Media(Box<MediaGeneration>),
 }
@@ -94,6 +97,8 @@ pub struct EngineHost {
     pub last_context: Arc<Mutex<Option<ContextReport>>>,
     /// Chat whose KV cache the context holds now (chat memory on disk)
     memory_owner: Arc<Mutex<Option<String>>>,
+    /// Chat whose finished generation is in the context but not saved yet (`persist: false`)
+    unsaved_chat: Arc<Mutex<Option<String>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
     thinking_tags_cache: Arc<Mutex<Option<(Option<String>, ThinkingTags)>>>,
     /// Full plan banner of the last load (also written to the log)
@@ -141,6 +146,7 @@ impl EngineHost {
             last_thinking: Arc::new(Mutex::new(None)),
             last_context: Arc::new(Mutex::new(None)),
             memory_owner: Arc::new(Mutex::new(None)),
+            unsaved_chat: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
             plan_report: Arc::new(Mutex::new(None)),
             vocab: Arc::new(std::sync::RwLock::new(None)),
@@ -464,6 +470,7 @@ impl EngineHost {
                 expected_key: None,
                 media_lease: None,
                 chat: None,
+                persist: true,
             },
             max_tokens,
             None,
@@ -473,6 +480,9 @@ impl EngineHost {
     }
 
     /// API text requests retain their selected model identity and independent cancellation.
+    /// With `persist_memory: false` the chat's KV is not saved after this step; the caller saves
+    /// it once with `save_chat_memory` when the turn ends.
+    #[allow(clippy::too_many_arguments)]
     pub async fn dispatch_chat_text(
         &self,
         prompt: &str,
@@ -482,6 +492,7 @@ impl EngineHost {
         cancel: Arc<std::sync::atomic::AtomicBool>,
         skip: Arc<std::sync::atomic::AtomicBool>,
         chat: Option<&str>,
+        persist_memory: bool,
     ) -> HostResponse {
         self.dispatch_request(
             GenerationRequest::Text {
@@ -489,6 +500,7 @@ impl EngineHost {
                 expected_key: Some(Self::load_key(&model_path.to_string_lossy(), settings)),
                 media_lease: None,
                 chat: chat.map(str::to_owned),
+                persist: persist_memory,
             },
             max_tokens,
             Some(cancel),
@@ -515,6 +527,7 @@ impl EngineHost {
         let thinking_arc = self.last_thinking.clone();
         let context_arc = self.last_context.clone();
         let owner_arc = self.memory_owner.clone();
+        let unsaved_arc = self.unsaved_chat.clone();
         let plan_arc = self.current_plan.clone();
 
         tokio::task::spawn_blocking(move || {
@@ -550,26 +563,14 @@ impl EngineHost {
 
                 // Chat memory: when this chat is not the one in the context, restore its saved KV
                 let memory = cluaiz_core::Settings::current().chat_memory;
-                let (chat, pivot) = match &request {
-                    GenerationRequest::Text { chat, prompt, .. } => {
-                        (chat.clone(), prompt.starts_with("[PIVOT_CONTINUE]"))
+                let (chat, pivot, persist) = match &request {
+                    GenerationRequest::Text { chat, prompt, persist, .. } => {
+                        (chat.clone(), prompt.starts_with("[PIVOT_CONTINUE]"), *persist)
                     }
-                    GenerationRequest::Media(media) => (media.chat.clone(), false),
+                    GenerationRequest::Media(media) => (media.chat.clone(), false, true),
                 };
                 let model_path = path_arc.blocking_lock().clone().unwrap_or_default();
-                let kv_type = plan_arc
-                    .blocking_lock()
-                    .as_ref()
-                    .map(|p| format!("{:?}", p.kv_cache_type))
-                    .unwrap_or_default();
-                let memory_key = crate::chat_memory::memory_key(
-                    fingerprint_arc
-                        .blocking_lock()
-                        .as_deref()
-                        .unwrap_or_default(),
-                    &model_path,
-                    &kv_type,
-                );
+                let memory_key = blocking_memory_key(&plan_arc, &fingerprint_arc, &model_path);
                 if memory.enabled && !pivot {
                     let mut owner = owner_arc.blocking_lock();
                     if *owner != chat {
@@ -673,30 +674,15 @@ impl EngineHost {
                     }
                 }
                 // The answer is complete for the client; then the chat's KV is saved for later turns
+                // (now, or once at the end of the turn for a step with `persist: false`)
                 drop(tx);
+                let mut unsaved = unsaved_arc.blocking_lock();
+                *unsaved = None;
                 if let (true, true, Some(id)) = (succeeded, memory.enabled, &chat) {
-                    let started = std::time::Instant::now();
-                    let positions = llama
-                        .context_report()
-                        .map_or(tokens_guard.len(), |r| r.n_tokens);
-                    match crate::chat_memory::save(
-                        llama,
-                        id,
-                        &tokens_guard,
-                        positions,
-                        &memory_key,
-                        &model_path,
-                        &memory,
-                    ) {
-                        Ok(bytes) => tracing::info!(
-                            "💾 [ChatMemory] Saved chat {} ({:.1} MB) in {} ms",
-                            id,
-                            bytes as f64 / 1_048_576.0,
-                            started.elapsed().as_millis()
-                        ),
-                        Err(e) => {
-                            tracing::warn!("💾 [ChatMemory] Could not save chat {}: {}", id, e)
-                        }
+                    if persist {
+                        save_chat_kv(llama, id, &tokens_guard, &memory_key, &model_path, &memory);
+                    } else {
+                        *unsaved = Some(id.clone());
                     }
                 }
             } else {
@@ -705,6 +691,37 @@ impl EngineHost {
         });
 
         HostResponse::TokenStream(rx)
+    }
+
+    /// Saves `chat`'s KV once its turn has ended, when its last step was not saved and the context
+    /// still holds it (another chat may have run since). Waits for a running generation.
+    pub async fn save_chat_memory(&self, chat: &str) {
+        let llama_arc = self.active_session.clone();
+        let path_arc = self.active_model_path.clone();
+        let fingerprint_arc = self.active_fingerprint.clone();
+        let tokens_arc = self.last_prefilled_tokens.clone();
+        let owner_arc = self.memory_owner.clone();
+        let unsaved_arc = self.unsaved_chat.clone();
+        let plan_arc = self.current_plan.clone();
+        let chat = chat.to_owned();
+        let _ = tokio::task::spawn_blocking(move || {
+            let llama_guard = llama_arc.blocking_lock();
+            let Some(llama) = llama_guard.as_ref() else { return };
+            let mut unsaved = unsaved_arc.blocking_lock();
+            if unsaved.as_deref() != Some(chat.as_str()) || owner_arc.blocking_lock().as_deref() != Some(chat.as_str()) {
+                return;
+            }
+            *unsaved = None;
+            let memory = cluaiz_core::Settings::current().chat_memory;
+            if !memory.enabled {
+                return;
+            }
+            let model_path = path_arc.blocking_lock().clone().unwrap_or_default();
+            let memory_key = blocking_memory_key(&plan_arc, &fingerprint_arc, &model_path);
+            let tokens = tokens_arc.blocking_lock();
+            save_chat_kv(llama, &chat, &tokens, &memory_key, &model_path, &memory);
+        })
+        .await;
     }
 
     /// Nonblocking input evidence for planning; a busy or different model is unverified.
@@ -826,5 +843,41 @@ impl EngineHost {
             llama.bench(n_prompt, n_gen, reps)
         })
         .await?
+    }
+}
+
+/// The identity a saved chat KV must match for the loaded model (see `chat_memory::memory_key`)
+fn blocking_memory_key(
+    plan: &Mutex<Option<ExecutionPlan>>,
+    fingerprint: &Mutex<Option<String>>,
+    model_path: &str,
+) -> String {
+    let kv_type = plan
+        .blocking_lock()
+        .as_ref()
+        .map(|p| format!("{:?}", p.kv_cache_type))
+        .unwrap_or_default();
+    crate::chat_memory::memory_key(fingerprint.blocking_lock().as_deref().unwrap_or_default(), model_path, &kv_type)
+}
+
+/// Writes the chat's KV to disk and logs the result
+fn save_chat_kv(
+    llama: &NativeSession,
+    chat: &str,
+    tokens: &[i32],
+    memory_key: &str,
+    model_path: &str,
+    memory: &cluaiz_core::ChatMemorySettings,
+) {
+    let started = std::time::Instant::now();
+    let positions = llama.context_report().map_or(tokens.len(), |r| r.n_tokens);
+    match crate::chat_memory::save(llama, chat, tokens, positions, memory_key, model_path, memory) {
+        Ok(bytes) => tracing::info!(
+            "💾 [ChatMemory] Saved chat {} ({:.1} MB) in {} ms",
+            chat,
+            bytes as f64 / 1_048_576.0,
+            started.elapsed().as_millis()
+        ),
+        Err(e) => tracing::warn!("💾 [ChatMemory] Could not save chat {}: {}", chat, e),
     }
 }
