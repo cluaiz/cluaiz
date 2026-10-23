@@ -16,6 +16,28 @@ static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::n
     Arc::new(RwLock::new(HashMap::new()))
 });
 
+/// Resolves a bare launcher name such as `npx` or `uvx` the way a shell would. On Windows
+/// these are `npx.cmd` / `uvx.exe`, which `CreateProcess` does not find from the bare name,
+/// so each PATH directory is tried with the PATHEXT extensions. Other inputs pass through.
+fn program_path(command: &str) -> PathBuf {
+    let path = Path::new(command);
+    if !cfg!(windows) || path.extension().is_some() || path.components().count() > 1 {
+        return path.to_path_buf();
+    }
+    let extensions = std::env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string());
+    std::env::var_os("PATH")
+        .into_iter()
+        .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
+        .flat_map(|dir| {
+            extensions
+                .split(';')
+                .filter(|ext| !ext.is_empty())
+                .map(move |ext| dir.join(format!("{command}{ext}")))
+        })
+        .find(|candidate| candidate.is_file())
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
 /// Subprocess IPC client communicating with external MCP servers over stdio with full JSON-RPC 2.0 protocol handshake
 pub struct McpClient;
 
@@ -59,7 +81,7 @@ impl McpClient {
         tracing::info!("🔌 [McpClient] Discovering tools for '{}' via stdio: {} {:?}",
             manifest.name, exec.command, exec.args);
 
-        let mut cmd = Command::new(&exec.command);
+        let mut cmd = Command::new(program_path(&exec.command));
         cmd.args(&exec.args)
             .current_dir(mcp_dir)
             .stdin(Stdio::piped())
@@ -196,7 +218,7 @@ impl McpClient {
         tracing::info!("🔌 [McpClient] Spawning MCP server '{}' via stdio: {} {:?}",
             manifest.name, exec.command, exec.args);
 
-        let mut cmd = Command::new(&exec.command);
+        let mut cmd = Command::new(program_path(&exec.command));
         cmd.args(&exec.args)
             .current_dir(mcp_dir)
             .stdin(Stdio::piped())
