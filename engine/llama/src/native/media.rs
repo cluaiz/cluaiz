@@ -600,6 +600,7 @@ impl MediaInput {
         let mut report = super::core::ContextReport {
             n_ctx,
             stop: "eos",
+            kv_reuse: "prefix",
             ..Default::default()
         };
         // Same answer room as text requests: max_tokens, at most a quarter of the context
