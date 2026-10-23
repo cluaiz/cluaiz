@@ -45,20 +45,43 @@ fn tools_block(schemas: &[Value]) -> String {
 }
 
 impl CompiledPromptTools {
-    /// The `<tools>` block limited to `max_chars`, keeping whole schemas in their order.
-    /// Returns the block and the names of the tools that did not fit.
-    pub fn tools_xml_within(&self, max_chars: usize) -> (String, Vec<String>) {
+    /// The `<tools>` block limited to `max_chars`, keeping whole schemas. When not every tool
+    /// fits, the tools whose name and description share the most words with `query` go
+    /// first (a lexical tool search), so a tool the request asks for is not crowded out by
+    /// an earlier server's list. Returns the block and the names of the tools left out.
+    pub fn tools_xml_within(&self, max_chars: usize, query: &str) -> (String, Vec<String>) {
         if self.tools_xml.len() <= max_chars {
             return (self.tools_xml.clone(), Vec::new());
         }
+        let words: Vec<String> = query
+            .to_lowercase()
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|word| word.len() >= 3)
+            .map(str::to_string)
+            .collect();
+        let name_of = |schema: &Value| -> String {
+            schema.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).unwrap_or("?").to_string()
+        };
+        let score = |schema: &Value| -> usize {
+            let function = schema.get("function");
+            let text = format!(
+                "{} {}",
+                name_of(schema).replace('_', " "),
+                function.and_then(|f| f.get("description")).and_then(|d| d.as_str()).unwrap_or("")
+            )
+            .to_lowercase();
+            words.iter().filter(|word| text.contains(word.as_str())).count()
+        };
+        let mut ranked: Vec<&Value> = self.function_schemas.iter().collect();
+        ranked.sort_by_key(|schema| std::cmp::Reverse(score(schema)));
+
         let mut kept: Vec<Value> = Vec::new();
         let mut dropped = Vec::new();
-        for schema in &self.function_schemas {
+        for schema in ranked {
             kept.push(schema.clone());
-            if !dropped.is_empty() || tools_block(&kept).len() > max_chars {
+            if tools_block(&kept).len() > max_chars {
                 kept.pop();
-                let name = schema.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).unwrap_or("?");
-                dropped.push(name.to_string());
+                dropped.push(name_of(schema));
             }
         }
         (tools_block(&kept), dropped)

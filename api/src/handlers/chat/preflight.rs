@@ -468,7 +468,7 @@ impl PreparedChatContext {
         // drop the call-format instructions that follow it.
         let tools_budget = max_tool_chars
             .saturating_sub(TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len());
-        let (tools_xml, dropped_tools) = compiled_tools.tools_xml_within(tools_budget);
+        let (tools_xml, dropped_tools) = compiled_tools.tools_xml_within(tools_budget, &initial_user_query);
         if !dropped_tools.is_empty() {
             tracing::warn!(
                 "⚠️ [ChatHandler] Tool list exceeds the prompt budget ({} chars); left out: {:?}",

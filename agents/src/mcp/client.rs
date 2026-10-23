@@ -1,20 +1,31 @@
+//! MCP client over stdio. Like other MCP hosts, each server runs as one long-lived process:
+//! it is initialized once and then serves any number of requests on the same connection, so
+//! several servers and several calls per answer reuse their running processes.
+
 use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
+use std::process::{Child, ChildStdin, Command, Stdio};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use serde_json::{json, Value};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{ChildStdin, Command};
+use tokio::sync::{oneshot, Mutex, RwLock};
 use tokio::time::timeout;
 use super::manifest::McpManifestParser;
-use std::sync::Arc;
-use tokio::sync::RwLock;
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
+
+/// First start can include a package download (`npx -y`, `uvx`).
+const START_TIMEOUT: Duration = Duration::from_secs(90);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::new(|| {
     Arc::new(RwLock::new(HashMap::new()))
 });
+
+/// Running servers, keyed by their package folder.
+static SESSIONS: Lazy<Mutex<HashMap<PathBuf, Arc<McpSession>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 /// Resolves a bare launcher name such as `npx` or `uvx` the way a shell would. On Windows
 /// these are `npx.cmd` / `uvx.exe`, which `CreateProcess` does not find from the bare name,
@@ -47,25 +58,199 @@ fn file_uri(path: &Path) -> String {
     if text.starts_with('/') { format!("file://{text}") } else { format!("file:///{text}") }
 }
 
-/// Answers a request the server sends while the client waits for a response. `roots/list`
-/// returns the open workspace; other methods get JSON-RPC "method not found".
-/// Returns false when `message` is not a server request.
-async fn answer_server_request(stdin: &mut ChildStdin, message: &Value) -> Result<bool> {
-    let (Some(method), Some(id)) = (message.get("method").and_then(|m| m.as_str()), message.get("id")) else {
-        return Ok(false);
-    };
-    let reply = if method == "roots/list" {
+type PendingMap = Arc<std::sync::Mutex<HashMap<u64, oneshot::Sender<Value>>>>;
+
+/// One running MCP server and its JSON-RPC connection.
+///
+/// The pipes are std's: std reads and writes them with overlapped I/O, which is how it opens
+/// its end. Each pipe has one owner — a reader thread for stdout and stderr, and a lock for
+/// stdin — so no two operations ever run on the same pipe at once.
+struct McpSession {
+    name: String,
+    /// Workspace the server was started in; a different workspace needs a new process.
+    workspace: PathBuf,
+    /// `None` once stopped: closing stdin is how a stdio server is told to exit.
+    stdin: std::sync::Mutex<Option<ChildStdin>>,
+    child: std::sync::Mutex<Child>,
+    pending: PendingMap,
+    next_id: AtomicU64,
+    alive: Arc<AtomicBool>,
+}
+
+impl McpSession {
+    async fn start(mcp_dir: &Path) -> Result<Arc<Self>> {
+        let manifest = McpManifestParser::parse_file(&mcp_dir.join("package.json"))
+            .ok_or_else(|| anyhow!("Failed to parse MCP package.json in {:?}", mcp_dir))?;
+        let exec = manifest.execution
+            .ok_or_else(|| anyhow!("No execution configuration found for MCP in {:?}", mcp_dir))?;
+        if exec.command.trim().is_empty() {
+            return Err(anyhow!("MCP execution command is empty for {:?}", mcp_dir));
+        }
+
         let workspace = crate::ToolsEngine::workspace_dir();
-        let name = workspace.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-        json!({"jsonrpc": "2.0", "id": id, "result": {"roots": [{"uri": file_uri(&workspace), "name": name}]}})
-    } else {
-        json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("Method not found: {method}")}})
-    };
-    let mut line = serde_json::to_string(&reply)?;
-    line.push('\n');
-    stdin.write_all(line.as_bytes()).await?;
-    stdin.flush().await?;
-    Ok(true)
+        tracing::info!("🔌 [McpClient] Starting MCP server '{}' in {:?}: {} {:?}",
+            manifest.name, workspace, exec.command, exec.args);
+
+        let mut cmd = Command::new(program_path(&exec.command));
+        // Servers start in the open workspace, as other MCP clients do. The package folder
+        // holds Cluaiz's own package.json, which npm would read as an npm project.
+        cmd.args(&exec.args)
+            .current_dir(&workspace)
+            .envs(&exec.env)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+
+        let mut child = cmd.spawn()
+            .map_err(|e| anyhow!("Failed to spawn MCP server '{}' ({}): {}", manifest.name, exec.command, e))?;
+        let stdin = child.stdin.take().ok_or_else(|| anyhow!("Failed to open MCP stdin"))?;
+        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open MCP stdout"))?;
+        if let Some(stderr) = child.stderr.take() {
+            let name = manifest.name.clone();
+            std::thread::spawn(move || {
+                for line in BufReader::new(stderr).lines().map_while(|line| line.ok()) {
+                    tracing::debug!("[MCP {} stderr] {}", name, line);
+                }
+            });
+        }
+
+        let session = Arc::new(Self {
+            name: manifest.name.clone(),
+            workspace,
+            stdin: std::sync::Mutex::new(Some(stdin)),
+            child: std::sync::Mutex::new(child),
+            pending: Arc::new(std::sync::Mutex::new(HashMap::new())),
+            next_id: AtomicU64::new(1),
+            alive: Arc::new(AtomicBool::new(true)),
+        });
+
+        // One reader owns stdout: responses go to their waiting request, server requests
+        // are answered, notifications are logged.
+        let reader_session = session.clone();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines().map_while(|line| line.ok()) {
+                let Ok(message) = serde_json::from_str::<Value>(line.trim()) else { continue };
+                let id = message.get("id").cloned();
+                match (message.get("method").and_then(|m| m.as_str()), id) {
+                    (Some(method), Some(id)) => {
+                        if let Err(e) = reader_session.answer_server_request(method, id) {
+                            tracing::warn!("⚠️ [McpClient] '{}' could not answer {}: {}", reader_session.name, method, e);
+                        }
+                    }
+                    (Some(method), None) => tracing::debug!("[MCP {}] notification {}", reader_session.name, method),
+                    (None, Some(id)) => {
+                        let waiter = id.as_u64().and_then(|id| reader_session.pending.lock().ok()?.remove(&id));
+                        if let Some(waiter) = waiter {
+                            let _ = waiter.send(message);
+                        }
+                    }
+                    (None, None) => {}
+                }
+            }
+            // Stdout closed: the server exited. Waiting requests fail when their senders drop.
+            reader_session.alive.store(false, Ordering::SeqCst);
+            if let Ok(mut pending) = reader_session.pending.lock() {
+                pending.clear();
+            }
+            tracing::info!("🔌 [McpClient] MCP server '{}' exited", reader_session.name);
+        });
+
+        session.request("initialize", json!({
+            "protocolVersion": "2024-11-05",
+            "capabilities": { "roots": { "listChanged": true } },
+            "clientInfo": { "name": "cluaiz-engine", "version": env!("CARGO_PKG_VERSION") }
+        }), START_TIMEOUT).await
+            .map_err(|e| anyhow!("MCP server '{}' did not initialize: {}", manifest.name, e))?;
+        session.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}))?;
+        Ok(session)
+    }
+
+    /// Writes one JSON-RPC message line. Lines are small, so the write does not wait on the
+    /// server unless its input buffer is full.
+    fn send(&self, message: &Value) -> Result<()> {
+        let mut line = serde_json::to_string(message)?;
+        line.push('\n');
+        let mut guard = self.stdin.lock().map_err(|_| anyhow!("MCP stdin lock poisoned"))?;
+        let stdin = guard.as_mut().ok_or_else(|| anyhow!("MCP server '{}' was stopped", self.name))?;
+        stdin.write_all(line.as_bytes())?;
+        stdin.flush()?;
+        Ok(())
+    }
+
+    /// Sends a request and waits for its response; a JSON-RPC error becomes `Err`.
+    async fn request(&self, method: &str, params: Value, limit: Duration) -> Result<Value> {
+        let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let (tx, rx) = oneshot::channel();
+        self.pending.lock().map_err(|_| anyhow!("MCP request table poisoned"))?.insert(id, tx);
+        if let Err(e) = self.send(&json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params})) {
+            self.forget(id);
+            return Err(anyhow!("Failed to send {} to MCP server '{}': {}", method, self.name, e));
+        }
+        let response = match timeout(limit, rx).await {
+            Ok(Ok(response)) => response,
+            Ok(Err(_)) => return Err(anyhow!("MCP server '{}' exited before answering {}", self.name, method)),
+            Err(_) => {
+                self.forget(id);
+                return Err(anyhow!("Timeout ({}s) waiting for MCP server '{}' to answer {}", limit.as_secs(), self.name, method));
+            }
+        };
+        if let Some(error) = response.get("error") {
+            return Err(anyhow!("MCP error: {}", error));
+        }
+        Ok(response.get("result").cloned().unwrap_or(Value::Null))
+    }
+
+    fn forget(&self, id: u64) {
+        if let Ok(mut pending) = self.pending.lock() {
+            pending.remove(&id);
+        }
+    }
+
+    /// `roots/list` returns the open workspace; other server requests get "method not found".
+    fn answer_server_request(&self, method: &str, id: Value) -> Result<()> {
+        let reply = if method == "roots/list" {
+            let name = self.workspace.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            json!({"jsonrpc": "2.0", "id": id, "result": {"roots": [{"uri": file_uri(&self.workspace), "name": name}]}})
+        } else {
+            json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("Method not found: {method}")}})
+        };
+        self.send(&reply)
+    }
+
+    /// Closes stdin and ends the process. Launchers such as `npx.cmd` run the server as a
+    /// child of their own, which exits when its stdin closes.
+    fn stop(&self) {
+        self.alive.store(false, Ordering::SeqCst);
+        if let Ok(mut stdin) = self.stdin.lock() {
+            stdin.take();
+        }
+        if let Ok(mut child) = self.child.lock() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+/// The running server for `mcp_dir`, started (or restarted after an exit or a workspace
+/// change) when needed.
+async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
+    let workspace = crate::ToolsEngine::workspace_dir();
+    let mut sessions = SESSIONS.lock().await;
+    if let Some(existing) = sessions.get(mcp_dir) {
+        if existing.alive.load(Ordering::SeqCst) && existing.workspace == workspace {
+            return Ok(existing.clone());
+        }
+        existing.stop();
+        sessions.remove(mcp_dir);
+    }
+    let session = McpSession::start(mcp_dir).await?;
+    sessions.insert(mcp_dir.to_path_buf(), session.clone());
+    Ok(session)
 }
 
 /// Subprocess IPC client communicating with external MCP servers over stdio with full JSON-RPC 2.0 protocol handshake
@@ -75,8 +260,6 @@ impl McpClient {
     /// Discovers tools from an MCP server conforming to JSON-RPC 2.0 `tools/list`
     pub async fn list_tools(mcp_dir: &Path) -> Result<Vec<Value>> {
         let manifest_path = mcp_dir.join("package.json");
-        let manifest = McpManifestParser::parse_file(&manifest_path)
-            .ok_or_else(|| anyhow!("Failed to parse MCP package.json in {:?}", mcp_dir))?;
 
         // 1. Check in-memory cache first
         let cache_key = mcp_dir.to_path_buf();
@@ -101,133 +284,13 @@ impl McpClient {
             }
         }
 
-        let exec = manifest.execution
-            .ok_or_else(|| anyhow!("No execution configuration found for MCP in {:?}", mcp_dir))?;
+        // 3. Ask the running server
+        let session = session_for(mcp_dir).await?;
+        let result = session.request("tools/list", json!({}), REQUEST_TIMEOUT).await?;
+        let tools = result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default();
 
-        if exec.command.trim().is_empty() {
-            return Err(anyhow!("MCP execution command is empty for {:?}", mcp_dir));
-        }
-
-        tracing::info!("🔌 [McpClient] Discovering tools for '{}' via stdio: {} {:?}",
-            manifest.name, exec.command, exec.args);
-
-        let mut cmd = Command::new(program_path(&exec.command));
-        // Servers start in the open workspace, as other MCP clients do. The package folder
-        // holds Cluaiz's own package.json, which npm would read as an npm project.
-        cmd.args(&exec.args)
-            .current_dir(crate::ToolsEngine::workspace_dir())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-
-        for (k, v) in &exec.env {
-            cmd.env(k, v);
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        }
-
-        let mut child = cmd.spawn()
-            .map_err(|e| anyhow!("Failed to spawn MCP process '{}': {}", exec.command, e))?;
-
-        let mut stdin = child.stdin.take().ok_or_else(|| anyhow!("Failed to open child stdin"))?;
-        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open child stdout"))?;
-
-        let mut reader = BufReader::new(stdout).lines();
-        let timeout_duration = Duration::from_secs(15);
-
-        // Handshake: initialize
-        let init_req = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "roots": { "listChanged": true }
-                },
-                "clientInfo": {
-                    "name": "cluaiz-engine",
-                    "version": "1.0.0"
-                }
-            }
-        });
-
-        let mut init_line = serde_json::to_string(&init_req)?;
-        init_line.push('\n');
-        stdin.write_all(init_line.as_bytes()).await?;
-        stdin.flush().await?;
-
-        let _ = timeout(timeout_duration, async {
-            while let Ok(Some(line)) = reader.next_line().await {
-                let trimmed = line.trim();
-                if trimmed.is_empty() { continue; }
-                if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
-                    if answer_server_request(&mut stdin, &val).await? { continue; }
-                    if val.get("id").and_then(|id| id.as_i64()) == Some(1) {
-                        return Ok(val);
-                    }
-                }
-            }
-            Err(anyhow!("MCP server exited before responding to initialize"))
-        }).await.map_err(|_| anyhow!("Timeout waiting for MCP initialize response"))??;
-
-        // Handshake: notifications/initialized
-        let notify_init = json!({
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized"
-        });
-        let mut notify_line = serde_json::to_string(&notify_init)?;
-        notify_line.push('\n');
-        stdin.write_all(notify_line.as_bytes()).await?;
-        stdin.flush().await?;
-
-        // Dispatch tools/list
-        let list_req = json!({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/list",
-            "params": {}
-        });
-        let mut list_line = serde_json::to_string(&list_req)?;
-        list_line.push('\n');
-        stdin.write_all(list_line.as_bytes()).await?;
-        stdin.flush().await?;
-
-        let list_res = timeout(timeout_duration, async {
-            while let Ok(Some(line)) = reader.next_line().await {
-                let trimmed = line.trim();
-                if trimmed.is_empty() { continue; }
-                if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
-                    if answer_server_request(&mut stdin, &val).await? { continue; }
-                    if val.get("id").and_then(|id| id.as_i64()) == Some(2) {
-                        return Ok(val);
-                    }
-                }
-            }
-            Err(anyhow!("MCP server exited before responding to tools/list"))
-        }).await.map_err(|_| anyhow!("Timeout waiting for MCP tools/list response"))??;
-
-        drop(stdin);
-        let _ = child.kill().await;
-
-        let tools = if let Some(result_obj) = list_res.get("result") {
-            if let Some(arr) = result_obj.get("tools").and_then(|t| t.as_array()) {
-                arr.clone()
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        };
-
-        // Cache the discovered tools
         let mut cache = MCP_TOOL_CACHE.write().await;
         cache.insert(cache_key, tools.clone());
-
         Ok(tools)
     }
 
@@ -236,193 +299,30 @@ impl McpClient {
         let mut cache = MCP_TOOL_CACHE.write().await;
         cache.clear();
     }
-    /// Calls an external MCP tool by running its configured process with spec-compliant handshake over stdio
+
+    /// Stops the running server of `mcp_dir` (if any) and forgets its tools, e.g. when the
+    /// package is removed or replaced.
+    pub async fn stop_server(mcp_dir: &Path) {
+        if let Some(session) = SESSIONS.lock().await.remove(mcp_dir) {
+            session.stop();
+        }
+        MCP_TOOL_CACHE.write().await.remove(mcp_dir);
+    }
+
+    /// Calls a tool on the server's running process
     pub async fn call_tool(mcp_dir: &Path, tool_name: &str, arguments: Value) -> Result<Value> {
-        let manifest_path = mcp_dir.join("package.json");
-        let manifest = McpManifestParser::parse_file(&manifest_path)
-            .ok_or_else(|| anyhow!("Failed to parse MCP package.json in {:?}", mcp_dir))?;
+        let session = session_for(mcp_dir).await?;
+        let result = session.request("tools/call", json!({ "name": tool_name, "arguments": arguments }), REQUEST_TIMEOUT).await
+            .map_err(|e| anyhow!("MCP tool error: {}", e))?;
 
-        let exec = manifest.execution
-            .ok_or_else(|| anyhow!("No execution configuration found for MCP in {:?}", mcp_dir))?;
-
-        if exec.command.trim().is_empty() {
-            return Err(anyhow!("MCP execution command is empty for {:?}", mcp_dir));
+        // A tool-level failure is a result with `isError: true` (MCP spec).
+        if result.get("isError").and_then(|e| e.as_bool()) == Some(true) {
+            let texts: Vec<&str> = result.get("content").and_then(|c| c.as_array())
+                .map(|items| items.iter().filter_map(|c| c.get("text").and_then(|t| t.as_str())).collect())
+                .unwrap_or_default();
+            return Err(anyhow!("MCP tool '{}' failed: {}", tool_name, if texts.is_empty() { result.to_string() } else { texts.join("\n") }));
         }
-
-        tracing::info!("🔌 [McpClient] Spawning MCP server '{}' via stdio: {} {:?}",
-            manifest.name, exec.command, exec.args);
-
-        let mut cmd = Command::new(program_path(&exec.command));
-        // Servers start in the open workspace, as other MCP clients do. The package folder
-        // holds Cluaiz's own package.json, which npm would read as an npm project.
-        cmd.args(&exec.args)
-            .current_dir(crate::ToolsEngine::workspace_dir())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        cmd.envs(std::env::vars());
-        for (k, v) in &exec.env {
-            cmd.env(k, v);
-        }
-
-        let mut child = cmd.spawn()
-            .map_err(|e| anyhow!("Failed to spawn MCP server '{}' ({}): {}", manifest.name, exec.command, e))?;
-
-        let mut stdin = child.stdin.take()
-            .ok_or_else(|| anyhow!("Failed to capture stdin for MCP server '{}'", manifest.name))?;
-        let stdout = child.stdout.take()
-            .ok_or_else(|| anyhow!("Failed to capture stdout for MCP server '{}'", manifest.name))?;
-        let stderr = child.stderr.take();
-
-        // Spawn background task to drain stderr to prevent pipe blocking / deadlock
-        if let Some(err_pipe) = stderr {
-            tokio::spawn(async move {
-                let mut lines = BufReader::new(err_pipe).lines();
-                while let Ok(Some(line)) = lines.next_line().await {
-                    tracing::debug!("[MCP Server stderr]: {}", line);
-                }
-            });
-        }
-
-        let mut reader = BufReader::new(stdout).lines();
-        let timeout_duration = Duration::from_secs(30);
-
-        // ── STEP 1: Mandatory MCP `initialize` Handshake ──
-        let init_req = json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "roots": { "listChanged": true }
-                },
-                "clientInfo": {
-                    "name": "cluaiz-engine",
-                    "version": "1.0.0"
-                }
-            }
-        });
-
-        let mut init_line = serde_json::to_string(&init_req)?;
-        init_line.push('\n');
-        stdin.write_all(init_line.as_bytes()).await
-            .map_err(|e| anyhow!("Failed to send initialize to MCP stdin: {}", e))?;
-        stdin.flush().await
-            .map_err(|e| anyhow!("Failed to flush MCP stdin on initialize: {}", e))?;
-
-        // Read initialize response
-        let _init_response = timeout(timeout_duration, async {
-            while let Ok(Some(line)) = reader.next_line().await {
-                let trimmed = line.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                if let Ok(mut val) = serde_json::from_str::<Value>(trimmed) {
-                    if let Some(inner_str) = val.as_str() {
-                        if let Ok(inner_val) = serde_json::from_str::<Value>(inner_str) {
-                            val = inner_val;
-                        }
-                    }
-                    if answer_server_request(&mut stdin, &val).await? { continue; }
-                    if val.get("id").and_then(|id| id.as_i64()) == Some(1) {
-                        return Ok(val);
-                    }
-                }
-            }
-            Err(anyhow!("MCP server exited before responding to initialize"))
-        }).await
-        .map_err(|_| anyhow!("Timeout (30s) waiting for MCP server initialize response"))??;
-
-        // If server responded to id: 1 with a tool result directly (one-shot tool or test mock)
-        if let Some(res) = _init_response.get("result") {
-            if res.is_string() || res.get("content").is_some() {
-                let content_result = if let Some(content_arr) = res.get("content").and_then(|c| c.as_array()) {
-                    let texts: Vec<String> = content_arr.iter()
-                        .filter_map(|c| c.get("text").and_then(|t| t.as_str()).map(|s| s.to_string()))
-                        .collect();
-                    if !texts.is_empty() {
-                        Value::String(texts.join("\n"))
-                    } else {
-                        res.clone()
-                    }
-                } else {
-                    res.clone()
-                };
-                return Ok(content_result);
-            }
-        }
-
-        // ── STEP 2: Send `notifications/initialized` ──
-        let notify_init = json!({
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized"
-        });
-        let mut notify_line = serde_json::to_string(&notify_init)?;
-        notify_line.push('\n');
-        stdin.write_all(notify_line.as_bytes()).await
-            .map_err(|e| anyhow!("Failed to send initialized notification: {}", e))?;
-        stdin.flush().await
-            .map_err(|e| anyhow!("Failed to flush initialized notification: {}", e))?;
-
-        // ── STEP 3: Dispatch `tools/call` ──
-        let rpc_request = json!({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": arguments
-            }
-        });
-
-        let mut rpc_line = serde_json::to_string(&rpc_request)?;
-        rpc_line.push('\n');
-        stdin.write_all(rpc_line.as_bytes()).await
-            .map_err(|e| anyhow!("Failed to write tools/call request to MCP stdin: {}", e))?;
-        stdin.flush().await
-            .map_err(|e| anyhow!("Failed to flush tools/call request: {}", e))?;
-
-        // Asynchronously read response line for tools/call
-        let response_json = timeout(timeout_duration, async {
-            while let Ok(Some(line)) = reader.next_line().await {
-                let trimmed = line.trim();
-                if trimmed.is_empty() {
-                    continue;
-                }
-                if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
-                    if answer_server_request(&mut stdin, &val).await? { continue; }
-                    if val.get("id").and_then(|id| id.as_i64()) == Some(2) {
-                        return Ok(val);
-                    }
-                }
-            }
-            Err(anyhow!("MCP server exited without returning tools/call response"))
-        }).await
-        .map_err(|_| anyhow!("Timeout (30s) waiting for MCP server '{}' tools/call response", manifest.name))??;
-
-        // Clean up child process gracefully
-        drop(stdin);
-        let _ = child.kill().await;
-
-        // Verify JSON-RPC error vs result
-        if let Some(err_val) = response_json.get("error") {
-            return Err(anyhow!("MCP tool error: {}", err_val));
-        }
-
-        if let Some(result_val) = response_json.get("result") {
-            // A tool-level failure is a result with `isError: true` (MCP spec).
-            if result_val.get("isError").and_then(|e| e.as_bool()) == Some(true) {
-                let texts: Vec<&str> = result_val.get("content").and_then(|c| c.as_array())
-                    .map(|items| items.iter().filter_map(|c| c.get("text").and_then(|t| t.as_str())).collect())
-                    .unwrap_or_default();
-                return Err(anyhow!("MCP tool '{}' failed: {}", tool_name, if texts.is_empty() { result_val.to_string() } else { texts.join("\n") }));
-            }
-            Ok(result_val.clone())
-        } else {
-            Ok(response_json)
-        }
+        Ok(result)
     }
 
     /// Synchronously retrieves cached or statically defined MCP tools without spawning a child process
@@ -446,4 +346,3 @@ impl McpClient {
         None
     }
 }
-
