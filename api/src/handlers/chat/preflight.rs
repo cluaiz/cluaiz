@@ -34,6 +34,11 @@ pub struct PreparedChatContext {
     pub loaded_tool_ids: Vec<String>,
     /// Characters `load_tool` results may use; None when the model was not given the tool meta-tools
     pub tool_load_room: Option<usize>,
+    /// Chat id and key of the current user message, for recording this turn in the chat's
+    /// ledger (None for private chats and requests without a session)
+    pub ledger_turn: Option<(String, String)>,
+    /// The tool hint put in front of the current user message
+    pub tool_hint: String,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -394,19 +399,65 @@ impl PreparedChatContext {
         let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
         let skip_brain = matches!(request.temporary_chat, Some(TemporaryChatMode::Strict));
 
-        let mut augmented_messages = request.messages.clone();
+        // The chat's ledger: what the Engine added to its earlier turns (tool hints and tool
+        // steps), which the client does not send back. Private chats keep none.
+        let ledger_chat = request.session_id.clone().filter(|_| request.temporary_chat.is_none());
+        let ledger = ledger_chat.as_deref().map(cluaiz_agents::ChatLedger::get);
+        if let (Some(chat), Some(saved)) = (&ledger_chat, &ledger) {
+            // After a restart the chat's loaded tools come back from disk
+            cluaiz_agents::SessionToolManager::restore_if_missing(chat, saved.bindings.clone());
+        }
 
         // 🚀 RESOLVE ACTIVE SESSION TOOLS & COMPILE MARKET-STANDARD PROMPT SCHEMAS
+        // Tools bound by the client go into the system prompt; tools the model loaded with
+        // load_tool stay in the conversation where they were loaded.
         let mut tool_ids_to_compile: Vec<String> = Vec::new();
+        let mut inline_tool_ids: Vec<String> = Vec::new();
 
         if let Some(ref sid) = request.session_id {
             let session_tools = cluaiz_agents::SessionToolManager::get_session_tools(sid);
             for tool_binding in session_tools {
-                if !tool_ids_to_compile.contains(&tool_binding.id) {
+                if tool_binding.inline {
+                    inline_tool_ids.push(tool_binding.id);
+                } else if !tool_ids_to_compile.contains(&tool_binding.id) {
                     tool_ids_to_compile.push(tool_binding.id);
                 }
             }
         }
+
+        // Earlier turns as the model saw them: each user message gets back the block the Engine
+        // put in front of it, followed by that turn's tool steps
+        let tool_role = super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
+        let mut augmented_messages = Vec::with_capacity(request.messages.len());
+        let mut occurrences: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        let last_index = request.messages.len().saturating_sub(1);
+        let mut current_turn_key = None;
+        for (index, original) in request.messages.iter().enumerate() {
+            let mut message = original.clone();
+            let mut steps = Vec::new();
+            if message.role.eq_ignore_ascii_case("user") {
+                let text = message.content.text_content();
+                let seen = occurrences.entry(text.trim().to_string()).or_insert(0);
+                let key = cluaiz_agents::turn_key(&text, *seen);
+                *seen += 1;
+                if index == last_index {
+                    current_turn_key = Some(key);
+                } else if let Some(record) = ledger.as_ref().and_then(|saved| saved.record(&key)) {
+                    if !record.block.is_empty() {
+                        prepend_text(&mut message.content, &record.block);
+                    }
+                    steps = super::tool_turns::step_messages(&record.steps, tool_role);
+                }
+            }
+            augmented_messages.push(message);
+            for (role, content) in steps {
+                augmented_messages.push(super::types::ExternalMessage {
+                    role: role.to_string(),
+                    content: MessageContent::Text(content),
+                });
+            }
+        }
+        let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
 
         if let Some(ref tools_vec) = request.tools {
             for tool_val in tools_vec {
@@ -424,6 +475,7 @@ impl PreparedChatContext {
                             let binding = cluaiz_agents::SessionToolBinding {
                                 id: tid,
                                 turns: turns_val as i32,
+                                inline: false,
                             };
                             cluaiz_agents::SessionToolManager::update_session_tools(
                                 sid,
@@ -490,6 +542,7 @@ impl PreparedChatContext {
         let mut offer_meta_tools = false;
         if discovery {
             let mut exclude = tool_ids_to_compile.clone();
+            exclude.extend(inline_tool_ids.iter().cloned());
             if let Some(ref sid) = request.session_id {
                 exclude.extend(cluaiz_agents::SessionToolManager::suppressed_tool_ids(sid));
             }
@@ -511,7 +564,10 @@ impl PreparedChatContext {
             {
                 hint_lines = "Installed tools are not loaded. If one would help, search them with find_tools.\n".to_string();
             }
-            offer_meta_tools = !hint_lines.is_empty() || !tool_ids_to_compile.is_empty();
+            offer_meta_tools = !hint_lines.is_empty()
+                || !tool_ids_to_compile.is_empty()
+                || !inline_tool_ids.is_empty()
+                || chat_has_tool_history;
         }
         let meta_schemas = if offer_meta_tools { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
 
@@ -574,10 +630,7 @@ impl PreparedChatContext {
 
         if !hint.is_empty() {
             match augmented_messages.last_mut() {
-                Some(last) if last.role.eq_ignore_ascii_case("user") => match &mut last.content {
-                    MessageContent::Text(text) => *text = format!("{hint}\n\n{text}"),
-                    MessageContent::Array(parts) => parts.insert(0, super::types::ContentPart::Text { text: hint.clone() }),
-                },
+                Some(last) if last.role.eq_ignore_ascii_case("user") => prepend_text(&mut last.content, &hint),
                 _ => tracing::warn!("⚠️ [ChatHandler] Last message is not the user's; tool hint left out"),
             }
         }
@@ -811,7 +864,11 @@ impl PreparedChatContext {
             system_prompt_chars,
             history_chars,
             user_prompt_chars,
+            // Tools in the system prompt; tools loaded in the conversation can still be found
+            // again (the turn holding them may have been dropped for room)
             loaded_tool_ids: tool_ids_to_compile.clone(),
+            ledger_turn: ledger_chat.clone().zip(current_turn_key),
+            tool_hint: hint.clone(),
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
             json_prompt,
@@ -903,4 +960,24 @@ pub fn media_continuation(
             });
     }
     Ok(continued)
+}
+
+/// Puts `block` in front of a message's text (as a first text part for multi-part content)
+fn prepend_text(content: &mut MessageContent, block: &str) {
+    match content {
+        MessageContent::Text(text) => *text = format!("{block}\n\n{text}"),
+        MessageContent::Array(parts) => parts.insert(0, super::types::ContentPart::Text { text: block.to_string() }),
+    }
+}
+
+/// Records what the Engine added to the turn that just ended (its tool hint and tool steps)
+/// and the chat's current tool bindings, so the next request renders this turn the same way
+pub fn record_turn(ctx: &PreparedChatContext, steps: Vec<cluaiz_agents::RecordedStep>) {
+    let Some((chat, key)) = &ctx.ledger_turn else {
+        return;
+    };
+    let mut ledger = cluaiz_agents::ChatLedger::get(chat);
+    ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
+    ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
+    cluaiz_agents::ChatLedger::put(chat, ledger);
 }

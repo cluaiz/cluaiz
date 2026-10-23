@@ -59,7 +59,13 @@
     "mera", "meri", "mere", "tum", "tu", "aap", "hum", "ek", "us", "batao", "bata", "bolo", "zara", "thoda",
     "abhi", "phir", "bhai", "yaar", "ji", "haan", "nahi", "need", "needs", "without", "use", "using", "used", "tell",
     "give", "get", "want", "like", "also", "only", "more", "very", "much", "many", "than", "them", "let", "lets",
-    "know"
+    "know", "kitna", "kitni", "kitne", "hota", "hoti", "hote", "raha", "rahi", "rahe", "sakta", "sakti", "chahiye", "wala",
+    "wali", "wale"
+  ],
+  "followup": [
+    "isko", "ise", "isse", "iska", "iski", "usko", "use", "uska", "ye", "yeh", "wo", "woh", "it", "this",
+    "that", "again", "phir", "dobara", "wahi", "same", "above", "upar", "previous", "pichla", "pichhla", "last", "इसे", "इसको",
+    "फिर", "दोबारा"
   ],
   "actions": ["read", "write", "open", "list", "show", "find", "search", "create", "make", "delete", "remove", "run", "fix", "edit", "install", "fetch", "download", "check", "calculate", "compute", "commit", "save", "rename", "move", "copy"]
 }

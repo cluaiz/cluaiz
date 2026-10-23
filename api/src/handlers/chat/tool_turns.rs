@@ -6,16 +6,11 @@
 //! is in the context once (llama-server and the OpenAI API work the same way).
 
 use super::preflight::PreparedChatContext;
+use cluaiz_agents::RecordedStep;
 use serde_json::{json, Value};
 
-struct ToolStep {
-    call_xml: String,
-    name: String,
-    result: String,
-}
-
 pub struct ToolTurns {
-    steps: Vec<ToolStep>,
+    steps: Vec<RecordedStep>,
     /// The template renders `tool` messages itself; otherwise results go in as user
     /// messages holding a `<tool_response>` block (what such templates would render).
     tool_role: bool,
@@ -30,7 +25,7 @@ impl ToolTurns {
     }
 
     pub fn push(&mut self, raw_call_json: &str, name: &str, result: &str) {
-        self.steps.push(ToolStep {
+        self.steps.push(RecordedStep {
             call_xml: format!("<tool_call>\n{}\n</tool_call>", raw_call_json),
             name: name.to_string(),
             result: result.to_string(),
@@ -72,6 +67,11 @@ impl ToolTurns {
             .collect()
     }
 
+    /// The steps of this answer, for the chat's ledger
+    pub fn steps(&self) -> Vec<RecordedStep> {
+        self.steps.clone()
+    }
+
     /// Characters the steps of this answer added
     pub fn chars(&self) -> usize {
         self.steps.iter().map(|step| step.call_xml.len() + step.result.len()).sum()
@@ -90,19 +90,9 @@ impl ToolTurns {
     }
 
     fn messages(&self) -> Vec<Value> {
-        self.steps
-            .iter()
-            .flat_map(|step| {
-                let result = if self.tool_role {
-                    json!({ "role": "tool", "content": step.result })
-                } else {
-                    json!({
-                        "role": "user",
-                        "content": cluaiz_agents::ToolsEngine::format_tool_response_raw(&step.name, &step.result)
-                    })
-                };
-                [json!({ "role": "assistant", "content": step.call_xml }), result]
-            })
+        step_messages(&self.steps, self.tool_role)
+            .into_iter()
+            .map(|(role, content)| json!({ "role": role, "content": content }))
             .collect()
     }
 
@@ -128,6 +118,28 @@ impl ToolTurns {
         });
         format!("[PIVOT_CONTINUE]{}", envelope)
     }
+}
+
+/// The messages of tool steps, in order: the call as an assistant message, the result as a
+/// `tool` message (or, for templates without a tool role, a user message holding a
+/// `<tool_response>` block). Used for this answer's steps and for earlier turns' recorded ones.
+pub fn step_messages(steps: &[RecordedStep], tool_role: bool) -> Vec<(&'static str, String)> {
+    steps
+        .iter()
+        .flat_map(|step| {
+            let result = if tool_role {
+                ("tool", step.result.clone())
+            } else {
+                ("user", cluaiz_agents::ToolsEngine::format_tool_response_raw(&step.name, &step.result))
+            };
+            [("assistant", step.call_xml.clone()), result]
+        })
+        .collect()
+}
+
+/// Whether the model's chat template has its own `tool` role
+pub fn template_has_tool_role(chat_template: Option<&str>) -> bool {
+    chat_template.is_some_and(template_renders_tool_role)
 }
 
 /// What a tool meta-tool call produced
@@ -164,16 +176,11 @@ pub async fn run_meta_tool(
             let loaded = cluaiz_agents::ToolSearch::load(&id, &functions, &ctx.initial_user_query, room).await;
             tracing::info!("📦 [Tools] load_tool(\"{}\") -> {:?}", id, loaded.loaded);
             if let (Some(tool_id), Some(session_id)) = (&loaded.loaded, session_id) {
-                // A loaded tool stays while it is used; a few idle answers unbind it
-                let idle_turns = cluaiz_agents::ToolsEngine::get_tool(tool_id)
-                    .ok()
-                    .flatten()
-                    .map(|entry| entry.default_turns)
-                    .filter(|turns| *turns > 0)
-                    .unwrap_or(LOADED_TOOL_TURNS);
+                // The tool stays in the conversation where it was loaded until the model unloads
+                // it (removing it sooner would change an earlier turn and cost a re-process)
                 cluaiz_agents::SessionToolManager::update_session_tools(
                     session_id,
-                    vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: idle_turns }],
+                    vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true }],
                     Vec::new(),
                 );
             }
@@ -191,6 +198,13 @@ pub async fn run_meta_tool(
             if let Some(session_id) = session_id {
                 cluaiz_agents::SessionToolManager::update_session_tools(session_id, Vec::new(), vec![id.clone()]);
                 cluaiz_agents::SessionToolManager::suppress(session_id, &id, UNLOADED_TOOL_ANSWERS);
+            }
+            // Earlier turns that loaded it get a short note instead of its instructions
+            if let Some((chat, _)) = &ctx.ledger_turn {
+                let mut ledger = cluaiz_agents::ChatLedger::get(chat);
+                if ledger.tombstone(&id) {
+                    cluaiz_agents::ChatLedger::put(chat, ledger);
+                }
             }
             MetaOutcome { text: format!("Tool '{}' unloaded.", id), unloaded: Some(id) }
         }
@@ -219,8 +233,6 @@ pub fn needs_load(ctx: &PreparedChatContext, turns: &ToolTurns, session_id: Opti
         && cluaiz_agents::ToolSearch::is_installed_tool_id(name)
 }
 
-/// Answers a tool stays bound to the chat after `load_tool` when its manifest sets no limit
-const LOADED_TOOL_TURNS: i32 = 3;
 /// Answers an unloaded tool is kept out of the suggestions
 const UNLOADED_TOOL_ANSWERS: u32 = 3;
 

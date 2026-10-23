@@ -42,6 +42,8 @@ struct Words {
     aliases: HashMap<String, Vec<String>>,
     stopwords: HashSet<String>,
     actions: HashSet<String>,
+    /// Words that point back at the previous message ("isko", "phir se", "again")
+    followup: HashSet<String>,
 }
 
 static WORDS: LazyLock<Words> = LazyLock::new(|| {
@@ -64,7 +66,7 @@ static WORDS: LazyLock<Words> = LazyLock::new(|| {
                 .collect()
         })
         .unwrap_or_default();
-    Words { aliases, stopwords: list("stopwords"), actions: list("actions") }
+    Words { aliases, stopwords: list("stopwords"), actions: list("actions"), followup: list("followup") }
 });
 
 fn is_word_char(c: char) -> bool {
@@ -459,7 +461,9 @@ impl ToolSearch {
     pub fn suggest(catalog: &[CatalogEntry], message: &str, previous: Option<&str>) -> Vec<Candidate> {
         let mut query = terms(message);
         query.extend(entity_terms(message));
-        if let Some(previous) = previous.filter(|_| query.len() <= 3) {
+        // A short message that points back ("isko chalao", "phir se") borrows the previous one
+        let points_back = query.len() <= 3 && raw_words(message).iter().any(|w| WORDS.followup.contains(w));
+        if let Some(previous) = previous.filter(|_| points_back) {
             query.extend(terms(previous));
             query.extend(entity_terms(previous));
         }
@@ -771,6 +775,12 @@ mod tests {
     fn test_follow_up_uses_the_previous_message() {
         let c = ToolSearch::suggest(&catalog(), "phir se", Some("run this python code"));
         assert_eq!(c[0].id, "code-interpreter");
+    }
+
+    #[test]
+    fn test_unrelated_short_message_does_not_borrow_the_previous_one() {
+        assert!(ToolSearch::suggest(&catalog(), "2+2 kitna hota hai?", Some("run this python code")).is_empty());
+        assert_eq!(ToolSearch::suggest(&catalog(), "isko phir chalao", Some("run this python code"))[0].id, "code-interpreter");
     }
 
     #[test]

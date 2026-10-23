@@ -279,6 +279,8 @@ pub async fn execute_non_streaming(
     if let Some(ref sid) = req_session_id {
         crate::handlers::session_tools::decrement_session_turns(sid);
     }
+    // What the Engine added to this turn, so the next request renders it the same way
+    super::preflight::record_turn(&ctx, tool_turns.steps());
 
     // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING
     if keep_alive_val == Some(0) {

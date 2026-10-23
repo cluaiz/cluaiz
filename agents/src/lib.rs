@@ -22,7 +22,7 @@ static WORKSPACE_DIR: LazyLock<RwLock<Option<PathBuf>>> = LazyLock::new(|| RwLoc
 
 pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult, ControlOp, ControlResult, ControlDispatcher};
 pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
-pub use lifecycle::{SessionToolBinding, SessionToolManager, TurnLifecycleEngine};
+pub use lifecycle::{turn_key, ChatLedger, RecordedStep, SessionToolBinding, SessionToolManager, TurnLifecycleEngine, TurnRecord};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
 pub use prompt_compiler::{CompiledPromptTools, ResolvedToolTarget, ToolPromptCompiler};
