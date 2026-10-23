@@ -90,6 +90,38 @@ impl ToolTurns {
     }
 }
 
+/// Runs a `tool_search` call: finds the tools for its query and returns their schemas as the
+/// tool result. In a chat they are also bound to the session (for the tool's default number
+/// of turns), so the next messages have them in the prompt.
+pub async fn run_tool_search(ctx: &PreparedChatContext, session_id: Option<&str>, payload: &str) -> String {
+    let query = serde_json::from_str::<Value>(payload)
+        .ok()
+        .and_then(|args| args.get("query").and_then(Value::as_str).map(str::to_string))
+        .unwrap_or_else(|| payload.to_string());
+    let found = cluaiz_agents::ToolSearch::search(
+        &query,
+        &ctx.tool_search_exclude,
+        ctx.tool_search_room.unwrap_or_default(),
+    )
+    .await;
+    tracing::info!("🔎 [ToolSearch] \"{}\" loaded {:?}", query, found.loaded_ids);
+    if let Some(session_id) = session_id {
+        let bindings = found
+            .loaded_ids
+            .iter()
+            .map(|id| cluaiz_agents::SessionToolBinding {
+                id: id.clone(),
+                turns: cluaiz_agents::ToolsEngine::get_tool(id)
+                    .ok()
+                    .flatten()
+                    .map_or(-1, |entry| entry.default_turns),
+            })
+            .collect();
+        cluaiz_agents::SessionToolManager::update_session_tools(session_id, bindings, Vec::new());
+    }
+    found.text
+}
+
 /// Whether a Jinja chat template has its own branch for `tool` messages (Qwen, Llama 3, Hermes...).
 fn template_renders_tool_role(template: &str) -> bool {
     template.contains("\"tool\"") || template.contains("'tool'")

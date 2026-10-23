@@ -36,7 +36,7 @@ pub struct CompiledPromptTools {
 
 
 /// `<tools>` block with one compact JSON schema per line (the Hermes/Qwen tool-prompt layout).
-fn tools_block(schemas: &[Value]) -> String {
+pub fn tools_block(schemas: &[Value]) -> String {
     if schemas.is_empty() {
         return String::new();
     }
@@ -50,8 +50,14 @@ impl CompiledPromptTools {
     /// first (a lexical tool search), so a tool the request asks for is not crowded out by
     /// an earlier server's list. Returns the block and the names of the tools left out.
     pub fn tools_xml_within(&self, max_chars: usize, query: &str) -> (String, Vec<String>) {
+        let (kept, dropped) = self.schemas_within(max_chars, query);
+        (tools_block(&kept), dropped)
+    }
+
+    /// The schemas `tools_xml_within` keeps, and the names of the tools left out
+    pub fn schemas_within(&self, max_chars: usize, query: &str) -> (Vec<Value>, Vec<String>) {
         if self.tools_xml.len() <= max_chars {
-            return (self.tools_xml.clone(), Vec::new());
+            return (self.function_schemas.clone(), Vec::new());
         }
         let words: Vec<String> = query
             .to_lowercase()
@@ -84,7 +90,7 @@ impl CompiledPromptTools {
                 dropped.push(name_of(schema));
             }
         }
-        (tools_block(&kept), dropped)
+        (kept, dropped)
     }
 }
 

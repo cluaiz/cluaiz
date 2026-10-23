@@ -74,7 +74,8 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0`, `-1`) | Positive minutes retain after completion; `0` unloads, omission/`-1` retains. This value is not seconds. |
 | **`response_format`** | Object | No | `null` | Object | Enforces structured JSON output schema (e.g. `{"type": "json_object"}`). |
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) via `<tool_call>` XML. |
-| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"`, `"required"` | Controls which tool the model must call. |
+| **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, bound or `tool_search`) for this request; any other value lets the model decide. |
+| **`tool_search`** | Boolean | No | `true` | `true`, `false` | Installed, switched-on tools that are not in the prompt are listed by id and loaded on demand with the `tool_search` tool. `false` leaves them out. See [Tool search](#-tool-search). |
 | **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
 | **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). |
@@ -340,6 +341,19 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
   ]
 }
 ```
+
+---
+
+## 🔎 Tool search
+
+Tools switched off in the App's Tools page are never offered and cannot run. Every other installed skill, plugin and MCP server is available without binding it to the chat first:
+
+1. Tools bound to the chat (`/v1/chat/{session_id}/tools`, `tools`) go into the prompt with their full schemas.
+2. The rest, and bound tools left out for lack of room, are listed by id and one-line description, together with a `tool_search` tool.
+3. The model calls `tool_search` with what it needs (`{"query": "read a file"}`) or with ids (`{"query": "select:filesystem,git"}`). The engine answers it itself, without an approval prompt: the result holds the schemas of the best matches (skills: their instructions). Only the MCP servers of those matches are started.
+4. The model then calls the loaded tools as usual; those still ask for approval under the agent security mode. In a chat with `session_id`, loaded tools are bound to the session for the tool's default number of turns, so later messages have them in the prompt.
+
+The stream reports the search like any tool call (`tool_calls`, then `tool_result`, with category `search`). Send `tool_search: false` to turn it off, or `tool_choice: "none"` for no tools at all.
 
 ---
 

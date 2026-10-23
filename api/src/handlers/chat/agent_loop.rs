@@ -198,14 +198,20 @@ pub async fn execute_streaming_loop(
                     let raw_fn_name = tool_call.raw_fn_name.as_str();
                     let payload_str = tool_call.payload_str;
 
-                    let resolved_target = if let Some(ref sid) = req_session_id {
+                    // tool_search loads installed tools; it is answered by the engine itself
+                    let is_tool_search = ctx.tool_search_room.is_some() && raw_fn_name == cluaiz_agents::TOOL_SEARCH_NAME;
+                    let resolved_target = if is_tool_search {
+                        None
+                    } else if let Some(ref sid) = req_session_id {
                         cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
                             .or_else(|| cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
                     } else {
                         cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
                     };
 
-                    let (comp_type, comp_name, tool_sub_func) = if let Some(target) = resolved_target {
+                    let (comp_type, comp_name, tool_sub_func) = if is_tool_search {
+                        ("search".to_string(), raw_fn_name.to_string(), None)
+                    } else if let Some(target) = resolved_target {
                         (target.category, target.component_id, target.sub_function)
                     } else {
                         ("plugin".to_string(), raw_fn_name.to_string(), None)
@@ -281,7 +287,9 @@ pub async fn execute_streaming_loop(
                     //     * undeclared tool (not in registry or empty capabilities) = require approval by default
                     //     * dangerous capabilities ("exec", "fs_write", "network", etc.) = require approval
                     //     * safe declared tools ("fs_read", "read_only") = run without prompt
-                    let (requires_approval, tool_capabilities) = if let Some(ref entry) = tool_entry_opt {
+                    let (requires_approval, tool_capabilities) = if is_tool_search {
+                        (false, vec!["tools:load".to_string()])
+                    } else if let Some(ref entry) = tool_entry_opt {
                         (entry.requires_approval(&master_mode), entry.effective_capabilities())
                     } else if comp_type == "mcp" {
                         (true, vec!["mcp:external".to_string()])
@@ -418,7 +426,12 @@ pub async fn execute_streaming_loop(
                         });
                         yield Ok::<_, Infallible>(Event::default().data(running_chunk.to_string()));
 
-                        match cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await {
+                        let executed = if is_tool_search {
+                            Ok(super::tool_turns::run_tool_search(&ctx, req_session_id.as_deref(), &payload_str).await)
+                        } else {
+                            cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await
+                        };
+                        match executed {
                             Ok(res_str) => {
                                 tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
                                 res_str

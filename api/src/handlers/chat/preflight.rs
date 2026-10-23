@@ -30,6 +30,10 @@ pub struct PreparedChatContext {
     pub history_chars: usize,
     pub user_prompt_chars: usize,
     pub active_tool_ids: Vec<String>,
+    /// Tools already in the prompt, which `tool_search` does not offer again
+    pub tool_search_exclude: Vec<String>,
+    /// Characters a `tool_search` result may use; None when the model has no tool_search
+    pub tool_search_room: Option<usize>,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -448,6 +452,11 @@ impl PreparedChatContext {
             }
         }
 
+        // tool_choice "none" (OpenAI): the model gets no tools for this request
+        let tools_allowed = request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
+        if !tools_allowed {
+            tool_ids_to_compile.clear();
+        }
         let compiled_tools =
             cluaiz_agents::ToolPromptCompiler::compile_tools(&tool_ids_to_compile).await;
         let after_tools = std::time::Instant::now();
@@ -468,15 +477,50 @@ impl PreparedChatContext {
         // drop the call-format instructions that follow it.
         let tools_budget = max_tool_chars
             .saturating_sub(TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len());
-        let (tools_xml, dropped_tools) = compiled_tools.tools_xml_within(tools_budget, &initial_user_query);
+        let (mut kept_schemas, mut dropped_tools) =
+            compiled_tools.schemas_within(tools_budget, &initial_user_query);
+
+        // Tool search: switched-on tools outside the prompt (not bound to the chat, or left out
+        // for room) are listed by id, and the model loads the ones it needs with `tool_search`
+        const CATALOG_HEADER: &str = "\n\nMore installed tools are not loaded yet. To use one, call tool_search first:\n";
+        let mut tool_search_exclude = tool_ids_to_compile.clone();
+        let mut tool_search_room = None;
+        let mut catalog_note = String::new();
+        if tools_allowed && request.tool_search != Some(false) {
+            let catalog = cluaiz_agents::ToolSearch::catalog(&tool_search_exclude);
+            if !catalog.is_empty() || !dropped_tools.is_empty() {
+                let search_schema = cluaiz_agents::ToolSearch::schema();
+                let catalog_room = tools_budget / 4;
+                let reserve = search_schema.to_string().len() + 1 + CATALOG_HEADER.len() + catalog_room;
+                (kept_schemas, dropped_tools) = compiled_tools
+                    .schemas_within(tools_budget.saturating_sub(reserve), &initial_user_query);
+                // A component that lost tools to the budget stays loadable
+                for name in &dropped_tools {
+                    if let Some(target) = cluaiz_agents::ToolPromptCompiler::resolve_target(name, &tool_ids_to_compile) {
+                        tool_search_exclude.retain(|id| id != &target.component_id);
+                    }
+                }
+                let catalog = cluaiz_agents::ToolSearch::catalog(&tool_search_exclude);
+                catalog_note = format!(
+                    "{CATALOG_HEADER}{}",
+                    cluaiz_agents::ToolSearch::catalog_lines(&catalog, catalog_room)
+                );
+                kept_schemas.push(search_schema);
+                tool_search_room = Some(max_tool_chars / 2);
+            }
+        }
         if !dropped_tools.is_empty() {
             tracing::warn!(
                 "⚠️ [ChatHandler] Tool list exceeds the prompt budget ({} chars); left out: {:?}",
                 tools_budget, dropped_tools
             );
         }
+        let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
         if !tools_xml.is_empty() {
-            prompt_tool_sections.push(format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}"));
+            prompt_tool_sections.push(format!(
+                "{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{}{workspace_note}",
+                catalog_note.trim_end()
+            ));
         }
 
         if !compiled_tools.skill_instructions.is_empty() {
@@ -721,6 +765,8 @@ impl PreparedChatContext {
             history_chars,
             user_prompt_chars,
             active_tool_ids: tool_ids_to_compile,
+            tool_search_exclude,
+            tool_search_room,
             json_prompt,
             prepared_media,
             media_lease,
