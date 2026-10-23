@@ -47,6 +47,10 @@ pub async fn execute_non_streaming(
                         break;
                     }
                     full_text.push_str(&token);
+                    // A complete tool call ends this step: stop generating at the next token
+                    if token.contains('>') && tool_parser::extract_tool_call(&full_text).is_some() {
+                        rx.close();
+                    }
                 }
                 full_text
             }

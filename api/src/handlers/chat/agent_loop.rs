@@ -207,6 +207,9 @@ pub async fn execute_streaming_loop(
                 token_accumulator.push_str(&token);
 
                 if let Some(tool_call) = tool_parser::extract_tool_call(&token_accumulator) {
+                    // The call is complete: stop generating now (the worker stops at its next
+                    // token), instead of after the tool ran or its approval was answered
+                    rx.close();
                     let raw_json = &tool_call.raw_json;
                     let raw_fn_name = tool_call.raw_fn_name.as_str();
                     let payload_str = tool_call.payload_str;
