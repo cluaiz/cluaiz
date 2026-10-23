@@ -85,6 +85,7 @@ pub async fn execute_streaming_loop(
             false,
             ctx.active_think_mode == "off",
         );
+        let mut call_text_guard = tool_parser::ToolCallTextGuard::default();
         let mut first_ttft_ms = 0;
         let mut is_first_token = true;
 
@@ -521,6 +522,7 @@ pub async fn execute_streaming_loop(
 
                     tool_executed = true;
                     token_accumulator.clear();
+                    call_text_guard.clear();
                     break;
                 }
 
@@ -552,6 +554,7 @@ pub async fn execute_streaming_loop(
                 };
 
                 let (content_opt, reasoning_opt) = think_filter.process_token(&token);
+                let content_opt = content_opt.and_then(|c| call_text_guard.push(&c));
                 if !should_skip && reasoning_opt.is_some() {
                     reasoning_tokens_count += 1;
                 }
@@ -586,6 +589,11 @@ pub async fn execute_streaming_loop(
             false
         };
         let (final_content, final_reasoning) = think_filter.flush_final();
+        // Held text that never became a complete tool call is shown as answer text.
+        let final_content = match (call_text_guard.flush(), final_content) {
+            (Some(held), Some(rest)) => Some(held + &rest),
+            (held, rest) => held.or(rest),
+        };
         if !should_skip && final_reasoning.is_some() {
             reasoning_tokens_count += 1;
         }
