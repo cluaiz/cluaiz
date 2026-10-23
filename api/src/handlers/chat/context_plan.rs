@@ -102,6 +102,39 @@ pub fn prepend_text(content: &mut MessageContent, block: &str) {
     }
 }
 
+/// The planner policy of a request: the settings' `context_runtime`, with the request's
+/// `context_policy` fields on top. Unknown keys and invalid values are ignored with a warning.
+pub fn policy(overrides: Option<&serde_json::Value>) -> Policy {
+    let base = cluaiz_core::Settings::current().context_runtime;
+    let Some(overrides) = overrides else { return base };
+    let Some(fields) = overrides.as_object() else {
+        tracing::warn!("⚠️ [Context] context_policy must be an object; ignored");
+        return base;
+    };
+    let mut value = serde_json::to_value(&base).unwrap_or_default();
+    for (key, field) in fields {
+        if value.get(key).is_none() {
+            tracing::warn!("⚠️ [Context] Unknown context_policy field '{}' ignored", key);
+            continue;
+        }
+        let mut candidate = value.clone();
+        candidate[key] = field.clone();
+        match serde_json::from_value::<Policy>(candidate.clone()) {
+            Ok(policy) if valid(&policy) => value = candidate,
+            _ => tracing::warn!("⚠️ [Context] Invalid context_policy value for '{}' ignored", key),
+        }
+    }
+    serde_json::from_value(value).unwrap_or(base)
+}
+
+/// Percentages are 0–100; at most 50 recent turns are protected
+pub fn valid(policy: &Policy) -> bool {
+    policy.recent_turns_min <= 50
+        && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct]
+            .iter()
+            .all(|pct| *pct <= 100)
+}
+
 /// Token counts of texts with the loaded model's tokenizer, else estimated from characters
 pub fn count(host: &cluaiz_runtime::EngineHost, texts: &[&str]) -> (Vec<usize>, bool) {
     match host.count_tokens(texts) {
@@ -118,6 +151,7 @@ pub fn plan_messages(
     n_ctx: usize,
     reserve_answer: usize,
     thinking: bool,
+    policy: &Policy,
 ) -> Result<Plan, PlanError> {
     let texts: Vec<String> = messages.iter().map(|m| m.content.text_content()).collect();
     let (counts, _) = count(host, &texts.iter().map(String::as_str).collect::<Vec<_>>());
@@ -139,7 +173,7 @@ pub fn plan_messages(
             Segment { id: format!("m{index}"), tokens, class, turn, group: None, score: 0.0 }
         })
         .collect();
-    cluaiz_context::plan(&PlanInput { n_ctx, reserve_answer, thinking, segments, policy: Policy::default() })
+    cluaiz_context::plan(&PlanInput { n_ctx, reserve_answer, thinking, segments, policy: policy.clone() })
 }
 
 /// What a compaction changed
@@ -162,6 +196,7 @@ pub fn compact(
     count_one: &dyn Fn(&str) -> usize,
     clear_at_least: usize,
     need: usize,
+    policy: &Policy,
 ) -> Option<(ChatLedger, Compaction)> {
     let placeholder = |name: &str, tokens: usize| format!("[Result of {name} cleared to save context ({tokens} tokens).]");
     // Rendered turns, oldest first (the order of the request)
@@ -189,7 +224,6 @@ pub fn compact(
             }
         })
         .collect();
-    let policy = Policy::default();
     let plan = cluaiz_context::compact(&cluaiz_context::CompactionInput {
         turns,
         clear_at_least,
@@ -225,10 +259,16 @@ pub fn compact(
 }
 
 /// The `plan` part of the context report
-pub fn report(plan: &Result<Plan, PlanError>, mode: HistoryMode, compaction: Option<&Compaction>) -> serde_json::Value {
+pub fn report(
+    plan: &Result<Plan, PlanError>,
+    mode: HistoryMode,
+    policy: &Policy,
+    compaction: Option<&Compaction>,
+) -> serde_json::Value {
     match plan {
         Ok(plan) => json!({
             "history_mode": mode.name(),
+            "policy": policy,
             "n_ctx": plan.n_ctx,
             "reserve": { "answer": plan.reserve_answer, "thinking": plan.reserve_thinking, "margin": plan.margin },
             "protected_tokens": plan.protected,
@@ -238,6 +278,33 @@ pub fn report(plan: &Result<Plan, PlanError>, mode: HistoryMode, compaction: Opt
             "needs_compaction": plan.needs_compaction,
             "compaction": compaction,
         }),
-        Err(error) => json!({ "history_mode": mode.name(), "error": error.to_string(), "compaction": compaction }),
+        Err(error) => json!({ "history_mode": mode.name(), "policy": policy, "error": error.to_string(), "compaction": compaction }),
+    }
+}
+
+/// Reports kept per chat for `GET /v1/chat/{id}/context/report/{request_id}`
+const REPORTS_PER_CHAT: usize = 20;
+
+type Reports = std::collections::HashMap<String, std::collections::VecDeque<(String, serde_json::Value)>>;
+static REPORTS: std::sync::LazyLock<std::sync::Mutex<Reports>> = std::sync::LazyLock::new(Default::default);
+
+/// Keeps a request's context report with its chat (the newest 20 per chat, in RAM)
+pub fn remember(chat: &str, request_id: &str, report: &serde_json::Value) {
+    let mut reports = REPORTS.lock().unwrap_or_else(|e| e.into_inner());
+    let kept = reports.entry(chat.to_string()).or_default();
+    kept.retain(|(id, _)| id != request_id);
+    kept.push_back((request_id.to_string(), report.clone()));
+    while kept.len() > REPORTS_PER_CHAT {
+        kept.pop_front();
+    }
+}
+
+/// A kept report, or the ids of the chat's kept reports (newest last) when `request_id` is None
+pub fn recall(chat: &str, request_id: Option<&str>) -> Option<serde_json::Value> {
+    let reports = REPORTS.lock().unwrap_or_else(|e| e.into_inner());
+    let kept = reports.get(chat)?;
+    match request_id {
+        Some(id) => kept.iter().find(|(kept_id, _)| kept_id == id).map(|(_, report)| report.clone()),
+        None => Some(json!(kept.iter().map(|(id, _)| id).collect::<Vec<_>>())),
     }
 }

@@ -82,6 +82,13 @@ pub struct ExternalChatRequest {
     /// "none": only the system prompt and the current message
     #[serde(default)]
     pub history_mode: Option<String>,
+    /// Planner fields for this request only (recent_turns_min, evidence_cap_pct,
+    /// suggestions_cap_pct, margin_pct, compact_at_pct); unknown or invalid ones are ignored
+    #[serde(default)]
+    pub context_policy: Option<serde_json::Value>,
+    /// Set by `POST /v1/chat/{id}/context/preview`: plan only, change nothing
+    #[serde(skip)]
+    pub preview: bool,
     /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).
     /// A value different from the loaded model's reloads it; n_gpu_layers / n_cpu_moe / offload_kqv bypass the planner.
     #[serde(default)]

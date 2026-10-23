@@ -3,7 +3,7 @@
 
 pub mod agent_loop;
 mod authorize;
-mod context_plan;
+pub(crate) mod context_plan;
 pub mod control;
 pub mod non_streaming;
 pub mod preflight;

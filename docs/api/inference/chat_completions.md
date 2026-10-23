@@ -77,6 +77,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
 | **`history_mode`** | String | No | `"recent"` | `"recent"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat (see [Context plan and compaction](#-context-plan-and-compaction)), then drops the oldest turns. `none`: only the system prompt and the current message. |
+| **`context_policy`** | Object | No | settings | see [Context Runtime API](./context_runtime.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
@@ -214,7 +215,8 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 - `reserve`: kept for the answer, again for thinking models, and 2% of the context for template tokens.
 - `protected_tokens`: the system prompt and the current message, which must fit.
 - `available_tokens` / `used_tokens`: room for the history and what it uses.
-- `needs_compaction`: the history uses 85% of the room or more, or does not fit.
+- `needs_compaction`: the history uses `compact_at_pct` (85%) of the room or more, or does not fit.
+- `policy`: the planner policy used (settings plus the request's `context_policy`). Settings, preview and kept reports: [Context Runtime API](./context_runtime.md).
 
 **Compaction.** In a chat with `session_id`, when the history needs it, the Engine changes what it added to earlier turns, cheapest loss first:
 
