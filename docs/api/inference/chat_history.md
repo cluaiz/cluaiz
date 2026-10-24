@@ -67,6 +67,11 @@ a later correction of a recalled message, or a message with the same file or val
 Body: `chat_id`, `query`, optional `limit` (default 5, at most 50). Every message of the chat is a
 candidate; time words in the query ("kal", "last week") limit the search to that window.
 
+With `scope: "workspace"` or `"all"` the search runs over the other chats instead (written to in
+the last 90 days, at most 50, newer chats first; `workspace` keeps chats used in the current
+workspace) and returns `text` with one line per message (`[chat <id> · m:<pos> · time · role]`).
+With the policy `cross_chat: "deny"` this returns 403.
+
 ```json
 { "chat_id": "mem1", "query": "deploy server port",
   "results": [ { "ref": "m:0", "score": 2.84, "why": ["deploy", "server", "port"], "card": { "…": "…" } } ] }

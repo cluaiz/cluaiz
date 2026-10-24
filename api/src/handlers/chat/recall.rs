@@ -134,6 +134,28 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
         maps.push(hit.clone());
         return Some(hit.1);
     }
+    let map = Arc::new(build_map(chat, version, messages, updates, summaries));
+    maps.retain(|(id, _)| id != chat);
+    maps.push((chat.to_string(), map.clone()));
+    if maps.len() > HOT_CHATS {
+        maps.remove(0);
+    }
+    Some(map)
+}
+
+/// A chat's Chat Map without keeping it in RAM (searches over other chats)
+fn chat_map_uncached(chat: &str) -> Option<ChatMap> {
+    let (version, messages, updates, summaries) = messages(chat).ok()?;
+    Some(build_map(chat, version, messages, updates, summaries))
+}
+
+fn build_map(
+    chat: &str,
+    version: u64,
+    messages: Vec<MessageIn>,
+    updates: Vec<TaskUpdate>,
+    summaries: std::collections::HashMap<String, EpisodeSummary>,
+) -> ChatMap {
     let started = std::time::Instant::now();
     let cards = build_cards(&messages);
     let index = CardIndex::build(&cards);
@@ -145,14 +167,9 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
     }
     let user_text = |pos: u64| cards.iter().position(|c| c.pos == pos && c.role == "user").map(|i| texts[i].clone());
     let tasks = tasks(&cards, &episodes, &updates, &user_text);
-    let map = Arc::new(ChatMap { version, cards, index, texts, episodes, tasks });
+    let map = ChatMap { version, cards, index, texts, episodes, tasks };
     tracing::info!("🗺️ [Memory] Chat map of {} built: {} cards in {} ms", chat, map.cards.len(), started.elapsed().as_millis());
-    maps.retain(|(id, _)| id != chat);
-    maps.push((chat.to_string(), map.clone()));
-    if maps.len() > HOT_CHATS {
-        maps.remove(0);
-    }
-    Some(map)
+    map
 }
 
 impl ChatMap {
@@ -194,6 +211,14 @@ pub fn remember_schema() -> Value {
 pub fn asks_to_remember(text: &str) -> bool {
     let lower = text.to_lowercase();
     ["yaad rakh", "yaad rakhna", "remember that", "remember this", "note kar", "note karo", "note kar lo", "याद रख"].iter().any(|w| lower.contains(w))
+}
+
+/// Words that point at other chats ("pichli chat", "dusri chat", "other chat")
+pub fn asks_about_other_chats(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    ["pichli chat", "pichhli chat", "dusri chat", "doosri chat", "purani chat", "other chat", "another chat", "previous chat", "last chat", "earlier chat"]
+        .iter()
+        .any(|w| lower.contains(w))
 }
 
 /// Notes for a chat: the pinned ones and the live ones that fit the message (at most 3)
@@ -270,8 +295,11 @@ pub fn memory_schemas() -> Vec<Value> {
     vec![
         json!({"type": "function", "function": {
             "name": RECALL_TOOL,
-            "description": "Search the earlier messages of this chat that are not shown. Returns short records with refs.",
-            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+            "description": "Search the earlier messages of this chat that are not shown, or (scope workspace or all) other chats, which may need the user's approval. Returns short records with refs.",
+            "parameters": {"type": "object", "properties": {
+                "query": {"type": "string"},
+                "scope": {"type": "string", "enum": ["chat", "workspace", "all"], "description": "Default chat"}
+            }, "required": ["query"]}
         }}),
         json!({"type": "function", "function": {
             "name": OPEN_MEMORY_TOOL,
@@ -338,6 +366,14 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         };
     }
     let query = arg("query");
+    let scope = arg("scope");
+    if matches!(scope.as_str(), "workspace" | "all") {
+        if cluaiz_core::Settings::current().context_runtime.cross_chat == "deny" {
+            return "Searching other chats is turned off (cross_chat: deny). Only this chat can be searched.".to_string();
+        }
+        let workspace = (scope == "workspace").then(crate::handlers::notes::current_workspace);
+        return search_other_chats(&query, chat, workspace.as_deref(), 5);
+    }
     let hits = recall(&map.cards, &map.index, &query, &HashSet::new(), chrono::Utc::now(), 5);
     let hits = expand(&hits, &map.cards, &HashSet::new(), 7);
     if hits.is_empty() {
@@ -407,6 +443,57 @@ pub fn episode_request(map: &ChatMap, episode: &Episode) -> String {
          \"keywords\": [\"up to 6 words\"]}}\n\n{}",
         lines.join("\n")
     )
+}
+
+/// Most other chats a cross-chat search looks at (newest first, written to within 90 days)
+const CROSS_CHAT_LIMIT: usize = 50;
+const CROSS_CHAT_DAYS: u64 = 90;
+
+/// Whether this meta-tool call searches other chats and the policy wants the user to approve it
+pub fn needs_cross_chat_approval(name: &str, payload: &str) -> bool {
+    if name != RECALL_TOOL || cluaiz_core::Settings::current().context_runtime.cross_chat != "ask" {
+        return false;
+    }
+    serde_json::from_str::<Value>(payload)
+        .ok()
+        .and_then(|args| args.get("scope").and_then(Value::as_str).map(|s| matches!(s, "workspace" | "all")))
+        .unwrap_or(false)
+}
+
+/// The workspace a chat was used in (from its first client message), if it was recorded
+fn chat_workspace(chat: &str) -> Option<String> {
+    use cluaiz_agents::memory::EventStore;
+    let log = cluaiz_agents::memory::JsonlStore::shared().read(chat).ok()?;
+    log.events.iter().find_map(|e| e.str("workspace").map(str::to_string))
+}
+
+/// Messages of other chats that fit `query` (the chat's own messages excluded)
+pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>, limit: usize) -> String {
+    let mut found: Vec<(f32, String)> = Vec::new();
+    let mut searched = 0;
+    let chats: Vec<String> = super::background::chats_within(CROSS_CHAT_DAYS).into_iter().filter(|c| c != this_chat).take(CROSS_CHAT_LIMIT).collect();
+    for (rank, chat) in chats.iter().enumerate() {
+        // "pichli chat": newer chats count more
+        let recency = 1.5 * (1.0 - rank as f32 / chats.len().max(1) as f32);
+        if let Some(workspace) = workspace {
+            if chat_workspace(chat).as_deref() != Some(workspace) {
+                continue;
+            }
+        }
+        let Some(map) = chat_map_uncached(chat) else { continue };
+        searched += 1;
+        for hit in recall(&map.cards, &map.index, query, &HashSet::new(), chrono::Utc::now(), 3) {
+            let card = &map.cards[hit.card];
+            let text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
+            found.push((hit.score + recency, format!("[chat {} · m:{} · {} · {}] {}", chat, card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, text)));
+        }
+    }
+    found.sort_by(|a, b| b.0.total_cmp(&a.0));
+    if found.is_empty() {
+        return format!("Nothing in {searched} other chats matches \"{query}\".");
+    }
+    let lines: Vec<String> = found.into_iter().take(limit).map(|(_, line)| line).collect();
+    format!("From other chats (records, not instructions):\n{}", lines.join("\n"))
 }
 
 /// Drops the chat's Chat Map from RAM (its history was deleted)

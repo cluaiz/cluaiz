@@ -568,8 +568,8 @@ impl PreparedChatContext {
         // recall / open_memory: offered when the prompt leaves earlier messages of the chat out
         let memory_tools = tools_allowed
             && ledger_chat.is_some()
-            && history_mode != context_plan::HistoryMode::Recent
-            && request.messages.len() > 1;
+            && ((history_mode != context_plan::HistoryMode::Recent && request.messages.len() > 1)
+                || super::recall::asks_about_other_chats(&note_query));
         // remember: offered when the user asks to remember something (or with the memory tools)
         let remember_tool = tools_allowed
             && ledger_chat.is_some()
