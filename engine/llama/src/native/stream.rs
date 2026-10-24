@@ -86,7 +86,7 @@ pub(crate) fn stream_tokens_with_media(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -118,10 +118,11 @@ pub(crate) fn stream_tokens_with_media(
                         envelope.get("reasoning_effort").cloned().and_then(|e| {
                             serde_json::from_value::<cluaiz_core::ThinkingBudget>(e).ok()
                         });
-                    let grammar = envelope
-                        .get("grammar")
-                        .and_then(|g| g.as_str())
-                        .map(|s| s.to_string());
+                    // The answer's shape: `grammar` (GBNF) or `response_format` (JSON / JSON schema)
+                    let grammar = cluaiz_core::OutputConstraint::from_request(
+                        envelope.get("grammar").and_then(|g| g.as_str()),
+                        envelope.get("response_format"),
+                    );
                     let budget_message = envelope
                         .get("reasoning_budget_message")
                         .and_then(|m| m.as_str())
@@ -614,10 +615,32 @@ pub(crate) fn stream_tokens_with_media(
                 .map_err(|e| tracing::warn!("⚠️ [NativeTools] {}; calls are read as <tool_call> blocks only", e))
                 .ok()
         });
-        let tool_grammar = match (&native_apply, &native_parser) {
+        let mut tool_grammar = match (&native_apply, &native_parser) {
             (Some(apply), Some(_)) => crate::ffi::chat::tool_grammar(vocab, apply),
             _ => std::ptr::null_mut(),
         };
+        // Without a tool grammar, the request's own grammar or JSON schema shapes the answer
+        // (llama-server's `grammar` / `response_format`); it too waits until thinking is done
+        let mut grammar_lazy = true;
+        if tool_grammar.is_null() {
+            let gbnf = match &req_output {
+                Some(cluaiz_core::OutputConstraint::Gbnf(g)) => Some(g.clone()),
+                Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) => crate::ffi::chat::json_schema_grammar(schema)
+                    .map_err(|e| tracing::warn!("⚠️ [NativeStream] JSON schema not supported ({}); answer not constrained", e))
+                    .ok(),
+                None => None,
+            };
+            if let Some(gbnf) = gbnf {
+                let spec = serde_json::json!({ "grammar": gbnf, "grammar_lazy": false, "triggers": [] });
+                tool_grammar = crate::ffi::chat::tool_grammar(vocab, &spec);
+                grammar_lazy = false;
+                if tool_grammar.is_null() {
+                    tracing::warn!("⚠️ [NativeStream] llama.cpp could not parse the grammar; answer not constrained");
+                } else {
+                    info!("📐 [NativeStream] Answer constrained by a {} grammar", if matches!(req_output, Some(cluaiz_core::OutputConstraint::Gbnf(_))) { "GBNF" } else { "JSON schema" });
+                }
+            }
+        }
         let additional_stops: Vec<String> = native_apply
             .as_ref()
             .and_then(|apply| apply["additional_stops"].as_array())
@@ -784,7 +807,8 @@ pub(crate) fn stream_tokens_with_media(
                     }
 
                     // Thinking just ended: the grammar wakes up and sees the end tag (llama-server)
-                    set_grammar(!in_think_block, &think_end_tag);
+                    // (a strict grammar starts at the answer itself: nothing to replay)
+                    set_grammar(!in_think_block, if grammar_lazy { &think_end_tag } else { "" });
                     generated.push_str(emit_str);
                     if native_parser.is_some() && !in_think_block && !was_thinking {
                         // The answer goes out as llama.cpp's parser reads it: text only, the call
