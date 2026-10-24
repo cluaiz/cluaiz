@@ -10,12 +10,14 @@
 //! ```
 
 pub mod events;
+pub mod external;
 pub mod notes;
 pub mod records;
 pub mod store;
 pub mod transcript;
 
 pub use events::{Event, NewEvent};
+pub use external::{is_external, register_external, store_for};
 pub use store::{DeleteReport, EventStore, JsonlStore, ReadLog};
 
 use std::hash::{Hash, Hasher};

@@ -87,6 +87,11 @@ pub struct ExternalChatRequest {
     /// (needs session_id)
     #[serde(default)]
     pub history: Option<String>,
+    /// "engine" (default): the Engine keeps the chat on disk. "external": the app keeps it; the
+    /// Engine holds it in RAM only (no event log, ledger or saved KV on disk) and sends the new
+    /// events with each answer (`memory_events`). "none": nothing is kept (like temporary_chat).
+    #[serde(default)]
+    pub storage: Option<String>,
     /// Planner fields for this request only (recent_turns_min, evidence_cap_pct,
     /// suggestions_cap_pct, margin_pct, compact_at_pct, compact_to_pct); unknown or invalid ones are ignored
     #[serde(default)]

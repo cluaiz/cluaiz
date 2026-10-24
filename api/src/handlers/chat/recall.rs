@@ -6,7 +6,6 @@
 //! event log when the log has grown.
 
 use cluaiz_agents::memory::transcript::transcript;
-use cluaiz_agents::memory::{EventStore, JsonlStore};
 use cluaiz_context::memory::{
     active_task, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate,
 };
@@ -46,7 +45,7 @@ static MAPS: LazyLock<Mutex<Vec<(String, Arc<ChatMap>)>>> = LazyLock::new(|| Mut
 type Logged = (u64, Vec<MessageIn>, Vec<TaskUpdate>, std::collections::HashMap<String, EpisodeSummary>);
 
 fn messages(chat: &str) -> anyhow::Result<Logged> {
-    let log = JsonlStore::shared().read(chat)?;
+    let log = cluaiz_agents::memory::store_for(chat).read(chat)?;
     let slots = transcript(&log.events);
     let mut tools: std::collections::HashMap<u64, (Vec<String>, Vec<String>)> = Default::default();
     // Tool steps are logged just before the answer message they belong to
@@ -347,7 +346,7 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         let checkpoint: String = arg("checkpoint").chars().take(600).collect();
         use cluaiz_agents::memory::EventStore;
         let event = cluaiz_agents::memory::NewEvent::new("task", json!({ "goal": goal, "stage": stage, "checkpoint": checkpoint, "pos": pos }));
-        return match cluaiz_agents::memory::JsonlStore::shared().append(chat, vec![event]) {
+        return match cluaiz_agents::memory::store_for(chat).append(chat, vec![event]) {
             Ok(_) => format!("Task saved: {goal} ({stage})."),
             Err(e) => format!("The task could not be saved: {e}"),
         };
@@ -463,7 +462,7 @@ pub fn needs_cross_chat_approval(name: &str, payload: &str) -> bool {
 /// The workspace a chat was used in (from its first client message), if it was recorded
 fn chat_workspace(chat: &str) -> Option<String> {
     use cluaiz_agents::memory::EventStore;
-    let log = cluaiz_agents::memory::JsonlStore::shared().read(chat).ok()?;
+    let log = cluaiz_agents::memory::store_for(chat).read(chat).ok()?;
     log.events.iter().find_map(|e| e.str("workspace").map(str::to_string))
 }
 

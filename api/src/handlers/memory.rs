@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use cluaiz_agents::memory::{EventStore, JsonlStore};
+use cluaiz_agents::memory::EventStore;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -29,7 +29,7 @@ pub struct EventsQuery {
 
 /// GET /v1/chat/{session_id}/events: the chat's event log, oldest first
 pub async fn get_events(Path(chat): Path<String>, Query(query): Query<EventsQuery>) -> Response {
-    match JsonlStore::shared().read(&chat) {
+    match cluaiz_agents::memory::store_for(&chat).read(&chat) {
         Ok(log) => {
             let from = query.from_seq.unwrap_or(1);
             let limit = query.limit.unwrap_or(500).min(5000);
@@ -116,7 +116,7 @@ pub async fn get_item(Path(reference): Path<String>, Query(query): Query<ItemQue
 
 /// GET /v1/chat/{session_id}/export: the chat's events and cards as JSON (for an app's own store)
 pub async fn export(Path(chat): Path<String>) -> Response {
-    let log = match JsonlStore::shared().read(&chat) {
+    let log = match cluaiz_agents::memory::store_for(&chat).read(&chat) {
         Ok(log) => log,
         Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     };
@@ -127,13 +127,14 @@ pub async fn export(Path(chat): Path<String>) -> Response {
 /// DELETE /v1/chat/{session_id}/history: removes the chat's event log, ledger, saved KV, kept
 /// context reports and Chat Map. Shared blobs stay (they are stored by content).
 pub async fn delete_history(Path(chat): Path<String>) -> Response {
-    let events = match JsonlStore::shared().delete_chat(&chat) {
+    let events = match cluaiz_agents::memory::store_for(&chat).delete_chat(&chat) {
         Ok(report) => report,
         Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     };
     cluaiz_agents::ChatLedger::delete(&chat);
     let kv = cluaiz_runtime::chat_memory::delete(&chat);
     recall::forget(&chat);
+    cluaiz_agents::memory::external::forget_external(&chat);
     super::chat::authorize::revoke(&chat, None);
     super::chat::context_plan::forget_reports(&chat);
     let folder = cluaiz_agents::memory::memory_root().join("chats").join(cluaiz_agents::memory::chat_stem(&chat));
@@ -170,4 +171,24 @@ pub async fn get_grants(Path(chat): Path<String>) -> Json<Value> {
 pub async fn revoke_grants(Path(chat): Path<String>, Query(query): Query<GrantQuery>) -> Json<Value> {
     let removed = super::chat::authorize::revoke(&chat, query.tool.as_deref());
     Json(json!({ "chat_id": chat, "removed": removed }))
+}
+
+#[derive(Deserialize)]
+pub struct ImportChat {
+    /// The events of `GET /v1/chat/{id}/export` (or of `memory_events` collected by the app)
+    pub events: Vec<cluaiz_agents::memory::Event>,
+}
+
+/// POST /v1/chat/{session_id}/import: an app that keeps the chat itself (storage external) sends
+/// it back, e.g. after an Engine restart. The chat is held in RAM only; nothing is written to disk.
+pub async fn import_chat(Path(chat): Path<String>, Json(body): Json<ImportChat>) -> Response {
+    if body.events.len() > 200_000 {
+        return error(StatusCode::BAD_REQUEST, "at most 200000 events");
+    }
+    cluaiz_agents::memory::register_external(&chat);
+    let count = body.events.len();
+    cluaiz_agents::memory::external::mem_store().load(&chat, body.events);
+    recall::forget(&chat);
+    let cards = recall::chat_map(&chat).map_or(0, |map| map.cards.len());
+    Json(json!({ "chat_id": chat, "storage": "external", "events": count, "cards": cards })).into_response()
 }

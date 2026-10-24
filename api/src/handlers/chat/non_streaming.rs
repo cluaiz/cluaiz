@@ -296,7 +296,9 @@ pub async fn execute_non_streaming(
         crate::handlers::session_tools::decrement_session_turns(sid);
     }
     // What the Engine added to this turn, so the next request renders it the same way
-    super::preflight::record_turn(&state, &ctx, tool_turns.steps(), &final_content, &tool_events);
+    if let Some(events) = super::preflight::record_turn(&state, &ctx, tool_turns.steps(), &final_content, &tool_events) {
+        response["memory_events"] = events;
+    }
     turn_memory.finish().await;
 
     // 🛑 POST-GENERATION UNLOAD / KEEP_ALIVE TIMING

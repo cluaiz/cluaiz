@@ -33,6 +33,15 @@ pub use types::{
 
 /// `history: "engine"`: the chat's logged transcript goes in front of the new messages
 pub(crate) fn engine_history(request: &mut types::ExternalChatRequest) {
+    match request.storage.as_deref() {
+        None | Some("engine") => {}
+        Some("external") => match request.session_id.as_deref() {
+            Some(chat) => cluaiz_agents::memory::register_external(chat),
+            None => tracing::warn!("⚠️ [Memory] storage \"external\" needs a session_id; nothing is kept"),
+        },
+        Some("none") => request.temporary_chat = Some(types::TemporaryChatMode::Lite),
+        Some(other) => tracing::warn!("⚠️ [Memory] Unknown storage '{}' ignored (engine, external or none)", other),
+    }
     match request.history.as_deref() {
         None | Some("client") => {}
         Some("engine") => match request.session_id.as_deref().filter(|_| request.temporary_chat.is_none()) {
