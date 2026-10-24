@@ -5,7 +5,7 @@ pub mod agent_loop;
 mod authorize;
 pub(crate) mod context_plan;
 pub(crate) mod ingest_events;
-mod recall;
+pub(crate) mod recall;
 pub mod control;
 pub mod non_streaming;
 pub mod preflight;

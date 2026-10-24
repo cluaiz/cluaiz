@@ -111,6 +111,18 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
     Some(map)
 }
 
+impl ChatMap {
+    /// Text of the message behind card `index`
+    pub fn text(&self, index: usize) -> &str {
+        &self.texts[index]
+    }
+}
+
+/// Drops the chat's Chat Map from RAM (its history was deleted)
+pub fn forget(chat: &str) {
+    MAPS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(id, _)| id != chat);
+}
+
 /// What auto-recall adds to a request
 pub struct Evidence {
     /// The block put in front of the current message
