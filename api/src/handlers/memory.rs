@@ -135,7 +135,7 @@ pub async fn delete_history(Path(chat): Path<String>) -> Response {
     let kv = cluaiz_runtime::chat_memory::delete(&chat);
     recall::forget(&chat);
     cluaiz_agents::memory::external::forget_external(&chat);
-    super::chat::authorize::revoke(&chat, None);
+    super::chat::authorize::forget(&chat);
     super::chat::context_plan::forget_reports(&chat);
     let folder = cluaiz_agents::memory::memory_root().join("chats").join(cluaiz_agents::memory::chat_stem(&chat));
     let folder_left = folder.exists() && std::fs::read_dir(&folder).map(|mut d| d.next().is_some()).unwrap_or(false);
