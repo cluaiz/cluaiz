@@ -236,12 +236,20 @@ pub(crate) fn stream_tokens_with_media(
                 else {
                     break;
                 };
-                let sizes = structured_messages
+                let mut sizes = structured_messages
                     .iter()
                     .map(|(role, content)| {
                         Ok((role.as_str(), tokenize(vocab, content, false, false)?.len()))
                     })
                     .collect::<anyhow::Result<Vec<_>>>()?;
+                // The template adds tokens around every message (role markers, separators); spread
+                // them over the messages, or a long chat frees too little per message and drops
+                // nearly everything
+                let content_tokens: usize = sizes.iter().map(|(_, n)| n).sum();
+                let per_message = prompt_tokens.len().saturating_sub(content_tokens) / sizes.len().max(1);
+                for (_, n) in &mut sizes {
+                    *n += per_message;
+                }
                 let (n_drop, freed) = cluaiz_core::oldest_turns_to_drop(&sizes, target);
                 if n_drop == 0 {
                     break;
