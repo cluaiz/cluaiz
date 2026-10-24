@@ -77,7 +77,8 @@ pub async fn execute_non_streaming(
             let implicit_load =
                 super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
             let is_meta_tool = implicit_load
-                || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name));
+                || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name))
+                || (ctx.memory_tools && super::recall::is_memory_tool(raw_fn_name));
             let (meta_name, meta_payload) = if implicit_load {
                 (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
             } else {

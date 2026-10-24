@@ -46,6 +46,8 @@ pub struct PreparedChatContext {
     pub plan_report: serde_json::Value,
     /// Messages the client request carried (the answer is logged after them)
     pub message_count: usize,
+    /// The memory meta-tools (recall, open_memory) were offered
+    pub memory_tools: bool,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -540,6 +542,11 @@ impl PreparedChatContext {
         // Suggestions (cards and titles) for tools that are installed but not loaded. The model
         // loads one with load_tool when it needs it; nothing goes in whole on its own.
         let discovery = tools_allowed && request.tool_search != Some(false);
+        // recall / open_memory: offered when the prompt leaves earlier messages of the chat out
+        let memory_tools = tools_allowed
+            && ledger_chat.is_some()
+            && history_mode != context_plan::HistoryMode::Recent
+            && request.messages.len() > 1;
         let mut hint_lines = String::new();
         let mut offer_meta_tools = false;
         let mut suggested = serde_json::Value::Array(Vec::new());
@@ -575,7 +582,19 @@ impl PreparedChatContext {
                 || !inline_tool_ids.is_empty()
                 || chat_has_tool_history;
         }
-        let meta_schemas = if offer_meta_tools { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
+        // Earlier messages not shown (adaptive / none): the model can look them up, also when
+        // tool suggestions are off
+        let tool_meta = offer_meta_tools;
+        if memory_tools {
+            if hint_lines.is_empty() {
+                hint_lines = "Earlier messages of this chat are not all shown. To look something up, call recall with a query; open_memory gives one message in full.\n".to_string();
+            }
+            offer_meta_tools = true;
+        }
+        let mut meta_schemas = if tool_meta { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
+        if memory_tools {
+            meta_schemas.extend(super::recall::memory_schemas());
+        }
 
         // Bound tools: whole schemas and whole skill instructions, or left out; never cut
         let mut system_tools = String::new();
@@ -928,6 +947,7 @@ impl PreparedChatContext {
             loaded_tool_ids: tool_ids_to_compile.clone(),
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
+            memory_tools,
             tool_hint: turn_block,
             tools_report,
             plan_report,
