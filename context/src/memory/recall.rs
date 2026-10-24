@@ -26,6 +26,22 @@ pub struct Hit {
 
 pub use super::time::{time_window, time_window_in, Window};
 
+static TOOL_RUN: std::sync::LazyLock<Vec<Vec<String>>> = std::sync::LazyLock::new(|| {
+    let data: serde_json::Value = serde_json::from_str(include_str!("../../data/words.json")).unwrap_or_default();
+    data.pointer("/memory/tool_run")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| items.iter().filter_map(serde_json::Value::as_str).map(crate::analyze::raw_words).collect())
+        .unwrap_or_default()
+});
+
+/// Whether a message asks about what an earlier tool run gave ("output kya aaya", "pichhle run
+/// ka result"): such a message gets the recalled steps' calls and results (`tool_only`), not the
+/// answers around them
+pub fn asks_about_tool_run(message: &str) -> bool {
+    let words = crate::analyze::raw_words(message);
+    TOOL_RUN.iter().any(|phrase| super::card::has_phrase(&words, phrase))
+}
+
 /// Earlier messages worth recalling for `message`, best first. `visible` holds the positions
 /// already in the prompt; they are never recalled.
 pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSet<u64>, now: DateTime<Utc>, limit: usize) -> Vec<Hit> {
@@ -162,6 +178,35 @@ mod tests {
         let hits = recall(&cards, &index, "kal kya baat hui thi?", &visible, now(), 5);
         assert!(hits.iter().all(|h| cards[h.card].ts.starts_with("2026-10-23")), "{hits:?}");
         assert!(!hits.is_empty());
+    }
+
+    #[test]
+    fn test_a_tool_run_is_found_by_its_output() {
+        assert!(asks_about_tool_run("pichhle run ka output kya aaya tha?"));
+        assert!(asks_about_tool_run("script ka result dikhao"));
+        assert!(!asks_about_tool_run("run this python: print(2+2)"));
+        let mut messages = vec![
+            MessageIn { id: "e0".into(), pos: 0, role: "user".into(), text: "calc.py chalao".into(), ts: "2026-10-24T10:00:00Z".into(), ..Default::default() },
+            MessageIn {
+                id: "e1".into(),
+                pos: 1,
+                role: "assistant".into(),
+                text: "Done, it ran fine.".into(),
+                ts: "2026-10-24T10:00:05Z".into(),
+                tools: vec!["code-interpreter".into()],
+                tool_text: "stdout: checksum ZEBRA-7781 written".into(),
+                ..Default::default()
+            },
+        ];
+        for i in 2..30 {
+            messages.push(MessageIn { id: format!("e{i}"), pos: i, role: "user".into(), text: format!("weather talk {i}"), ts: "2026-10-24T11:00:00Z".into(), ..Default::default() });
+        }
+        let cards = build_cards(&messages);
+        let index = CardIndex::build(&cards);
+        let visible: HashSet<u64> = (20..30).collect();
+        // The checksum is only in the tool's output, not in any message
+        let hits = recall(&cards, &index, "ZEBRA-7781 checksum kis run me aaya tha?", &visible, now(), 3);
+        assert_eq!(cards[hits[0].card].pos, 1, "{hits:?}");
     }
 
     #[test]
