@@ -381,6 +381,11 @@ pub fn remember(chat: &str, request_id: &str, report: &serde_json::Value) {
     }
 }
 
+/// Forgets the chat's kept reports (its history was deleted)
+pub fn forget_reports(chat: &str) {
+    REPORTS.lock().unwrap_or_else(|e| e.into_inner()).remove(chat);
+}
+
 /// A kept report, or the ids of the chat's kept reports (newest last) when `request_id` is None
 pub fn recall(chat: &str, request_id: Option<&str>) -> Option<serde_json::Value> {
     let reports = REPORTS.lock().unwrap_or_else(|e| e.into_inner());

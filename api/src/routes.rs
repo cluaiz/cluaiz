@@ -125,6 +125,13 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::context::get_context_settings).post(handlers::context::update_context_settings),
         )
         .route("/v1/chat/{session_id}/context/preview", post(handlers::context::preview_context))
+        // Chat memory: event log, Chat Map, search, export, delete with everything derived
+        .route("/v1/chat/{session_id}/events", get(handlers::memory::get_events))
+        .route("/v1/chat/{session_id}/index", get(handlers::memory::get_index))
+        .route("/v1/chat/{session_id}/export", get(handlers::memory::export))
+        .route("/v1/chat/{session_id}/history", delete(handlers::memory::delete_history))
+        .route("/v1/recall/search", post(handlers::memory::search))
+        .route("/v1/recall/item/{reference}", get(handlers::memory::get_item))
         .route("/v1/chat/{session_id}/context/report", get(handlers::context::list_context_reports))
         .route(
             "/v1/chat/{session_id}/context/report/{request_id}",
