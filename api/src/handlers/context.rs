@@ -18,6 +18,11 @@ fn error(status: StatusCode, message: impl Into<String>) -> Response {
     (status, Json(json!({ "error": { "message": message.into(), "type": "invalid_request_error" } }))).into_response()
 }
 
+/// GET /v1/context/jobs: the idle-time scheduler's queue, counts and recent results
+pub async fn get_jobs() -> Json<Value> {
+    Json(super::chat::background::status())
+}
+
 /// GET /v1/context/settings: the planner's default policy
 pub async fn get_context_settings() -> Json<Value> {
     Json(json!({ "settings": cluaiz_core::Settings::current().context_runtime }))

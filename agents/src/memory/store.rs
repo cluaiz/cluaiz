@@ -192,6 +192,12 @@ impl EventStore for JsonlStore {
         let mut written = Vec::with_capacity(events.len());
         let mut buffer = Vec::new();
         for mut new in events {
+            // The kind's own fields cannot overwrite the fields of the event itself
+            for reserved in ["v", "id", "chat", "seq", "ts", "kind"] {
+                if new.data.remove(reserved).is_some() {
+                    tracing::warn!("⚠️ [Memory] Field '{}' of a '{}' event dropped (reserved)", reserved, new.kind);
+                }
+            }
             self.move_large_fields(&mut new)?;
             let event = Event {
                 v: EVENT_VERSION,
@@ -320,6 +326,17 @@ pub(crate) mod tests {
     fn test_jsonl_store_conformance() {
         let (store, root) = temp_store();
         conformance(&store);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn test_reserved_fields_cannot_overwrite_the_event() {
+        let (store, root) = temp_store();
+        let written = store.append("c", vec![NewEvent::new("card_enrichment", json!({ "kind": "cold", "seq": 99, "title": "x" }))]).unwrap();
+        assert_eq!((written[0].kind.as_str(), written[0].seq), ("card_enrichment", 1));
+        let log = store.read("c").unwrap();
+        assert_eq!(log.events[0].kind, "card_enrichment");
+        assert_eq!(log.events[0].str("title"), Some("x"));
         let _ = std::fs::remove_dir_all(root);
     }
 

@@ -116,6 +116,38 @@ pub fn answer_event(text: &str, pos: usize) -> NewEvent {
     )
 }
 
+/// A turn of the visible transcript whose answer has no card yet
+#[derive(Debug, Clone, PartialEq)]
+pub struct Unindexed {
+    pub user_pos: u64,
+    pub answer_pos: u64,
+    pub user: String,
+    pub answer: String,
+}
+
+/// Turns answered by the Engine that have neither a card (`card_enrichment`) nor a recorded
+/// failure (`card_enrichment_failed`), oldest first. The log itself is the job list: after a
+/// restart or a crash the missing cards are found again.
+pub fn unindexed_turns(events: &[Event]) -> Vec<Unindexed> {
+    let done: std::collections::HashSet<u64> = events
+        .iter()
+        .filter(|e| e.kind == "card_enrichment" || e.kind == "card_enrichment_failed")
+        .filter_map(|e| e.data.get("answer_pos").and_then(Value::as_u64))
+        .collect();
+    let engine_answers: std::collections::HashSet<&str> =
+        events.iter().filter(|e| e.kind == "message" && e.str("source") == Some("engine")).map(|e| e.id.as_str()).collect();
+    let slots = transcript(events);
+    slots
+        .iter()
+        .filter(|(pos, answer)| answer.role == "assistant" && engine_answers.contains(answer.event_id.as_str()) && !done.contains(pos))
+        .filter(|(_, answer)| !answer.text.trim().is_empty())
+        .filter_map(|(pos, answer)| {
+            let user = slots.get(&pos.checked_sub(1)?)?;
+            (user.role == "user").then(|| Unindexed { user_pos: pos - 1, answer_pos: *pos, user: user.text.clone(), answer: answer.text.clone() })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,6 +191,28 @@ mod tests {
         events.push(answer_event("Hello! ", 1));
         let log = logged(&events);
         assert!(diff(&log, &[msg("user", "hi"), msg("assistant", "Hello!")]).is_empty());
+    }
+
+    #[test]
+    fn test_unindexed_turns_come_back_until_carded() {
+        let mut events = diff(&BTreeMap::new(), &[msg("user", "hi")]);
+        events.push(answer_event("Hello!", 1));
+        events.extend(diff(&logged(&events), &[msg("user", "hi"), msg("assistant", "Hello!"), msg("user", "notes padho")]));
+        events.push(answer_event("Done.", 3));
+        let as_events = |events: &[NewEvent]| -> Vec<Event> {
+            events
+                .iter()
+                .enumerate()
+                .map(|(i, e)| Event { v: 1, id: format!("ev{i}"), chat: "c".into(), seq: i as u64 + 1, ts: String::new(), kind: e.kind.clone(), data: e.data.clone() })
+                .collect()
+        };
+        let pending = unindexed_turns(&as_events(&events));
+        assert_eq!(pending.iter().map(|t| t.answer_pos).collect::<Vec<_>>(), [1, 3]);
+        assert_eq!(pending[1].user, "notes padho");
+        // One carded, one failed: nothing left
+        events.push(NewEvent::new("card_enrichment", serde_json::json!({ "answer_pos": 1, "title": "x" })));
+        events.push(NewEvent::new("card_enrichment_failed", serde_json::json!({ "answer_pos": 3 })));
+        assert!(unindexed_turns(&as_events(&events)).is_empty());
     }
 
     #[test]

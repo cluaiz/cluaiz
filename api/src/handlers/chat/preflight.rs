@@ -129,6 +129,7 @@ impl PreparedChatContext {
         let preflight_started = std::time::Instant::now();
         // A chat request in flight: idle-time jobs stop and wait
         let foreground = super::background::Foreground::begin();
+        super::background::ensure_started(state);
         let schema = cluaiz_security::PermissionSchema::load();
         let send_telemetry = schema.stream_telemetry;
 
@@ -1132,8 +1133,9 @@ pub fn record_turn(
                         envelope,
                         user_pos: ctx.message_count.saturating_sub(1),
                         answer_pos: ctx.message_count,
-                        model_path: model_path.clone(),
-                        settings: ctx.request_settings.clone(),
+                        model_path: Some(model_path.clone()),
+                        settings: Some(ctx.request_settings.clone()),
+                        cold: false,
                     },
                 );
             }

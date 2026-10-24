@@ -3,7 +3,7 @@
 
 pub mod agent_loop;
 mod authorize;
-mod background;
+pub(crate) mod background;
 pub(crate) mod context_plan;
 pub(crate) mod ingest_events;
 pub(crate) mod recall;
