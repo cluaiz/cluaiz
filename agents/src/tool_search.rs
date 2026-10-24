@@ -30,6 +30,10 @@ pub const LOAD_TOOL_NAME: &str = "load_tool";
 pub const UNLOAD_TOOL_NAME: &str = "unload_tool";
 /// Older name of `find_tools`, still accepted
 pub const TOOL_SEARCH_NAME: &str = "tool_search";
+/// Meta-tool: read one more file of a tool (its references, examples, …), never cut
+pub const READ_TOOL_FILE_NAME: &str = "read_tool_file";
+/// Files listed for a tool (the rest are not named)
+const MAX_LISTED_FILES: usize = 40;
 
 /// Most cards and titles shown with one message
 const MAX_CARDS: usize = 3;
@@ -372,7 +376,7 @@ impl ToolSearch {
 
     /// Whether `name` is one of the Engine's tool meta-tools
     pub fn is_meta_tool(name: &str) -> bool {
-        matches!(name, FIND_TOOLS_NAME | LOAD_TOOL_NAME | UNLOAD_TOOL_NAME | TOOL_SEARCH_NAME)
+        matches!(name, FIND_TOOLS_NAME | LOAD_TOOL_NAME | UNLOAD_TOOL_NAME | TOOL_SEARCH_NAME | READ_TOOL_FILE_NAME)
     }
 
     /// Schemas of the meta-tools (loading first: with a card shown, that is the next step)
@@ -390,6 +394,11 @@ impl ToolSearch {
                 "name": UNLOAD_TOOL_NAME,
                 "description": "Remove a loaded tool you do not need, to free space.",
                 "parameters": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}
+            }}),
+            json!({"type": "function", "function": {
+                "name": READ_TOOL_FILE_NAME,
+                "description": "Read one more file of a tool, such as a reference its instructions point to. An empty path lists the tool's files.",
+                "parameters": {"type": "object", "properties": {"id": {"type": "string"}, "path": {"type": "string"}}, "required": ["id", "path"]}
             }}),
             json!({"type": "function", "function": {
                 "name": FIND_TOOLS_NAME,
@@ -510,12 +519,19 @@ impl ToolSearch {
             out.push_str("Tools that may help. To use one, call load_tool with its id:\n");
             for candidate in cards {
                 if let Some(entry) = find(&candidate.id) {
+                    // An MCP server that keeps crashing is shown, but marked
+                    let unavailable = entry.category == "mcp"
+                        && crate::ToolsEngine::get_tool(&entry.id)
+                            .ok()
+                            .flatten()
+                            .is_some_and(|tool| crate::McpClient::is_unavailable(std::path::Path::new(&tool.local_dir)));
                     out.push_str(&format!(
-                        "- {} ({}): {}. Load cost ~{} tokens.\n",
+                        "- {} ({}): {}. Load cost ~{} tokens.{}\n",
                         entry.id,
                         entry.category,
                         entry.summary().trim_end_matches('.'),
-                        load_cost_tokens(entry)
+                        load_cost_tokens(entry),
+                        if unavailable { " Unavailable now: its server crashed several times." } else { "" }
                     ));
                 }
             }
@@ -662,8 +678,93 @@ impl ToolSearch {
                 left_out.join(", ")
             ));
         }
+        let files = tool_files(Path::new(&entry_dir(&entry.id)));
+        if !files.is_empty() {
+            text.push_str(&format!("Its other files (read one with read_tool_file): {}\n", files.join(", ")));
+        }
         text.push_str(&format!("When this tool is not useful, call unload_tool with id \"{}\".", entry.id));
         LoadResult { loaded: Some(entry.id), text }
+    }
+}
+
+/// `read_tool_file`: a file of a switched-on tool, whole, or the tool's files when `path` is empty
+/// or not one of them. Only inside the tool's folder, and never cut: a file larger than
+/// `max_chars` is refused with its size.
+pub fn read_tool_file(id: &str, path: &str, max_chars: usize) -> String {
+    let Some(entry) = ToolSearch::catalog(&[]).into_iter().find(|e| e.id.eq_ignore_ascii_case(id.trim())) else {
+        return format!("No switched-on tool has the id \"{}\".", id.trim());
+    };
+    read_in_folder(&entry.id, Path::new(&entry_dir(&entry.id)), path, max_chars)
+}
+
+fn entry_dir(id: &str) -> String {
+    crate::ToolsEngine::get_tool(id).ok().flatten().map(|t| t.local_dir).unwrap_or_default()
+}
+
+/// The text files of a tool folder that its load does not send already (relative paths, `/`)
+fn tool_files(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(folder) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&folder) else { continue };
+        let mut entries: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+        entries.sort();
+        for path in entries {
+            let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            if name.starts_with('.') || name == "scratch" || name == "node_modules" {
+                continue;
+            }
+            if path.is_dir() {
+                stack.push(path);
+            } else if !matches!(name.as_str(), "SKILL.md" | "package.json") && is_text_file(&path) {
+                if let Ok(relative) = path.strip_prefix(dir) {
+                    out.push(relative.to_string_lossy().replace('\\', "/"));
+                }
+            }
+        }
+    }
+    out.sort();
+    out.truncate(MAX_LISTED_FILES);
+    out
+}
+
+fn is_text_file(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|e| e.to_str()).map(str::to_lowercase).as_deref(),
+        Some("md" | "txt" | "json" | "yaml" | "yml" | "toml" | "py" | "js" | "ts" | "sh" | "ps1" | "rs" | "html" | "css" | "csv" | "xml")
+    )
+}
+
+fn read_in_folder(id: &str, dir: &Path, path: &str, max_chars: usize) -> String {
+    let listing = || {
+        let files = tool_files(dir);
+        if files.is_empty() {
+            format!("Tool '{id}' has no other files.")
+        } else {
+            format!("Files of tool '{id}': {}", files.join(", "))
+        }
+    };
+    let path = path.trim().trim_start_matches(['/', '\\']);
+    if path.is_empty() || path == "." {
+        return listing();
+    }
+    let (Ok(root), Ok(target)) = (dir.canonicalize(), dir.join(path).canonicalize()) else {
+        return format!("Tool '{id}' has no file '{path}'. {}", listing());
+    };
+    if !target.starts_with(&root) {
+        return format!("'{path}' is outside the folder of tool '{id}'. {}", listing());
+    }
+    if !target.is_file() || !is_text_file(&target) {
+        return format!("'{path}' is not a text file of tool '{id}'. {}", listing());
+    }
+    match std::fs::read_to_string(&target) {
+        Ok(text) if text.len() > max_chars => format!(
+            "'{path}' needs about {} tokens but only about {} are free. Unload a tool you do not need, or answer without it.",
+            tokens(text.len()),
+            tokens(max_chars)
+        ),
+        Ok(text) => format!("File '{path}' of tool '{id}':\n{text}"),
+        Err(_) => format!("'{path}' of tool '{id}' could not be read as text."),
     }
 }
 
@@ -721,6 +822,23 @@ fn function_description(schema: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_read_in_folder_stays_inside_and_never_cuts() {
+        let root = std::env::temp_dir().join(format!("cluaiz-rtf-{}", std::process::id()));
+        let dir = root.join("code-interpreter");
+        std::fs::create_dir_all(dir.join("references")).unwrap();
+        std::fs::write(dir.join("SKILL.md"), "skill").unwrap();
+        std::fs::write(dir.join("references").join("LANGUAGES.md"), "python: python file.py").unwrap();
+        std::fs::write(root.join("secret.txt"), "outside").unwrap();
+        let read = |path: &str, max: usize| read_in_folder("code-interpreter", &dir, path, max);
+        assert!(read("references/LANGUAGES.md", 1000).contains("python file.py"));
+        assert!(read("", 1000).contains("references/LANGUAGES.md") && !read("", 1000).contains("SKILL.md"));
+        assert!(read("../secret.txt", 1000).contains("outside the folder") && !read("../secret.txt", 1000).contains("outside\n"));
+        assert!(read("references/LANGUAGES.md", 5).contains("needs about"));
+        assert!(read("missing.md", 1000).contains("has no file"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn test_auto_load_needs_one_clear_card() {
