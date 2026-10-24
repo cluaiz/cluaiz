@@ -133,7 +133,39 @@
       "yesterday": ["kal", "yesterday", "कल"],
       "week": ["pichhle hafte", "pichle hafte", "last week", "is hafte", "this week"],
       "month": ["pichhle mahine", "pichle mahine", "last month", "is mahine", "this month"],
-      "days_ago": ["din pehle", "days ago", "day ago"]
+      "days_ago": ["din pehle", "days ago", "day ago"],
+      "day_before_yesterday": ["parso", "parson", "day before yesterday", "परसों"],
+      "hours_ago": ["ghante pehle", "ghanta pehle", "ghante pahle", "hours ago", "hour ago", "घंटे पहले"],
+      "recent": ["thodi der pehle", "thodi der pahle", "abhi abhi", "a while ago", "just now", "थोड़ी देर पहले"],
+      "weekdays": [
+        ["monday", "somvar", "somwar", "सोमवार"],
+        ["tuesday", "mangalvar", "mangalwar", "मंगलवार"],
+        ["wednesday", "budhvar", "budhwar", "बुधवार"],
+        ["thursday", "guruvar", "guruwar", "brihaspativar", "गुरुवार"],
+        ["friday", "shukravar", "shukrawar", "शुक्रवार"],
+        ["saturday", "shanivar", "shaniwar", "शनिवार"],
+        ["sunday", "ravivar", "raviwar", "itvaar", "रविवार"]
+      ],
+      "parts": [
+        {"words": ["subah", "morning", "सुबह"], "from": 5, "to": 12},
+        {"words": ["dopahar", "afternoon", "दोपहर"], "from": 12, "to": 17},
+        {"words": ["shaam", "sham", "evening", "शाम"], "from": 17, "to": 21},
+        {"words": ["raat", "night", "रात"], "from": 21, "to": 29}
+      ],
+      "months": [
+        ["jan", "january", "जनवरी"],
+        ["feb", "february", "फरवरी"],
+        ["mar", "march", "मार्च"],
+        ["apr", "april", "अप्रैल"],
+        ["may", "मई"],
+        ["jun", "june", "जून"],
+        ["jul", "july", "जुलाई"],
+        ["aug", "august", "अगस्त"],
+        ["sep", "sept", "september", "सितंबर"],
+        ["oct", "october", "अक्टूबर"],
+        ["nov", "november", "नवंबर"],
+        ["dec", "december", "दिसंबर"]
+      ]
     }
   }
 }
