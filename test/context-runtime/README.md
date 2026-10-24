@@ -129,3 +129,27 @@ so the model picked the corrected-away value.
 With `history_mode: "none"` (only the system prompt and the current message, plus recall),
 2026-10-24: 200 messages 5/5 at 603 prompt tokens, 2,000 messages 5/5 at 575; the absent fact
 was answered "not known" in this mode.
+
+## Optional embeddings (`embed_eval.py`, P5.3 step 1)
+
+Do installed embedding models help? Tools: is the expected tool the nearest by cosine (message vs
+tool name and description), against the word matcher? Memory: is the planted message in the top 3
+of a 200-message chat, against BM25 recall? Uses `/v1/embeddings` with models the user installed.
+
+```bash
+python test/context-runtime/embed_eval.py --url http://127.0.0.1:8011 --token <token> --models embeddinggemma-2-GGUF,bge-m3-GGUF
+```
+
+Results (2026-10-24):
+
+| | Tools, all (108) | English (70) | Hinglish (28) | Devanagari (10) | Paraphrase (19) | Memory top 3 (4) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Word matcher / BM25 (today) | 106 | 68 | 28 | 10 | 17 | 4 |
+| EmbeddingGemma (Q8_0) | 75 | 47 | 19 | 9 | 11 | 4 |
+| bge-m3 (Q8_0) | 55 | 36 | 14 | 5 | 7 | 4 |
+
+The best tool's similarity hardly separates real requests from traps and chit-chat (EmbeddingGemma
+median 0.687 against 0.625; bge-m3 0.495 against 0.390), so a threshold would either miss tools or
+suggest them for chit-chat. The plan's gate ("the paraphrase subset improves by a clear margin")
+is not met, so hybrid scoring is not added; vectors stay off. A paraphrase-heavy memory set (facts
+asked in other words or another language) is the next thing to measure before trying again.
