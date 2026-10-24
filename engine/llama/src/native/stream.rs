@@ -86,7 +86,7 @@ pub(crate) fn stream_tokens_with_media(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse, req_tools) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -139,6 +139,9 @@ pub(crate) fn stream_tokens_with_media(
                         .filter(|t| t.as_array().is_some_and(|a| !a.is_empty()))
                         .cloned()
                         .map(|tools| (tools, envelope.get("parse_tools").and_then(|p| p.as_bool()) != Some(false)));
+                    // Thinking off without changing the start of the prompt (a job that reuses a
+                    // chat's KV): see below
+                    let keep_prefix = envelope.get("thinking_off_keeps_prefix").and_then(|k| k.as_bool()) == Some(true);
                     (
                         samplers,
                         think_mode,
@@ -147,12 +150,13 @@ pub(crate) fn stream_tokens_with_media(
                         budget_message,
                         kv_reuse,
                         tools,
+                        keep_prefix,
                     )
                 } else {
-                    (None, None, None, None, None, None, None)
+                    (None, None, None, None, None, None, None, false)
                 }
             } else {
-                (None, None, None, None, None, None, None)
+                (None, None, None, None, None, None, None, false)
             };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -175,10 +179,31 @@ pub(crate) fn stream_tokens_with_media(
 
         let tm_str = req_think_mode.as_deref().unwrap_or("auto").to_lowercase();
 
-        let enable_thinking = match tm_str.as_str() {
+        let mut enable_thinking = match tm_str.as_str() {
             "off" | "false" | "0" | "hide" => false,
             _ => true,
         };
+        // A job that wants no thinking but the chat's own prompt start (to reuse its KV) sends the
+        // turn's think mode and `thinking_off_keeps_prefix`. Thinking is turned off in the prompt,
+        // except where the template writes the switch at the very start (Gemma 4 in its system
+        // turn): there it stays on with a zero thinking budget.
+        let mut zero_budget = false;
+        if keep_prefix && enable_thinking && !think_start_tag.is_empty() {
+            let probe = [("system", "S7xq"), ("user", "U9zk")];
+            let templates = llama.chat_templates_for(dna.chat_template.as_deref());
+            let on = crate::native::templater::apply_chat_template(llama.model_ptr, templates, dna.chat_template.as_deref(), &probe, true, true);
+            let off = crate::native::templater::apply_chat_template(llama.model_ptr, templates, dna.chat_template.as_deref(), &probe, true, false);
+            if let (Ok(on), Ok(off)) = (on, off) {
+                // The user turn ends the same way in both: compare everything before it
+                let before = |p: &str| p.find("U9zk").map(|i| p[..i].to_string()).unwrap_or_default();
+                if before(&on) != before(&off) {
+                    zero_budget = true;
+                    info!("🧠 [NativeStream] Thinking stays on in the prompt (the template switches it at the start); budget 0");
+                } else {
+                    enable_thinking = false;
+                }
+            }
+        }
 
         if structured_messages.is_empty() {
             // Plain text (CLI / TUI): one user message through the model's own template.
@@ -333,14 +358,18 @@ pub(crate) fn stream_tokens_with_media(
             }
         }
 
-        let suppress_thinking = match tm_str.as_str() {
+        let suppress_thinking = keep_prefix || match tm_str.as_str() {
             "off" | "false" | "0" | "hide" => true,
             "on" | "true" | "1" | "show" => false,
             _ => false, // "auto" lets model natural tags emit
         };
 
         // Thinking budget ("Effort"); the token count is known once the prompt length is
-        let thinking_budget = req_reasoning_effort.unwrap_or_default();
+        let thinking_budget = if zero_budget {
+            cluaiz_core::ThinkingBudget::Tokens(0)
+        } else {
+            req_reasoning_effort.unwrap_or_default()
+        };
 
         let mut in_think_block = false;
         let mut think_tokens_count = 0usize;

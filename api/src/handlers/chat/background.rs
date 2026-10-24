@@ -19,8 +19,9 @@ use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 
-/// Most tokens an enrichment may write
-const ENRICH_TOKENS: usize = 80;
+/// Most tokens an enrichment may write (a card with a 60-word summary; a model stops earlier
+/// when it is done)
+const ENRICH_TOKENS: usize = 160;
 /// Quiet time before a job starts after the last request ended
 const IDLE_MS: u64 = 300;
 /// Quiet time before turns without a card are looked for
@@ -362,7 +363,9 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
             messages.push(json!({ "role": "user", "content": INSTRUCTION }));
         }
     }
-    envelope["think_mode"] = json!("off");
+    // No thinking, with the turn's own prompt start (see the engine's `thinking_off_keeps_prefix`):
+    // the chat's KV is reused also where a template switches thinking at the start (Gemma 4)
+    envelope["thinking_off_keeps_prefix"] = json!(true);
     envelope["kv_reuse"] = json!("prefix");
     // Native tools stay in the prompt (same KV); the reply is read as text, not as calls
     envelope["parse_tools"] = json!(false);
