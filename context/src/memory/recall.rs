@@ -84,7 +84,12 @@ pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSe
     let query_entities = entities(message);
     let window = time_window(message, now);
     let ranked = index.search(&query);
-    let best = ranked.first().map_or(1.0, |(_, s)| s.max(1.0));
+    // Scores are relative to the best candidate (a visible message, such as the question itself,
+    // must not push the hidden ones down)
+    let best = ranked
+        .iter()
+        .find(|(i, _)| !cards[*i].trivial && !visible.contains(&cards[*i].pos))
+        .map_or(1.0, |(_, s)| s.max(1.0));
     let newest = cards.iter().map(|c| c.pos).max().unwrap_or(0).max(1) as f32;
     let candidates: Vec<(usize, f32)> = if window.is_some() && ranked.is_empty() {
         // "kal kya baat hui?": every message of that day is a candidate
@@ -181,6 +186,16 @@ mod tests {
         assert!(recall(&cards, &index, "deploy server ka port kya tha?", &all, now(), 3).is_empty());
         let visible: HashSet<u64> = (40..60).collect();
         assert!(recall(&cards, &index, "tell me a joke", &visible, now(), 3).is_empty());
+    }
+
+    #[test]
+    fn test_a_visible_question_does_not_hide_the_answer() {
+        let cards = chat();
+        let index = CardIndex::build(&cards);
+        let visible: HashSet<u64> = (40..60).collect();
+        // Many extra words: the question itself would score far above the old fact
+        let hits = recall(&cards, &index, "recall tool use karke dhundo maine deploy server port ke baare me kya kaha tha", &visible, now(), 3);
+        assert!(hits.iter().any(|h| [0, 1].contains(&cards[h.card].pos)), "{hits:?}");
     }
 
     #[test]

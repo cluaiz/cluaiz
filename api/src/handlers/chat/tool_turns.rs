@@ -162,6 +162,14 @@ pub async fn run_meta_tool(
 ) -> MetaOutcome {
     let args = serde_json::from_str::<Value>(payload).unwrap_or_else(|_| json!({}));
     let text_arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    if super::recall::is_memory_tool(name) {
+        let text = match &ctx.ledger_turn {
+            Some((chat, _)) => super::recall::run_memory_tool(chat, name, &args),
+            None => "This chat keeps no memory (private chat or no session_id).".to_string(),
+        };
+        tracing::info!("🔁 [Memory] {}({}) -> {} chars", name, payload, text.len());
+        return MetaOutcome { text, unloaded: None };
+    }
     match name {
         cluaiz_agents::LOAD_TOOL_NAME => {
             let id = text_arg("id");
