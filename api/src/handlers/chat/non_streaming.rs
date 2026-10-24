@@ -305,6 +305,7 @@ pub async fn execute_non_streaming(
     if let Some(ref sid) = req_session_id {
         crate::handlers::session_tools::decrement_session_turns(sid);
     }
+    super::tool_turns::end_turn_tools(&ctx, req_session_id.as_deref(), &tool_turns);
     // What the Engine added to this turn, so the next request renders it the same way
     if let Some(events) = super::preflight::record_turn(&state, &ctx, tool_turns.steps(), &final_content, &tool_events) {
         response["memory_events"] = events;

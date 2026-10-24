@@ -20,7 +20,7 @@ impl SessionToolInput {
             Self::Binding(binding) => binding,
             Self::Id(id) => {
                 let turns = ToolsEngine::get_tool(&id).ok().flatten().map(|tool| tool.default_turns).unwrap_or(-1);
-                SessionToolBinding { id, turns, inline: false }
+                SessionToolBinding { id, turns, inline: false, pinned: false, idle: 0 }
             }
         }
     }
