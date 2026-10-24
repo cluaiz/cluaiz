@@ -2,7 +2,9 @@
 //! never reads files, calls the model or touches the KV cache. The API and runtime crates do
 //! the I/O around it.
 
+pub mod analyze;
 pub mod compaction;
+pub mod memory;
 pub mod planner;
 pub mod policy;
 
