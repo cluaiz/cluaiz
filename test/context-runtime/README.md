@@ -72,6 +72,23 @@ With chunk reuse the unloaded instruction keeps its effect: the answer stays Fre
 ("La Terre est la plus grande planète…", where the clean answer is "Jupiter is the largest
 planet…"). That is why chunks are now moved only after the Engine dropped old turns to fit.
 
+`--cases` picks the cases (`where:kv_reuse`, e.g. `start:chunk`); the output also shows the
+prompt tokens processed.
+
+**Selective recompute (P6.3, CacheBlend-like), tried 2026-10-24 and dropped.** The idea: move the
+chunks, then compute the KV of a share of the moved tokens again where they now are, so they see
+the text that is before them now. llama.cpp does not allow it: a batch must start right after the
+last position the KV holds ("it is required that the sequence positions remain consecutive"), so a
+token in the middle of the cache cannot be computed again. Every try failed at `llama_decode`
+(-1) and fell back to processing the prompt. Doing it would need a change inside llama.cpp, which
+the Engine does not make (llama.cpp parity).
+
+**Recurrent and hybrid models (P6.3).** Their state cannot drop a tail, so before this every
+turn whose prompt differed from the last generation even near the end processed the whole prompt
+again. The Engine now takes llama-server's context checkpoints for them too (4 tokens before the
+prompt end) and restarts there. Bonsai 27B (Qwen3.5, hybrid; 2026-10-24): the second turn of a
+710-token chat took 706 of 742 tokens from the cache, against 0 of 747 before.
+
 ## Long tool session and equality after compaction (`long_session.py`)
 
 LONG1: one chat of 24 turns on `n_ctx` 4096, each turn asks about a file and usually reads it

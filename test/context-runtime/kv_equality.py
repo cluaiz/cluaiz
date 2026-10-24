@@ -86,6 +86,7 @@ def one_run(url, token, kv_reuse, where):
         "cache_n": report["cache_n"],
         "kv_reuse": report.get("kv_reuse"),
         "reused_chunk_tokens": report.get("reused_chunk_tokens"),
+        "processed": report.get("processed_tokens"),
         "clean_cache_n": clean_report["cache_n"],
     }
 
@@ -95,6 +96,8 @@ def main():
     parser.add_argument("--url", default="http://127.0.0.1:8011")
     parser.add_argument("--token", default=os.environ.get("CLUAIZ_TOKEN"))
     parser.add_argument("--runs", type=int, default=10)
+    parser.add_argument("--cases", default="start:default,start:chunk,tail:default",
+                        help="where:kv_reuse pairs, e.g. start:blend:0.25 (default = no kv_reuse sent)")
     args = parser.parse_args()
     token = args.token
     if not token and os.environ.get("CLUAIZ_HOME"):
@@ -103,7 +106,11 @@ def main():
         sys.exit("No token: pass --token, or set CLUAIZ_TOKEN or CLUAIZ_HOME")
 
     failed = False
-    for where, mode in [("start", None), ("start", "chunk"), ("tail", None)]:
+    cases = []
+    for case in args.cases.split(","):
+        where, _, mode = case.partition(":")
+        cases.append((where, None if mode in ("", "default") else mode))
+    for where, mode in cases:
         name = f"{where}, {mode or 'default'}"
         results = [one_run(args.url, token, mode, where) for _ in range(args.runs)]
         equal = sum(r["equal"] for r in results)
@@ -111,6 +118,7 @@ def main():
         first = results[0]
         print(f"[{name}] KV1 equal {equal}/{len(results)} | KV2 not French {english}/{len(results)} | "
               f"cache_n {first['cache_n']} (kv_reuse {first['kv_reuse']}, moved chunks {first['reused_chunk_tokens']}), "
+              f"processed {first['processed']}, "
               f"clean cache_n {first['clean_cache_n']} | skill was active: {first['loaded_answer_french']}")
         for r in results:
             if not r["equal"] or r["incremental_french"]:
