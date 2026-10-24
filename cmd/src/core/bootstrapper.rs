@@ -10,6 +10,11 @@ impl Bootstrapper {
     /// 🚀 BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite(is_dev_sync: bool) -> Result<()> {
         Self::ensure_global_path();
+
+        // Configuration is JSON only: old .bin caches go to backups/ once
+        for moved in cluaiz_core::EnvironmentManager::current().retire_config_bins() {
+            tracing::info!("🧹 [Config] Moved the old binary cache to {:?}", moved);
+        }
         
         // 🚀 0. Tools Engine Genesis (Create tools_registry.json and sync ~/.cluaiz/tools/)
         tracing::info!("🛠️ Initializing Tools Engine (Registry & Governance)...");
@@ -69,14 +74,10 @@ impl Bootstrapper {
         let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
         let _ = std::fs::create_dir_all(&config_dir);
         let json_path = config_dir.join("package.json");
-        let bin_path = config_dir.join("package.bin");
         if let Ok(json_str) = serde_json::to_string_pretty(&master_registry) {
             let _ = std::fs::write(&json_path, json_str);
         }
-        if let Ok(bin_data) = serde_json::to_vec(&master_registry) {
-            let _ = std::fs::write(&bin_path, bin_data);
-        }
-        tracing::debug!("✅ [Registry] Binary Truth sealed and verified.");
+        tracing::debug!("✅ [Registry] package.json written.");
 
         // 🎯 3. CLI Lifecycle Check
         let cli_info = &master_registry["components"]["cli"];

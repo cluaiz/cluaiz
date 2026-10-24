@@ -13,7 +13,7 @@ $$\mathbf{engines/src/tools/}$$
 | Subsystem | Folder | Responsibility |
 | :--- | :--- | :--- |
 | **Facade** | [`mod.rs`](./mod.rs) | `ToolsEngine` public facade providing a clean API for Handlers and Engine. |
-| **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` and fast binary cache `tools_registry.bin`. Auto-probes `~/.cluaiz/tools/`. |
+| **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` (kept in RAM; JSON only, no `.bin` cache). Auto-probes `~/.cluaiz/tools/`. |
 | **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Tools. |
 | **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` frontmatter and provides O(1) keyword and semantic routing. |
 | **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and executes WASM binaries and native libraries. |
@@ -29,8 +29,7 @@ $$\mathbf{engines/src/tools/}$$
 ~/.cluaiz/
 ├── engine/config/
 │   ├── model_registry.json              <── Master record for GGUF & ONNX models
-│   ├── tools_registry.json              <── Master record for all installed tools
-│   └── tools_registry.bin               <── Fast-boot binary Bincode cache
+│   └── tools_registry.json              <── Master record for all installed tools (JSON only)
 └── tools/                               <── Master Tools domain folder
     ├── skills/                          <── Installed Cognitive Skills
     │   └── frontend-dev/SKILL.md

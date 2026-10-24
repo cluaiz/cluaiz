@@ -56,13 +56,12 @@ The Engine reads this file *once* at boot. It acts as a phonebook for all your c
 
 ### 3. Tier 2: The Component Manifest (`PluginManifest`)
 
-**Source of Truth File:** `package.json` (inside the component's folder)  
-**Binary Cache:** `package.bin`
+**Source of Truth File:** `package.json` (inside the component's folder). There is no binary cache.
 
 This file defines *how* the component executes, its hardware limits, and its exact AI interface. 
 
 > [!NOTE]
-> For zero-latency boots, the Engine attempts to load the `.bin` cache first. If it misses, it lazily parses the `package.json` source of truth and instantly auto-compiles it to `.bin`.
+> Configuration is JSON only. The Engine keeps parsed registries in RAM and never reads or writes `.bin` caches; old `.bin` files in the config folder are moved to `backups/bin-<date>/` when the Engine starts.
 
 > [!TIP]
 > **Complete Example:** We have created fully documented, heavily commented, real-world examples of Manifest files. You can view them here: [**`package-plugin.json`**](../package-plugin.json), and [**`package-mcp.json`**](../package-mcp.json).

@@ -254,7 +254,7 @@ impl ToolsInstaller {
             crate::McpClient::stop_server(&component_dir).await;
         }
 
-        // 4. Sync with filesystem and seal tools_registry.json & tools_registry.bin.
+        // 4. Sync with filesystem and write tools_registry.json.
         //    The package is already in place, so a registry problem is logged, not fatal.
         match ToolsRegistry::load() {
             Ok(mut reg) => {
