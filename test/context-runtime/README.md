@@ -153,3 +153,29 @@ median 0.687 against 0.625; bge-m3 0.495 against 0.390), so a threshold would ei
 suggest them for chit-chat. The plan's gate ("the paraphrase subset improves by a clear margin")
 is not met, so hybrid scoring is not added; vectors stay off. A paraphrase-heavy memory set (facts
 asked in other words or another language) is the next thing to measure before trying again.
+
+## Tool-call format (`tool_calls.py`, P6.1)
+
+Does a model call the bound tools well-formed, and is its answer right, with tools inline
+(`<tool_call>` blocks) or native (`context_policy: {"tool_format": "native"}`)? 14 rows: 11 need a
+tool (`filesystem`, `pynotes`, `everything`, `code-interpreter`; one asks for two tools in turn), 3
+need none. Every row binds the tools with `tools`, turns suggestions off, approves every request
+and uses `storage: "none"`. A row passes when the expected functions were called, the answer holds
+the expected text, no call markup is left in it, and no error came.
+
+```bash
+python test/context-runtime/tool_calls.py --token <token> --model <model id> [--extra '{"context_policy":{"tool_format":"native"}}'] --out results.jsonl
+python test/context-runtime/tool_calls.py --rescore results.jsonl
+```
+
+Results (2026-10-24, temperature 0, thinking as the model defaults, RTX 3050 4 GB):
+
+| Model | inline: pass / called right / right answer | native |
+| --- | --- | --- |
+| Gemma 4 E4B (Q4_K_M) | 6/14, 11/11, 6/14 | 14/14, 11/11, 14/14 |
+| Qwen3-4B (Q4_K_M) | 13/14, 10/11, 13/14 | 14/14, 11/11, 14/14 |
+| Llama 3.2 3B (Q4_K_M) | 4/14, 6/11, 4/14 | same (its GGUF template has no tools, so they stay inline) |
+
+Inline, Gemma 4 called the tools but then often wrote no answer, or answered from a tool result it
+made up. The plan's gate asks for three families; only two of the installed models have templates
+that render tools, so the third is still open.
