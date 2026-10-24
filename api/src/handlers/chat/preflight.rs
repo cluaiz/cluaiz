@@ -1216,6 +1216,12 @@ pub fn record_turn(
     if let (Some(model_path), false, false) = (&ctx.active_model_path, answer.trim().is_empty(), external) {
         if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&ctx.json_prompt) {
             if let Some(messages) = envelope.get_mut("messages").and_then(serde_json::Value::as_array_mut) {
+                // The conversation as the next turn will render it: this turn's tool steps (put
+                // back from the ledger), then the answer; so the next request reuses this KV
+                let tool_role = super::tool_turns::template_has_tool_role(ctx.chat_tmpl.as_deref());
+                for (role, content) in super::tool_turns::step_messages(&steps, tool_role) {
+                    messages.push(json!({ "role": role, "content": content }));
+                }
                 messages.push(json!({ "role": "assistant", "content": answer }));
                 super::background::enqueue(
                     state,
