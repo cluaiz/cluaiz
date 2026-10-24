@@ -22,6 +22,8 @@ pub struct MessageIn {
     pub tools: Vec<String>,
     /// Files those tools touched
     pub files: Vec<String>,
+    /// Text of those tools' results: searched, never shown as the message
+    pub tool_text: String,
     /// Card fields the model wrote at idle time (title, motive, summary, keywords), if any
     pub enrichment: Option<Enrichment>,
 }
@@ -209,6 +211,7 @@ pub fn build_cards(messages: &[MessageIn]) -> Vec<Card> {
             index_terms.extend(entities.files.iter().flat_map(|f| terms(f)));
             index_terms.extend(message.tools.iter().flat_map(|t| terms(t)));
             index_terms.extend(message.files.iter().flat_map(|f| terms(f)));
+            index_terms.extend(terms(&message.tool_text));
             if let Some(enrichment) = &message.enrichment {
                 index_terms.extend(terms(&enrichment.title));
                 index_terms.extend(enrichment.keywords.iter().flat_map(|k| terms(k)));

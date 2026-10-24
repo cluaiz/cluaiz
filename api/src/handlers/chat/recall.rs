@@ -7,7 +7,7 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_context::memory::{
-    active_task, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate,
+    active_task, asks_about_tool_run, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate,
 };
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -23,6 +23,13 @@ const MAX_LINKED: usize = 2;
 const MAX_OUTLINE: usize = 3;
 /// Longest piece of one recalled message
 const MAX_SNIPPET_CHARS: usize = 400;
+/// Longest piece of one tool result recalled at `tool_only` level
+const MAX_STEP_CHARS: usize = 1200;
+/// Tool output text searched per answer
+const MAX_TOOL_TEXT_CHARS: usize = 2000;
+
+/// Each answer's tool steps: (tool, result text)
+type Steps = std::collections::HashMap<u64, Vec<(String, String)>>;
 
 /// One chat's Chat Map
 pub struct ChatMap {
@@ -36,22 +43,41 @@ pub struct ChatMap {
     pub episodes: Vec<Episode>,
     /// Work over several turns: implicit (rules) and the model's own (`task_update`)
     pub tasks: Vec<Task>,
+    /// Each answer's tool steps, for recall at `tool_only` level
+    steps: Steps,
 }
 
 static MAPS: LazyLock<Mutex<Vec<(String, Arc<ChatMap>)>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Messages of the chat for the card builder: the visible transcript, with the tools and files
 /// of each answer's tool steps
-type Logged = (u64, Vec<MessageIn>, Vec<TaskUpdate>, std::collections::HashMap<String, EpisodeSummary>);
+type Logged = (u64, Vec<MessageIn>, Vec<TaskUpdate>, std::collections::HashMap<String, EpisodeSummary>, Steps);
 
 fn messages(chat: &str) -> anyhow::Result<Logged> {
-    let log = cluaiz_agents::memory::store_for(chat).read(chat)?;
+    let store = cluaiz_agents::memory::store_for(chat);
+    let log = store.read(chat)?;
     let slots = transcript(&log.events);
     let mut tools: std::collections::HashMap<u64, (Vec<String>, Vec<String>)> = Default::default();
     // Tool steps are logged just before the answer message they belong to
     let mut pending: (Vec<String>, Vec<String>) = Default::default();
+    let mut steps: Steps = Default::default();
+    let mut pending_steps: Vec<(String, String)> = Vec::new();
     for event in &log.events {
         match event.kind.as_str() {
+            "tool_result" => {
+                // A large result is kept in a blob
+                let result = match event.data.get("result") {
+                    Some(Value::String(text)) => text.clone(),
+                    Some(Value::Object(blob)) => blob
+                        .get("blob")
+                        .and_then(Value::as_str)
+                        .and_then(|reference| store.get_blob(reference).ok())
+                        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+                        .unwrap_or_default(),
+                    _ => String::new(),
+                };
+                pending_steps.push((event.str("tool").unwrap_or_default().to_string(), result));
+            }
             "tool_call" => {
                 if let Some(tool) = event.str("tool") {
                     pending.0.push(tool.to_string());
@@ -71,6 +97,7 @@ fn messages(chat: &str) -> anyhow::Result<Logged> {
             "message" if event.str("source") == Some("engine") => {
                 if let Some(pos) = event.data.get("pos").and_then(Value::as_u64) {
                     tools.insert(pos, std::mem::take(&mut pending));
+                    steps.insert(pos, std::mem::take(&mut pending_steps));
                 }
             }
             _ => {}
@@ -91,7 +118,15 @@ fn messages(chat: &str) -> anyhow::Result<Logged> {
         .into_iter()
         .map(|(pos, logged)| {
             let (tools, files) = tools.remove(&pos).unwrap_or_default();
+            let tool_text: String = steps
+                .get(&pos)
+                .map(|s| s.iter().map(|(_, result)| result.as_str()).collect::<Vec<_>>().join("\n"))
+                .unwrap_or_default()
+                .chars()
+                .take(MAX_TOOL_TEXT_CHARS)
+                .collect();
             MessageIn {
+                tool_text,
                 ts: times.get(logged.event_id.as_str()).copied().unwrap_or_default().to_string(),
                 id: logged.event_id,
                 pos,
@@ -115,12 +150,12 @@ fn messages(chat: &str) -> anyhow::Result<Logged> {
         .filter(|e| e.kind == "episode_summary")
         .filter_map(|e| Some((e.str("episode")?.to_string(), serde_json::from_value::<EpisodeSummary>(Value::Object(e.data.clone())).ok()?)))
         .collect();
-    Ok((log.events.last().map_or(0, |e| e.seq), messages, updates, summaries))
+    Ok((log.events.last().map_or(0, |e| e.seq), messages, updates, summaries, steps))
 }
 
 /// The chat's Chat Map, rebuilt when its log has grown
 pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
-    let (version, messages, updates, summaries) = match messages(chat) {
+    let (version, messages, updates, summaries, steps) = match messages(chat) {
         Ok(found) => found,
         Err(e) => {
             tracing::warn!("⚠️ [Memory] Could not read chat {}: {}", chat, e);
@@ -133,7 +168,7 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
         maps.push(hit.clone());
         return Some(hit.1);
     }
-    let map = Arc::new(build_map(chat, version, messages, updates, summaries));
+    let map = Arc::new(build_map(chat, version, messages, updates, summaries, steps));
     maps.retain(|(id, _)| id != chat);
     maps.push((chat.to_string(), map.clone()));
     if maps.len() > HOT_CHATS {
@@ -144,8 +179,8 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
 
 /// A chat's Chat Map without keeping it in RAM (searches over other chats)
 fn chat_map_uncached(chat: &str) -> Option<ChatMap> {
-    let (version, messages, updates, summaries) = messages(chat).ok()?;
-    Some(build_map(chat, version, messages, updates, summaries))
+    let (version, messages, updates, summaries, steps) = messages(chat).ok()?;
+    Some(build_map(chat, version, messages, updates, summaries, steps))
 }
 
 fn build_map(
@@ -154,6 +189,7 @@ fn build_map(
     messages: Vec<MessageIn>,
     updates: Vec<TaskUpdate>,
     summaries: std::collections::HashMap<String, EpisodeSummary>,
+    steps: Steps,
 ) -> ChatMap {
     let started = std::time::Instant::now();
     let cards = build_cards(&messages);
@@ -166,7 +202,7 @@ fn build_map(
     }
     let user_text = |pos: u64| cards.iter().position(|c| c.pos == pos && c.role == "user").map(|i| texts[i].clone());
     let tasks = tasks(&cards, &episodes, &updates, &user_text);
-    let map = ChatMap { version, cards, index, texts, episodes, tasks };
+    let map = ChatMap { version, cards, index, texts, episodes, tasks, steps };
     tracing::info!("🗺️ [Memory] Chat map of {} built: {} cards in {} ms", chat, map.cards.len(), started.elapsed().as_millis());
     map
 }
@@ -175,6 +211,27 @@ impl ChatMap {
     /// Text of the message behind card `index`
     pub fn text(&self, index: usize) -> &str {
         &self.texts[index]
+    }
+
+    /// The tool steps behind a recalled message (an answer's own, or for a question the answer
+    /// after it) at `tool_only` level, each run once
+    fn tool_only_line(&self, card: &Card, shown: &mut HashSet<u64>) -> Option<String> {
+        let pos = [card.pos, card.pos + 1]
+            .into_iter()
+            .take(if card.role == "user" { 2 } else { 1 })
+            .find(|pos| self.steps.get(pos).is_some_and(|s| !s.is_empty()))?;
+        if !shown.insert(pos) {
+            return None;
+        }
+        let mut line = record_line(card, "").trim_end().to_string();
+        for (tool, result) in &self.steps[&pos] {
+            let mut text: String = result.split_whitespace().collect::<Vec<_>>().join(" ");
+            if text.chars().count() > MAX_STEP_CHARS {
+                text = text.chars().take(MAX_STEP_CHARS).collect::<String>() + "…";
+            }
+            line.push_str(&format!("\n  {tool} returned: {text}"));
+        }
+        Some(line)
     }
 }
 
@@ -378,10 +435,16 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
     if hits.is_empty() {
         return format!("Nothing earlier in this chat matches \"{query}\".");
     }
+    // A question about an earlier tool run gets the run's results, not the answer
+    let tool_run = asks_about_tool_run(&query);
+    let mut shown = HashSet::new();
     let lines: Vec<(u64, String)> = hits
         .iter()
         .map(|hit| {
             let card = &map.cards[hit.card];
+            if let Some(line) = tool_run.then(|| map.tool_only_line(card, &mut shown)).flatten() {
+                return (card.pos, line);
+            }
             let text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
             (card.pos, record_line(card, &text))
         })
@@ -521,19 +584,26 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
     let mut lines: Vec<(u64, String)> = Vec::new();
     let mut refs = Vec::new();
     let mut used = 0;
+    // A question about an earlier tool run gets the run's results, not the answer
+    let tool_run = asks_about_tool_run(message);
+    let mut shown = HashSet::new();
     for hit in hits {
         let card = &map.cards[hit.card];
-        let mut text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ");
-        if text.chars().count() > MAX_SNIPPET_CHARS {
-            text = text.chars().take(MAX_SNIPPET_CHARS).collect::<String>() + "…";
-        }
-        let line = record_line(card, &text);
+        let tool_only = tool_run.then(|| map.tool_only_line(card, &mut shown)).flatten();
+        let level = if tool_only.is_some() { "tool_only" } else { "summary" };
+        let line = tool_only.unwrap_or_else(|| {
+            let mut text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ");
+            if text.chars().count() > MAX_SNIPPET_CHARS {
+                text = text.chars().take(MAX_SNIPPET_CHARS).collect::<String>() + "…";
+            }
+            record_line(card, &text)
+        });
         let tokens = cluaiz_agents::tool_search::tokens(line.len());
         if used + tokens > max_tokens {
             break;
         }
         used += tokens;
-        refs.push(json!({ "ref": format!("m:{}", card.pos), "event": card.id, "score": (hit.score * 100.0).round() / 100.0, "why": hit.why }));
+        refs.push(json!({ "ref": format!("m:{}", card.pos), "event": card.id, "score": (hit.score * 100.0).round() / 100.0, "why": hit.why, "level": level }));
         lines.push((card.pos, line));
     }
     // An outline of the earlier topics the prompt does not show (newest last), when room is left

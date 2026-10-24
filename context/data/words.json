@@ -128,6 +128,7 @@
     "error": ["error", "exception", "failed", "failure", "panic", "traceback", "crash", "fatal", "not found"],
     "question": ["kya", "kaise", "kyu", "kyun", "kab", "kahan", "kaun", "what", "how", "why", "when", "where", "which", "who"],
     "new_topic": ["new topic", "naya topic", "nayi baat", "doosri baat", "dusra topic", "alag topic", "change topic"],
+    "tool_run": ["output", "outputs", "result", "results", "stdout", "stderr", "returned", "nateeja", "natija", "kya aaya", "kya nikla", "pichhle run", "pichle run", "last run", "previous run", "chalaya", "chalaya tha", "tool ne", "आउटपुट", "नतीजा", "रिजल्ट"],
     "time": {
       "today": ["aaj", "today", "आज"],
       "yesterday": ["kal", "yesterday", "कल"],
