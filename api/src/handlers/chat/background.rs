@@ -44,6 +44,9 @@ pub struct EnrichJob {
     pub model_path: Option<std::path::PathBuf>,
     pub settings: Option<cluaiz_core::ActiveUserSettings>,
     pub cold: bool,
+    /// Set for an episode summary (id, first and last position): the envelope already holds the
+    /// whole request
+    pub episode: Option<(String, u64, u64)>,
 }
 
 /// What happened to a job, for `GET /v1/context/jobs`
@@ -228,11 +231,41 @@ fn scan_unindexed() -> Vec<EnrichJob> {
                 model_path: None,
                 settings: None,
                 cold: true,
+                episode: None,
+            });
+        }
+        // Closed episodes (not the current one) of some length get a summary
+        let Some(map) = super::recall::chat_map(&chat) else { continue };
+        let summarized: std::collections::HashSet<String> = log
+            .events
+            .iter()
+            .filter(|e| e.kind == "episode_summary" || e.kind == "episode_summary_failed")
+            .filter_map(|e| e.str("episode").map(str::to_string))
+            .collect();
+        for episode in map.episodes.iter().rev().skip(1).filter(|e| e.messages >= EPISODE_MIN_MESSAGES) {
+            if jobs.len() >= COLD_BATCH {
+                return jobs;
+            }
+            if summarized.contains(&episode.id) {
+                continue;
+            }
+            jobs.push(EnrichJob {
+                chat: chat.clone(),
+                envelope: json!({ "messages": [{ "role": "user", "content": super::recall::episode_request(&map, episode) }] }),
+                user_pos: episode.first_pos as usize,
+                answer_pos: episode.last_pos as usize,
+                model_path: None,
+                settings: None,
+                cold: true,
+                episode: Some((episode.id.clone(), episode.first_pos, episode.last_pos)),
             });
         }
     }
     jobs
 }
+
+/// Episodes shorter than this get no summary
+const EPISODE_MIN_MESSAGES: usize = 4;
 
 async fn worker(state: Arc<AppState>) {
     loop {
@@ -319,8 +352,10 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
         }
     };
     let mut envelope = job.envelope.clone();
-    if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
-        messages.push(json!({ "role": "user", "content": INSTRUCTION }));
+    if job.episode.is_none() {
+        if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
+            messages.push(json!({ "role": "user", "content": INSTRUCTION }));
+        }
     }
     envelope["think_mode"] = json!("off");
     envelope["kv_reuse"] = json!("prefix");
@@ -358,6 +393,23 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
     }
     use cluaiz_agents::memory::EventStore;
     let store = cluaiz_agents::memory::JsonlStore::shared();
+    if let Some((episode, first, last)) = &job.episode {
+        let model = model_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        let (kind, data, outcome) = match parse_card(&text).filter(|c| c.get("summary").is_some_and(|s| !s.is_null())) {
+            Some(mut card) => {
+                card["episode"] = json!(episode);
+                card["first_pos"] = json!(first);
+                card["last_pos"] = json!(last);
+                card["by"] = json!(format!("model:{model}"));
+                tracing::info!("🗂️ [Indexer] Chat {} {}: {:?}", job.chat, episode, card.get("title"));
+                ("episode_summary", card, "done")
+            }
+            None => ("episode_summary_failed", json!({ "episode": episode, "reply": text.chars().take(200).collect::<String>() }), "failed: no summary in the reply"),
+        };
+        let _ = store.append(&job.chat, vec![cluaiz_agents::memory::NewEvent::new(kind, data)]);
+        record(&job, outcome, started);
+        return;
+    }
     let Some(card) = parse_card(&text) else {
         tracing::info!("🗂️ [Indexer] Chat {}: no card in {:?}", job.chat, text.chars().take(120).collect::<String>());
         // Recorded, so the scan does not try this turn again and again

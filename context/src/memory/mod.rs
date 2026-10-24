@@ -7,9 +7,11 @@ pub mod episode;
 pub mod graph;
 pub mod index;
 pub mod recall;
+pub mod task;
 
 pub use card::{build_cards, Card, Enrichment, Entities, MessageIn};
-pub use episode::{episodes, Episode, EpisodeRules};
+pub use episode::{episodes, Episode, EpisodeRules, EpisodeSummary};
 pub use graph::{build_graph, expand, Edge, Graph, Node};
 pub use index::CardIndex;
 pub use recall::{recall, time_window, Hit, Window};
+pub use task::{active as active_task, tasks, Task, TaskUpdate};

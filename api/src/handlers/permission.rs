@@ -241,6 +241,12 @@ pub async fn revoke_auth_token(
 pub struct ApprovalActionRequest {
     pub request_id: String,
     pub feedback: Option<String>,
+    /// "chat": also allow this tool in this chat without asking again, for `minutes`
+    /// (default 60, at most 1440). Kept in memory only.
+    #[serde(default)]
+    pub remember: Option<String>,
+    #[serde(default)]
+    pub minutes: Option<u64>,
 }
 
 pub async fn get_pending_permissions(
@@ -261,6 +267,11 @@ pub async fn approve_permission(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ApprovalActionRequest>,
 ) -> (axum::http::StatusCode, Json<Value>) {
+    // "Allow for this chat": later calls of the same tool in the same chat run without asking
+    let grant = match payload.remember.as_deref() {
+        Some("chat") => crate::handlers::chat::authorize::grant_from_request(&payload.request_id, payload.minutes),
+        _ => None,
+    };
     // 1. Signal active streaming task oneshot channel (Real-Time HITL resume)
     {
         let mut approvals_lock = state.active_approvals.write().await;
@@ -270,6 +281,11 @@ pub async fn approve_permission(
                 feedback: payload.feedback.clone(),
             });
         }
+    }
+    if let Some((chat, tool, minutes)) = &grant {
+        use cluaiz_agents::memory::EventStore;
+        let event = cluaiz_agents::memory::NewEvent::new("grant", json!({ "tool": tool, "minutes": minutes, "scope": "chat" }));
+        let _ = cluaiz_agents::memory::JsonlStore::shared().append(chat, vec![event]);
     }
 
     // 2. Update persistent pending_permissions
@@ -281,7 +297,8 @@ pub async fn approve_permission(
             Json(json!({
                 "status": "success",
                 "message": "Permission approved",
-                "request": req
+                "request": req,
+                "grant": grant.as_ref().map(|(chat, tool, minutes)| json!({ "chat_id": chat, "tool": tool, "minutes": minutes }))
             })),
         )
     } else {

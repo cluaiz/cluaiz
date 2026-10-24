@@ -8,12 +8,14 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 | Endpoint | What it does |
 | --- | --- |
 | `GET /v1/chat/{session_id}/events` | The chat's event log, oldest first |
-| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text), episodes and graph |
+| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text), episodes, tasks and graph |
 | `POST /v1/recall/search` | Messages of a chat that fit a query |
 | `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
 | `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
 | `DELETE /v1/chat/{session_id}/history` | Removes the chat's log, ledger, saved KV, kept reports and Chat Map |
 | `POST /v1/chat/import/app` | Imports the App's existing chats into event logs (read-only on the App's files) |
+| `GET /v1/chat/{session_id}/grants` | Tools allowed for this chat without asking, with minutes left |
+| `DELETE /v1/chat/{session_id}/grants` | Asks again for this chat's tools (optional `?tool=`) |
 
 ## GET /v1/chat/{session_id}/events
 
@@ -42,6 +44,18 @@ a pause of more than 30 minutes, when the user says so ("new topic", "naya topic
 message shares almost no keywords with the current one (short follow-ups such as "phir se" stay).
 Each has `id` (`ep:<first position>`), `first_pos`, `last_pos`, `start`, `end`, `messages`,
 `keywords`, a rule `title`, `files`, `tools` and `key_moments` (corrections and decisions).
+
+A closed episode of at least 4 messages gets a `summary` (`title`, `summary`, `by`) written by
+the model at idle time, like the cards; with `history_mode: "none"` the outline of earlier topics
+uses it.
+
+`tasks` lists work over several turns. Implicit tasks come from episodes in which tools changed
+something (write, edit, create, move, delete, run, execute); their `checkpoint` says how they
+started and what was done. The model can keep a task itself with the `task_update` function
+(`goal`, `stage`: open, in_progress, blocked, done, abandoned, `checkpoint`), offered while a task
+is open; its word wins over the implicit task, also when it says the work is done. While a task is
+open and the prompt does not show the whole chat (or was just compacted), a `<task>` block with the
+checkpoint goes in front of the current message (`context_report.plan.task`).
 
 `graph` has `nodes` (`m:<pos>` messages, `ep:<pos>` episodes, `tool:`, `file:`, `value:`) and
 `edges` (`next`, `part_of`, `uses_tool`, `touches_file`, `mentions`, `corrects`), built by rules,

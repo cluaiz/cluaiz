@@ -552,6 +552,19 @@ impl PreparedChatContext {
             && ledger_chat.is_some()
             && history_mode != context_plan::HistoryMode::Recent
             && request.messages.len() > 1;
+        // An open task (work that changed something over several turns, or one the model keeps):
+        // looked up only when this chat's tools changed something
+        let changed_something = ledger.as_ref().is_some_and(|saved| {
+            saved.turns.iter().flat_map(|t| &t.steps).any(|step| {
+                let name = step.name.to_lowercase();
+                ["write", "edit", "create", "move", "delete", "execute", "run"].iter().any(|w| name.contains(w))
+            })
+        });
+        let open_task = if tools_allowed && changed_something || memory_tools {
+            ledger_chat.as_deref().and_then(super::recall::open_task)
+        } else {
+            None
+        };
         let mut hint_lines = String::new();
         let mut offer_meta_tools = false;
         let mut suggested = serde_json::Value::Array(Vec::new());
@@ -599,6 +612,14 @@ impl PreparedChatContext {
         let mut meta_schemas = if tool_meta { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
         if memory_tools {
             meta_schemas.extend(super::recall::memory_schemas());
+        }
+        // task_update while a task is open
+        if open_task.is_some() && ledger_chat.is_some() && tools_allowed {
+            meta_schemas.push(super::recall::task_schema());
+            offer_meta_tools = true;
+            if hint_lines.is_empty() {
+                hint_lines = "To keep track of the current task, call task_update with its goal, stage and checkpoint.\n".to_string();
+            }
         }
 
         // Bound tools: whole schemas and whole skill instructions, or left out; never cut
@@ -735,8 +756,26 @@ impl PreparedChatContext {
                 }
             }
         }
+        // The open task's checkpoint, when the prompt does not show the whole chat (or was
+        // just compacted): the model keeps its place
+        let mut task_report = serde_json::Value::Null;
+        if let Some(task) = &open_task {
+            let hidden = context_plan::hidden_messages(request.messages.len(), &origin, &plan);
+            if !hidden.is_empty() || compaction.is_some() {
+                let block = super::recall::task_block(task);
+                if let Some(last) = augmented_messages.last_mut() {
+                    context_plan::prepend_text(&mut last.content, &block);
+                }
+                turn_block = if turn_block.is_empty() { block } else { format!("{block}\n\n{turn_block}") };
+                plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+                task_report = json!({ "id": task.id, "stage": task.stage, "source": task.source, "shown": true });
+            } else {
+                task_report = json!({ "id": task.id, "stage": task.stage, "source": task.source, "shown": false });
+            }
+        }
         let mut plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
         plan_report["recall"] = recall_report;
+        plan_report["task"] = task_report;
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request
@@ -1136,6 +1175,7 @@ pub fn record_turn(
                         model_path: Some(model_path.clone()),
                         settings: Some(ctx.request_settings.clone()),
                         cold: false,
+                        episode: None,
                     },
                 );
             }

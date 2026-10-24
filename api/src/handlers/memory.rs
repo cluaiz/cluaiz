@@ -47,7 +47,7 @@ pub async fn get_index(Path(chat): Path<String>) -> Response {
     match recall::chat_map(&chat) {
         Some(map) => {
             let graph = cluaiz_context::memory::build_graph(&map.cards, &map.episodes);
-            Json(json!({ "chat_id": chat, "cards": map.cards, "episodes": map.episodes, "graph": graph })).into_response()
+            Json(json!({ "chat_id": chat, "cards": map.cards, "episodes": map.episodes, "tasks": map.tasks, "graph": graph })).into_response()
         }
         None => error(StatusCode::INTERNAL_SERVER_ERROR, "could not read the chat's event log"),
     }
@@ -123,6 +123,7 @@ pub async fn delete_history(Path(chat): Path<String>) -> Response {
     cluaiz_agents::ChatLedger::delete(&chat);
     let kv = cluaiz_runtime::chat_memory::delete(&chat);
     recall::forget(&chat);
+    super::chat::authorize::revoke(&chat, None);
     super::chat::context_plan::forget_reports(&chat);
     let folder = cluaiz_agents::memory::memory_root().join("chats").join(cluaiz_agents::memory::chat_stem(&chat));
     let folder_left = folder.exists() && std::fs::read_dir(&folder).map(|mut d| d.next().is_some()).unwrap_or(false);
@@ -137,4 +138,25 @@ pub async fn delete_history(Path(chat): Path<String>) -> Response {
         "folder_removed": !folder.exists(),
     }))
     .into_response()
+}
+
+#[derive(Deserialize)]
+pub struct GrantQuery {
+    #[serde(default)]
+    pub tool: Option<String>,
+}
+
+/// GET /v1/chat/{session_id}/grants: tools the user allowed for this chat, with minutes left
+pub async fn get_grants(Path(chat): Path<String>) -> Json<Value> {
+    let grants: Vec<Value> = super::chat::authorize::grants_of(&chat)
+        .into_iter()
+        .map(|(tool, minutes)| json!({ "tool": tool, "minutes_left": minutes }))
+        .collect();
+    Json(json!({ "chat_id": chat, "grants": grants }))
+}
+
+/// DELETE /v1/chat/{session_id}/grants[?tool=…]: asks again for this chat's tools (or one tool)
+pub async fn revoke_grants(Path(chat): Path<String>, Query(query): Query<GrantQuery>) -> Json<Value> {
+    let removed = super::chat::authorize::revoke(&chat, query.tool.as_deref());
+    Json(json!({ "chat_id": chat, "removed": removed }))
 }

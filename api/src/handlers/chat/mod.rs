@@ -2,7 +2,7 @@
 //! Full OpenAI-compatible chat controller with streaming, multi-turn agent tool execution, and thinking filters.
 
 pub mod agent_loop;
-mod authorize;
+pub(crate) mod authorize;
 pub(crate) mod background;
 pub(crate) mod context_plan;
 pub(crate) mod ingest_events;
