@@ -50,6 +50,8 @@ pub struct PreparedChatContext {
     pub tool_hint: String,
     /// What the Engine chose about tools for this request (the tools part of `context_report`)
     pub tools_report: serde_json::Value,
+    /// Where the time before the first token went (`timing` of `context_report`)
+    pub timing: serde_json::Value,
     /// The plan of the prompt (the plan part of `context_report`)
     pub plan_report: serde_json::Value,
     /// Messages the client request carried (the answer is logged after them)
@@ -1096,7 +1098,15 @@ impl PreparedChatContext {
             }
         }
 
-        // Where the time before the first token goes (model load is reported on its own)
+        // Where the time before the first token goes (model load is reported on its own); also in
+        // the context report, for the PERF suite
+        let timing = json!({
+            "preflight_ms": preflight_started.elapsed().as_millis() as u64,
+            "model_load_ms": model_load_ms as u64,
+            "registry_template_ms": before_tools.duration_since(after_load).as_millis() as u64,
+            "tools_ms": after_tools.duration_since(before_tools).as_millis() as u64,
+            "plan_ms": after_tools.elapsed().as_millis() as u64,
+        });
         tracing::info!(
             "⏱️ [Preflight] {} ms total | model load {} ms | registry + template + tags {} ms | skills + tools {} ms | rest {} ms",
             preflight_started.elapsed().as_millis(),
@@ -1148,6 +1158,7 @@ impl PreparedChatContext {
             _foreground: foreground,
             tool_hint: turn_block,
             tools_report,
+            timing,
             plan_report,
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
@@ -1281,7 +1292,7 @@ pub fn media_continuation(
 pub fn context_report(ctx: &PreparedChatContext, tool_events: &[serde_json::Value]) -> serde_json::Value {
     let mut tools = ctx.tools_report.clone();
     tools["events"] = serde_json::Value::Array(tool_events.to_vec());
-    let report = json!({ "tools": tools, "plan": ctx.plan_report });
+    let report = json!({ "tools": tools, "plan": ctx.plan_report, "timing": ctx.timing });
     // Kept with the chat for GET /v1/chat/{id}/context/report/{request_id}
     if let Some(chat) = &ctx.chat_id {
         context_plan::remember(chat, &ctx.request_id, &report);
