@@ -176,6 +176,7 @@ impl ToolsRegistry {
                                     semantic_triggers: Vec::new(),
                                     activation_events: Vec::new(),
                                     capabilities: Vec::new(),
+                                    trust_annotations: false,
                                 },
                             );
                         }
@@ -220,6 +221,7 @@ impl ToolsRegistry {
                                     semantic_triggers: Vec::new(),
                                     activation_events: Vec::new(),
                                     capabilities: Vec::new(),
+                                    trust_annotations: false,
                                 },
                             );
                         }
@@ -260,6 +262,7 @@ impl ToolsRegistry {
                                     semantic_triggers: Vec::new(),
                                     activation_events: Vec::new(),
                                     capabilities: Vec::new(),
+                                    trust_annotations: false,
                                 },
                             );
                         }
@@ -334,6 +337,17 @@ impl ToolsRegistry {
     pub fn set_tool_security_mode(&mut self, id: &str, mode: SecurityMode) -> Result<()> {
         if let Some(tool) = self.installed_tools.get_mut(id) {
             tool.security_mode = mode;
+            self.save()?;
+            Ok(())
+        } else {
+            anyhow::bail!("Tool '{}' not found in registry", id)
+        }
+    }
+
+    /// Trust (or stop trusting) an MCP server's read-only annotations and persist it
+    pub fn set_tool_trust_annotations(&mut self, id: &str, trust: bool) -> Result<()> {
+        if let Some(tool) = self.installed_tools.get_mut(id) {
+            tool.trust_annotations = trust;
             self.save()?;
             Ok(())
         } else {

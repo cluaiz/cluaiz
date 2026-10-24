@@ -51,7 +51,9 @@ pub struct Assessment {
 
 /// Engine-internal calls (tool loading) never ask. Registered tools follow their security and
 /// execution modes; an unregistered MCP or undeclared tool asks unless the agent has full access.
-pub fn assess(comp_type: &str, comp_name: &str, engine_internal: bool, chat: Option<&str>) -> Assessment {
+/// A function of an MCP server whose annotations the user trusts runs without asking when the
+/// server marks it read-only (`function`: the MCP function called).
+pub fn assess(comp_type: &str, comp_name: &str, function: Option<&str>, engine_internal: bool, chat: Option<&str>) -> Assessment {
     if engine_internal {
         return Assessment { requires_approval: false, capabilities: vec!["tools:load".to_string()] };
     }
@@ -60,12 +62,27 @@ pub fn assess(comp_type: &str, comp_name: &str, engine_internal: bool, chat: Opt
     }
     let master_mode = cluaiz_security::PermissionSchema::load().agent_security_mode.to_lowercase();
     let (requires_approval, capabilities) = match cluaiz_agents::ToolsEngine::get_tool(comp_name).ok().flatten() {
+        Some(entry) if entry.requires_approval(&master_mode) && read_only_trusted(&entry, &master_mode, function) => {
+            (false, vec!["mcp:read_only_trusted".to_string()])
+        }
         Some(entry) => (entry.requires_approval(&master_mode), entry.effective_capabilities()),
         None if comp_type == "mcp" => (true, vec!["mcp:external".to_string()]),
         None if master_mode == "full_access" => (false, vec!["full_access_override".to_string()]),
         None => (true, vec!["undeclared".to_string()]),
     };
     Assessment { requires_approval, capabilities }
+}
+
+/// The trusted read-only rule for one MCP function, with its annotations from the server's tool
+/// list (the cached `tools/list`, as the model saw it)
+fn read_only_trusted(entry: &cluaiz_agents::ToolEntry, master_mode: &str, function: Option<&str>) -> bool {
+    let Some(function) = function.filter(|_| entry.trust_annotations) else { return false };
+    let tools = cluaiz_agents::McpClient::get_cached_tools(std::path::Path::new(&entry.local_dir)).unwrap_or_default();
+    let annotations = tools
+        .iter()
+        .find(|tool| tool.get("name").and_then(serde_json::Value::as_str) == Some(function))
+        .and_then(|tool| tool.get("annotations"));
+    entry.read_only_trusted(master_mode, annotations)
 }
 
 /// A call waiting for the user's decision.
