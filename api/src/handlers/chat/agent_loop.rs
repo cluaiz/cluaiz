@@ -166,7 +166,7 @@ pub async fn execute_streaming_loop(
         // 🔄 AUTONOMOUS MULTI-TURN AGENT EXECUTION LOOP
         // Chaining consecutive tool executions up to 15 turns without halting prematurely
         let mut max_iters = 15;
-        let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.chat_tmpl.as_deref());
+        let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.tool_role);
 
         while max_iters > 0 {
             max_iters -= 1;

@@ -37,11 +37,7 @@ pub struct CompiledPromptTools {
 
 /// `<tools>` block with one compact JSON schema per line (the Hermes/Qwen tool-prompt layout).
 pub fn tools_block(schemas: &[Value]) -> String {
-    if schemas.is_empty() {
-        return String::new();
-    }
-    let lines: Vec<String> = schemas.iter().map(|schema| schema.to_string()).collect();
-    format!("<tools>\n{}\n</tools>", lines.join("\n"))
+    cluaiz_core::tool_calls::tools_block(schemas)
 }
 
 impl CompiledPromptTools {

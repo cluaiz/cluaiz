@@ -17,6 +17,8 @@ pub struct PreparedChatContext {
     pub dynamic_context_limit: usize,
     pub n_ctx_limit: usize,
     pub chat_tmpl: Option<String>,
+    /// Tool results go in as `tool` messages (the template has a tool role, or tools are native)
+    pub tool_role: bool,
     pub dyn_think_start: Option<String>,
     pub dyn_think_end: Option<String>,
     pub active_think_mode: String,
@@ -445,9 +447,11 @@ impl PreparedChatContext {
 
         // Earlier turns as the model saw them: each user message gets back the block the Engine
         // put in front of it, followed by that turn's tool steps
-        let tool_role = super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
         let history_mode = context_plan::HistoryMode::parse(request.history_mode.as_deref());
         let policy = context_plan::policy(request.context_policy.as_ref());
+        // Native tool calls: the template renders tool turns itself, so results are tool messages
+        let native_tools = policy.tool_format == "native" && super::tool_turns::template_renders_tools(chat_tmpl.as_deref());
+        let tool_role = native_tools || super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode, policy.recent_turns_min);
         let mut augmented_messages = rendered.messages;
         let mut origin = rendered.origin;
@@ -557,8 +561,7 @@ impl PreparedChatContext {
             .min(n_ctx_limit.saturating_sub(reserve_tokens));
         let max_tool_chars = (tool_tokens as f64 * cluaiz_agents::tool_search::CHARS_PER_TOKEN) as usize;
 
-        const TOOLS_HEADER: &str = "# Available Tools\nYou have access to the following tools:\n";
-        const TOOLS_CALL_FORMAT: &str = "\n\nWhen you need to call a tool, you MUST output a <tool_call> XML block with a JSON object containing \"name\" and \"arguments\":\n<tool_call>\n{\"name\": \"tool_name\", \"arguments\": {\"arg_name\": \"value\"}}\n</tool_call>\nDo not output conversational filler text before or after the <tool_call> block.";
+        use cluaiz_core::tool_calls::{TOOLS_CALL_FORMAT, TOOLS_HEADER};
         // Tools run in the open workspace; name it so the model uses paths relative to it.
         let workspace_note = format!(
             "\nTools run in the project folder {}. Use paths relative to it (\".\" is the project folder).",
@@ -655,8 +658,10 @@ impl PreparedChatContext {
             }
         }
 
-        // Bound tools: whole schemas and whole skill instructions, or left out; never cut
+        // Bound tools: whole schemas and whole skill instructions, or left out; never cut. With
+        // native tool calls the schemas go to the template (`tools` in the envelope) instead.
         let mut system_tools = String::new();
+        let mut template_tools: Vec<serde_json::Value> = Vec::new();
         if !compiled_tools.tools_xml.is_empty() || !compiled_tools.skill_instructions.is_empty() {
             let meta_chars: usize = meta_schemas.iter().map(|m| m.to_string().len() + 1).sum();
             let tools_budget = max_tool_chars.saturating_sub(
@@ -671,9 +676,14 @@ impl PreparedChatContext {
                 );
             }
             kept_schemas.extend(meta_schemas.iter().cloned());
-            let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
-            if !tools_xml.is_empty() {
-                system_tools = format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}");
+            if native_tools && !kept_schemas.is_empty() {
+                system_tools = workspace_note.trim_start().to_string();
+                template_tools = kept_schemas;
+            } else {
+                let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
+                if !tools_xml.is_empty() {
+                    system_tools = format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}");
+                }
             }
             let instructions = &compiled_tools.skill_instructions;
             if !instructions.is_empty() {
@@ -711,7 +721,8 @@ impl PreparedChatContext {
         }
         let tool_load_room = offer_meta_tools.then(|| max_tool_chars.saturating_sub(system_tools.len() + hint.len()));
         let tokens = cluaiz_agents::tool_search::tokens;
-        let (part_tokens, _) = count_tokens(&[&hint, &system_tools]);
+        let template_tools_text = template_tools.iter().map(|t| t.to_string()).collect::<Vec<_>>().join("\n");
+        let (part_tokens, _) = count_tokens(&[&hint, &system_tools, &template_tools_text]);
         let tools_report = json!({
             "suggested": suggested,
             "search_offered": search_offered,
@@ -720,6 +731,9 @@ impl PreparedChatContext {
             "meta_tools": offer_meta_tools,
             "hint_tokens": part_tokens[0],
             "system_tools_tokens": part_tokens[1],
+            // Native tool calls: the schemas the template renders (counted as JSON)
+            "format": if template_tools.is_empty() { "inline" } else { "native" },
+            "template_tools_tokens": part_tokens[2],
             "conversation_tokens": conversation_tokens,
             "load_room_tokens": tool_load_room.map(tokens),
             "token_counts": if counted { "tokenizer" } else { "estimated from characters" },
@@ -987,6 +1001,12 @@ impl PreparedChatContext {
             None
         };
         let mut json_prompt = envelope.to_prompt();
+        if !template_tools.is_empty() {
+            if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&json_prompt) {
+                value["tools"] = json!(template_tools);
+                json_prompt = value.to_string();
+            }
+        }
         // The KV matching mode travels with the envelope; unknown values are ignored
         if let Some(mode) = request.kv_reuse.as_deref() {
             if matches!(mode, "prefix" | "chunk") {
@@ -1022,6 +1042,7 @@ impl PreparedChatContext {
             dynamic_context_limit,
             n_ctx_limit,
             chat_tmpl,
+            tool_role,
             dyn_think_start,
             dyn_think_end,
             active_think_mode,
@@ -1218,8 +1239,7 @@ pub fn record_turn(
             if let Some(messages) = envelope.get_mut("messages").and_then(serde_json::Value::as_array_mut) {
                 // The conversation as the next turn will render it: this turn's tool steps (put
                 // back from the ledger), then the answer; so the next request reuses this KV
-                let tool_role = super::tool_turns::template_has_tool_role(ctx.chat_tmpl.as_deref());
-                for (role, content) in super::tool_turns::step_messages(&steps, tool_role) {
+                for (role, content) in super::tool_turns::step_messages(&steps, ctx.tool_role) {
                     messages.push(json!({ "role": role, "content": content }));
                 }
                 messages.push(json!({ "role": "assistant", "content": answer }));

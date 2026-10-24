@@ -86,7 +86,7 @@ pub(crate) fn stream_tokens_with_media(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
-        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, _req_grammar, req_budget_message, req_kv_reuse, req_tools) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -131,6 +131,14 @@ pub(crate) fn stream_tokens_with_media(
                         .get("kv_reuse")
                         .and_then(|m| m.as_str())
                         .map(|m| m.to_string());
+                    // Function schemas the model's own template renders (native tool calls), and
+                    // whether calls are read from the answer (`parse_tools: false` keeps the
+                    // same prompt for a job that wants plain text, like an idle-time card)
+                    let tools = envelope
+                        .get("tools")
+                        .filter(|t| t.as_array().is_some_and(|a| !a.is_empty()))
+                        .cloned()
+                        .map(|tools| (tools, envelope.get("parse_tools").and_then(|p| p.as_bool()) != Some(false)));
                     (
                         samplers,
                         think_mode,
@@ -138,12 +146,13 @@ pub(crate) fn stream_tokens_with_media(
                         grammar,
                         budget_message,
                         kv_reuse,
+                        tools,
                     )
                 } else {
-                    (None, None, None, None, None, None)
+                    (None, None, None, None, None, None, None)
                 }
             } else {
-                (None, None, None, None, None, None)
+                (None, None, None, None, None, None, None)
             };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -211,7 +220,53 @@ pub(crate) fn stream_tokens_with_media(
             ..Default::default()
         };
 
+        // Native tool calls: the template renders the tools and the tool turns in the model's own
+        // format, and llama.cpp gives the grammar and parser for its calls (llama-server's path).
+        // Media prompts and continuations keep the inline form.
+        let (native_tools, parse_tools) = match req_tools.filter(|_| !is_media && !is_pivot) {
+            Some((tools, parse)) => (Some(tools), parse),
+            None => (None, false),
+        };
+        if native_tools.is_some() && llama.chat_tools_for(dna.chat_template.as_deref()).is_none() {
+            tracing::warn!("⚠️ [NativeTools] llama.cpp could not parse the template for tool use; tools go inline");
+        }
+        // What llama.cpp returned for the last native render (grammar, triggers, parser)
+        let native_apply = std::cell::RefCell::new(None::<serde_json::Value>);
         let render = |llama: &NativeLlama, messages: &[(String, String)]| {
+            if let Some(tools) = &native_tools {
+                if let Some(chat_tools) = llama.chat_tools(dna.chat_template.as_deref()) {
+                    let request = serde_json::json!({
+                        "messages": cluaiz_core::tool_calls::openai_messages(messages),
+                        "tools": tools,
+                        "enable_thinking": enable_thinking,
+                    });
+                    match chat_tools.apply(&request) {
+                        Ok(apply) if apply["supports_tools"].as_bool() == Some(false) => {
+                            tracing::info!("🧰 [NativeTools] The template does not render tools; they go inline")
+                        }
+                        Ok(apply) if apply["prompt"].as_str().is_some_and(|p| !p.trim().is_empty()) => {
+                            let prompt = apply["prompt"].as_str().unwrap_or_default().to_string();
+                            tracing::debug!("🧰 [NativeTools] Rendered prompt:\n{}", prompt);
+                            *native_apply.borrow_mut() = Some(apply);
+                            return Ok(prompt);
+                        }
+                        Ok(_) => tracing::warn!("⚠️ [NativeTools] Empty prompt from the tool template; tools go inline"),
+                        Err(e) => tracing::warn!("⚠️ [NativeTools] Tool template failed ({}); tools go inline", e),
+                    }
+                }
+                // Inline fallback: the schemas in the system message, calls as <tool_call> blocks
+                *native_apply.borrow_mut() = None;
+                let schemas: Vec<serde_json::Value> = tools.as_array().cloned().unwrap_or_default();
+                let block = cluaiz_core::tool_calls::inline_tools(&schemas);
+                let mut with_tools = messages.to_vec();
+                match with_tools.first_mut() {
+                    Some((role, content)) if role.eq_ignore_ascii_case("system") => {
+                        *content = format!("{content}\n\n{block}");
+                    }
+                    _ => with_tools.insert(0, ("system".to_string(), block)),
+                }
+                return render_prompt(llama, dna, &with_tools, enable_thinking, is_pivot, &think_end_tag);
+            }
             render_prompt(
                 llama,
                 dna,
@@ -522,11 +577,38 @@ pub(crate) fn stream_tokens_with_media(
         report.prompt_tokens = n_cur.max(0) as usize;
         report.processed_tokens = report.prompt_tokens.saturating_sub(report.cache_n);
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
+        // Native tool calls: llama.cpp's lazy grammar for the model's call format (asleep while it
+        // thinks) and its parser, which turns the output back into text and calls
+        let native_apply = native_apply.borrow().clone();
+        let native_parser = native_apply.as_ref().filter(|_| parse_tools).and_then(|apply| {
+            crate::ffi::chat::ChatParser::new(apply)
+                .map_err(|e| tracing::warn!("⚠️ [NativeTools] {}; calls are read as <tool_call> blocks only", e))
+                .ok()
+        });
+        let tool_grammar = match (&native_apply, &native_parser) {
+            (Some(apply), Some(_)) => crate::ffi::chat::tool_grammar(vocab, apply),
+            _ => std::ptr::null_mut(),
+        };
+        let additional_stops: Vec<String> = native_apply
+            .as_ref()
+            .and_then(|apply| apply["additional_stops"].as_array())
+            .map(|stops| stops.iter().filter_map(|s| s.as_str().map(str::to_string)).collect())
+            .unwrap_or_default();
+        if let Some(apply) = &native_apply {
+            info!(
+                "🧰 [NativeTools] Format {} | grammar {} (lazy {}, {} triggers)",
+                apply["format"].as_str().unwrap_or("?"),
+                if tool_grammar.is_null() { "none" } else { "on" },
+                apply["grammar_lazy"].as_bool().unwrap_or(false),
+                apply["triggers"].as_array().map_or(0, Vec::len)
+            );
+        }
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(
             dna,
             &full_prompt_tokens,
             req_samplers.as_ref(),
             n_vocab,
+            tool_grammar,
         )?;
         let mut safe_sampler = SafeSampler {
             sampler: sampler_chain_raw,
@@ -563,6 +645,21 @@ pub(crate) fn stream_tokens_with_media(
             max_think_tokens, prompt_opens_thinking,
         )?;
         safe_sampler.sampler = root;
+        // The grammar sees only what the model writes outside thinking
+        let mut grammar_active = false;
+        let mut set_grammar = |active: bool, replay: &str| {
+            if !tool_grammar.is_null() && active != grammar_active {
+                crate::ffi::chat::set_tool_grammar_active(tool_grammar, vocab, active, replay);
+                grammar_active = active;
+            }
+        };
+        // The prompt's own thinking end tag (thinking off) is not output: nothing to replay
+        set_grammar(!prompt_opens_thinking, "");
+        // Everything generated (thinking included) for the parser, the answer part, and what of
+        // the parsed answer was sent
+        let mut generated = String::new();
+        let mut answer_raw = String::new();
+        let mut content_stream = cluaiz_core::tool_calls::ContentStream::default();
         let skip_requested = || skip_reasoning
             .is_some_and(|signal| signal.load(Ordering::Acquire));
 
@@ -637,6 +734,7 @@ pub(crate) fn stream_tokens_with_media(
 
                 if !piece.is_empty() {
                     let emit_str = piece.as_str();
+                    let was_thinking = in_think_block;
 
                     // Dynamic thinking tag state tracking over the recent text (tags may span tokens)
                     tag_window.push_str(emit_str);
@@ -656,7 +754,27 @@ pub(crate) fn stream_tokens_with_media(
                         tag_window.drain(..cut);
                     }
 
-                    if in_think_block && suppress_thinking {
+                    // Thinking just ended: the grammar wakes up and sees the end tag (llama-server)
+                    set_grammar(!in_think_block, &think_end_tag);
+                    generated.push_str(emit_str);
+                    if native_parser.is_some() && !in_think_block && !was_thinking {
+                        // The answer goes out as llama.cpp's parser reads it: text only, the call
+                        // markup is held back and sent in the Engine's form when generation ends
+                        answer_raw.push_str(emit_str);
+                        if let Some(stop) = additional_stops.iter().find(|stop| answer_raw.contains(stop.as_str())) {
+                            let cut = generated.len() - (answer_raw.len() - answer_raw.find(stop.as_str()).unwrap_or(answer_raw.len()));
+                            generated.truncate(cut);
+                            report.stop = "stop";
+                            break;
+                        }
+                        let parsed = native_parser.as_ref().and_then(|parser| parser.parse(&generated, true).ok());
+                        if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(c)) {
+                            if !callback(delta) {
+                                report.stop = "cancel";
+                                break;
+                            }
+                        }
+                    } else if in_think_block && suppress_thinking {
                         // hidden thinking: not sent, still counted below
                     } else if !emit_str.is_empty() {
                         tracing::debug!(
@@ -753,6 +871,37 @@ pub(crate) fn stream_tokens_with_media(
             reasoning.poll(skip_requested(), &mut ended_by);
             next_token_id =
                 llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
+        }
+
+        // Native tool calls: the rest of the answer, then each call as a <tool_call> block
+        if let Some(parser) = &native_parser {
+            if report.stop != "cancel" {
+                match parser.parse(&generated, false) {
+                    Ok(parsed) => {
+                        let content = parsed["content"].as_str().unwrap_or_default();
+                        if let Some(delta) = content_stream.delta(content) {
+                            let _ = callback(delta);
+                        }
+                        let calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
+                        for call in &calls {
+                            let name = call["name"].as_str().unwrap_or_default();
+                            let block = cluaiz_core::tool_calls::canonical_call(name, call["arguments"].as_str().unwrap_or("{}"));
+                            let _ = callback(format!("\n{block}"));
+                        }
+                        info!("🧰 [NativeTools] Parsed {} call(s): {:?}", calls.len(),
+                            calls.iter().filter_map(|c| c["name"].as_str()).collect::<Vec<_>>());
+                    }
+                    Err(e) => {
+                        // Not readable in the model's format: send what was held back as it was
+                        tracing::warn!("⚠️ [NativeTools] Output not parsed ({}); sent as written", e);
+                        if let Some(rest) = answer_raw.strip_prefix(content_stream.sent()) {
+                            let _ = callback(rest.to_string());
+                        } else if content_stream.sent().is_empty() {
+                            let _ = callback(answer_raw.clone());
+                        }
+                    }
+                }
+            }
         }
 
         llama.last_thinking = thought.then(|| crate::native::core::ThinkingReport {

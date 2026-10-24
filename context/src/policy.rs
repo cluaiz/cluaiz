@@ -28,10 +28,14 @@ pub struct Policy {
     /// Searching other chats with `recall` (scope workspace or all): "ask" (the user approves
     /// each search, like a tool call), "allow" or "deny"
     pub cross_chat: String,
+    /// How tools reach the model: "inline" (schemas in the system prompt, calls as `<tool_call>`
+    /// blocks) or "native" (the model's own template and call format, with llama.cpp's grammar
+    /// and parser)
+    pub tool_format: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "inline".into() }
     }
 }

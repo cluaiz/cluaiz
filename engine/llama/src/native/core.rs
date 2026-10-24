@@ -22,6 +22,9 @@ pub struct NativeLlama {
     chat_templates: *mut std::ffi::c_void,
     /// The custom template the parsed handle was built from (`dna.chat_template` at load)
     chat_templates_src: Option<String>,
+    /// The same templates parsed for native tool calls, on the first request with tools
+    /// (with the template they were built from); freed before the model
+    chat_tools: Option<(Option<String>, crate::ffi::chat::ChatTools)>,
     /// Thinking budget and use of the last generation (None when the model did not think)
     pub last_thinking: Option<ThinkingReport>,
     /// What the context rules did in the last generation
@@ -132,6 +135,21 @@ pub fn even_chunk_len(n_tokens: usize, max: usize) -> usize {
 impl NativeLlama {
     /// Parsed chat templates when `custom_template` is the one they were built from, else null
     /// (the caller then renders with a one-off parse, the previous behaviour).
+    /// The templates for native tool calls, parsed once per template
+    pub fn chat_tools_for(&mut self, custom_template: Option<&str>) -> Option<&crate::ffi::chat::ChatTools> {
+        let stale = self.chat_tools.as_ref().is_none_or(|(src, _)| src.as_deref() != custom_template);
+        if stale {
+            self.chat_tools = crate::ffi::chat::ChatTools::new(self.model_ptr, custom_template)
+                .map(|tools| (custom_template.map(str::to_string), tools));
+        }
+        self.chat_tools.as_ref().map(|(_, tools)| tools)
+    }
+
+    /// The tool templates `chat_tools_for` parsed for this template, if any
+    pub fn chat_tools(&self, custom_template: Option<&str>) -> Option<&crate::ffi::chat::ChatTools> {
+        self.chat_tools.as_ref().filter(|(src, _)| src.as_deref() == custom_template).map(|(_, tools)| tools)
+    }
+
     pub fn chat_templates_for(&self, custom_template: Option<&str>) -> *const std::ffi::c_void {
         if custom_template == self.chat_templates_src.as_deref() {
             self.chat_templates
@@ -604,6 +622,7 @@ impl NativeLlama {
             n_gpu_layers_loaded,
             chat_templates: crate::native::templater::parse_templates(model_ptr, dna.chat_template.as_deref()),
             chat_templates_src: dna.chat_template.clone(),
+            chat_tools: None,
             last_thinking: None,
             last_context: None,
             checkpoints: Vec::new(),
@@ -853,6 +872,7 @@ impl Drop for NativeLlama {
             if !self.chat_templates.is_null() {
                 llama_cpp::llama_chat_templates_handle_free(self.chat_templates);
             }
+            self.chat_tools = None;
             if !self.ctx_ptr.is_null() {
                 llama_cpp::llama_free(self.ctx_ptr);
             }
