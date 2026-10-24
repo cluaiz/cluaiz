@@ -34,6 +34,9 @@ more events follow; `skipped_lines` counts lines that could not be read (a crash
   "tools": [], "files": [], "signals": [], "importance": 0.3 } ] }
 ```
 
+A card the model wrote at idle time carries `enrichment`: `title`, `motive`, `summary`,
+`keywords` and `by` (`model:<file>`); see the `indexer` policy in [Context Runtime](./context_runtime.md).
+
 `episodes` lists stretches of the chat about one thing, found by rules: a new episode starts after
 a pause of more than 30 minutes, when the user says so ("new topic", "naya topic"), or when a
 message shares almost no keywords with the current one (short follow-ups such as "phir se" stay).

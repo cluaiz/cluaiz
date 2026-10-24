@@ -545,7 +545,14 @@ impl EngineHost {
                         .as_ref()
                         .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire))
                 {
-                    tokens_guard.clear();
+                    // A request cancelled before it ran never touched the KV: its token list stays
+                    // valid, so the next request still reuses the cache
+                    let cancelled = cancel
+                        .as_ref()
+                        .is_some_and(|signal| signal.load(std::sync::atomic::Ordering::Acquire));
+                    if !cancelled {
+                        tokens_guard.clear();
+                    }
                     *timings_arc.blocking_lock() = None;
                     *thinking_arc.blocking_lock() = None;
                     *context_arc.blocking_lock() = None;

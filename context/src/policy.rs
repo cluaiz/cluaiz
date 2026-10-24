@@ -19,10 +19,13 @@ pub struct Policy {
     /// A compaction frees enough to bring the history down to this share, so the next one is
     /// many turns away (each compaction re-processes the prompt from its first change)
     pub compact_to_pct: u8,
+    /// Idle-time card enrichment by the model: "auto" (with GPU layers), "always", "rules_only",
+    /// "off"
+    pub indexer: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60 }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into() }
     }
 }

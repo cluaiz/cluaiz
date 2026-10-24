@@ -48,6 +48,8 @@ pub struct PreparedChatContext {
     pub message_count: usize,
     /// The memory meta-tools (recall, open_memory) were offered
     pub memory_tools: bool,
+    /// Keeps idle-time jobs away until the request ends
+    _foreground: super::background::Foreground,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -125,6 +127,8 @@ impl PreparedChatContext {
         progress: Option<cluaiz_core::processing::ProcessingReporter>,
     ) -> Result<Self, axum::response::Response> {
         let preflight_started = std::time::Instant::now();
+        // A chat request in flight: idle-time jobs stop and wait
+        let foreground = super::background::Foreground::begin();
         let schema = cluaiz_security::PermissionSchema::load();
         let send_telemetry = schema.stream_telemetry;
 
@@ -948,6 +952,7 @@ impl PreparedChatContext {
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
             memory_tools,
+            _foreground: foreground,
             tool_hint: turn_block,
             tools_report,
             plan_report,
@@ -1105,6 +1110,7 @@ pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value 
 /// Records what the Engine added to the turn that just ended (its tool hint and tool steps)
 /// and the chat's current tool bindings, so the next request renders this turn the same way
 pub fn record_turn(
+    state: &Arc<AppState>,
     ctx: &PreparedChatContext,
     steps: Vec<cluaiz_agents::RecordedStep>,
     answer: &str,
@@ -1114,6 +1120,25 @@ pub fn record_turn(
         return;
     };
     super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
+    // Idle-time card for this turn, written by the model while its KV is still hot
+    if let (Some(model_path), false) = (&ctx.active_model_path, answer.trim().is_empty()) {
+        if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&ctx.json_prompt) {
+            if let Some(messages) = envelope.get_mut("messages").and_then(serde_json::Value::as_array_mut) {
+                messages.push(json!({ "role": "assistant", "content": answer }));
+                super::background::enqueue(
+                    state,
+                    super::background::EnrichJob {
+                        chat: chat.clone(),
+                        envelope,
+                        user_pos: ctx.message_count.saturating_sub(1),
+                        answer_pos: ctx.message_count,
+                        model_path: model_path.clone(),
+                        settings: ctx.request_settings.clone(),
+                    },
+                );
+            }
+        }
+    }
     let mut ledger = cluaiz_agents::ChatLedger::get(chat);
     ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
