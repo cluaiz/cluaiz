@@ -86,6 +86,8 @@ pub(crate) fn stream_tokens_with_media(
 
         // 🧬 Dynamic In-Memory Request Overrides & Native Chat Message Parsing
         let mut structured_messages: Vec<(String, String)> = Vec::new();
+        // Debug: the rendered prompt goes into the context report (template tests)
+        let mut return_prompt = false;
         let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
@@ -143,6 +145,7 @@ pub(crate) fn stream_tokens_with_media(
                     // Thinking off without changing the start of the prompt (a job that reuses a
                     // chat's KV): see below
                     let keep_prefix = envelope.get("thinking_off_keeps_prefix").and_then(|k| k.as_bool()) == Some(true);
+                    return_prompt = envelope.get("return_prompt").and_then(|k| k.as_bool()) == Some(true);
                     (
                         samplers,
                         think_mode,
@@ -270,7 +273,14 @@ pub(crate) fn stream_tokens_with_media(
                         Ok(apply) if apply["supports_tools"].as_bool() == Some(false) => {
                             tracing::info!("🧰 [NativeTools] The template does not render tools; they go inline")
                         }
-                        Ok(apply) if apply["prompt"].as_str().is_some_and(|p| !p.trim().is_empty()) => {
+                        Ok(apply) if apply["prompt"].as_str().is_some_and(|p| {
+                            // A template that loses a message falls back to the inline form
+                            let missing = cluaiz_core::tool_calls::missing_messages(p, messages);
+                            if !missing.is_empty() {
+                                tracing::warn!("⚠️ [NativeTools] The tool template dropped messages {:?}; tools go inline", missing);
+                            }
+                            !p.trim().is_empty() && missing.is_empty()
+                        }) => {
                             let prompt = apply["prompt"].as_str().unwrap_or_default().to_string();
                             tracing::debug!("🧰 [NativeTools] Rendered prompt:\n{}", prompt);
                             *native_apply.borrow_mut() = Some(apply);
@@ -291,18 +301,18 @@ pub(crate) fn stream_tokens_with_media(
                     }
                     _ => with_tools.insert(0, ("system".to_string(), block)),
                 }
-                return render_prompt(llama, dna, &with_tools, enable_thinking, is_pivot, &think_end_tag);
+                return render_inline(llama, dna, &with_tools, enable_thinking, is_pivot, &think_end_tag);
             }
-            render_prompt(
-                llama,
-                dna,
-                messages,
-                enable_thinking,
-                is_pivot,
-                &think_end_tag,
-            )
+            render_inline(llama, dna, messages, enable_thinking, is_pivot, &think_end_tag)
         };
         let mut formatted_prompt = render(llama, &structured_messages)?;
+        // A message the template did not show (it has no place for that role or field)
+        if !is_media {
+            report.template_dropped = cluaiz_core::tool_calls::missing_messages(&formatted_prompt, &structured_messages);
+            if !report.template_dropped.is_empty() {
+                tracing::warn!("⚠️ [NativeTemplate] The chat template did not show messages {:?}", report.template_dropped);
+            }
+        }
         let mut prompt_tokens = Vec::new();
         if !is_media {
             prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
@@ -622,6 +632,9 @@ pub(crate) fn stream_tokens_with_media(
             let n_cur = cached.len() as i32;
             (cached, n_cur)
         };
+        if return_prompt {
+            report.prompt = Some(formatted_prompt.clone());
+        }
         report.prompt_tokens = n_cur.max(0) as usize;
         report.processed_tokens = report.prompt_tokens.saturating_sub(report.cache_n);
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);
@@ -1007,6 +1020,28 @@ pub(crate) fn stream_tokens_with_media(
 
 /// Smallest shared chunk `--cache-reuse` moves instead of reprocessing (llama-server's preset value)
 const CACHE_REUSE_MIN_CHUNK: usize = 256;
+
+/// `render_prompt`, and when the template has no place for the `tool` role (it drops tool results
+/// without an error), again with the results as `<tool_response>` user turns
+fn render_inline(
+    llama: &NativeLlama,
+    dna: &StructuralDNA,
+    messages: &[(String, String)],
+    enable_thinking: bool,
+    is_pivot: bool,
+    think_end_tag: &str,
+) -> anyhow::Result<String> {
+    let rendered = render_prompt(llama, dna, messages, enable_thinking, is_pivot, think_end_tag)?;
+    let dropped_tool = cluaiz_core::tool_calls::missing_messages(&rendered, messages)
+        .into_iter()
+        .any(|i| messages[i].0 == "tool");
+    if !dropped_tool {
+        return Ok(rendered);
+    }
+    tracing::info!("🧰 [NativeTemplate] The template drops tool results; they go in as <tool_response> user turns");
+    let as_user = cluaiz_core::tool_calls::tool_results_as_user(messages);
+    render_prompt(llama, dna, &as_user, enable_thinking, is_pivot, think_end_tag)
+}
 
 /// `messages` through the model's chat template (llama.cpp's common template engine). A continuation
 /// (pivot) first closes an open thinking block.

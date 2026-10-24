@@ -78,6 +78,9 @@ pub struct ExternalChatRequest {
     /// their old context). Default: "chunk" only when the Engine dropped old turns to fit.
     #[serde(default)]
     pub kv_reuse: Option<String>,
+    /// Debug: the engine report's context carries the rendered prompt (template tests)
+    #[serde(default)]
+    pub return_prompt: Option<bool>,
     /// "recent" (default): the whole history, the oldest turns dropped when it does not fit;
     /// "none": only the system prompt and the current message
     #[serde(default)]

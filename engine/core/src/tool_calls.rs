@@ -101,6 +101,54 @@ pub fn canonical_call(name: &str, arguments: &str) -> String {
     format!("{OPEN}\n{}\n{CLOSE}", json!({ "name": name, "arguments": arguments }))
 }
 
+/// Messages a rendered prompt does not show (indexes into `messages`): a template that drops a
+/// role or a field loses content without an error. A message counts as shown when the start of
+/// its text (letters and digits only, so escaping and spacing do not matter) is in the prompt;
+/// a tool call counts by its function name. Short messages and plain answers are not checked.
+pub fn missing_messages(prompt: &str, messages: &[(String, String)]) -> Vec<usize> {
+    let squash = |text: &str| -> String { text.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect() };
+    let shown = squash(prompt);
+    messages
+        .iter()
+        .enumerate()
+        .filter(|(_, (role, content))| {
+            // Answers are not checked: templates drop their thinking on purpose
+            if role == "assistant" && !content.contains(OPEN) {
+                return false;
+            }
+            let probe = if content.contains(OPEN) {
+                split_calls(content).1.first().map(|(name, _)| squash(name)).unwrap_or_default()
+            } else {
+                squash(content).chars().take(24).collect()
+            };
+            probe.len() >= 6 && !shown.contains(&probe)
+        })
+        .map(|(i, _)| i)
+        .collect()
+}
+
+/// Tool results as user turns (`<tool_response>` blocks, the inline form's answer to a call), for a
+/// template with no place for the `tool` role. Results in a row become one turn, so roles still
+/// alternate.
+pub fn tool_results_as_user(messages: &[(String, String)]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::with_capacity(messages.len());
+    let mut last_was_tool = false;
+    for (role, content) in messages {
+        if role == "tool" {
+            let block = format!("<tool_response>\n{content}\n</tool_response>");
+            match out.last_mut() {
+                Some((_, previous)) if last_was_tool => *previous = format!("{previous}\n{block}"),
+                _ => out.push(("user".to_string(), block)),
+            }
+            last_was_tool = true;
+        } else {
+            out.push((role.clone(), content.clone()));
+            last_was_tool = false;
+        }
+    }
+    out
+}
+
 /// The visible answer while a parser reads the output again after every token: only text that
 /// extends what was already sent goes out (a parser may hold back or revise its last bit)
 #[derive(Default)]
@@ -165,6 +213,34 @@ mod tests {
         let (_, calls) = split_calls(&call);
         assert_eq!(calls, vec![("add".to_string(), "{\"a\":17,\"b\":25}".to_string())]);
         assert!(canonical_call("add", "{broken").contains("\"arguments\":\"{broken\""));
+    }
+
+    #[test]
+    fn dropped_messages_are_found() {
+        let messages = vec![
+            msg("system", "You are helpful."),
+            msg("user", "Read notes.txt please"),
+            msg("assistant", "<tool_call>\n{\"name\": \"read_text_file\", \"arguments\": {}}\n</tool_call>"),
+            msg("tool", "{\"content\": \"The secret word is MANGO-42.\"}"),
+            msg("user", "ok"),
+        ];
+        let full = "<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>user\nRead notes.txt please<|im_end|>\n<tool_call>{\"name\":\"read_text_file\"}</tool_call>\n<tool_response>{\\\"content\\\": \\\"The secret word is MANGO-42.\\\"}</tool_response>ok";
+        assert!(missing_messages(full, &messages).is_empty());
+        let no_tool_turns = "system You are helpful. user Read notes.txt please ok";
+        assert_eq!(missing_messages(no_tool_turns, &messages), vec![2, 3]);
+    }
+
+    #[test]
+    fn tool_results_become_one_user_turn() {
+        let out = tool_results_as_user(&[
+            msg("assistant", "<tool_call>{}</tool_call>"),
+            msg("tool", "A"),
+            msg("tool", "B"),
+            msg("assistant", "done"),
+        ]);
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[1], msg("user", "<tool_response>\nA\n</tool_response>\n<tool_response>\nB\n</tool_response>"));
+        assert_eq!(out[2], msg("assistant", "done"));
     }
 
     #[test]
