@@ -255,11 +255,11 @@ stops an idle job) is in `memory_journeys.py`. Results (2026-10-24, Qwen3-4B Q4_
 
 | Test | Result |
 | --- | --- |
-| PERF1 tools part of preflight (median of 5) | 3 ms with the installed tools, 4 ms with 100 installed |
-| PERF2 chat of 20012 messages | first request (logs and indexes the chat) 2.0 s; after it, preflight 32 ms: ingest 14, render 5, recall and plan 3 (it was 939 ms: ingest 217, recall 209, a Chat Map rebuild of about 300 ms) |
+| PERF1 tools part of preflight (median of 5) | 2 ms with the installed tools, 4 ms with 100 installed; catalog and matcher alone 0.21 ms and 1.54 ms (P1 gate: under 2 ms) |
+| PERF2 chat of 20012 messages | first request (logs and indexes the chat) 2-4 s; 20 requests after it: steps B-H 13 ms median, 14 ms p95 (ingest 8, render 2, recall and plan 3); whole preflight 23 ms (it was 939 ms: ingest 217, recall 209, a Chat Map rebuild of about 300 ms) |
 | PERF3 Engine memory | 3206.5 MB with the model loaded, 3242.7 MB with the chat indexed (+36 MB) |
 | PERF4 tokens processed per turn | 19 of 20, 33 of 49, 36 of 81, 47 of 124 (cause `edit` each time) |
-| PERF5 a request during an idle-time job | see `memory_journeys.py` below: +81 and +228 ms to the first text |
+| PERF5 a request during an idle-time job | see `memory_journeys.py` below: +81, +228 and +483 ms to the first text |
 | PERF6 cold start | `/health` answers 1.5 s after start; first chat 3.2 s, of which model load 2.2 s |
 
 In PERF4 the reuse stops a few tokens before the end of the previous prompt (16 of 20 on turn 2),
@@ -287,8 +287,10 @@ dropping tool results inline; see the tool-call format section above.
 PERF2 went from 939 ms to 32 ms of preflight on 2026-10-24: the event logs of the 4 most recent
 chats stay parsed in RAM (every request used to parse the whole 20k-event log twice), the client's
 messages are matched against the log without copying it, and a request uses the last Chat Map
-while a new one is built after the answer. Steps B-H of the design (ingest, recall, plan, render)
-now take about 22 ms at 20k messages; the target is 15 ms.
+while a new one is built after the answer, and the 20k messages the client sends are compared
+with the log borrowed, not copied. Steps B-H of the design (ingest, recall, plan, render) now take
+13 ms median and 14 ms p95 at 20k messages (target 15 ms p95); this run had no tool matching, which
+adds at most 1.5 ms with 100 tools (PERF1).
 
 **Speed numbers on this machine are low for a reason outside the Engine.** The test Engine runs
 next to the user's own server, which holds most of the 4 GB of VRAM: the planner gave the test
@@ -314,7 +316,7 @@ Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journe
 | MEM5 recalling a tool output | the run's result came back at level `tool_only` (`code-interpreter returned: stdout: checksum ZEBRA-7781 …`); the answer gave ZEBRA-7781, which no message had |
 | MEM6 cross-chat | `allow`: the model called `recall` and found the codename; `deny`: `/v1/recall/search` with `scope: all` gave 403 and the answer had no codename; `ask` with a reject: no codename |
 | ENR1 card on the hot KV | the card was written, and the next request processed 9 of 418 tokens (14 of 415 with no job) |
-| PERF5 preemption | first text +81 ms (757 against 676) and +228 ms (1,072 against 843) in two runs; before the fix +1,389 ms |
+| PERF5 preemption | first text +81, +228 and +483 ms in three runs (at most the rest of one 64-token chunk, about 650 ms on this machine); before the fix +1,389 ms |
 | C2 earlier tool step in client mode | the 4th turn's prompt had the first turn's `read_text_file` call and its result; the answer quoted the file's first line |
 | J9T (in `journeys.py`) | nobody answered the approval: the request waited 140 s and the tool did not run |
 
