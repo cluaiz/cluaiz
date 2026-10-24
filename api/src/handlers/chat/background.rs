@@ -387,6 +387,8 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
     // model that would rather talk, like Gemma 4 after its thinking was cut, still writes JSON)
     envelope["grammar"] = json!(card_grammar(job.episode.is_none()));
     envelope["kv_reuse"] = json!("prefix");
+    // Small prompt chunks: a request that arrives stops the job after one of them
+    envelope["background"] = json!(true);
     // Native tools stay in the prompt (same KV); the reply is read as text, not as calls
     envelope["parse_tools"] = json!(false);
     let response = state

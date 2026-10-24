@@ -607,6 +607,7 @@ impl EngineHost {
                 }
 
                 let tx_clone = tx.clone();
+                llama.set_cancel_control(cancel.clone());
                 let callback = Box::new(move |token: String| {
                     if cancel
                         .as_deref()

@@ -41,6 +41,8 @@ pub struct NativeSession {
     key: Option<ProjectorKey>,
     budget: Option<MediaBudget>,
     skip_reasoning: Option<Arc<AtomicBool>>,
+    /// The running request's stop flag (see `StreamOptions::cancel`)
+    cancel: Option<Arc<AtomicBool>>,
     progress: Option<cluaiz_core::processing::ProcessingReporter>,
     /// What the KV cache holds after the last media generation (text tokens and encoded media by
     /// content id), so the next media turn re-encodes only what changed. Empty = nothing reusable.
@@ -57,6 +59,11 @@ impl NativeSession {
     /// Bound only while this request owns the serialized native generation worker.
     pub fn set_reasoning_control(&mut self, signal: Option<Arc<AtomicBool>>) {
         self.skip_reasoning = signal;
+    }
+
+    /// Bound only while this request owns the serialized native generation worker.
+    pub fn set_cancel_control(&mut self, signal: Option<Arc<AtomicBool>>) {
+        self.cancel = signal;
     }
 
     /// Loaded context size used by request budgets.
@@ -122,6 +129,7 @@ impl NativeSession {
             super::stream::StreamOptions {
                 media: None,
                 skip_reasoning: self.skip_reasoning.as_deref(),
+                cancel: self.cancel.as_deref(),
             },
         )
     }
@@ -241,6 +249,7 @@ impl NativeSession {
             key: None,
             budget: None,
             skip_reasoning: None,
+            cancel: None,
             progress: None,
             media_cache: Vec::new(),
         })
@@ -458,6 +467,7 @@ impl NativeSession {
             super::stream::StreamOptions {
                 media: Some((&mut media, projector)),
                 skip_reasoning: self.skip_reasoning.as_deref(),
+                cancel: self.cancel.as_deref(),
             },
         );
         let too_large = result
