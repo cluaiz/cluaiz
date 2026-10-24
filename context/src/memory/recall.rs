@@ -7,12 +7,10 @@
 
 use super::card::{entities, Card};
 use super::index::CardIndex;
-use crate::analyze::{raw_words, terms};
-use chrono::{DateTime, Duration, NaiveTime, Utc};
+use crate::analyze::terms;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
-use serde_json::Value;
 use std::collections::HashSet;
-use std::sync::LazyLock;
 
 /// Smallest score a recalled message needs
 pub const MIN_SCORE: f32 = 1.0;
@@ -26,56 +24,7 @@ pub struct Hit {
     pub why: Vec<String>,
 }
 
-/// A time window named in a message
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Window {
-    pub from: DateTime<Utc>,
-    pub to: DateTime<Utc>,
-}
-
-static TIME_WORDS: LazyLock<Value> = LazyLock::new(|| {
-    let data: Value = serde_json::from_str(include_str!("../../data/words.json")).unwrap_or_default();
-    data.pointer("/memory/time").cloned().unwrap_or_default()
-});
-
-fn phrases(key: &str) -> Vec<Vec<String>> {
-    TIME_WORDS
-        .get(key)
-        .and_then(Value::as_array)
-        .map(|items| items.iter().filter_map(Value::as_str).map(raw_words).collect())
-        .unwrap_or_default()
-}
-
-/// The time window a message names, if any ("aaj", "kal", "2 din pehle", "last week", …)
-pub fn time_window(text: &str, now: DateTime<Utc>) -> Option<Window> {
-    let words = raw_words(text);
-    let has = |key: &str| phrases(key).iter().any(|p| super::card::has_phrase(&words, p));
-    let day_start = |day: DateTime<Utc>| day.date_naive().and_time(NaiveTime::MIN).and_utc();
-    let day = |offset: i64| {
-        let start = day_start(now - Duration::days(offset));
-        Window { from: start, to: start + Duration::days(1) }
-    };
-    for phrase in phrases("days_ago") {
-        if let Some(at) = words.windows(phrase.len()).position(|w| w == phrase.as_slice()) {
-            if let Some(n) = at.checked_sub(1).and_then(|i| words[i].parse::<i64>().ok()) {
-                return Some(day(n));
-            }
-        }
-    }
-    if has("yesterday") {
-        return Some(day(1));
-    }
-    if has("today") {
-        return Some(day(0));
-    }
-    if has("week") {
-        return Some(Window { from: day_start(now - Duration::days(7)), to: now });
-    }
-    if has("month") {
-        return Some(Window { from: day_start(now - Duration::days(31)), to: now });
-    }
-    None
-}
+pub use super::time::{time_window, time_window_in, Window};
 
 /// Earlier messages worth recalling for `message`, best first. `visible` holds the positions
 /// already in the prompt; they are never recalled.
@@ -202,10 +151,11 @@ mod tests {
 
     #[test]
     fn test_time_windows() {
-        let w = time_window("kal kya baat hui?", now()).unwrap();
+        let utc = chrono::FixedOffset::east_opt(0).unwrap();
+        let w = time_window_in("kal kya baat hui?", now(), utc).unwrap();
         assert_eq!(w.from.to_rfc3339(), "2026-10-23T00:00:00+00:00");
-        assert!(time_window("2 din pehle maine kya kaha", now()).unwrap().from.to_rfc3339().starts_with("2026-10-22"));
-        assert!(time_window("what is rust", now()).is_none());
+        assert!(time_window_in("2 din pehle maine kya kaha", now(), utc).unwrap().from.to_rfc3339().starts_with("2026-10-22"));
+        assert!(time_window_in("what is rust", now(), utc).is_none());
         let cards = chat();
         let index = CardIndex::build(&cards);
         let visible: HashSet<u64> = (40..60).collect();
