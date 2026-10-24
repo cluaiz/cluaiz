@@ -46,8 +46,10 @@ pub struct PreparedChatContext {
     pub plan_report: serde_json::Value,
     /// Messages the client request carried (the answer is logged after them)
     pub message_count: usize,
-    /// The memory meta-tools (recall, open_memory) were offered
+    /// The memory meta-tools (recall, open_memory, remember) were offered
     pub memory_tools: bool,
+    /// Pinned notes in this chat's system prompt (kept in its ledger)
+    pub z0_note_ids: Vec<String>,
     /// Keeps idle-time jobs away until the request ends
     _foreground: super::background::Foreground,
     pub json_prompt: String,
@@ -447,6 +449,22 @@ impl PreparedChatContext {
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode, policy.recent_turns_min);
         let mut augmented_messages = rendered.messages;
         let mut origin = rendered.origin;
+        // Durable notes: pinned ones go into the system prompt, chosen when the chat starts (and
+        // kept in its ledger, so the system prompt stays the same); later ones travel with the
+        // message, like the ones that fit it
+        let workspace = crate::handlers::notes::current_workspace();
+        let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
+        let (pinned_notes, relevant_notes) = super::recall::notes_for(ledger_chat.as_deref(), &workspace, &note_query);
+        let starting = ledger.as_ref().is_none_or(|saved| saved.turns.is_empty() && saved.notes.is_none())
+            && request.messages.iter().filter(|m| !m.role.eq_ignore_ascii_case("system")).count() <= 1;
+        let z0_note_ids: Vec<String> = match ledger.as_ref().and_then(|saved| saved.notes.clone()) {
+            Some(ids) if !starting => ids,
+            _ => pinned_notes.iter().map(|n| n.id.clone()).collect(),
+        };
+        let z0_notes: Vec<_> = pinned_notes.iter().filter(|n| z0_note_ids.contains(&n.id)).cloned().collect();
+        let mut block_notes: Vec<_> = pinned_notes.iter().filter(|n| !z0_note_ids.contains(&n.id)).cloned().collect();
+        block_notes.extend(relevant_notes);
+        context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
         // The chat's event log: what the client sent (a preview changes nothing)
         if let (Some(chat), false) = (&ledger_chat, request.preview) {
             super::ingest_events::ingest_request(chat, &request.messages);
@@ -552,6 +570,11 @@ impl PreparedChatContext {
             && ledger_chat.is_some()
             && history_mode != context_plan::HistoryMode::Recent
             && request.messages.len() > 1;
+        // remember: offered when the user asks to remember something (or with the memory tools)
+        let remember_tool = tools_allowed
+            && ledger_chat.is_some()
+            && policy.notes != "off"
+            && (memory_tools || super::recall::asks_to_remember(&note_query));
         // An open task (work that changed something over several turns, or one the model keeps):
         // looked up only when this chat's tools changed something
         let changed_something = ledger.as_ref().is_some_and(|saved| {
@@ -612,6 +635,13 @@ impl PreparedChatContext {
         let mut meta_schemas = if tool_meta { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
         if memory_tools {
             meta_schemas.extend(super::recall::memory_schemas());
+        }
+        if remember_tool {
+            meta_schemas.push(super::recall::remember_schema());
+            offer_meta_tools = true;
+            if hint_lines.is_empty() {
+                hint_lines = "To keep something the user wants remembered beyond this chat, call remember.\n".to_string();
+            }
         }
         // task_update while a task is open
         if open_task.is_some() && ledger_chat.is_some() && tools_allowed {
@@ -728,6 +758,7 @@ impl PreparedChatContext {
                         context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode, policy.recent_turns_min);
                     augmented_messages = again.messages;
                     origin = again.origin;
+                    context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
                     context_plan::inject(&mut augmented_messages, &mut origin, &hint, &system_tools);
                     plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
                     compaction = Some(report);
@@ -773,8 +804,21 @@ impl PreparedChatContext {
                 task_report = json!({ "id": task.id, "stage": task.stage, "source": task.source, "shown": false });
             }
         }
+        // Notes that travel with this message: pinned after the chat started, or fitting it
+        if !block_notes.is_empty() {
+            let block = super::recall::notes_block(&block_notes);
+            if let Some(last) = augmented_messages.last_mut() {
+                context_plan::prepend_text(&mut last.content, &block);
+            }
+            turn_block = if turn_block.is_empty() { block } else { format!("{block}\n\n{turn_block}") };
+            plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+        }
         let mut plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
         plan_report["recall"] = recall_report;
+        plan_report["notes"] = json!({
+            "system": z0_notes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+            "with_message": block_notes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
+        });
         plan_report["task"] = task_report;
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
@@ -991,7 +1035,8 @@ impl PreparedChatContext {
             loaded_tool_ids: tool_ids_to_compile.clone(),
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
-            memory_tools,
+            memory_tools: memory_tools || remember_tool,
+            z0_note_ids,
             _foreground: foreground,
             tool_hint: turn_block,
             tools_report,
@@ -1184,5 +1229,6 @@ pub fn record_turn(
     let mut ledger = cluaiz_agents::ChatLedger::get(chat);
     ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
+    ledger.notes = Some(ctx.z0_note_ids.clone());
     cluaiz_agents::ChatLedger::put(chat, ledger);
 }

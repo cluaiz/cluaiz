@@ -10,6 +10,7 @@
 //! ```
 
 pub mod events;
+pub mod notes;
 pub mod records;
 pub mod store;
 pub mod transcript;
