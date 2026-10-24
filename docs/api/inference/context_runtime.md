@@ -97,6 +97,19 @@ running, 3 runs each): off 54.2 / 56.4 / 56.4 s, on 48.5 / 50.8 / 51.1 s. The se
 4.6 s with `npx`) overlaps the model's first step, and `load_tool` then answers in under a
 millisecond instead of 3.6–4.5 s.
 
+## Where the time before the first token goes
+
+`context_report.timing` (milliseconds, the Engine's own clock): `preflight_ms` (everything before
+the model starts), `model_load_ms`, `registry_template_ms`, `tools_ms` (matching, suggestions,
+tool schemas) and `plan_ms` (planning, recall, notes, rendering). `test/context-runtime/perf.py`
+reads them.
+
+The engine report's `context.template_dropped` lists messages the model's chat template did not
+show (a template with no place for a role or field drops it without an error); a native tool render
+that drops a message falls back to the inline form, and a template with no `tool` role (Gemma 4's,
+for one) gets tool results as `<tool_response>` user turns. A request with `"return_prompt": true` (for
+template tests) also gets the rendered prompt in `context.prompt`.
+
 ## GET /v1/context/jobs
 
 ```json
@@ -153,5 +166,5 @@ in memory (gone after a restart). Without `request_id` the response lists their 
 with it, the report. An unknown id gives HTTP 404.
 
 ```json
-{ "chat_id": "p26", "request_id": "chatcmpl-2605…", "context_report": { "tools": { "…": "…" }, "plan": { "…": "…" } } }
+{ "chat_id": "p26", "request_id": "chatcmpl-2605…", "context_report": { "tools": { "…": "…" }, "plan": { "…": "…" }, "timing": { "…": "…" } } }
 ```
