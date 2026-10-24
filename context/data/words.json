@@ -47,6 +47,13 @@
     "directory": ["folder"],
     "dir": ["folder"],
     "save": ["write"],
+    "change": ["edit"],
+    "changed": ["edit"],
+    "modify": ["edit"],
+    "modified": ["edit"],
+    "badla": ["edit"],
+    "badle": ["edit"],
+    "badli": ["edit"],
     "running": ["run"],
     "executing": ["run"],
     "readme": ["file"],
@@ -91,7 +98,8 @@
     "abhi", "phir", "bhai", "yaar", "ji", "haan", "nahi", "need", "needs", "without", "use", "using", "used", "tell",
     "give", "get", "want", "like", "also", "only", "more", "very", "much", "many", "than", "them", "let", "lets",
     "know", "kitna", "kitni", "kitne", "hota", "hoti", "hote", "raha", "rahi", "rahe", "sakta", "sakti", "chahiye", "wala",
-    "wali", "wale", "s", "t", "d", "ll", "re", "ve", "m"
+    "wali", "wale", "s", "t", "d", "ll", "re", "ve", "m",
+    "baare", "baatein", "baat", "isme", "usme", "kai", "jo", "jab", "tab", "yahan", "wahan", "sab", "kuch", "koi", "apna", "apni", "apne", "uska", "uski", "uske", "iska", "iski", "iske", "inka", "unka", "bas", "liye", "saath", "mujhe", "tumhe", "aapko", "gaya", "gayi", "gaye", "diya", "lo", "lena"
   ],
   "followup": [
     "isko", "ise", "isse", "iska", "iski", "usko", "use", "uska", "ye", "yeh", "wo", "woh", "it", "this",
@@ -105,6 +113,7 @@
     "decision": ["final", "isi ko rakho", "let's go with", "go with", "we'll use", "use this", "decided", "yahi rakho", "pakka", "confirm", "agreed"],
     "error": ["error", "exception", "failed", "failure", "panic", "traceback", "crash", "fatal", "not found"],
     "question": ["kya", "kaise", "kyu", "kyun", "kab", "kahan", "kaun", "what", "how", "why", "when", "where", "which", "who"],
+    "new_topic": ["new topic", "naya topic", "nayi baat", "doosri baat", "dusra topic", "alag topic", "change topic"],
     "time": {
       "today": ["aaj", "today", "आज"],
       "yesterday": ["kal", "yesterday", "कल"],

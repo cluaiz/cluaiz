@@ -126,8 +126,10 @@ pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSe
                 .collect();
             let recency = card.pos as f32 / newest;
             let score = 3.0 * bm25 / best + 0.5 * shared_entities.len() as f32 + 0.4 * recency + 0.6 * card.importance + if window.is_some() { 1.0 } else { 0.0 };
+            // Evidence, not a lone word: two query words, a shared file or value, or a time window
+            let evidence = why.len() >= 2 || !shared_entities.is_empty() || window.is_some();
             why.extend(shared_entities);
-            (score >= MIN_SCORE && (!why.is_empty() || window.is_some())).then_some(Hit { card: i, score, why })
+            (score >= MIN_SCORE && evidence).then_some(Hit { card: i, score, why })
         })
         .collect();
     hits.sort_by(|a, b| b.score.total_cmp(&a.score).then(cards[b.card].pos.cmp(&cards[a.card].pos)));

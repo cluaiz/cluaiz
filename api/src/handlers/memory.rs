@@ -45,7 +45,7 @@ pub async fn get_events(Path(chat): Path<String>, Query(query): Query<EventsQuer
 /// GET /v1/chat/{session_id}/index: the chat's cards (one per visible message; no text)
 pub async fn get_index(Path(chat): Path<String>) -> Response {
     match recall::chat_map(&chat) {
-        Some(map) => Json(json!({ "chat_id": chat, "cards": map.cards })).into_response(),
+        Some(map) => Json(json!({ "chat_id": chat, "cards": map.cards, "episodes": map.episodes })).into_response(),
         None => error(StatusCode::INTERNAL_SERVER_ERROR, "could not read the chat's event log"),
     }
 }

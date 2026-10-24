@@ -7,7 +7,7 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_agents::memory::{EventStore, JsonlStore};
-use cluaiz_context::memory::{build_cards, recall, Card, CardIndex, MessageIn};
+use cluaiz_context::memory::{build_cards, episodes, recall, Card, CardIndex, Episode, EpisodeRules, MessageIn};
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -16,6 +16,8 @@ use std::sync::{Arc, LazyLock, Mutex};
 const HOT_CHATS: usize = 4;
 /// Most messages recalled for one request
 const MAX_HITS: usize = 3;
+/// Most earlier topics (episodes) outlined with recalled messages
+const MAX_OUTLINE: usize = 3;
 /// Longest piece of one recalled message
 const MAX_SNIPPET_CHARS: usize = 400;
 
@@ -27,6 +29,8 @@ pub struct ChatMap {
     pub index: CardIndex,
     /// Text of each card's message (same order as `cards`)
     texts: Vec<String>,
+    /// Stretches of the chat about one thing, by rules
+    pub episodes: Vec<Episode>,
 }
 
 static MAPS: LazyLock<Mutex<Vec<(String, Arc<ChatMap>)>>> = LazyLock::new(|| Mutex::new(Vec::new()));
@@ -45,13 +49,15 @@ fn messages(chat: &str) -> anyhow::Result<(u64, Vec<MessageIn>)> {
                 if let Some(tool) = event.str("tool") {
                     pending.0.push(tool.to_string());
                 }
-                let call = event.str("call").unwrap_or_default();
-                let json = call.trim().trim_start_matches("<tool_call>").trim_end_matches("</tool_call>").trim();
-                if let Ok(value) = serde_json::from_str::<Value>(json) {
-                    for key in ["path", "source", "destination"] {
-                        if let Some(path) = value.pointer(&format!("/arguments/{key}")).and_then(Value::as_str) {
-                            pending.1.push(path.to_string());
-                        }
+                match event.data.get("files").and_then(Value::as_array) {
+                    Some(files) => pending.1.extend(files.iter().filter_map(Value::as_str).map(str::to_string)),
+                    // Imported or older events: the files come from the arguments
+                    None => {
+                        let args = event.data.get("args").cloned().or_else(|| {
+                            cluaiz_agents::memory::records::call_json(event.str("call").unwrap_or_default())
+                                .and_then(|c| c.get("arguments").cloned())
+                        });
+                        pending.1.extend(args.map(|a| cluaiz_agents::memory::records::files_touched(&a)).unwrap_or_default());
                     }
                 }
             }
@@ -100,8 +106,9 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
     let started = std::time::Instant::now();
     let cards = build_cards(&messages);
     let index = CardIndex::build(&cards);
-    let texts = messages.into_iter().map(|m| m.text).collect();
-    let map = Arc::new(ChatMap { version, cards, index, texts });
+    let texts: Vec<String> = messages.into_iter().map(|m| m.text).collect();
+    let episodes = episodes(&cards, &texts.iter().map(String::as_str).collect::<Vec<_>>(), EpisodeRules::default());
+    let map = Arc::new(ChatMap { version, cards, index, texts, episodes });
     tracing::info!("🗺️ [Memory] Chat map of {} built: {} cards in {} ms", chat, map.cards.len(), started.elapsed().as_millis());
     maps.retain(|(id, _)| id != chat);
     maps.push((chat.to_string(), map.clone()));
@@ -189,7 +196,14 @@ fn record_line(card: &Card, text: &str) -> String {
     } else {
         ""
     };
-    format!("[m:{} · {} · {}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, mark, text)
+    let mut done = String::new();
+    if !card.tools.is_empty() {
+        done = format!(" · ran {}", card.tools.join(", "));
+        if !card.files.is_empty() {
+            done.push_str(&format!(" on {}", card.files.join(", ")));
+        }
+    }
+    format!("[m:{} · {} · {}{}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, mark, done, text)
 }
 
 /// Recalled messages in chat order, so a later correction reads after what it corrects
@@ -216,8 +230,9 @@ pub struct Evidence {
 }
 
 /// Recalled messages for `message`, among the transcript positions in `hidden`, within
-/// `max_tokens` (estimated)
-pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usize) -> Option<Evidence> {
+/// `max_tokens` (estimated). With `outline_topics` (history_mode none, where the prompt shows no
+/// earlier turn at all) the newest earlier topics are outlined too.
+pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usize, outline_topics: bool) -> Option<Evidence> {
     let map = chat_map(chat)?;
     let hidden: HashSet<u64> = hidden.iter().map(|i| *i as u64).collect();
     let visible: HashSet<u64> = map.cards.iter().map(|c| c.pos).filter(|pos| !hidden.contains(pos)).collect();
@@ -240,9 +255,34 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
         refs.push(json!({ "ref": format!("m:{}", card.pos), "event": card.id, "score": (hit.score * 100.0).round() / 100.0, "why": hit.why }));
         lines.push((card.pos, line));
     }
+    // An outline of the earlier topics the prompt does not show (newest last), when room is left
+    let mut outline = Vec::new();
+    let topics = if outline_topics { MAX_OUTLINE } else { 0 };
+    for episode in map.episodes.iter().filter(|e| (e.first_pos..=e.last_pos).all(|p| hidden.contains(&p))).rev().take(topics) {
+        let line = format!(
+            "[{} · {} – {} · {} messages] {}{}",
+            episode.id,
+            episode.start.get(..16).unwrap_or(&episode.start).replace('T', " "),
+            episode.end.get(11..16).unwrap_or(""),
+            episode.messages,
+            episode.title,
+            if episode.files.is_empty() { String::new() } else { format!(" · files: {}", episode.files.join(", ")) }
+        );
+        let tokens = cluaiz_agents::tool_search::tokens(line.len());
+        if used + tokens > max_tokens {
+            break;
+        }
+        used += tokens;
+        outline.push(line);
+    }
+    outline.reverse();
     if lines.is_empty() {
         return None;
     }
-    let block = format!("<recall>\n{}\n</recall>", records(lines));
-    Some(Evidence { block, report: json!({ "hidden_messages": hidden.len(), "recalled": refs, "tokens": used }) })
+    let mut block = format!("<recall>\n{}", records(lines));
+    if !outline.is_empty() {
+        block.push_str(&format!("\nEarlier topics not shown (ask recall or open_memory for details):\n{}", outline.join("\n")));
+    }
+    block.push_str("\n</recall>");
+    Some(Evidence { block, report: json!({ "hidden_messages": hidden.len(), "recalled": refs, "episodes": outline.len(), "tokens": used }) })
 }

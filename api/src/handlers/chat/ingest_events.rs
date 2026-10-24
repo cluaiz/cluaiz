@@ -9,7 +9,7 @@
 
 use super::types::{ExternalMessage, MessageContent};
 use cluaiz_agents::memory::transcript::{self, ClientMessage};
-use cluaiz_agents::memory::{EventStore, JsonlStore, NewEvent};
+use cluaiz_agents::memory::{records, EventStore, JsonlStore, NewEvent};
 use cluaiz_agents::RecordedStep;
 use serde_json::{json, Value};
 
@@ -59,10 +59,20 @@ pub fn ingest_turn(chat: &str, steps: &[RecordedStep], tool_events: &[Value], co
         events.push(NewEvent::new("context_edit", json!({ "op": "compaction", "detail": compaction })));
     }
     for event in tool_events {
-        events.push(NewEvent::new("context_edit", json!({ "op": event.get("op"), "target": event.get("target"), "ok": event.get("ok") })));
+        if event.get("op").and_then(Value::as_str) == Some("approval") {
+            events.push(NewEvent::new("approval", event.clone()));
+        } else {
+            events.push(NewEvent::new("context_edit", json!({ "op": event.get("op"), "target": event.get("target"), "ok": event.get("ok") })));
+        }
     }
     for (index, step) in steps.iter().enumerate() {
-        events.push(NewEvent::new("tool_call", json!({ "step": index, "tool": step.name, "call": step.call_xml })));
+        // Secrets in the arguments are taken out before the call is logged
+        let call = records::redact_call(&step.call_xml);
+        let files = records::call_json(&step.call_xml)
+            .and_then(|c| c.get("arguments").cloned())
+            .map(|args| records::files_touched(&args))
+            .unwrap_or_default();
+        events.push(NewEvent::new("tool_call", json!({ "step": index, "tool": step.name, "call": call, "files": files })));
         events.push(NewEvent::new("tool_result", json!({ "step": index, "tool": step.name, "result": step.result })));
     }
     events.push(transcript::answer_event(answer, answer_pos));

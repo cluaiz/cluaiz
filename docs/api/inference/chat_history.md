@@ -8,7 +8,7 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 | Endpoint | What it does |
 | --- | --- |
 | `GET /v1/chat/{session_id}/events` | The chat's event log, oldest first |
-| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text) |
+| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text) and episodes |
 | `POST /v1/recall/search` | Messages of a chat that fit a query |
 | `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
 | `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
@@ -33,6 +33,12 @@ more events follow; `skipped_lines` counts lines that could not be read (a crash
   "keywords": ["deploy", "naam", "orion", "port", "server"], "entities": { "files": [], "urls": [], "numbers": ["8011"], "quoted": [] },
   "tools": [], "files": [], "signals": [], "importance": 0.3 } ] }
 ```
+
+`episodes` lists stretches of the chat about one thing, found by rules: a new episode starts after
+a pause of more than 30 minutes, when the user says so ("new topic", "naya topic"), or when a
+message shares almost no keywords with the current one (short follow-ups such as "phir se" stay).
+Each has `id` (`ep:<first position>`), `first_pos`, `last_pos`, `start`, `end`, `messages`,
+`keywords`, a rule `title`, `files`, `tools` and `key_moments` (corrections and decisions).
 
 ## POST /v1/recall/search
 

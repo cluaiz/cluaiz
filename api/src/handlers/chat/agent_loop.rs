@@ -331,7 +331,9 @@ pub async fn execute_streaming_loop(
                         });
                         yield Ok::<_, Infallible>(Event::default().data(perm_chunk.to_string()));
 
-                        if let Err(reason) = super::authorize::wait(&state_clone, pending, &public_call_name).await {
+                        let decision = super::authorize::wait(&state_clone, pending, &public_call_name).await;
+                        tool_events.push(super::authorize::approval_event(&public_call_name, &decision));
+                        if let Err(reason) = decision {
                             permission_granted = false;
                             user_denial_feedback = Some(reason);
                         }
