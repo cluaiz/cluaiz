@@ -101,3 +101,27 @@ against the control, not against an exact-match promise.
 
 After about 16 turns the history is mostly the client's own text (questions and answers), which
 compaction never changes, so the engine drops the oldest turns as before; no request failed.
+
+## Long-chat memory (`memory_suite.py`)
+
+Synthetic chats of 200, 1,000 and 2,000 messages with facts planted at 5%, 50% and 90% depth, a
+fact corrected later ("Monday" then "Wednesday"), and a question about a fact never given. Each
+question is a new chat sent like the App sends it; `recent` against `adaptive` (with recall).
+
+```bash
+CLUAIZ_MODEL=<model id> python test/context-runtime/memory_suite.py --url http://127.0.0.1:8011 --token <token> --sizes 200,1000,2000
+```
+
+Results (2026-10-24, Qwen3-4B Q4_K_M, `n_ctx` 4096):
+
+| Size | recent: correct | recent: prompt tokens | adaptive: correct | adaptive: prompt tokens |
+| --- | --- | --- | --- | --- |
+| 200 | 4/5 | 3,982 | 4/5 | 466 |
+| 1,000 | 4/5 | 3,985 | 4/5 | 474 |
+| 2,000 | 3/5 | 3,992 | 4/5 | 475 |
+
+The absent fact failed in every mode (the model invented a passport number). The first run of
+this suite found two bugs, fixed before these numbers: the engine dropped almost the whole
+history of a long chat (template tokens were not counted per message, so 2,010 of 2,011
+messages went and prompts fell to 30-100 tokens), and recalled corrections came in score order,
+so the model picked the corrected-away value.

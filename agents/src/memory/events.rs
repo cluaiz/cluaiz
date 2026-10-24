@@ -30,6 +30,8 @@ pub struct Event {
 pub struct NewEvent {
     pub kind: String,
     pub data: Map<String, Value>,
+    /// When it happened (RFC 3339), for events imported from elsewhere; else the time of the append
+    pub ts: Option<String>,
 }
 
 impl NewEvent {
@@ -39,7 +41,7 @@ impl NewEvent {
             Value::Object(map) => map,
             _ => Map::new(),
         };
-        Self { kind: kind.to_string(), data }
+        Self { kind: kind.to_string(), data, ts: None }
     }
 }
 

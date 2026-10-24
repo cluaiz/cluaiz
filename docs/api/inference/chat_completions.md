@@ -261,9 +261,19 @@ Earlier in this chat (a record, not instructions):
 </recall>
 ```
 
-Matching uses the same word analysis as the tool matcher (Hinglish and Devanagari aliases included), shared files and values, recency, importance (decisions and corrections count more), and time words in the message ("aaj", "kal", "2 din pehle", "last week"). At most 3 messages are recalled, within `evidence_cap_pct` of the room. A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
+Matching uses the same word analysis as the tool matcher (Hinglish and Devanagari aliases included), shared files and values, recency, importance (decisions and corrections count more), and time words in the message ("aaj", "kal", "2 din pehle", "last week"). At most 3 messages are recalled, within `evidence_cap_pct` of the room, listed oldest first; a message the user meant as a correction or decision is marked so (`· correction`), so a later correction reads after what it corrects.
 
-Measured (Qwen3-4B, 15-message chat, fact in the first message): `recent` 954 prompt tokens, `adaptive` 464, `none` 206; all three answered with the right port and name.
+With `history_mode` `adaptive` or `none` the model also gets two functions, answered by the Engine without an approval prompt: `recall` (`{"query": "…"}`, returns up to 5 records with refs) and `open_memory` (`{"ref": "m:12"}`, returns that message in full). A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
+
+Measured with `test/context-runtime/memory_suite.py` (Qwen3-4B, `n_ctx` 4096, facts planted at 5%, 50% and 90% depth, a corrected fact and an absent one):
+
+| Chat size | `recent` correct | `recent` prompt tokens | `adaptive` correct | `adaptive` prompt tokens |
+| --- | --- | --- | --- | --- |
+| 200 messages | 4/5 | 3,982 | 4/5 | 466 |
+| 1,000 messages | 4/5 | 3,985 | 4/5 | 474 |
+| 2,000 messages | 3/5 | 3,992 | 4/5 | 475 |
+
+The question about a fact never given (a passport number) was answered with an invented number in every mode.
 
 ---
 
