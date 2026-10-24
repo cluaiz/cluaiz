@@ -11,7 +11,15 @@ use tracing::info;
 pub(crate) struct StreamOptions<'a> {
     pub media: Option<(&'a mut MediaInput, &'a mut Projector)>,
     pub skip_reasoning: Option<&'a std::sync::atomic::AtomicBool>,
+    /// The request's stop flag, read between prompt chunks too (a token callback only runs once
+    /// the prompt is processed)
+    pub cancel: Option<&'a std::sync::atomic::AtomicBool>,
 }
+
+/// Prompt chunk of an idle-time job: a request that arrives waits for one chunk at most. Not
+/// smaller: with layers in RAM every decode has a fixed cost (weights copied to the GPU, or a
+/// CPU pass under 32 tokens), so small chunks would multiply it without stopping sooner.
+const BACKGROUND_PROMPT_CHUNK: usize = 64;
 
 struct SafeSampler {
     sampler: *mut std::ffi::c_void,
@@ -42,7 +50,7 @@ pub fn stream_tokens(
         dna,
         last_prefilled_tokens,
         callback,
-        StreamOptions { media: None, skip_reasoning: None },
+        StreamOptions { media: None, skip_reasoning: None, cancel: None },
     )
 }
 
@@ -56,7 +64,7 @@ pub(crate) fn stream_tokens_with_media(
     mut callback: Box<dyn FnMut(String) -> bool + Send + 'static>,
     options: StreamOptions<'_>,
 ) -> anyhow::Result<Vec<i32>> {
-    let StreamOptions { media, skip_reasoning } = options;
+    let StreamOptions { media, skip_reasoning, cancel } = options;
     let is_media = media.is_some();
     if is_media && !last_prefilled_tokens.is_empty() {
         anyhow::bail!("Text-only prefix reuse is unavailable for media requests");
@@ -88,6 +96,8 @@ pub(crate) fn stream_tokens_with_media(
         let mut structured_messages: Vec<(String, String)> = Vec::new();
         // Debug: the rendered prompt goes into the context report (template tests)
         let mut return_prompt = false;
+        // An idle-time job (card, summary): its prompt goes in small chunks, so it stops quickly
+        let mut background = false;
         let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
@@ -146,6 +156,7 @@ pub(crate) fn stream_tokens_with_media(
                     // chat's KV): see below
                     let keep_prefix = envelope.get("thinking_off_keeps_prefix").and_then(|k| k.as_bool()) == Some(true);
                     return_prompt = envelope.get("return_prompt").and_then(|k| k.as_bool()) == Some(true);
+                    background = envelope.get("background").and_then(|k| k.as_bool()) == Some(true);
                     (
                         samplers,
                         think_mode,
@@ -569,13 +580,22 @@ pub(crate) fn stream_tokens_with_media(
                 new_tokens.len()
             );
 
+            // The request was stopped between two prompt chunks
+            let stopped = std::cell::Cell::new(false);
             let decode_from = |llama: &NativeLlama,
                                batch: &mut crate::ffi::llama_cpp::LlamaBatch,
                                tokens: &[i32],
                                start_pos: usize|
              -> bool {
-                let step = llama.prompt_chunk_len(tokens.len());
+                let mut step = llama.prompt_chunk_len(tokens.len());
+                if background {
+                    step = step.min(BACKGROUND_PROMPT_CHUNK);
+                }
                 for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
+                    if cancel.is_some_and(|c| c.load(Ordering::SeqCst)) {
+                        stopped.set(true);
+                        return false;
+                    }
                     for (i, token) in chunk.iter().enumerate() {
                         let index = chunk_idx * step + i;
                         *batch.token.add(i) = *token;
@@ -619,6 +639,22 @@ pub(crate) fn stream_tokens_with_media(
             }
             prefilled = prefilled
                 && decode_from(llama, &mut safe_batch.batch, &new_tokens[split..], n_past + split);
+            if stopped.get() {
+                // Stopped for a request: the KV keeps the cached prefix, the rest of this prompt goes
+                if llama_cpp::llama_memory_seq_rm(mem, 0, n_past as i32, -1) {
+                    cached.truncate(n_past);
+                    llama.checkpoints.retain(|c| c.n_tokens as usize <= n_past);
+                } else {
+                    llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                    llama.checkpoints.clear();
+                    cached.clear();
+                }
+                report.stop = "cancel";
+                report.n_tokens = cached.len();
+                info!("🛑 [NativeStream] Stopped while processing the prompt; {} cached tokens kept", cached.len());
+                llama.last_context = Some(report);
+                return Ok(cached);
+            }
             if !prefilled {
                 tracing::warn!("⚠️ [Llama-Lib] Delta prefill failed (KV cache mismatch). Falling back to full prefill from scratch...");
                 llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
