@@ -348,6 +348,23 @@ Reply with only one JSON object and nothing else: \
 {\"title\": \"what that exchange was about, at most 10 words\", \"motive\": \"why I asked, at most 12 words\", \
 \"summary\": \"at most 2 short sentences\", \"keywords\": [\"up to 6 words, in English and in my language\"]}";
 
+/// The JSON shape of a card as a GBNF grammar, keys in the order the instruction asks for
+/// (`motive` only for a turn's card, not for an episode summary). A JSON schema would lose the
+/// order: request JSON is kept in sorted maps.
+fn card_grammar(turn: bool) -> String {
+    let field = |name: &str| format!(r#""\"{name}\"" ws ":" ws string"#);
+    let mut fields = vec![field("title")];
+    if turn {
+        fields.push(field("motive"));
+    }
+    fields.push(field("summary"));
+    fields.push(r#""\"keywords\"" ws ":" ws "[" ws (string (ws "," ws string){0,5})? ws "]""#.to_string());
+    let root = format!(r#"root ::= "{{" ws {} ws "}}""#, fields.join(r#" "," ws "#));
+    let rest = r#"string ::= "\"" ( [^"\\\x7F\x00-\x1F] | "\\" ["\\/bfnrt] ){0,300} "\""
+ws ::= [ \t\n]{0,2}"#;
+    format!("{root}\n{rest}\n")
+}
+
 async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicBool>) {
     let started = std::time::Instant::now();
     let (model_path, settings) = match runnable(state, &job).await {
@@ -366,6 +383,9 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
     // No thinking, with the turn's own prompt start (see the engine's `thinking_off_keeps_prefix`):
     // the chat's KV is reused also where a template switches thinking at the start (Gemma 4)
     envelope["thinking_off_keeps_prefix"] = json!(true);
+    // The reply is a card or an episode summary: JSON only, held to its shape by a grammar (a
+    // model that would rather talk, like Gemma 4 after its thinking was cut, still writes JSON)
+    envelope["grammar"] = json!(card_grammar(job.episode.is_none()));
     envelope["kv_reuse"] = json!("prefix");
     // Native tools stay in the prompt (same KV); the reply is read as text, not as calls
     envelope["parse_tools"] = json!(false);

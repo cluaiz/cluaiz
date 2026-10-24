@@ -36,7 +36,7 @@ Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
 flight, the model that answered writes a short card for the turn (at most 160 tokens, no
 thinking), reusing the chat's KV prefix. Where a template switches thinking at the start of the
 prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, so the KV is still
-reused. A request that arrives stops the job at once; a job that has
+reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once; a job that has
 not started yet is dropped without touching the KV. It never loads a model. Cards appear in
 `GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
 recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
