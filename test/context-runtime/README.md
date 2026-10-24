@@ -125,3 +125,7 @@ this suite found two bugs, fixed before these numbers: the engine dropped almost
 history of a long chat (template tokens were not counted per message, so 2,010 of 2,011
 messages went and prompts fell to 30-100 tokens), and recalled corrections came in score order,
 so the model picked the corrected-away value.
+
+With `history_mode: "none"` (only the system prompt and the current message, plus recall),
+2026-10-24: 200 messages 5/5 at 603 prompt tokens, 2,000 messages 5/5 at 575; the absent fact
+was answered "not known" in this mode.

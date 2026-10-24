@@ -88,6 +88,16 @@ pub async fn wait(state: &Arc<AppState>, pending: PendingApproval, tool_name: &s
 }
 
 /// The tool result the model gets when a call was not allowed to run.
+/// The user's decision on a tool call, for the chat's event log and the context report
+pub fn approval_event(tool_name: &str, decision: &Result<(), String>) -> serde_json::Value {
+    serde_json::json!({
+        "op": "approval",
+        "target": tool_name,
+        "ok": decision.is_ok(),
+        "reason": decision.as_ref().err(),
+    })
+}
+
 pub fn denied_result(reason: &str) -> String {
     serde_json::json!({
         "status": "denied",

@@ -716,7 +716,7 @@ impl PreparedChatContext {
             let hidden = context_plan::hidden_messages(request.messages.len(), &origin, &plan);
             if !hidden.is_empty() {
                 let cap = plan.as_ref().map_or(0, |p| p.available * policy.evidence_cap_pct as usize / 100);
-                if let Some(evidence) = super::recall::auto_recall(chat, &initial_user_query, &hidden, cap) {
+                if let Some(evidence) = super::recall::auto_recall(chat, &initial_user_query, &hidden, cap, history_mode == context_plan::HistoryMode::None) {
                     if let Some(last) = augmented_messages.last_mut() {
                         context_plan::prepend_text(&mut last.content, &evidence.block);
                     }

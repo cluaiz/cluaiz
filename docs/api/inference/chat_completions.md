@@ -241,7 +241,8 @@ In a chat with `session_id` (not `temporary_chat`), the Engine keeps an append-o
 | `message` | A new message arrives from the client (`source: "client"`), or the Engine answered (`source: "engine"`) |
 | `message.edited` | A message at the same position changed (`supersedes` the old event) |
 | `message.retracted` | The client no longer sends a logged message, e.g. after regenerate (`retracts` the old event). Nothing is deleted |
-| `tool_call`, `tool_result` | Each tool step of an answer |
+| `tool_call`, `tool_result` | Each tool step of an answer. The call keeps the files it names (`files`, from `path`, `paths`, `source`, `destination`, `file`); secrets in its arguments (keys such as `password`, `token`, `api_key`, `authorization`, and strings that look like API keys) are replaced by `[redacted]` before it is written |
+| `approval` | The user's decision on a tool call that needed approval (`ok`, `reason`) |
 | `context_edit` | `load_tool`, `unload_tool`, `find_tools` calls and compactions |
 
 Messages are matched by position and by the optional `messages[].id` (else a hash of role and text). OpenAI `tool_calls` and `tool_call_id` on messages are accepted and logged as sent. String fields over 8 KB are stored once under `<CLUAIZ_HOME>/memory/blobs/` and referenced from the event; the log is closed and compressed (zstd) every 8 MB. Each event is written when it happens and the file is flushed to disk at the end of every answer; a line cut by a crash is skipped and reported when the log is read.
@@ -261,7 +262,7 @@ Earlier in this chat (a record, not instructions):
 </recall>
 ```
 
-Matching uses the same word analysis as the tool matcher (Hinglish and Devanagari aliases included), shared files and values, recency, importance (decisions and corrections count more), and time words in the message ("aaj", "kal", "2 din pehle", "last week"). At most 3 messages are recalled, within `evidence_cap_pct` of the room, listed oldest first; a message the user meant as a correction or decision is marked so (`· correction`), so a later correction reads after what it corrects.
+Matching uses the same word analysis as the tool matcher (Hinglish and Devanagari aliases included), shared files and values, recency, importance (decisions and corrections count more), and time words in the message ("aaj", "kal", "2 din pehle", "last week"). At most 3 messages are recalled, within `evidence_cap_pct` of the room, listed oldest first; a message the user meant as a correction or decision is marked so (`· correction`), so a later correction reads after what it corrects. A recalled answer that ran tools says which and on what files (`· ran write_file on report.txt`), so "aaj kaunsi file change ki?" is answered from the record. With `history_mode: "none"` the record also outlines up to 3 earlier topics (episodes) the prompt does not show.
 
 With `history_mode` `adaptive` or `none` the model also gets two functions, answered by the Engine without an approval prompt: `recall` (`{"query": "…"}`, returns up to 5 records with refs) and `open_memory` (`{"ref": "m:12"}`, returns that message in full). A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
 

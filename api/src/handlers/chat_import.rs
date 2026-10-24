@@ -71,7 +71,9 @@ fn events_of(folder: &Path) -> (Vec<NewEvent>, usize, usize) {
         // Tool steps were made while answering: they come before the answer
         for call in message.get("toolCalls").and_then(Value::as_array).into_iter().flatten() {
             let name = call.get("name").and_then(Value::as_str).unwrap_or("tool");
-            let mut call_event = NewEvent::new("tool_call", json!({ "tool": name, "args": call.get("arguments"), "source": "app-import" }));
+            let args = call.get("arguments").map(cluaiz_agents::memory::records::redact);
+            let files = args.as_ref().map(cluaiz_agents::memory::records::files_touched).unwrap_or_default();
+            let mut call_event = NewEvent::new("tool_call", json!({ "tool": name, "args": args, "files": files, "source": "app-import" }));
             call_event.ts = at.clone();
             let mut result_event = NewEvent::new(
                 "tool_result",

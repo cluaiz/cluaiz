@@ -121,7 +121,9 @@ pub async fn execute_non_streaming(
                     public_call_name,
                     pending.request_id
                 );
-                super::authorize::wait(&state, pending, public_call_name).await.err()
+                let decision = super::authorize::wait(&state, pending, public_call_name).await;
+                tool_events.push(super::authorize::approval_event(public_call_name, &decision));
+                decision.err()
             } else {
                 None
             };
