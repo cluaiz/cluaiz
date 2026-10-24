@@ -30,6 +30,24 @@ static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::n
 
 /// Running servers, keyed by their package folder.
 static SESSIONS: Lazy<Mutex<HashMap<PathBuf, Arc<McpSession>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+/// When each server exited without being stopped (for the restart backoff and "unavailable")
+static CRASHES: Lazy<std::sync::Mutex<HashMap<PathBuf, Vec<Instant>>>> = Lazy::new(Default::default);
+/// Crashes counted within this window
+const CRASH_WINDOW: Duration = Duration::from_secs(10 * 60);
+/// This many crashes in the window: the server is not started again until the window passes
+const MAX_CRASHES: usize = 3;
+
+/// How long to wait before starting a server again after its recent crashes (1 s after the
+/// first, 2 s after the second), or `None` when it crashed `MAX_CRASHES` times in the window
+fn restart_wait(crashes: &[Instant], now: Instant) -> Option<Duration> {
+    let recent: Vec<&Instant> = crashes.iter().filter(|t| now.duration_since(**t) < CRASH_WINDOW).collect();
+    if recent.len() >= MAX_CRASHES {
+        return None;
+    }
+    let Some(last) = recent.iter().max() else { return Some(Duration::ZERO) };
+    let backoff = Duration::from_secs(1 << (recent.len() - 1));
+    Some(backoff.saturating_sub(now.duration_since(**last)))
+}
 
 /// Resolves a bare launcher name such as `npx` or `uvx` the way a shell would. On Windows
 /// these are `npx.cmd` / `uvx.exe`, which `CreateProcess` does not find from the bare name,
@@ -83,6 +101,8 @@ struct McpSession {
     pending: PendingMap,
     next_id: AtomicU64,
     alive: Arc<AtomicBool>,
+    /// Set when the Engine stops it: its exit is then not a crash
+    stopping: AtomicBool,
 }
 
 impl McpSession {
@@ -137,6 +157,7 @@ impl McpSession {
             pending: Arc::new(std::sync::Mutex::new(HashMap::new())),
             next_id: AtomicU64::new(1),
             alive: Arc::new(AtomicBool::new(true)),
+            stopping: AtomicBool::new(false),
         });
 
         // One reader owns stdout: responses go to their waiting request, server requests
@@ -173,7 +194,15 @@ impl McpSession {
             if let Ok(mut pending) = reader_session.pending.lock() {
                 pending.clear();
             }
-            tracing::info!("🔌 [McpClient] MCP server '{}' exited", reader_session.name);
+            if reader_session.stopping.load(Ordering::SeqCst) {
+                tracing::info!("🔌 [McpClient] MCP server '{}' exited", reader_session.name);
+            } else {
+                // Not stopped by the Engine: a crash. The next call starts it again (with a backoff)
+                tracing::warn!("⚠️ [McpClient] MCP server '{}' exited on its own; it restarts on the next call", reader_session.name);
+                if let Ok(mut crashes) = CRASHES.lock() {
+                    crashes.entry(reader_session.dir.clone()).or_default().push(Instant::now());
+                }
+            }
         });
 
         session.request("initialize", json!({
@@ -248,6 +277,7 @@ impl McpSession {
     }
 
     fn stop(&self) {
+        self.stopping.store(true, Ordering::SeqCst);
         self.alive.store(false, Ordering::SeqCst);
         if let Ok(mut stdin) = self.stdin.lock() {
             stdin.take();
@@ -281,6 +311,16 @@ async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
             tracing::info!("🔌 [McpClient] Stopping '{}' to stay within {} running servers", stopped.name, MAX_RUNNING);
             stopped.stop();
         }
+    }
+    // After crashes: wait a little before starting it again, and not at all after MAX_CRASHES
+    let crashes = CRASHES.lock().map(|c| c.get(mcp_dir).cloned().unwrap_or_default()).unwrap_or_default();
+    match restart_wait(&crashes, Instant::now()) {
+        None => return Err(anyhow!(
+            "MCP server in {:?} crashed {} times in the last {} minutes; it is not started again for now",
+            mcp_dir, MAX_CRASHES, CRASH_WINDOW.as_secs() / 60
+        )),
+        Some(wait) if !wait.is_zero() => tokio::time::sleep(wait).await,
+        Some(_) => {}
     }
     let session = McpSession::start(mcp_dir).await?;
     sessions.insert(mcp_dir.to_path_buf(), session.clone());
@@ -391,6 +431,11 @@ impl McpClient {
         Ok(result)
     }
 
+    /// Whether the server crashed so often lately that it is not started again for now
+    pub fn is_unavailable(mcp_dir: &Path) -> bool {
+        CRASHES.lock().map(|c| c.get(mcp_dir).is_some_and(|t| restart_wait(t, Instant::now()).is_none())).unwrap_or(false)
+    }
+
     /// Synchronously retrieves cached or statically defined MCP tools without spawning a child process
     pub fn get_cached_tools(mcp_dir: &Path) -> Option<Vec<Value>> {
         let cache_key = mcp_dir.to_path_buf();
@@ -423,4 +468,24 @@ impl McpClient {
 /// a full cache clear removes it)
 fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
     mcp_dir.join(".cache").join("tools_list.json")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_restart_backoff_and_unavailable() {
+        let now = Instant::now();
+        let ago = |s: u64| now - Duration::from_secs(s);
+        assert_eq!(restart_wait(&[], now), Some(Duration::ZERO));
+        // One crash just now: 1 s; long ago: at once
+        assert_eq!(restart_wait(&[now], now), Some(Duration::from_secs(1)));
+        assert_eq!(restart_wait(&[ago(5)], now), Some(Duration::ZERO));
+        // Two recent crashes: 2 s after the last
+        assert_eq!(restart_wait(&[ago(30), ago(1)], now), Some(Duration::from_secs(1)));
+        // Three in the window: unavailable; outside the window they no longer count
+        assert_eq!(restart_wait(&[ago(100), ago(50), ago(10)], now), None);
+        assert_eq!(restart_wait(&[ago(700), ago(650), ago(10)], now), Some(Duration::ZERO));
+    }
 }
