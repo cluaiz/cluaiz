@@ -165,7 +165,8 @@ def _non_streaming(engine, decision):
             time.sleep(0.5)
 
     worker = threading.Thread(target=answer, daemon=True)
-    worker.start()
+    if decision:
+        worker.start()
     try:
         response = engine.chat(body("Read notes.txt and tell me the secret word.", chat, tools=["filesystem"], tool_search=False))
     finally:
@@ -183,6 +184,14 @@ def j9(engine):
     """Non-streaming reject: the tool does not run and the model is told"""
     text = _non_streaming(engine, "reject")
     return "MANGO-42" not in text, f"answer {text[-120:]!r}"
+
+
+def j9t(engine):
+    """Non-streaming timeout: nobody answers the approval, the tool does not run"""
+    started = time.time()
+    text = _non_streaming(engine, None)
+    waited = time.time() - started
+    return "MANGO-42" not in text and waited >= 115, f"waited {waited:.0f} s, answer {text[-120:]!r}"
 
 
 def j10(engine):
@@ -268,7 +277,7 @@ def j15(engine):
     return ok, f"killed {len(killed)} process(es); after: calls {names(second)}, answer {second['text'][-80:]!r}"
 
 
-JOURNEYS = {"J1": j1, "J2": j2, "J3": j3, "J4": j4, "J5": j5, "J6": j6, "J7": j7, "J8": j8, "J9": j9, "J10": j10, "J11": j11, "J12": j12, "J13": j13, "J14": j14, "J15": j15}
+JOURNEYS = {"J1": j1, "J2": j2, "J3": j3, "J4": j4, "J5": j5, "J6": j6, "J7": j7, "J8": j8, "J9": j9, "J9T": j9t, "J10": j10, "J11": j11, "J12": j12, "J13": j13, "J14": j14, "J15": j15}
 
 
 def main():
