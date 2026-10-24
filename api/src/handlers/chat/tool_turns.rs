@@ -234,6 +234,13 @@ pub async fn run_meta_tool(
             };
             MetaOutcome { text, unloaded: None }
         }
+        cluaiz_agents::READ_TOOL_FILE_NAME => {
+            // Room left for tools in this answer, after what earlier steps added
+            let room = ctx.tool_load_room.unwrap_or_default().saturating_sub(turns.chars());
+            let text = cluaiz_agents::tool_search::read_tool_file(&text_arg("id"), &text_arg("path"), room);
+            tracing::info!("📄 [Tools] read_tool_file(\"{}\", \"{}\") -> {} chars", text_arg("id"), text_arg("path"), text.len());
+            MetaOutcome { text, unloaded: None }
+        }
         cluaiz_agents::UNLOAD_TOOL_NAME => {
             let id = text_arg("id");
             tracing::info!("📤 [Tools] unload_tool(\"{}\")", id);
