@@ -11,6 +11,7 @@ the answer, and what it did for each request. The plan itself is described in
 | `POST /v1/chat/{session_id}/context/preview` | The plan a chat request would get, without running it |
 | `GET /v1/chat/{session_id}/context/report` | Ids of the chat's kept context reports |
 | `GET /v1/chat/{session_id}/context/report/{request_id}` | One kept context report |
+| `GET /v1/context/jobs` | The idle-time scheduler: queue, counts and recent results |
 
 ## Policy
 
@@ -34,6 +35,27 @@ not started yet is dropped without touching the KV. It never loads a model. Card
 recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
 request kept the whole conversation in the cache (`cache_n` 71 of 90, the rest being its own new
 message).
+
+**Nothing is lost on a restart or a crash.** The chat's event log is the job list: a card is
+written only when it is done (`card_enrichment`, or `card_enrichment_failed` when the reply held
+no card, so it is not retried forever), and turns without one are found again. After 60 s
+without chat requests, the scheduler scans chats written to in the last 7 days and queues up to
+20 such turns as "cold" jobs: only that turn's question and answer are sent. Cold jobs run only
+when chat memory is on, because they replace the KV of the chat you were in (it comes back from
+disk on your next message). A turn whose job was stopped or replaced by a newer turn is picked up
+the same way.
+
+## GET /v1/context/jobs
+
+```json
+{ "indexer": "auto", "requests_in_flight": 0, "running": false,
+  "queue": [ { "chat_id": "resume1", "answer_pos": 3, "kind": "cold" } ],
+  "counts": { "done": 12, "failed": 0, "stopped": 0, "skipped": 0 },
+  "recent": [ { "chat": "resume2", "answer_pos": 5, "cold": false, "outcome": "done", "ms": 8017 } ] }
+```
+
+`outcome` is `done`, `stopped` (a request arrived), `failed: …` or `skipped: …` (policy, no GPU
+layers, chat memory off, no model or another model loaded).
 
 A chat request can change fields for itself with `context_policy`, for example
 `"context_policy": {"recent_turns_min": 3}`. There, unknown fields and invalid values are ignored
