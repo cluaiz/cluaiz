@@ -87,23 +87,65 @@ fn message_event(kind: &str, pos: usize, message: &ClientMessage, extra: Value) 
     NewEvent::new(kind, data)
 }
 
+/// A logged message, borrowed: (event id, key, role, text)
+type LoggedRef<'a> = (&'a str, &'a str, &'a str, &'a str);
+
 /// The events a client request adds to the logged transcript
 pub fn diff(logged: &BTreeMap<u64, Logged>, messages: &[ClientMessage]) -> Vec<NewEvent> {
+    let mut slots: Vec<Option<LoggedRef>> = Vec::new();
+    for (pos, m) in logged {
+        let pos = *pos as usize;
+        if slots.len() <= pos {
+            slots.resize(pos + 1, None);
+        }
+        slots[pos] = Some((m.event_id.as_str(), m.key.as_str(), m.role.as_str(), m.text.as_str()));
+    }
+    diff_logged(&slots, messages)
+}
+
+/// `diff` straight from the chat's events, without copying its transcript (a long chat sends
+/// every message with every request)
+pub fn diff_events(events: &[Event], messages: &[ClientMessage]) -> Vec<NewEvent> {
+    // Positions are dense (0, 1, 2, …): a slot per position
+    let mut slots: Vec<Option<LoggedRef>> = Vec::with_capacity(messages.len());
+    for event in events {
+        let kind = event.kind.as_str();
+        if !matches!(kind, "message" | "message.edited" | "message.retracted") {
+            continue;
+        }
+        let Some(pos) = event.data.get("pos").and_then(Value::as_u64).map(|p| p as usize) else { continue };
+        if slots.len() <= pos {
+            slots.resize(pos + 1, None);
+        }
+        slots[pos] = match kind {
+            "message.retracted" => None,
+            _ => {
+                let field = |key: &str| event.str(key).unwrap_or_default();
+                Some((event.id.as_str(), field("key"), field("role"), field("text")))
+            }
+        };
+    }
+    diff_logged(&slots, messages)
+}
+
+fn diff_logged(logged: &[Option<LoggedRef>], messages: &[ClientMessage]) -> Vec<NewEvent> {
     let mut events = Vec::new();
     for (pos, message) in messages.iter().enumerate() {
         let role = message.role.to_lowercase();
-        match logged.get(&(pos as u64)) {
+        match logged.get(pos).copied().flatten() {
             None => events.push(message_event("message", pos, message, json!({}))),
             // Same message (same key, or the Engine's own answer coming back as text) with the
             // same text: nothing new
-            Some(old)
-                if old.text.trim() == message.text.trim()
-                    && (old.role == role || old.key == message_key(&role, &message.text, message.id.as_deref())) => {}
-            Some(old) => events.push(message_event("message.edited", pos, message, json!({ "supersedes": old.event_id }))),
+            Some((_, key, old_role, text))
+                if text.trim() == message.text.trim()
+                    && (*old_role == role || *key == message_key(&role, &message.text, message.id.as_deref())) => {}
+            Some((event_id, ..)) => events.push(message_event("message.edited", pos, message, json!({ "supersedes": event_id }))),
         }
     }
-    for (pos, old) in logged.range(messages.len() as u64..) {
-        events.push(NewEvent::new("message.retracted", json!({ "pos": pos, "retracts": old.event_id })));
+    for (pos, slot) in logged.iter().enumerate().skip(messages.len()) {
+        if let Some((event_id, ..)) = slot {
+            events.push(NewEvent::new("message.retracted", json!({ "pos": pos, "retracts": event_id })));
+        }
     }
     events
 }
