@@ -460,7 +460,9 @@ impl PreparedChatContext {
         // Native tool calls: the template renders tool turns itself, so results are tool messages
         let native_tools = policy.tool_format == "native" && super::tool_turns::template_renders_tools(chat_tmpl.as_deref());
         let tool_role = native_tools || super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
+        let render_started = std::time::Instant::now();
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode, policy.recent_turns_min);
+        let render_ms = render_started.elapsed().as_millis() as u64;
         let mut augmented_messages = rendered.messages;
         let mut origin = rendered.origin;
         // Durable notes: pinned ones go into the system prompt, chosen when the chat starts (and
@@ -481,9 +483,11 @@ impl PreparedChatContext {
         context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
         // The chat's event log: what the client sent (a preview changes nothing)
         let mut request_events = Vec::new();
+        let ingest_started = std::time::Instant::now();
         if let (Some(chat), false) = (&ledger_chat, request.preview) {
             request_events = super::ingest_events::ingest_request(chat, &request.messages);
         }
+        let ingest_ms = ingest_started.elapsed().as_millis() as u64;
         let current_turn_key = rendered.current_key;
         let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
 
@@ -821,7 +825,9 @@ impl PreparedChatContext {
         // ledger gives back old tool hints and old tool results (batched, at least
         // clear_at_least tokens) and the prompt is rendered again; the engine still drops the
         // oldest turns when the history does not fit after that.
+        let count_started = std::time::Instant::now();
         let mut plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+        let count_ms = count_started.elapsed().as_millis() as u64;
         let mut compaction = None;
         if let (Some(chat), Some(saved), Ok(planned)) = (&ledger_chat, &ledger, &plan) {
             if planned.needs_compaction {
@@ -860,6 +866,7 @@ impl PreparedChatContext {
         // record goes in front of the current message and is kept with the turn (like the hint).
         let mut turn_block = hint.clone();
         let mut recall_report = serde_json::Value::Null;
+        let recall_started = std::time::Instant::now();
         if let Some(chat) = &ledger_chat {
             let hidden = context_plan::hidden_messages(request.messages.len(), &origin, &plan);
             if !hidden.is_empty() {
@@ -878,6 +885,7 @@ impl PreparedChatContext {
                 }
             }
         }
+        let recall_ms = recall_started.elapsed().as_millis() as u64;
         // The open task's checkpoint, when the prompt does not show the whole chat (or was
         // just compacted): the model keeps its place
         let mut task_report = serde_json::Value::Null;
@@ -1106,6 +1114,12 @@ impl PreparedChatContext {
             "registry_template_ms": before_tools.duration_since(after_load).as_millis() as u64,
             "tools_ms": after_tools.duration_since(before_tools).as_millis() as u64,
             "plan_ms": after_tools.elapsed().as_millis() as u64,
+            // Parts of the above: the history rendered from the ledger, the event log, the first
+            // token count of the prompt, recall
+            "render_ms": render_ms,
+            "ingest_ms": ingest_ms,
+            "count_ms": count_ms,
+            "recall_ms": recall_ms,
         });
         tracing::info!(
             "⏱️ [Preflight] {} ms total | model load {} ms | registry + template + tags {} ms | skills + tools {} ms | rest {} ms",
@@ -1326,6 +1340,8 @@ pub fn record_turn(
         return None;
     };
     let turn_events = super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
+    // The Chat Map with this turn, ready for the next request
+    super::recall::refresh_later(chat);
     let external = cluaiz_agents::memory::is_external(chat);
     // Idle-time card for this turn, written by the model while its KV is still hot
     if let (Some(model_path), false, false) = (&ctx.active_model_path, answer.trim().is_empty(), external) {

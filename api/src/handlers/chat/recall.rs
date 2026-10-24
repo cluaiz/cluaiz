@@ -53,9 +53,8 @@ static MAPS: LazyLock<Mutex<Vec<(String, Arc<ChatMap>)>>> = LazyLock::new(|| Mut
 /// of each answer's tool steps
 type Logged = (u64, Vec<MessageIn>, Vec<TaskUpdate>, std::collections::HashMap<String, EpisodeSummary>, Steps);
 
-fn messages(chat: &str) -> anyhow::Result<Logged> {
+fn messages(chat: &str, log: &cluaiz_agents::memory::ReadLog) -> Logged {
     let store = cluaiz_agents::memory::store_for(chat);
-    let log = store.read(chat)?;
     let slots = transcript(&log.events);
     let mut tools: std::collections::HashMap<u64, (Vec<String>, Vec<String>)> = Default::default();
     // Tool steps are logged just before the answer message they belong to
@@ -150,25 +149,33 @@ fn messages(chat: &str) -> anyhow::Result<Logged> {
         .filter(|e| e.kind == "episode_summary")
         .filter_map(|e| Some((e.str("episode")?.to_string(), serde_json::from_value::<EpisodeSummary>(Value::Object(e.data.clone())).ok()?)))
         .collect();
-    Ok((log.events.last().map_or(0, |e| e.seq), messages, updates, summaries, steps))
+    (log.events.last().map_or(0, |e| e.seq), messages, updates, summaries, steps)
 }
 
 /// The chat's Chat Map, rebuilt when its log has grown
 pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
-    let (version, messages, updates, summaries, steps) = match messages(chat) {
-        Ok(found) => found,
+    let log = match cluaiz_agents::memory::store_for(chat).read_shared(chat) {
+        Ok(log) => log,
         Err(e) => {
             tracing::warn!("⚠️ [Memory] Could not read chat {}: {}", chat, e);
             return None;
         }
     };
-    let mut maps = MAPS.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(at) = maps.iter().position(|(id, map)| id == chat && map.version == version) {
-        let hit = maps.remove(at);
-        maps.push(hit.clone());
-        return Some(hit.1);
+    // The kept map when the log has not grown (checked before anything is built)
+    let version = log.events.last().map_or(0, |e| e.seq);
+    {
+        let mut maps = MAPS.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(at) = maps.iter().position(|(id, map)| id == chat && map.version == version) {
+            let hit = maps.remove(at);
+            maps.push(hit.clone());
+            return Some(hit.1);
+        }
     }
+    let (version, messages, updates, summaries, steps) = messages(chat, &log);
+    // Let go of the shared log before the long part, so an append meanwhile does not copy it
+    drop(log);
     let map = Arc::new(build_map(chat, version, messages, updates, summaries, steps));
+    let mut maps = MAPS.lock().unwrap_or_else(|e| e.into_inner());
     maps.retain(|(id, _)| id != chat);
     maps.push((chat.to_string(), map.clone()));
     if maps.len() > HOT_CHATS {
@@ -177,9 +184,44 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
     Some(map)
 }
 
+/// Chats whose Chat Map is being built again in the background
+static REBUILDING: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Events a kept Chat Map may be behind before a chat request asks for a new build (the request's
+/// own message; the end of each turn builds it again anyway)
+const HOT_MAP_SLACK: u64 = 8;
+
+/// The chat's Chat Map for a chat request: the last one built, also when the log has grown since
+/// (what was added since is the newest part of the chat, which the prompt shows); a map further
+/// behind is built again in the background. Only a chat with no map yet is built here. At 20k
+/// messages a build takes about 300 ms, more than the whole budget of a request's preparation.
+pub fn chat_map_hot(chat: &str) -> Option<Arc<ChatMap>> {
+    let kept = MAPS.lock().unwrap_or_else(|e| e.into_inner()).iter().find(|(id, _)| id == chat).map(|(_, map)| Arc::clone(map));
+    let Some(map) = kept else { return chat_map(chat) };
+    let newest = cluaiz_agents::memory::store_for(chat).read_shared(chat).ok().and_then(|log| log.events.last().map(|e| e.seq)).unwrap_or(0);
+    if newest > map.version + HOT_MAP_SLACK {
+        refresh_later(chat);
+    }
+    Some(map)
+}
+
+/// Builds the chat's Chat Map again in the background when its log has grown (one build at a time
+/// per chat)
+pub fn refresh_later(chat: &str) {
+    if !REBUILDING.lock().unwrap_or_else(|e| e.into_inner()).insert(chat.to_string()) {
+        return;
+    }
+    let chat = chat.to_string();
+    std::thread::spawn(move || {
+        let _ = chat_map(&chat);
+        REBUILDING.lock().unwrap_or_else(|e| e.into_inner()).remove(&chat);
+    });
+}
+
 /// A chat's Chat Map without keeping it in RAM (searches over other chats)
 fn chat_map_uncached(chat: &str) -> Option<ChatMap> {
-    let (version, messages, updates, summaries, steps) = messages(chat).ok()?;
+    let log = cluaiz_agents::memory::store_for(chat).read(chat).ok()?;
+    let (version, messages, updates, summaries, steps) = messages(chat, &log);
     Some(build_map(chat, version, messages, updates, summaries, steps))
 }
 
@@ -332,7 +374,7 @@ pub fn task_schema() -> Value {
 
 /// The chat's open task, if any
 pub fn open_task(chat: &str) -> Option<Task> {
-    let map = chat_map(chat)?;
+    let map = chat_map_hot(chat)?;
     active_task(&map.tasks).cloned()
 }
 
@@ -367,7 +409,7 @@ pub fn memory_schemas() -> Vec<Value> {
 
 /// Answers `recall` and `open_memory` for the chat
 pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
-    let Some(map) = chat_map(chat) else {
+    let Some(map) = chat_map_hot(chat) else {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
@@ -575,7 +617,7 @@ pub struct Evidence {
 /// `max_tokens` (estimated). With `outline_topics` (history_mode none, where the prompt shows no
 /// earlier turn at all) the newest earlier topics are outlined too.
 pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usize, outline_topics: bool) -> Option<Evidence> {
-    let map = chat_map(chat)?;
+    let map = chat_map_hot(chat)?;
     let hidden: HashSet<u64> = hidden.iter().map(|i| *i as u64).collect();
     let visible: HashSet<u64> = map.cards.iter().map(|c| c.pos).filter(|pos| !hidden.contains(pos)).collect();
     let hits = recall(&map.cards, &map.index, message, &visible, chrono::Utc::now(), MAX_HITS);
