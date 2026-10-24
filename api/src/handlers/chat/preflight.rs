@@ -19,6 +19,12 @@ pub struct PreparedChatContext {
     pub chat_tmpl: Option<String>,
     /// Tool results go in as `tool` messages (the template has a tool role, or tools are native)
     pub tool_role: bool,
+    /// Tools go to the model's template (`tools` in the envelope), not inline
+    pub native_tools: bool,
+    /// The tool the Engine loaded before the model answered (`auto_load`), as this turn's first step
+    pub auto_loaded: Option<cluaiz_agents::RecordedStep>,
+    /// The first prompt of the turn: `json_prompt` with the `auto_load` step, if any
+    pub start_prompt: String,
     pub dyn_think_start: Option<String>,
     pub dyn_think_end: Option<String>,
     pub active_think_mode: String,
@@ -598,6 +604,7 @@ impl PreparedChatContext {
         let mut offer_meta_tools = false;
         let mut suggested = serde_json::Value::Array(Vec::new());
         let mut search_offered = false;
+        let mut auto_pick: Option<String> = None;
         if discovery {
             let mut exclude = tool_ids_to_compile.clone();
             exclude.extend(inline_tool_ids.iter().cloned());
@@ -617,6 +624,26 @@ impl PreparedChatContext {
                 );
                 hint_lines = cluaiz_agents::ToolSearch::hint_lines(&catalog, &candidates);
                 suggested = cluaiz_agents::ToolSearch::candidates_json(&catalog, &candidates);
+                if policy.auto_load == "on" && !request.preview {
+                    auto_pick = cluaiz_agents::ToolSearch::auto_load_pick(&candidates).map(|c| c.id.clone());
+                }
+                // mcp_prewarm: the MCP server of the first card starts now, while the model reads
+                // the prompt, so a load_tool that follows does not wait for it
+                if policy.mcp_prewarm == "on" && !request.preview {
+                    let first_card = candidates.iter().find(|c| c.level == cluaiz_agents::tool_search::Level::Card);
+                    if let Some(entry) = first_card.and_then(|c| catalog.iter().find(|e| e.id == c.id)).filter(|e| e.category == "mcp") {
+                        if let Ok(Some(tool)) = cluaiz_agents::ToolsEngine::get_tool(&entry.id) {
+                            let (id, dir) = (entry.id.clone(), std::path::PathBuf::from(tool.local_dir));
+                            tokio::spawn(async move {
+                                let started = std::time::Instant::now();
+                                match cluaiz_agents::McpClient::list_tools(&dir).await {
+                                    Ok(tools) => tracing::info!("🔥 [Tools] Prewarmed MCP '{}' ({} functions) in {} ms", id, tools.len(), started.elapsed().as_millis()),
+                                    Err(e) => tracing::warn!("⚠️ [Tools] Prewarm of MCP '{}' failed: {}", id, e),
+                                }
+                            });
+                        }
+                    }
+                }
             } else if tool_ids_to_compile.is_empty()
                 && !catalog.is_empty()
                 && cluaiz_agents::tool_search::is_actionable(&initial_user_query)
@@ -675,11 +702,11 @@ impl PreparedChatContext {
                     tools_budget, dropped_tools
                 );
             }
-            kept_schemas.extend(meta_schemas.iter().cloned());
-            if native_tools && !kept_schemas.is_empty() {
+            if native_tools {
                 system_tools = workspace_note.trim_start().to_string();
                 template_tools = kept_schemas;
             } else {
+                kept_schemas.extend(meta_schemas.iter().cloned());
                 let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
                 if !tools_xml.is_empty() {
                     system_tools = format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}");
@@ -703,6 +730,23 @@ impl PreparedChatContext {
             }
         }
 
+        // Native tool calls: every function the model may call this turn goes to the template:
+        // bound tools, tools loaded earlier in the chat, and the Engine's own functions (load_tool,
+        // recall, …), so the model calls all of them in its own format
+        if native_tools && tools_allowed {
+            if !inline_tool_ids.is_empty() {
+                let loaded = cluaiz_agents::ToolPromptCompiler::compile_tools(&inline_tool_ids).await;
+                template_tools.extend(loaded.function_schemas);
+            }
+            if offer_meta_tools {
+                template_tools.extend(meta_schemas.iter().cloned());
+            }
+            template_tools = super::tool_turns::unique_functions(template_tools);
+            if system_tools.is_empty() && !template_tools.is_empty() {
+                system_tools = workspace_note.trim_start().to_string();
+            }
+        }
+
         // The hint goes into the current user message (not the system prompt), so the system
         // prompt and the earlier turns stay the same for the KV cache
         let mut hint = String::new();
@@ -720,6 +764,31 @@ impl PreparedChatContext {
             hint.push_str("</tools_hint>");
         }
         let tool_load_room = offer_meta_tools.then(|| max_tool_chars.saturating_sub(system_tools.len() + hint.len()));
+        // auto_load: the one clear tool is loaded now, as if the model had called load_tool
+        let mut auto_loaded = None;
+        if let (Some(id), Some(room)) = (&auto_pick, tool_load_room) {
+            let loaded = cluaiz_agents::ToolSearch::load(id, &[], &initial_user_query, room).await;
+            if let Some(tool_id) = &loaded.loaded {
+                tracing::info!("📦 [Tools] auto_load(\"{}\") before the model answers", tool_id);
+                if let Some(ref sid) = request.session_id {
+                    cluaiz_agents::SessionToolManager::update_session_tools(
+                        sid,
+                        vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true }],
+                        Vec::new(),
+                    );
+                }
+                if !template_tools.is_empty() {
+                    let schemas = cluaiz_agents::ToolPromptCompiler::compile_tools(std::slice::from_ref(tool_id)).await.function_schemas;
+                    template_tools = super::tool_turns::unique_functions([template_tools, schemas].concat());
+                }
+                let call = json!({ "name": cluaiz_agents::LOAD_TOOL_NAME, "arguments": { "id": tool_id } });
+                auto_loaded = Some(cluaiz_agents::RecordedStep {
+                    call_xml: format!("<tool_call>\n{}\n</tool_call>", call),
+                    name: cluaiz_agents::LOAD_TOOL_NAME.to_string(),
+                    result: loaded.text,
+                });
+            }
+        }
         let tokens = cluaiz_agents::tool_search::tokens;
         let template_tools_text = template_tools.iter().map(|t| t.to_string()).collect::<Vec<_>>().join("\n");
         let (part_tokens, _) = count_tokens(&[&hint, &system_tools, &template_tools_text]);
@@ -729,6 +798,7 @@ impl PreparedChatContext {
             "loaded_in_chat": inline_tool_ids.clone(),
             "bound": tool_ids_to_compile.clone(),
             "meta_tools": offer_meta_tools,
+            "auto_loaded": auto_loaded.as_ref().and(auto_pick.clone()),
             "hint_tokens": part_tokens[0],
             "system_tools_tokens": part_tokens[1],
             // Native tool calls: the schemas the template renders (counted as JSON)
@@ -1043,6 +1113,12 @@ impl PreparedChatContext {
             n_ctx_limit,
             chat_tmpl,
             tool_role,
+            native_tools: !template_tools.is_empty(),
+            start_prompt: match &auto_loaded {
+                Some(step) => super::tool_turns::with_steps(&json_prompt, std::slice::from_ref(step), tool_role),
+                None => json_prompt.clone(),
+            },
+            auto_loaded,
             dyn_think_start,
             dyn_think_end,
             active_think_mode,
@@ -1120,7 +1196,7 @@ impl PreparedChatContext {
                 );
             };
             host.dispatch_chat_text(
-                pivot.unwrap_or(&self.json_prompt),
+                pivot.unwrap_or(&self.start_prompt),
                 max_tokens,
                 path,
                 &self.request_settings,

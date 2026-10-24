@@ -215,6 +215,8 @@ pub fn valid(policy: &Policy) -> bool {
         && matches!(policy.notes.as_str(), "ask" | "auto" | "off")
         && matches!(policy.cross_chat.as_str(), "ask" | "allow" | "deny")
         && matches!(policy.tool_format.as_str(), "inline" | "native")
+        && matches!(policy.auto_load.as_str(), "off" | "on")
+        && matches!(policy.mcp_prewarm.as_str(), "off" | "on")
         && policy.recent_turns_min <= 50
         && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct, policy.compact_to_pct]
             .iter()

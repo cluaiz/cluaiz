@@ -32,10 +32,16 @@ pub struct Policy {
     /// blocks) or "native" (the model's own template and call format, with llama.cpp's grammar
     /// and parser)
     pub tool_format: String,
+    /// "on": when the suggestions name one clear tool, the Engine loads it before the model
+    /// answers (one model step fewer); "off": the model loads tools itself
+    pub auto_load: String,
+    /// "on": the MCP server of a clearly suggested tool starts in the background before the model
+    /// asks for it (its first load does not wait for the start); "off": servers start when loaded
+    pub mcp_prewarm: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "off".into() }
     }
 }

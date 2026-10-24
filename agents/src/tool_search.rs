@@ -87,6 +87,9 @@ pub enum Level {
     Card,
 }
 
+/// How far the one card must score above every other candidate for `auto_load`
+pub const AUTO_LOAD_MARGIN: f64 = 2.0;
+
 /// A tool that matched the message
 #[derive(Debug, Clone)]
 pub struct Candidate {
@@ -569,6 +572,20 @@ impl ToolSearch {
     /// `load_tool`: the tool's instructions and function schemas, whole, within `max_chars`.
     /// A skill whose instructions do not fit is refused, never cut. For a large function list
     /// the functions closest to `query` come first and the rest are named.
+    /// The `auto_load` fast path: the one tool to load before the model answers, when the
+    /// suggestions name exactly one card and it scores at least `AUTO_LOAD_MARGIN` above every
+    /// other candidate. On the routing set (2026-10-24) this picked 67 of 108 rows that need a
+    /// tool, one of them wrong, and none of the rows that need none.
+    pub fn auto_load_pick(candidates: &[Candidate]) -> Option<&Candidate> {
+        let mut cards = candidates.iter().filter(|c| c.level == Level::Card);
+        let card = cards.next()?;
+        if cards.next().is_some() {
+            return None;
+        }
+        let next = candidates.iter().filter(|c| c.id != card.id).map(|c| c.score).fold(f64::MIN, f64::max);
+        (card.score - next >= AUTO_LOAD_MARGIN).then_some(card)
+    }
+
     pub async fn load(id: &str, functions: &[String], query: &str, max_chars: usize) -> LoadResult {
         let Some(entry) = Self::catalog(&[]).into_iter().find(|e| e.id.eq_ignore_ascii_case(id)) else {
             let installed: Vec<String> = Self::catalog(&[]).into_iter().map(|e| e.id).collect();
@@ -704,6 +721,22 @@ fn function_description(schema: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_auto_load_needs_one_clear_card() {
+        let c = |id: &str, level: Level, score: f64| Candidate { id: id.into(), level, score, matched: Vec::new() };
+        let clear = [c("filesystem", Level::Card, 7.2), c("pynotes", Level::Title, 3.6)];
+        assert_eq!(ToolSearch::auto_load_pick(&clear).map(|p| p.id.as_str()), Some("filesystem"));
+        // Close behind: the model chooses
+        let close = [c("filesystem", Level::Card, 4.0), c("everything", Level::Title, 3.0)];
+        assert!(ToolSearch::auto_load_pick(&close).is_none());
+        // Two cards, or only titles: the model chooses
+        let two = [c("filesystem", Level::Card, 9.0), c("git", Level::Card, 3.0)];
+        assert!(ToolSearch::auto_load_pick(&two).is_none());
+        assert!(ToolSearch::auto_load_pick(&[c("fetch", Level::Title, 9.0)]).is_none());
+        assert!(ToolSearch::auto_load_pick(&[c("fetch", Level::Card, 3.0)]).is_some());
+        assert!(ToolSearch::auto_load_pick(&[]).is_none());
+    }
 
     fn entry(id: &str, name: &str, description: &str, triggers: &[&str], functions: &[&str]) -> CatalogEntry {
         let mut trigger_terms = HashSet::new();

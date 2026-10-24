@@ -11,6 +11,8 @@ use serde_json::{json, Value};
 
 pub struct ToolTurns {
     steps: Vec<RecordedStep>,
+    /// Native tool calls: functions of tools loaded in this answer, added to the template's tools
+    loaded_functions: Vec<Value>,
     /// The template renders `tool` messages itself; otherwise results go in as user
     /// messages holding a `<tool_response>` block (what such templates would render).
     tool_role: bool,
@@ -19,7 +21,20 @@ pub struct ToolTurns {
 impl ToolTurns {
     /// `tool_role`: results go in as `tool` messages (see `PreparedChatContext::tool_role`)
     pub fn new(tool_role: bool) -> Self {
-        Self { steps: Vec::new(), tool_role }
+        Self { steps: Vec::new(), loaded_functions: Vec::new(), tool_role }
+    }
+
+    /// The turn's steps so far: the tool the Engine loaded before the model answered, if any
+    pub fn start(ctx: &PreparedChatContext) -> Self {
+        Self { steps: ctx.auto_loaded.iter().cloned().collect(), loaded_functions: Vec::new(), tool_role: ctx.tool_role }
+    }
+
+    /// Native tool calls: a tool loaded in this answer can be called in the next step
+    pub async fn add_loaded_tool(&mut self, ctx: &PreparedChatContext, id: &str) {
+        if ctx.native_tools {
+            let compiled = cluaiz_agents::ToolPromptCompiler::compile_tools(&[id.to_string()]).await;
+            self.loaded_functions.extend(compiled.function_schemas);
+        }
     }
 
     pub fn push(&mut self, raw_call_json: &str, name: &str, result: &str) {
@@ -80,18 +95,14 @@ impl ToolTurns {
         if ctx.prepared_media.is_some() {
             return self.media_pivot(ctx);
         }
-        let mut envelope: Value = serde_json::from_str(&ctx.json_prompt).unwrap_or_else(|_| json!({}));
-        if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
-            messages.extend(self.messages());
+        let prompt = with_steps(&ctx.json_prompt, &self.steps, self.tool_role);
+        if self.loaded_functions.is_empty() {
+            return prompt;
         }
+        let mut envelope: Value = serde_json::from_str(&prompt).unwrap_or_else(|_| json!({}));
+        let tools = envelope.get("tools").and_then(Value::as_array).cloned().unwrap_or_default();
+        envelope["tools"] = json!(unique_functions([tools, self.loaded_functions.clone()].concat()));
         envelope.to_string()
-    }
-
-    fn messages(&self) -> Vec<Value> {
-        step_messages(&self.steps, self.tool_role)
-            .into_iter()
-            .map(|(role, content)| json!({ "role": role, "content": content }))
-            .collect()
     }
 
     /// Media prompts are rendered again in full for every step (their embeddings cannot be
@@ -116,6 +127,31 @@ impl ToolTurns {
         });
         format!("[PIVOT_CONTINUE]{}", envelope)
     }
+}
+
+/// Function schemas without repeats (by function name), first one kept
+pub fn unique_functions(schemas: Vec<Value>) -> Vec<Value> {
+    let mut seen = std::collections::HashSet::new();
+    schemas
+        .into_iter()
+        .filter(|schema| {
+            let name = schema.pointer("/function/name").or_else(|| schema.get("name")).and_then(Value::as_str).unwrap_or_default();
+            seen.insert(name.to_string())
+        })
+        .collect()
+}
+
+/// The envelope `json_prompt` with the messages of `steps` after its own
+pub fn with_steps(json_prompt: &str, steps: &[RecordedStep], tool_role: bool) -> String {
+    let mut envelope: Value = serde_json::from_str(json_prompt).unwrap_or_else(|_| json!({}));
+    if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
+        messages.extend(
+            step_messages(steps, tool_role)
+                .into_iter()
+                .map(|(role, content)| json!({ "role": role, "content": content })),
+        );
+    }
+    envelope.to_string()
 }
 
 /// The messages of tool steps, in order: the call as an assistant message, the result as a

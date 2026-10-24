@@ -26,6 +26,8 @@ the answer, and what it did for each request. The plan itself is described in
 | `indexer` | `"auto"` | Idle-time cards written by the model (title, motive, summary, keywords): `auto` when the model has GPU layers, `always`, `rules_only` (cards by rules only) or `off` |
 | `notes` | `"ask"` | Notes the model proposes with `remember`: `ask` (proposed until the user confirms), `auto` (confirmed at once), `off` (no `remember`). See [Notes](./notes.md) |
 | `tool_format` | `"native"` | How tools reach the model: `inline` (their schemas in the system prompt, calls as `<tool_call>` blocks) or `native` (the model's own chat template and call format, with llama.cpp's grammar and parser). See [Native tool calls](#native-tool-calls) |
+| `auto_load` | `"off"` | `on`: when the suggestions name one clear tool (one card, scoring 2 or more above every other candidate), the Engine loads it before the model answers, as if the model had called `load_tool` (one model step fewer; the stream shows it as a `load_tool` call with `"auto": true`, and `context.tools.auto_loaded` names it). `off`: the model loads tools itself |
+| `mcp_prewarm` | `"off"` | `on`: when the first tool card of a message is an MCP server, the server starts in the background while the model reads the prompt, so a `load_tool` that follows does not wait for it to start (the log shows `Prewarmed MCP`). `off`: a server starts when it is loaded |
 | `cross_chat` | `"ask"` | Searching other chats with `recall` (scope `workspace` or `all`): `ask` (the user approves each search, like a tool call: `permission_request` with capability `memory:other_chats`), `allow`, or `deny` (nothing from other chats is ever returned) |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
@@ -52,13 +54,19 @@ the same way.
 
 ## Native tool calls
 
-With `tool_format: "native"` (the default) the bound tools go to the model's chat template as a `tools` list
-(llama-server's path): the template writes them, and the earlier calls and results, the way the
+With `tool_format: "native"` (the default) every function the model may call goes to its chat
+template as a `tools` list (llama-server's path): bound tools, tools loaded in the chat with
+`load_tool`, and the Engine's own functions (`load_tool`, `find_tools`, `recall`, …): the template writes them, and the earlier calls and results, the way the
 model was trained on, and llama.cpp gives a lazy grammar for the model's call format and the parser
 that reads its answer. The grammar sleeps while the model thinks and wakes up when thinking ends.
 The answer streams as the parser reads it, without the call markup; each call then arrives as a
 `<tool_call>` block, so clients, the chat's ledger and `tool_calls` events stay the same in both
 modes. A template that does not render tools gets them inline. Media prompts stay inline.
+
+The list is part of the system prompt, so a tool loaded during an answer changes it: the next step
+processes the prompt again from there (a few hundred tokens in a new chat, the whole history in a
+long one). Inline, a loaded tool's functions travel in the `load_tool` result and nothing earlier
+changes.
 
 Measured with `test/context-runtime/tool_calls.py` (14 rows: 11 that need a tool, 3 that need
 none; isolated server, temperature 0, 2026-10-24, RTX 3050 4 GB):
@@ -72,6 +80,22 @@ none; isolated server, temperature 0, 2026-10-24, RTX 3050 4 GB):
 Gemma 4 called the tools in both modes, but inline it often wrote no answer after the result or
 answered from an invented one. Qwen3's own format is the `<tool_call>` block, so both modes are
 close for it.
+
+With no tools bound (the model sees suggestions and loads what it needs with `load_tool`, the
+App's usual case), same rows:
+
+| Model | loaded tools inline | loaded tools native | native + `auto_load: "on"` |
+| --- | --- | --- | --- |
+| Gemma 4 E4B | 4/14, 1275 s | 12/14, 849 s | 11/14, 777 s |
+| Qwen3-4B (thinking off) | 7/14, 100 s | 8/14, 142 s | 10/14, 140 s |
+
+`auto_load` saved about 9% of the time with Gemma 4 and none with Qwen3 (its extra step is short
+without thinking); the pass counts moved by one or two rows either way, so it stays off.
+
+`mcp_prewarm` (Gemma 4, "Read notes.txt…", fresh Engine each run so the `filesystem` server is not
+running, 3 runs each): off 54.2 / 56.4 / 56.4 s, on 48.5 / 50.8 / 51.1 s. The server start (about
+4.6 s with `npx`) overlaps the model's first step, and `load_tool` then answers in under a
+millisecond instead of 3.6–4.5 s.
 
 ## GET /v1/context/jobs
 
@@ -93,7 +117,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "native" } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "native", "auto_load": "off", "mcp_prewarm": "off" } }
 ```
 
 ## POST /v1/context/settings
