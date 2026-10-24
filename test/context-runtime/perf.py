@@ -6,7 +6,7 @@
 PERF1 preflight at about 10 and 100 installed tools (it adds 90 copies of a skill to the home for
 the second half and removes them after), PERF2 the plan for a chat of --cards messages, PERF3 the
 Engine's memory before and after that chat is indexed, PERF4 the tokens each turn processes and
-why, PERF6 cold start. PERF5 (how fast a request stops an idle job) is in the Engine log only.
+why, PERF6 cold start. PERF5 (how fast a request stops an idle job) is in memory_journeys.py.
 Times come from the context report's `timing` (the Engine's own clock), not from the network.
 """
 import argparse
@@ -90,17 +90,21 @@ def perf2_3(engine, args):
                   messages=history + [{"role": "user", "content": "Mere deploy server ka port kya tha?"}])
     ingest_s = round(time.time() - started, 1)
     after = working_set_mb(engine.pid()) if engine.pid() else None
-    plans = []
+    plans, parts = [], []
     for i in range(3):
         question = f"Project ka codename kya hai? ({i})"
         r = quick(engine, question, chat, history_mode="adaptive", tool_search=False,
                   messages=history + [{"role": "user", "content": question}])
         plans.append(timing(r).get("plan_ms", 0))
+        parts.append(timing(r))
     cards = len(engine.get(f"/v1/chat/{chat}/index").get("cards", []))
     engine.delete(f"/v1/chat/{chat}/history")
     memory = f"; Engine memory {before} MB -> {after} MB with the chat indexed" if before else ""
+    # Steps B-H of the design (ingest, render, analysis, recall, plan): the preflight after model load
+    keys = ("preflight_ms", "model_load_ms", "registry_template_ms", "ingest_ms", "render_ms", "tools_ms", "count_ms", "recall_ms", "plan_ms")
+    split = ", ".join(f"{k[:-3]} {statistics.median(p.get(k, 0) for p in parts):.0f}" for k in keys)
     return (f"{cards} cards; first request (logs and indexes the chat) {ingest_s} s, "
-            f"plan + recall after it {plans} ms{memory}") , first
+            f"plan + recall after it {plans} ms (median ms: {split}){memory}") , first
 
 
 def perf4(engine, args):

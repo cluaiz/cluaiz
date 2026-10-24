@@ -226,7 +226,7 @@ python test/context-runtime/journeys.py --exe target/release/cluaiz.exe --home <
 
 A journey that depends on the model can fail on a small model while the Engine is right; the
 detail line says what happened. Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off, RTX 3050
-4 GB): 15 of 15 pass.
+4 GB): 15 of 15 pass (16 of 16 with J9T, rerun after the PERF2 and PERF5 changes).
 
 | Journey | Time | What it saw |
 | --- | --- | --- |
@@ -251,14 +251,15 @@ unload change the tools part near the start of the prompt.
 ## Speed and memory (`perf.py`, plan §10.2 PERF)
 
 Times come from the context report's `timing` (the Engine's own clock). PERF5 (how fast a request
-stops an idle job) is in the Engine log only. Results (2026-10-24, Qwen3-4B Q4_K_M, RTX 3050 4 GB):
+stops an idle job) is in `memory_journeys.py`. Results (2026-10-24, Qwen3-4B Q4_K_M, RTX 3050 4 GB):
 
 | Test | Result |
 | --- | --- |
 | PERF1 tools part of preflight (median of 5) | 3 ms with the installed tools, 4 ms with 100 installed |
-| PERF2 chat of 20012 messages | first request (logs and indexes the chat) 2.3 s; plan + recall after it 152, 160, 145 ms |
+| PERF2 chat of 20012 messages | first request (logs and indexes the chat) 2.0 s; after it, preflight 32 ms: ingest 14, render 5, recall and plan 3 (it was 939 ms: ingest 217, recall 209, a Chat Map rebuild of about 300 ms) |
 | PERF3 Engine memory | 3206.5 MB with the model loaded, 3242.7 MB with the chat indexed (+36 MB) |
 | PERF4 tokens processed per turn | 19 of 20, 33 of 49, 36 of 81, 47 of 124 (cause `edit` each time) |
+| PERF5 a request during an idle-time job | see `memory_journeys.py` below: +81 and +228 ms to the first text |
 | PERF6 cold start | `/health` answers 1.5 s after start; first chat 3.2 s, of which model load 2.2 s |
 
 In PERF4 the reuse stops a few tokens before the end of the previous prompt (16 of 20 on turn 2),
@@ -282,3 +283,42 @@ is not in its prompt, or when the Engine's own check (`template_dropped`) finds 
 Results (2026-10-24): Qwen3-4B, Gemma 4 E4B and Llama 3.2 3B pass inline and native (Llama's
 template renders no tools, so native falls back inline). The first run found Gemma 4's template
 dropping tool results inline; see the tool-call format section above.
+
+PERF2 went from 939 ms to 32 ms of preflight on 2026-10-24: the event logs of the 4 most recent
+chats stay parsed in RAM (every request used to parse the whole 20k-event log twice), the client's
+messages are matched against the log without copying it, and a request uses the last Chat Map
+while a new one is built after the answer. Steps B-H of the design (ingest, recall, plan, render)
+now take about 22 ms at 20k messages; the target is 15 ms.
+
+**Speed numbers on this machine are low for a reason outside the Engine.** The test Engine runs
+next to the user's own server, which holds most of the 4 GB of VRAM: the planner gave the test
+Engine 1.21 GB, so Gemma 4 E4B had 5 of 42 layers on the GPU. Every prompt then costs about 650 ms
+however short (19 tokens 670 ms, 214 tokens 678 ms, 415 tokens 815 ms), a token about 85 ms, and
+an idle-time card 22-30 s.
+
+## Memory journeys (`memory_journeys.py`)
+
+The plan's memory tests that the long-chat suite does not cover, plus ENR1, PERF5 and the C2
+J-variant. MEM3 and MEM5 import a chat with its own times and tool steps, so their checks do not
+depend on the model.
+
+```bash
+python test/context-runtime/memory_journeys.py --exe target/release/cluaiz.exe --home <test home>     --workspace <fixture> --log <log file> [--model gemma-4-e4b-it-gguf-Q4_K_M] [--only MEM3,MEM5]
+```
+
+Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journeys.py` 16 of 16.
+
+| Test | Result |
+| --- | --- |
+| MEM3 time questions | "kal", "parso", a weekday and "aaj" each found only that day's port (7070, 5050, 5050, 9090) |
+| MEM5 recalling a tool output | the run's result came back at level `tool_only` (`code-interpreter returned: stdout: checksum ZEBRA-7781 …`); the answer gave ZEBRA-7781, which no message had |
+| MEM6 cross-chat | `allow`: the model called `recall` and found the codename; `deny`: `/v1/recall/search` with `scope: all` gave 403 and the answer had no codename; `ask` with a reject: no codename |
+| ENR1 card on the hot KV | the card was written, and the next request processed 9 of 418 tokens (14 of 415 with no job) |
+| PERF5 preemption | first text +81 ms (757 against 676) and +228 ms (1,072 against 843) in two runs; before the fix +1,389 ms |
+| C2 earlier tool step in client mode | the 4th turn's prompt had the first turn's `read_text_file` call and its result; the answer quoted the file's first line |
+| J9T (in `journeys.py`) | nobody answered the approval: the request waited 140 s and the tool did not run |
+
+MEM5 found that `tool_only` (design §11.7) was missing: recall showed the answer around a tool
+run, never its output. PERF5 found that a job could not be stopped while its prompt was processed
+(only between tokens): a request waited up to the whole prompt. Both are fixed. The plan asks for
+50 ms; on this machine one decode alone takes longer (see above).
