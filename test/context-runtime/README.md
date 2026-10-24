@@ -262,8 +262,16 @@ stops an idle job) is in the Engine log only. Results (2026-10-24, Qwen3-4B Q4_K
 | PERF6 cold start | `/health` answers 1.5 s after start; first chat 3.2 s, of which model load 2.2 s |
 
 In PERF4 the reuse stops a few tokens before the end of the previous prompt (16 of 20 on turn 2),
-so each turn processes the previous answer again. The likely cause, not yet checked: Qwen3's
-template renders an earlier answer without the empty thinking block its generation prompt had.
+so each turn processes the previous answer again. Checked with `return_prompt` (2026-10-24): the
+generation prompt ends in `<think>
+
+</think>
+
+` (thinking off), and Qwen3's template renders
+an earlier answer without it, so the cache and the new prompt part there. llama-server does the
+same. Moving the answer's KV over the gap (`kv_reuse: "chunk"`) would keep KV computed after text
+the prompt no longer has, so it stays off by default. The cost is small: after a 417-token answer
+the next turn processed 436 tokens in 647 ms; after a short one, 25 tokens in 838 ms.
 
 ## Chat templates (`template_check.py`, plan P2.3)
 
