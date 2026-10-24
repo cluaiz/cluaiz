@@ -98,6 +98,11 @@ impl ToolsEngine {
         reg.set_tool_security_mode(id, mode)
     }
 
+    pub fn set_tool_trust_annotations(id: &str, trust: bool) -> Result<()> {
+        let mut reg = Self::registry()?;
+        reg.set_tool_trust_annotations(id, trust)
+    }
+
     /// Downloads and installs a tool into `~/.cluaiz/tools/{skills,plugins,mcp}`
     pub async fn install_tool(category: &str, tool_id: &str) -> Result<()> {
         ToolsInstaller::install_component(category, tool_id).await

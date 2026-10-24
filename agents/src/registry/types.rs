@@ -143,6 +143,11 @@ pub struct ToolEntry {
     /// Declared capabilities e.g. ["exec", "fs_write", "network", "fs_read"]
     #[serde(default)]
     pub capabilities: Vec<String>,
+
+    /// MCP only: the user trusts this server's tool annotations, so its functions marked
+    /// read-only (`readOnlyHint`) run without asking in sandboxed mode
+    #[serde(default)]
+    pub trust_annotations: bool,
 }
 
 impl ToolEntry {
@@ -201,6 +206,20 @@ impl ToolEntry {
                 })
             }
         }
+    }
+
+    /// Whether a call of `function` may skip the approval it would need because the user trusts
+    /// this MCP server's annotations and the server marks the function read-only. Never in
+    /// strict mode, never against the tool's own `require_approval`, never for a function that is
+    /// also marked destructive. `annotations`: the function's `annotations` from `tools/list`.
+    pub fn read_only_trusted(&self, master_security_mode: &str, annotations: Option<&serde_json::Value>) -> bool {
+        let hint = |key: &str| annotations.and_then(|a| a.get(key)).and_then(serde_json::Value::as_bool);
+        self.category.eq_ignore_ascii_case("mcp")
+            && self.trust_annotations
+            && self.security_mode == SecurityMode::Inherit
+            && !master_security_mode.eq_ignore_ascii_case("strict")
+            && hint("readOnlyHint") == Some(true)
+            && hint("destructiveHint") != Some(true)
     }
 
     /// Returns resolved capabilities (or fallback to permissions or ["undeclared"])
@@ -267,6 +286,33 @@ mod tests {
         let serialized = serde_json::to_string(&parsed).unwrap();
         assert!(serialized.contains(r#""security_mode":"require_approval""#));
         assert!(serialized.contains(r#""execution_mode":"confirm_destructive""#));
+    }
+
+    #[test]
+    fn test_read_only_trusted_needs_trust_and_a_read_only_mark() {
+        let read_only = serde_json::json!({ "readOnlyHint": true, "openWorldHint": false });
+        let writes = serde_json::json!({ "readOnlyHint": false, "destructiveHint": true });
+        let contradicts = serde_json::json!({ "readOnlyHint": true, "destructiveHint": true });
+        let mut mcp = ToolEntry { category: "mcp".to_string(), ..Default::default() };
+        assert!(mcp.requires_approval("sandboxed"));
+        // Not trusted: the annotation alone changes nothing
+        assert!(!mcp.read_only_trusted("sandboxed", Some(&read_only)));
+        mcp.trust_annotations = true;
+        assert!(mcp.read_only_trusted("sandboxed", Some(&read_only)));
+        assert!(mcp.read_only_trusted("full_access", Some(&read_only)));
+        // Never: writes, contradicting or missing marks, strict mode, the tool's own require_approval
+        assert!(!mcp.read_only_trusted("sandboxed", Some(&writes)));
+        assert!(!mcp.read_only_trusted("sandboxed", Some(&contradicts)));
+        assert!(!mcp.read_only_trusted("sandboxed", None));
+        assert!(!mcp.read_only_trusted("strict", Some(&read_only)));
+        mcp.security_mode = SecurityMode::RequireApproval;
+        assert!(!mcp.read_only_trusted("sandboxed", Some(&read_only)));
+        // Only MCP servers carry annotations
+        let skill = ToolEntry { category: "skill".to_string(), trust_annotations: true, ..Default::default() };
+        assert!(!skill.read_only_trusted("sandboxed", Some(&read_only)));
+        // Old registry files have no field: not trusted
+        let old: ToolEntry = serde_json::from_str(r#"{"id": "fs", "category": "mcp"}"#).unwrap();
+        assert!(!old.trust_annotations);
     }
 
     #[test]

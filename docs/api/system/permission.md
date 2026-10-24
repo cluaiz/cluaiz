@@ -316,6 +316,26 @@ Regardless of whether the global or tool mode is `full_access` or `always_allow`
   * Firmware & NVRAM Wiping: `nvram -c`
   * System Integrity Protection Tampering: `csrutil disable`
 
+### 5.2 Trusted MCP annotations (per function)
+
+An MCP server marks each function in its `tools/list` with `annotations` (`readOnlyHint`,
+`destructiveHint`, …). The Engine does not believe them on its own: a server could mark anything
+read-only. When the user trusts a server's annotations
+(`POST /api/components/settings` with `{"component_id": "filesystem", "settings": {"trust_annotations": true}}`),
+a call of one of its functions runs without asking when all of these hold:
+
+- the server marks the function `readOnlyHint: true` and not `destructiveHint: true`
+- the tool's own policy is `inherit` (`require_approval` still asks)
+- the global mode is not `strict`
+
+Every other function of the server asks as before (for `filesystem`: `write_file`, `edit_file`,
+`move_file`, `create_directory`). The capability shown is `mcp:read_only_trusted`. The setting is
+off for every server until the user turns it on.
+
+Measured (2026-10-24, isolated server, Gemma 4 E4B, `filesystem`): not trusted, `read_text_file`
+asked; trusted, it ran without asking; trusted, `write_file` still asked (rejected, no file
+written); trust removed, `read_text_file` asked again.
+
 ---
 
 ## 6. Sensitive Path & Host Protection Rules

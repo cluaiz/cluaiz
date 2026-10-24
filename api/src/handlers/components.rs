@@ -206,11 +206,13 @@ pub async fn get_settings(State(_state): State<Arc<AppState>>, Query(query): Que
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(tool.enabled));
         current_values.insert("security_mode".to_string(), serde_json::to_value(tool.security_mode).unwrap_or(serde_json::json!("inherit")));
         current_values.insert("execution_mode".to_string(), serde_json::to_value(tool.execution_mode).unwrap_or(serde_json::json!("auto")));
+        current_values.insert("trust_annotations".to_string(), serde_json::Value::Bool(tool.trust_annotations));
     } else {
         // Fallback default for discovered components
         current_values.insert("enabled".to_string(), serde_json::Value::Bool(true));
         current_values.insert("security_mode".to_string(), serde_json::json!("inherit"));
         current_values.insert("execution_mode".to_string(), serde_json::json!("auto"));
+        current_values.insert("trust_annotations".to_string(), serde_json::Value::Bool(false));
     }
 
     Json(serde_json::json!({
@@ -263,6 +265,14 @@ pub async fn update_settings(State(_state): State<Arc<AppState>>, Json(payload):
             }
         } else {
             return error_response(StatusCode::BAD_REQUEST, format!("Invalid execution_mode value: '{}'", exec_str));
+        }
+    }
+
+    // 4. Trust an MCP server's read-only annotations (its read-only functions stop asking)
+    if let Some(trust) = settings_map.get("trust_annotations").and_then(|v| v.as_bool()) {
+        if let Err(e) = cluaiz_agents::ToolsEngine::set_tool_trust_annotations(comp_id, trust) {
+            tracing::error!("Failed to set trust_annotations for '{}': {}", comp_id, e);
+            return error_response(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update trust_annotations for '{}': {}", comp_id, e));
         }
     }
 

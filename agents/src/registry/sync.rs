@@ -62,6 +62,7 @@ impl ToolsRegistry {
                                 semantic_triggers: triggers,
                                 activation_events: Vec::new(),
                                 capabilities: Vec::new(),
+                                trust_annotations: false,
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new Skill: {}", tool_id);
@@ -107,6 +108,7 @@ impl ToolsRegistry {
                                 semantic_triggers: triggers,
                                 activation_events: vec![format!("on_command:use plugin::{}", tool_id)],
                                 capabilities: Vec::new(),
+                                trust_annotations: false,
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new Plugin: {}", tool_id);
@@ -151,6 +153,7 @@ impl ToolsRegistry {
                                 semantic_triggers: triggers,
                                 activation_events: vec![format!("on_command:use mcp::{}", tool_id)],
                                 capabilities: Vec::new(),
+                                trust_annotations: false,
                             });
                             changed = true;
                             tracing::info!("✨ [ToolsRegistry] Discovered new MCP: {}", tool_id);

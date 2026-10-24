@@ -513,6 +513,13 @@ The engine resolves dynamic function symbols via POSIX `dlopen` / Windows `LoadL
 
 ### `POST /api/components/settings`
 
+The tool settings kept in `tools_registry.json` are sent as
+`{"component_id": "<id>", "settings": {...}}`: `enabled` (bool), `security_mode` (`inherit`,
+`require_approval`, `always_allow`), `execution_mode`, and for MCP servers `trust_annotations`
+(bool, default `false`): the server's functions marked read-only run without asking (see
+[Permission → Trusted MCP annotations](../api/system/permission.md#52-trusted-mcp-annotations-per-function)).
+`GET /api/components/settings?component_type=mcp&component_id=<id>` returns the same values.
+
 Dynamically hot-reloads and updates any component's manifest (`package.json`, `SKILL.md`) at runtime, without an engine restart. This is applicable across plugins, MCPs, and skills.
 
 The engine uses a schema-less `serde_yaml::Value` deep-merge strategy. This means you can inject or modify any arbitrary nested keys inside any section (`settings`, `permissions`, `discovery`, `activation`) and it will perfectly preserve the rest of the file.

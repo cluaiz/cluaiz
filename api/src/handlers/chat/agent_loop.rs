@@ -305,7 +305,7 @@ pub async fn execute_streaming_loop(
                     let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload) {
                         super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
                     } else {
-                        super::authorize::assess(&comp_type, &comp_name, is_meta_tool, ctx.chat_id.as_deref())
+                        super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())
                     };
                     let mut permission_granted = true;
                     let mut user_denial_feedback: Option<String> = None;
