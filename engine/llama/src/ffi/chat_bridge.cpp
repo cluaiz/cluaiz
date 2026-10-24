@@ -3,6 +3,7 @@
 // tool-call grammar, and common_chat_parse reads the output back. No format logic lives here.
 #include "chat.h"
 #include "common.h"
+#include "json-schema-to-grammar.h"
 #include "llama.h"
 
 #include <cstdlib>
@@ -176,6 +177,19 @@ extern "C" char * cluaiz_chat_parse(const cluaiz_chat_parser * parser, const cha
         return error_json(e.what());
     } catch (...) {
         return error_json("parse failed");
+    }
+}
+
+// A JSON schema as a GBNF grammar (llama-server's response_format): {"grammar"} or {"error"}
+extern "C" char * cluaiz_json_schema_grammar(const char * schema) noexcept {
+    try {
+        auto out = common_json::object();
+        out["grammar"] = json_schema_to_grammar(common_json::parse(schema ? schema : "{}"));
+        return dup_string(out.dump_safe());
+    } catch (const std::exception & e) {
+        return error_json(e.what());
+    } catch (...) {
+        return error_json("schema not supported");
     }
 }
 

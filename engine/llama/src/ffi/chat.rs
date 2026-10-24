@@ -13,6 +13,7 @@ unsafe extern "C" {
     fn cluaiz_chat_parser_free(parser: *mut c_void);
     fn cluaiz_chat_parse(parser: *const c_void, text: *const c_char, partial: bool) -> *mut c_char;
     fn cluaiz_chat_string_free(text: *mut c_char);
+    fn cluaiz_json_schema_grammar(schema: *const c_char) -> *mut c_char;
     fn cluaiz_tool_grammar_init(vocab: *const c_void, apply: *const c_char) -> *mut c_void;
     fn cluaiz_tool_grammar_set_active(smpl: *mut c_void, vocab: *const c_void, active: bool, replay: *const c_char);
 }
@@ -114,4 +115,12 @@ pub unsafe fn set_tool_grammar_active(grammar: *mut c_void, vocab: *const c_void
     let replay = CString::new(replay).unwrap_or_default();
     // SAFETY: caller guarantees the sampler and vocab
     unsafe { cluaiz_tool_grammar_set_active(grammar, vocab, active, replay.as_ptr()) }
+}
+
+/// A JSON schema as a GBNF grammar (llama.cpp's `json_schema_to_grammar`)
+pub fn json_schema_grammar(schema: &Value) -> Result<String> {
+    let schema = CString::new(schema.to_string())?;
+    // SAFETY: the string lives for the call; the result is freed by take_json
+    let out = unsafe { take_json(cluaiz_json_schema_grammar(schema.as_ptr())) }?;
+    out["grammar"].as_str().map(str::to_string).ok_or_else(|| anyhow!("no grammar"))
 }

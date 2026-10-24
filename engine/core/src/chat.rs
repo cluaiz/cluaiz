@@ -65,6 +65,36 @@ impl<Content> ChatEnvelope<Content> {
     }
 }
 
+/// How the answer is constrained: a GBNF grammar as given, or a JSON schema (llama-server's
+/// `grammar` and `response_format`)
+#[derive(Debug, Clone, PartialEq)]
+pub enum OutputConstraint {
+    Gbnf(String),
+    JsonSchema(serde_json::Value),
+}
+
+impl OutputConstraint {
+    /// From a request's `grammar` (wins) and `response_format`: `{"type": "json_object"}` (any
+    /// object, or its `schema`), `{"type": "json_schema", "json_schema": {"schema": …}}` (OpenAI),
+    /// also with the schema directly under `json_schema`. `text` and unknown types: none.
+    pub fn from_request(grammar: Option<&str>, response_format: Option<&serde_json::Value>) -> Option<Self> {
+        if let Some(grammar) = grammar.filter(|g| !g.trim().is_empty()) {
+            return Some(Self::Gbnf(grammar.to_string()));
+        }
+        let format = response_format?;
+        match format.get("type").and_then(|t| t.as_str()) {
+            Some("json_object") => Some(Self::JsonSchema(
+                format.get("schema").cloned().unwrap_or_else(|| serde_json::json!({ "type": "object" })),
+            )),
+            Some("json_schema") => {
+                let spec = format.get("json_schema")?;
+                Some(Self::JsonSchema(spec.get("schema").cloned().unwrap_or_else(|| spec.clone())))
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Tokens kept free for the answer when a prompt is fitted into the context: the request's
 /// `max_tokens` (callers without one pass `n_ctx`), at most a quarter of the context (256..2048).
 pub fn answer_reserve(max_tokens: usize, n_ctx: usize) -> usize {
@@ -134,6 +164,22 @@ pub fn oldest_turns_to_drop(messages: &[(&str, usize)], target: usize) -> (usize
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn output_constraints_follow_llama_server() {
+        use serde_json::json;
+        assert_eq!(OutputConstraint::from_request(Some("root ::= \"a\""), Some(&json!({"type": "json_object"}))),
+            Some(OutputConstraint::Gbnf("root ::= \"a\"".into())));
+        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_object"}))),
+            Some(OutputConstraint::JsonSchema(json!({"type": "object"}))));
+        let schema = json!({"type": "object", "properties": {"title": {"type": "string"}}});
+        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_schema", "json_schema": {"name": "card", "schema": schema}}))),
+            Some(OutputConstraint::JsonSchema(schema.clone())));
+        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_schema", "json_schema": schema}))),
+            Some(OutputConstraint::JsonSchema(schema)));
+        assert_eq!(OutputConstraint::from_request(Some("  "), Some(&json!({"type": "text"}))), None);
+        assert_eq!(OutputConstraint::from_request(None, None), None);
+    }
 
     #[test]
     fn whole_turns_are_dropped_after_the_system_message() {
