@@ -13,6 +13,7 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 | `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
 | `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
 | `DELETE /v1/chat/{session_id}/history` | Removes the chat's log, ledger, saved KV, kept reports and Chat Map |
+| `POST /v1/chat/{session_id}/import` | An app that keeps the chat itself sends it back (RAM only) |
 | `POST /v1/chat/import/app` | Imports the App's existing chats into event logs (read-only on the App's files) |
 | `GET /v1/chat/{session_id}/grants` | Tools allowed for this chat without asking, with minutes left |
 | `DELETE /v1/chat/{session_id}/grants` | Asks again for this chat's tools (optional `?tool=`) |
@@ -109,3 +110,61 @@ message keeps its original time. A chat that already has an event log is skipped
 { "roots": ["C:\\Users\\me\\.cluaiz\\data\\chats"],
   "chats": [ { "chat_id": "chat_20261020_195120_uz2o", "messages": 4, "tool_calls": 1, "events": 6, "status": "imported" } ] }
 ```
+
+## Where a chat is kept (`storage`)
+
+A chat request's `storage` decides where the Engine keeps the chat:
+
+| `storage` | Event log, ledger, saved KV | Use |
+| --- | --- | --- |
+| `engine` (default) | On disk under `<CLUAIZ_HOME>` | The Engine is the memory |
+| `external` | In RAM only; nothing of the chat is written to disk | The app keeps the chat (its own files or database) |
+| `none` | Nothing (same as `temporary_chat: "lite"`) | Private chats |
+
+With `external`, every answer carries the events it added to the chat: `memory_events` in the
+non-streaming response, and in the closing stream chunk (the one with `engine`). The app stores
+them. After an Engine restart (RAM is empty) it sends them back with
+`POST /v1/chat/{session_id}/import` (`{"events": [...]}`, at most 200,000), and recall, the Chat Map
+and the event endpoints work again. No idle-time cards are made for such chats (they would be
+written by the Engine), and the chat's KV is not saved to disk.
+
+Measured (2026-10-24, isolated server): two turns with `storage: "external"` left no file of the
+chat on disk (no event log, ledger or saved KV); after a restart and an import of the 4 collected
+events, `history_mode: "none"` recalled "vega" and port 6060 from them.
+
+## Export format (for apps and their databases)
+
+`GET /v1/chat/{session_id}/export` and `memory_events` use the same event shape, so an app can
+keep a chat in any store (files, SQLite, cluaizdb, …) on its side; the Engine itself never links
+a database.
+
+```json
+{ "format": "cluaiz-chat-export", "version": 1, "chat_id": "my-chat",
+  "events": [ { "v": 1, "id": "ev_…", "chat": "my-chat", "seq": 1, "ts": "2026-10-24T05:23:01.000Z",
+                "kind": "message", "role": "user", "text": "…", "pos": 0, "key": "h:…", "source": "client" } ],
+  "cards": [ { "…": "derived; can always be rebuilt from the events" } ] }
+```
+
+| Field | Meaning |
+| --- | --- |
+| `v` | Event format version (1) |
+| `id`, `seq`, `ts` | Unique id, order in the chat (from 1), time (RFC 3339, UTC) |
+| `kind` | `message`, `message.edited`, `message.retracted`, `tool_call`, `tool_result`, `approval`, `context_edit`, `card_enrichment`, `card_enrichment_failed`, `episode_summary`, `episode_summary_failed`, `task`, `grant` |
+| `pos` | Position of a message in the visible transcript (message kinds) |
+| `source` | `client`, `engine` or `app-import` (message kinds) |
+
+Keep every event in order; `cards`, episodes, tasks and the graph are derived and are rebuilt from
+the events after an import. Fields an event kind does not know are kept as they are.
+
+## Engine mode for transcripts (App migration notes)
+
+With `history: "engine"` (and `storage: "engine"`) the client sends only the new message and the
+Engine keeps the transcript, so the App does not need its own copy:
+
+1. Send each new user message with `session_id` and `history: "engine"`.
+2. Show a chat from `GET /v1/chat/{session_id}/events`: fold `message`, `message.edited` (replaces
+   the message at the same `pos`) and `message.retracted` (removes it), in `seq` order; tool steps
+   are the `tool_call` / `tool_result` events just before an answer.
+3. Existing App chats: `POST /v1/chat/import/app` (`all: true`) copies them into Engine logs once
+   (the App's files are only read).
+4. Deleting a chat: `DELETE /v1/chat/{session_id}/history`.

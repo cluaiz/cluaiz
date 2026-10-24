@@ -285,7 +285,7 @@ pub async fn approve_permission(
     if let Some((chat, tool, minutes)) = &grant {
         use cluaiz_agents::memory::EventStore;
         let event = cluaiz_agents::memory::NewEvent::new("grant", json!({ "tool": tool, "minutes": minutes, "scope": "chat" }));
-        let _ = cluaiz_agents::memory::JsonlStore::shared().append(chat, vec![event]);
+        let _ = cluaiz_agents::memory::store_for(chat).append(chat, vec![event]);
     }
 
     // 2. Update persistent pending_permissions

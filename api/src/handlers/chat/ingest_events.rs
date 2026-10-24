@@ -9,7 +9,7 @@
 
 use super::types::{ExternalMessage, MessageContent};
 use cluaiz_agents::memory::transcript::{self, ClientMessage};
-use cluaiz_agents::memory::{records, EventStore, JsonlStore, NewEvent};
+use cluaiz_agents::memory::{records, NewEvent};
 use cluaiz_agents::RecordedStep;
 use serde_json::{json, Value};
 
@@ -27,20 +27,21 @@ fn client_message(message: &ExternalMessage) -> ClientMessage {
 }
 
 /// Logs what a client request changed in the chat's transcript
-pub fn ingest_request(chat: &str, messages: &[ExternalMessage]) {
-    let store = JsonlStore::shared();
+pub fn ingest_request(chat: &str, messages: &[ExternalMessage]) -> Vec<cluaiz_agents::memory::Event> {
+    let store = cluaiz_agents::memory::store_for(chat);
     let messages: Vec<ClientMessage> = messages.iter().map(client_message).collect();
     let result = store
         .read(chat)
         .and_then(|log| store.append(chat, transcript::diff(&transcript::transcript(&log.events), &messages)));
-    if let Err(e) = result {
+    result.unwrap_or_else(|e| {
         tracing::warn!("⚠️ [Memory] Could not log the request of chat {}: {}", chat, e);
-    }
+        Vec::new()
+    })
 }
 
 /// The logged transcript as messages, for engine mode
 pub fn history_messages(chat: &str) -> Vec<ExternalMessage> {
-    match JsonlStore::shared().read(chat) {
+    match cluaiz_agents::memory::store_for(chat).read(chat) {
         Ok(log) => transcript::transcript(&log.events)
             .into_values()
             .map(|m| ExternalMessage { role: m.role, content: MessageContent::Text(m.text), ..Default::default() })
@@ -54,7 +55,7 @@ pub fn history_messages(chat: &str) -> Vec<ExternalMessage> {
 
 /// Logs what the Engine did in a turn (a compaction, tool loads and unloads, tool steps) and its
 /// answer at position `answer_pos`, then makes the log durable
-pub fn ingest_turn(chat: &str, steps: &[RecordedStep], tool_events: &[Value], compaction: Option<&Value>, answer: &str, answer_pos: usize) {
+pub fn ingest_turn(chat: &str, steps: &[RecordedStep], tool_events: &[Value], compaction: Option<&Value>, answer: &str, answer_pos: usize) -> Vec<cluaiz_agents::memory::Event> {
     let mut events = Vec::new();
     if let Some(compaction) = compaction.filter(|c| !c.is_null()) {
         events.push(NewEvent::new("context_edit", json!({ "op": "compaction", "detail": compaction })));
@@ -77,8 +78,17 @@ pub fn ingest_turn(chat: &str, steps: &[RecordedStep], tool_events: &[Value], co
         events.push(NewEvent::new("tool_result", json!({ "step": index, "tool": step.name, "result": step.result })));
     }
     events.push(transcript::answer_event(answer, answer_pos));
-    let store = JsonlStore::shared();
-    if let Err(e) = store.append(chat, events).and_then(|_| store.sync(chat)) {
-        tracing::warn!("⚠️ [Memory] Could not log the turn of chat {}: {}", chat, e);
+    let store = cluaiz_agents::memory::store_for(chat);
+    match store.append(chat, events) {
+        Ok(written) => {
+            if let Err(e) = store.sync(chat) {
+                tracing::warn!("⚠️ [Memory] Could not sync the log of chat {}: {}", chat, e);
+            }
+            written
+        }
+        Err(e) => {
+            tracing::warn!("⚠️ [Memory] Could not log the turn of chat {}: {}", chat, e);
+            Vec::new()
+        }
     }
 }

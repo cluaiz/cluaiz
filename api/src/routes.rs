@@ -130,6 +130,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/chat/{session_id}/events", get(handlers::memory::get_events))
         .route("/v1/chat/{session_id}/index", get(handlers::memory::get_index))
         .route("/v1/chat/{session_id}/export", get(handlers::memory::export))
+        .route("/v1/chat/{session_id}/import", post(handlers::memory::import_chat))
         .route("/v1/chat/{session_id}/history", delete(handlers::memory::delete_history))
         .route(
             "/v1/chat/{session_id}/grants",

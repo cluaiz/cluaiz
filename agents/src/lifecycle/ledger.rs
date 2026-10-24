@@ -94,6 +94,11 @@ impl ChatLedger {
 
     /// Replaces the chat's ledger in RAM and on disk
     pub fn put(chat_id: &str, ledger: ChatLedger) {
+        // A chat the app keeps (external storage) stays in RAM only
+        if crate::memory::is_external(chat_id) {
+            LEDGERS.lock().unwrap_or_else(|e| e.into_inner()).insert(chat_id.to_string(), ledger);
+            return;
+        }
         let path = ledger_path(chat_id);
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);

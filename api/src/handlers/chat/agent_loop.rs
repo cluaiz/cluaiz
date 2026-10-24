@@ -658,8 +658,16 @@ pub async fn execute_streaming_loop(
             yield Ok::<_, Infallible>(Event::default().data(telemetry_chunk.to_string()));
         }
 
+        // ⏳ Decrement session tool turns & purge expired ephemeral tools
+        if let Some(ref sid) = req_session_id {
+            crate::handlers::session_tools::decrement_session_turns(sid);
+        }
+        // What the Engine added to this turn, so the next request renders it the same way (before
+        // the closing chunk, which carries the new events for apps that keep the chat themselves)
+        let memory_events = super::preflight::record_turn(&state_clone, &ctx, tool_turns.steps(), &visible_answer, &tool_events);
+
         // Engine report (llama.cpp timings + load values) is always sent, like llama-server's "timings"
-        let engine_chunk = json!({
+        let mut engine_chunk = json!({
             "id": req_id_stream.clone(),
             "object": "chat.completion.chunk",
             "created": Utc::now().timestamp(),
@@ -668,6 +676,9 @@ pub async fn execute_streaming_loop(
             "engine": super::types::engine_report(&state_clone.host).await,
             "context_report": super::preflight::context_report(&ctx, &tool_events)
         });
+        if let Some(events) = memory_events {
+            engine_chunk["memory_events"] = events;
+        }
         yield Ok::<_, Infallible>(Event::default().data(engine_chunk.to_string()));
 
         if let Some(p) = &ctx.progress {
@@ -676,12 +687,6 @@ pub async fn execute_streaming_loop(
         }
         yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
 
-        // ⏳ Decrement session tool turns & purge expired ephemeral tools
-        if let Some(ref sid) = req_session_id {
-            crate::handlers::session_tools::decrement_session_turns(sid);
-        }
-        // What the Engine added to this turn, so the next request renders it the same way
-        super::preflight::record_turn(&state_clone, &ctx, tool_turns.steps(), &visible_answer, &tool_events);
         turn_memory.finish().await;
 
         // 🧹 Auto-Cleanup: Remove completed stream from active registry

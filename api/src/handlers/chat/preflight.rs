@@ -50,6 +50,8 @@ pub struct PreparedChatContext {
     pub memory_tools: bool,
     /// Pinned notes in this chat's system prompt (kept in its ledger)
     pub z0_note_ids: Vec<String>,
+    /// Events this request added to the chat's log (sent back to apps with external storage)
+    pub request_events: Vec<cluaiz_agents::memory::Event>,
     /// Keeps idle-time jobs away until the request ends
     _foreground: super::background::Foreground,
     pub json_prompt: String,
@@ -466,8 +468,9 @@ impl PreparedChatContext {
         block_notes.extend(relevant_notes);
         context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
         // The chat's event log: what the client sent (a preview changes nothing)
+        let mut request_events = Vec::new();
         if let (Some(chat), false) = (&ledger_chat, request.preview) {
-            super::ingest_events::ingest_request(chat, &request.messages);
+            request_events = super::ingest_events::ingest_request(chat, &request.messages);
         }
         let current_turn_key = rendered.current_key;
         let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
@@ -1036,6 +1039,7 @@ impl PreparedChatContext {
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
             memory_tools: memory_tools || remember_tool,
+            request_events,
             z0_note_ids,
             _foreground: foreground,
             tool_hint: turn_block,
@@ -1124,7 +1128,7 @@ impl TurnMemory {
 
     /// Saves now, before anything that may unload the model (`keep_alive: 0`)
     pub async fn finish(mut self) {
-        if let Some(chat) = self.chat.take() {
+        if let Some(chat) = self.chat.take().filter(|chat| !cluaiz_agents::memory::is_external(chat)) {
             self.state.host.save_chat_memory(&chat).await;
         }
     }
@@ -1132,7 +1136,7 @@ impl TurnMemory {
 
 impl Drop for TurnMemory {
     fn drop(&mut self) {
-        if let Some(chat) = self.chat.take() {
+        if let Some(chat) = self.chat.take().filter(|chat| !cluaiz_agents::memory::is_external(chat)) {
             let state = Arc::clone(&self.state);
             if let Ok(runtime) = tokio::runtime::Handle::try_current() {
                 runtime.spawn(async move { state.host.save_chat_memory(&chat).await });
@@ -1194,19 +1198,22 @@ pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value 
 
 /// Records what the Engine added to the turn that just ended (its tool hint and tool steps)
 /// and the chat's current tool bindings, so the next request renders this turn the same way
+/// Records what the Engine added to the turn that just ended. Returns, for a chat the app keeps
+/// (external storage), every event this request added, for the app to store.
 pub fn record_turn(
     state: &Arc<AppState>,
     ctx: &PreparedChatContext,
     steps: Vec<cluaiz_agents::RecordedStep>,
     answer: &str,
     tool_events: &[serde_json::Value],
-) {
+) -> Option<serde_json::Value> {
     let Some((chat, key)) = &ctx.ledger_turn else {
-        return;
+        return None;
     };
-    super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
+    let turn_events = super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
+    let external = cluaiz_agents::memory::is_external(chat);
     // Idle-time card for this turn, written by the model while its KV is still hot
-    if let (Some(model_path), false) = (&ctx.active_model_path, answer.trim().is_empty()) {
+    if let (Some(model_path), false, false) = (&ctx.active_model_path, answer.trim().is_empty(), external) {
         if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&ctx.json_prompt) {
             if let Some(messages) = envelope.get_mut("messages").and_then(serde_json::Value::as_array_mut) {
                 messages.push(json!({ "role": "assistant", "content": answer }));
@@ -1231,4 +1238,9 @@ pub fn record_turn(
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
     ledger.notes = Some(ctx.z0_note_ids.clone());
     cluaiz_agents::ChatLedger::put(chat, ledger);
+    external.then(|| {
+        let mut all = ctx.request_events.clone();
+        all.extend(turn_events);
+        json!(all)
+    })
 }
