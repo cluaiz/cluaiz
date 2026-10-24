@@ -20,8 +20,13 @@ pub async fn execute_non_streaming(
     let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
 
     let mut max_iters = 15;
-    let mut tool_turns = super::tool_turns::ToolTurns::new(ctx.tool_role);
+    let mut tool_turns = super::tool_turns::ToolTurns::start(&ctx);
     let mut tool_events: Vec<serde_json::Value> = Vec::new();
+    // A tool the Engine loaded before the model answered (auto_load)
+    if let Some(step) = &ctx.auto_loaded {
+        let payload = json!({ "id": ctx.tools_report["auto_loaded"] }).to_string();
+        tool_events.push(super::preflight::tool_event(cluaiz_agents::LOAD_TOOL_NAME, &payload, &step.result));
+    }
     let mut final_raw_text = String::new();
 
     while max_iters > 0 {
@@ -138,6 +143,11 @@ pub async fn execute_non_streaming(
                 Ok(super::authorize::denied_result(&reason))
             } else if is_meta_tool {
                 let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
+                if meta_name == cluaiz_agents::LOAD_TOOL_NAME && outcome.text.contains("Loaded tool") {
+                    if let Some(id) = serde_json::from_str::<serde_json::Value>(&meta_payload).ok().and_then(|a| a.get("id").and_then(|v| v.as_str()).map(str::to_string)) {
+                        tool_turns.add_loaded_tool(&ctx, &id).await;
+                    }
+                }
                 tool_events.push(super::preflight::tool_event(meta_name, &meta_payload, &outcome.text));
                 unloaded_tool = outcome.unloaded;
                 Ok(outcome.text)
