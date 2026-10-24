@@ -16,7 +16,9 @@ const KEEP_RECENT_STEPS: usize = 3;
 pub enum HistoryMode {
     /// The whole history; the engine drops the oldest turns when it does not fit (default)
     Recent,
-    /// Only the system prompt and the current message
+    /// The newest `recent_turns_min` turns in full; older messages come back through recall
+    Adaptive,
+    /// Only the system prompt and the current message (and what recall brings back)
     None,
 }
 
@@ -25,9 +27,10 @@ impl HistoryMode {
     pub fn parse(value: Option<&str>) -> Self {
         match value {
             None | Some("recent") => Self::Recent,
+            Some("adaptive") => Self::Adaptive,
             Some("none") => Self::None,
             Some(other) => {
-                tracing::warn!("⚠️ [Context] history_mode '{}' is not available (recent or none); using recent", other);
+                tracing::warn!("⚠️ [Context] history_mode '{}' is not available (recent, adaptive or none); using recent", other);
                 Self::Recent
             }
         }
@@ -36,6 +39,7 @@ impl HistoryMode {
     pub fn name(self) -> &'static str {
         match self {
             Self::Recent => "recent",
+            Self::Adaptive => "adaptive",
             Self::None => "none",
         }
     }
@@ -48,23 +52,50 @@ pub struct Rendered {
     pub current_key: Option<String>,
     /// Keys of the earlier user messages, oldest first
     pub earlier_keys: Vec<String>,
+    /// For each rendered message, the index of the request message it shows (None for the tool
+    /// steps the Engine puts back)
+    pub origin: Vec<Option<usize>>,
 }
 
 /// Earlier turns as the model saw them: each user message gets back the block the Engine put in
-/// front of it, followed by that turn's tool steps. With `HistoryMode::None` only the system
-/// messages and the current message are kept.
+/// front of it, followed by that turn's tool steps. `HistoryMode::Adaptive` keeps the newest
+/// `recent_turns` turns before the current message, `HistoryMode::None` none of them; system
+/// messages are always kept.
 pub fn render_history(
     messages: &[ExternalMessage],
     ledger: Option<&ChatLedger>,
     tool_role: bool,
     mode: HistoryMode,
+    recent_turns: usize,
 ) -> Rendered {
-    let mut rendered = Rendered { messages: Vec::with_capacity(messages.len()), current_key: None, earlier_keys: Vec::new() };
+    let mut rendered = Rendered {
+        messages: Vec::with_capacity(messages.len()),
+        current_key: None,
+        earlier_keys: Vec::new(),
+        origin: Vec::with_capacity(messages.len()),
+    };
     let mut occurrences: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     let last_index = messages.len().saturating_sub(1);
+    // First message shown: the start of the oldest kept turn
+    let first_shown = match mode {
+        HistoryMode::Recent => 0,
+        HistoryMode::None => last_index,
+        HistoryMode::Adaptive => messages
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.role.eq_ignore_ascii_case("user"))
+            .map(|(i, _)| i)
+            .rev()
+            .nth(recent_turns)
+            .unwrap_or(0),
+    };
     for (index, original) in messages.iter().enumerate() {
         let is_system = original.role.eq_ignore_ascii_case("system");
-        if mode == HistoryMode::None && index != last_index && !is_system {
+        if index < first_shown && !is_system {
+            // Its turn key still counts, so repeated texts keep their keys
+            if original.role.eq_ignore_ascii_case("user") {
+                *occurrences.entry(original.content.text_content().trim().to_string()).or_insert(0) += 1;
+            }
             continue;
         }
         let mut message = original.clone();
@@ -87,17 +118,37 @@ pub fn render_history(
             }
         }
         rendered.messages.push(message);
+        rendered.origin.push(Some(index));
         for (role, content) in steps {
             rendered.messages.push(ExternalMessage { role: role.to_string(), content: MessageContent::Text(content), ..Default::default() });
+            rendered.origin.push(None);
         }
     }
     rendered
 }
 
+/// Request messages the prompt does not show: those not rendered, and those in segments the
+/// plan leaves out (the engine drops them to fit). `origin` must match `plan`'s messages.
+pub fn hidden_messages(message_count: usize, origin: &[Option<usize>], plan: &Result<Plan, PlanError>) -> Vec<usize> {
+    let mut shown = vec![false; message_count];
+    for index in origin.iter().flatten() {
+        shown[*index] = true;
+    }
+    if let Ok(plan) = plan {
+        for dropped in &plan.dropped {
+            let rendered = dropped.id.strip_prefix('m').and_then(|i| i.parse::<usize>().ok());
+            if let Some(Some(index)) = rendered.and_then(|i| origin.get(i)) {
+                shown[*index] = false;
+            }
+        }
+    }
+    (0..message_count.saturating_sub(1)).filter(|i| !shown[*i]).collect()
+}
+
 /// Adds what the Engine puts into this request: the tool hint in front of the current user
 /// message, and the bound tools at the end of the system prompt (a system message is added when
-/// there is none)
-pub fn inject(messages: &mut Vec<ExternalMessage>, hint: &str, system_tools: &str) {
+/// there is none; `origin` follows)
+pub fn inject(messages: &mut Vec<ExternalMessage>, origin: &mut Vec<Option<usize>>, hint: &str, system_tools: &str) {
     if !hint.is_empty() {
         match messages.last_mut() {
             Some(last) if last.role.eq_ignore_ascii_case("user") => prepend_text(&mut last.content, hint),
@@ -115,10 +166,13 @@ pub fn inject(messages: &mut Vec<ExternalMessage>, hint: &str, system_tools: &st
             }
             MessageContent::Array(parts) => parts.push(super::types::ContentPart::Text { text: system_tools.to_string() }),
         },
-        _ => messages.insert(
-            0,
-            ExternalMessage { role: "system".to_string(), content: MessageContent::Text(system_tools.to_string()), ..Default::default() },
-        ),
+        _ => {
+            messages.insert(
+                0,
+                ExternalMessage { role: "system".to_string(), content: MessageContent::Text(system_tools.to_string()), ..Default::default() },
+            );
+            origin.insert(0, None);
+        }
     }
 }
 

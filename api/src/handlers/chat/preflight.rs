@@ -437,8 +437,9 @@ impl PreparedChatContext {
         let tool_role = super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
         let history_mode = context_plan::HistoryMode::parse(request.history_mode.as_deref());
         let policy = context_plan::policy(request.context_policy.as_ref());
-        let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode);
+        let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode, policy.recent_turns_min);
         let mut augmented_messages = rendered.messages;
+        let mut origin = rendered.origin;
         // The chat's event log: what the client sent (a preview changes nothing)
         if let (Some(chat), false) = (&ledger_chat, request.preview) {
             super::ingest_events::ingest_request(chat, &request.messages);
@@ -648,7 +649,7 @@ impl PreparedChatContext {
         });
         let after_tools = std::time::Instant::now();
 
-        context_plan::inject(&mut augmented_messages, &hint, &system_tools);
+        context_plan::inject(&mut augmented_messages, &mut origin, &hint, &system_tools);
 
         // The plan of the final prompt. When the history uses most of the room, the chat's
         // ledger gives back old tool hints and old tool results (batched, at least
@@ -678,15 +679,40 @@ impl PreparedChatContext {
                             cluaiz_agents::SessionToolManager::update_session_tools(chat, Vec::new(), report.unloaded_tools.clone());
                         }
                     }
-                    augmented_messages =
-                        context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode).messages;
-                    context_plan::inject(&mut augmented_messages, &hint, &system_tools);
+                    let again =
+                        context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode, policy.recent_turns_min);
+                    augmented_messages = again.messages;
+                    origin = again.origin;
+                    context_plan::inject(&mut augmented_messages, &mut origin, &hint, &system_tools);
                     plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
                     compaction = Some(report);
                 }
             }
         }
-        let plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
+        // Auto-recall: earlier messages the prompt does not show, when they fit this message. The
+        // record goes in front of the current message and is kept with the turn (like the hint).
+        let mut turn_block = hint.clone();
+        let mut recall_report = serde_json::Value::Null;
+        if let Some(chat) = &ledger_chat {
+            let hidden = context_plan::hidden_messages(request.messages.len(), &origin, &plan);
+            if !hidden.is_empty() {
+                let cap = plan.as_ref().map_or(0, |p| p.available * policy.evidence_cap_pct as usize / 100);
+                if let Some(evidence) = super::recall::auto_recall(chat, &initial_user_query, &hidden, cap) {
+                    if let Some(last) = augmented_messages.last_mut() {
+                        context_plan::prepend_text(&mut last.content, &evidence.block);
+                    }
+                    turn_block = if hint.is_empty() { evidence.block } else { format!("{}
+
+{}", evidence.block, hint) };
+                    plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+                    recall_report = evidence.report;
+                } else {
+                    recall_report = json!({ "hidden_messages": hidden.len(), "recalled": [] });
+                }
+            }
+        }
+        let mut plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
+        plan_report["recall"] = recall_report;
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request
@@ -902,7 +928,7 @@ impl PreparedChatContext {
             loaded_tool_ids: tool_ids_to_compile.clone(),
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
-            tool_hint: hint.clone(),
+            tool_hint: turn_block,
             tools_report,
             plan_report,
             active_tool_ids: tool_ids_to_compile,
