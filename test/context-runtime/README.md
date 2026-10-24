@@ -189,12 +189,15 @@ Results (2026-10-24, temperature 0, thinking as the model defaults, RTX 3050 4 G
 
 | Model | inline: pass / called right / right answer | native |
 | --- | --- | --- |
-| Gemma 4 E4B (Q4_K_M) | 6/14, 11/11, 6/14 | 14/14, 11/11, 14/14 |
+| Gemma 4 E4B (Q4_K_M) | 13/14, 11/11, 13/14 (was 6/14, see below) | 14/14, 11/11, 14/14 |
 | Qwen3-4B (Q4_K_M) | 13/14, 10/11, 13/14 | 14/14, 11/11, 14/14 |
 | Llama 3.2 3B (Q4_K_M) | 4/14, 6/11, 4/14 | same (its GGUF template has no tools, so they stay inline) |
 
-Inline, Gemma 4 called the tools but then often wrote no answer, or answered from a tool result it
-made up. The plan's gate asks for three families; only two of the installed models have templates
+Inline, Gemma 4 first scored 6/14: it called the tools but then often wrote no answer, or answered
+from a tool result it made up. `template_check.py` found why: Gemma 4's template has no `tool` role
+and dropped every tool result without an error, so the model never saw one. Tool results now go to
+such a template as `<tool_response>` user turns; the same run then gave 13/14 (2026-10-24). The one
+fail, note-groceries, called `read_note` with the Hinglish words "groceries wala" as the name. The plan's gate asks for three families; only two of the installed models have templates
 that render tools, so the third is still open.
 
 With `--suggest` the rows bind no tools: the model sees the Engine's suggestions and loads what it
@@ -206,3 +209,68 @@ by a margin). On the routing set (2026-10-24): margin 2 loads a tool for 67 of t
 need one, 66 of them right (r016 "test this node.js function by running it" gets `everything`),
 and never for a row that needs no tool. See `docs/api/inference/context_runtime.md` for the
 `auto_load` and `mcp_prewarm` timings.
+
+## Journeys (`journeys.py`, plan §10.2 J-suite)
+
+The context runtime end to end, against an isolated Engine it starts (`--exe`, `--home`): what
+reaches the model for chit-chat, suggestions and `load_tool`, three MCP servers in one answer,
+approve and reject, a restart in the middle of a chat, `tool_choice: "none"`, `read_tool_file`,
+idle unload with a pinned tool, a killed MCP server, a wrong load then unload, a skill too big for
+the room left. The fixture folder (`--workspace`) holds `notes.txt` ("The secret word is MANGO-42.")
+and `calc.py` (`print(6 * 7)`).
+
+```bash
+python test/context-runtime/journeys.py --exe target/release/cluaiz.exe --home <test home> \
+    --workspace <fixture> --log <log file> --model gemma-4-e4b-it-gguf-Q4_K_M --think off [--only J4,J6]
+```
+
+A journey that depends on the model can fail on a small model while the Engine is right; the
+detail line says what happened. Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off, RTX 3050
+4 GB): 15 of 15 pass.
+
+| Journey | Time | What it saw |
+| --- | --- | --- |
+| J1 "Hi" | 9.5 s | no suggestion, 0 hint tokens, no call |
+| J2 "I trust you" | 9.5 s | no suggestion |
+| J3 "protocol kya hota hai" | 89.7 s | no tool-creator suggestion, no call |
+| J4 "notes.txt padho" | 24.8 s | `load_tool`, then `read_text_file` after one approval; MANGO-42 |
+| J5 "run this python: print(2+2)" | 28.6 s | `load_tool`, `execute_code`; 4 |
+| J6 wrong load, then unload | 69.1 s | load code-reviewer, unload it, load code-interpreter, run; next turn shows `[Tool 'code-reviewer' was unloaded.]` and none of its instructions; it processed 2906 of 2948 tokens again (cause `edit`) |
+| J7 three MCP servers | 56.7 s | filesystem, pynotes and everything in one answer |
+| J8 / J9 non-streaming approve / reject | 9.3 / 8.7 s | answer from the file / the model says it was not allowed |
+| J10 restart mid-chat | 53.8 s | filesystem still loaded, no second `load_tool`, 3234 tokens from the saved KV |
+| J11 skill too big | 24.4 s | a 400 KB skill is refused with its size; no line of it in the prompt |
+| J12 `tool_choice: "none"`, `tool_search: false` | 22.4 s | no suggestion, no meta-tools |
+| J13 `read_tool_file` | 17.6 s | read `references/LANGUAGES.md` whole; "go run" |
+| J14 idle unload | 14.1 s | filesystem gone after the 3rd answer without use; pinned pynotes stays |
+| J15 killed MCP server | 26.6 s | 4 processes killed; the next call starts it again and reads calc.py |
+
+J6's next turn processing nearly the whole prompt again is the cost of a wrong load: the load and
+unload change the tools part near the start of the prompt.
+
+## Speed and memory (`perf.py`, plan §10.2 PERF)
+
+Times come from the context report's `timing` (the Engine's own clock). PERF5 (how fast a request
+stops an idle job) is in the Engine log only. Results (2026-10-24, Qwen3-4B Q4_K_M, RTX 3050 4 GB):
+
+| Test | Result |
+| --- | --- |
+| PERF1 tools part of preflight (median of 5) | 3 ms with the installed tools, 4 ms with 100 installed |
+| PERF2 chat of 20012 messages | first request (logs and indexes the chat) 2.3 s; plan + recall after it 152, 160, 145 ms |
+| PERF3 Engine memory | 3206.5 MB with the model loaded, 3242.7 MB with the chat indexed (+36 MB) |
+| PERF4 tokens processed per turn | 19 of 20, 33 of 49, 36 of 81, 47 of 124 (cause `edit` each time) |
+| PERF6 cold start | `/health` answers 1.5 s after start; first chat 3.2 s, of which model load 2.2 s |
+
+In PERF4 the reuse stops a few tokens before the end of the previous prompt (16 of 20 on turn 2),
+so each turn processes the previous answer again. The likely cause, not yet checked: Qwen3's
+template renders an earlier answer without the empty thinking block its generation prompt had.
+
+## Chat templates (`template_check.py`, plan P2.3)
+
+A conversation with a system rule, a tool call, its result, an answer and a new question, rendered
+by each installed model's template inline and native (`return_prompt`). A model fails when a part
+is not in its prompt, or when the Engine's own check (`template_dropped`) finds a dropped message.
+
+Results (2026-10-24): Qwen3-4B, Gemma 4 E4B and Llama 3.2 3B pass inline and native (Llama's
+template renders no tools, so native falls back inline). The first run found Gemma 4's template
+dropping tool results inline; see the tool-call format section above.
