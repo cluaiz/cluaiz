@@ -139,6 +139,28 @@ def fit(rows, evidence, actionable):
     return best[1], best[2]
 
 
+def auto_load(rows, candidates, margin):
+    """The auto_load rule (P6.4): exactly one card, and its score ahead of every other candidate
+    by `margin`. Returns (fired, right, wrong rows with a tool, wrong rows without one)."""
+    fired, right, wrong_tool, wrong_none = 0, 0, [], []
+    for r in rows:
+        cands = candidates[r["id"]]
+        cards = [c for c in cands if c["level"] == "card"]
+        if len(cards) != 1:
+            continue
+        others = [c["score"] for c in cands if c is not cards[0]]
+        if others and cards[0]["score"] - max(others) < margin:
+            continue
+        fired += 1
+        if cards[0]["id"] in r["expect"]:
+            right += 1
+        elif r["expect"]:
+            wrong_tool.append(r["id"])
+        else:
+            wrong_none.append(r["id"])
+    return fired, right, wrong_tool, wrong_none
+
+
 def show(name, m):
     print(
         f"  {name:<22} hit {m['hit']:.1%}  card {m['card_hit']:.1%}  chit-chat clean {m['chitchat_clean']:.1%}"
@@ -161,10 +183,11 @@ def main():
         sys.exit("No token: pass --token, or set CLUAIZ_TOKEN or CLUAIZ_HOME")
 
     rows = load_rows(args.set)
-    engine, evidence, actionable = {}, {}, {}
+    engine, evidence, actionable, candidates = {}, {}, {}, {}
     for row in rows:
         result = discover(args.url, token, row)
         engine[row["id"]] = {c["id"]: c["level"] for c in result["candidates"]}
+        candidates[row["id"]] = result["candidates"]
         evidence[row["id"]] = result.get("evidence", [])
         actionable[row["id"]] = result.get("actionable", False)
 
@@ -187,6 +210,13 @@ def main():
             part = [r for r in rows if r[field] == value]
             pm = metrics(part, engine)
             print(f"  {field}={value:<11} hit {pm['hit']:.1%}  clean {pm['chitchat_clean']:.1%}  trap cards {pm['trap_cards']}  ({len(part)})")
+
+    tool_rows = sum(1 for r in rows if r["expect"])
+    print(f"auto_load (exactly one card, ahead of the rest by a margin), {tool_rows} rows need a tool:")
+    for margin in (0.0, 1.0, 2.0, 3.0):
+        fired, right, wrong_tool, wrong_none = auto_load(rows, candidates, margin)
+        print(f"  margin {margin:<4} loads {fired:>3}  right {right:>3}  wrong tool {len(wrong_tool)} {wrong_tool}  "
+              f"no tool needed {len(wrong_none)} {wrong_none}")
 
     rule, fitted = fit(train, evidence, actionable)
     print(f"Best rule on the fit half: {rule}")

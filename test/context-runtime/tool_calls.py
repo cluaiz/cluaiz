@@ -51,7 +51,8 @@ def summary(model, results):
     tool_rows = [r for r in results if any(x["id"] == r["id"] and x["expect_calls"] for x in ROWS)]
     return (f"{model}: pass {sum(r['pass'] for r in results)}/{n} | tool rows called right "
             f"{sum(r['called_ok'] for r in tool_rows)}/{len(tool_rows)} | markup left {sum(r['markup'] for r in results)} | "
-            f"right answer {sum(r['answer_ok'] for r in results)}/{n} | errors {sum(bool(r['error']) for r in results)}")
+            f"right answer {sum(r['answer_ok'] for r in results)}/{n} | errors {sum(bool(r['error']) for r in results)} | "
+            f"seconds {sum(r['seconds'] for r in results):.0f} (tool rows {sum(r['seconds'] for r in tool_rows):.0f})")
 
 
 def rescore(path):
@@ -71,7 +72,9 @@ def rescore(path):
 def run_row(args, row):
     body = {"model": args.model, "session_id": f"tc-{row['id']}-{uuid.uuid4().hex[:8]}", "stream": True,
             "messages": [{"role": "user", "content": row["text"]}], "max_tokens": args.max_tokens,
-            "tools": TOOLS, "tool_search": False, "temperature": args.temperature, "seed": 42, "storage": "none"}
+            "temperature": args.temperature, "seed": 42, "storage": "none"}
+    # Bound tools, or (--suggest) none: the Engine suggests them and the model loads what it needs
+    body.update({"tool_search": True} if args.suggest else {"tools": TOOLS, "tool_search": False})
     if args.extra:
         body.update(json.loads(args.extra))
     calls, text, error, t0 = [], [], None, time.time()
@@ -121,6 +124,7 @@ def main():
     ap.add_argument("--max-tokens", type=int, default=1500)
     ap.add_argument("--extra", help="JSON merged into every request")
     ap.add_argument("--only", help="comma-separated row ids")
+    ap.add_argument("--suggest", action="store_true", help="bind no tools: suggestions and load_tool (auto_load test)")
     ap.add_argument("--out")
     args = ap.parse_args()
     if args.rescore:
