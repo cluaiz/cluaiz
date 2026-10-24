@@ -7,7 +7,7 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_agents::memory::{EventStore, JsonlStore};
-use cluaiz_context::memory::{build_cards, episodes, recall, Card, CardIndex, Episode, EpisodeRules, MessageIn};
+use cluaiz_context::memory::{build_cards, episodes, recall, Card, CardIndex, Enrichment, Episode, EpisodeRules, MessageIn};
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -70,6 +70,16 @@ fn messages(chat: &str) -> anyhow::Result<(u64, Vec<MessageIn>)> {
         }
     }
     let times: std::collections::HashMap<&str, &str> = log.events.iter().map(|e| (e.id.as_str(), e.ts.as_str())).collect();
+    // Idle-time cards: the newest one for a turn wins; it describes the question and the answer
+    let mut enriched: std::collections::HashMap<u64, Enrichment> = Default::default();
+    for event in log.events.iter().filter(|e| e.kind == "card_enrichment") {
+        let Ok(enrichment) = serde_json::from_value::<Enrichment>(Value::Object(event.data.clone())) else { continue };
+        for key in ["user_pos", "answer_pos"] {
+            if let Some(pos) = event.data.get(key).and_then(Value::as_u64) {
+                enriched.insert(pos, enrichment.clone());
+            }
+        }
+    }
     let messages = slots
         .into_iter()
         .map(|(pos, logged)| {
@@ -82,6 +92,7 @@ fn messages(chat: &str) -> anyhow::Result<(u64, Vec<MessageIn>)> {
                 text: logged.text,
                 tools,
                 files,
+                enrichment: enriched.remove(&pos),
             }
         })
         .collect();
@@ -203,7 +214,8 @@ fn record_line(card: &Card, text: &str) -> String {
             done.push_str(&format!(" on {}", card.files.join(", ")));
         }
     }
-    format!("[m:{} · {} · {}{}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, mark, done, text)
+    let title = card.enrichment.as_ref().map(|e| format!(" · {}", e.title)).unwrap_or_default();
+    format!("[m:{} · {} · {}{}{}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, mark, done, title, text)
 }
 
 /// Recalled messages in chat order, so a later correction reads after what it corrects

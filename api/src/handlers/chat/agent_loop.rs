@@ -676,7 +676,7 @@ pub async fn execute_streaming_loop(
             crate::handlers::session_tools::decrement_session_turns(sid);
         }
         // What the Engine added to this turn, so the next request renders it the same way
-        super::preflight::record_turn(&ctx, tool_turns.steps(), &visible_answer, &tool_events);
+        super::preflight::record_turn(&state_clone, &ctx, tool_turns.steps(), &visible_answer, &tool_events);
         turn_memory.finish().await;
 
         // 🧹 Auto-Cleanup: Remove completed stream from active registry

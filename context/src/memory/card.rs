@@ -22,6 +22,23 @@ pub struct MessageIn {
     pub tools: Vec<String>,
     /// Files those tools touched
     pub files: Vec<String>,
+    /// Card fields the model wrote at idle time (title, motive, summary, keywords), if any
+    pub enrichment: Option<Enrichment>,
+}
+
+/// What the model wrote about a turn (idle-time enrichment)
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Enrichment {
+    pub title: String,
+    #[serde(default)]
+    pub motive: Option<String>,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub keywords: Vec<String>,
+    /// Who wrote it (`model:<file>`)
+    #[serde(default)]
+    pub by: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -56,6 +73,8 @@ pub struct Card {
     /// correction, decision, question, request, error
     pub signals: Vec<String>,
     pub importance: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enrichment: Option<Enrichment>,
     /// Every search term of the message (for the index; not saved with the card)
     #[serde(skip)]
     pub terms: Vec<String>,
@@ -190,6 +209,10 @@ pub fn build_cards(messages: &[MessageIn]) -> Vec<Card> {
             index_terms.extend(entities.files.iter().flat_map(|f| terms(f)));
             index_terms.extend(message.tools.iter().flat_map(|t| terms(t)));
             index_terms.extend(message.files.iter().flat_map(|f| terms(f)));
+            if let Some(enrichment) = &message.enrichment {
+                index_terms.extend(terms(&enrichment.title));
+                index_terms.extend(enrichment.keywords.iter().flat_map(|k| terms(k)));
+            }
             Card {
                 id: message.id.clone(),
                 pos: message.pos,
@@ -203,6 +226,7 @@ pub fn build_cards(messages: &[MessageIn]) -> Vec<Card> {
                 files: message.files.clone(),
                 signals,
                 importance: importance.min(1.0),
+                enrichment: message.enrichment.clone(),
                 terms: index_terms,
             }
         })

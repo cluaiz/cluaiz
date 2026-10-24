@@ -22,8 +22,18 @@ the answer, and what it did for each request. The plan itself is described in
 | `margin_pct` | 2 | Share of the context kept free for template tokens |
 | `compact_at_pct` | 85 | The chat is compacted when its history uses this share of the room |
 | `compact_to_pct` | 60 | A compaction frees enough to bring the history down to this share, so the next one is many turns away |
+| `indexer` | `"auto"` | Idle-time cards written by the model (title, motive, summary, keywords): `auto` when the model has GPU layers, `always`, `rules_only` (cards by rules only) or `off` |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
+
+**Idle-time cards.** After an answer in a chat with `session_id`, when no chat request is in
+flight, the model that answered writes a short card for the turn (at most 80 tokens, thinking
+off), reusing the chat's KV prefix. A request that arrives stops the job at once; a job that has
+not started yet is dropped without touching the KV. It never loads a model. Cards appear in
+`GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
+recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
+request kept the whole conversation in the cache (`cache_n` 71 of 90, the rest being its own new
+message).
 
 A chat request can change fields for itself with `context_policy`, for example
 `"context_policy": {"recent_turns_min": 3}`. There, unknown fields and invalid values are ignored
@@ -33,7 +43,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60 } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto" } }
 ```
 
 ## POST /v1/context/settings
