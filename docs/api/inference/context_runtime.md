@@ -31,8 +31,10 @@ the answer, and what it did for each request. The plan itself is described in
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
 
 **Idle-time cards.** After an answer in a chat with `session_id`, when no chat request is in
-flight, the model that answered writes a short card for the turn (at most 80 tokens, thinking
-off), reusing the chat's KV prefix. A request that arrives stops the job at once; a job that has
+flight, the model that answered writes a short card for the turn (at most 160 tokens, no
+thinking), reusing the chat's KV prefix. Where a template switches thinking at the start of the
+prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, so the KV is still
+reused. A request that arrives stops the job at once; a job that has
 not started yet is dropped without touching the KV. It never loads a model. Cards appear in
 `GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
 recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
