@@ -195,13 +195,6 @@ pub async fn execute(
             std::fs::write(&file_path, updated_content.as_bytes())?;
         }
 
-        // Invalidate the .bin cache by deleting it — engine will regenerate it on next run
-        // from the freshly-updated YAML. This ensures stale cache never serves old settings.
-        let bin_path = file_path.with_extension("bin");
-        if bin_path.exists() {
-            let _ = std::fs::remove_file(&bin_path);
-        }
-
         println!("✅ [{}] {} → \"{}\" saved.", comp_id, key, value_str);
 
         if direct_mode {

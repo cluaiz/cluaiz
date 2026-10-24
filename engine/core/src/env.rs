@@ -1,7 +1,7 @@
 //! 🌐 Centralized Environment & Path Resolution for Cluaiz Engine
 //! Single Source of Truth for directories: config, models, tools, registries, logs.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EnvironmentMode {
@@ -174,9 +174,6 @@ impl EnvironmentManager {
             }
         }
     }
-    pub fn model_registry_bin_path(&self) -> PathBuf {
-        self.config_dir().join("model_registry.bin")
-    }
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
     }
@@ -237,8 +234,11 @@ impl EnvironmentManager {
         Ok(dir)
     }
 
-    pub fn tools_registry_bin_path(&self) -> PathBuf {
-        self.config_dir().join("tools_registry.bin")
+    /// Configuration is JSON only. Old binary caches (`*.bin` in the config folder) are moved to
+    /// `backups/bin-<date>/` (never deleted); returns the files moved.
+    pub fn retire_config_bins(&self) -> Vec<PathBuf> {
+        let date = chrono::Local::now().format("%Y%m%d").to_string();
+        retire_bins(&self.config_dir(), &self.local_dir.join("backups").join(format!("bin-{date}")))
     }
 
     pub fn bin_dir(&self) -> PathBuf {
@@ -251,5 +251,51 @@ impl EnvironmentManager {
             std::fs::create_dir_all(&dir)?;
         }
         Ok(dir)
+    }
+}
+
+/// Moves every `*.bin` file of `dir` into `backup` (created when needed); returns the new paths
+fn retire_bins(dir: &Path, backup: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut moved = Vec::new();
+    for path in entries.flatten().map(|e| e.path()) {
+        if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("bin") {
+            continue;
+        }
+        let Some(name) = path.file_name() else { continue };
+        if std::fs::create_dir_all(backup).is_err() {
+            break;
+        }
+        let target = backup.join(name);
+        let done = std::fs::rename(&path, &target).is_ok()
+            || (std::fs::copy(&path, &target).is_ok() && std::fs::remove_file(&path).is_ok());
+        if done {
+            moved.push(target);
+        }
+    }
+    moved
+}
+
+#[cfg(test)]
+mod bin_tests {
+    use super::*;
+
+    #[test]
+    fn bins_move_to_the_backup_and_json_stays() {
+        let root = std::env::temp_dir().join(format!("cluaiz-bins-{}", std::process::id()));
+        let (config, backup) = (root.join("config"), root.join("backups").join("bin-test"));
+        std::fs::create_dir_all(&config).unwrap();
+        for name in ["package.bin", "permission.bin", "package.json"] {
+            std::fs::write(config.join(name), b"x").unwrap();
+        }
+        let moved = retire_bins(&config, &backup);
+        assert_eq!(moved.len(), 2);
+        assert!(!config.join("package.bin").exists() && !config.join("permission.bin").exists());
+        assert!(config.join("package.json").exists());
+        assert!(backup.join("package.bin").exists() && backup.join("permission.bin").exists());
+        // Nothing left to move: the backup is not created again
+        assert!(retire_bins(&config, &root.join("backups").join("bin-again")).is_empty());
+        assert!(!root.join("backups").join("bin-again").exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
