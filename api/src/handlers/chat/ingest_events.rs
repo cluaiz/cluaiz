@@ -13,8 +13,8 @@ use cluaiz_agents::memory::{records, NewEvent};
 use cluaiz_agents::RecordedStep;
 use serde_json::{json, Value};
 
-/// What is logged with a new or edited message besides its text
-fn extra_fields(message: &ExternalMessage, workspace: &str) -> serde_json::Map<String, Value> {
+/// A new or edited message as it is logged, with the fields besides its text
+fn client_message(message: &ExternalMessage, workspace: &str) -> ClientMessage {
     let mut extra = serde_json::Map::new();
     // OpenAI tool fields are logged as sent (rendering them comes later)
     if let Some(calls) = &message.tool_calls {
@@ -24,31 +24,21 @@ fn extra_fields(message: &ExternalMessage, workspace: &str) -> serde_json::Map<S
         extra.insert("tool_call_id".into(), json!(call_id));
     }
     extra.insert("workspace".into(), json!(workspace));
-    extra
+    ClientMessage { role: message.role.clone(), text: message.content.text_content(), id: message.id.clone(), extra }
 }
 
 /// Logs what a client request changed in the chat's transcript
 pub fn ingest_request(chat: &str, messages: &[ExternalMessage]) -> Vec<cluaiz_agents::memory::Event> {
     let store = cluaiz_agents::memory::store_for(chat);
-    let client: Vec<ClientMessage> = messages
-        .iter()
-        .map(|m| ClientMessage { role: m.role.clone(), text: m.content.text_content(), id: m.id.clone(), extra: Default::default() })
-        .collect();
-    // Only new and edited messages carry the extra fields, so they are made for those alone
+    // The messages are compared borrowed; only new and edited ones are made into log entries
+    let texts: Vec<std::borrow::Cow<str>> = messages.iter().map(|m| m.content.text_ref()).collect();
+    let sent: Vec<transcript::SentRef> = messages.iter().zip(&texts).map(|(m, text)| (m.role.as_str(), text.as_ref(), m.id.as_deref())).collect();
     let workspace = crate::handlers::notes::current_workspace();
     let result = store.read_shared(chat).and_then(|log| {
-        let mut events = transcript::diff_events(&log.events, &client);
+        let changes = transcript::changes(&log.events, &sent);
         // The shared log is let go before the append, which then extends it in place
         drop(log);
-        for event in &mut events {
-            let pos = event.data.get("pos").and_then(Value::as_u64).map(|p| p as usize);
-            if let (true, Some(message)) = (matches!(event.kind.as_str(), "message" | "message.edited"), pos.and_then(|p| messages.get(p))) {
-                for (key, value) in extra_fields(message, &workspace) {
-                    event.data.entry(key).or_insert(value);
-                }
-            }
-        }
-        store.append(chat, events)
+        store.append(chat, transcript::change_events(changes, |pos| client_message(&messages[pos], &workspace)))
     });
     result.unwrap_or_else(|e| {
         tracing::warn!("⚠️ [Memory] Could not log the request of chat {}: {}", chat, e);

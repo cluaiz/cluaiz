@@ -123,6 +123,14 @@ impl Default for MessageContent {
 
 impl MessageContent {
     /// Text used by skill matching/telemetry, with no media fetch or fake path tokens.
+    /// The text, borrowed when the content is plain text
+    pub fn text_ref(&self) -> std::borrow::Cow<'_, str> {
+        match self {
+            MessageContent::Text(text) => std::borrow::Cow::Borrowed(text),
+            MessageContent::Array(_) => std::borrow::Cow::Owned(self.text_content()),
+        }
+    }
+
     pub fn text_content(&self) -> String {
         match self {
             MessageContent::Text(text) => text.clone(),

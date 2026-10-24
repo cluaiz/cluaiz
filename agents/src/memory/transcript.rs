@@ -100,12 +100,26 @@ pub fn diff(logged: &BTreeMap<u64, Logged>, messages: &[ClientMessage]) -> Vec<N
         }
         slots[pos] = Some((m.event_id.as_str(), m.key.as_str(), m.role.as_str(), m.text.as_str()));
     }
-    diff_logged(&slots, messages)
+    let borrowed: Vec<SentRef> = messages.iter().map(|m| (m.role.as_str(), m.text.as_str(), m.id.as_deref())).collect();
+    change_events(compare(&slots, &borrowed), |pos| messages[pos].clone())
 }
 
-/// `diff` straight from the chat's events, without copying its transcript (a long chat sends
-/// every message with every request)
-pub fn diff_events(events: &[Event], messages: &[ClientMessage]) -> Vec<NewEvent> {
+/// A message the client sent, borrowed: (role, text, client id)
+pub type SentRef<'a> = (&'a str, &'a str, Option<&'a str>);
+
+/// What a client request changed at a position of the transcript
+#[derive(Debug, Clone, PartialEq)]
+pub enum Change {
+    New(usize),
+    /// The position and the event id of the message it replaces
+    Edited(usize, String),
+    /// The position and the event id of the message it removes
+    Retracted(usize, String),
+}
+
+/// The changes a client request makes to the chat's events, from its messages borrowed: a long
+/// chat sends every message with every request, so nothing is copied for the ones that match
+pub fn changes(events: &[Event], messages: &[SentRef]) -> Vec<Change> {
     // Positions are dense (0, 1, 2, …): a slot per position
     let mut slots: Vec<Option<LoggedRef>> = Vec::with_capacity(messages.len());
     for event in events {
@@ -125,29 +139,40 @@ pub fn diff_events(events: &[Event], messages: &[ClientMessage]) -> Vec<NewEvent
             }
         };
     }
-    diff_logged(&slots, messages)
+    compare(&slots, messages)
 }
 
-fn diff_logged(logged: &[Option<LoggedRef>], messages: &[ClientMessage]) -> Vec<NewEvent> {
-    let mut events = Vec::new();
-    for (pos, message) in messages.iter().enumerate() {
-        let role = message.role.to_lowercase();
+fn compare(logged: &[Option<LoggedRef>], messages: &[SentRef]) -> Vec<Change> {
+    let mut changes = Vec::new();
+    for (pos, &(role, text, id)) in messages.iter().enumerate() {
         match logged.get(pos).copied().flatten() {
-            None => events.push(message_event("message", pos, message, json!({}))),
+            None => changes.push(Change::New(pos)),
             // Same message (same key, or the Engine's own answer coming back as text) with the
             // same text: nothing new
-            Some((_, key, old_role, text))
-                if text.trim() == message.text.trim()
-                    && (*old_role == role || *key == message_key(&role, &message.text, message.id.as_deref())) => {}
-            Some((event_id, ..)) => events.push(message_event("message.edited", pos, message, json!({ "supersedes": event_id }))),
+            Some((_, key, old_role, old_text))
+                if old_text.trim() == text.trim()
+                    && (old_role.eq_ignore_ascii_case(role) || key == message_key(&role.to_lowercase(), text, id)) => {}
+            Some((event_id, ..)) => changes.push(Change::Edited(pos, event_id.to_string())),
         }
     }
     for (pos, slot) in logged.iter().enumerate().skip(messages.len()) {
         if let Some((event_id, ..)) = slot {
-            events.push(NewEvent::new("message.retracted", json!({ "pos": pos, "retracts": event_id })));
+            changes.push(Change::Retracted(pos, event_id.to_string()));
         }
     }
-    events
+    changes
+}
+
+/// The events for `changes`; `message(pos)` gives the client's message at a new or edited position
+pub fn change_events(changes: Vec<Change>, message: impl Fn(usize) -> ClientMessage) -> Vec<NewEvent> {
+    changes
+        .into_iter()
+        .map(|change| match change {
+            Change::New(pos) => message_event("message", pos, &message(pos), json!({})),
+            Change::Edited(pos, old) => message_event("message.edited", pos, &message(pos), json!({ "supersedes": old })),
+            Change::Retracted(pos, old) => NewEvent::new("message.retracted", json!({ "pos": pos, "retracts": old })),
+        })
+        .collect()
 }
 
 /// The Engine's answer at `pos`
@@ -225,6 +250,20 @@ mod tests {
         let mut all = first.clone();
         all.extend(retract);
         assert_eq!(logged(&all).len(), 1);
+    }
+
+    #[test]
+    fn test_changes_from_events_match_diff() {
+        let first = diff(&BTreeMap::new(), &[msg("user", "hi"), msg("assistant", "hello"), msg("user", "notes.txt padho")]);
+        let events: Vec<Event> = first
+            .iter()
+            .enumerate()
+            .map(|(i, e)| Event { v: 1, id: format!("ev{i}"), chat: "c".into(), seq: i as u64 + 1, ts: String::new(), kind: e.kind.clone(), data: e.data.clone() })
+            .collect();
+        // Role case does not count; an edit and a new message do
+        let sent: Vec<SentRef> = vec![("User", "hi", None), ("assistant", "hello", None), ("user", "README padho", None), ("assistant", "ok", None)];
+        assert_eq!(changes(&events, &sent), [Change::Edited(2, "ev2".into()), Change::New(3)]);
+        assert_eq!(changes(&events, &sent[..1]), [Change::Retracted(1, "ev1".into()), Change::Retracted(2, "ev2".into())]);
     }
 
     #[test]

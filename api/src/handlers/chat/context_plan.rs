@@ -74,7 +74,14 @@ pub fn render_history(
         earlier_keys: Vec::new(),
         origin: Vec::with_capacity(messages.len()),
     };
-    let mut occurrences: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    // Repeats of a user text, counted on borrowed text (a long chat has thousands of messages)
+    fn trimmed(content: &MessageContent) -> std::borrow::Cow<'_, str> {
+        match content.text_ref() {
+            std::borrow::Cow::Borrowed(text) => std::borrow::Cow::Borrowed(text.trim()),
+            std::borrow::Cow::Owned(text) => std::borrow::Cow::Owned(text.trim().to_string()),
+        }
+    }
+    let mut occurrences: std::collections::HashMap<std::borrow::Cow<str>, usize> = std::collections::HashMap::new();
     let last_index = messages.len().saturating_sub(1);
     // First message shown: the start of the oldest kept turn
     let first_shown = match mode {
@@ -94,7 +101,7 @@ pub fn render_history(
         if index < first_shown && !is_system {
             // Its turn key still counts, so repeated texts keep their keys
             if original.role.eq_ignore_ascii_case("user") {
-                *occurrences.entry(original.content.text_content().trim().to_string()).or_insert(0) += 1;
+                *occurrences.entry(trimmed(&original.content)).or_insert(0) += 1;
             }
             continue;
         }
@@ -102,7 +109,7 @@ pub fn render_history(
         let mut steps = Vec::new();
         if message.role.eq_ignore_ascii_case("user") {
             let text = message.content.text_content();
-            let seen = occurrences.entry(text.trim().to_string()).or_insert(0);
+            let seen = occurrences.entry(trimmed(&original.content)).or_insert(0);
             let key = cluaiz_agents::turn_key(&text, *seen);
             *seen += 1;
             if index == last_index {
