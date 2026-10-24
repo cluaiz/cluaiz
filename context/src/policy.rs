@@ -36,6 +36,6 @@ pub struct Policy {
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "inline".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into() }
     }
 }
