@@ -3,6 +3,7 @@
 
 pub mod audio;
 pub mod chat;
+pub mod chat_import;
 pub mod chat_memory;
 pub mod components;
 pub mod context;

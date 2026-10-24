@@ -13,6 +13,7 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 | `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
 | `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
 | `DELETE /v1/chat/{session_id}/history` | Removes the chat's log, ledger, saved KV, kept reports and Chat Map |
+| `POST /v1/chat/import/app` | Imports the App's existing chats into event logs (read-only on the App's files) |
 
 ## GET /v1/chat/{session_id}/events
 
@@ -61,4 +62,17 @@ content and stay.
 
 ```json
 { "chat_id": "mem1", "events": { "files": 1, "bytes": 6811 }, "ledger": true, "saved_kv": true, "folder_removed": true }
+```
+
+## POST /v1/chat/import/app
+
+Imports chats the App saved before the event log existed, so recall works for them too. Body:
+`chat_id` (one App chat, its folder name) or `all: true`, and optional `dry_run: true` (count
+only). The App's files are only read: `%APPDATA%\cluaiz\data\chats` and
+`<home>/.cluaiz/data/chats`, `<chat>/messages.jsonl` (with `toolCalls` and their results). Each
+message keeps its original time. A chat that already has an event log is skipped.
+
+```json
+{ "roots": ["C:\\Users\\me\\.cluaiz\\data\\chats"],
+  "chats": [ { "chat_id": "chat_20261020_195120_uz2o", "messages": 4, "tool_calls": 1, "events": 6, "status": "imported" } ] }
 ```

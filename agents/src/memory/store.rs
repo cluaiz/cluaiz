@@ -198,7 +198,7 @@ impl EventStore for JsonlStore {
                 id: format!("ev_{}", uuid::Uuid::new_v4().simple()),
                 chat: chat.to_string(),
                 seq: state.next_seq,
-                ts: now.clone(),
+                ts: new.ts.unwrap_or_else(|| now.clone()),
                 kind: new.kind,
                 data: new.data,
             };
