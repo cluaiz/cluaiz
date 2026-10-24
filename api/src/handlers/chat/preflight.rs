@@ -613,14 +613,18 @@ impl PreparedChatContext {
         let mut suggested = serde_json::Value::Array(Vec::new());
         let mut search_offered = false;
         let mut auto_pick: Option<String> = None;
+        // The catalog snapshot and the matcher (plan P1 gate: under 2 ms)
+        let mut matcher_ms = 0.0_f64;
         if discovery {
             let mut exclude = tool_ids_to_compile.clone();
             exclude.extend(inline_tool_ids.iter().cloned());
             if let Some(ref sid) = request.session_id {
                 exclude.extend(cluaiz_agents::SessionToolManager::suppressed_tool_ids(sid));
             }
+            let matcher_started = std::time::Instant::now();
             let catalog = cluaiz_agents::ToolSearch::catalog(&exclude);
             let candidates = cluaiz_agents::ToolSearch::suggest(&catalog, &initial_user_query, previous_user_query.as_deref());
+            matcher_ms = matcher_started.elapsed().as_secs_f64() * 1000.0;
             if !candidates.is_empty() {
                 tracing::info!(
                     "🧰 [Tools] Suggested: {}",
@@ -1120,6 +1124,7 @@ impl PreparedChatContext {
             "ingest_ms": ingest_ms,
             "count_ms": count_ms,
             "recall_ms": recall_ms,
+            "matcher_ms": (matcher_ms * 100.0).round() / 100.0,
         });
         tracing::info!(
             "⏱️ [Preflight] {} ms total | model load {} ms | registry + template + tags {} ms | skills + tools {} ms | rest {} ms",

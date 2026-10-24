@@ -52,6 +52,7 @@ def perf1(engine, args):
     """Preflight at about 10 and 100 tools"""
     text = "notes.txt padho aur calc.py chalao"
     small, _ = median_of(engine, "tools_ms", text)
+    small_matcher, _ = median_of(engine, "matcher_ms", text)
     if not (engine.exe and engine.home):
         return f"tools {small} ms (installed tools as they are; 100 needs --exe and --home)"
     skills = Path(engine.home, "tools", "skills")
@@ -69,13 +70,15 @@ def perf1(engine, args):
         engine.restart()
         quick(engine, "Hi")  # loads the model and the catalog
         large, _ = median_of(engine, "tools_ms", text)
+        large_matcher, _ = median_of(engine, "matcher_ms", text)
         total = sum(1 for kind in ("skills", "mcp", "plugins") for d in Path(engine.home, "tools", kind).glob("*") if d.is_dir())
     finally:
         for target in made:
             shutil.rmtree(target, ignore_errors=True)
         if made:
             engine.restart()
-    return f"tools part of preflight (median of 5): {small} ms installed as is, {large} ms with 90 more skills ({total} installed)"
+    return (f"tools part of preflight (median of 5): {small} ms installed as is, {large} ms with 90 more skills ({total} installed); "
+            f"of which catalog + matcher {small_matcher} ms and {large_matcher} ms")
 
 
 def perf2_3(engine, args):
@@ -91,7 +94,7 @@ def perf2_3(engine, args):
     ingest_s = round(time.time() - started, 1)
     after = working_set_mb(engine.pid()) if engine.pid() else None
     plans, parts = [], []
-    for i in range(3):
+    for i in range(20):
         question = f"Project ka codename kya hai? ({i})"
         r = quick(engine, question, chat, history_mode="adaptive", tool_search=False,
                   messages=history + [{"role": "user", "content": question}])
@@ -101,10 +104,13 @@ def perf2_3(engine, args):
     engine.delete(f"/v1/chat/{chat}/history")
     memory = f"; Engine memory {before} MB -> {after} MB with the chat indexed" if before else ""
     # Steps B-H of the design (ingest, render, analysis, recall, plan): the preflight after model load
-    keys = ("preflight_ms", "model_load_ms", "registry_template_ms", "ingest_ms", "render_ms", "tools_ms", "count_ms", "recall_ms", "plan_ms")
+    keys = ("preflight_ms", "model_load_ms", "registry_template_ms", "ingest_ms", "render_ms", "tools_ms", "matcher_ms", "count_ms", "recall_ms", "plan_ms")
     split = ", ".join(f"{k[:-3]} {statistics.median(p.get(k, 0) for p in parts):.0f}" for k in keys)
-    return (f"{cards} cards; first request (logs and indexes the chat) {ingest_s} s, "
-            f"plan + recall after it {plans} ms (median ms: {split}){memory}") , first
+    # Steps B-H: ingest, render (with the ledger), tools (matcher, suggestions), plan (recall, plan)
+    b_h = sorted(p.get("ingest_ms", 0) + p.get("render_ms", 0) + p.get("tools_ms", 0) + p.get("plan_ms", 0) for p in parts)
+    p95 = b_h[min(len(b_h) - 1, round(0.95 * (len(b_h) - 1)))]
+    return (f"{cards} cards; first request (logs and indexes the chat) {ingest_s} s; {len(parts)} requests after it: "
+            f"steps B-H median {statistics.median(b_h):.0f} ms, p95 {p95} ms (median ms: {split}){memory}") , first
 
 
 def perf4(engine, args):
