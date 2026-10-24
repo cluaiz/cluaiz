@@ -69,26 +69,8 @@ pub fn turn_key(text: &str, occurrence: usize) -> String {
     format!("{:016x}:{}", hasher.finish(), occurrence)
 }
 
-/// File name for a chat id: the id itself when it is a plain name, else its hash
-fn stem(chat_id: &str) -> String {
-    let plain = !chat_id.is_empty()
-        && chat_id.len() <= 64
-        && chat_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
-    if plain {
-        return chat_id.to_owned();
-    }
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    chat_id.hash(&mut hasher);
-    format!("chat-{:016x}", hasher.finish())
-}
-
 fn ledger_path(chat_id: &str) -> PathBuf {
-    cluaiz_core::EnvironmentManager::current()
-        .global_dir
-        .join("memory")
-        .join("chats")
-        .join(stem(chat_id))
-        .join("ledger.json")
+    crate::memory::memory_root().join("chats").join(crate::memory::chat_stem(chat_id)).join("ledger.json")
 }
 
 impl ChatLedger {

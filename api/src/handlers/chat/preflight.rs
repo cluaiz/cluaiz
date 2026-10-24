@@ -1,5 +1,5 @@
 use super::context_plan;
-use super::types::{ExternalChatRequest, MessageContent, TemporaryChatMode};
+use super::types::{ExternalChatRequest, TemporaryChatMode};
 use crate::state::AppState;
 use crate::utils::prepare_authorized_media;
 use axum::response::IntoResponse;
@@ -44,6 +44,8 @@ pub struct PreparedChatContext {
     pub tools_report: serde_json::Value,
     /// The plan of the prompt (the plan part of `context_report`)
     pub plan_report: serde_json::Value,
+    /// Messages the client request carried (the answer is logged after them)
+    pub message_count: usize,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -437,6 +439,10 @@ impl PreparedChatContext {
         let policy = context_plan::policy(request.context_policy.as_ref());
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode);
         let mut augmented_messages = rendered.messages;
+        // The chat's event log: what the client sent (a preview changes nothing)
+        if let (Some(chat), false) = (&ledger_chat, request.preview) {
+            super::ingest_events::ingest_request(chat, &request.messages);
+        }
         let current_turn_key = rendered.current_key;
         let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
 
@@ -895,6 +901,7 @@ impl PreparedChatContext {
             // again (the turn holding them may have been dropped for room)
             loaded_tool_ids: tool_ids_to_compile.clone(),
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
+            message_count: request.messages.len(),
             tool_hint: hint.clone(),
             tools_report,
             plan_report,
@@ -1051,10 +1058,16 @@ pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value 
 
 /// Records what the Engine added to the turn that just ended (its tool hint and tool steps)
 /// and the chat's current tool bindings, so the next request renders this turn the same way
-pub fn record_turn(ctx: &PreparedChatContext, steps: Vec<cluaiz_agents::RecordedStep>) {
+pub fn record_turn(
+    ctx: &PreparedChatContext,
+    steps: Vec<cluaiz_agents::RecordedStep>,
+    answer: &str,
+    tool_events: &[serde_json::Value],
+) {
     let Some((chat, key)) = &ctx.ledger_turn else {
         return;
     };
+    super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
     let mut ledger = cluaiz_agents::ChatLedger::get(chat);
     ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);

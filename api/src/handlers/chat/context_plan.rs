@@ -88,7 +88,7 @@ pub fn render_history(
         }
         rendered.messages.push(message);
         for (role, content) in steps {
-            rendered.messages.push(ExternalMessage { role: role.to_string(), content: MessageContent::Text(content) });
+            rendered.messages.push(ExternalMessage { role: role.to_string(), content: MessageContent::Text(content), ..Default::default() });
         }
     }
     rendered
@@ -115,7 +115,10 @@ pub fn inject(messages: &mut Vec<ExternalMessage>, hint: &str, system_tools: &st
             }
             MessageContent::Array(parts) => parts.push(super::types::ContentPart::Text { text: system_tools.to_string() }),
         },
-        _ => messages.insert(0, ExternalMessage { role: "system".to_string(), content: MessageContent::Text(system_tools.to_string()) }),
+        _ => messages.insert(
+            0,
+            ExternalMessage { role: "system".to_string(), content: MessageContent::Text(system_tools.to_string()), ..Default::default() },
+        ),
     }
 }
 

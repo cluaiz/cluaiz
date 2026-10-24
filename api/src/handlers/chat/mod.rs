@@ -4,6 +4,7 @@
 pub mod agent_loop;
 mod authorize;
 pub(crate) mod context_plan;
+pub(crate) mod ingest_events;
 pub mod control;
 pub mod non_streaming;
 pub mod preflight;
@@ -28,12 +29,29 @@ pub use types::{
     ExternalChatRequest, ExternalMessage, MessageContent, TemporaryChatMode, DEFAULT_MAX_TOKENS,
 };
 
+/// `history: "engine"`: the chat's logged transcript goes in front of the new messages
+pub(crate) fn engine_history(request: &mut types::ExternalChatRequest) {
+    match request.history.as_deref() {
+        None | Some("client") => {}
+        Some("engine") => match request.session_id.as_deref().filter(|_| request.temporary_chat.is_none()) {
+            Some(chat) => {
+                let mut messages = ingest_events::history_messages(chat);
+                messages.append(&mut request.messages);
+                request.messages = messages;
+            }
+            None => tracing::warn!("⚠️ [Memory] history \"engine\" needs a session_id (and not a temporary chat); using the messages sent"),
+        },
+        Some(other) => tracing::warn!("⚠️ [Memory] Unknown history '{}' ignored (client or engine)", other),
+    }
+}
+
 /// POST /v1/chat/completions (Full OpenAI-compatible endpoint)
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
     headers: axum::http::HeaderMap,
-    Json(request): Json<types::ExternalChatRequest>,
+    Json(mut request): Json<types::ExternalChatRequest>,
 ) -> Response {
+    engine_history(&mut request);
     if request.messages.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
