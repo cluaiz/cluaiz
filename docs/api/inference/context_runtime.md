@@ -36,7 +36,7 @@ Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
 flight, the model that answered writes a short card for the turn (at most 160 tokens, no
 thinking), reusing the chat's KV prefix. Where a template switches thinking at the start of the
 prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, so the KV is still
-reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once; a job that has
+reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once: between two tokens, or while the job's prompt is processed, between two chunks of 64 tokens (the KV keeps the cached part). Measured (Gemma 4 E4B with 5 of 42 layers on the GPU): a short request's first text came 81 ms and 228 ms later than with no job in two runs (757 against 676 ms, 1,072 against 843 ms). A job that has
 not started yet is dropped without touching the KV. It never loads a model. Cards appear in
 `GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
 recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
@@ -101,8 +101,17 @@ millisecond instead of 3.6–4.5 s.
 
 `context_report.timing` (milliseconds, the Engine's own clock): `preflight_ms` (everything before
 the model starts), `model_load_ms`, `registry_template_ms`, `tools_ms` (matching, suggestions,
-tool schemas) and `plan_ms` (planning, recall, notes, rendering). `test/context-runtime/perf.py`
-reads them.
+tool schemas) and `plan_ms` (planning, recall, notes, rendering). Parts of these: `ingest_ms`
+(the client's messages matched against the chat's event log), `render_ms` (the history rendered
+from the ledger), `count_ms` (the first token count of the prompt) and `recall_ms`.
+`test/context-runtime/perf.py` reads them.
+
+A long chat does not slow every request: the logs of the 4 most recent chats stay parsed in RAM
+(each append extends them; a log changed from outside is read again), and a request uses the
+chat's last Chat Map while a new one is built in the background after each answer (a map more
+than 8 events behind is built again; the messages added since are the newest ones, which the
+prompt shows). Measured with a 20,012-message chat (2026-10-24): preflight 32 ms, of which
+ingest 14, render 5, recall and plan 3 (before: 939 ms, of which ingest 217 and recall 209).
 
 The engine report's `context.template_dropped` lists messages the model's chat template did not
 show (a template with no place for a role or field drops it without an error); a native tool render
