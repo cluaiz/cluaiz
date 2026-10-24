@@ -171,6 +171,47 @@ pub fn step_messages(steps: &[RecordedStep], tool_role: bool) -> Vec<(&'static s
         .collect()
 }
 
+/// After an answer: tools loaded with `load_tool` that it did not use count one more idle answer,
+/// and one idle for its limit (the manifest's `default_turns` above 0, else `IDLE_TURNS`) is
+/// unloaded, its earlier load results becoming short notes. Pinned tools stay.
+pub fn end_turn_tools(ctx: &PreparedChatContext, session_id: Option<&str>, turns: &ToolTurns) {
+    let Some(session_id) = session_id else { return };
+    let used: Vec<String> = turns
+        .steps
+        .iter()
+        .filter_map(|step| {
+            let call: Value = serde_json::from_str(
+                step.call_xml.trim().trim_start_matches("<tool_call>").trim_end_matches("</tool_call>").trim(),
+            )
+            .ok()?;
+            let name = call.get("name")?.as_str()?;
+            if name == cluaiz_agents::LOAD_TOOL_NAME {
+                return call.pointer("/arguments/id").and_then(Value::as_str).map(str::to_string);
+            }
+            cluaiz_agents::ToolsEngine::resolve_function_target_for_session(session_id, name)
+                .map(|target| target.component_id)
+                .or_else(|| Some(name.to_string()))
+        })
+        .collect();
+    let limit = |id: &str| {
+        cluaiz_agents::ToolsEngine::get_tool(id)
+            .ok()
+            .flatten()
+            .and_then(|tool| u32::try_from(tool.default_turns).ok())
+            .filter(|turns| *turns > 0)
+            .unwrap_or(cluaiz_agents::lifecycle::session_map::IDLE_TURNS)
+    };
+    for id in cluaiz_agents::SessionToolManager::end_turn(session_id, &used, limit) {
+        tracing::info!("📤 [Tools] '{}' unloaded after {} answers without use", id, limit(&id));
+        if let Some((chat, _)) = &ctx.ledger_turn {
+            let mut ledger = cluaiz_agents::ChatLedger::get(chat);
+            if ledger.tombstone(&id) {
+                cluaiz_agents::ChatLedger::put(chat, ledger);
+            }
+        }
+    }
+}
+
 /// Whether the model's chat template has its own `tool` role
 pub fn template_has_tool_role(chat_template: Option<&str>) -> bool {
     chat_template.is_some_and(template_renders_tool_role)
@@ -222,7 +263,7 @@ pub async fn run_meta_tool(
                 // it (removing it sooner would change an earlier turn and cost a re-process)
                 cluaiz_agents::SessionToolManager::update_session_tools(
                     session_id,
-                    vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true }],
+                    vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true, pinned: false, idle: 0 }],
                     Vec::new(),
                 );
             }

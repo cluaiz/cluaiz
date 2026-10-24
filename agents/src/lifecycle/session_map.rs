@@ -15,7 +15,21 @@ pub struct SessionToolBinding {
     /// loaded (not in the system prompt)
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub inline: bool,
+    /// Kept until the user unpins it: never unloaded for being idle
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
+    /// Answers in a row that did not use it (a loaded tool goes after `idle_limit` of them)
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub idle: u32,
 }
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+/// Answers without use after which a loaded tool is unloaded (when its manifest sets no
+/// `default_turns` above 0)
+pub const IDLE_TURNS: u32 = 3;
 
 pub static SESSION_TOOL_REGISTRY: LazyLock<RwLock<HashMap<String, Vec<SessionToolBinding>>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
@@ -56,12 +70,39 @@ impl SessionToolManager {
         for new_tool in tools {
             if let Some(existing) = entry.iter_mut().find(|t| t.id == new_tool.id) {
                 existing.turns = new_tool.turns;
+                existing.pinned = new_tool.pinned;
+                existing.idle = 0;
             } else {
                 entry.push(new_tool);
             }
         }
 
         entry.clone()
+    }
+
+    /// After an answer: tools loaded with `load_tool` that it used start counting again, the others
+    /// count one more idle answer, and those idle for `limit(id)` answers are unloaded (not
+    /// pinned ones). Returns the unloaded ids.
+    pub fn end_turn(session_id: &str, used: &[String], limit: impl Fn(&str) -> u32) -> Vec<String> {
+        let mut registry = SESSION_TOOL_REGISTRY.write().unwrap();
+        let Some(bindings) = registry.get_mut(session_id) else { return Vec::new() };
+        let mut unloaded = Vec::new();
+        bindings.retain_mut(|binding| {
+            if !binding.inline || binding.pinned {
+                return true;
+            }
+            if used.iter().any(|id| id.eq_ignore_ascii_case(&binding.id)) {
+                binding.idle = 0;
+                return true;
+            }
+            binding.idle += 1;
+            if binding.idle >= limit(&binding.id).max(1) {
+                unloaded.push(binding.id.clone());
+                return false;
+            }
+            true
+        });
+        unloaded
     }
 
     /// Restores a chat's bindings saved on disk when RAM has none (after a restart)
@@ -86,5 +127,31 @@ impl SessionToolManager {
             .get(session_id)
             .map(|tools| tools.keys().cloned().collect())
             .unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn loaded(id: &str) -> SessionToolBinding {
+        SessionToolBinding { id: id.into(), turns: -1, inline: true, pinned: false, idle: 0 }
+    }
+
+    #[test]
+    fn test_idle_loaded_tools_go_pinned_and_bound_stay() {
+        let chat = "idle-test";
+        let pinned = SessionToolBinding { pinned: true, ..loaded("git") };
+        let bound = SessionToolBinding { id: "fetch".into(), turns: -1, inline: false, pinned: false, idle: 0 };
+        SessionToolManager::update_session_tools(chat, vec![loaded("filesystem"), loaded("pynotes"), pinned, bound], vec![]);
+        let limit = |_: &str| 2;
+        // Answer 1 uses filesystem: pynotes idles once
+        assert!(SessionToolManager::end_turn(chat, &["filesystem".into()], limit).is_empty());
+        // Answer 2 uses nothing: pynotes reaches 2 and goes; filesystem idles once
+        assert_eq!(SessionToolManager::end_turn(chat, &[], limit), ["pynotes"]);
+        // Answer 3: filesystem goes; the pinned and the bound tool stay
+        assert_eq!(SessionToolManager::end_turn(chat, &[], limit), ["filesystem"]);
+        let ids = SessionToolManager::get_active_tool_ids(chat);
+        assert_eq!(ids, ["git", "fetch"]);
     }
 }

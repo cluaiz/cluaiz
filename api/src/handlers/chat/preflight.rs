@@ -502,6 +502,8 @@ impl PreparedChatContext {
                                 id: tid,
                                 turns: turns_val as i32,
                                 inline: false,
+                                pinned: false,
+                                idle: 0,
                             };
                             cluaiz_agents::SessionToolManager::update_session_tools(
                                 sid,
@@ -773,7 +775,7 @@ impl PreparedChatContext {
                 if let Some(ref sid) = request.session_id {
                     cluaiz_agents::SessionToolManager::update_session_tools(
                         sid,
-                        vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true }],
+                        vec![cluaiz_agents::SessionToolBinding { id: tool_id.clone(), turns: -1, inline: true, pinned: false, idle: 0 }],
                         Vec::new(),
                     );
                 }
