@@ -58,6 +58,10 @@ pub struct ChatLedger {
     /// The chat's tool bindings when last saved (restored after a restart)
     #[serde(default)]
     pub bindings: Vec<SessionToolBinding>,
+    /// Pinned notes put in this chat's system prompt (chosen when the chat starts, so the system
+    /// prompt stays the same; notes pinned later travel with the message they arrive in)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notes: Option<Vec<String>>,
 }
 
 static LEDGERS: LazyLock<Mutex<HashMap<String, ChatLedger>>> = LazyLock::new(|| Mutex::new(HashMap::new()));

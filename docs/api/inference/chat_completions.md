@@ -278,6 +278,12 @@ The question about a fact never given (a passport number) was answered with an i
 
 ---
 
+## 📝 Notes
+
+Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it; and the model can propose notes with `remember` when the user asks to remember something. See [Notes API](./notes.md).
+
+---
+
 ## 💾 Chat Memory (saved KV cache per chat)
 
 Send a `session_id` with every request of a chat. After each answer (once per answer, not after every tool step) the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](./chat_memory.md).

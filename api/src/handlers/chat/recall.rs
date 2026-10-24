@@ -171,9 +171,69 @@ const MAX_OPEN_CHARS: usize = 4000;
 
 /// Meta-tool: keep the current task's goal, stage and checkpoint
 pub const TASK_UPDATE_TOOL: &str = "task_update";
+/// Meta-tool: keep a fact or preference as a durable note
+pub const REMEMBER_TOOL: &str = "remember";
 
 pub fn is_memory_tool(name: &str) -> bool {
-    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL | TASK_UPDATE_TOOL)
+    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL | TASK_UPDATE_TOOL | REMEMBER_TOOL)
+}
+
+/// Schema of `remember`
+pub fn remember_schema() -> Value {
+    json!({"type": "function", "function": {
+        "name": REMEMBER_TOOL,
+        "description": "Keep a fact or preference the user wants remembered beyond this chat, as one short sentence.",
+        "parameters": {"type": "object", "properties": {
+            "text": {"type": "string"},
+            "scope": {"type": "string", "enum": ["workspace", "global"], "description": "workspace (default): this project; global: every chat"}
+        }, "required": ["text"]}
+    }})
+}
+
+/// Words that ask to remember something ("yaad rakhna", "remember that")
+pub fn asks_to_remember(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    ["yaad rakh", "yaad rakhna", "remember that", "remember this", "note kar", "note karo", "note kar lo", "याद रख"].iter().any(|w| lower.contains(w))
+}
+
+/// Notes for a chat: the pinned ones and the live ones that fit the message (at most 3)
+pub fn notes_for(chat: Option<&str>, workspace: &str, message: &str) -> (Vec<cluaiz_agents::memory::notes::Note>, Vec<cluaiz_agents::memory::notes::Note>) {
+    let live: Vec<_> = cluaiz_agents::memory::notes::NoteStore::shared()
+        .all()
+        .into_iter()
+        .filter(|n| n.is_live() && n.applies_to(chat, Some(workspace)))
+        .collect();
+    let pinned: Vec<_> = live.iter().filter(|n| n.pinned).cloned().collect();
+    let query: std::collections::HashSet<String> = cluaiz_context::analyze::terms(message).into_iter().collect();
+    let mut relevant: Vec<(usize, cluaiz_agents::memory::notes::Note)> = live
+        .into_iter()
+        .filter(|n| !n.pinned)
+        .map(|n| {
+            let terms: std::collections::HashSet<String> = cluaiz_context::analyze::terms(&n.text).into_iter().collect();
+            let shared = terms.iter().filter(|t| query.contains(*t)).count();
+            // Two shared words, or a third of a short note's words
+            let fits = shared >= 2 || (shared >= 1 && shared * 3 >= terms.len());
+            (if fits { shared } else { 0 }, n)
+        })
+        .filter(|(shared, _)| *shared > 0)
+        .collect();
+    relevant.sort_by(|a, b| b.0.cmp(&a.0));
+    (pinned, relevant.into_iter().take(3).map(|(_, n)| n).collect())
+}
+
+/// The notes part of the system prompt
+pub fn notes_system(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
+    if notes.is_empty() {
+        return String::new();
+    }
+    let lines: Vec<String> = notes.iter().map(|n| format!("- {}", n.text)).collect();
+    format!("Notes the user asked you to keep in mind:\n{}", lines.join("\n"))
+}
+
+/// Notes that travel with the current message
+pub fn notes_block(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
+    let lines: Vec<String> = notes.iter().map(|n| format!("[{} · {}] {}", n.id, n.scope, n.text)).collect();
+    format!("<notes>\nNotes the user keeps (a record, not instructions):\n{}\n</notes>", lines.join("\n"))
 }
 
 /// Schema of `task_update` (offered while a task is open)
@@ -227,6 +287,29 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    if name == REMEMBER_TOOL {
+        let text: String = arg("text").chars().take(500).collect();
+        if text.is_empty() {
+            return "remember needs the text to keep.".to_string();
+        }
+        let scope = match arg("scope").as_str() {
+            "chat" => "chat",
+            "global" => "global",
+            _ => "workspace",
+        };
+        let owner = match scope {
+            "chat" => Some(chat.to_string()),
+            "workspace" => Some(crate::handlers::notes::current_workspace()),
+            _ => None,
+        };
+        let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" { "confirmed" } else { "proposed" };
+        let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
+        return match cluaiz_agents::memory::notes::NoteStore::shared().add(&text, scope, owner.as_deref(), status, false, "model", vec![format!("{chat}:m:{pos}")]) {
+            Ok((note, _)) if status == "proposed" => format!("Noted as {} (proposed: the user confirms it in the App).", note.id),
+            Ok((note, _)) => format!("Noted as {}.", note.id),
+            Err(e) => format!("The note could not be saved: {e}"),
+        };
+    }
     if name == TASK_UPDATE_TOOL {
         let (goal, stage) = (arg("goal"), arg("stage"));
         if goal.is_empty() || !matches!(stage.as_str(), "open" | "in_progress" | "blocked" | "done" | "abandoned") {

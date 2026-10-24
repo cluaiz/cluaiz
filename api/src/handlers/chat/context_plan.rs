@@ -212,6 +212,7 @@ pub fn policy(overrides: Option<&serde_json::Value>) -> Policy {
 /// Percentages are 0–100; at most 50 recent turns are protected
 pub fn valid(policy: &Policy) -> bool {
     matches!(policy.indexer.as_str(), "auto" | "always" | "rules_only" | "off")
+        && matches!(policy.notes.as_str(), "ask" | "auto" | "off")
         && policy.recent_turns_min <= 50
         && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct, policy.compact_to_pct]
             .iter()

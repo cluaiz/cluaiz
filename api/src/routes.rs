@@ -136,6 +136,11 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::memory::get_grants).delete(handlers::memory::revoke_grants),
         )
         .route("/v1/recall/search", post(handlers::memory::search))
+        // Durable notes
+        .route("/v1/notes", get(handlers::notes::list).post(handlers::notes::create))
+        .route("/v1/notes/{id}/confirm", post(handlers::notes::confirm))
+        .route("/v1/notes/{id}/invalidate", post(handlers::notes::invalidate))
+        .route("/v1/notes/{id}/pin", post(handlers::notes::pin))
         .route("/v1/chat/import/app", post(handlers::chat_import::import_app_chats))
         .route("/v1/recall/item/{reference}", get(handlers::memory::get_item))
         .route("/v1/chat/{session_id}/context/report", get(handlers::context::list_context_reports))

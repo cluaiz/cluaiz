@@ -22,10 +22,13 @@ pub struct Policy {
     /// Idle-time card enrichment by the model: "auto" (with GPU layers), "always", "rules_only",
     /// "off"
     pub indexer: String,
+    /// Notes the model proposes with `remember`: "ask" (proposed until the user confirms),
+    /// "auto" (confirmed at once) or "off" (no remember function)
+    pub notes: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into() }
     }
 }

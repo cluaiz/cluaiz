@@ -14,6 +14,7 @@ pub mod fs_jail;
 pub mod ingest;
 mod ingest_model;
 pub mod mcp;
+pub mod notes;
 pub mod memory;
 pub mod models;
 pub mod optimization;
