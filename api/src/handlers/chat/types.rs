@@ -82,6 +82,11 @@ pub struct ExternalChatRequest {
     /// "none": only the system prompt and the current message
     #[serde(default)]
     pub history_mode: Option<String>,
+    /// "client" (default): the client sends the whole conversation. "engine": the client sends
+    /// only the new messages and the Engine puts the chat's logged transcript in front of them
+    /// (needs session_id)
+    #[serde(default)]
+    pub history: Option<String>,
     /// Planner fields for this request only (recent_turns_min, evidence_cap_pct,
     /// suggestions_cap_pct, margin_pct, compact_at_pct, compact_to_pct); unknown or invalid ones are ignored
     #[serde(default)]
@@ -208,10 +213,19 @@ pub struct MediaUrlContent {
     pub url: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Default)]
 pub struct ExternalMessage {
     pub role: String,
+    #[serde(default)]
     pub content: MessageContent,
+    /// The client's id for the message (optional): the chat's event log matches messages by it
+    #[serde(default)]
+    pub id: Option<String>,
+    /// OpenAI tool fields: accepted and logged as sent
+    #[serde(default)]
+    pub tool_calls: Option<serde_json::Value>,
+    #[serde(default)]
+    pub tool_call_id: Option<String>,
 }
 
 /// API error type of an engine error: llama-server's `exceed_context_size_error` (HTTP 400) when the

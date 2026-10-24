@@ -77,6 +77,7 @@ pub async fn preview_context(
     }
     request.session_id = Some(chat_id);
     request.preview = true;
+    super::chat::engine_history(&mut request);
     let request_id = format!("preview-{}", uuid::Uuid::new_v4().simple());
     match PreparedChatContext::prepare(&state, &request, &request_id, &headers, None).await {
         Ok(ctx) => Json(json!({ "plan": ctx.plan_report, "tools": ctx.tools_report })).into_response(),

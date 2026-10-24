@@ -158,6 +158,8 @@ pub async fn execute_streaming_loop(
             "context": { "tools": ctx.tools_report.clone() }
         }).to_string()));
         let mut tool_events: Vec<serde_json::Value> = Vec::new();
+        // The answer as the client sees it (logged in the chat's event log)
+        let mut visible_answer = String::new();
 
         let mut rx = initial_rx;
 
@@ -501,6 +503,9 @@ pub async fn execute_streaming_loop(
                 if !should_skip && reasoning_opt.is_some() {
                     reasoning_tokens_count += 1;
                 }
+                if let Some(content) = &content_opt {
+                    visible_answer.push_str(content);
+                }
                 if content_opt.is_some() || (!should_skip && reasoning_opt.is_some()) {
                     yield Ok::<_, Infallible>(make_chunk(content_opt, if should_skip { None } else { reasoning_opt }));
                 }
@@ -543,6 +548,7 @@ pub async fn execute_streaming_loop(
         if final_content.is_some() || (!should_skip && final_reasoning.is_some()) {
             let mut delta = serde_json::Map::new();
             if let Some(c) = final_content {
+                visible_answer.push_str(&c);
                 delta.insert("content".to_string(), serde_json::Value::String(c));
             }
             if let Some(r) = final_reasoning {
@@ -667,7 +673,7 @@ pub async fn execute_streaming_loop(
             crate::handlers::session_tools::decrement_session_turns(sid);
         }
         // What the Engine added to this turn, so the next request renders it the same way
-        super::preflight::record_turn(&ctx, tool_turns.steps());
+        super::preflight::record_turn(&ctx, tool_turns.steps(), &visible_answer, &tool_events);
         turn_memory.finish().await;
 
         // 🧹 Auto-Cleanup: Remove completed stream from active registry

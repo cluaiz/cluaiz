@@ -5,6 +5,7 @@ pub mod execution;
 pub mod installer;
 pub mod lifecycle;
 pub mod mcp;
+pub mod memory;
 pub mod plugins;
 pub mod prompt_compiler;
 pub mod registry;

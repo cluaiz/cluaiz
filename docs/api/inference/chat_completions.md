@@ -76,6 +76,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) via `<tool_call>` XML. |
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
+| **`history`** | String | No | `"client"` | `"client"`, `"engine"` | `client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See [Chat event log](#-chat-event-log). |
 | **`history_mode`** | String | No | `"recent"` | `"recent"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat (see [Context plan and compaction](#-context-plan-and-compaction)), then drops the oldest turns. `none`: only the system prompt and the current message. |
 | **`context_policy`** | Object | No | settings | see [Context Runtime API](./context_runtime.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
@@ -228,6 +229,24 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 3. A cleared `load_tool` result unloads that tool: the note says so, and the tool can be suggested and loaded again.
 
 A compaction frees enough to bring the history down to `compact_to_pct` (60%) of the room, and happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
+
+---
+
+## 🧾 Chat event log
+
+In a chat with `session_id` (not `temporary_chat`), the Engine keeps an append-only log of the chat at `<CLUAIZ_HOME>/memory/chats/<chat>/events.jsonl`, one JSON event per line:
+
+| Kind | Written when |
+| --- | --- |
+| `message` | A new message arrives from the client (`source: "client"`), or the Engine answered (`source: "engine"`) |
+| `message.edited` | A message at the same position changed (`supersedes` the old event) |
+| `message.retracted` | The client no longer sends a logged message, e.g. after regenerate (`retracts` the old event). Nothing is deleted |
+| `tool_call`, `tool_result` | Each tool step of an answer |
+| `context_edit` | `load_tool`, `unload_tool`, `find_tools` calls and compactions |
+
+Messages are matched by position and by the optional `messages[].id` (else a hash of role and text). OpenAI `tool_calls` and `tool_call_id` on messages are accepted and logged as sent. String fields over 8 KB are stored once under `<CLUAIZ_HOME>/memory/blobs/` and referenced from the event; the log is closed and compressed (zstd) every 8 MB. Each event is written when it happens and the file is flushed to disk at the end of every answer; a line cut by a crash is skipped and reported when the log is read.
+
+With `history: "engine"` the client sends only the new messages, and the Engine puts the logged transcript in front of them.
 
 ---
 
