@@ -1073,9 +1073,14 @@ impl PreparedChatContext {
             None
         };
         let mut json_prompt = envelope.to_prompt();
-        if !template_tools.is_empty() {
+        if !template_tools.is_empty() || request.return_prompt == Some(true) {
             if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&json_prompt) {
-                value["tools"] = json!(template_tools);
+                if !template_tools.is_empty() {
+                    value["tools"] = json!(template_tools);
+                }
+                if request.return_prompt == Some(true) {
+                    value["return_prompt"] = json!(true);
+                }
                 json_prompt = value.to_string();
             }
         }

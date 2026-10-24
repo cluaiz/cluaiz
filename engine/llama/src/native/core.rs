@@ -80,6 +80,12 @@ pub struct ContextReport {
     pub cause: &'static str,
     /// First prompt position that differs from the cache (cause "edit")
     pub edit_at: Option<usize>,
+    /// Messages the chat template did not show (indexes; see `missing_messages`)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub template_dropped: Vec<usize>,
+    /// The rendered prompt, when the request asked for it (`return_prompt`, for template tests)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
 }
 
 impl ContextReport {
