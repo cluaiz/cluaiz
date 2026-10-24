@@ -502,14 +502,29 @@ pub(crate) fn stream_tokens_with_media(
                             .filter(|c| crate::native::context::load_checkpoint(ctx, c))
                             .map_or(0, |c| c.n_tokens as usize);
                         if n_past > 0 {
-                            info!("🧠 [Context] Restarted from the checkpoint at {} tokens (sliding window)", n_past);
+                            info!("🧠 [Context] Restarted from the checkpoint at {} tokens (sliding window or recurrent state)", n_past);
                         }
                     }
                 }
-                // Recurrent memory cannot drop a tail: then it starts over
-                if n_past == 0 || !llama_cpp::llama_memory_seq_rm(mem, 0, n_past as i32, -1) {
+                // Recurrent memory cannot drop a tail: it restarts at the newest checkpoint inside the
+                // prefix (llama-server's context checkpoints), else it starts over
+                if n_past > 0 && !llama_cpp::llama_memory_seq_rm(mem, 0, n_past as i32, -1) {
+                    let ctx = llama.ctx_ptr;
+                    n_past = llama
+                        .checkpoints
+                        .iter()
+                        .rev()
+                        .find(|c| c.n_tokens > 0 && c.n_tokens as usize <= n_past)
+                        .filter(|c| crate::native::context::load_checkpoint(ctx, c))
+                        .map_or(0, |c| c.n_tokens as usize);
+                    if n_past > 0 && llama_cpp::llama_memory_seq_rm(mem, 0, n_past as i32, -1) {
+                        info!("🧠 [Context] Restarted from the checkpoint at {} tokens (recurrent state)", n_past);
+                    } else {
+                        n_past = 0;
+                    }
+                }
+                if n_past == 0 {
                     llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
-                    n_past = 0;
                 }
                 llama.checkpoints.retain(|c| c.n_tokens as usize <= n_past);
                 cached.truncate(n_past);
@@ -573,9 +588,12 @@ pub(crate) fn stream_tokens_with_media(
                 true
             };
 
-            // Sliding-window models: checkpoint a few tokens before the prompt end, so the next turn
-            // can restart there when its history differs from this one's generation prompt onwards
-            let swa = llama_cpp::llama_model_n_swa(llama.model_ptr) > 0;
+            // Sliding-window and recurrent (or hybrid) models cannot roll their KV back: checkpoint a
+            // few tokens before the prompt end, so the next turn can restart there when its history
+            // differs from this one's generation prompt onwards (llama-server does the same)
+            let swa = llama_cpp::llama_model_n_swa(llama.model_ptr) > 0
+                || llama_cpp::llama_model_is_recurrent(llama.model_ptr)
+                || llama_cpp::llama_model_is_hybrid(llama.model_ptr);
             let split = if swa && new_tokens.len() > crate::native::context::CHECKPOINT_TAIL {
                 new_tokens.len() - crate::native::context::CHECKPOINT_TAIL
             } else {
