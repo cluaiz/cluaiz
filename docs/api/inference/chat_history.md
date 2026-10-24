@@ -8,7 +8,7 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 | Endpoint | What it does |
 | --- | --- |
 | `GET /v1/chat/{session_id}/events` | The chat's event log, oldest first |
-| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text) and episodes |
+| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text), episodes and graph |
 | `POST /v1/recall/search` | Messages of a chat that fit a query |
 | `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
 | `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
@@ -42,6 +42,11 @@ a pause of more than 30 minutes, when the user says so ("new topic", "naya topic
 message shares almost no keywords with the current one (short follow-ups such as "phir se" stay).
 Each has `id` (`ep:<first position>`), `first_pos`, `last_pos`, `start`, `end`, `messages`,
 `keywords`, a rule `title`, `files`, `tools` and `key_moments` (corrections and decisions).
+
+`graph` has `nodes` (`m:<pos>` messages, `ep:<pos>` episodes, `tool:`, `file:`, `value:`) and
+`edges` (`next`, `part_of`, `uses_tool`, `touches_file`, `mentions`, `corrects`), built by rules,
+for apps that keep the Chat Map in their own graph store. Recall uses it to bring along one hop:
+a later correction of a recalled message, or a message with the same file or value.
 
 ## POST /v1/recall/search
 

@@ -7,7 +7,7 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_agents::memory::{EventStore, JsonlStore};
-use cluaiz_context::memory::{build_cards, episodes, recall, Card, CardIndex, Enrichment, Episode, EpisodeRules, MessageIn};
+use cluaiz_context::memory::{build_cards, episodes, expand, recall, Card, CardIndex, Enrichment, Episode, EpisodeRules, MessageIn};
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -16,6 +16,8 @@ use std::sync::{Arc, LazyLock, Mutex};
 const HOT_CHATS: usize = 4;
 /// Most messages recalled for one request
 const MAX_HITS: usize = 3;
+/// Linked messages that may come along with the recalled ones
+const MAX_LINKED: usize = 2;
 /// Most earlier topics (episodes) outlined with recalled messages
 const MAX_OUTLINE: usize = 3;
 /// Longest piece of one recalled message
@@ -184,6 +186,7 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
     }
     let query = arg("query");
     let hits = recall(&map.cards, &map.index, &query, &HashSet::new(), chrono::Utc::now(), 5);
+    let hits = expand(&hits, &map.cards, &HashSet::new(), 7);
     if hits.is_empty() {
         return format!("Nothing earlier in this chat matches \"{query}\".");
     }
@@ -249,6 +252,8 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
     let hidden: HashSet<u64> = hidden.iter().map(|i| *i as u64).collect();
     let visible: HashSet<u64> = map.cards.iter().map(|c| c.pos).filter(|pos| !hidden.contains(pos)).collect();
     let hits = recall(&map.cards, &map.index, message, &visible, chrono::Utc::now(), MAX_HITS);
+    // Linked messages come along: a later correction, the same file or value
+    let hits = expand(&hits, &map.cards, &visible, MAX_HITS + MAX_LINKED);
     let mut lines: Vec<(u64, String)> = Vec::new();
     let mut refs = Vec::new();
     let mut used = 0;
