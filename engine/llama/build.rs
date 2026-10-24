@@ -181,13 +181,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Engine-owned ABI adapter; the pinned upstream reasoning implementation is linked below.
     println!("cargo:rerun-if-changed=src/ffi/reasoning_bridge.cpp");
+    println!("cargo:rerun-if-changed=src/ffi/chat_bridge.cpp");
     cc::Build::new()
         .cpp(true)
         .std("c++17")
         .include(llama_path.join("include"))
         .include(llama_path.join("ggml/include"))
         .include(llama_path.join("common"))
+        .include(llama_path.join("vendor"))
         .file("src/ffi/reasoning_bridge.cpp")
+        .file("src/ffi/chat_bridge.cpp")
         .flag_if_supported("/EHsc")
         .compile("cluaiz-reasoning-bridge");
 

@@ -8,12 +8,20 @@ pub unsafe fn build_sampler_chain(
     tokens: &[i32],
     req_samplers: Option<&serde_json::Value>,
     n_vocab: i32,
+    grammar: *mut std::ffi::c_void,
 ) -> anyhow::Result<*mut std::ffi::c_void> {
     let sparams = llama_cpp::LlamaSamplerChainParams { no_perf: true };
     let sampler_chain = llama_cpp::llama_sampler_chain_init(sparams);
     
     if sampler_chain.is_null() {
+        if !grammar.is_null() {
+            llama_cpp::llama_sampler_free(grammar);
+        }
         return Err(anyhow::anyhow!("💀 Failed to initialize sampler chain"));
+    }
+    // A tool-call grammar (null = none) masks the candidates first; the chain owns it from here
+    if !grammar.is_null() {
+        llama_cpp::llama_sampler_chain_add(sampler_chain, grammar);
     }
 
     // Order: chat request value -> user default (settings) -> model DNA -> llama.cpp default

@@ -364,6 +364,8 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
     }
     envelope["think_mode"] = json!("off");
     envelope["kv_reuse"] = json!("prefix");
+    // Native tools stay in the prompt (same KV); the reply is read as text, not as calls
+    envelope["parse_tools"] = json!(false);
     let response = state
         .host
         .dispatch_chat_text(

@@ -17,11 +17,9 @@ pub struct ToolTurns {
 }
 
 impl ToolTurns {
-    pub fn new(chat_template: Option<&str>) -> Self {
-        Self {
-            steps: Vec::new(),
-            tool_role: chat_template.is_some_and(template_renders_tool_role),
-        }
+    /// `tool_role`: results go in as `tool` messages (see `PreparedChatContext::tool_role`)
+    pub fn new(tool_role: bool) -> Self {
+        Self { steps: Vec::new(), tool_role }
     }
 
     pub fn push(&mut self, raw_call_json: &str, name: &str, result: &str) {
@@ -245,6 +243,12 @@ pub fn needs_load(ctx: &PreparedChatContext, turns: &ToolTurns, session_id: Opti
 const UNLOADED_TOOL_ANSWERS: u32 = 3;
 
 /// Whether a Jinja chat template has its own branch for `tool` messages (Qwen, Llama 3, Hermes...).
+/// Whether the model's chat template renders a `tools` list itself (else native tool calls have
+/// nothing to work with and tools go inline)
+pub fn template_renders_tools(chat_template: Option<&str>) -> bool {
+    chat_template.is_some_and(|t| t.contains("tools"))
+}
+
 fn template_renders_tool_role(template: &str) -> bool {
     template.contains("\"tool\"") || template.contains("'tool'")
 }
@@ -262,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_each_step_is_added_once() {
-        let mut turns = ToolTurns::new(Some("message.role == \"tool\""));
+        let mut turns = ToolTurns::new(template_has_tool_role(Some("message.role == \"tool\"")));
         turns.push("{\"name\":\"a\"}", "a", "first");
         turns.push("{\"name\":\"b\"}", "b", "second");
         let messages = turns.messages();
@@ -276,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_templates_without_tool_role_get_a_user_tool_response() {
-        let mut turns = ToolTurns::new(Some("{{ message.role }}"));
+        let mut turns = ToolTurns::new(template_has_tool_role(Some("{{ message.role }}")));
         turns.push("{\"name\":\"a\"}", "a", "done");
         let messages = turns.messages();
         assert_eq!(messages[1]["role"], "user");

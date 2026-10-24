@@ -25,6 +25,7 @@ the answer, and what it did for each request. The plan itself is described in
 | `compact_to_pct` | 60 | A compaction frees enough to bring the history down to this share, so the next one is many turns away |
 | `indexer` | `"auto"` | Idle-time cards written by the model (title, motive, summary, keywords): `auto` when the model has GPU layers, `always`, `rules_only` (cards by rules only) or `off` |
 | `notes` | `"ask"` | Notes the model proposes with `remember`: `ask` (proposed until the user confirms), `auto` (confirmed at once), `off` (no `remember`). See [Notes](./notes.md) |
+| `tool_format` | `"inline"` | How tools reach the model: `inline` (their schemas in the system prompt, calls as `<tool_call>` blocks) or `native` (the model's own chat template and call format, with llama.cpp's grammar and parser). See [Native tool calls](#native-tool-calls) |
 | `cross_chat` | `"ask"` | Searching other chats with `recall` (scope `workspace` or `all`): `ask` (the user approves each search, like a tool call: `permission_request` with capability `memory:other_chats`), `allow`, or `deny` (nothing from other chats is ever returned) |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
@@ -47,6 +48,29 @@ when chat memory is on, because they replace the KV of the chat you were in (it 
 disk on your next message). A turn whose job was stopped or replaced by a newer turn is picked up
 the same way.
 
+## Native tool calls
+
+With `tool_format: "native"` the bound tools go to the model's chat template as a `tools` list
+(llama-server's path): the template writes them, and the earlier calls and results, the way the
+model was trained on, and llama.cpp gives a lazy grammar for the model's call format and the parser
+that reads its answer. The grammar sleeps while the model thinks and wakes up when thinking ends.
+The answer streams as the parser reads it, without the call markup; each call then arrives as a
+`<tool_call>` block, so clients, the chat's ledger and `tool_calls` events stay the same in both
+modes. A template that does not render tools gets them inline. Media prompts stay inline.
+
+Measured with `test/context-runtime/tool_calls.py` (14 rows: 11 that need a tool, 3 that need
+none; isolated server, temperature 0, 2026-10-24, RTX 3050 4 GB):
+
+| Model | `inline` | `native` |
+| --- | --- | --- |
+| Gemma 4 E4B (Q4_K_M) | 6/14 (tool called right 11/11, right answer 6/14) | 14/14 |
+| Qwen3-4B (Q4_K_M) | 13/14 | 14/14 |
+| Llama 3.2 3B (Q4_K_M) | 4/14 | 4/14 (its template has no tools: inline) |
+
+Gemma 4 called the tools in both modes, but inline it often wrote no answer after the result or
+answered from an invented one. Qwen3's own format is the `<tool_call>` block, so both modes are
+close for it.
+
 ## GET /v1/context/jobs
 
 ```json
@@ -67,7 +91,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask" } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "inline" } }
 ```
 
 ## POST /v1/context/settings

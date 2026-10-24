@@ -3,3 +3,4 @@
 pub mod llama_cpp;
 pub mod mtmd;
 pub(crate) mod reasoning;
+pub(crate) mod chat;
