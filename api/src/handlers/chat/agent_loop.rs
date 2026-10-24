@@ -221,7 +221,7 @@ pub async fn execute_streaming_loop(
                     let implicit_load = super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
                     let is_meta_tool = implicit_load
                         || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name))
-                || (ctx.memory_tools && super::recall::is_memory_tool(raw_fn_name));
+                || ((ctx.memory_tools || raw_fn_name == super::recall::TASK_UPDATE_TOOL) && ctx.ledger_turn.is_some() && super::recall::is_memory_tool(raw_fn_name));
                     let (meta_name, meta_payload) = if implicit_load {
                         (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
                     } else {
@@ -301,12 +301,12 @@ pub async fn execute_streaming_loop(
                         .unwrap_or(cluaiz_agents::SecurityMode::Inherit);
 
                     // 🛡️ Human-In-The-Loop (HITL) Permission Gate (shared with the non-streaming path)
-                    let assessment = super::authorize::assess(&comp_type, &comp_name, is_meta_tool);
+                    let assessment = super::authorize::assess(&comp_type, &comp_name, is_meta_tool, ctx.chat_id.as_deref());
                     let mut permission_granted = true;
                     let mut user_denial_feedback: Option<String> = None;
 
                     if assessment.requires_approval {
-                        let pending = super::authorize::request(&state_clone, &comp_type, &public_call_name, &payload_str).await;
+                        let pending = super::authorize::request(&state_clone, &comp_type, &public_call_name, &payload_str, ctx.chat_id.as_deref()).await;
 
                         // Real-time permission request with the full parameters and capabilities
                         let perm_chunk = json!({

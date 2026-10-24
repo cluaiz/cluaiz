@@ -7,7 +7,9 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_agents::memory::{EventStore, JsonlStore};
-use cluaiz_context::memory::{build_cards, episodes, expand, recall, Card, CardIndex, Enrichment, Episode, EpisodeRules, MessageIn};
+use cluaiz_context::memory::{
+    active_task, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate,
+};
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -33,13 +35,17 @@ pub struct ChatMap {
     texts: Vec<String>,
     /// Stretches of the chat about one thing, by rules
     pub episodes: Vec<Episode>,
+    /// Work over several turns: implicit (rules) and the model's own (`task_update`)
+    pub tasks: Vec<Task>,
 }
 
 static MAPS: LazyLock<Mutex<Vec<(String, Arc<ChatMap>)>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Messages of the chat for the card builder: the visible transcript, with the tools and files
 /// of each answer's tool steps
-fn messages(chat: &str) -> anyhow::Result<(u64, Vec<MessageIn>)> {
+type Logged = (u64, Vec<MessageIn>, Vec<TaskUpdate>, std::collections::HashMap<String, EpisodeSummary>);
+
+fn messages(chat: &str) -> anyhow::Result<Logged> {
     let log = JsonlStore::shared().read(chat)?;
     let slots = transcript(&log.events);
     let mut tools: std::collections::HashMap<u64, (Vec<String>, Vec<String>)> = Default::default();
@@ -98,12 +104,24 @@ fn messages(chat: &str) -> anyhow::Result<(u64, Vec<MessageIn>)> {
             }
         })
         .collect();
-    Ok((log.events.last().map_or(0, |e| e.seq), messages))
+    let updates = log
+        .events
+        .iter()
+        .filter(|e| e.kind == "task")
+        .filter_map(|e| serde_json::from_value::<TaskUpdate>(Value::Object(e.data.clone())).ok())
+        .collect();
+    let summaries = log
+        .events
+        .iter()
+        .filter(|e| e.kind == "episode_summary")
+        .filter_map(|e| Some((e.str("episode")?.to_string(), serde_json::from_value::<EpisodeSummary>(Value::Object(e.data.clone())).ok()?)))
+        .collect();
+    Ok((log.events.last().map_or(0, |e| e.seq), messages, updates, summaries))
 }
 
 /// The chat's Chat Map, rebuilt when its log has grown
 pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
-    let (version, messages) = match messages(chat) {
+    let (version, messages, updates, summaries) = match messages(chat) {
         Ok(found) => found,
         Err(e) => {
             tracing::warn!("⚠️ [Memory] Could not read chat {}: {}", chat, e);
@@ -121,7 +139,13 @@ pub fn chat_map(chat: &str) -> Option<Arc<ChatMap>> {
     let index = CardIndex::build(&cards);
     let texts: Vec<String> = messages.into_iter().map(|m| m.text).collect();
     let episodes = episodes(&cards, &texts.iter().map(String::as_str).collect::<Vec<_>>(), EpisodeRules::default());
-    let map = Arc::new(ChatMap { version, cards, index, texts, episodes });
+    let mut episodes = episodes;
+    for episode in &mut episodes {
+        episode.summary = summaries.get(&episode.id).cloned();
+    }
+    let user_text = |pos: u64| cards.iter().position(|c| c.pos == pos && c.role == "user").map(|i| texts[i].clone());
+    let tasks = tasks(&cards, &episodes, &updates, &user_text);
+    let map = Arc::new(ChatMap { version, cards, index, texts, episodes, tasks });
     tracing::info!("🗺️ [Memory] Chat map of {} built: {} cards in {} ms", chat, map.cards.len(), started.elapsed().as_millis());
     maps.retain(|(id, _)| id != chat);
     maps.push((chat.to_string(), map.clone()));
@@ -145,8 +169,40 @@ pub const OPEN_MEMORY_TOOL: &str = "open_memory";
 /// Most characters `open_memory` returns
 const MAX_OPEN_CHARS: usize = 4000;
 
+/// Meta-tool: keep the current task's goal, stage and checkpoint
+pub const TASK_UPDATE_TOOL: &str = "task_update";
+
 pub fn is_memory_tool(name: &str) -> bool {
-    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL)
+    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL | TASK_UPDATE_TOOL)
+}
+
+/// Schema of `task_update` (offered while a task is open)
+pub fn task_schema() -> Value {
+    json!({"type": "function", "function": {
+        "name": TASK_UPDATE_TOOL,
+        "description": "Keep track of the task you are doing over several turns: its goal, stage and where it stands now.",
+        "parameters": {"type": "object", "properties": {
+            "goal": {"type": "string"},
+            "stage": {"type": "string", "enum": ["open", "in_progress", "blocked", "done", "abandoned"]},
+            "checkpoint": {"type": "string", "description": "What is done and what comes next, in one or two sentences"}
+        }, "required": ["goal", "stage"]}
+    }})
+}
+
+/// The chat's open task, if any
+pub fn open_task(chat: &str) -> Option<Task> {
+    let map = chat_map(chat)?;
+    active_task(&map.tasks).cloned()
+}
+
+/// The block that keeps an open task in front of the model
+pub fn task_block(task: &Task) -> String {
+    let mut block = format!("<task>\nCurrent task ({}): {}\n{}", task.stage, task.title, task.checkpoint);
+    if !task.files.is_empty() {
+        block.push_str(&format!("\nFiles: {}", task.files.join(", ")));
+    }
+    block.push_str("\n</task>");
+    block
 }
 
 /// Schemas of the memory meta-tools (offered when the prompt does not show the whole chat)
@@ -171,6 +227,20 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    if name == TASK_UPDATE_TOOL {
+        let (goal, stage) = (arg("goal"), arg("stage"));
+        if goal.is_empty() || !matches!(stage.as_str(), "open" | "in_progress" | "blocked" | "done" | "abandoned") {
+            return "task_update needs a goal and a stage (open, in_progress, blocked, done, abandoned).".to_string();
+        }
+        let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
+        let checkpoint: String = arg("checkpoint").chars().take(600).collect();
+        use cluaiz_agents::memory::EventStore;
+        let event = cluaiz_agents::memory::NewEvent::new("task", json!({ "goal": goal, "stage": stage, "checkpoint": checkpoint, "pos": pos }));
+        return match cluaiz_agents::memory::JsonlStore::shared().append(chat, vec![event]) {
+            Ok(_) => format!("Task saved: {goal} ({stage})."),
+            Err(e) => format!("The task could not be saved: {e}"),
+        };
+    }
     if name == OPEN_MEMORY_TOOL {
         let reference = arg("ref");
         let Some(pos) = reference.strip_prefix("m:").and_then(|p| p.parse::<u64>().ok()) else {
@@ -231,6 +301,31 @@ fn records(mut lines: Vec<(u64, String)>) -> String {
     )
 }
 
+/// Most messages and characters per message an episode summary request carries
+const EPISODE_EXCERPT_MESSAGES: usize = 30;
+const EPISODE_EXCERPT_CHARS: usize = 200;
+
+/// The request for an episode summary: the instruction and an excerpt of its messages
+pub fn episode_request(map: &ChatMap, episode: &Episode) -> String {
+    let lines: Vec<String> = map
+        .cards
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| (episode.first_pos..=episode.last_pos).contains(&c.pos) && !c.trivial)
+        .take(EPISODE_EXCERPT_MESSAGES)
+        .map(|(i, c)| {
+            let text: String = map.texts[i].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(EPISODE_EXCERPT_CHARS).collect();
+            format!("{}: {}", if c.role == "user" { "User" } else { "Assistant" }, text)
+        })
+        .collect();
+    format!(
+        "Below is part of a chat. Reply with only one JSON object and nothing else: \
+         {{\"title\": \"what it was about, at most 10 words\", \"summary\": \"2-3 sentences: what was asked, decided and done\", \
+         \"keywords\": [\"up to 6 words\"]}}\n\n{}",
+        lines.join("\n")
+    )
+}
+
 /// Drops the chat's Chat Map from RAM (its history was deleted)
 pub fn forget(chat: &str) {
     MAPS.lock().unwrap_or_else(|e| e.into_inner()).retain(|(id, _)| id != chat);
@@ -282,7 +377,7 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
             episode.start.get(..16).unwrap_or(&episode.start).replace('T', " "),
             episode.end.get(11..16).unwrap_or(""),
             episode.messages,
-            episode.title,
+            episode.summary.as_ref().map_or(episode.title.clone(), |s| format!("{}: {}", s.title, s.summary)),
             if episode.files.is_empty() { String::new() } else { format!(" · files: {}", episode.files.join(", ")) }
         );
         let tokens = cluaiz_agents::tool_search::tokens(line.len());

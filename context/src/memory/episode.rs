@@ -29,6 +29,18 @@ pub struct Episode {
     pub tools: Vec<String>,
     /// Positions of messages marked as corrections or decisions
     pub key_moments: Vec<u64>,
+    /// What the model wrote about the episode at idle time (title and summary), if any
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<EpisodeSummary>,
+}
+
+/// The model's summary of a closed episode
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EpisodeSummary {
+    pub title: String,
+    pub summary: String,
+    #[serde(default)]
+    pub by: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -128,6 +140,7 @@ pub fn episodes(cards: &[Card], texts: &[&str], rules: EpisodeRules) -> Vec<Epis
                 files,
                 tools,
                 key_moments,
+                summary: None,
             }
         })
         .collect()

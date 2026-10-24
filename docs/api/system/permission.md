@@ -220,14 +220,21 @@ Approves a paused tool invocation or sensitive filesystem operation. Signals the
 |---|---|---|---|
 | `request_id` | `string` | **Yes** | The UUID received in the `permission_request` event. |
 | `feedback` | `string` | No | Optional human annotation recorded in the audit log. |
+| `remember` | `string` | No | `"chat"`: also allow this tool in this chat without asking again ("allow for this chat"). Kept in memory only: a restart asks again. The grant is logged in the chat's event log (`grant`). |
+| `minutes` | `integer` | No | How long the grant lasts (default 60, at most 1440). |
 
 #### Response (`200 OK`)
 ```json
 {
   "status": "success",
-  "message": "Permission approved"
+  "message": "Permission approved",
+  "grant": { "chat_id": "my-chat", "tool": "execute_code", "minutes": 30 }
 }
 ```
+
+`grant` is `null` without `remember`. A chat's grants are listed with `GET /v1/chat/{session_id}/grants`
+and removed with `DELETE /v1/chat/{session_id}/grants` (optional `?tool=`); deleting a chat's history
+removes them too.
 
 ---
 
