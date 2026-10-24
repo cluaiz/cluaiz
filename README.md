@@ -90,7 +90,7 @@ cluaiz serve
 ```
 
 > [!TIP]
-> **Pure Client Auto-Detection**: If you start `cluaiz serve` in the background, and then run the `cluaiz` dashboard in another terminal, the dashboard will automatically detect the running server and connect to it as a **Pure Client**. It will skip loading a duplicate engine locally, saving 100% of your VRAM!
+> **Pure Client Auto-Detection**: If you start `cluaiz serve` in the background, and then run the `cluaiz` dashboard in another terminal, the dashboard will automatically detect the running server and connect to it as a **Pure Client**. It does not load a second engine, so the model sits in VRAM only once.
 
 ### 4. Direct Headless Inference
 
@@ -231,7 +231,7 @@ $ cluaiz plugin install web-scraper
 - **Native RAG Ingestion (`cluaiz ingest`):** Natively parse, semantically chunk, and save local documents (PDF, TXT, MD) into an LMDB vector storage via ONNX embeddings.
 - **Automated Silicon Benchmarking (`cluaiz benchmark`):** Real-time RDTSC clocking, SIMD profiling, and exact TPS/Wattage reports.
 - **Smart Model Management:** Securely pull, run, and manage GGUF weights directly into the local vault (`~/.cluaiz/models/`).
-- **100% Air-Gapped Security Engine:** Governed by `Permission.json` to control telemetry, firewall, and system isolation.
+- **Offline security controls:** `Permission.json` controls telemetry, network access and system isolation.
 
 </details>
 
