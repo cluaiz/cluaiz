@@ -179,3 +179,13 @@ Results (2026-10-24, temperature 0, thinking as the model defaults, RTX 3050 4 G
 Inline, Gemma 4 called the tools but then often wrote no answer, or answered from a tool result it
 made up. The plan's gate asks for three families; only two of the installed models have templates
 that render tools, so the third is still open.
+
+With `--suggest` the rows bind no tools: the model sees the Engine's suggestions and loads what it
+needs with `load_tool` (the App's usual case). `--rescore` scores a results file again after a
+change to the rows.
+
+`calibrate.py` also reports the `auto_load` rule (exactly one card, ahead of every other candidate
+by a margin). On the routing set (2026-10-24): margin 2 loads a tool for 67 of the 108 rows that
+need one, 66 of them right (r016 "test this node.js function by running it" gets `everything`),
+and never for a row that needs no tool. See `docs/api/inference/context_runtime.md` for the
+`auto_load` and `mcp_prewarm` timings.
