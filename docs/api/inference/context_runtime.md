@@ -27,7 +27,7 @@ the answer, and what it did for each request. The plan itself is described in
 | `notes` | `"ask"` | Notes the model proposes with `remember`: `ask` (proposed until the user confirms), `auto` (confirmed at once), `off` (no `remember`). See [Notes](./notes.md) |
 | `tool_format` | `"native"` | How tools reach the model: `inline` (their schemas in the system prompt, calls as `<tool_call>` blocks) or `native` (the model's own chat template and call format, with llama.cpp's grammar and parser). See [Native tool calls](#native-tool-calls) |
 | `auto_load` | `"off"` | `on`: when the suggestions name one clear tool (one card, scoring 2 or more above every other candidate), the Engine loads it before the model answers, as if the model had called `load_tool` (one model step fewer; the stream shows it as a `load_tool` call with `"auto": true`, and `context.tools.auto_loaded` names it). `off`: the model loads tools itself |
-| `mcp_prewarm` | `"off"` | `on`: when the first tool card of a message is an MCP server, the server starts in the background while the model reads the prompt, so a `load_tool` that follows does not wait for it to start (the log shows `Prewarmed MCP`). `off`: a server starts when it is loaded |
+| `mcp_prewarm` | `"on"` | `on`: when the first tool card of a message is an MCP server, the server starts in the background while the model reads the prompt, so a `load_tool` that follows does not wait for it to start (the log shows `Prewarmed MCP`). `off`: a server starts when it is loaded |
 | `cross_chat` | `"ask"` | Searching other chats with `recall` (scope `workspace` or `all`): `ask` (the user approves each search, like a tool call: `permission_request` with capability `memory:other_chats`), `allow`, or `deny` (nothing from other chats is ever returned) |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
@@ -117,7 +117,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "native", "auto_load": "off", "mcp_prewarm": "off" } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "native", "auto_load": "off", "mcp_prewarm": "on" } }
 ```
 
 ## POST /v1/context/settings
