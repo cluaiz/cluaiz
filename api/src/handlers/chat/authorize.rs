@@ -20,9 +20,37 @@ fn grants() -> std::sync::MutexGuard<'static, cluaiz_agents::lifecycle::grants::
     cluaiz_agents::lifecycle::grants::GRANTS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// The chat's grants, read back from its log the first time after a restart
+fn chat_grants(chat: &str) -> std::sync::MutexGuard<'static, cluaiz_agents::lifecycle::grants::Grants> {
+    if grants().needs_replay(chat) {
+        let records = grant_records(chat);
+        grants().replay(chat, &records, Instant::now(), std::time::SystemTime::now());
+    }
+    grants()
+}
+
+/// The chat's `grant` events, oldest first
+fn grant_records(chat: &str) -> Vec<cluaiz_agents::lifecycle::grants::GrantRecord> {
+    use cluaiz_agents::memory::EventStore;
+    let Ok(log) = cluaiz_agents::memory::store_for(chat).read(chat) else { return Vec::new() };
+    log.events
+        .iter()
+        .filter(|event| event.kind == "grant")
+        .filter_map(|event| {
+            let at = chrono::DateTime::parse_from_rfc3339(&event.ts).ok()?;
+            Some(cluaiz_agents::lifecycle::grants::GrantRecord {
+                tool: event.data.get("tool").and_then(|t| t.as_str()).map(str::to_string),
+                minutes: event.data.get("minutes").and_then(|m| m.as_u64()).unwrap_or(0),
+                at: std::time::SystemTime::from(at),
+                revoked: event.data.get("revoked").and_then(|r| r.as_bool()) == Some(true),
+            })
+        })
+        .collect()
+}
+
 /// Whether the user allowed `tool` for `chat` and the grant has not run out
 pub fn granted(chat: Option<&str>, tool: &str) -> bool {
-    chat.is_some_and(|chat| grants().allowed(chat, tool, Instant::now()))
+    chat.is_some_and(|chat| chat_grants(chat).allowed(chat, tool, Instant::now()))
 }
 
 /// Turns an approved request into a grant for its chat and tool. Returns (chat, tool, minutes).
@@ -33,14 +61,26 @@ pub fn grant_from_request(request_id: &str, minutes: Option<u64>) -> Option<(Str
     Some((chat, tool, minutes))
 }
 
-/// Removes the grants of a chat (all of them, or one tool's)
+/// Removes the grants of a chat (all of them, or one tool's), and logs it so a restart does not
+/// bring them back
 pub fn revoke(chat: &str, tool: Option<&str>) -> usize {
-    grants().revoke(chat, tool)
+    let removed = chat_grants(chat).revoke(chat, tool);
+    if removed > 0 {
+        use cluaiz_agents::memory::EventStore;
+        let event = cluaiz_agents::memory::NewEvent::new("grant", serde_json::json!({ "tool": tool, "revoked": true, "scope": "chat" }));
+        let _ = cluaiz_agents::memory::store_for(chat).append(chat, vec![event]);
+    }
+    removed
+}
+
+/// Drops a chat's grants from RAM without logging (its history was deleted)
+pub fn forget(chat: &str) {
+    grants().revoke(chat, None);
 }
 
 /// The chat's grants that are still running: (tool, minutes left)
 pub fn grants_of(chat: &str) -> Vec<(String, u64)> {
-    grants().of(chat, Instant::now())
+    chat_grants(chat).of(chat, Instant::now())
 }
 
 /// Whether a call needs approval, and the capabilities shown to the user.

@@ -220,7 +220,7 @@ Approves a paused tool invocation or sensitive filesystem operation. Signals the
 |---|---|---|---|
 | `request_id` | `string` | **Yes** | The UUID received in the `permission_request` event. |
 | `feedback` | `string` | No | Optional human annotation recorded in the audit log. |
-| `remember` | `string` | No | `"chat"`: also allow this tool in this chat without asking again ("allow for this chat"). Kept in memory only: a restart asks again. The grant is logged in the chat's event log (`grant`). |
+| `remember` | `string` | No | `"chat"`: also allow this tool in this chat without asking again ("allow for this chat"). The grant is logged in the chat's event log (`grant`), and so is a revoke (`DELETE /v1/chat/{id}/grants` writes `grant` with `"revoked": true`): after a restart the chat's grants come back with the time they have left (measured 2026-10-24: a 30-minute grant ran a `filesystem` read without asking after a restart, with 29 minutes left; after a revoke and a restart it asked again). |
 | `minutes` | `integer` | No | How long the grant lasts (default 60, at most 1440). |
 
 #### Response (`200 OK`)
