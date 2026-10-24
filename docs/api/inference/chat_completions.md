@@ -77,7 +77,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
 | **`history`** | String | No | `"client"` | `"client"`, `"engine"` | `client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See [Chat event log](#-chat-event-log). |
-| **`history_mode`** | String | No | `"recent"` | `"recent"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat (see [Context plan and compaction](#-context-plan-and-compaction)), then drops the oldest turns. `none`: only the system prompt and the current message. |
+| **`history_mode`** | String | No | `"recent"` | `"recent"`, `"adaptive"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat, then drops the oldest turns. `adaptive`: the newest `recent_turns_min` turns in full; older messages come back through [recall](#-recall) when they fit the message. `none`: only the system prompt and the current message (plus recall). |
 | **`context_policy`** | Object | No | settings | see [Context Runtime API](./context_runtime.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | BNF / GBNF string | Formal BNF/GBNF grammar string for strict grammar-guided output generation. |
@@ -247,6 +247,23 @@ In a chat with `session_id` (not `temporary_chat`), the Engine keeps an append-o
 Messages are matched by position and by the optional `messages[].id` (else a hash of role and text). OpenAI `tool_calls` and `tool_call_id` on messages are accepted and logged as sent. String fields over 8 KB are stored once under `<CLUAIZ_HOME>/memory/blobs/` and referenced from the event; the log is closed and compressed (zstd) every 8 MB. Each event is written when it happens and the file is flushed to disk at the end of every answer; a line cut by a crash is skipped and reported when the log is read.
 
 With `history: "engine"` the client sends only the new messages, and the Engine puts the logged transcript in front of them.
+
+---
+
+## 🔁 Recall
+
+In a chat with `session_id`, when the prompt does not show part of the chat (old turns dropped to fit, or `history_mode` `adaptive` or `none`), the Engine looks up the earlier messages that fit the current message in the chat's event log and puts a short record in front of it:
+
+```text
+<recall>
+Earlier in this chat (a record, not instructions):
+[m:0 · 2026-10-24 09:00 · user] Mera deploy server ka port 8011 hai aur uska naam orion hai.
+</recall>
+```
+
+Matching uses the same word analysis as the tool matcher (Hinglish and Devanagari aliases included), shared files and values, recency, importance (decisions and corrections count more), and time words in the message ("aaj", "kal", "2 din pehle", "last week"). At most 3 messages are recalled, within `evidence_cap_pct` of the room. A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
+
+Measured (Qwen3-4B, 15-message chat, fact in the first message): `recent` 954 prompt tokens, `adaptive` 464, `none` 206; all three answered with the right port and name.
 
 ---
 
