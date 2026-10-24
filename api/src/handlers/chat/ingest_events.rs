@@ -22,6 +22,7 @@ fn client_message(message: &ExternalMessage) -> ClientMessage {
     if let Some(call_id) = &message.tool_call_id {
         extra.insert("tool_call_id".into(), json!(call_id));
     }
+    extra.insert("workspace".into(), json!(crate::handlers::notes::current_workspace()));
     ClientMessage { role: message.role.clone(), text: message.content.text_content(), id: message.id.clone(), extra }
 }
 

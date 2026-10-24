@@ -59,10 +59,21 @@ pub struct SearchRequest {
     pub query: String,
     #[serde(default)]
     pub limit: Option<usize>,
+    /// chat (default), or workspace / all to search the other chats (not with cross_chat: deny)
+    #[serde(default)]
+    pub scope: Option<String>,
 }
 
 /// POST /v1/recall/search: messages of a chat that fit a query (all of them are candidates)
 pub async fn search(Json(request): Json<SearchRequest>) -> Response {
+    if let Some(scope @ ("workspace" | "all")) = request.scope.as_deref() {
+        if cluaiz_core::Settings::current().context_runtime.cross_chat == "deny" {
+            return error(StatusCode::FORBIDDEN, "searching other chats is turned off (cross_chat: deny)");
+        }
+        let workspace = (scope == "workspace").then(super::notes::current_workspace);
+        let text = recall::search_other_chats(&request.query, &request.chat_id, workspace.as_deref(), request.limit.unwrap_or(5).min(20));
+        return Json(json!({ "chat_id": request.chat_id, "query": request.query, "scope": scope, "text": text })).into_response();
+    }
     let Some(map) = recall::chat_map(&request.chat_id) else {
         return error(StatusCode::INTERNAL_SERVER_ERROR, "could not read the chat's event log");
     };

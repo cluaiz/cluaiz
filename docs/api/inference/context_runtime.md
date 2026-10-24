@@ -25,6 +25,7 @@ the answer, and what it did for each request. The plan itself is described in
 | `compact_to_pct` | 60 | A compaction frees enough to bring the history down to this share, so the next one is many turns away |
 | `indexer` | `"auto"` | Idle-time cards written by the model (title, motive, summary, keywords): `auto` when the model has GPU layers, `always`, `rules_only` (cards by rules only) or `off` |
 | `notes` | `"ask"` | Notes the model proposes with `remember`: `ask` (proposed until the user confirms), `auto` (confirmed at once), `off` (no `remember`). See [Notes](./notes.md) |
+| `cross_chat` | `"ask"` | Searching other chats with `recall` (scope `workspace` or `all`): `ask` (the user approves each search, like a tool call: `permission_request` with capability `memory:other_chats`), `allow`, or `deny` (nothing from other chats is ever returned) |
 
 Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
 
@@ -66,7 +67,7 @@ with a warning in the Engine log, and the request still runs. The policy used is
 ## GET /v1/context/settings
 
 ```json
-{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask" } }
+{ "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask" } }
 ```
 
 ## POST /v1/context/settings

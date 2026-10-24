@@ -178,6 +178,11 @@ fn record(job: &EnrichJob, outcome: &str, started: std::time::Instant) {
 
 /// Chats written to recently, newest first, with their ids (read from the first event)
 fn recent_chats() -> Vec<String> {
+    chats_within(COLD_RECENT_DAYS)
+}
+
+/// Chats written to within `days`, newest first, with their ids (read from the first event)
+pub fn chats_within(days: u64) -> Vec<String> {
     let root = cluaiz_agents::memory::memory_root().join("chats");
     let mut chats: Vec<(std::time::SystemTime, String)> = std::fs::read_dir(&root)
         .into_iter()
@@ -186,7 +191,7 @@ fn recent_chats() -> Vec<String> {
         .filter_map(|entry| {
             let log = entry.path().join("events.jsonl");
             let modified = std::fs::metadata(&log).and_then(|m| m.modified()).ok()?;
-            if modified.elapsed().ok()?.as_secs() > COLD_RECENT_DAYS * 86_400 {
+            if modified.elapsed().ok()?.as_secs() > days * 86_400 {
                 return None;
             }
             use std::io::BufRead;
