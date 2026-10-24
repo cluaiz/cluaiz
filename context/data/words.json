@@ -98,5 +98,19 @@
     "that", "above", "upar", "previous", "pichla", "pichhla", "last", "इसे", "इसको"
   ],
   "repeat": ["again", "phir", "dobara", "wahi", "same", "फिर", "दोबारा"],
-  "actions": ["read", "write", "open", "list", "show", "find", "search", "create", "make", "delete", "remove", "run", "fix", "edit", "install", "fetch", "download", "check", "calculate", "compute", "commit", "save", "rename", "move", "copy"]
+  "actions": ["read", "write", "open", "list", "show", "find", "search", "create", "make", "delete", "remove", "run", "fix", "edit", "install", "fetch", "download", "check", "calculate", "compute", "commit", "save", "rename", "move", "copy"],
+  "memory": {
+    "acknowledgement": ["ok", "okay", "haan", "han", "ha", "next", "theek", "thik", "hai", "thanks", "thank", "you", "done", "cool", "good", "nice", "great", "acha", "accha", "achha", "sahi", "yes", "no", "nahi", "bye", "hmm", "k", "ठीक", "हाँ"],
+    "correction": ["nahi", "galat", "wrong", "actually", "instead", "mat karo", "not that", "no,", "incorrect", "sahi nahi", "aisa nahi", "rather", "galti"],
+    "decision": ["final", "isi ko rakho", "let's go with", "go with", "we'll use", "use this", "decided", "yahi rakho", "pakka", "confirm", "agreed"],
+    "error": ["error", "exception", "failed", "failure", "panic", "traceback", "crash", "fatal", "not found"],
+    "question": ["kya", "kaise", "kyu", "kyun", "kab", "kahan", "kaun", "what", "how", "why", "when", "where", "which", "who"],
+    "time": {
+      "today": ["aaj", "today", "आज"],
+      "yesterday": ["kal", "yesterday", "कल"],
+      "week": ["pichhle hafte", "pichle hafte", "last week", "is hafte", "this week"],
+      "month": ["pichhle mahine", "pichle mahine", "last month", "is mahine", "this month"],
+      "days_ago": ["din pehle", "days ago", "day ago"]
+    }
+  }
 }

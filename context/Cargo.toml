@@ -7,3 +7,5 @@ description = "Pure context planning for the Cluaiz Engine: no I/O, no model, no
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

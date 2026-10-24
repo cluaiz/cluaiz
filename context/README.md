@@ -5,8 +5,27 @@ ones go into the next prompt, with a reason for each. It reads no files, calls n
 KV cache and has no database. The API (`api/src/handlers/chat/`) and the runtime do the I/O
 around it.
 
-Only `serde` is a dependency, so `cargo test --release -p cluaiz-context` builds in about 15 s
-and never rebuilds llama.cpp.
+Dependencies are `serde`, `serde_json` and `chrono` only, so `cargo test --release -p
+cluaiz-context` builds in seconds and never rebuilds llama.cpp.
+
+## Text analysis (`src/analyze.rs`, `data/words.json`)
+
+Whole words (split on case, `_` and `-`), English and Hinglish stopwords, a light plural stem,
+and aliases that map Hinglish and Devanagari words to their meaning ("padho" → read). Shared by
+the tool matcher (`agents/src/tool_search.rs`) and the chat memory. The word lists are data.
+
+## Chat Map v1 (`src/memory/`)
+
+- `card.rs`: one card per message, by rules: TF-IDF keywords against the chat's own
+  frequencies, entities (files, links, numbers, quoted strings), tools and files of the turn,
+  signals (correction, decision, question, request, error), `trivial` acknowledgements and an
+  importance. A card never holds the message text.
+- `index.rs`: BM25 over the cards, in RAM, rebuilt on demand.
+- `recall.rs`: earlier messages outside the visible prompt that fit the current message, scored
+  by BM25, shared entities, recency and importance, and limited to a time window when the
+  message names one ("kal", "2 din pehle", "last week").
+
+Measured (release, this machine): 20,000 cards built in 265 ms, their index in 28 ms.
 
 ## Planner (`src/planner.rs`)
 
