@@ -193,6 +193,14 @@ Results (2026-10-24, temperature 0, thinking as the model defaults, RTX 3050 4 G
 | Qwen3-4B (Q4_K_M) | 13/14, 10/11, 13/14 | 14/14, 11/11, 14/14 |
 | Llama 3.2 3B (Q4_K_M) | 4/14, 6/11, 4/14 | same (its GGUF template has no tools, so they stay inline) |
 
+Third family (2026-10-24): Llama 3.2 3B's GGUF carries a 348-character template with no tools, so
+for one run the test home's model registry got llama.cpp's official
+`models/templates/meta-llama-Llama-3.2-3B-Instruct.jinja` (the same as llama-server's
+`--chat-template-file`). `template_check.py` then passed native too, but `tool_calls.py` native gave
+3/14 (5/11 called right) against 4/14 inline: the model called the same function again and again
+(up to 15 times) although each result was in its prompt. No gain, so nothing ships for it; the
+registry was set back.
+
 Inline, Gemma 4 first scored 6/14: it called the tools but then often wrote no answer, or answered
 from a tool result it made up. `template_check.py` found why: Gemma 4's template has no `tool` role
 and dropped every tool result without an error, so the model never saw one. Tool results now go to
