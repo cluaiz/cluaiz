@@ -112,7 +112,7 @@ impl<Ctx: Clone + Send + 'static> Engine<Ctx> {
             self.record(&principal, entry.name, Some(entry.meta.scope), digest, Some(denied.code), started);
             return Err(denied);
         }
-        let call = Call { principal: principal.clone(), method: entry.name, digest, approval: meta.approval, shared: self.shared.clone() };
+        let call = Call::new(principal.clone(), entry.name, digest, meta.approval, self.shared.clone());
         let future = (entry.handler)(ctx, call, Value::Object(params));
         // A panic in a method becomes an internal error, never a dropped connection
         let outcome = match tokio::spawn(future).await {
