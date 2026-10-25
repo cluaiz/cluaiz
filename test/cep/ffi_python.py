@@ -80,6 +80,27 @@ def main():
     [t.join() for t in threads]
     check("4 threads x 100 calls", not errors, f"{time.time() - started:.2f} s, {len(errors)} errors")
 
+    # CEP-F4: replies are freed; 10 000 more calls must not grow the process much
+    def working_set_mb():
+        class Counters(ctypes.Structure):
+            _fields_ = [("cb", ctypes.c_ulong), ("faults", ctypes.c_ulong)] +                        [(name, ctypes.c_size_t) for name in ("peak", "ws", "qpp", "qp", "qnpp", "qnp", "pf", "ppf")]
+        counters = Counters()
+        counters.cb = ctypes.sizeof(Counters)
+        kernel32, psapi = ctypes.WinDLL("kernel32"), ctypes.WinDLL("psapi")
+        kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+        psapi.GetProcessMemoryInfo.argtypes = [ctypes.c_void_p, ctypes.POINTER(Counters), ctypes.c_ulong]
+        if not psapi.GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            raise OSError("GetProcessMemoryInfo failed")
+        return counters.ws / 2**20
+    if os.name == "nt":
+        for _ in range(1000):
+            cep("tasks.list")
+        before = working_set_mb()
+        for _ in range(10000):
+            cep("tasks.list")
+        grown = working_set_mb() - before
+        check("10 000 calls, no leak", grown < 20, f"working set {before:.0f} MB, grew {grown:+.1f} MB")
+
     token_after = open(os.path.join(args.home, "session.token"), encoding="utf-8").read()
     check("home session token left alone", token_before == token_after, "")
     print(f"\n{sum(results)} of {len(results)} passed")
