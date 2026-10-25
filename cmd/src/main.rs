@@ -49,6 +49,8 @@ enum CliCommand {
     },
     /// Show the model the running server has loaded
     Ps,
+    /// MCP server over stdio for MCP clients (Claude Desktop, Cursor), backed by the running server
+    McpServer,
     /// Start the API server
     Serve {
         /// Serve through this explicit local named pipe / Unix socket instead of TCP.
@@ -344,6 +346,11 @@ async fn main() -> Result<()> {
         CliCommand::Ps => {
             if let Err(e) = cli::ps::execute().await {
                 fail("ps", e);
+            }
+        }
+        CliCommand::McpServer => {
+            if let Err(e) = cli::mcp_server::run().await {
+                fail("mcp-server", e);
             }
         }
         CliCommand::Serve { native_endpoint } => {

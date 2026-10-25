@@ -105,8 +105,8 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::plugins::list_cache).delete(handlers::plugins::clear_cache),
         )
         // ── 8. MCP API & Native MCP Server ──
-        .route("/mcp", post(handlers::mcp::handle_mcp_rpc))
-        .route("/v1/mcp/rpc", post(handlers::mcp::handle_mcp_rpc))
+        // MCP server over the CEP registry
+        .route("/mcp", post(crate::cep::mcp::handle))
         .route("/v1/mcp/list", get(handlers::mcp::list_mcp))
         .route("/v1/mcp/install", post(handlers::mcp::install_mcp))
         .route("/v1/mcp/remove", delete(handlers::mcp::remove_mcp))

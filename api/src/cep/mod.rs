@@ -3,6 +3,7 @@
 //! approvals, tasks, discovery) is the `cluaiz-cep` crate. Design: `.agent/plans/CEP/`.
 
 pub mod http;
+pub mod mcp;
 pub mod methods;
 pub mod roots;
 
