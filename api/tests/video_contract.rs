@@ -140,14 +140,9 @@ async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Re
         assert!(red < blue, "{answer}");
         println!("REAL VIDEO API: stream={stream}; selected native model answered {answer:?}; red before blue");
     }
-    let (_, plan) = support::post(
-        &router,
-        "/v1/system/plan",
-        json!({"model":model_id}),
-        "user",
-    )
-    .await?;
-    let plan: Value = serde_json::from_str(&plan)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":model_id}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     let inputs = plan["model_info"]["inputs"].as_array().context("Inputs")?;
     let image_input = inputs
         .iter()

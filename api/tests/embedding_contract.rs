@@ -68,9 +68,9 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
     let state = Arc::new(AppState::new_test_state(workspace.path().to_path_buf()));
     *state.permission_schema.write().await = policy;
     let router = cluaiz_api::routes::build_api_router(state.clone());
-    let (status, body) = post(&router, "/v1/system/plan", json!({"model":id}), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let preview: Value = serde_json::from_str(&body)?;
+    let preview = support::cep(&router, "system.plan", json!({"model":id}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(preview["model_info"]["outputs"], json!(["embedding"]));
     assert_eq!(preview["execution_plan"]["context_window"], 512);
     assert!(state.host.embeddings.resident_model().is_none());
@@ -248,10 +248,9 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
     let state = Arc::new(AppState::new_test_state(workspace.path().to_path_buf()));
     *state.permission_schema.write().await = policy;
     let router = cluaiz_api::routes::build_api_router(state.clone());
-    let (status, body) = post(&router, "/v1/system/plan", json!({"model":ids[0]}), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let plan: Value = serde_json::from_str(&body)?;
-    assert_eq!(plan["status"], "success");
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[0]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["inputs"], json!(["text"]));
     assert_eq!(plan["model_info"]["available_inputs"], json!([]));
     assert!(plan["model_info"]["max_input_context"].is_null());
@@ -344,8 +343,9 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         state.host.onnx.resident_model().await?,
         Some(ids[0].clone())
     );
-    let (_, body) = post(&router, "/v1/system/plan", json!({"model":ids[0]}), "user").await?;
-    let plan: Value = serde_json::from_str(&body)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[0]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["available_inputs"], json!(["text"]));
     assert_eq!(plan["model_info"]["outputs"], json!(["embedding"]));
     let mut images = Vec::new();
@@ -372,8 +372,9 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         vectors.push(vector(&body, 0)?);
     }
     assert_ne!(vectors[0], vectors[1]);
-    let (_, body) = post(&router, "/v1/system/plan", json!({"model":ids[1]}), "user").await?;
-    let plan: Value = serde_json::from_str(&body)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[1]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["inputs"], json!(["text", "image"]));
     assert_eq!(plan["model_info"]["available_inputs"], json!(["image"]));
     assert_eq!(plan["model_info"]["outputs"], json!(["embedding"]));
@@ -408,11 +409,10 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
     let mut changed = settings.clone();
     changed.onnx.intra_op_num_threads += 1;
     cluaiz_core::Settings::update(changed)?;
-    let (_, body) = post(&router, "/v1/system/plan", json!({"model":ids[1]}), "user").await?;
-    assert_eq!(
-        serde_json::from_str::<Value>(&body)?["model_info"]["available_inputs"],
-        json!([])
-    );
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[1]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    assert_eq!(plan["model_info"]["available_inputs"], json!([]));
     cluaiz_core::Settings::update(settings)?;
     let incomplete = tempfile::tempdir()?;
     std::fs::hard_link(
@@ -428,14 +428,9 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
     .context("Incomplete package")?;
     let incomplete_id = entry.id.clone();
     InstalledStateRegistry::register_model(entry).map_err(anyhow::Error::msg)?;
-    let (_, body) = post(
-        &router,
-        "/v1/system/plan",
-        json!({"model":incomplete_id}),
-        "user",
-    )
-    .await?;
-    let plan: Value = serde_json::from_str(&body)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":incomplete_id}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["available_inputs"], json!([]));
     let missing = plan["model_info"]["missing_assets"]
         .as_array()
@@ -507,11 +502,10 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
     assert_eq!(status, StatusCode::OK, "{body}");
     vector(&body, 0)?;
     assert_eq!(state.host.onnx.resident_model().await?, None);
-    let (_, body) = post(&router, "/v1/system/plan", json!({"model":ids[0]}), "user").await?;
-    assert_eq!(
-        serde_json::from_str::<Value>(&body)?["model_info"]["available_inputs"],
-        json!([])
-    );
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[0]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    assert_eq!(plan["model_info"]["available_inputs"], json!([]));
     println!(
         "REAL ONNX API: auth/model/encoding/decode/permission/modality/retention checks passed"
     );

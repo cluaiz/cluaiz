@@ -52,7 +52,7 @@ pub struct EmbeddingResponse {
 }
 use crate::utils::task_error as error;
 
-pub(super) fn is_embedding_model(
+pub(crate) fn is_embedding_model(
     entry: &cluaiz_models::types::manifest::ModelRegistryEntry,
 ) -> bool {
     entry.supported_tasks.iter().any(|task| {

@@ -221,8 +221,9 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
 
     let plan_request = json!({"model":model_id});
-    let (_, before) = post(&router, "/v1/system/plan", plan_request.clone(), "user").await?;
-    let before: Value = serde_json::from_str(&before)?;
+    let before = support::cep(&router, "system.plan", plan_request.clone())
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     for modality in ["text", "image", "audio"] {
         assert_eq!(plan_input(&before, modality)?["type"], modality);
         assert_eq!(plan_input(&before, modality)?["available"], true);
@@ -312,8 +313,9 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     eprintln!("REAL API image + inline audio answer: {mixed_answer}");
     assert!(mixed_answer.to_ascii_lowercase().contains("red"));
     assert!(mixed_answer.to_ascii_lowercase().contains(&expected));
-    let (_, after) = post(&router, "/v1/system/plan", plan_request, "user").await?;
-    let after: Value = serde_json::from_str(&after)?;
+    let after = support::cep(&router, "system.plan", plan_request)
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(
         before["model_info"]["inputs"],
         after["model_info"]["inputs"]
@@ -354,7 +356,8 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
                     ..Default::default()
                 },
             );
-        let cancelled = support::cep(&router, "chat.cancel", json!({"stream_id":ctx.request_id})).await?;
+        let cancelled =
+            support::cep(&router, "chat.cancel", json!({"stream_id":ctx.request_id})).await?;
         assert_eq!(cancelled.expect("cancel accepted")["status"], "cancelled");
         let stopped = collect_native(ctx.dispatch(&state.host, None, 32).await).await;
         assert!(stopped
@@ -426,9 +429,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         None,
     )
     .await
-    .map_err(|response| {
-        anyhow::anyhow!("Owner workspace source failed: {}", response.status())
-    })?;
+    .map_err(|response| anyhow::anyhow!("Owner workspace source failed: {}", response.status()))?;
     assert!(inside_ctx.prepared_media.is_some());
     let (status, missing) = post(
         &router,
@@ -593,8 +594,9 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         decoded.samples().len(),
         decoded.sample_rate()
     );
-    let (_, plan) = post(&router, "/v1/system/plan", json!({"model":ids[0]}), "user").await?;
-    let plan: Value = serde_json::from_str(&plan)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[0]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["available_inputs"], json!(["text"]));
     assert_eq!(plan["model_info"]["outputs"], json!(["audio"]));
     let (status, body) = post(
@@ -656,8 +658,9 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         "{transcript}"
     );
     eprintln!("REAL ONNX API SSE STT: {transcript}");
-    let (_, plan) = post(&router, "/v1/system/plan", json!({"model":ids[1]}), "user").await?;
-    let plan: Value = serde_json::from_str(&plan)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":ids[1]}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(plan["model_info"]["inputs"], json!(["audio"]));
     assert_eq!(plan["model_info"]["available_inputs"], json!(["audio"]));
     assert_eq!(plan["model_info"]["outputs"], json!(["text"]));
