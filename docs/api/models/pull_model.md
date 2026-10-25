@@ -1,59 +1,48 @@
 # Download / Pull Model API
 
-`POST /api/pull`
+`POST /api/pull` (Ollama) · CEP `models.download`
 
-Asynchronously triggers background download and registration of model weights into local hardware storage.
-
----
-
-## 📌 Endpoint Information
-
-* **HTTP Method:** `POST`
-* **Path:** `/api/pull`
-* **Content-Type:** `application/json`
+Downloads and registers a model with the same code as `cluaiz pull`. A catalog id, or a Hugging Face repository `owner/name`, optionally with `:QUANT` (an `hf://` or https URL works too). With a `:QUANT` tag that variant is downloaded, else the repository's first variant; nothing asks a question.
 
 ---
 
-## 📥 Request Parameters
+## 📌 `POST /api/pull`
 
 | Parameter | Type | Required | Default | Description |
 |:---|:---|:---|:---|:---|
-| **`model_id`** | String | **Yes** | — | Unique model identifier or HuggingFace repository ID (e.g. `"qwen2.5-7b-instruct"` or `"bge-m3"`). |
+| **`model`** | String | **Yes** | — | Catalog id or Hugging Face repo, e.g. `"QuantFactory/SmolLM-135M-GGUF:Q2_K"` |
+| `stream` | Boolean | No | `true` | One JSON line per step (`application/x-ndjson`); `false` answers once at the end |
+| `insecure` | Boolean | No | `false` | Accepted for Ollama clients; no effect (downloads use HTTPS) |
 
----
+Example of the streamed lines (the byte numbers are illustrative):
 
-## 💻 Code Examples
+```json
+{"status":"scanning QuantFactory/SmolLM-135M-GGUF"}
+{"status":"tag :Q2_K matched SmolLM-135M.Q2_K.gguf (0.08 GB)"}
+{"status":"pulling manifest"}
+{"status":"downloading","total":88195040,"completed":1048576}
+{"status":"success","model":"smollm-135m-gguf-Q2_K","path":"…/models/chat/smollm-135m-gguf-Q2_K/SmolLM-135M.Q2_K.gguf","downloaded":true}
+```
 
-### 1. cURL
+`total` / `completed` are bytes of the file being downloaded, sent at most once per percent. `downloaded: false` means the model was installed already (nothing was downloaded). A failure ends the stream with `{"error": "…"}`. Closing the connection stops the download.
+
+With `"stream": false`: the last line as the answer; `400` for an empty `model`, `409` while the same model is being pulled, `500` with `{"error"}` when the download fails.
 
 ```bash
 curl -X POST http://localhost:8000/api/pull \
   -H "Content-Type: application/json" \
-  -d '{
-    "model_id": "qwen2.5-7b-instruct"
-  }'
-```
-
-### 2. Python (Requests)
-
-```python
-import requests
-
-payload = {
-    "model_id": "qwen2.5-7b-instruct"
-}
-
-response = requests.post("http://localhost:8000/api/pull", json=payload)
-print(response.json())
+  -d '{"model": "QuantFactory/SmolLM-135M-GGUF:Q2_K"}'
 ```
 
 ---
 
-## 📤 Response Format
+## 📌 CEP `models.download`
 
-```json
-{
-  "status": "success",
-  "message": "Model pull for 'qwen2.5-7b-instruct' queued in background."
-}
+The same download as a task: `{"model": "…"}` answers at once with `{"task": {"task_id", …}}`. The steps are task events, the bytes are the task's `progress` (`unit: "bytes"`), and `tasks.result` gives the final object above. `tasks.cancel` stops it (`-32008`). A second download of a model that is still downloading fails with `-32005` (`data.type: "pull_running"`); a failed download is `-32010` (`download_failed`).
+
+```bash
+curl -X POST http://localhost:8000/v1/cep -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"models.download","params":{"model":"QuantFactory/SmolLM-135M-GGUF:Q2_K"}}'
 ```
+
+Add `-H "Authorization: Bearer <token>"` to either call when API authentication is on.

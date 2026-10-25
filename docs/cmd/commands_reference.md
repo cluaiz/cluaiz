@@ -256,7 +256,7 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 | `POST` | `/v1/embeddings` | Embeddings (OpenAI) |
 | `POST` | `/v1/audio/speech`, `/v1/audio/transcriptions` | Text-to-speech and speech-to-text (OpenAI) |
 | `GET` | `/v1/models`, `/api/tags` | Installed models (OpenAI / Ollama) |
-| `POST` | `/api/pull` | Ollama pull (answers "queued"; downloads go through CEP `models.download`) |
+| `POST` | `/api/pull` | Ollama pull: downloads and registers a model, as `cluaiz pull` does (CEP: `models.download`) |
 | `GET` | `/health` | Health check, always open |
 
 Example:

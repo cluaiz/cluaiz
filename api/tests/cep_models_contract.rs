@@ -118,12 +118,7 @@ async fn test_models_registry_inspect_remove_validation_and_retired_routes() -> 
         assert_eq!(inspected["tensors"][0]["name"], "test.weight");
     }
     for model in ["../escape", "a/b", "a\\b", "a\0b", "  "] {
-        for method in [
-            "models.inspect",
-            "models.load",
-            "models.remove",
-            "models.download",
-        ] {
+        for method in ["models.inspect", "models.load", "models.remove"] {
             let error = support::cep(&router, method, json!({"model":model}))
                 .await?
                 .unwrap_err();
@@ -172,15 +167,13 @@ async fn test_models_registry_inspect_remove_validation_and_retired_routes() -> 
         assert_eq!(error["code"], -32004);
         assert_eq!(error["data"]["type"], "model_not_found");
     }
-    let error = support::cep(
-        &router,
-        "models.download",
-        json!({"model":"registry-package"}),
-    )
-    .await?
-    .unwrap_err();
-    assert_eq!(error["code"], -32007);
-    assert_eq!(error["data"]["type"], "not_implemented");
+    // A download takes a Hugging Face repo (`owner/name`) too; only an empty or control-character id is refused here
+    for model in ["a\0b", "  "] {
+        let error = support::cep(&router, "models.download", json!({"model":model}))
+            .await?
+            .unwrap_err();
+        assert_eq!(error["code"], -32602, "{error}");
+    }
     let error = support::cep(&router, "models.load", json!({"model":onnx.id}))
         .await?
         .unwrap_err();

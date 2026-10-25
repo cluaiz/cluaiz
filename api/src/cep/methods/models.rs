@@ -1,7 +1,8 @@
 //! `models.*: installed models, load, inspect, remove, download` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
 
 use crate::cep::{roots, CallCtx};
-use cluaiz_cep::{Call, CepError, Meta, Registry, Scope};
+use crate::handlers::models;
+use cluaiz_cep::{Call, CepError, Meta, Progress, Registry, Scope};
 use cluaiz_models::{registry::InstalledStateRegistry, types::manifest::ModelRegistryEntry};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -41,6 +42,13 @@ struct ListParams {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ModelParams {
+    model: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct DownloadParams {
+    /// A catalog id, or a Hugging Face repo `owner/name` (optionally `:QUANT`, an `hf://` or https URL)
     model: String,
 }
 
@@ -134,13 +142,27 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "models.download",
         Meta::new(
             Scope::Write,
-            "Model download control is not implemented yet",
+            "Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as `cluaiz pull` does; the `:QUANT` variant, else the first",
         )
         .task()
-        .example(json!({"model":"registry-model"}), json!({"task":{}})),
-        |_: CallCtx, _: Call, params: ModelParams| async move {
-            validate_id(&params.model)?;
-            Err::<Value, _>(CepError::not_implemented("models.download"))
+        .idempotent(false)
+        .example(json!({"model": "owner/name-GGUF:Q4_K_M"}), json!({"task": {"task_id": "t_5f0c…", "method": "models.download", "status": "working"}})),
+        |_: CallCtx, call: Call, params: DownloadParams| async move {
+            let model = params.model.trim().to_string();
+            models::check_pull_id(&model).map_err(|message| roots::invalid("model", message))?;
+            call.start_task(move |task| async move {
+                let abort = task.cancel_flag();
+                let updates = task.clone();
+                // Bytes become the task's progress; every other step is an event
+                let on_update = move |update: Value| match (update["completed"].as_u64(), update["total"].as_u64()) {
+                    (Some(done), total) => updates.progress(Progress { done, total, unit: Some("bytes".into()), message: None }),
+                    _ => updates.event(update),
+                };
+                models::pull(&model, on_update, abort).await.map_err(|error| match error {
+                    models::PullError::Busy => CepError::conflict("pull_running", error.to_string()),
+                    models::PullError::Failed(message) => CepError::unavailable("download_failed", message),
+                })
+            })
         },
     );
 }
