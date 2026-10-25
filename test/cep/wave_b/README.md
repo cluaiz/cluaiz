@@ -193,3 +193,64 @@ Engineer/security: actual router/root/error/native-load/removal checks above pas
 Commit-boundary exception: during the shared-router staging race, three changed lines belonging to A (the health handler switch and system-command route deletion) also landed in `51713f0`. A's next commit `977b43e` supplies the matching health/system.exec files. A guarded amendment stopped before changing anything because HEAD had already moved to A's commit; A's history was not rewritten. The founder and status board were informed. No clean separation claim is made for these three lines. The resulting combined worktree was clean; A's other files remained its own commits. Future shared-router commits must wait for an explicit handoff through the status board instead of relying on a pre-commit diff alone.
 
 Remaining: O6 `/api/pull`, a shared downloadable task implementation, explicit non-GGUF eager loading, App callers, and the later Wave B tools/audio/ingest/docs groups. The native loaded-removal test covers one GGUF package; ONNX resident removal and concurrent lifecycle races are not certified. Founder walkthrough review remains `WAITING_FOR_REVIEW`.
+
+## B4 tool controls
+
+Thirteen `tools.*` methods replace the old skills/plugins/MCP/component/tool-control wrappers: installed listing, matcher discovery, install/remove, cache inspection/cleanup, settings, package files, opening a file, and execution. This removes twenty distinct old paths (twenty-five method/path operations), including the remaining dynamic execute route handed to B by A. The `/mcp` protocol frontend stays. No old control aliases remain for these operations.
+
+The existing installer, registry, matcher, cached function discovery and unified executor are reused. A supplied the public visibility of the existing `listed_functions` helper in its separate `8c11f49`; B does not duplicate it or include that agent file in its commit. The B3 model test now shares the disposable-home fixture with the B4 test instead of copying its environment guard.
+
+### B4 proof, 25 October 2026
+
+```text
+# CLUAIZ_HOME points to target/cep-wave-b-baseline/b4-api-home
+cargo test --release --offline -p cluaiz-api --test cep_tools_contract --test cep_models_contract -- --test-threads=1
+test_models_registry_inspect_remove_validation_and_retired_routes ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored
+test_tools_install_task_files_settings_cache_execution_and_boundaries ... ok
+test result: ok. 1 passed; 0 failed; 0 ignored
+
+cargo build --release --offline -p cmd -p cluaiz-ffi
+Finished `release` profile [optimized] target(s) in 2m 29s
+
+python test/cep/wave_b/tools_http_journey.py --exe target/release/cluaiz.exe --seed-home C:/Users/Aryan/AppData/Local/cluaiz-test/installhome --home target/cep-wave-b-baseline/b4-http-after-bootstrap --port 8012
+47 checks; passed: true; owned_process_stopped: true
+registry_stopped: true; seed_config_unchanged: true; local_registry_requests: 8
+```
+
+The Rust contract uses the real router and a real locally served registry/ZIP. It exercises successful task installation and failed download, actual extraction/removal, all-kind metadata listing, known function schemas, thirteen-method discovery, matcher output, UTF-8 file read/write, a real skill call, settings validation before mutation, disabled-tool denial, actual cache bytes, malformed IDs across ten methods, relative-path and escaping-symlink rejection, scoped-root and owner-only denial, retired routes and an escaping cache symlink. Outside fixture data remains unchanged after tool removal. It does not open an editor or claim to execute a native plugin/MCP package.
+
+The live journey repeats the skill install → task result → listing/settings/files/cache/call → removal flow against the built executable. Its archive and registry are local test fixtures; the existing installer performs actual HTTP download, ZIP extraction and registry updates. Invalid install IDs produce no fixture-registry requests. A declared local failed bundle produces a failed task result, not success. Twenty retired paths return 404.
+
+Executable SHA-256: `26cb0842ec8ce4807a9de4d7d616bcd83f93929781f81a5e851299ade470e9f6`. Local ignored report: `target/cep-wave-b-baseline/b4-http-after-bootstrap/tools-http-report.json`. Build/router-test/review logs are `b4-build.log`, `b4-tools-tests.log`, `b4-walkthrough.log`, `b4-quality.log`, `b4-stubs.log` in the same baseline folder. The release build also compiles A's native library; B4 tool calls through that library were not separately exercised here.
+
+The first executable journey failed before any successful check (`b4-http.log`): the CLI bootstrap fetches/writes its master `package.json`, replacing the fixture URL configured before startup. The saved test-home config and `cmd/src/core/bootstrapper.rs` confirmed this. Only the harness was corrected to set `web.tools.manifest_url` in the disposable home after startup; no production bootstrap change was made. The subsequent forty-seven-check run passed. The CLI's existing registry-reset behavior is not claimed fixed by B4.
+
+### B4 walkthrough
+
+Required diff-helper line numbers, before the B4 commit:
+
+- `api/src/cep/methods/tools.rs` L12: register the thirteen typed methods, their scopes/examples and task/owner/export policy. The empty stub becomes the group entry; implementation lives in `tools/` to keep each file below the size limit.
+- `tools/common.rs`: L50 validates names; L81 reuses installed entries; L90 resolves registered/fallback package folders; L101 resolves the installer's actual primary location; L121 constrains relative package files; L143 schedules blocking filesystem/registry work. Invalid names are rejected before download or filesystem mutation.
+- `tools/catalog.rs`: L41 adapts installed entries/functions without starting servers; L72 moves the existing matcher; L86/L91 project/read settings; L99 validates a patch, updates one registry snapshot and saves once. Disabling MCP stops its retained process after persistence.
+- `tools/files.rs`: L35/L53 read or write actual UTF-8 content; writes keep the old fixed `SKILL.md`/`package.json` targets. L70/L94 launch an owner-requested OS editor with a separate canonical argument and reap the child. L127 projects the package tree iteratively, skips symlinks and reports partial output; L154 counts immediate cache entries/bytes.
+- `tools/lifecycle.rs`: L29 uses a real CEP task around the existing installer; L50 removes through the existing uninstaller; L61 preauthorizes selected cache roots; L104/L120 return cache data or clear through the existing implementation; L134 validates the selected installed tool and calls the existing executor. Missing skill instructions cannot become the executor's old fallback success text.
+- Old six handler files and their module/route declarations are deleted with this cutover. The existing model contract only swaps its duplicate environment guard for `test/cep/wave_b/isolated_home.rs`; it was rerun. The new tool contract and HTTP journey hold the behavioral evidence above.
+
+Flow: client → CEP schema/scope checks → kind/name and canonical package checks → existing domain installer/registry/matcher/executor or package asset operation → domain result/typed error. Install returns a task first; its final result comes from `tasks.result`. The editor path is owner-only and not exported through MCP; settings/file mutation export rules follow the catalog.
+
+### B4 review and remaining limits
+
+The quality scan has thirteen signals: a large migration/test diff, the explicit editor-launch path, and eleven generic helper names. The editor program is fixed, receives a canonical separate argument and requires the owner; no shell command is interpolated. `as_str`, `discover`, `entry`, `list`, `ok`, `open`, `path`, `read`, `register`, `settings` and `write` belong to scoped adapters/test fixtures, not second installers/parsers/matchers/executors. The shared test-home guard removes actual duplication. Stub scanning finds no patterns in the retained B4 files. Existing compiler warnings remain; the B4-unused route import was removed.
+
+- Engineer: router contracts and the actual executable journey above pass; source files stay below 800 lines.
+- Security: kind/name/path/symlink/root/owner denials are exercised. This is not a new sandbox or a proof against concurrent filesystem replacement.
+- SDLC: approved P3.6 migration, explicit file ownership, actual tests, and this walkthrough. Founder review remains pending.
+- User: skill flow was exercised on Windows; positive editor UI and Linux/macOS were not run.
+- Founder/market: this consolidates existing tools, rather than claiming new model/extension/native-package support or performance gains.
+- Over-engineering: existing domain implementations and the test process harness are reused; modules separate catalog/files/lifecycle concerns.
+- Rules: A's function visibility change stays in A's commit. B's shared files contain only the inspected tool cutover; commit uses the reviewed staged snapshot, not a later working-file reread.
+
+Not certified: third-party plugin native execution, real retained MCP process execution/removal, mid-install cancellation/rollback, concurrent lifecycle races, positive editor interaction, or App callers of the retired routes. Cancellation is checked before/after the existing installer, which has no mid-operation abort/rollback interface. Existing cache cleanup is shallow and can partially delete before an I/O failure. Later Wave B work is audio, ingest and B7 docs; O6 model download/pull remains separate.
+
+Founder review status: `WAITING_FOR_REVIEW`. Review questions: common.rs L50—why is a path-like name rejected before installation? common.rs L121—what happens if an asset symlink points outside its package? lifecycle.rs L29—where does the client get a failed installation's actual error after receiving its task ID?

@@ -1,11 +1,13 @@
 //! Real router/dispatcher model controls with disposable metadata-only packages.
 //! No weights are downloaded or claimed to run inference in these fixtures.
+#[path = "../../test/cep/wave_b/isolated_home.rs"]
+mod isolated_home;
 #[path = "../../engine/models/src/test_fixtures.rs"]
 #[allow(dead_code)]
 mod model_fixtures;
 mod support;
 
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{anyhow, Context, Result};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -16,16 +18,6 @@ use cluaiz_models::{registry::InstalledStateRegistry, types::manifest::ModelRegi
 use serde_json::{json, Value};
 use std::{path::Path, sync::Arc};
 use tower::ServiceExt;
-
-struct HomeOverride(Option<std::ffi::OsString>);
-impl Drop for HomeOverride {
-    fn drop(&mut self) {
-        match self.0.take() {
-            Some(value) => std::env::set_var("CLUAIZ_HOME", value),
-            None => std::env::remove_var("CLUAIZ_HOME"),
-        }
-    }
-}
 
 fn entry(root: &Path, id: &str, category: &str, format: &str) -> Result<ModelRegistryEntry> {
     let dir = root.join(id);
@@ -67,17 +59,7 @@ async fn get(router: &Router, path: &str) -> Result<(StatusCode, Value)> {
 // One current-thread test owns the environment override and registry for its entire lifetime.
 #[tokio::test(flavor = "current_thread")]
 async fn test_models_registry_inspect_remove_validation_and_retired_routes() -> Result<()> {
-    let home = tempfile::tempdir()?;
-    let previous = std::env::var_os("CLUAIZ_HOME");
-    std::env::set_var("CLUAIZ_HOME", home.path());
-    let _override = HomeOverride(previous);
-    ensure!(
-        cluaiz_core::EnvironmentManager::current()
-            .local_dir
-            .canonicalize()?
-            == home.path().canonicalize()?,
-        "Environment must resolve to the newly created disposable test home"
-    );
+    let home = isolated_home::IsolatedHome::new()?;
     let workspace = tempfile::tempdir()?;
     let gguf = entry(home.path(), "metadata-package", "chat", "gguf")?;
     let onnx = entry(home.path(), "graph-package", "embedding", "onnx")?;
