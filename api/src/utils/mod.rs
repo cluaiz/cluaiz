@@ -80,6 +80,7 @@ pub(crate) async fn prepare_authorized_audio(
     headers: &axum::http::HeaderMap,
     source: String,
     settings: &cluaiz_core::ActiveUserSettings,
+    cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 ) -> Result<cluaiz_core::media::DecodedAudio, (&'static str, String)> {
     use cluaiz_core::{
         media::{InputPart, PreparedPart},
@@ -99,11 +100,27 @@ pub(crate) async fn prepare_authorized_audio(
         response_format: None,
     };
     let prepared =
-        prepare_authorized_media(state, headers, request, settings, false, None, None).await?;
+        prepare_authorized_media(state, headers, request, settings, false, cancellation, None)
+            .await?;
     match prepared.messages.into_iter().flat_map(|m| m.content).next() {
         Some(PreparedPart::Audio { audio }) => Ok(audio),
         _ => Err(("invalid_input", "Audio source did not produce PCM".into())),
     }
+}
+
+/// CEP shares the standard canonicalizer, then checks its trusted Call before any read/fetch.
+pub(crate) async fn authorize_source_for_call(
+    state: &std::sync::Arc<crate::AppState>,
+    call: &cluaiz_cep::Call,
+    source: &mut String,
+) -> Result<(), cluaiz_cep::CepError> {
+    let path = authorize_source(state, &axum::http::HeaderMap::new(), source)
+        .await
+        .map_err(|(_, message)| crate::cep::roots::invalid("source", &message))?;
+    if let Some(path) = path {
+        call.check_path(&path)?;
+    }
+    Ok(())
 }
 
 /// Shared task error envelope; preserve local-file approval details for clients.

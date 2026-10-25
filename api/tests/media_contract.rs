@@ -1,3 +1,5 @@
+#[path = "../../test/cep/wave_b/audio_task.rs"]
+mod audio_task;
 mod support;
 use support::post;
 fn plan_input<'a>(
@@ -556,21 +558,24 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         bail!("Non-empty TTS test text required");
     }
     let tts_request = json!({"model":ids[0],"task":"text_to_speech",
-        "input_source":{"type":"text","data":text},"stream":false,"keep_alive":-1});
+        "input_source":{"type":"text","data":text},"keep_alive":-1});
     let unauthenticated = router
         .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/audio/execute")
+                .uri("/v1/cep")
                 .header("content-type", "application/json")
-                .body(Body::from(tts_request.to_string()))?,
+                .body(Body::from(
+                    json!({"jsonrpc":"2.0","id":1,"method":"audio.run","params":tts_request})
+                        .to_string(),
+                ))?,
         )
         .await?;
     assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
-    let (status, body) = post(&router, "/v1/audio/execute", tts_request.clone(), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let response: Value = serde_json::from_str(&body)?;
+    let response = audio_task::run(&router, tts_request.clone())
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert_eq!(response["model"], ids[0]);
     let wav = response["output"]["audio_data"]
         .as_str()
@@ -622,31 +627,31 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     let mut missing = tts_request.clone();
     missing["model"] = json!("missing-explicit-model");
-    let (status, _) = post(&router, "/v1/audio/execute", missing, "user").await?;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(
+        audio_task::run(&router, missing).await?.unwrap_err()["code"],
+        -32004
+    );
     let mut unsupported = tts_request.clone();
     unsupported["parameters"] = json!({"voice_id":"unsupported"});
-    let (status, _) = post(&router, "/v1/audio/execute", unsupported, "user").await?;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        audio_task::run(&router, unsupported).await?.unwrap_err()["code"],
+        -32602
+    );
     let mut wrong = tts_request.clone();
     wrong["model"] = json!(ids[1]);
-    let (status, _) = post(&router, "/v1/audio/execute", wrong, "user").await?;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        audio_task::run(&router, wrong).await?.unwrap_err()["code"],
+        -32602
+    );
     let stt_request = json!({"model":ids[1],"task":"speech_to_text",
         "input_source":{"type":"base64","data":audio_data},
-        "parameters":{"language":"en"},"stream":true,"keep_alive":-1});
-    let (status, body) = post(&router, "/v1/audio/execute", stt_request, "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    assert!(!body.contains("\"status\":\"error\""), "{body}");
-    let terminal = body
-        .lines()
-        .filter_map(|line| line.strip_prefix("data: "))
-        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-        .find(|v| v["status"] == "done")
-        .context("STT terminal result missing")?;
-    let transcript = terminal["result"]["output"]["text"]
-        .as_str()
-        .context("STT text")?;
+        "parameters":{"language":"en"},"keep_alive":-1});
+    let (result, task_status) = audio_task::run_with_events(&router, stt_request).await?;
+    let terminal = result.map_err(|error| anyhow::anyhow!("{error}"))?;
+    assert!(task_status["events"].as_array().is_some_and(|events| events
+        .iter()
+        .any(|event| event["type"] == "transcript.delta")));
+    let transcript = terminal["output"]["text"].as_str().context("STT text")?;
     let expected = std::env::var("CLUAIZ_MEDIA_EXPECTED")?;
     if expected.trim().is_empty() {
         bail!("Ground truth required");
@@ -657,7 +662,7 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
             .contains(&expected.to_ascii_lowercase()),
         "{transcript}"
     );
-    eprintln!("REAL ONNX API SSE STT: {transcript}");
+    eprintln!("REAL ONNX CEP task/event STT: {transcript}");
     let plan = support::cep(&router, "system.plan", json!({"model":ids[1]}))
         .await?
         .map_err(|error| anyhow::anyhow!("{error}"))?;
@@ -720,17 +725,24 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         None => anyhow::bail!("STT produced no event"),
     }
     assert!(state.host.onnx.resident_model().await?.is_none());
-    let bad_source = json!({"model":ids[1],"input_source":{"type":"audio","data":"data:audio/wav;base64,AAAA"},"stream":false});
-    let (status, _) = post(&router, "/v1/audio/execute", bad_source, "user").await?;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let bad_source =
+        json!({"model":ids[1],"input_source":{"type":"audio","data":"data:audio/wav;base64,AAAA"}});
+    assert_eq!(
+        audio_task::run(&router, bad_source).await?.unwrap_err()["code"],
+        -32602
+    );
     let outside = tempfile::NamedTempFile::new()?;
-    let local = json!({"model":ids[1],"input_source":{"type":"file","data":outside.path().to_str()},"stream":false});
-    let (status, _) = post(&router, "/v1/audio/execute", local, "agent").await?;
-    assert_eq!(status, StatusCode::BAD_REQUEST); // owner path is accepted; empty file is not audio
+    let local =
+        json!({"model":ids[1],"input_source":{"type":"file","data":outside.path().to_str()}});
+    assert_eq!(
+        audio_task::run(&router, local).await?.unwrap_err()["code"],
+        -32602
+    ); // owner path is accepted; empty file is not audio
     let mut unload = tts_request;
     unload["keep_alive"] = json!(0);
-    let (status, body) = post(&router, "/v1/audio/execute", unload, "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    audio_task::run(&router, unload)
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     assert!(state.host.onnx.resident_model().await?.is_none());
     eprintln!("REAL ONNX API auth/model/task/options/decode/permission/keep_alive checks passed");
     Ok(())
