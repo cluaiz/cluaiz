@@ -265,16 +265,25 @@ def j15(engine):
     if not engine.exe:
         return None, "needs --exe (only servers under this Engine are killed)"
     import subprocess
+    # A fresh Engine: the crash limit (3 in 10 minutes) counts earlier runs' kills too; greedy
+    # sampling, so the answer does not depend on a draw
+    engine.restart()
     chat = session("j15")
-    extra = dict(tools=["filesystem"], tool_search=False)
+    extra = dict(tools=["filesystem"], tool_search=False, temperature=0)
     first = engine.stream(body("Read notes.txt and tell me the secret word.", chat, **extra))
     killed = [p for p, cmd in _children(engine.pid()) if "server-filesystem" in cmd]
     for p in killed:
         subprocess.run(["taskkill", "/PID", str(p), "/T", "/F"], capture_output=True)
     time.sleep(2)
-    second = engine.stream(body("Read calc.py and show what it contains.", chat, **extra))
-    ok = "MANGO-42" in first["text"] and bool(killed) and "6 * 7" in second["text"] and not second["error"]
-    return ok, f"killed {len(killed)} process(es); after: calls {names(second)}, answer {second['text'][-80:]!r}"
+    second = engine.stream(body("Read calc.py and show what it contains.", chat, return_prompt=True, **extra))
+    # The Engine's part: the server started again and its result reached the model (the prompt
+    # of the answer holds it). Whether the model then writes about it is the model's part: Gemma 4
+    # at temperature 0 sometimes ends right after this result.
+    prompt = _engine_context(second).get("prompt") or ""
+    result_in_prompt = "print(6 * 7)" in prompt
+    ok = "MANGO-42" in first["text"] and bool(killed) and result_in_prompt and not second["error"]
+    return ok, (f"killed {len(killed)} process(es); after: calls {names(second)}, result reached the model "
+                f"{result_in_prompt}, answer {second['text'][-80:]!r}")
 
 
 JOURNEYS = {"J1": j1, "J2": j2, "J3": j3, "J4": j4, "J5": j5, "J6": j6, "J7": j7, "J8": j8, "J9": j9, "J9T": j9t, "J10": j10, "J11": j11, "J12": j12, "J13": j13, "J14": j14, "J15": j15}

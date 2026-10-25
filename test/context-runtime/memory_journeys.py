@@ -275,7 +275,41 @@ def c2(engine):
     return ok, f"first calls {[c['name'] for c in r['calls']]}; step in the 4th prompt {reattached}; answer {answer[-100:]!r}"
 
 
-JOURNEYS = {"MEM3": mem3, "MEM5": mem5, "MEM6": mem6, "ENR1": enr1, "PERF5": perf5, "C2": c2}
+def ext1(engine):
+    """storage external: the model's card and a note reach the app as events; nothing on disk"""
+    if not engine.home:
+        return None, "needs --home (it checks the Engine's files)"
+    from pathlib import Path
+    before = engine.get("/v1/context/settings")["settings"]["indexer"]
+    chat = session("ext1")
+    got = []
+    try:
+        _drain(engine)
+        engine.post("/v1/context/settings", {"indexer": "always"})
+        history = [{"role": "user", "content": "Mera deploy server orion hai, port 8011. Ek line me confirm karo."}]
+        r = engine.chat(dict(body("", chat, storage="external", max_tokens=40), messages=history))
+        got += r.get("memory_events") or []
+        history.append({"role": "assistant", "content": answer_of(r)})
+        card_job = _wait_job(engine, chat, 120)[0]
+        history.append({"role": "user", "content": "Yaad rakhna: mera favourite editor Helix hai. remember tool use karo."})
+        r = engine.chat(dict(body("", chat, storage="external", max_tokens=80), messages=history))
+        got += r.get("memory_events") or []
+    finally:
+        engine.post("/v1/context/settings", {"indexer": before})
+    kinds = [e.get("kind") for e in got]
+    note = next((e for e in got if e.get("kind") == "note"), None)
+    # Nothing of the chat in the Engine's files: no chat folder, the note not in its notes file
+    stem_hits = [p for p in Path(engine.home, "memory", "chats").glob("*") if chat in p.name]
+    notes_file = Path(engine.home, "memory", "notes", "notes.jsonl")
+    on_disk = bool(stem_hits) or (notes_file.exists() and "Helix" in notes_file.read_text(encoding="utf-8", errors="ignore"))
+    seqs = [e.get("seq") for e in got]
+    ok = "card_enrichment" in kinds and note is not None and not on_disk and seqs == sorted(set(seqs))
+    engine.delete(f"/v1/chat/{chat}/history")
+    return ok, (f"card job {card_job}; event kinds {sorted(set(kinds))}; note {note and note.get('text')!r} "
+                f"({note and note.get('status')}); seqs unique and in order {seqs == sorted(set(seqs))}; on disk {on_disk}")
+
+
+JOURNEYS = {"MEM3": mem3, "MEM5": mem5, "MEM6": mem6, "ENR1": enr1, "PERF5": perf5, "C2": c2, "EXT1": ext1}
 
 
 def main():
