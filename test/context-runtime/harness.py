@@ -41,7 +41,7 @@ class Engine:
         if self.home and not self.token:
             self.token = Path(self.home, "session.token").read_text().strip()
         if self.workspace:
-            self.post("/v1/workspace", {"workspace": str(self.workspace)})
+            self.cep("workspace.set", path=str(self.workspace))
         return ready
 
     def stop(self):

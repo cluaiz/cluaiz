@@ -165,7 +165,7 @@ fn real_router(root: &std::path::Path) -> Router {
 async fn native_requires_session_auth_before_public_or_auth_disabled_routes() -> Result<()> {
     let root = tempfile::tempdir()?;
     let server = Harness::start(real_router(root.path())).await?;
-    for path in ["/health", "/mcp", "/v1/fs/read"] {
+    for path in ["/health", "/mcp", "/v1/cep"] {
         for token in [None, Some("wrong-token")] {
             let mut client = Client::open(&server.endpoint).await?;
             assert_eq!(
