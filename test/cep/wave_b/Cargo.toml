@@ -9,9 +9,22 @@ publish = false
 
 [dependencies]
 cluaiz-cep = { path = "../../../cep" }
+cluaiz-agents = { path = "../../../agents" }
+base64 = "0.22"
+dirs = "5"
+rfd = "0.15"
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+tracing = "0.1"
+uuid = { version = "1", features = ["v4"] }
 
 [[test]]
 name = "roots_contract"
 path = "roots_contract.rs"
+
+[[test]]
+name = "fs_methods_contract"
+path = "fs_methods_contract.rs"
