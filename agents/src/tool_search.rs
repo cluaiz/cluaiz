@@ -196,7 +196,7 @@ fn read_manifest(local_dir: &Path) -> Option<Value> {
 
 /// Functions a tool offers without starting it: an MCP server's last known tool list, or the
 /// `functions` / `tools` of a plugin's or skill's manifest
-fn listed_functions(category: &str, local_dir: &Path, manifest: Option<&Value>) -> Vec<Value> {
+pub fn listed_functions(category: &str, local_dir: &Path, manifest: Option<&Value>) -> Vec<Value> {
     if category == "mcp" {
         return McpClient::get_cached_tools(local_dir).unwrap_or_default();
     }
