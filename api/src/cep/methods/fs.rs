@@ -348,9 +348,20 @@ fn list_item(
     ))
 }
 
+/// A link is removed or renamed itself, never its target (as `rm` / `mv` do)
+fn checked_entry(call: &Call, workspace: &Path, path: &str) -> Result<PathBuf, CepError> {
+    let entry = roots::resolve_entry(path, workspace)?;
+    call.check_path(&entry)?;
+    Ok(entry)
+}
+
 fn delete(call: &Call, workspace: &Path, params: PathParams) -> Result<Value, CepError> {
-    let path = checked(call, workspace, &params.path, false)?;
-    let result = if path.is_dir() {
+    let path = checked_entry(call, workspace, &params.path)?;
+    let kind = fs::symlink_metadata(&path).map_err(|e| roots::io_error("delete path", e))?.file_type();
+    let result = if kind.is_symlink() {
+        // A link to a folder is a directory entry on Windows
+        fs::remove_file(&path).or_else(|_| fs::remove_dir(&path))
+    } else if kind.is_dir() {
         fs::remove_dir_all(&path)
     } else {
         fs::remove_file(&path)
@@ -360,7 +371,7 @@ fn delete(call: &Call, workspace: &Path, params: PathParams) -> Result<Value, Ce
 }
 
 fn rename(call: &Call, workspace: &Path, params: TransferParams) -> Result<Value, CepError> {
-    let from = checked(call, workspace, &params.from, false)?;
+    let from = checked_entry(call, workspace, &params.from)?;
     let to = checked(call, workspace, &params.to, true)?;
     parents(&to)?;
     fs::rename(&from, &to).map_err(|e| roots::io_error("rename path", e))?;

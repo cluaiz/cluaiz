@@ -77,6 +77,19 @@ pub fn resolve(input: &str, workspace: &Path, write: bool) -> Result<PathBuf, Ce
     Ok(resolved)
 }
 
+/// An existing entry itself, without following it when it is a link (what `rm` / `mv` act on):
+/// the parent is canonicalized, the last component is kept as it is.
+pub fn resolve_entry(input: &str, workspace: &Path) -> Result<PathBuf, CepError> {
+    let raw = Path::new(input);
+    let Some(Component::Normal(name)) = raw.components().next_back() else {
+        return Err(invalid("path", "The path must end in a file or folder name"));
+    };
+    let parent = raw.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+    let entry = resolve(&parent.to_string_lossy(), workspace, false)?.join(name);
+    std::fs::symlink_metadata(&entry).map_err(|e| io_error("resolve path", e))?;
+    Ok(entry)
+}
+
 /// Human-readable output only: permission comparisons always use canonical paths.
 pub fn display(path: &Path) -> String {
     let value = path.to_string_lossy();
