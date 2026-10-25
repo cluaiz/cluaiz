@@ -39,8 +39,10 @@ prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, 
 reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once: between two tokens, or while the job's prompt is processed, between two chunks of 64 tokens (the KV keeps the cached part). Measured (Gemma 4 E4B with 5 of 42 layers on the GPU): a short request's first text came 81, 228 and 483 ms later than with no job in three runs: at most the rest of one chunk, which takes about 650 ms there. A job that has
 not started yet is dropped without touching the KV. It never loads a model. Cards appear in
 `GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
-recalled lines show the title. Measured on this machine (Qwen3-4B): about 3-4 s per card; the next
-request kept the whole conversation in the cache (`cache_n` 71 of 90, the rest being its own new
+recalled lines show the title. Measured on an RTX 3050 4 GB with about half of the model's layers on
+the GPU (2026-10-25): Qwen3-4B 4.1 s per card (56 tokens), Gemma 4 E4B 7.0 s (84 tokens); before
+the grammar was checked per picked token (see `grammar` in Chat Completions) they took 9.8 s and
+27.2 s. The next request kept the whole conversation in the cache (it processed only its own new
 message).
 
 **Nothing is lost on a restart or a crash.** The chat's event log is the job list: a card is

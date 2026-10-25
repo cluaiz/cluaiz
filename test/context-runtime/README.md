@@ -332,3 +332,31 @@ MEM5 found that `tool_only` (design §11.7) was missing: recall showed the answe
 run, never its output. PERF5 found that a job could not be stopped while its prompt was processed
 (only between tokens): a request waited up to the whole prompt. Both are fixed. The plan asks for
 50 ms; on this machine one decode alone takes longer (see above).
+
+## Faster grammar sampling and card speed (2026-10-25)
+
+With the founder's server stopped (3.3 GB VRAM free), the planner put 22 of 42 Gemma 4 blocks and
+21-22 of 36 Qwen3 blocks on the GPU. Card jobs were still slow: Gemma 4 wrote 7.5 tokens/s under
+the card's JSON grammar against 15 without it, because the grammar was first in the sampler chain
+and went over the whole vocabulary (262k tokens) for every token. A request's own grammar (cards,
+`grammar`, `response_format`) now checks only the token the sampler picked, as llama.cpp's
+`common_sampler_sample` does, and goes over the vocabulary only when it rejects that token. The
+native tool-call grammar is not changed.
+
+| | before | after |
+| --- | --- | --- |
+| Gemma 4 E4B card (84 tokens) | 27.2 s, 7.5 tokens/s | 7.0 s, 14.6 tokens/s |
+| Qwen3-4B card (56 tokens) | 9.8 s, 11.6 tokens/s | 4.1 s, 16.2 tokens/s |
+| `response_format` JSON schema | — | Gemma and Qwen: valid JSON with every required key |
+
+ENR1 passes with both models; `tool_calls.py` native on Gemma 14/14 after the change.
+
+**A run-to-run trap found on the way.** The planner sizes `n_ctx` from the free VRAM, which moved
+between runs (9216, 8704, 8192 tokens for Qwen3). Qwen3 with thinking failed 4 of 5 tool rows at
+8704 and 8192 and passed 5 of 5 at 9216, with the old and the new build alike (A/B with
+`"llama": {"n_ctx": 9216}` in every request: 5/5 and 5/5). Compare tool-call runs at a fixed
+`n_ctx`.
+
+**J15 needs a fresh Engine.** Run back to back in one Engine, its third kill hits the crash limit
+(3 in 10 minutes), so the call fails by design. With the restart working, Gemma 4 sometimes wrote
+no answer (its first token was `<eos>`) at the default temperature, with the old build too.
