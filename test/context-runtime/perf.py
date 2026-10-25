@@ -100,8 +100,8 @@ def perf2_3(engine, args):
                   messages=history + [{"role": "user", "content": question}])
         plans.append(timing(r).get("plan_ms", 0))
         parts.append(timing(r))
-    cards = len(engine.get(f"/v1/chat/{chat}/index").get("cards", []))
-    engine.delete(f"/v1/chat/{chat}/history")
+    cards = len(engine.cep("memory.index", chat_id=chat).get("cards", []))
+    engine.cep("memory.delete", chat_id=chat)
     memory = f"; Engine memory {before} MB -> {after} MB with the chat indexed" if before else ""
     # Steps B-H of the design (ingest, render, analysis, recall, plan): the preflight after model load
     keys = ("preflight_ms", "model_load_ms", "registry_template_ms", "ingest_ms", "render_ms", "tools_ms", "matcher_ms", "count_ms", "recall_ms", "plan_ms")
@@ -124,7 +124,7 @@ def perf4(engine, args):
         context = r["engine"]["context"]
         rows.append(f"{context.get('processed_tokens')} of {context.get('prompt_tokens')} ({context.get('cause')})")
         history.append({"role": "assistant", "content": r["choices"][0]["message"]["content"] or ""})
-    engine.delete(f"/v1/chat/{chat}/history")
+    engine.cep("memory.delete", chat_id=chat)
     return "processed per turn: " + "; ".join(rows)
 
 

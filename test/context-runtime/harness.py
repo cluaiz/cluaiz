@@ -80,6 +80,13 @@ class Engine:
         with self._request("DELETE", path) as r:
             return json.load(r)
 
+    def cep(self, method, **params):
+        """One CEP call (`POST /v1/cep`); returns the result, raises on an error"""
+        reply = self.post("/v1/cep", {"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+        if "error" in reply:
+            raise CepCallError(method, reply["error"])
+        return reply["result"]
+
     def chat(self, body):
         """Non-streaming chat; returns the whole response"""
         return self.post("/v1/chat/completions", dict(body, stream=False))
@@ -125,6 +132,14 @@ class Engine:
             out["error"] = {"message": f"{type(e).__name__}: {e}"}
         out["seconds"] = round(time.time() - started, 1)
         return out
+
+
+class CepCallError(RuntimeError):
+    """A CEP error reply: `code` and `data` as the Engine sent them"""
+
+    def __init__(self, method, error):
+        super().__init__(f"{method}: {error}")
+        self.code, self.data = error.get("code"), error.get("data") or {}
 
 
 def add_engine_args(parser):

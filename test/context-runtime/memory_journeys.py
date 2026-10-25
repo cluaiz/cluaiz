@@ -4,7 +4,7 @@ isolated Engine.
     python memory_journeys.py --exe target/release/cluaiz.exe --home <test home> --workspace <fixture> \
         [--model gemma-4-e4b-it-gguf-Q4_K_M] [--only MEM3,MEM5]
 
-MEM3 and MEM5 import a chat with times and tool steps of their own (`POST /v1/chat/{id}/import`),
+MEM3 and MEM5 import a chat with times and tool steps of their own (CEP `memory.import`),
 so their checks do not depend on the model. MEM6 changes `cross_chat` with
 `POST /v1/context/settings` and sets it back after. The fixture folder holds notes.txt
 ("The secret word is MANGO-42.").
@@ -17,7 +17,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from harness import add_engine_args, engine_from
+from harness import CepCallError, add_engine_args, engine_from
 
 MODEL = "gemma-4-e4b-it-gguf-Q4_K_M"
 
@@ -56,7 +56,7 @@ def import_chat(engine, chat, items):
             fields = dict(fields, pos=pos, source="client" if fields["role"] == "user" else "engine")
             pos += 1
         events.append(dict(event, **fields))
-    return engine.post(f"/v1/chat/{chat}/import", {"events": events})
+    return engine.cep("memory.import", chat_id=chat, events=events)
 
 
 def user(at, text):
@@ -90,11 +90,11 @@ def mem3(engine):
                                ("parso deploy port kya rakha?", "5050", ("9090", "7070")),
                                (f"{weekday} ko deploy port kya tha?", "5050", ("9090", "7070")),
                                ("aaj deploy port kya hai?", "9090", ("7070", "5050"))]:
-        results = engine.post("/v1/recall/search", {"chat_id": chat, "query": query, "limit": 5})["results"]
-        texts = [engine.get(f"/v1/recall/item/{r['ref']}?chat_id={chat}").get("text", "") for r in results]
+        results = engine.cep("memory.search", chat_id=chat, query=query, limit=5)["results"]
+        texts = [engine.cep("memory.item", chat_id=chat, ref=r["ref"]).get("text", "") for r in results]
         found = any(want in t for t in texts) and not any(o in t for t in texts for o in other)
         rows.append((query, found))
-    engine.delete(f"/v1/chat/{chat}/history")
+    engine.cep("memory.delete", chat_id=chat)
     return all(ok for _, ok in rows), "; ".join(f"{q!r} {'right day' if ok else 'WRONG'}" for q, ok in rows)
 
 
@@ -119,7 +119,7 @@ def mem5(engine):
     levels = [x.get("level") for x in recalled.get("recalled", [])]
     in_prompt = "returned: stdout: checksum ZEBRA-7781" in prompt
     answer = answer_of(r)
-    engine.delete(f"/v1/chat/{chat}/history")
+    engine.cep("memory.delete", chat_id=chat)
     ok = in_prompt and "tool_only" in levels and "ZEBRA-7781" in answer
     return ok, f"{imported.get('cards')} cards; levels {levels}; result in prompt {in_prompt}; answer {answer[-100:]!r}"
 
@@ -144,10 +144,10 @@ def mem6(engine):
         r = engine.stream(dict(body(question, session("mem6-deny")), stream=True))
         search_status = None
         try:
-            engine.post("/v1/recall/search", {"chat_id": session("x"), "query": "codename", "scope": "all"})
-        except urllib.error.HTTPError as e:
+            engine.cep("memory.search", chat_id=session("x"), query="codename", scope="all")
+        except CepCallError as e:
             search_status = e.code
-        rows["deny"] = (code not in r["text"] and search_status == 403, [c["name"] for c in r["calls"]], search_status)
+        rows["deny"] = (code not in r["text"] and search_status == -32002, [c["name"] for c in r["calls"]], search_status)
         _set_cross_chat(engine, "ask")
         asked = []
 
@@ -158,7 +158,7 @@ def mem6(engine):
         rows["ask+reject"] = (code not in r["text"] and bool(asked), asked)
     finally:
         _set_cross_chat(engine, before)
-        engine.delete(f"/v1/chat/{first}/history")
+        engine.cep("memory.delete", chat_id=first)
     ok = rows["allow"][0] and rows["deny"][0] and rows["ask+reject"][0]
     return ok, f"code {code}; " + "; ".join(f"{k}: {v}" for k, v in rows.items())
 
@@ -168,7 +168,7 @@ def _drain(engine, timeout=120):
     engine.post("/v1/context/settings", {"indexer": "off"})
     deadline = time.time() + timeout
     while time.time() < deadline:
-        jobs = engine.get("/v1/context/jobs")
+        jobs = engine.cep("context.jobs")
         if not jobs.get("queue") and not jobs.get("running"):
             return
         time.sleep(0.5)
@@ -178,7 +178,7 @@ def _wait_job(engine, chat, timeout=90):
     """The idle-time job of `chat` once it is over: (outcome, ms)"""
     deadline = time.time() + timeout
     while time.time() < deadline:
-        for job in engine.get("/v1/context/jobs").get("recent", []):
+        for job in engine.cep("context.jobs").get("recent", []):
             if job.get("chat") == chat:
                 return job.get("outcome"), job.get("ms")
         time.sleep(0.5)
@@ -202,9 +202,9 @@ def enr1(engine):
             r = engine.chat(dict(body("", chat, max_tokens=20), messages=history))
             context = engine_context(r)
             processed[indexer] = context.get("processed_tokens", 0)
-            card = [c for c in engine.get(f"/v1/chat/{chat}/index")["cards"] if c.get("enrichment")]
+            card = [c for c in engine.cep("memory.index", chat_id=chat)["cards"] if c.get("enrichment")]
             details.append(f"{indexer}: job {outcome}, card {bool(card)}, processed {processed[indexer]} of {context.get('prompt_tokens')}")
-            engine.delete(f"/v1/chat/{chat}/history")
+            engine.cep("memory.delete", chat_id=chat)
     finally:
         engine.post("/v1/context/settings", {"indexer": before})
     # The new message only, as without the job: the job's own prompt left no trace in the KV
@@ -238,12 +238,12 @@ def perf5(engine):
         chat = session("perf5")
         engine.chat(body("Mera deploy server orion hai, port 8011. Ek line me confirm karo.", chat, max_tokens=40))
         deadline = time.time() + 30
-        while time.time() < deadline and not engine.get("/v1/context/jobs").get("running"):
+        while time.time() < deadline and not engine.cep("context.jobs").get("running"):
             time.sleep(0.02)
-        running = engine.get("/v1/context/jobs").get("running")
+        running = engine.cep("context.jobs").get("running")
         during = _ttft(engine, probe())
         outcome = _wait_job(engine, chat, 30)[0]
-        engine.delete(f"/v1/chat/{chat}/history")
+        engine.cep("memory.delete", chat_id=chat)
     finally:
         engine.post("/v1/context/settings", {"indexer": before})
     extra_ms = round((during - normal) * 1000)
@@ -270,7 +270,7 @@ def c2(engine):
     # No tool is bound or suggested now: the call can only be in the prompt as the earlier step
     reattached = "read_text_file" in prompt and "The secret word is MANGO-42" in prompt
     answer = answer_of(r3)
-    engine.delete(f"/v1/chat/{chat}/history")
+    engine.cep("memory.delete", chat_id=chat)
     ok = any("read_text_file" in c["name"] for c in r["calls"]) and reattached and "Project notes" in answer
     return ok, f"first calls {[c['name'] for c in r['calls']]}; step in the 4th prompt {reattached}; answer {answer[-100:]!r}"
 
@@ -304,7 +304,7 @@ def ext1(engine):
     on_disk = bool(stem_hits) or (notes_file.exists() and "Helix" in notes_file.read_text(encoding="utf-8", errors="ignore"))
     seqs = [e.get("seq") for e in got]
     ok = "card_enrichment" in kinds and note is not None and not on_disk and seqs == sorted(set(seqs))
-    engine.delete(f"/v1/chat/{chat}/history")
+    engine.cep("memory.delete", chat_id=chat)
     return ok, (f"card job {card_job}; event kinds {sorted(set(kinds))}; note {note and note.get('text')!r} "
                 f"({note and note.get('status')}); seqs unique and in order {seqs == sorted(set(seqs))}; on disk {on_disk}")
 

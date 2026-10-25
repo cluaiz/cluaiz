@@ -232,14 +232,14 @@ def j13(engine):
 def j14(engine):
     """Idle auto-unload: a loaded tool goes after 3 answers without use; a pinned one stays"""
     chat = session("j14")
-    engine.post(f"/v1/chat/{chat}/tools", {"tools": [{"id": "filesystem", "turns": -1, "inline": True},
-                                                      {"id": "pynotes", "turns": -1, "inline": True, "pinned": True}]})
+    engine.cep("chat.set_tools", chat_id=chat, tools=[{"id": "filesystem", "turns": -1, "inline": True},
+                                                       {"id": "pynotes", "turns": -1, "inline": True, "pinned": True}])
     history, seen = [], []
     for text in ["Hi!", "How are you?", "Tell me a one-line joke."]:
         history.append({"role": "user", "content": text})
         r = engine.stream(dict(body(text, chat, think_mode="off", max_tokens=60), messages=list(history)))
         history.append({"role": "assistant", "content": r["text"]})
-        seen.append([t["id"] for t in engine.get(f"/v1/chat/{chat}/tools")["active_tools"]])
+        seen.append([t["id"] for t in engine.cep("chat.tools", chat_id=chat)["active_tools"]])
     ok = "filesystem" in seen[1] and "filesystem" not in seen[2] and all("pynotes" in s for s in seen)
     return ok, f"loaded after each answer {seen}"
 

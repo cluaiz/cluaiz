@@ -425,7 +425,7 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         };
         let owner = match scope {
             "chat" => Some(chat.to_string()),
-            "workspace" => Some(crate::handlers::notes::current_workspace()),
+            "workspace" => Some(current_workspace()),
             _ => None,
         };
         let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" { "confirmed" } else { "proposed" };
@@ -482,7 +482,7 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         if cluaiz_core::Settings::current().context_runtime.cross_chat == "deny" {
             return "Searching other chats is turned off (cross_chat: deny). Only this chat can be searched.".to_string();
         }
-        let workspace = (scope == "workspace").then(crate::handlers::notes::current_workspace);
+        let workspace = (scope == "workspace").then(current_workspace);
         return search_other_chats(&query, chat, workspace.as_deref(), 5);
     }
     let hits = recall(&map.cards, &map.index, &query, &HashSet::new(), chrono::Utc::now(), 5);
@@ -585,6 +585,11 @@ fn chat_workspace(chat: &str) -> Option<String> {
 }
 
 /// Messages of other chats that fit `query` (the chat's own messages excluded)
+/// The current workspace folder (the owner of workspace notes)
+pub fn current_workspace() -> String {
+    cluaiz_agents::ToolsEngine::workspace_dir().to_string_lossy().to_string()
+}
+
 pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>, limit: usize) -> String {
     let mut found: Vec<(f32, String)> = Vec::new();
     let mut searched = 0;

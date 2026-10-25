@@ -7,7 +7,6 @@ pub(crate) mod background;
 pub(crate) mod context_plan;
 pub(crate) mod ingest_events;
 pub(crate) mod recall;
-pub mod control;
 pub mod non_streaming;
 pub mod preflight;
 mod processing;
@@ -25,7 +24,6 @@ use axum::{
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-pub use control::{cancel_chat_stream, skip_chat_reasoning};
 pub use tool_parser::{extract_tool_call, ExtractedToolCall};
 pub use types::{
     ExternalChatRequest, ExternalMessage, MessageContent, TemporaryChatMode, DEFAULT_MAX_TOKENS,
@@ -98,38 +96,4 @@ pub async fn chat_completions(
     } else {
         non_streaming::execute_non_streaming(state, request, ctx, initial_dispatch).await
     }
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct ContextTelemetryQuery {
-    pub model: Option<String>,
-    pub session_id: Option<String>,
-    pub tools: Option<String>,
-}
-
-/// GET /v1/chat/context_telemetry
-pub async fn get_context_telemetry(
-    axum::extract::Query(query): axum::extract::Query<ContextTelemetryQuery>,
-) -> Json<Value> {
-    let model = query.model.unwrap_or_else(|| "default".to_string());
-    let session_id = query.session_id.unwrap_or_else(|| "default".to_string());
-    let active_tools = cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session(&session_id);
-    let telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
-        &model,
-        &session_id,
-        &active_tools,
-        0,
-        0,
-        0,
-        0,
-    );
-
-    let val = serde_json::to_value(&telemetry).unwrap_or_default();
-    Json(json!({
-        "status": "success",
-        "model": model,
-        "session_id": session_id,
-        "telemetry": val.clone(),
-        "context_telemetry": val
-    }))
 }

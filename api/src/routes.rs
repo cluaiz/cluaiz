@@ -44,15 +44,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         // ── 2. External Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", chat.clone())
         .route("/api/chat", chat)
-        .route(
-            "/v1/chat/context_telemetry",
-            get(handlers::chat::get_context_telemetry),
-        )
-        .route("/v1/chat/cancel", post(handlers::chat::cancel_chat_stream))
-        .route(
-            "/v1/chat/skip-reasoning",
-            post(handlers::chat::skip_chat_reasoning),
-        )
         // Chat memory: saved KV cache per chat (session_id)
         .route(
             "/v1/chat/memory",
@@ -118,36 +109,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route(
             "/v1/context/settings",
             get(handlers::context::get_context_settings).post(handlers::context::update_context_settings),
-        )
-        .route("/v1/chat/{session_id}/context/preview", post(handlers::context::preview_context))
-        .route("/v1/context/jobs", get(handlers::context::get_jobs))
-        // Chat memory: event log, Chat Map, search, export, delete with everything derived
-        .route("/v1/chat/{session_id}/events", get(handlers::memory::get_events))
-        .route("/v1/chat/{session_id}/index", get(handlers::memory::get_index))
-        .route("/v1/chat/{session_id}/export", get(handlers::memory::export))
-        .route("/v1/chat/{session_id}/import", post(handlers::memory::import_chat))
-        .route("/v1/chat/{session_id}/history", delete(handlers::memory::delete_history))
-        .route(
-            "/v1/chat/{session_id}/grants",
-            get(handlers::memory::get_grants).delete(handlers::memory::revoke_grants),
-        )
-        .route("/v1/recall/search", post(handlers::memory::search))
-        // Durable notes
-        .route("/v1/notes", get(handlers::notes::list).post(handlers::notes::create))
-        .route("/v1/notes/{id}/confirm", post(handlers::notes::confirm))
-        .route("/v1/notes/{id}/invalidate", post(handlers::notes::invalidate))
-        .route("/v1/notes/{id}/pin", post(handlers::notes::pin))
-        .route("/v1/chat/import/app", post(handlers::chat_import::import_app_chats))
-        .route("/v1/recall/item/{reference}", get(handlers::memory::get_item))
-        .route("/v1/chat/{session_id}/context/report", get(handlers::context::list_context_reports))
-        .route(
-            "/v1/chat/{session_id}/context/report/{request_id}",
-            get(handlers::context::get_context_report),
-        )
-        .route(
-            "/v1/chat/{session_id}/tools",
-            get(handlers::session_tools::get_session_tools)
-                .post(handlers::session_tools::update_session_tools),
         )
         // ── 6. WASM Skills API ──
         .route("/v1/skills/list", get(handlers::skills::list_skills))

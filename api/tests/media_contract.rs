@@ -354,14 +354,8 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
                     ..Default::default()
                 },
             );
-        let (status, cancelled) = post(
-            &router,
-            "/v1/chat/cancel",
-            json!({"stream_id":ctx.request_id}),
-            "user",
-        )
-        .await?;
-        assert_eq!(status, StatusCode::OK, "{cancelled}");
+        let cancelled = support::cep(&router, "chat.cancel", json!({"stream_id":ctx.request_id})).await?;
+        assert_eq!(cancelled.expect("cancel accepted")["status"], "cancelled");
         let stopped = collect_native(ctx.dispatch(&state.host, None, 32).await).await;
         assert!(stopped
             .unwrap_err()
