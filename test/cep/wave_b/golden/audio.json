@@ -1,0 +1,68 @@
+[
+  {
+    "route": "/v1/audio/voices",
+    "verb": "GET",
+    "method": "audio.voices",
+    "case": "no_model",
+    "request": {
+      "path": "/v1/audio/voices",
+      "body": null
+    },
+    "status": 404,
+    "body": {
+      "error": {
+        "details": null,
+        "message": "No installed ONNX model declares text_to_speech",
+        "type": "model_not_found"
+      },
+      "status": "error"
+    },
+    "seconds": 0.016
+  },
+  {
+    "route": "/v1/audio/languages",
+    "verb": "GET",
+    "method": "audio.languages",
+    "case": "no_model",
+    "request": {
+      "path": "/v1/audio/languages",
+      "body": null
+    },
+    "status": 404,
+    "body": {
+      "error": {
+        "details": null,
+        "message": "No installed ONNX model declares speech_to_text",
+        "type": "model_not_found"
+      },
+      "status": "error"
+    },
+    "seconds": 0.006
+  },
+  {
+    "route": "/v1/audio/execute",
+    "verb": "POST",
+    "method": "audio.run",
+    "case": "no_model",
+    "request": {
+      "path": "/v1/audio/execute",
+      "body": {
+        "input_source": {
+          "type": "text",
+          "data": "CEP migration baseline: UTF-8 file, document extraction, and local tools.\n"
+        },
+        "stream": false
+      }
+    },
+    "status": 404,
+    "body": {
+      "error": {
+        "details": null,
+        "message": "No installed ONNX model declares text_to_speech",
+        "type": "model_not_found"
+      },
+      "status": "error"
+    },
+    "seconds": 0.008
+  }
+]

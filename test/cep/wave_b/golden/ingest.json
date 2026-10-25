@@ -1,0 +1,86 @@
+[
+  {
+    "route": "/v1/ingest",
+    "verb": "POST",
+    "method": "ingest.run",
+    "case": "default",
+    "request": {
+      "path": "/v1/ingest",
+      "body": {
+        "source": "data:text/plain;base64,Q0VQIG1pZ3JhdGlvbiBiYXNlbGluZTogVVRGLTggZmlsZSwgZG9jdW1lbnQgZXh0cmFjdGlvbiwgYW5kIGxvY2FsIHRvb2xzLgo=",
+        "output_controls": {
+          "return_text": true
+        }
+      }
+    },
+    "status": 200,
+    "body": {
+      "processed_sources": [
+        {
+          "chunk_size": 512,
+          "chunks": [
+            "CEP migration baseline: UTF-8 file, document extraction, and local tools."
+          ],
+          "chunks_count": 1,
+          "mime_type": "text/plain",
+          "parts": [
+            {
+              "method": "utf8",
+              "omissions": [],
+              "page": null,
+              "text": "CEP migration baseline: UTF-8 file, document extraction, and local tools.\n",
+              "warnings": []
+            }
+          ],
+          "source": "data:text/plain;base64,Q0VQIG1pZ3JhdGlvbiBiYXNlbGluZTogVVRGLTggZmlsZSwgZG9jdW1lbnQgZXh0cmFjdGlvbiwgYW5kIGxvY2FsIHRvb2xzLgo=",
+          "status": "ingested"
+        }
+      ],
+      "status": "success",
+      "total_sources": 1
+    },
+    "seconds": 0.017
+  },
+  {
+    "route": "/v1/ingest/file",
+    "verb": "POST",
+    "method": "ingest.run",
+    "case": "default",
+    "request": {
+      "path": "/v1/ingest/file",
+      "body": {
+        "source": "data:text/plain;base64,Q0VQIG1pZ3JhdGlvbiBiYXNlbGluZTogVVRGLTggZmlsZSwgZG9jdW1lbnQgZXh0cmFjdGlvbiwgYW5kIGxvY2FsIHRvb2xzLgo=",
+        "output_controls": {
+          "return_text": true
+        }
+      }
+    },
+    "status": 200,
+    "body": {
+      "processed_sources": [
+        {
+          "chunk_size": 512,
+          "chunks": [
+            "CEP migration baseline: UTF-8 file, document extraction, and local tools."
+          ],
+          "chunks_count": 1,
+          "mime_type": "text/plain",
+          "parts": [
+            {
+              "method": "utf8",
+              "omissions": [],
+              "page": null,
+              "text": "CEP migration baseline: UTF-8 file, document extraction, and local tools.\n",
+              "warnings": []
+            }
+          ],
+          "source": "data:text/plain;base64,Q0VQIG1pZ3JhdGlvbiBiYXNlbGluZTogVVRGLTggZmlsZSwgZG9jdW1lbnQgZXh0cmFjdGlvbiwgYW5kIGxvY2FsIHRvb2xzLgo=",
+          "status": "ingested"
+        }
+      ],
+      "status": "success",
+      "total_sources": 1
+    },
+    "seconds": 0.005
+  }
+]

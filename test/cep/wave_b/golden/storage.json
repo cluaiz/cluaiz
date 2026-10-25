@@ -1,0 +1,36 @@
+[
+  {
+    "route": "/v1/system/storage/temp_media",
+    "verb": "GET",
+    "method": "storage.status",
+    "case": "default",
+    "request": {
+      "path": "/v1/system/storage/temp_media",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "file_count": 1,
+      "status": "success",
+      "total_size_bytes": 75,
+      "total_size_mb": "0.00 MB"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/system/storage/temp_media/clean",
+    "verb": "POST",
+    "method": "storage.clean",
+    "case": "default",
+    "request": {
+      "path": "/v1/system/storage/temp_media/clean",
+      "body": {}
+    },
+    "status": 200,
+    "body": {
+      "message": "Temporary media storage cleaned successfully.",
+      "status": "success"
+    },
+    "seconds": 0.02
+  }
+]
