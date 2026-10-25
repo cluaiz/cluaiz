@@ -11,6 +11,7 @@ publish = false
 cluaiz-cep = { path = "../../../cep" }
 cluaiz-agents = { path = "../../../agents" }
 base64 = "0.22"
+chrono = "0.4"
 dirs = "5"
 rfd = "0.15"
 schemars = "1"

@@ -259,12 +259,21 @@ async fn test_real_symlink_cannot_read_write_list_or_copy_outside_roots() {
             "fs.write",
             json!({"path":"source/link/blocked.txt","text":"blocked"}),
         ),
-        ("fs.list", json!({"path":"source","recursive":true})),
         ("fs.copy", json!({"from":"source","to":"destination"})),
     ] {
         let reply = f.call(principal.clone(), method, params).await;
         assert_eq!(reply["error"]["code"], -32002, "{method}: {reply}");
     }
+    let listing = f
+        .call(
+            principal,
+            "fs.list",
+            json!({"path":"source","recursive":true}),
+        )
+        .await;
+    assert_eq!(listing["result"]["skipped"], 1);
+    assert_eq!(listing["result"]["truncated"], true);
+    assert!(listing["result"]["items"].as_array().unwrap().is_empty());
     assert!(!outside.path().join("blocked.txt").exists());
     assert!(!f.root.path().join("destination/link/secret.txt").exists());
 }
@@ -428,5 +437,79 @@ async fn test_approved_file_copy_does_not_consume_approval_twice() {
     assert_eq!(
         fs::read_to_string(f.root.path().join("copy.txt")).unwrap(),
         "approved copy"
+    );
+}
+
+#[tokio::test]
+async fn test_review_listing_modified_is_rfc3339() {
+    let f = Fixture::new();
+    fs::write(f.root.path().join("notes.md"), "notes").unwrap();
+    let listing = f.ok("fs.list", json!({})).await;
+    let modified = listing["items"][0]["modified"].as_str().unwrap();
+    assert!(
+        chrono::DateTime::parse_from_rfc3339(modified).is_ok(),
+        "{modified}"
+    );
+}
+
+#[tokio::test]
+async fn test_review_deep_listing_returns_partial_instead_of_an_error() {
+    let f = Fixture::new();
+    let mut deepest = f.root.path().to_path_buf();
+    for _ in 0..16 {
+        deepest.push("sub");
+    }
+    fs::create_dir_all(&deepest).unwrap();
+    fs::write(f.root.path().join("visible.txt"), "visible").unwrap();
+    let listing = f.ok("fs.list", json!({"recursive":true})).await;
+    assert_eq!(listing["truncated"], true);
+    assert!(listing["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["name"] == "visible.txt"));
+}
+
+#[cfg(any(windows, unix))]
+#[tokio::test]
+async fn test_review_unreadable_entry_is_reported_as_skipped() {
+    let f = Fixture::new();
+    fs::write(f.root.path().join("visible.txt"), "visible").unwrap();
+    let missing = f.root.path().join("missing-target");
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(&missing, f.root.path().join("broken")).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&missing, f.root.path().join("broken")).unwrap();
+    let listing = f.ok("fs.list", json!({"recursive":true})).await;
+    assert_eq!(listing["truncated"], true);
+    assert_eq!(listing["skipped"], 1);
+    assert_eq!(listing["items"].as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn test_review_approved_directory_copy_authorizes_the_tree_once() {
+    let f = Fixture::new();
+    let outside = tempfile::tempdir().unwrap();
+    fs::create_dir(outside.path().join("nested")).unwrap();
+    fs::write(outside.path().join("one.txt"), "one").unwrap();
+    fs::write(outside.path().join("nested/two.txt"), "two").unwrap();
+    let mut principal = (*f.principal(vec![Scope::Read, Scope::Write])).clone();
+    principal.on_denied = OnDenied::Ask;
+    let principal = Arc::new(principal);
+    let mut params = json!({"from":outside.path(),"to":"copied-tree"});
+    let pending = f.call(principal.clone(), "fs.copy", params.clone()).await;
+    assert_eq!(pending["error"]["code"], -32003);
+    let approval = pending["error"]["data"]["approval_id"].as_str().unwrap();
+    f.engine
+        .shared()
+        .approvals
+        .decide(approval, true, None)
+        .unwrap();
+    params["_meta"] = json!({"approval":approval});
+    let replay = f.call(principal, "fs.copy", params).await;
+    assert!(replay.get("error").is_none(), "{replay}");
+    assert_eq!(
+        fs::read_to_string(f.root.path().join("copied-tree/nested/two.txt")).unwrap(),
+        "two"
     );
 }

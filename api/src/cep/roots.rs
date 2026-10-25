@@ -103,7 +103,7 @@ pub fn io_error(action: &str, error: std::io::Error) -> CepError {
         ErrorKind::PermissionDenied => CepError::new(
             cluaiz_cep::error::FORBIDDEN,
             format!("{action}: access denied"),
-            Some(serde_json::json!({"type": "permission_error"})),
+            Some(serde_json::json!({"type": "os_permission_denied"})),
         ),
         _ => CepError::unavailable("filesystem_error", format!("{action}: {error}")),
     }
