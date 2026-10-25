@@ -116,7 +116,7 @@ def kv3(client, args):
 
     def clean(policy):
         # Forget the chat's saved KV and fill the context with something else first
-        client.call(f"/v1/chat/memory/{session}", method="DELETE")
+        client.call("/v1/cep", {"jsonrpc": "2.0", "id": 1, "method": "kv.delete", "params": {"chat_id": session}})
         client.chat({"stream": False, "max_tokens": 4, "llama": {"n_ctx": args.n_ctx},
                      "messages": [{"role": "user", "content": "Reply with OK."}]})
         return client.chat({**base, "context_policy": policy})[1]

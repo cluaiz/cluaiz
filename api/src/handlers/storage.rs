@@ -50,26 +50,3 @@ pub async fn clean_temp_media() -> Json<Value> {
         "message": "Temporary media storage cleaned successfully."
     }))
 }
-
-pub async fn get_storage_settings() -> Json<Value> {
-    let settings = cluaiz_core::Settings::current();
-    Json(json!({
-        "cleanup_policy": settings.storage_cleanup_policy
-    }))
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct StorageSettingsPayload {
-    pub cleanup_policy: String,
-}
-
-pub async fn update_storage_settings(axum::Json(payload): axum::Json<StorageSettingsPayload>) -> Json<Value> {
-    let mut current = cluaiz_core::Settings::current();
-    current.storage_cleanup_policy = payload.cleanup_policy;
-    let _ = cluaiz_core::Settings::update(current);
-    
-    Json(json!({
-        "status": "success",
-        "message": "Storage settings updated."
-    }))
-}

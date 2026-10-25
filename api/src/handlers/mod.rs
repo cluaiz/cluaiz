@@ -3,9 +3,7 @@
 
 pub mod audio;
 pub mod chat;
-pub mod chat_memory;
 pub mod components;
-pub mod context;
 pub mod control;
 pub mod embeddings;
 pub mod fs;
@@ -14,7 +12,6 @@ pub mod ingest;
 mod ingest_model;
 pub mod mcp;
 pub mod models;
-pub mod optimization;
 pub mod permission;
 pub mod plugins;
 pub mod ps;
