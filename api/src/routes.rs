@@ -187,19 +187,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/system/storage/temp_media/clean",
             post(handlers::storage::clean_temp_media),
         )
-        // ── 16. Native High-Speed File System API ──
-        .route("/v1/fs/read", post(handlers::fs::read_file))
-        .route("/v1/fs/write", post(handlers::fs::write_file))
-        .route("/v1/fs/list", post(handlers::fs::list_dir))
-        .route("/v1/fs/delete", post(handlers::fs::delete_path))
-        .route("/v1/fs/rename", post(handlers::fs::rename_path))
-        .route("/v1/fs/copy", post(handlers::fs::copy_path))
-        .route("/v1/fs/mkdir", post(handlers::fs::create_dir))
-        .route("/v1/fs/pick_folder", post(handlers::fs::pick_folder))
-        .route(
-            "/v1/workspace",
-            get(handlers::fs::get_workspace_dir).post(handlers::fs::set_workspace_dir),
-        )
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             crate::auth::auth_middleware,

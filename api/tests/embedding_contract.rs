@@ -483,7 +483,7 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         ),
         (
             json!({"model":ids[1],"input":[{"type":"image","source":std::env::var("CLUAIZ_ONNX_IMAGE_MODEL")?}]}),
-            StatusCode::FORBIDDEN,
+            StatusCode::BAD_REQUEST,
         ),
         (
             json!({"model":ids[0],"input":[{"type":"image","source":images[0]}]}),

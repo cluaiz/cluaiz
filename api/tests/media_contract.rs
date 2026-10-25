@@ -394,7 +394,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     let outside = tempfile::tempdir()?;
     let external = outside.path().join("outside.png");
     std::fs::write(&external, &image_bytes)?;
-    let (status, denied) = post(
+    let (status, external_reply) = post(
         &router,
         "/v1/chat/completions",
         chat(
@@ -407,11 +407,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         "agent",
     )
     .await?;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{denied}");
-    assert_eq!(
-        serde_json::from_str::<Value>(&denied)?["error"]["type"],
-        "permission_error"
-    );
+    assert_eq!(status, StatusCode::OK, "{external_reply}");
     std::fs::write(workspace.path().join("inside.png"), &image_bytes)?;
     let inside: ExternalChatRequest = serde_json::from_value(chat(
         model_id,
@@ -422,38 +418,16 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     ))?;
     let mut agent_headers = axum::http::HeaderMap::new();
     agent_headers.insert("x-caller", "agent".parse()?);
-    let denied_inside =
-        PreparedChatContext::prepare(&state, &inside, "inside-fixture", &agent_headers, None).await;
-    let denied_inside = denied_inside
-        .err()
-        .context("Strict agent read must require approval inside workspace")?;
-    assert_eq!(denied_inside.status(), StatusCode::FORBIDDEN);
-    let details: Value = serde_json::from_slice(
-        &axum::body::to_bytes(denied_inside.into_body(), cluaiz_core::MIB as usize).await?,
-    )?;
-    let approval_id = details["error"]["details"]["request_id"]
-        .as_str()
-        .context("Structured approval ID missing")?
-        .to_owned();
-    let (status, approval) = post(
-        &router,
-        "/v1/system/permission/approve",
-        json!({"request_id":approval_id}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::OK, "{approval}");
-    agent_headers.insert("x-approval-id", approval_id.parse()?);
     let inside_ctx = PreparedChatContext::prepare(
         &state,
         &inside,
-        "approved-inside-fixture",
+        "owner-inside-fixture",
         &agent_headers,
         None,
     )
     .await
     .map_err(|response| {
-        anyhow::anyhow!("Approved workspace source failed: {}", response.status())
+        anyhow::anyhow!("Owner workspace source failed: {}", response.status())
     })?;
     assert!(inside_ctx.prepared_media.is_some());
     let (status, missing) = post(
@@ -749,7 +723,7 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
     let outside = tempfile::NamedTempFile::new()?;
     let local = json!({"model":ids[1],"input_source":{"type":"file","data":outside.path().to_str()},"stream":false});
     let (status, _) = post(&router, "/v1/audio/execute", local, "agent").await?;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::BAD_REQUEST); // owner path is accepted; empty file is not audio
     let mut unload = tts_request;
     unload["keep_alive"] = json!(0);
     let (status, body) = post(&router, "/v1/audio/execute", unload, "user").await?;

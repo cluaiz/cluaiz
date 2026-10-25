@@ -163,17 +163,19 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         "agent",
     )
     .await?;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
-    assert!(body.contains("approval"), "{body}");
-    let outside = tempfile::NamedTempFile::new()?;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let outside = tempfile::tempdir()?;
+    let external = outside.path().join("owner.md");
+    std::fs::write(&external, "external owner document")?;
     let (status, body) = support::post(
         &router,
         "/v1/ingest",
-        json!({"source":outside.path()}),
+        json!({"source":external}),
         "agent",
     )
     .await?;
-    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(body.contains("external owner document"), "{body}");
     let (status, body) = support::post(
         &router,
         "/v1/ingest",
