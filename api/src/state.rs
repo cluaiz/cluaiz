@@ -31,6 +31,8 @@ pub struct AppState {
     pub current_workspace_dir: Arc<RwLock<PathBuf>>,
     pub session_token: Arc<String>,
     pub permission_schema: Arc<RwLock<cluaiz_security::PermissionSchema>>,
+    /// CEP: the method registry, approvals and tasks behind `/v1/cep`
+    pub cep: Arc<crate::cep::CepEngine>,
 }
 
 impl AppState {
@@ -44,6 +46,7 @@ impl AppState {
             current_workspace_dir: Arc::new(RwLock::new(workspace)),
             session_token: Arc::new(crate::auth::initialize_session_token()),
             permission_schema: Arc::new(RwLock::new(cluaiz_security::PermissionSchema::load())),
+            cep: Arc::new(crate::cep::engine()),
         }
     }
 
@@ -55,6 +58,7 @@ impl AppState {
             current_workspace_dir: Arc::new(RwLock::new(workspace)),
             session_token: Arc::new("test_session_token".to_string()),
             permission_schema: Arc::new(RwLock::new(cluaiz_security::PermissionSchema::default())),
+            cep: Arc::new(crate::cep::engine()),
         }
     }
 }

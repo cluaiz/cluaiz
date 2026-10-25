@@ -22,33 +22,6 @@ pub async fn health_check() -> Json<Value> {
     }))
 }
 
-// ─── System Info (Engine Identity & Architecture) ────────────────────
-pub async fn system_info() -> Json<Value> {
-    Json(json!({
-        "engine": "Cluaiz Engine",
-        "version": env!("CARGO_PKG_VERSION"),
-        "architecture": {
-            "api": "Unified HTTP/SSE Router",
-            "runtime": "Single Engine Host (Static rlib)",
-            "planner": "HardwareProber & ExecutionPlan",
-            "security": "Filesystem Jail & Approval Guard"
-        }
-    }))
-}
-
-// ─── GET /v1/system/info & /v1/system/control ────────────────────────
-pub async fn get_system_info(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let hw = HardwareProber::current();
-    Json(json!({
-        "status": "success",
-        "info": hw
-    }))
-}
-
-pub async fn get_system_control(state: State<Arc<AppState>>) -> Json<Value> {
-    get_system_info(state).await
-}
-
 // ─── GET /v1/system/live (Live Memory, CPU & Load) ───────────────────
 pub async fn get_system_live() -> Json<Value> {
     let hw = HardwareProber::current();
