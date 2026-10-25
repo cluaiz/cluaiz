@@ -112,7 +112,7 @@ pub async fn execute_streaming_loop(
 
         // 📊 YIELD LIVE CONTEXT & HARDWARE TELEMETRY EARLY
         let mut active_tools_list = if let Some(ref sid) = req_session_id {
-            crate::handlers::session_tools::get_active_tool_ids_for_session(sid)
+            cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session(sid)
         } else {
             Vec::new()
         };
@@ -685,7 +685,7 @@ pub async fn execute_streaming_loop(
 
         // ⏳ Decrement session tool turns & purge expired ephemeral tools
         if let Some(ref sid) = req_session_id {
-            crate::handlers::session_tools::decrement_session_turns(sid);
+            cluaiz_agents::ToolsEngine::decrement_session_turns(sid);
         }
         super::tool_turns::end_turn_tools(&ctx, req_session_id.as_deref(), &tool_turns);
         // What the Engine added to this turn, so the next request renders it the same way (before

@@ -30,3 +30,15 @@ pub async fn post(
     let status = response.status();
     Ok((status, response.text().await?))
 }
+
+/// One CEP call through `POST /v1/cep`: the reply's `result`, or its `error` object
+pub async fn cep(router: &Router, method: &str, params: Value) -> Result<std::result::Result<Value, Value>> {
+    let request = serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": method, "params": params });
+    let (status, body) = post(router, "/v1/cep", request, "user").await?;
+    anyhow::ensure!(status == StatusCode::OK, "CEP HTTP {status}: {body}");
+    let reply: Value = serde_json::from_str(&body)?;
+    Ok(match reply.get("error") {
+        Some(error) => Err(error.clone()),
+        None => Ok(reply["result"].clone()),
+    })
+}

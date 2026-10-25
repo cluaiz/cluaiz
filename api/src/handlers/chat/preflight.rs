@@ -466,7 +466,7 @@ impl PreparedChatContext {
         // Durable notes: pinned ones go into the system prompt, chosen when the chat starts (and
         // kept in its ledger, so the system prompt stays the same); later ones travel with the
         // message, like the ones that fit it
-        let workspace = crate::handlers::notes::current_workspace();
+        let workspace = super::recall::current_workspace();
         let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
         let (pinned_notes, relevant_notes) = super::recall::notes_for(ledger_chat.as_deref(), &workspace, &note_query);
         let starting = ledger.as_ref().is_none_or(|saved| saved.turns.is_empty() && saved.notes.is_none())

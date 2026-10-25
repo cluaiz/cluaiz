@@ -6,24 +6,10 @@
 //! `sender`, `text`, `date` in ms, `id`, optional `toolCalls` with `name`, `arguments`, `status`,
 //! `result`) and `meta.json`. Roots: `%APPDATA%\cluaiz\data` and `<home>/.cluaiz/data`.
 
-use axum::{http::StatusCode, response::IntoResponse, response::Response, Json};
 use cluaiz_agents::memory::transcript::message_key;
 use cluaiz_agents::memory::{EventStore, JsonlStore, NewEvent};
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
-
-#[derive(Deserialize)]
-pub struct ImportRequest {
-    /// One App chat id (folder name); omit with `all: true` to import every chat
-    #[serde(default)]
-    pub chat_id: Option<String>,
-    #[serde(default)]
-    pub all: bool,
-    /// Count what would be imported, write nothing
-    #[serde(default)]
-    pub dry_run: bool,
-}
 
 /// The App's chat folders, in both roots, that exist
 fn app_roots() -> Vec<PathBuf> {
@@ -96,25 +82,22 @@ fn events_of(folder: &Path) -> (Vec<NewEvent>, usize, usize) {
     (events, messages, tools)
 }
 
-/// POST /v1/chat/import/app: imports App chats (read-only) into the Engine's chat event logs.
-/// A chat that already has a log is left as it is.
-pub async fn import_app_chats(Json(request): Json<ImportRequest>) -> Response {
-    if request.chat_id.is_none() && !request.all {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": { "message": "send chat_id, or all: true", "type": "invalid_request_error" } })),
-        )
-            .into_response();
-    }
+/// Imports App chats (read-only) into the Engine's chat event logs; `chat_id` = one chat, `None`
+/// = all. A chat that already has a log is left as it is. Reports progress per chat.
+pub fn import(chat_id: Option<&str>, dry_run: bool, task: &cluaiz_cep::TaskHandle) -> Value {
     let store = JsonlStore::shared();
+    let folders = chat_folders(chat_id);
     let mut chats = Vec::new();
-    for folder in chat_folders(request.chat_id.as_deref()) {
+    for (done, folder) in folders.iter().enumerate() {
+        if task.is_cancelled() {
+            break;
+        }
         let chat = folder.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let existing = store.read(&chat).map(|log| log.events.len()).unwrap_or(0);
-        let (events, messages, tools) = events_of(&folder);
+        let (events, messages, tools) = events_of(folder);
         let status = if existing > 0 {
             "skipped: the chat already has an event log"
-        } else if request.dry_run {
+        } else if dry_run {
             "dry run"
         } else {
             match store.append(&chat, events.clone()).and_then(|_| store.sync(&chat)) {
@@ -125,7 +108,10 @@ pub async fn import_app_chats(Json(request): Json<ImportRequest>) -> Response {
                 }
             }
         };
-        chats.push(json!({ "chat_id": chat, "from": folder, "messages": messages, "tool_calls": tools, "events": events.len(), "status": status }));
+        let row = json!({ "chat_id": chat, "from": folder, "messages": messages, "tool_calls": tools, "events": events.len(), "status": status });
+        task.event(row.clone());
+        task.progress(cluaiz_cep::Progress { done: done as u64 + 1, total: Some(folders.len() as u64), unit: Some("chats".into()), message: None });
+        chats.push(row);
     }
-    Json(json!({ "roots": app_roots(), "chats": chats })).into_response()
+    json!({ "roots": app_roots(), "chats": chats })
 }

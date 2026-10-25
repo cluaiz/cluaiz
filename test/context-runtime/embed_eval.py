@@ -7,7 +7,7 @@ Two checks, each against what the Engine does today without vectors:
    (POST /v1/tools/discover). Reported by language (English, Hinglish, Devanagari) and for the
    paraphrase rows, plus how close trap and chit-chat rows get to any tool.
 2. Memory: in a 200-message synthetic chat (memory_suite.py), is the planted message in the top 3
-   by cosine for each question? Compared with BM25 recall (POST /v1/recall/search).
+   by cosine for each question? Compared with BM25 recall (CEP memory.search).
 
     python embed_eval.py --url http://127.0.0.1:8011 --token <token> --models embeddinggemma-2-GGUF,bge-m3-GGUF
 
@@ -37,6 +37,12 @@ class Client:
         request = urllib.request.Request(self.url + path, data=json.dumps(body).encode() if body is not None else None,
                                          headers=self.headers, method=method)
         return json.load(urllib.request.urlopen(request, timeout=900))
+
+    def cep(self, method, **params):
+        reply = self.call("/v1/cep", {"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+        if "error" in reply:
+            raise RuntimeError(f"{method}: {reply['error']}")
+        return reply["result"]
 
     def embed(self, model, texts, batch=32):
         out = []
@@ -100,8 +106,8 @@ def main():
     questions.append((memory_suite.CORRECTION[4], memory_suite.CORRECTION[3]))
     bm25_top3 = 0
     for question, planted in questions:
-        found = client.call("/v1/recall/search", {"chat_id": chat, "query": question, "limit": 3})["results"]
-        texts = [client.call(f"/v1/recall/item/{r['ref']}?chat_id={chat}")["text"] for r in found]
+        found = client.cep("memory.search", chat_id=chat, query=question, limit=3)["results"]
+        texts = [client.cep("memory.item", chat_id=chat, ref=r["ref"])["text"] for r in found]
         bm25_top3 += any(planted in t for t in texts)
 
     print(f"Word matcher: tool found {sum(matcher_hit.values())}/{len(positive)}; memory planted message in top 3: {bm25_top3}/{len(questions)}")
@@ -124,7 +130,7 @@ def main():
         neg_sims = sorted(by_id[r["id"]]["top_sim"] for r in negative)
         median = lambda v: v[len(v) // 2] if v else 0
         # Memory: planted message in the top 3 by cosine
-        log = client.call(f"/v1/chat/{chat}/events?limit=5000")["events"]
+        log = client.cep("memory.events", chat_id=chat, limit=5000)["events"]
         messages = [(e["pos"], e["text"]) for e in log if e["kind"] == "message" and e.get("source") == "client"]
         mvecs = client.embed(model, prompts(model, "doc", [t for _, t in messages]))
         qvecs = client.embed(model, prompts(model, "query", [q for q, _ in questions]))
@@ -135,7 +141,7 @@ def main():
         print(f"{model} ({time.time() - started:.0f}s): tool top-1 " + " | ".join(lines))
         print(f"    similarity of the best tool: median {median(pos_sims):.3f} when a tool fits, {median(neg_sims):.3f} for traps and chit-chat"
               f" (highest {neg_sims[-1]:.3f}) | memory top 3: {mem_top3}/{len(questions)}")
-    client.call(f"/v1/chat/{chat}/history", method="DELETE")
+    client.cep("memory.delete", chat_id=chat)
 
 
 if __name__ == "__main__":

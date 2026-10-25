@@ -1,26 +1,15 @@
-//! Context runtime API: the planner's settings, a dry-run preview of a chat request's plan, and
-//! the context reports of a chat's recent requests.
+//! The context planner's settings (preview, reports and jobs are CEP `context.*` methods)
 
 use super::chat::context_plan;
-use super::chat::preflight::PreparedChatContext;
-use super::chat::types::ExternalChatRequest;
-use crate::state::AppState;
 use axum::{
-    extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use serde_json::{json, Value};
-use std::sync::Arc;
 
 fn error(status: StatusCode, message: impl Into<String>) -> Response {
     (status, Json(json!({ "error": { "message": message.into(), "type": "invalid_request_error" } }))).into_response()
-}
-
-/// GET /v1/context/jobs: the idle-time scheduler's queue, counts and recent results
-pub async fn get_jobs() -> Json<Value> {
-    Json(super::chat::background::status())
 }
 
 /// GET /v1/context/settings: the planner's default policy
@@ -66,39 +55,4 @@ pub async fn update_context_settings(Json(patch): Json<Value>) -> Response {
         return error(StatusCode::INTERNAL_SERVER_ERROR, e.to_string());
     }
     Json(json!({ "settings": policy })).into_response()
-}
-
-/// POST /v1/chat/{chat_id}/context/preview: the plan and tool choices a chat request would get,
-/// without generating, saving a compaction or changing the chat's tools. Loads the model when
-/// it is not loaded (counts need its tokenizer).
-pub async fn preview_context(
-    State(state): State<Arc<AppState>>,
-    Path(chat_id): Path<String>,
-    headers: HeaderMap,
-    Json(mut request): Json<ExternalChatRequest>,
-) -> Response {
-    if request.messages.is_empty() {
-        return error(StatusCode::BAD_REQUEST, "Messages array cannot be empty");
-    }
-    request.session_id = Some(chat_id);
-    request.preview = true;
-    super::chat::engine_history(&mut request);
-    let request_id = format!("preview-{}", uuid::Uuid::new_v4().simple());
-    match PreparedChatContext::prepare(&state, &request, &request_id, &headers, None).await {
-        Ok(ctx) => Json(json!({ "plan": ctx.plan_report, "tools": ctx.tools_report })).into_response(),
-        Err(response) => response,
-    }
-}
-
-/// GET /v1/chat/{chat_id}/context/report: ids of the chat's kept reports (newest last)
-pub async fn list_context_reports(Path(chat_id): Path<String>) -> Json<Value> {
-    Json(json!({ "chat_id": chat_id, "reports": context_plan::recall(&chat_id, None).unwrap_or(json!([])) }))
-}
-
-/// GET /v1/chat/{chat_id}/context/report/{request_id}: one of the chat's last 20 context reports
-pub async fn get_context_report(Path((chat_id, request_id)): Path<(String, String)>) -> Response {
-    match context_plan::recall(&chat_id, Some(&request_id)) {
-        Some(report) => Json(json!({ "chat_id": chat_id, "request_id": request_id, "context_report": report })).into_response(),
-        None => error(StatusCode::NOT_FOUND, "no such report (the newest 20 per chat are kept, in memory)"),
-    }
 }

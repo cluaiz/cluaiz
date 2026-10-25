@@ -15,12 +15,6 @@ pub struct StreamSignals {
 pub static ACTIVE_STREAMS: LazyLock<RwLock<HashMap<String, StreamSignals>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
-#[derive(Deserialize)]
-pub struct StreamControlRequest {
-    pub stream_id: String,
-    pub reason: Option<String>,
-}
-
 /// Fallback maximum token generation limit when not explicitly specified
 pub const DEFAULT_MAX_TOKENS: usize = 2048;
 

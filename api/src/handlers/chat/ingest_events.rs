@@ -33,7 +33,7 @@ pub fn ingest_request(chat: &str, messages: &[ExternalMessage]) -> Vec<cluaiz_ag
     // The messages are compared borrowed; only new and edited ones are made into log entries
     let texts: Vec<std::borrow::Cow<str>> = messages.iter().map(|m| m.content.text_ref()).collect();
     let sent: Vec<transcript::SentRef> = messages.iter().zip(&texts).map(|(m, text)| (m.role.as_str(), text.as_ref(), m.id.as_deref())).collect();
-    let workspace = crate::handlers::notes::current_workspace();
+    let workspace = super::recall::current_workspace();
     let result = store.read_shared(chat).and_then(|log| {
         let changes = transcript::changes(&log.events, &sent);
         // The shared log is let go before the append, which then extends it in place

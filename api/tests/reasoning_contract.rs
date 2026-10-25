@@ -60,51 +60,29 @@ async fn test_skip_control_is_scoped_and_rejects_unknown_unsupported_and_unauthe
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/chat/skip-reasoning")
+                .uri("/v1/cep")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"stream_id":id}).to_string()))?,
+                .body(Body::from(json!({"jsonrpc":"2.0","id":1,"method":"chat.skip_reasoning","params":{"stream_id":id}}).to_string()))?,
         )
         .await?;
     assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
     assert!(!selected.load(Ordering::Acquire));
     for _ in 0..2 {
-        let (status, body) = support::post(
-            &router,
-            "/v1/chat/skip-reasoning",
-            json!({"stream_id":id}),
-            "user",
-        )
-        .await?;
-        assert_eq!(status, StatusCode::OK, "{body}");
-        assert_eq!(
-            serde_json::from_str::<Value>(&body)?["status"],
-            "skip_requested"
-        );
+        let reply = support::cep(&router, "chat.skip_reasoning", json!({"stream_id":id})).await?;
+        assert_eq!(reply.expect("skip accepted")["status"], "skip_requested");
     }
     assert!(selected.load(Ordering::Acquire));
     assert!(!other.load(Ordering::Acquire));
-    let (status, _) = support::post(
-        &router,
-        "/v1/chat/skip-reasoning",
-        json!({"stream_id":unsupported_id}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::CONFLICT);
+    let reply = support::cep(&router, "chat.skip_reasoning", json!({"stream_id":unsupported_id})).await?;
+    assert_eq!(reply.unwrap_err()["data"]["type"], "reasoning_unavailable");
     {
         let mut streams = ACTIVE_STREAMS.write().unwrap();
         for key in [&id, &other_id, &unsupported_id] {
             streams.remove(key);
         }
     }
-    let (status, _) = support::post(
-        &router,
-        "/v1/chat/skip-reasoning",
-        json!({"stream_id":id}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    let reply = support::cep(&router, "chat.skip_reasoning", json!({"stream_id":id})).await?;
+    assert_eq!(reply.unwrap_err()["data"]["type"], "stream_not_found");
     Ok(())
 }
 
@@ -223,18 +201,8 @@ async fn real_skip_reasoning_ends_native_thinking_and_preserves_next_request() -
                 }
             }
             if skip && !sent && !stream_id.is_empty() && reasoning.len() >= 12 {
-                let (status, body) = support::post(
-                    &router,
-                    "/v1/chat/skip-reasoning",
-                    json!({"stream_id":stream_id}),
-                    "user",
-                )
-                .await?;
-                assert_eq!(status, StatusCode::OK, "{body}");
-                assert_eq!(
-                    serde_json::from_str::<Value>(&body)?["status"],
-                    "skip_requested"
-                );
+                let reply = support::cep(&router, "chat.skip_reasoning", json!({"stream_id":stream_id})).await?;
+                assert_eq!(reply.expect("skip accepted")["status"], "skip_requested");
                 sent = true;
             }
         }
@@ -271,14 +239,8 @@ async fn real_skip_reasoning_ends_native_thinking_and_preserves_next_request() -
             assert_ne!(report.ended_by, "skip");
             assert!(!reasoning.is_empty());
         }
-        let (status, _) = support::post(
-            &router,
-            "/v1/chat/skip-reasoning",
-            json!({"stream_id":stream_id}),
-            "user",
-        )
-        .await?;
-        assert_eq!(status, StatusCode::NOT_FOUND);
+        let reply = support::cep(&router, "chat.skip_reasoning", json!({"stream_id":stream_id})).await?;
+        assert_eq!(reply.unwrap_err()["data"]["type"], "stream_not_found");
     }
     state.host.unload_model().await;
     Ok(())

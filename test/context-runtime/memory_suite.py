@@ -122,8 +122,9 @@ def main():
                       f"dropped {result.get('dropped')} recalled {result.get('recalled')} {result.get('seconds')}s | {answer[:70]!r}"
                       + (f" ERROR {result['error']}" if "error" in result else ""), flush=True)
                 # The suite's chats are not kept
-                urllib.request.urlopen(urllib.request.Request(f"{args.url.rstrip('/')}/v1/chat/{session}/history", method="DELETE",
-                                                              headers={"Authorization": "Bearer " + token}), timeout=60)
+                body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "memory.delete", "params": {"chat_id": session}}).encode()
+                urllib.request.urlopen(urllib.request.Request(f"{args.url.rstrip('/')}/v1/cep", data=body, method="POST",
+                                                              headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"}), timeout=60)
 
     print("\n| size | mode | correct | avg prompt tokens |\n| --- | --- | --- | --- |")
     for size in sorted({r["size"] for r in rows}):
