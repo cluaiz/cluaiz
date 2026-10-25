@@ -113,6 +113,11 @@ impl TaskHandle {
         self.cancel.load(Ordering::Relaxed)
     }
 
+    /// The cancel flag itself, for work that takes an abort flag (a download)
+    pub fn cancel_flag(&self) -> Arc<AtomicBool> {
+        self.cancel.clone()
+    }
+
     pub fn progress(&self, progress: Progress) {
         self.store.update(&self.id, |task| task.progress = Some(progress));
     }

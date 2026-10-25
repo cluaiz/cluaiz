@@ -359,7 +359,7 @@ flowchart LR
 - **Outputs/routes:** embedding vectors use `/v1/embeddings`; TTS text-to-audio and STT audio-to-text use `audio.run`. Image embeddings are not OCR/chat prose. Attachments come from common decoder descriptors and validated input availability.
 - **Hardware:** the captured provider policy is reported; selected EP, peak memory, speed and chat-context limits remain null when not proven. No llama layer/KV estimates are invented for ONNX. `model_size_gb` is package file bytes, not peak/resident allocation.
 - **Model list:** `GET /v1/models` adds ONNX `task_support` from the same runtime resolver and persisted signatures. Native GGUF retains its existing planning/pairing behavior.
-- **Separate remaining work:** legacy pull/download HTTP handlers still return queued messages without installer wiring; generic load remains native-chat-oriented. This slice does not certify those endpoints or App installation/download behavior. Existing CLI installation uses the actual engine installer/helper contract.
+- **Separate remaining work:** generic load remains native-chat-oriented. `/api/pull` and CEP `models.download` download through the same resolver and installer as `cluaiz pull` (see [pull_model.md](../docs/api/models/pull_model.md)).
 
 ```mermaid
 flowchart LR
