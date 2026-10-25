@@ -73,3 +73,11 @@ python test/cep/wave_b/fs_http_journey.py --exe <built-CEP-executable> --seed-ho
 ```
 
 Preparing or syntax-checking this journey is not a live pass. Run it only after the core builds and the old routes are removed; the old executable is expected to fail. This owner-token HTTP journey does not replace the principal/scope/approval contracts above or certify the transport's authentication implementation.
+
+## B1 evidence, 25 October 2026
+
+- Cutover: `3064d7c`, retired ten old file/workspace route-operations and both legacy filesystem handlers. Standard attachment consumers use the same `cep::roots` resolver as CEP methods. Client `x-caller`/approval headers do not change the standard route's owner identity, per the shared handoff contract.
+- Actual executable build: `cargo build --offline --release -p cmd`, exit 0. Executable SHA-256: `53000e323b6ce58ef0ccc06df5c385f9335556950b0140e3c20a7d2af83e2f91`.
+- HTTP journey on the separate test port: 49 checks, `passed: true`, `owned_process_stopped: true`, `seed_config_unchanged: true`. Report: `target/cep-wave-b-baseline/fs-http-final/fs-http-report.json` (local ignored evidence).
+- Isolated Rust contracts: 10 method tests and 9 path tests pass. The actual API library run passes 21 tests, with 1 existing opt-in test ignored. Affected document/media targets pass 6 tests with 10 opt-in real-model/artifact tests ignored; those model runs are not verified by this step.
+- Existing compiler warnings remain. The native picker was not opened; scoped caller behavior is covered at the dispatcher boundary, not as a scoped HTTP-token implementation. App migration and other method groups are separate phases.
