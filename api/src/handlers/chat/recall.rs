@@ -430,6 +430,19 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         };
         let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" { "confirmed" } else { "proposed" };
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
+        // A chat the app keeps (storage external): the note is an event of the chat, which goes to
+        // the app with the answer; the Engine keeps no note on disk
+        if cluaiz_agents::memory::is_external(chat) {
+            use cluaiz_agents::memory::EventStore;
+            let event = cluaiz_agents::memory::NewEvent::new(
+                "note",
+                json!({ "text": text, "scope": scope, "status": status, "by": "model", "source": [format!("{chat}:m:{pos}")] }),
+            );
+            return match cluaiz_agents::memory::store_for(chat).append(chat, vec![event]) {
+                Ok(_) => format!("Noted ({status}; the app keeps it)."),
+                Err(e) => format!("The note could not be saved: {e}"),
+            };
+        }
         return match cluaiz_agents::memory::notes::NoteStore::shared().add(&text, scope, owner.as_deref(), status, false, "model", vec![format!("{chat}:m:{pos}")]) {
             Ok((note, _)) if status == "proposed" => format!("Noted as {} (proposed: the user confirms it in the App).", note.id),
             Ok((note, _)) => format!("Noted as {}.", note.id),

@@ -48,6 +48,8 @@ pub struct EnrichJob {
     /// Set for an episode summary (id, first and last position): the envelope already holds the
     /// whole request
     pub episode: Option<(String, u64, u64)>,
+    /// The chat is kept by the app (`storage: "external"`): the card stays in RAM
+    pub external: bool,
 }
 
 /// What happened to a job, for `GET /v1/context/jobs`
@@ -238,6 +240,7 @@ fn scan_unindexed() -> Vec<EnrichJob> {
                 settings: None,
                 cold: true,
                 episode: None,
+                external: false,
             });
         }
         // Closed episodes (not the current one) of some length get a summary
@@ -264,6 +267,7 @@ fn scan_unindexed() -> Vec<EnrichJob> {
                 settings: None,
                 cold: true,
                 episode: Some((episode.id.clone(), episode.first_pos, episode.last_pos)),
+                external: false,
             });
         }
     }
@@ -424,7 +428,13 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
         return;
     }
     use cluaiz_agents::memory::EventStore;
-    let store = cluaiz_agents::memory::JsonlStore::shared();
+    // The chat's own store: RAM for an external chat (the card goes to the app with the next
+    // answer). A chat no longer external (its history was deleted) gets nothing.
+    if job.external && !cluaiz_agents::memory::is_external(&job.chat) {
+        record(&job, "skipped: chat deleted", started);
+        return;
+    }
+    let store = cluaiz_agents::memory::store_for(&job.chat);
     if let Some((episode, first, last)) = &job.episode {
         let model = model_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let (kind, data, outcome) = match parse_card(&text).filter(|c| c.get("summary").is_some_and(|s| !s.is_null())) {
