@@ -1,0 +1,17 @@
+[package]
+name = "cluaiz-cep-wave-b-contracts"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Exercise the production path resolver without rebuilding CUDA or Claude's API target.
+[workspace]
+
+[dependencies]
+cluaiz-cep = { path = "../../../cep" }
+serde_json = "1"
+tempfile = "3"
+
+[[test]]
+name = "roots_contract"
+path = "roots_contract.rs"
