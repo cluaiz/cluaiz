@@ -3,6 +3,7 @@
 
 pub mod audio;
 pub mod chat;
+pub mod health;
 pub mod components;
 pub mod control;
 pub mod embeddings;
@@ -14,4 +15,3 @@ pub mod permission;
 pub mod plugins;
 pub mod session_tools;
 pub mod skills;
-pub mod system;
