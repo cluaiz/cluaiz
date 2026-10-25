@@ -12,8 +12,6 @@ pub mod mcp;
 pub mod models;
 pub mod permission;
 pub mod plugins;
-pub mod ps;
 pub mod session_tools;
 pub mod skills;
-pub mod storage;
 pub mod system;

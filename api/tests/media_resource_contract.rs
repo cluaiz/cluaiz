@@ -130,21 +130,26 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
-    // Non-attachment JSON endpoints retain their existing default, not the upload ceiling.
-    // Use the router directly for this negative: on Windows an early HTTP rejection can
-    // reset a still-uploading connection instead of reaching the client's response parser.
+    // CEP uses one inline-media body budget. A planner call with chat fields is
+    // rejected by the typed params schema before any attachment decoding.
     let response = router
         .clone()
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/system/plan")
+                .uri("/v1/cep")
                 .header("content-type", "application/json")
                 .header("authorization", "Bearer test_session_token")
-                .body(Body::from(request.to_string()))?,
+                .body(Body::from(
+                    json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":request})
+                        .to_string(),
+                ))?,
         )
         .await?;
-    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
+    let reply: Value = serde_json::from_slice(&bytes)?;
+    assert_eq!(reply["error"]["code"], -32602);
 
     let input = cluaiz_core::Settings::current()
         .media

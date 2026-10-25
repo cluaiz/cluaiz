@@ -167,13 +167,8 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
     let outside = tempfile::tempdir()?;
     let external = outside.path().join("owner.md");
     std::fs::write(&external, "external owner document")?;
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"source":external}),
-        "agent",
-    )
-    .await?;
+    let (status, body) =
+        support::post(&router, "/v1/ingest", json!({"source":external}), "agent").await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert!(body.contains("external owner document"), "{body}");
     let (status, body) = support::post(
@@ -375,10 +370,9 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
         {"type":"file_url","file_url":{"url":inline("application/pdf", &mixed)}}, {"type":"text","text":"Summarize the full document"}]}]}), "user").await?;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     assert!(body.contains("partial"), "{body}");
-    let (status, body) =
-        support::post(&router, "/v1/system/plan", json!({"model":id}), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
-    let plan: Value = serde_json::from_str(&body)?;
+    let plan = support::cep(&router, "system.plan", json!({"model":id}))
+        .await?
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
     let text_input = plan["model_info"]["inputs"]
         .as_array()
         .context("Inputs")?

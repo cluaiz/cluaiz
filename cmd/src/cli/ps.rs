@@ -1,23 +1,22 @@
 //! `cluaiz ps`: the model a running `cluaiz serve` has loaded.
 
-use color_eyre::{eyre::eyre, Result};
+use color_eyre::Result;
 use colored::Colorize;
 
 pub async fn execute() -> Result<()> {
-    let response = crate::cli::server::request(reqwest::Method::GET, "/v1/system/ps")
-        .send()
-        .await
-        .map_err(|_| eyre!("no server is running at {} (start one with `cluaiz serve`)", crate::cli::server::base_url()))?;
-    if !response.status().is_success() {
-        return Err(eyre!("server answered {}", response.status()));
-    }
-    let data: serde_json::Value = response.json().await?;
-    let processes = data["active_processes"].as_array().cloned().unwrap_or_default();
+    let data = crate::cli::server::cep("system.ps", serde_json::json!({})).await?;
+    let processes = data["active_processes"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     if processes.is_empty() {
         println!("No model loaded.");
         return Ok(());
     }
-    let header = format!("{:<40}  {:<10}  {:>5}  {:>8}  {:>10}  {}", "MODEL", "PLACEMENT", "NGL", "CONTEXT", "VRAM", "PID");
+    let header = format!(
+        "{:<40}  {:<10}  {:>5}  {:>8}  {:>10}  {}",
+        "MODEL", "PLACEMENT", "NGL", "CONTEXT", "VRAM", "PID"
+    );
     println!("{}", header.bold());
     for p in processes {
         println!(

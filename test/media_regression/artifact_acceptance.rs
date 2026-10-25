@@ -47,6 +47,18 @@ impl Client {
         assert_eq!(status, 200, "{route}: {body}");
         Ok(serde_json::from_str(&body)?)
     }
+    async fn cep(&self, method: &str, params: Value) -> Result<Value> {
+        let reply = self
+            .json(
+                "/v1/cep",
+                json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}),
+            )
+            .await?;
+        if let Some(error) = reply.get("error") {
+            bail!("CEP {method}: {error}");
+        }
+        reply.get("result").cloned().context("Missing CEP result")
+    }
     async fn chat(&self, model: &str, parts: Value, stream: bool, release: bool) -> Result<String> {
         let (status, body) = self
             .post(
@@ -227,12 +239,13 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
         for entry in &entries {
             let start = Instant::now();
             let (status, body) = client
-                .post("/v1/system/plan", json!({"model":entry.id}), "user")
+                .post("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":entry.id}}), "user")
                 .await?;
             let ms = start.elapsed().as_secs_f64() * 1000.0;
             assert_eq!(status, 200, "{body}");
-            let plan: Value = serde_json::from_str(&body)?;
-            assert_eq!(plan["status"], "success", "{body}");
+            let reply: Value = serde_json::from_str(&body)?;
+            assert!(reply.get("error").is_none(), "{body}");
+            let plan = &reply["result"];
             let model = &plan["model_info"];
             for key in [
                 "supported_attachments",
@@ -329,8 +342,8 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
     }
     for entry in &entries {
         let plan = client
-            .json(
-                "/v1/system/plan",
+            .cep(
+                "system.plan",
                 json!({"model":entry.id,"n_ctx":1234,"batch_tokens":32,"ram_buffer_gb":0.25}),
             )
             .await?;
@@ -362,35 +375,35 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
             .as_object_mut()
             .context("Request")?
             .extend(patch.as_object().context("Patch")?.clone());
-        assert_eq!(client.post("/v1/system/plan", value, "user").await?.0, 400);
-    }
-    assert_eq!(
-        client
-            .post(
-                "/v1/system/plan",
-                json!({"model":id,"weights_gb":1}),
-                "user"
+        let reply = client
+            .json(
+                "/v1/cep",
+                json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":value}),
             )
-            .await?
-            .0,
-        422
-    );
+            .await?;
+        assert_eq!(reply["error"]["code"], -32602);
+    }
+    let invalid = client.json("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":id,"weights_gb":1}})).await?;
+    assert_eq!(invalid["error"]["code"], -32602);
     let missing_id = format!("missing-{}", uuid::Uuid::new_v4());
     let missing = client
-        .json("/v1/system/plan", json!({"model":missing_id}))
+        .json(
+            "/v1/cep",
+            json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":missing_id}}),
+        )
         .await?;
-    assert_eq!(missing["status"], "error");
-    assert_eq!(missing["code"], "model_not_found");
+    assert_eq!(missing["error"]["code"], -32004);
+    assert_eq!(missing["error"]["data"]["type"], "model_not_found");
     let unauth = client
         .http
-        .post(format!("{}/v1/system/plan", client.base))
-        .json(&json!({"model":id}))
+        .post(format!("{}/v1/cep", client.base))
+        .json(&json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":id}}))
         .send()
         .await?;
     assert_eq!(unauth.status().as_u16(), 401);
     let updated = client.json("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"config.set","params":{"section":"gguf","patch":{"hardware_and_execution":{"n_ctx":2048,"n_gpu_layers":0,"batch_size":64,"ubatch_size":32}}}})).await?;
     assert!(updated.get("error").is_none(), "{updated}");
-    let plan = client.json("/v1/system/plan", json!({"model":id})).await?;
+    let plan = client.cep("system.plan", json!({"model":id})).await?;
     assert_eq!(plan["active_user_settings"]["custom_context_window"], 2048);
     assert_eq!(plan["active_user_settings"]["n_gpu_layers"], 0);
     assert_eq!(plan["execution_plan"]["context_window"], 2048);
@@ -563,7 +576,11 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         .post("/v1/ingest", json!({"source":outside_document}), "agent")
         .await?;
     assert_eq!(owner_source.0, 200, "{}", owner_source.1);
-    assert!(owner_source.1.contains("external owner attachment"), "{}", owner_source.1);
+    assert!(
+        owner_source.1.contains("external owner attachment"),
+        "{}",
+        owner_source.1
+    );
     let transport_limit = cluaiz_api::routes::inline_body_bytes(
         cluaiz_core::Settings::current()
             .media
@@ -611,9 +628,7 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         "{answer}"
     );
     println!("FINAL EXECUTABLE VIDEO JSON: {answer:?}");
-    let plan = client
-        .json("/v1/system/plan", json!({"model":ids[0]}))
-        .await?;
+    let plan = client.cep("system.plan", json!({"model":ids[0]})).await?;
     let video_input = plan["model_info"]["attachment_processing"]
         .as_array()
         .context("Preparation routes")?
