@@ -1,12 +1,12 @@
 # Speech-to-Text (STT) Transcriptions API (`/v1/audio/transcriptions`)
 
-`POST /v1/audio/transcriptions` (alias: `POST /v1/audio/execute` with task `speech_to_text`)
+`POST /v1/audio/transcriptions` (alias: `audio.run` with task `speech_to_text`)
 
 Transcribes a recording using a compatible installed ONNX STT package (for example Whisper or a supported Moonshine export). Returns text, rather than synthesized speech or an audio chat answer. Graph/tokenizer assets and language behavior depend on the package. Installing an arbitrary ONNX file does not establish compatibility.
 
 ## Choose an installed model
 
-Read `GET /v1/models/installed` with your Bearer token and copy an exact `models[].id` that declares an STT task. The API Explorer Model dropdown updates the JSON `model`; on `/v1/audio/languages` it updates the URL's `?model=` instead. STT has language controls, not speaker voices. Use `/v1/audio/speech` for TTS and `/v1/chat/completions` for audio questions with a compatible multimodal chat model.
+Read `models.list` with your Bearer token and copy an exact `models[].id` that declares an STT task. The API Explorer Model dropdown updates the JSON `model`; on `audio.languages` it updates the URL's `?model=` instead. STT has language controls, not speaker voices. Use `/v1/audio/speech` for TTS and `/v1/chat/completions` for audio questions with a compatible multimodal chat model.
 
 An explicit ID selects that installed package. Omission/`auto` uses the active eligible STT slot, otherwise an eligible installed package. The example IDs below are examples, not packages bundled with every installation. Paths are read on the engine's computer; browser clients normally send a data URI.
 
@@ -15,9 +15,9 @@ An explicit ID selects that installed package. Omission/`auto` uses the active e
 ## 📌 Endpoint Information
 
 * **HTTP Method:** `POST`
-* **Path:** `/v1/audio/transcriptions` (or `/v1/audio/execute`)
+* **Path:** `/v1/audio/transcriptions` (or `audio.run`)
 * **Content-Type:** `application/json` (Pure JSON contract — `multipart/form-data` is **not** supported)
-* **Authentication:** `Authorization: Bearer <session-token>` (Optional header: `x-caller: user`)
+* **Authentication:** `Authorization: Bearer <session-token>` when API authentication is on
 * **Streaming Protocol:** Server-Sent Events (SSE) via `text/event-stream` when `stream: true`
 
 ---
@@ -42,7 +42,7 @@ Use one of `input_source` and `file`; if both are present, `input_source` wins. 
 
 ### Which languages a model can transcribe
 
-`GET /v1/audio/languages?model=<id>` (model optional: the active or first installed STT model) lists the codes accepted by `language` and `languages`:
+`audio.languages` (model optional: the active or first installed STT model) lists the codes accepted by `language` and `languages`:
 
 ```json
 { "object": "list", "model": "whisper-large-v3-turbo-FP16", "data": ["af", "am", "ar", "...", "hi", "...", "zh"] }
@@ -96,7 +96,6 @@ curl -X POST http://localhost:8000/v1/audio/transcriptions \
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <session-token>" \
-  -H "x-caller: user" \
   -d '{
     "model": "whisper-large-v3-turbo-INT8",
     "file": "C:/audio/voice_memo.mp3",
@@ -240,4 +239,4 @@ Read records separated by blank lines and wait for the terminal `done` or `error
 
 Missing/invalid Bearer tokens return HTTP 401 when API authentication is required. An uninstalled explicit model returns HTTP 404 `model_not_found`; a wrong-task/incomplete package, unsupported option, corrupt audio or unauthorized source returns an error with details. The engine does not substitute a placeholder transcript.
 
-Inline transport capacity includes Base64 expansion and JSON envelope space: `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`. Over-limit JSON returns HTTP 413 `request_too_large`. Encoded source bytes, decoded audio and live memory admission have separate limits. `x-caller: user` does not replace authentication or filesystem policy. ONNX provider/device settings apply; `device` is not a field in this payload. A small download does not establish peak RAM/VRAM requirements or realtime speed.
+Inline transport capacity includes Base64 expansion and JSON envelope space: `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`. Over-limit JSON returns HTTP 413 `request_too_large`. Encoded source bytes, decoded audio and live memory admission have separate limits. ONNX provider/device settings apply; `device` is not a field in this payload. A small download does not establish peak RAM/VRAM requirements or realtime speed.

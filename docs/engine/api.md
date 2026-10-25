@@ -1,38 +1,10 @@
 # Axum API
 
-The `cluaiz-engine` hosts a high-performance REST API gateway built on the Axum web framework and powered by a multithreaded Tokio runtime. 
+The Engine's HTTP server is built on Axum and Tokio (`api/src/routes.rs`). It serves:
 
----
+- the market-standard routes existing clients already speak: `/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`;
+- CEP, one JSON-RPC 2.0 endpoint for everything Cluaiz-specific: `POST /v1/cep`, and the same methods for MCP clients at `/mcp`.
 
-## Endpoint Specifications
+The route handlers are in `api/src/handlers/`, the CEP methods in `api/src/cep/methods/`. A function used by both a route and a method lives in one place.
 
-The gateway exposes clean HTTP and Server-Sent Event (SSE) interfaces to interface clients:
-
-### 1. Node Health & Diagnostics
-*   **`GET /`**: Server landing route displaying engine version metadata.
-*   **`GET /health`**: Diagnostics endpoint returning active check status.
-*   **`GET /info`**: Returns host system specifications and CPU core counts.
-*   **`GET /status/embedded`**: Confirms host environment parameters.
-
-### 2. Conversational Engine
-*   **`POST /chat`**: Asynchronous generation endpoint via Server-Sent Events (SSE). *Natively intercepts standard `<tool_call>` ChatML tokens mid-generation to execute tools, plugins, and MCP servers dynamically.*
-*   **`GET /history`**: Lists active chat session IDs and metadata configurations.
-*   **`GET /history/{session_id}`**: Retrieves raw, chronological message buffers for a specific session.
-
-### 3. Model Management & Telemetry
-*   **`GET /models/available`**: Lists local cached models and available weights in the registry.
-*   **`GET /hardware`**: Dynamic readout of GPU/NPU active memory limits and tensor engine loads.
-*   **`POST /models/download`**: Spawns a background task to pull and cache weight tensors from remote mirrors.
-*   **`POST /models/load`**: Dynamically allocates local RAM/VRAM to mount a specific model into active memory.
-
-### 4. CEL Execution (Direct Engine Control)
-*   **`POST /v1/cel/execute`**: Accepts a raw CEL script payload, builds an Execution Plan (AST), and natively executes VRAM/API commands bypassing standard inference workflows.
-*   **`POST /v1/execute/:component_name/:function_name`**: Dynamically routes REST calls directly to the specified plugin loaded in the `MasterRegistry`.
-
-### 5. Skills & Plugins Hub Management
-*   **`GET /v1/skills/list`**: Returns all installed native/WASM skills across domains.
-*   **`POST /v1/skills/install`**: Downloads and installs a skill from the Cluaiz Tools registry. Responds after the install finishes: `200` on success, `400` for an empty name, `500` with the installer's error message on failure. `/v1/plugins/install` and `/v1/mcp/install` follow the same contract.
-*   **`DELETE /v1/skills/remove`**: Uninstalls a skill. `404` when it is not installed.
-*   **`GET /v1/skills/cache` & `DELETE /v1/skills/cache`**: Lists installed skills / removes files from each skill's `.cache` folder without uninstalling it.
-*   **`GET /v1/plugins/list`**: Returns all installed WASM and Native plugins.
-*   **`POST /v1/plugins/install`**: Downloads and sets up a plugin from the registry.
+References: [API overview](../api/README.md), [CEP](../api/cep/README.md), [method reference](../api/cep/methods.md).

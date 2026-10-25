@@ -5,7 +5,7 @@
   </picture>
 </p>
 <h3 align="center">
-Power your local AI and execute native inference with bare-metal hardware and real-time LLM steering using modular plugins, MCP connectors, skills, and CEL language modifications</h3>
+Power your local AI and execute native inference with bare-metal hardware and real-time LLM steering using modular plugins, MCP connectors, skills, and one protocol (CEP) for every engine operation</h3>
 
 </br>
 <p align="center">
@@ -30,11 +30,11 @@ Power your local AI and execute native inference with bare-metal hardware and re
 
 ## About Cluaiz
 
-<h4>Cluaiz is a fast, easy-to-use, unified native runtime engine and orchestrator built in Rust. Optimized for edge devices, it powers local AI and agentic workflows with native CEL, WASM, and modular plugin support.</h4>
+<h4>Cluaiz is a fast, easy-to-use, unified native runtime engine and orchestrator built in Rust. Optimized for edge devices, it powers local AI and agentic workflows with one engine protocol (CEP), WASM, and modular plugin support.</h4>
 
 Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engine meticulously engineered to synchronize text, vision, and tool execution into a single unified memory space. This architecture is not bound to specific hardware configurations or constrained environments; it is designed as a highly elastic architecture to operate seamlessly across any tier of compute hardware—from consumer silicon to enterprise server clusters. Its primary objective is to establish a direct, transparent, and highly optimized bridge between mathematical inference kernels and autonomous agentic workflows, granting developers absolute programmatic authority and optimized execution.
 
-- **The Hybrid Access and Connectivity Model**: Rather than restricting developers to a single protocol, Cluaiz introduces a comprehensive hybrid access paradigm designed to adapt to any architectural requirement. If a decoupled web application requires standard network requests, the engine's built-in HTTP REST API gateway provides a robust solution. Conversely, for architectures demanding absolute minimum latency and granular runtime access, developers can utilize the Cluaiz Expression Language (CEL) and WebAssembly (WASM). This allows logic written in C, Python, or Rust to be compiled and executed directly within the runtime space, bypassing HTTP and JSON serialization overhead entirely. Furthermore, for those building purely native applications, Cluaiz exposes a direct C-Pointer interface, granting instantaneous access to the Foreign Function Interface (FFI) boundary within the exact same memory space.
+- **The Hybrid Access and Connectivity Model**: Rather than restricting developers to a single protocol, Cluaiz introduces a comprehensive hybrid access paradigm designed to adapt to any architectural requirement. If a decoupled web application requires standard network requests, the engine's built-in HTTP REST API gateway provides a robust solution. Every Cluaiz-specific operation is a method of CEP (Cluaiz Engine Protocol), JSON-RPC 2.0: the same call works over HTTP (`POST /v1/cep`), over MCP (`/mcp`, `cluaiz mcp-server`) and through the in-process C library (`cep_call` / `cep_free`) for apps that embed the Engine, next to the standard OpenAI and Ollama routes. Plugins can run as WebAssembly (WASM) or native libraries.
 
 - **Dual-Engine Orchestration and Multimodal Integration**: Cluaiz is not a superficial wrapper; it natively orchestrates the execution of underlying mathematical kernels. It leverages the core logic of `llama.cpp` to ensure highly efficient parsing of GGUF models and broad cross-platform hardware portability. Simultaneously, the `ONNX Runtime` is deeply integrated to execute multimodal operations—such as vision, embeddings, and audio—in parallel. By synchronizing these engines, Cluaiz enables hybrid CPU and GPU split-loading, allowing dynamic context switching between text and vision operations without losing the underlying latent states.
 
@@ -44,7 +44,7 @@ Cluaiz is a high-throughput, Rust-based inference orchestrator and runtime engin
 
 - **Engine Optimization & Memory Governance**: Cluaiz features a dedicated optimization profile granting developers surgical tunability over runtime behaviors. It dictates memory allocation boundaries, dynamic hardware-layer splits, and advanced KV-cache compression techniques (such as `kv_cache_quantization` and rolling `context_shifting`) directly governed by the Memory Governor. Additionally, it unlocks advanced execution features like Flash Attention, MoE SSD Streaming, Speculative Decoding, and Hybrid Memory allocation, allowing users to precisely balance execution speed against memory limitations.
 
-- **Integrated Developer Hub**: To manage this vast ecosystem, Cluaiz includes a highly capable local Developer Hub operating on a secure local port. Here, developers are granted access to the complete API matrix, enabling them to live-test their WASM plugins, ternary kernel designs, and execution pipelines. This sandboxed environment provides the freedom to test, optimize, and push the engine's boundaries using HTTP, CEL, or C-Pointers simultaneously.
+- **Integrated Developer Hub**: To manage this vast ecosystem, Cluaiz includes a highly capable local Developer Hub operating on a secure local port. Here, developers are granted access to the complete API matrix, enabling them to live-test their WASM plugins, ternary kernel designs, and execution pipelines. This sandboxed environment provides the freedom to test, optimize, and push the engine's boundaries over HTTP, MCP or the C library.
 
 ## 🛡️ **Project Trust & Current Status**
 
@@ -135,14 +135,14 @@ $ cluaiz plugin install web-scraper
 ### 1. Terminal & CLI Core
 
 - **[Terminal Commands & CLI Reference](docs/reference/terminal-commands.md)**  
-  An exhaustive, deeply technical engineering manual for all 32 native `cluaiz` commands. It documents the exact execution flow of the kernel, internal JSON state mutations (like `Permission.json` updates), and exact API route mappings for `serve`, `pull`, `booster`, and WASM skills orchestration.
+  The `cluaiz` commands. It documents the exact execution flow of the kernel, internal JSON state mutations (like `Permission.json` updates), and the API each command maps to.
 - **[Model Downloading & Vault Management](docs/get-started/model-downloading.md)**  
   Detailed architecture and usage guide for HuggingFace model downloading. Explains variant grouping, prefix-compatible scoped metadata filtering, local folder flattening, and GGUF/ONNX format capabilities.
 
 ### 2. Execution & Native Logic
 
-- **[CEL (cluaiz Execution Language)](docs/cel)**  
-  Dive into Cluaiz's custom native execution language. CEL allows you to bypass heavy Python SDKs by parsing raw syntax directly into an Abstract Syntax Tree (AST) that natively hooks into C-Pointers in shared memory (`payload_ptr`), allowing you to execute logic mid-inference with zero network latency.
+- **[CEP (Cluaiz Engine Protocol)](docs/api/cep/README.md)**
+  One JSON-RPC 2.0 endpoint for every Cluaiz operation (system, settings, models, files, tools, chat memory, notes, context, audio tasks, ingest, approvals), the same over HTTP, MCP and the in-process C library. The [method reference](docs/api/cep/methods.md) is generated from the Engine's own `rpc.discover`.
 
 ### 3. Core Engine Architecture
 
@@ -162,7 +162,7 @@ $ cluaiz plugin install web-scraper
 
 ### 5. Unified Tool Governance & Live Context Telemetry
 
-- **[Unified Tools API (`/v1/tools` & `/v1/chat/{session_id}/tools`)](developer_hub/data/tools.json)**  
+- **[Unified Tools API (`tools.list` & `chat.tools`)](developer_hub/data/tools.json)**  
   Single-endpoint architecture unifying Skills, WASM Plugins, and MCP bridges. Supports granular turn-based duration lifecycles (`turns: -1` persistent, `turns: 0` ephemeral single-message, `turns: N` multi-turn countdown).
 - **[Live Context Window & KV-Cache Telemetry Engine](inference-engine/engines/core/src/telemetry)**  
   Real-time token breakdown tracking (Messages, System Prompt, Active Skills, WASM Plugins, MCP Tools, and Deferred Lazy Token Savings) with live mathematical KV-Cache VRAM and Process RSS RAM telemetry emitted over SSE.
@@ -180,7 +180,7 @@ $ cluaiz plugin install web-scraper
 
 - **[Repository: cluaiz-app](https://github.com/cluaiz/cluaiz-app)**
 - **Technical Purpose:** This is the official graphical user interface. It connects as a **Pure Client** to the background `cluaiz serve` daemon.
-- **Execution Flow:** By communicating with the engine over REST endpoints (`/health`, `/v1/chat/stream`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
+- **Execution Flow:** By communicating with the engine over HTTP (`/health`, `/v1/chat/completions`, CEP `/v1/cep`), the app provides visual model management, vault inspection, and an interactive interface without duplicating the heavy inference engine in memory. This saves duplicate VRAM overhead.
 
 ### 2. `cluaiz-tools` (Global Registry & Plugins)
 
@@ -212,24 +212,21 @@ $ cluaiz plugin install web-scraper
 ### 2. Agentic Orchestration
 
 - **WASM Skills & Sandboxing:** Secure WebAssembly binaries executing in an isolated memory ring, giving agents native system capabilities without REST API latency. Code executes in a strict WASM sandbox, isolated from the host.
-- **Secure MCP & Native Plugin Execution (.dlso):** Manifest-driven execution. Model outputs a CEL command, and the engine directly invokes the native plugin's FFI boundary—no localhost network calls required.
+- **Secure MCP & Native Plugin Execution (.dlso):** Manifest-driven execution. The model emits a tool call, and the engine invokes the native plugin's FFI boundary directly, without a localhost network call.
 - **Prefix Caching & Delta Decoding:** When a tool returns data or conversations continue, Cluaiz matches the prompt prefix against active KV-cache memory and decodes only the new delta tokens, eliminating redundant prefill computation.
 - **Agentic Pause:** If a skill exceeds your VRAM, cluaiz safely offloads calculation to the CPU to prevent OOM errors.
 - **Hot-Reload Settings Controller:** Dynamically update YAML manifests (API keys, permissions, model settings) without restarting the engine.
 
-### 3. Cluaiz Expression Language (CEL) Router
+### 3. Generation Control
 
-- **The Direct CEL API (No SDK Required):** Send raw CEL scripts (`use plugin::filesystem -> read()`) directly via HTTP. The engine parses it into an AST mapped to native C-Pointers in shared memory (`payload_ptr`), allowing native operations mid-inference.
-- **Semantic Routing & Control Flow:** Internal vector routers check if an installed skill matches the intent. Chain logic (`->`) and execute loops (`foreach`) or conditionals (`if / else`) at native CPU speeds.
-- **Hardware Vector Search:** Run cosine similarity scans natively utilizing SIMD / GPU tensor cores.
-- **Logit-Level JSON Enforcement (LogitSteer):** Force the model to output strictly correct syntax or JSON by applying Logit-level masking during generation.
-- **Mid-Generation Pivot (Hot-Steering):** Interrupt long generations with **`Ctrl+C`**. Instead of killing the process, cluaiz **Pauses** the engine. Enter a midway instruction (e.g., "Make it shorter"), and the engine processes this pivot seamlessly.
+- **Logit-Level JSON Enforcement:** Force the model to output strictly correct syntax or JSON by applying Logit-level masking during generation.
+- **Mid-Generation Pivot (Hot-Steering):** Interrupt long generations with **`Ctrl+C`**. Instead of killing the process, cluaiz **Pauses** the engine. Enter a midway instruction (e.g., "Make it shorter"), and the engine processes this pivot.
 
 ### 4. API, Ecosystem & Security
 
-- **Unified API Gateway:** A remote execution Axum + Tokio REST/SSE gateway, fully compatible with OpenAI (`/v1/chat/completions`).
+- **API:** Axum + Tokio. Standard OpenAI / Ollama routes (`/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`) and CEP (`POST /v1/cep`, `/mcp`) for everything Cluaiz-specific.
 - **Native RAG Ingestion (`cluaiz ingest`):** Natively parse, semantically chunk, and save local documents (PDF, TXT, MD) into an LMDB vector storage via ONNX embeddings.
-- **Automated Silicon Benchmarking (`cluaiz benchmark`):** Real-time RDTSC clocking, SIMD profiling, and exact TPS/Wattage reports.
+- **Benchmarking (`cluaiz bench`):** Prompt and generation speed (llama-bench).
 - **Smart Model Management:** Securely pull, run, and manage GGUF weights directly into the local vault (`~/.cluaiz/models/`).
 - **Offline security controls:** `Permission.json` controls telemetry, network access and system isolation.
 

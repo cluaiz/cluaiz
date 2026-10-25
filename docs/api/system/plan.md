@@ -1,6 +1,6 @@
 # Autonomous Model Execution Planning Engine API
 
-`POST /v1/system/plan`
+`system.plan`
 
 The Autonomous Model Execution Planning Engine deterministically evaluates real hardware constraints, probes model binary headers, and plans optimal hardware placement across the 5 canonical execution candidates. It provides ground-truth throughput (TPS), latency (TTFT), memory requirements, and model input/output capabilities with zero manual configuration.
 
@@ -8,8 +8,8 @@ The Autonomous Model Execution Planning Engine deterministically evaluates real 
 
 ## 📌 Endpoint Overview
 
-* **HTTP Method:** `POST`
-* **Route:** `/v1/system/plan`
+* **CEP method:** `system.plan` (`POST /v1/cep`, JSON-RPC 2.0; see [CEP](../cep/README.md))
+* **Errors:** CEP errors; an invalid value or unknown field is `-32602`, an unknown model `-32004`
 * **Authentication:** Optional for local development; Bearer token required in production secured mode.
 * **Content-Type:** `application/json`
 * **Response Format:** `application/json`
@@ -116,7 +116,6 @@ Fits in VRAM?     Exceeds VRAM?
 
 ```json
 {
-  "status": "success",
   "decision": {
     "model_name": "bonsai-4b-gguf-q1_0",
     "architecture": "qwen3",
@@ -202,53 +201,32 @@ Fits in VRAM?     Exceeds VRAM?
 
 ## 💻 Multi-Language Code Snippets
 
+`system.plan` is a CEP method: `POST /v1/cep` with a JSON-RPC body; the plan is the `result`.
+
 ### 1. cURL
 ```bash
-curl -X POST http://localhost:8000/v1/system/plan \
-  -H "Content-Type: application/json" \
-  -d '{"model": "bonsai-4b-gguf-q1_0"}'
+curl -X POST http://localhost:8000/v1/cep \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":"bonsai-4b-gguf-q1_0"}}'
 ```
 
 ### 2. Python
 ```python
-import requests
+import os, requests
 
-payload = {
-    "model": "bonsai-4b-gguf-q1_0"
-}
-
-res = requests.post("http://localhost:8000/v1/system/plan", json=payload)
-data = res.json()
-
-if data.get("status") == "success":
-    decision = data["decision"]
-    print(f"Model: {decision['model_name']} ({decision['architecture']})")
-    print(f"Max Context: {decision['max_input_tokens']} tokens")
-    print(f"Supported Inputs: {decision['supported_inputs']}")
-    print(f"Supported Attachments: {decision['supported_attachments']}")
-    print(f"Winner: {decision['winner_candidate_id']} @ {decision['winner_generation_tps']:.1f} TPS")
-    print(f"TTFT: {decision['winner_ttft_ms']:.1f} ms")
+reply = requests.post("http://localhost:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json={"jsonrpc": "2.0", "id": 1, "method": "system.plan", "params": {"model": "bonsai-4b-gguf-q1_0"}}).json()
+plan = reply["result"]
+print(plan["model_info"]["context_window"], plan["execution_plan"])
 ```
 
 ### 3. Node.js
 ```javascript
-const response = await fetch('http://localhost:8000/v1/system/plan', {
+const reply = await fetch('http://localhost:8000/v1/cep', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ model: 'bonsai-4b-gguf-q1_0' })
-});
-
-const data = await response.json();
-console.log('Execution Plan:', data.decision);
-```
-
-### 4. Rust
-```rust
-let client = reqwest::Client::new();
-let res = client.post("http://localhost:8000/v1/system/plan")
-    .json(&serde_json::json!({"model": "bonsai-4b-gguf-q1_0"}))
-    .send()
-    .await?;
-
-println!("{:#?}", res.json::<serde_json::Value>().await?);
+  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'system.plan', params: { model: 'bonsai-4b-gguf-q1_0' } })
+}).then((r) => r.json());
+console.log('Execution Plan:', reply.result.execution_plan);
 ```

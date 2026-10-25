@@ -39,7 +39,7 @@ sequenceDiagram
    }
    ```
 2. **Delta Evaluation:** If the initial tokens match, the engine skips re-evaluating the matched slice and feeds only the remaining delta tokens to the compute backend.
-3. **Mid-Stream Tool Resumption (`[PIVOT_CONTINUE]`):** When an agent executes a CEL hook or external tool, the active KV-cache is preserved. Once the tool output arrives, the engine seamlessly appends the tool response and resumes inference without recomputing the dialogue history.
+3. **Mid-Stream Tool Resumption (`[PIVOT_CONTINUE]`):** When an agent executes a tool, the active KV-cache is preserved. Once the tool output arrives, the engine seamlessly appends the tool response and resumes inference without recomputing the dialogue history.
 
 ---
 

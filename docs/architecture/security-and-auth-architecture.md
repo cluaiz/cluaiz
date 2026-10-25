@@ -16,23 +16,20 @@ Cluaiz provides a high-performance local AI inference engine and agentic runtime
 
 ```mermaid
 flowchart TD
-    Client["Client / Web UI / Agent"] -->|HTTP Request| Preflight{"OPTIONS Request?"}
-    Preflight -->|Yes| CORS["CORS Layer (Allow Preflight)"]
-    Preflight -->|No| AuthGate["Bearer Token Extraction"]
-
-    AuthGate --> HasToken{"Valid Token Provided?"}
-    
-    HasToken -->|Yes| Allowed["Authenticated Request (Allow All Authorized APIs)"]
-    
-    HasToken -->|No| Sensitive{"Sensitive Route?\n(/v1/fs/* or /v1/system/cmd)"}
-    Sensitive -->|Yes| Block401["401 Unauthorized\n(Token Mandatory)"]
-    
-    Sensitive -->|No| PublicRoute{"Public Endpoint?\n(/health, /info, Static UI)"}
-    PublicRoute -->|Yes| PassPublic["Allow Public Response"]
-    
-    PublicRoute -->|No| GlobalAuth{"Require API Auth ON?"}
-    GlobalAuth -->|Yes| BlockGlobal401["401 Unauthorized\n(API Auth Required)"]
-    GlobalAuth -->|No| LocalDev["Allow Local Dev Request"]
+    Client["Client / App / Agent"] -->|HTTP request| Preflight{"OPTIONS?"}
+    Preflight -->|Yes| CORS["CORS layer"]
+    Preflight -->|No| Required{"api_auth.required?
+(owner's setting)"}
+    Required -->|No| Pass["Request runs"]
+    Required -->|Yes| Valid{"Valid Bearer token?"}
+    Valid -->|Yes| Pass
+    Valid -->|No| Health{"/health?"}
+    Health -->|Yes| Pass
+    Health -->|No| Block["401 Unauthorized"]
+    Pass --> Route{"Route"}
+    Route -->|"/v1/cep, /mcp"| Cep["CEP: scope check, path check
+(cep::roots + Call::check_path), approvals"]
+    Route -->|"standard routes"| Std["OpenAI / Ollama handlers"]
 ```
 
 ---
@@ -73,33 +70,43 @@ pub fn constant_time_compare(a: &str, b: &str) -> bool {
 
 ### 2.3 Route Enforcement Matrix
 
-| Route Category | Example Endpoints | When Auth Toggle is ON | When Auth Toggle is OFF (Local Dev) |
-|---|---|---|---|
-| **Public Probes** | `GET /health`, `GET /info` | Public (200 OK) | Public (200 OK) |
-| **DevHub Static Assets** | `/`, `/index.html`, `/assets/*` | Public (200 OK) | Public (200 OK) |
-| **General Inference** | `POST /v1/chat/completions`, `GET /v1/models` | **Bearer Token Required (401)** | Open for Local Prototyping (200 OK) |
-| **Sensitive Filesystem** | `POST /v1/fs/read`, `/v1/fs/write`, `/v1/fs/delete` | **Bearer Token Required (401)** | **Bearer Token Required (401)** |
-| **Terminal Shell Exec** | `POST /v1/system/cmd` | **Bearer Token Required (401)** | **Bearer Token Required (401)** |
+Implemented in `api/src/auth.rs` (`auth_middleware`).
 
-> **Critical Rule:** Sensitive routes (`/v1/fs/*` and `/v1/system/cmd`) **NEVER** run without a token, regardless of the global API Authentication toggle.
+| Route | `api_auth.required` off | `api_auth.required` on |
+|---|---|---|
+| `GET /health` | Open | Open |
+| Everything else: `/v1/cep`, `/mcp`, `/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`, `/api/pull` | Open | **Bearer token required (401)** |
+
+Auth on/off, the tokens, the host/IP, the port and CORS are the owner's settings (`permission.json`, `settings.json`). The Engine does not change their defaults and does not force a token. A valid token is the session token or one of `api_auth.tokens`.
+
+What the caller may do comes after authentication, in CEP:
+
+| Caller | Principal | Scopes | Paths |
+|---|---|---|---|
+| `POST /v1/cep` (HTTP), the C library (`cep_call`) | `owner` | read, write, exec, admin | no roots: any canonical path |
+| `/mcp` and `cluaiz mcp-server` | `mcp` | read only; methods marked `no_mcp` (for example `system.exec`) are not listed | over its roots: `forbidden` |
+
+`system.exec` is an `admin` method, marked destructive and hidden from MCP. Whether it should also ask for an approval is an open decision (O1).
 
 ---
 
-## 3. Workspace Canonical Jail & Ancestor Traversal
+## 3. Canonical Paths and Roots
 
-Located in [`inference-engine/api/src/handlers/fs_jail.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/api/src/handlers/fs_jail.rs).
+Located in [`api/src/cep/roots.rs`](../../api/src/cep/roots.rs) (path resolution) and [`cep/src/registry.rs`](../../cep/src/registry.rs) (`Call::check_path`). The old `handlers/fs_jail.rs` is gone.
 
 ### 3.1 Path Resolution Rules
 
-1. **Relative Path Rooting:** Relative paths (e.g. `src/main.rs`) are always joined to `workspace_root`, never to the process working directory (CWD).
-2. **Dual Canonicalization:** Both the candidate path and the workspace root are canonicalized via `std::fs::canonicalize` before comparison, ensuring Windows Extended-Length Prefixes (`\\?\`) match identically.
-3. **Ancestor Walking for New Writes:** When an agent writes to a non-existent file, the resolver walks up parent directories until it finds the closest existing ancestor, canonicalizes it, and appends the uncreated child path segments.
+1. **Relative paths** are joined to the workspace root, never to the process working directory. Drive-relative and root-relative paths (`C:foo`, `\foo`) are refused as ambiguous (`-32602`).
+2. **Canonicalization:** the candidate path is canonicalized with `std::fs::canonicalize`, so links and `..` are resolved before any check, and Windows `\\?\` prefixes compare the same.
+3. **New files:** for a write to a path that does not exist yet, the closest existing ancestor is canonicalized and the missing parts are folded onto it, so `new/../../outside` cannot keep a workspace prefix.
 
-### 3.2 Security Modes
+### 3.2 Roots and approvals
 
-* **Strict Mode (`strict`):** Any attempt to access a path outside the active workspace returns a hard `403 Forbidden` (`"Workspace Boundary Violation"`). No approval bypass is possible.
-* **Workspace-Gated (`sandboxed`):** Safe workspace reads execute automatically. Writes, creations, and access outside the workspace register a `PendingPermissionRequest` and halt execution until explicit human approval is received.
-* **Full Access (`full_access`):** Autonomous developer mode bypassing path checks.
+* Every method that touches a path (`fs.*`, `workspace.*`, `models.*`, `system.plan`, tool install roots) calls `Call::check_path` on the canonical path.
+* Inside the principal's roots, the call runs. Outside, the principal's `on_denied` decides: `error` gives `-32002 forbidden` (`data.needs: "roots"`), `ask` gives `-32003 approval_required` with an approval id.
+* An approval (`approvals.approve`) is bound to the principal, the method and a digest of the params, is used once and expires after 5 minutes. One approval covers every path checked inside the same call (for example both paths of `fs.copy`).
+
+---
 
 ---
 
@@ -124,7 +131,7 @@ Tools declare capabilities explicitly in their metadata:
    * `capabilities`: Declared capability list.
    * `parameters`: Fully expanded, untruncated JSON payload.
 2. The agent loop pauses and awaits a signal on an in-memory `tokio::sync::oneshot` channel.
-3. When the user approves via `POST /v1/system/permission/approve`, the engine resumes and executes the **exact stored parameters** received during the pause. The model cannot alter the payload between approval and execution.
+3. When the user approves via `approvals.approve`, the engine resumes and executes the **exact stored parameters** received during the pause. The model cannot alter the payload between approval and execution.
 
 ---
 

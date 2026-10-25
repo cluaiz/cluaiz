@@ -12,7 +12,7 @@ This guide details how model retrieval works, how files are organized on disk, a
 
 ## 🚀 How Model Downloading Works
 
-When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `POST /models/download` via the API / Web UI), the engine executes the following steps:
+When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `models.download` via the API / Web UI), the engine executes the following steps:
 
 1. **HuggingFace API Scan**: Recursively scans the target repository's file tree to identify all `.gguf` or `.onnx` files.
 2. **Dynamic Variant Grouping**: Automatically groups files into logical bundles based on their formats and quantization tags (e.g., `Q4_K_M`, `INT8`, `bf16`).

@@ -1,6 +1,6 @@
 # System Dictionary
 
-Global reference for every term, type, constant, and concept across the cluaiz engine — CEL runtime, compute backend, hardware layer, configuration profiles, and API contracts.
+Global reference for every term, type, constant, and concept across the cluaiz engine — engine protocol (CEP), compute backend, hardware layer, configuration profiles, and API contracts.
 
 ---
 
@@ -9,66 +9,21 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 | Term | Definition |
 |---|---|
 | **cluaizd** | The primary database engine binary. Manages KV storage, WAL, and index operations via LMDB. |
-| **cluaiz-engine** | The orchestration layer — an Axum HTTP + Tokio async server that routes CEL pipelines to inference or driver backends. |
+| **cluaiz-engine** | The orchestration layer — an Axum HTTP + Tokio async server that serves the standard OpenAI / Ollama routes and CEP. |
 | **cluaiz-kernel** | CPU-native inference module. Executes tensor math via SIMD (AVX512, AVX2, NEON). No GPU required. |
 | **cluaiz-driver** | Hardware accelerator bridge. Dispatches GPU workloads to CUDA, Metal, or Vulkan backends dynamically. |
 | **cluaiz-cli** | Terminal shell and Ratatui TUI dashboard. Communicates with the engine via Local REST / IPC Loop. |
-| **CEL** | Cluaiz Execution Language — a strict, hardware-accelerated pipeline language for driving the engine. |
+| **CEP** | Cluaiz Engine Protocol — JSON-RPC 2.0 methods for every Cluaiz operation, over `POST /v1/cep`, `/mcp` and the C library (`cep_call` / `cep_free`). |
+| **Principal** | Who a CEP call runs as (`owner`, `mcp`): its scopes (read, write, exec, admin) and the folders (roots) it may touch. |
+| **Approval** | The owner's yes for one call (`approvals.approve`): bound to the principal, method and params, single use, 5 minutes. |
+| **Task** | A long CEP call (`ingest.run`, `audio.run`) that returns a `task_id`; read it with `tasks.get` / `tasks.result`. |
 | **Silicon Truth** | The read-only artifact (`system_control.json`) generated at boot from physical hardware probing. Source of truth for all allocation decisions. |
 | **VRAM Arbiter** | Internal subsystem inside the Master Router that enforces GPU memory boundaries and prevents OOM crashes. |
 | **Conflict Manager** | Phase that cross-references `llm_optimization.json` requests against `system_control.json` constraints before execution. |
 | **KV-Cache** | Key-Value cache for intermediate transformer attention states. Critical for context continuity and generation speed. |
-| **FFI Bridge** | Foreign Function Interface boundary between the CEL VM and native C/WASM/Rust plugin modules. |
+| **FFI Bridge** | Foreign Function Interface boundary between the engine and native C/WASM/Rust plugin modules. |
 | **WAL** | Write-Ahead Log — a crash-recovery mechanism that journals all mutations before committing to LMDB storage. |
 | **IPC Loop** | Inter-Process Communication loop between `cluaiz-cli` and `cluaiz-engine` using local REST or named pipes. |
-
----
-
-## 🧩 CEL — Primitive Types
-
-| Type | CEL Syntax | Rust Representation | Description |
-|---|---|---|---|
-| `Text` | `"Hello World"` | `&str` / `String` | UTF-8 string slice |
-| `Number` | `42.5` | `f64` | 64-bit float precision |
-| `Bool` | `true` / `false` | `bool` | Boolean flag |
-| `Vector` | `[0.1, -0.2, 0.9]` | `Vec<f32>` | High-dimensional embeddings |
-| `Variable` | `$user_profile` | Dynamic KV lookup | Evaluated key reference from session scope |
-| `Null` | `null` | `Option::None` | Zero-allocation unit / absence value |
-| `Bytes` | `b"raw"` | `Vec<u8>` | Raw binary payload |
-| `Map` | `{ key: value }` | `HashMap<String, Value>` | Key-value structure |
-| `List` | `[a, b, c]` | `Vec<Value>` | Ordered sequence |
-
----
-
-## ⚡ CEL — Reserved Operators
-
-| Operator | Symbol | Description |
-|---|---|---|
-| Pipe | `->` | Sequential stage chaining |
-| Filter | `FILTER` | Predicate-based selection over collections |
-| Process | `PROCESS(text)` | Apply NLP transformation |
-| Select | `SELECT` | Projection / field extraction |
-| Similar | `SIMILAR` | Vector cosine similarity search |
-| Time Window | `TIME_WINDOW` | Temporal range filter |
-| Find | `FIND` | Exact or fuzzy key lookup |
-| ForEach | `FOREACH` | Iteration over sequences |
-| Invoke | `INVOKE(method, args...)` | Call external plugin method |
-| Let | `LET` | Immutable variable binding |
-| If / Else | `IF / ELSE` | Conditional branch |
-| Use Plugin | `USE PLUGIN::<name>` | Declare plugin namespace scope |
-
----
-
-## 🔌 FFI — Type Contracts
-
-| CEL Type | C Equivalent | WASM Type | Size |
-|---|---|---|---|
-| `Number` | `double` | `f64` | 8 bytes |
-| `Bool` | `uint8_t` | `i32` | 1 byte |
-| `Text` | `const char*` | `i32` (ptr) | pointer |
-| `Bytes` | `uint8_t*` + `size_t` | `i32` + `i32` | ptr + len |
-| `Vector` | `float*` + `size_t` | `i32` + `i32` | ptr + len |
-| `Null` | `void` | — | 0 |
 
 ---
 
@@ -129,7 +84,6 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 | `$` | Dynamic variable reference (`$user_id`) |
 | `@` | Decorator / annotation (`@plugin`) |
 | `::` | Namespace separator (`PLUGIN::method`) |
-| `cel://` | CEL resource URI scheme (`cel://local/executor`) |
 | `~/.cluaiz/` | Default workspace root directory |
 
 ---
@@ -138,10 +92,11 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 
 | Constant | Default | Description |
 |---|---|---|
-| `MAX_PIPELINE_DEPTH` | `64` | Max chained `->` operators per CEL expression |
+| CEP batch size | `32` | Most calls in one JSON-RPC batch |
+| CEP params depth | `64` | Deepest nesting of a call's params |
 | `MAX_VECTOR_DIM` | `4096` | Max embedding vector dimensions |
 | `DEFAULT_TIME_WINDOW` | `300s` | Default temporal filter range |
 | `FFI_STACK_SIZE` | `8 MiB` | Per-call FFI stack allocation |
 | `WAL_BUFFER_SIZE` | `4 MiB` | Write-Ahead Log in-memory buffer before flush |
-| `DEFAULT_API_PORT` | `3000` | Default Axum HTTP engine port |
+| `DEFAULT_API_PORT` | `8000` | Default Axum HTTP engine port (the owner's setting) |
 | `DEFAULT_KV_CACHE_QUANT` | `auto` | Default KV cache quantization level |

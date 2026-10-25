@@ -7,18 +7,18 @@ builds a Chat Map from it: one card per message, an index, and recall. See
 
 | Endpoint | What it does |
 | --- | --- |
-| `GET /v1/chat/{session_id}/events` | The chat's event log, oldest first |
-| `GET /v1/chat/{session_id}/index` | The chat's cards (no message text), episodes, tasks and graph |
-| `POST /v1/recall/search` | Messages of a chat that fit a query |
-| `GET /v1/recall/item/{ref}?chat_id=…` | The exact message behind a reference (`m:<position>`) |
-| `GET /v1/chat/{session_id}/export` | Events and cards as one JSON document |
-| `DELETE /v1/chat/{session_id}/history` | Removes the chat's log, ledger, saved KV, kept reports and Chat Map |
-| `POST /v1/chat/{session_id}/import` | An app that keeps the chat itself sends it back (RAM only) |
-| `POST /v1/chat/import/app` | Imports the App's existing chats into event logs (read-only on the App's files) |
-| `GET /v1/chat/{session_id}/grants` | Tools allowed for this chat without asking, with minutes left |
-| `DELETE /v1/chat/{session_id}/grants` | Asks again for this chat's tools (optional `?tool=`) |
+| `memory.events` | The chat's event log, oldest first |
+| `memory.index` | The chat's cards (no message text), episodes, tasks and graph |
+| `memory.search` | Messages of a chat that fit a query |
+| `memory.item` | The exact message behind a reference (`m:<position>`) |
+| `memory.export` | Events and cards as one JSON document |
+| `memory.delete` | Removes the chat's log, ledger, saved KV, kept reports and Chat Map |
+| `memory.import` | An app that keeps the chat itself sends it back (RAM only) |
+| `chat.import_app` | Imports the App's existing chats into event logs (read-only on the App's files) |
+| `memory.grants` | Tools allowed for this chat without asking, with minutes left |
+| `memory.revoke_grants` | Asks again for this chat's tools (optional `tool`: one tool only) |
 
-## GET /v1/chat/{session_id}/events
+## memory.events
 
 Query: `from_seq` (default 1), `limit` (default 500, at most 5000). `next_from_seq` is set when
 more events follow; `skipped_lines` counts lines that could not be read (a crash during a write).
@@ -29,7 +29,7 @@ more events follow; `skipped_lines` counts lines that could not be read (a crash
                 "kind": "message", "role": "user", "text": "Mera deploy server ka port 8011 hai…", "pos": 0, "key": "h:…", "source": "client" } ] }
 ```
 
-## GET /v1/chat/{session_id}/index
+## memory.index
 
 ```json
 { "chat_id": "mem1", "cards": [ { "id": "ev_aef3…", "pos": 0, "role": "user", "ts": "…", "tokens": 18, "trivial": false,
@@ -63,7 +63,7 @@ checkpoint goes in front of the current message (`context_report.plan.task`).
 for apps that keep the Chat Map in their own graph store. Recall uses it to bring along one hop:
 a later correction of a recalled message, or a message with the same file or value.
 
-## POST /v1/recall/search
+## memory.search
 
 Body: `chat_id`, `query`, optional `limit` (default 5, at most 50). Every message of the chat is a
 candidate; time words in the query ("kal", "parso", "Monday", "23 Oct", "kal raat", "3 ghante pehle", "last week") limit the search to that window, in the user's own days.
@@ -78,17 +78,17 @@ With the policy `cross_chat: "deny"` this returns 403.
   "results": [ { "ref": "m:0", "score": 2.84, "why": ["deploy", "server", "port"], "card": { "…": "…" } } ] }
 ```
 
-## GET /v1/recall/item/{ref}?chat_id=…
+## memory.item
 
 Returns the card and the exact text. A malformed reference gives 400; no visible message at
 that position gives 404.
 
-## GET /v1/chat/{session_id}/export
+## memory.export
 
 `{ "format": "cluaiz-chat-export", "version": 1, "chat_id": "…", "events": [ … ], "cards": [ … ] }`,
 for an app that keeps chats in its own store.
 
-## DELETE /v1/chat/{session_id}/history
+## memory.delete
 
 Removes the event log (all segments), the ledger, the saved KV (chat memory), the kept context
 reports and the Chat Map in RAM, then the chat's folder when it is empty. Blobs are shared by
@@ -98,7 +98,7 @@ content and stay.
 { "chat_id": "mem1", "events": { "files": 1, "bytes": 6811 }, "ledger": true, "saved_kv": true, "folder_removed": true }
 ```
 
-## POST /v1/chat/import/app
+## chat.import_app
 
 Imports chats the App saved before the event log existed, so recall works for them too. Body:
 `chat_id` (one App chat, its folder name) or `all: true`, and optional `dry_run: true` (count
@@ -125,11 +125,11 @@ With `external`, every answer carries every event the app has not had yet: `memo
 non-streaming response, and in the closing stream chunk (the one with `engine`). That is what the
 request and the answer added, and what was added after the previous answer: the model's idle-time
 card (`card_enrichment`) is written after an answer, so it comes with the next one (or at once from
-`GET /v1/chat/{session_id}/events?from_seq=…`). Each event goes out once; the app stores them. A note
+`memory.events`). Each event goes out once; the app stores them. A note
 the model makes with `remember` is a `note` event of the chat (`text`, `scope`, `status`, `by`,
 `source`) and is not kept by the Engine; the app shows it, keeps it, and can put the notes it wants
 into its system message. After an Engine restart (RAM is empty) the app sends the events back with
-`POST /v1/chat/{session_id}/import` (`{"events": [...]}`, at most 200,000), and recall, the Chat Map
+`memory.import` (`{"events": [...]}`, at most 200,000), and recall, the Chat Map
 and the event endpoints work again. The chat's KV is not saved to disk.
 
 Measured (2026-10-24, isolated server): two turns with `storage: "external"` left no file of the
@@ -141,7 +141,7 @@ file.
 
 ## Export format (for apps and their databases)
 
-`GET /v1/chat/{session_id}/export` and `memory_events` use the same event shape, so an app can
+`memory.export` and `memory_events` use the same event shape, so an app can
 keep a chat in any store (files, SQLite, cluaizdb, …) on its side; the Engine itself never links
 a database.
 
@@ -169,9 +169,9 @@ With `history: "engine"` (and `storage: "engine"`) the client sends only the new
 Engine keeps the transcript, so the App does not need its own copy:
 
 1. Send each new user message with `session_id` and `history: "engine"`.
-2. Show a chat from `GET /v1/chat/{session_id}/events`: fold `message`, `message.edited` (replaces
+2. Show a chat from `memory.events`: fold `message`, `message.edited` (replaces
    the message at the same `pos`) and `message.retracted` (removes it), in `seq` order; tool steps
    are the `tool_call` / `tool_result` events just before an answer.
-3. Existing App chats: `POST /v1/chat/import/app` (`all: true`) copies them into Engine logs once
+3. Existing App chats: `chat.import_app` (`all: true`) copies them into Engine logs once
    (the App's files are only read).
-4. Deleting a chat: `DELETE /v1/chat/{session_id}/history`.
+4. Deleting a chat: `memory.delete`.

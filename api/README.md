@@ -11,7 +11,7 @@ per-extension authorization boundary.
 
 ## Chat planner reference
 
-`POST /v1/system/plan` accepts a registered `model`, optional `model_path`, and transient `n_ctx`, `batch_tokens`, `ram_buffer_gb`, `vram_buffer_gb` overrides. `n_ctx`: `0` selects Auto, `-1` selects the native maximum, and positive values request a context capped by the model's native limit. Batch tokens must be positive and buffers finite/nonnegative. Invalid values return HTTP400; unknown fields (including removed synthetic `weights_gb`/`total_layers`) return HTTP422. A plan request never persists settings or loads model weights.
+`system.plan` accepts a registered `model`, optional `model_path`, and transient `n_ctx`, `batch_tokens`, `ram_buffer_gb`, `vram_buffer_gb` overrides. `n_ctx`: `0` selects Auto, `-1` selects the native maximum, and positive values request a context capped by the model's native limit. Batch tokens must be positive and buffers finite/nonnegative. Invalid values and unknown fields (including removed synthetic `weights_gb`/`total_layers`) return CEP `-32602`. A plan request never persists settings or loads model weights.
 
 ```json
 {"model":"<registered-chat-id>","n_ctx":8192,"batch_tokens":128}
@@ -36,17 +36,17 @@ The Chat path reads only the selected registry entry and reuses bounded immutabl
 
 ## Live reasoning control
 
-`POST /v1/chat/skip-reasoning` uses the same engine URL, Bearer authentication and `Content-Type: application/json` as chat. Send `{"stream_id":"<id from the running chat SSE>"}` after `/v1/chat/completions` with `stream:true` has started. A sample ID is not an active request.
+`chat.skip_reasoning` is a CEP method (`POST /v1/cep`, same engine URL and Bearer authentication as chat). Send `{"stream_id":"<id from the running chat SSE>"}` after `/v1/chat/completions` with `stream:true` has started. A sample ID is not an active request.
 
-HTTP200 returns `{"status":"skip_requested","stream_id":"<same id>","message":"Native reasoning exit requested; the same stream continues with the answer."}`. This acknowledges the signal, not completion. Continue reading the original SSE: native generation forces its actual template reasoning-end sequence, the parser changes phase on that sequence, and `choices[].delta.content` carries the answer. The final `engine.thinking.ended_by` report identifies an accepted native `skip`; `[DONE]` finishes the stream. The model may still explain its answer after reasoning ends.
+The result is `{"stream_id":"<same id>","status":"skip_requested"}`. This acknowledges the signal, not completion. Continue reading the original SSE: native generation forces its actual template reasoning-end sequence, the parser changes phase on that sequence, and `choices[].delta.content` carries the answer. The final `engine.thinking.ended_by` report identifies an accepted native `skip`; `[DONE]` finishes the stream. The model may still explain its answer after reasoning ends.
 
-Unknown/completed IDs return HTTP404 `stream_not_found`; streams without enabled native reasoning control return HTTP409 `reasoning_unavailable`; unavailable registry locking returns HTTP503 `stream_control_unavailable`. Authentication failures return HTTP401. Repeated requests for an active eligible stream are idempotent signal requests. Skip is request-scoped and observed between native operations; it is not a hard real-time interrupt. `/v1/chat/cancel` remains separate.
+Unknown/completed IDs return `-32004` `stream_not_found`; streams without enabled native reasoning control return `-32005` `reasoning_unavailable`; unavailable registry locking returns `-32010` `stream_control_unavailable`. Authentication failures return HTTP401. Repeated requests for an active eligible stream are idempotent signal requests. Skip is request-scoped and observed between native operations; it is not a hard real-time interrupt. `chat.cancel` remains separate.
 
 ## Attachment client examples
 
 ### Optional selected-model ingestion
 
-`/v1/ingest` keeps one source authorization/resolution loop. Native mode uses the shared document service. Selected text embedding models receive real extracted chunks; selected ONNX image graphs receive decoded images or sequentially rendered PDF pages. Generative GGUF processing uses `EngineHost` directly, with its existing planner, media admission and fingerprint checks. It does not enter the chat agent/tool controller or create a persistent chat session. A missing vision projector is rejected before visual model loading; explicit native-first text processing can still use a text-capable backbone.
+`ingest.run` keeps one source authorization/resolution loop. Native mode uses the shared document service. Selected text embedding models receive real extracted chunks; selected ONNX image graphs receive decoded images or sequentially rendered PDF pages. Generative GGUF processing uses `EngineHost` directly, with its existing planner, media admission and fingerprint checks. It does not enter the chat agent/tool controller or create a persistent chat session. A missing vision projector is rejected before visual model loading; explicit native-first text processing can still use a text-capable backbone.
 
 ```mermaid
 flowchart TD
@@ -69,7 +69,7 @@ The implementation is in `handlers/ingest.rs`, `handlers/ingest_model.rs` and th
 
 For live attachment stages on chat SSE, add `return_progress:true` and handle named `cluaiz.progress` events separately from answer deltas. Read the exact fields, attachment indices, limits and terminal ordering in the [chat processing reference](../docs/api/inference/chat_completions.md#attachment-processing-events). The default contract and ONNX task SSE remain separate.
 
-Use the App's configured engine URL and session/API Bearer token. These JSON requests go to that URL, with `Content-Type: application/json`, `Authorization: Bearer <token>` and `x-caller: user`. `agent` requests follow the stricter file approval policy. Do not hardcode a port or model ID. Chat, ingest, audio and embedding routes use a bounded inline-JSON ceiling of `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`, allowing base64 expansion plus the ordinary JSON/text envelope. It refreshes from current settings on each request. Larger requests return HTTP413 with `error.type:request_too_large`; decoded-media, context and live-memory checks still apply separately. Other JSON routes retain Axum's default ceiling. Multipart upload/file-ID storage is not provided by these routes.
+Use the App's configured engine URL and session/API Bearer token. These JSON requests go to that URL, with `Content-Type: application/json` and `Authorization: Bearer <token>`. These routes act as the owner; paths are canonicalized by `cep::roots`. Do not hardcode a port or model ID. Chat, `/v1/cep` (ingest, audio tasks), audio and embedding routes use a bounded inline-JSON ceiling of `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`, allowing base64 expansion plus the ordinary JSON/text envelope. It refreshes from current settings on each request. Larger requests return HTTP413 with `error.type:request_too_large`; decoded-media, context and live-memory checks still apply separately. Other JSON routes retain Axum's default ceiling. Multipart upload/file-ID storage is not provided by these routes.
 
 The daemon and CLI resolve `session.token` through the same `EnvironmentManager` selected home (default `~/.cluaiz`, or the configured `CLUAIZ_HOME` / portable home). Separate test/embedded homes keep separate token files. An already running daemon retains its in-memory token until restarted; rebuilding source does not update that process.
 
@@ -82,7 +82,7 @@ The daemon and CLI resolve `session.token` through the same `EnvironmentManager`
 | Speech generation | `POST /v1/audio/speech` | Selected supported ONNX TTS package |
 | Text vectors | `POST /v1/embeddings` | Selected compatible ONNX graph or GGUF sequence-embedding model |
 | Image vectors | `POST /v1/embeddings` | Selected supported ONNX image embedding graph |
-| Document content preview | `POST /v1/ingest` or `/v1/ingest/file` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/inference/ingest.md) |
+| Document content preview | `ingest.run` or `ingest.run` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/inference/ingest.md) |
 
 Image chat (`image_url.url` can also be an authorized path or HTTP URL):
 
@@ -112,7 +112,7 @@ Speech generation (default voice/speed):
 {"model":"<selected-tts-id>","input":"Text to speak"}
 ```
 
-Read transcription from `output.text`; play TTS `output.audio_data` as the returned WAV data URI. They do not return raw audio bytes. For task SSE use `/v1/audio/execute` with `task`, `input_source` and `stream:true`, and handle its `chunk`/`done`/`error` events. These differ from chat SSE `choices[].delta` and `[DONE]`.
+Read transcription from `output.text`; play TTS `output.audio_data` as the returned WAV data URI. They do not return raw audio bytes. For task SSE use `audio.run` with `task`, `input_source` and `stream:true`, and handle its `chunk`/`done`/`error` events. These differ from chat SSE `choices[].delta` and `[DONE]`.
 
 Text vectors and image vectors:
 
@@ -138,7 +138,7 @@ Direct document chat:
 {"model":"<selected-chat-id>","stream":true,"messages":[{"role":"user","content":[{"type":"file_url","file_url":{"url":"data:application/pdf;base64,<actual-file-bytes>"}},{"type":"text","text":"Summarize this document"}]}]}
 ```
 
-Use `GET /v1/models` and `POST /v1/system/plan` with `{"model":"<selected-id>"}` to select a model/task. Distinguish declared `inputs` from loaded `available_inputs`: an unverified lazy session does not mean a declared input must be disabled forever. Missing required helpers/encoder or an unsupported modality must show its actual reason. `supported_attachments` describes wired file processing, not a native PDF input capability.
+Use `GET /v1/models` and `system.plan` with `{"model":"<selected-id>"}` to select a model/task. Distinguish declared `inputs` from loaded `available_inputs`: an unverified lazy session does not mean a declared input must be disabled forever. Missing required helpers/encoder or an unsupported modality must show its actual reason. `supported_attachments` describes wired file processing, not a native PDF input capability.
 
 Handle JSON/SSE `error` even on a streaming HTTP200, HTTP401, HTTP403 with approval details, HTTP413 and decode/runtime failures. Retain the original attachment for retries/history; do not replace it with a filename in the model prompt. Native scanned-page OCR and video require their packaged provider assets. Model/backend quality and App end-to-end behavior require separate acceptance.
 
@@ -189,9 +189,9 @@ This Windows CPU run used two threads, context 4096, a 16 MiB decoded ceiling, 5
 
 ## Native document API contract
 
-`/v1/ingest` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. `namespace`, explicit model/embedding output, model-vision options, non-semantic chunking and nonzero overlap return explicit unsupported-option errors. Generate vectors separately through `/v1/embeddings` using returned chunks.
+`ingest.run` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. `namespace`, explicit model/embedding output, model-vision options, non-semantic chunking and nonzero overlap return explicit unsupported-option errors. Generate vectors separately through `/v1/embeddings` using returned chunks.
 
-`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`, optional `ocr_confidence`). OCR methods are `native_ocr`, `pdf_ocr`, or `pdf_text_and_ocr`; confidence is Tesseract's mean score (0–100), not a correctness guarantee. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. All source failures return HTTP400 and overall `error`. Filesystem denials return HTTP403 with the existing approval details. Per-file error/partial results must remain visible even when a batch uses HTTP200.
+`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`, optional `ocr_confidence`). OCR methods are `native_ocr`, `pdf_ocr`, or `pdf_text_and_ocr`; confidence is Tesseract's mean score (0–100), not a correctness guarantee. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. When every source fails, the `ingest.run` task fails (`-32602`, or the model's own code such as `-32004`) with all per-source results in `data.result`. A path outside the caller's roots is `-32002` or an approval (`-32003`). Per-file error/partial results remain visible in a successful task result.
 
 PDF empty pages and image/form resources are attempted through packaged native OCR. Missing native assets, empty recognition or provider failures retain page omissions and actual warnings. Direct `file_url` chat uses the same extraction (including an image file used as an OCR document); `image_url` still sends real pixels to a selected vision model. DOCX headers/footers and embedded visuals remain omissions. Legacy DOC supplies recovered body/subdocument text without rendering graphics or evaluating fields/macros; incomplete text and parser recovery warnings are reported as omissions. Direct chat refuses still-partial extraction. OCR recognizes text, not image/diagram meaning. Password handling and full layout reconstruction remain unavailable. Source/output/ZIP text and raster workspace limits are checked; parser/native internal allocations, stack exhaustion and process isolation are not certified.
 
@@ -212,7 +212,7 @@ REAL DOCUMENT CHAT: partial extraction rejected; planner advertises PDF as extra
 test real_router_pdf_attachment_reaches_text_only_llama ... ok
 ```
 
-The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed `/v1/ingest` -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
+The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed `ingest.run` -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
 
 ## 📐 Architecture
 
@@ -259,10 +259,10 @@ graph TD
     Decode --> Runtime["EngineHost: paired native model/projector"]
     Policy --> Documents["Shared document extraction: text / PDF / DOCX"]
     Documents --> Text["Actual text through the existing chat sampler"]
-    Router --> Ingest["/v1/ingest: ordered content / explicit omissions"]
+    Router --> Ingest["CEP ingest.run: ordered content / explicit omissions"]
     Ingest --> Documents
     Router --> Models["handlers/models: Vault & Registry"]
-    Router --> System["handlers/system: Plan & Calibration"]
+    Router --> System["CEP system.plan: execution plan"]
     Router --> Runtime
     System --> P["File-backed package capability evidence"]
     P --> Q["Runtime availability and attachment gate"]
@@ -289,7 +289,7 @@ graph TD
 - **Routes:** `POST /v1/chat/completions` and its existing `/api/chat` alias use the same handler for text and supported native multimodal chat. No backend-specific chat URL is added. An explicit missing model returns an error; an image does not substitute another slot model.
 - **Parts:** a message's existing `content` array accepts `text`, `image_url: {url}`, `audio_url: {url}`, `input_audio: {format, data}` with base64 data, and additive `file_url: {url}` for document extraction. URL sources can be HTTP(S), data URIs or authorized local paths/file URIs. Inline audio format hints use the MIME registry. Source decoding preserves message/part ordering. These are Cluaiz request forms, not a claim of full OpenAI upload/file-ID compatibility.
 - **Model contract:** selected GGUF image/audio chat requires the declared modality and one compatible projector validated by the native backend. A document is extracted into actual text; a text-only GGUF does not need a projector for that request. Typed ONNX chat media and video remain unavailable. Selecting an unsupported model returns an error without an automatic backend/model substitution.
-- **Local access:** `x-caller` and `x-approval-id` feed the existing `fs_read` gate. Agent Strict mode blocks outside-workspace reads and requires approval even inside. Permission errors include `error.details` with gate status/approval ID when relevant. Approve through the existing permission endpoint and retry with the approval header; changing the chat input does not grant a filesystem bypass.
+- **Local access:** a standard route runs as the authenticated owner; local paths are canonicalized (`cep::roots`) before they are read. Headers such as `x-caller` / `x-approval-id` are ignored. Tool calls the model makes still go through the agent's security mode and `approvals.*`.
 - **Continuations:** both JSON and SSE tool turns keep original decoded buffers/options and regenerate full media context with cumulative tool-result instructions. No text-only KV pivot is used to represent missing media. This preserves input lifetime; an installed plugin/MCP's actual behavior still needs its own acceptance.
 - **Errors:** capability/source failures are request errors; permission failures are forbidden responses; runtime generation failures are non-success JSON responses or SSE `error` objects followed by `[DONE]`, not successful assistant prose. A streaming failure may follow already emitted pieces. Axum's existing request-body ceiling still applies.
 - **Control:** unique chat IDs and retained per-request cancellation flags scope chat cancellation to its request. This does not certify immediate interruption inside a native encoder call. Legacy text dispatch remains usable.
@@ -297,9 +297,9 @@ graph TD
 
 ## ONNX audio API reference
 
-- **Routes:** `POST /v1/audio/execute`, `/v1/audio/speech` and `/v1/audio/transcriptions` use one typed ONNX audio handler. Speech/transcription aliases currently accept JSON and return the existing Cluaiz JSON result format, not multipart uploads or a raw OpenAI audio response.
+- **Routes:** `audio.run`, `/v1/audio/speech` and `/v1/audio/transcriptions` use one typed ONNX audio handler. Speech/transcription aliases currently accept JSON and return the existing Cluaiz JSON result format, not multipart uploads or a raw OpenAI audio response.
 - **Model/task:** explicit model IDs are matched exactly (case-insensitive fallback), without substring/model substitution. Auto uses a compatible `tts_slot`/`stt_slot` or legacy `audio_slot`, then a deterministic installed package declaring the task. Only declared ONNX `text_to_speech`, `speech_to_text` or `speech_translation` tasks reach this boundary. GGUF image/audio chat remains on the chat route.
-- **Sources:** `input_source: {type: "text", data: "..."}` supplies TTS text. STT accepts `url`, `file`, `audio` or `base64`; bare base64 is wrapped in a generic data URI and decoded by actual content. HTTP(S)/data URI reads are bounded. Local reads reuse chat's workspace/approval gate and `x-caller`/`x-approval-id` headers.
+- **Sources:** `input_source: {type: "text", data: "..."}` supplies TTS text. STT accepts `url`, `file`, `audio` or `base64`; bare base64 is wrapped in a generic data URI and decoded by actual content. HTTP(S)/data URI reads are bounded. Local reads use the same owner path check as chat; for `audio.run` the CEP caller's paths are checked with `Call::check_path`.
 - **JSON:** `stream: false` returns `{status, task, model, info, output: {text, audio_data, segments}}`. STT populates text; TTS populates a real `data:audio/wav;base64,...` value. Segments remain null; unsupported timestamp requests return an error.
 - **SSE:** `stream: true` emits actual STT `{status: "chunk", token}` events and one `{status: "done", result: <JSON result>}` terminal event. TTS emits its completed WAV in the terminal event; it does not fabricate token/PCM streaming. Runtime failure emits `{status: "error", error: {type, message}}`. Validation/auth/permission failures are non-success HTTP responses before the stream begins.
 - **Options:** this slice uses the current default TTS voice/speed and greedy STT. Explicit unsupported voice changes, speed other than 1, temperature other than 0, beam size other than 1, timestamps/VAD/speaker labels enabled, or instruction prompts are rejected. `speech_translation` requires a declared task and uses the current English translation token; translation quality has separate acceptance requirements.
@@ -352,11 +352,11 @@ flowchart LR
 
 ## ONNX task capability and readiness reference
 
-- **Planner:** `POST /v1/system/plan` accepts an installed ONNX ID or explicit ONNX path. Matching registered paths reuse refreshed metadata. It reports inputs, available inputs, per-input reasons, outputs, attachments, task routes, missing assets and package signatures. ONNX does not enter the GGUF geometry parser.
+- **Planner:** `system.plan` accepts an installed ONNX ID or explicit ONNX path. Matching registered paths reuse refreshed metadata. It reports inputs, available inputs, per-input reasons, outputs, attachments, task routes, missing assets and package signatures. ONNX does not enter the GGUF geometry parser.
 - **Declarations:** a combined image/text graph can declare both inputs while its standalone embedding task requires an image. Auxiliary text does not imply a text-only route. Legacy category/task labels are separate from available task routes.
 - **Readiness:** `available_inputs` and `task_routes[].available` require a successful retained native task for the same package/assets/provider-settings snapshot and known helpers. Before the first request they are empty/false with `onnx_task_session_unverified`; valid task APIs still permit the first declared request to load/validate lazily. The App can offer that request from declarations and distinguish missing files from unverified readiness.
 - **Missing assets:** `onnx_helper_assets_missing` and `missing_assets` identify absent known tokenizer/processor/pooling/external files. Presence alone does not certify contents or arbitrary graph support. Zero-retention unload and relevant provider-setting changes invalidate old readiness. ONNX does not require a GGUF projector.
-- **Outputs/routes:** embedding vectors use `/v1/embeddings`; TTS text-to-audio and STT audio-to-text use `/v1/audio/execute`. Image embeddings are not OCR/chat prose. Attachments come from common decoder descriptors and validated input availability.
+- **Outputs/routes:** embedding vectors use `/v1/embeddings`; TTS text-to-audio and STT audio-to-text use `audio.run`. Image embeddings are not OCR/chat prose. Attachments come from common decoder descriptors and validated input availability.
 - **Hardware:** the captured provider policy is reported; selected EP, peak memory, speed and chat-context limits remain null when not proven. No llama layer/KV estimates are invented for ONNX. `model_size_gb` is package file bytes, not peak/resident allocation.
 - **Model list:** `GET /v1/models` adds ONNX `task_support` from the same runtime resolver and persisted signatures. Native GGUF retains its existing planning/pairing behavior.
 - **Separate remaining work:** legacy pull/download HTTP handlers still return queued messages without installer wiring; generic load remains native-chat-oriented. This slice does not certify those endpoints or App installation/download behavior. Existing CLI installation uses the actual engine installer/helper contract.

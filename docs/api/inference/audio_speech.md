@@ -1,6 +1,6 @@
 # Text-to-Speech (TTS) Neural Synthesis API (`/v1/audio/speech`)
 
-`POST /v1/audio/speech` (alias: `POST /v1/audio/execute` with task `text_to_speech`)
+`POST /v1/audio/speech` (CEP task: `audio.run` with task `text_to_speech`)
 
 Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone and its audio-generation projector. Returns a Base64 WAV data URI in JSON. Model/language coverage and audible quality depend on the selected package.
 
@@ -9,7 +9,7 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 ## 📌 Endpoint Information
 
 * **HTTP Method:** `POST`
-* **Path:** `/v1/audio/speech` (or `/v1/audio/execute`)
+* **Path:** `/v1/audio/speech` (CEP task: `audio.run`)
 * **Content-Type:** `application/json`
 * **Authentication:** `Authorization: Bearer <session-token>`
 * **Output Format:** Playable WAV Data URI (`data:audio/wav;base64,...`) inside JSON response
@@ -32,7 +32,7 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ## Choose the model, language and voice
 
-Read `GET /v1/models/installed` and select an exact installed TTS ID. The API Explorer Model dropdown writes it into the JSON `model` field; its Voice dropdown reads `/v1/audio/voices?model=<id>` for that package. Switching models resets the previous package's speaker selection. A Hugging Face repository ID is not necessarily the installed ID.
+Read `models.list` and select an exact installed TTS ID. The API Explorer Model dropdown writes it into the JSON `model` field; its Voice dropdown reads `audio.voices` for that package. Switching models resets the previous package's speaker selection. A Hugging Face repository ID is not necessarily the installed ID.
 
 | Package behavior | `voice` | `language` | Example |
 |:---|:---|:---|:---|
@@ -63,7 +63,7 @@ The existing `data` array now has an additive sibling `capabilities` object:
 {"languages":["en","es"],"language_control":"explicit","voice_mode":"reference_source","coherent_input":true}
 ```
 
-This is a schema example, not a named model's complete inventory. A default-only model can support multiple languages. Count named speakers from `data` entries with `default:false`; `default` is a control. GGUF languages come from actual header codec tokens and native ISO aliases without loading weights. ONNX languages come from voices/configuration; Audio8's automatic-language list comes from its export protocol. `GET /v1/audio/languages` remains STT-only.
+This is a schema example, not a named model's complete inventory. A default-only model can support multiple languages. Count named speakers from `data` entries with `default:false`; `default` is a control. GGUF languages come from actual header codec tokens and native ISO aliases without loading weights. ONNX languages come from voices/configuration; Audio8's automatic-language list comes from its export protocol. `audio.languages` remains STT-only.
 
 `language_control` is `explicit` or `auto`. `voice_mode` is `preset`, `embedded`, `generated` (no declared reference encoder), `reference_source` (authorized GGUF audio), or `reference_profile` (package-local encoded profile). `coherent_input:true` tells clients to keep a narration together: independent unconditioned requests may choose different speakers. It does not guarantee speaker identity. A reference encoder is advertised only when the inspected matching projector declares one.
 
@@ -75,7 +75,7 @@ Loads share the chat/ONNX/GGUF transition lock. Preflight uses the shared live-m
 
 Stage logs separate native preparation/generation/decoder/output and Audio8 prefill/Slow AR/Fast AR/decode-output. They exclude model loading; output includes sink backpressure and Audio8 stages include tensor transfers. They do not establish realtime speed. Buffering complete speech trades startup delay for uninterrupted playback; streaming can underrun when synthesis is slower than playback.
 
-`GET /v1/audio/voices?model=<id>` (model optional: the active or first installed TTS model) lists the values accepted by `voice`. `"default"` comes first; each voice carries the language its name declares (Kokoro: `a` American English, `b` British English, `h` Hindi, …), `null` when unknown:
+`audio.voices` (model optional: the active or first installed TTS model) lists the values accepted by `voice`. `"default"` comes first; each voice carries the language its name declares (Kokoro: `a` American English, `b` British English, `h` Hindi, …), `null` when unknown:
 
 ```json
 { "object": "list", "model": "Kokoro-82M-v1.0-ONNX-UINT8", "data": [
@@ -107,7 +107,7 @@ Qwen3-TTS supports en, zh, ja, ko, de, fr, ru, pt, es and it. It does not suppor
 
 For speaker conditioning, set `voice` to an audio data URI or audio source, for example `"data:audio/wav;base64,<reference PCM WAV bytes>"`. Local sources use the normal filesystem authorization/approval path; remote and inline sources use shared media limits and format decoding. The input is converted to mono at the projector's queried input rate and encoded by its real speaker encoder. Missing/unsupported encoders and corrupt/oversized references error. A reference influences the voice; it does not prove speaker identity or guarantee similarity. Without a reference the Base model may choose a different voice on each generation.
 
-Inline references use the same configured attachment request limit as transcription and `/v1/audio/execute`, including Base64 expansion and JSON envelope space. Requests beyond that limit return HTTP413 with `request_too_large`.
+Inline references use the same configured attachment request limit as transcription and `audio.run`, including Base64 expansion and JSON envelope space. Requests beyond that limit return HTTP413 with `request_too_large`.
 
 GGUF generation emits new native PCM as WAV parts during generation and then the whole utterance. Model loading and prompt evaluation still precede the first part; polling can also flush the native codec's pending frames. `speed` uses a streaming Sonic tempo processor with the sample rate unchanged. Closing the consumer cancels at prompt/frame boundaries; native load/generation failures release the resident speech model. Long inputs that hit the frame limit error instead of returning a silently truncated utterance. The native API is experimental and may change with the pinned library.
 

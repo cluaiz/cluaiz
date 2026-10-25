@@ -1,0 +1,4935 @@
+{
+  "components": {
+    "schemas": {
+      "AudioParameters": {
+        "additionalProperties": false,
+        "properties": {
+          "beam_size": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "languages": {
+            "default": [],
+            "description": "The speaker's languages (ISO 639-1): without `language`, speech is detected among only these",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "speaker_labels": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "speed": {
+            "format": "float",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "temperature": {
+            "format": "float",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "timestamps": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "translate_to": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vad_filter": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "voice_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Category": {
+        "enum": [
+          "chat",
+          "embedding",
+          "vision-embedding",
+          "vision",
+          "tts",
+          "stt"
+        ],
+        "type": "string"
+      },
+      "ChunkingStrategy": {
+        "additionalProperties": false,
+        "properties": {
+          "max_chunk_size": {
+            "description": "Maximum UTF-8 bytes in a returned chunk, not model tokens",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "overlap": {
+            "description": "Only 0",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "type": {
+            "description": "Only \"semantic\"",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Kind": {
+        "enum": [
+          "skill",
+          "plugin",
+          "mcp"
+        ],
+        "type": "string"
+      },
+      "OutputControls": {
+        "additionalProperties": false,
+        "properties": {
+          "return_embeddings": {
+            "description": "Vectors from the selected embedding model",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "return_text": {
+            "description": "Include the extracted text (default true)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Patch": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "execution_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "security_mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "trust_annotations": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "Section": {
+        "oneOf": [
+          {
+            "enum": [
+              "onnx"
+            ],
+            "type": "string"
+          },
+          {
+            "const": "gguf",
+            "description": "llama.cpp loading and the default samplers",
+            "type": "string"
+          },
+          {
+            "const": "optimization",
+            "description": "Context window, KV cache type, mmap, think mode…",
+            "type": "string"
+          },
+          {
+            "const": "context",
+            "description": "The context runtime planner's policy",
+            "type": "string"
+          },
+          {
+            "const": "storage",
+            "description": "Temporary media cleanup",
+            "type": "string"
+          },
+          {
+            "const": "kv",
+            "description": "Saved KV cache per chat: enabled, disk and age limits",
+            "type": "string"
+          },
+          {
+            "const": "engine",
+            "description": "permission.json: model slots, API port and host, authentication, agent security mode",
+            "type": "string"
+          }
+        ]
+      },
+      "SourceInput": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        ]
+      },
+      "StrictInputSource": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "VisionSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "detail_level": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_tokens": {
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "system_instruction": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_vision": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Cluaiz Engine Protocol",
+    "version": "0.1.0",
+    "x-cep-version": 1
+  },
+  "methods": [
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "approval_id",
+              "value": "ap_41c2…"
+            },
+            {
+              "name": "minutes",
+              "value": 60
+            },
+            {
+              "name": "remember",
+              "value": "chat"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "approval": {
+                "created_at": "2026-10-25T10:30:00Z",
+                "expires_at": "2026-10-25T10:35:00Z",
+                "id": "ap_41c2…",
+                "method": "mcp:web-search",
+                "principal": "agent",
+                "status": "pending",
+                "target": "{\"query\":\"news\"}"
+              },
+              "grant": {
+                "chat_id": "c1",
+                "minutes": 60,
+                "tool": "web-search"
+              }
+            }
+          }
+        }
+      ],
+      "name": "approvals.approve",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "approval_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "feedback",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Passed to the waiting call",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "minutes",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "How long a \"chat\" grant lasts (default 60, at most 1440)",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "remember",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "\"chat\": also allow this tool in this chat without asking again, for `minutes`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Allows the waiting call; with remember chat, the tool also runs without asking in that chat for a while",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": true,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "pending": [
+                {
+                  "created_at": "2026-10-25T10:30:00Z",
+                  "expires_at": "2026-10-25T10:35:00Z",
+                  "id": "ap_41c2…",
+                  "method": "mcp:web-search",
+                  "principal": "agent",
+                  "status": "pending",
+                  "target": "{\"query\":\"news\"}"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "approvals.list",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Approval requests waiting for the owner",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": true,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "approval_id",
+              "value": "ap_41c2…"
+            },
+            {
+              "name": "feedback",
+              "value": "Not this site"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "approval": {
+                "created_at": "2026-10-25T10:30:00Z",
+                "expires_at": "2026-10-25T10:35:00Z",
+                "id": "ap_41c2…",
+                "method": "mcp:web-search",
+                "principal": "agent",
+                "status": "pending",
+                "target": "{\"query\":\"news\"}"
+              }
+            }
+          }
+        }
+      ],
+      "name": "approvals.reject",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "approval_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "feedback",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Passed to the waiting call (the model sees it as the reason)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Refuses the waiting call",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": true,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "data": [],
+              "model": "installed-model",
+              "object": "list"
+            }
+          }
+        }
+      ],
+      "name": "audio.languages",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Languages declared by the selected transcription model",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "input_source",
+              "value": {
+                "data": "Speech input",
+                "type": "text"
+              }
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "task": {
+                "status": "working",
+                "task_id": "t_example"
+              }
+            }
+          }
+        }
+      ],
+      "name": "audio.run",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "input_source",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/StrictInputSource"
+          }
+        },
+        {
+          "name": "instruction",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "keep_alive",
+          "required": false,
+          "schema": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "parameters",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AudioParameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "task",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Run the existing speech/transcription executor; chunks are task events",
+      "x-cep": {
+        "destructive": false,
+        "execution": "task",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "data": [],
+              "model": "installed-model",
+              "object": "list"
+            }
+          }
+        }
+      ],
+      "name": "audio.voices",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Voice inventory and speech capabilities without loading weights",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "stream_id",
+              "value": "chatcmpl-1a2b"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "status": "cancelled",
+              "stream_id": "chatcmpl-1a2b"
+            }
+          }
+        }
+      ],
+      "name": "chat.cancel",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "reason",
+          "required": false,
+          "schema": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "stream_id",
+          "required": true,
+          "schema": {
+            "description": "The `id` of the running chat stream (from its SSE chunks)",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Stops a running chat stream",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "all",
+              "value": true
+            },
+            {
+              "name": "dry_run",
+              "value": true
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "task": {
+                "status": "working",
+                "task_id": "t_5f0c…"
+              }
+            }
+          }
+        }
+      ],
+      "name": "chat.import_app",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "all",
+          "required": false,
+          "schema": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "chat_id",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "One App chat id (its folder name); leave out with `all: true` for every chat",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "dry_run",
+          "required": false,
+          "schema": {
+            "default": false,
+            "description": "Count what would be imported, write nothing",
+            "type": "boolean"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Imports the App's old chats (read-only) into the Engine's event logs, as a task",
+      "x-cep": {
+        "destructive": false,
+        "execution": "task",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "detach",
+              "value": [
+                "old-tool"
+              ]
+            },
+            {
+              "name": "tools",
+              "value": [
+                "web-search",
+                {
+                  "id": "calc",
+                  "turns": 2
+                }
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "active_tools": [
+                {
+                  "id": "web-search",
+                  "turns": 3
+                }
+              ],
+              "chat_id": "c1"
+            }
+          }
+        }
+      ],
+      "name": "chat.set_tools",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "detach",
+          "required": false,
+          "schema": {
+            "default": [],
+            "description": "Tool ids to detach",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        {
+          "name": "tools",
+          "required": false,
+          "schema": {
+            "default": [],
+            "description": "Tools to attach or update: a tool id (its default turns), or `{\"id\", \"turns\"}`",
+            "items": true,
+            "type": "array"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Attaches, updates or detaches a chat's tools",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "stream_id",
+              "value": "chatcmpl-1a2b"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "status": "skip_requested",
+              "stream_id": "chatcmpl-1a2b"
+            }
+          }
+        }
+      ],
+      "name": "chat.skip_reasoning",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "reason",
+          "required": false,
+          "schema": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "stream_id",
+          "required": true,
+          "schema": {
+            "description": "The `id` of the running chat stream (from its SSE chunks)",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Ends the model's reasoning; the same stream continues with the answer",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "model",
+              "value": "qwen3-4b-gguf-Q4_K_M"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "model": "qwen3-4b-gguf-Q4_K_M",
+              "telemetry": {}
+            }
+          }
+        }
+      ],
+      "name": "chat.telemetry",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": false,
+          "schema": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "How a chat's context is used by its tools, for a model",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "active_tools": [
+                {
+                  "id": "web-search",
+                  "turns": 3
+                }
+              ],
+              "chat_id": "c1"
+            }
+          }
+        }
+      ],
+      "name": "chat.tools",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The tools attached to a chat, with their turns left",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "section",
+              "value": "kv"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "kv": {
+                "enabled": true,
+                "max_age_days": 30,
+                "max_disk_gb": 10.0
+              }
+            }
+          }
+        }
+      ],
+      "name": "config.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "section",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Section"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One section; all of them when absent"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The saved settings: one section, or all of them",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "patch",
+              "value": {
+                "cross_chat": "ask"
+              }
+            },
+            {
+              "name": "section",
+              "value": "context"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "context": {
+                "cross_chat": "ask"
+              }
+            }
+          }
+        }
+      ],
+      "name": "config.set",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "patch",
+          "required": true,
+          "schema": {
+            "description": "Only the fields to change"
+          }
+        },
+        {
+          "name": "section",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Section"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Changes the given fields of one settings section; answers with the section as saved",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "done": [],
+              "queued": 0,
+              "running": null
+            }
+          }
+        }
+      ],
+      "name": "context.jobs",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The idle-time scheduler's queue, counts and recent results",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "request",
+              "value": {
+                "messages": [
+                  {
+                    "content": "Hi",
+                    "role": "user"
+                  }
+                ],
+                "model": "qwen3-4b-gguf-Q4_K_M"
+              }
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "plan": {
+                "n_ctx": 8192,
+                "prompt_tokens": 412
+              },
+              "tools": {
+                "cards": []
+              }
+            }
+          }
+        }
+      ],
+      "name": "context.preview",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "request",
+          "required": true,
+          "schema": {
+            "description": "A chat completions request (model, messages, tools…); its `session_id` becomes `chat_id`"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The plan and tool choices a chat request would get, without generating (loads the model for its tokenizer)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "request_id",
+              "value": "chatcmpl-1a2b"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "context_report": {
+                "timing": {
+                  "preflight_ms": 23
+                }
+              },
+              "request_id": "chatcmpl-1a2b"
+            }
+          }
+        }
+      ],
+      "name": "context.report",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "request_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "One of a chat's last 20 context reports (kept in memory)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "reports": [
+                "chatcmpl-1a2b"
+              ]
+            }
+          }
+        }
+      ],
+      "name": "context.reports",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Ids of a chat's kept context reports, newest last",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "from",
+              "value": "notes.txt"
+            },
+            {
+              "name": "to",
+              "value": "copy.txt"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "from": "/project/notes.txt",
+              "to": "/project/copy.txt"
+            }
+          }
+        }
+      ],
+      "name": "fs.copy",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "from",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Copies a file or directory between authorized paths",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "old.txt"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project/old.txt"
+            }
+          }
+        }
+      ],
+      "name": "fs.delete",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Deletes a file or directory",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "."
+            },
+            {
+              "name": "recursive",
+              "value": false
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "items": [
+                {
+                  "is_folder": false,
+                  "modified": "2026-10-25T00:00:00.000Z",
+                  "name": "notes.txt",
+                  "path": "notes.txt",
+                  "size": 5
+                }
+              ],
+              "skipped": 0,
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "name": "fs.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "recursive",
+          "required": false,
+          "schema": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "root",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Lists directory entries, optionally recursively",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "documents"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project/documents"
+            }
+          }
+        }
+      ],
+      "name": "fs.mkdir",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Creates a directory and missing parents",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project"
+            }
+          }
+        }
+      ],
+      "name": "fs.pick_folder",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Opens the host folder picker and selects the workspace",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": false,
+        "owner_only": true,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "notes.txt"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "binary": false,
+              "path": "/project/notes.txt",
+              "size": 5,
+              "text": "hello"
+            }
+          }
+        }
+      ],
+      "name": "fs.read",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "binary",
+          "required": false,
+          "schema": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Reads a UTF-8 file, or returns base64 for binary data",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "from",
+              "value": "old.txt"
+            },
+            {
+              "name": "to",
+              "value": "new.txt"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "from": "/project/old.txt",
+              "to": "/project/new.txt"
+            }
+          }
+        }
+      ],
+      "name": "fs.rename",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "from",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Moves a file or directory between authorized paths",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "notes.txt"
+            },
+            {
+              "name": "text",
+              "value": "hello"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "bytes": 5,
+              "path": "/project/notes.txt"
+            }
+          }
+        }
+      ],
+      "name": "fs.write",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "data_base64",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "text",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Writes exactly one of text or data_base64 to a file",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chunking_strategy",
+              "value": {
+                "max_chunk_size": 2000
+              }
+            },
+            {
+              "name": "source",
+              "value": "docs/report.pdf"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "task": {
+                "method": "ingest.run",
+                "status": "working",
+                "task_id": "t_5f0c…"
+              }
+            }
+          }
+        }
+      ],
+      "name": "ingest.run",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chunking_strategy",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChunkingStrategy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "description": "An installed embedding, vision or chat model; extraction only when absent",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "output_controls",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputControls"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        {
+          "name": "source",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/SourceInput",
+            "description": "A path (inside the caller's roots), an http(s) URL or a data URI; or a list of them"
+          }
+        },
+        {
+          "name": "vision_settings",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VisionSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Extracts documents (and optionally runs a model on them), as a task; one event per source",
+      "x-cep": {
+        "destructive": false,
+        "execution": "task",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "deleted": 3
+            }
+          }
+        }
+      ],
+      "name": "kv.clear",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Forgets every chat's saved KV",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "deleted": true
+            }
+          }
+        }
+      ],
+      "name": "kv.delete",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Forgets one chat's saved KV",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "bytes": 52428800,
+              "chats": [],
+              "directory": "C:/Users/me/.cluaiz/kv_cache"
+            }
+          }
+        }
+      ],
+      "name": "kv.status",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Where saved KV caches are kept, the disk they use, and the saved chats (most recently used first)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "events": {
+                "bytes": 2048,
+                "files": 1
+              },
+              "folder_removed": true,
+              "ledger": true,
+              "saved_kv": {}
+            }
+          }
+        }
+      ],
+      "name": "memory.delete",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Deletes a chat's event log, ledger, saved KV, context reports and Chat Map",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "from_seq",
+              "value": 1
+            },
+            {
+              "name": "limit",
+              "value": 2
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "events": [
+                {
+                  "data": {
+                    "role": "user",
+                    "text": "Hi"
+                  },
+                  "kind": "message",
+                  "seq": 1
+                }
+              ],
+              "next_from_seq": 3,
+              "skipped_lines": 0,
+              "total": 40
+            }
+          }
+        }
+      ],
+      "name": "memory.events",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "from_seq",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "First seq to return (default 1)",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Most events to return (default 500, at most 5000)",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A chat's event log, oldest first",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "cards": [],
+              "chat_id": "c1",
+              "events": [],
+              "format": "cluaiz-chat-export",
+              "version": 1
+            }
+          }
+        }
+      ],
+      "name": "memory.export",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A chat's events and cards, for an app's own store",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "grants": [
+                {
+                  "minutes_left": 42,
+                  "tool": "web-search"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "memory.grants",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Tools the user allowed for this chat, with minutes left",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "events",
+              "value": []
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "cards": 0,
+              "chat_id": "c1",
+              "events": 0,
+              "storage": "external"
+            }
+          }
+        }
+      ],
+      "name": "memory.import",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "events",
+          "required": true,
+          "schema": {
+            "description": "The events of `memory.export` (or the `memory_events` an app collected)",
+            "items": true,
+            "type": "array"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Gives back a chat an app keeps itself (storage external), held in RAM only",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "cards": [
+                {
+                  "pos": 0,
+                  "role": "user",
+                  "title": "Greeting"
+                }
+              ],
+              "chat_id": "c1",
+              "episodes": [],
+              "graph": {},
+              "tasks": []
+            }
+          }
+        }
+      ],
+      "name": "memory.index",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A chat's cards (one per visible message, no text), episodes, tasks and graph",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "ref",
+              "value": "m:12"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "card": {},
+              "chat_id": "c1",
+              "ref": "m:12",
+              "text": "The deploy server listens on port 8443."
+            }
+          }
+        }
+      ],
+      "name": "memory.item",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "ref",
+          "required": true,
+          "schema": {
+            "description": "A reference from a search result, `m:<position>`",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The exact message behind a reference (m:<position>)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "tool",
+              "value": "web-search"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "removed": 1
+            }
+          }
+        }
+      ],
+      "name": "memory.revoke_grants",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "tool",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only this tool; all of the chat's grants when absent",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Asks again for this chat's tools (or one tool)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "chat_id",
+              "value": "c1"
+            },
+            {
+              "name": "query",
+              "value": "deploy port"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "chat_id": "c1",
+              "query": "deploy port",
+              "results": [
+                {
+                  "card": {},
+                  "ref": "m:12",
+                  "score": 3.2,
+                  "why": [
+                    "port"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "memory.search",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Most results (default 5; at most 50 in a chat, 20 across chats)",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "query",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "scope",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "`chat` (default), or `workspace` / `all` to search the other chats (not with cross_chat: deny)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Messages of a chat that fit a query, or text from the other chats",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "registry-model"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "task": {}
+            }
+          }
+        }
+      ],
+      "name": "models.download",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Model download control is not implemented yet",
+      "x-cep": {
+        "destructive": false,
+        "execution": "task",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "installed-model"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "metadata": {},
+              "model": "installed-model",
+              "tensors": []
+            }
+          }
+        }
+      ],
+      "name": "models.inspect",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "file",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Raw GGUF metadata and tensor table of an installed model",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": []
+          }
+        }
+      ],
+      "name": "models.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "category",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Category"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Installed registry entries, optionally filtered by category",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "installed-model"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "loaded_ms": 125,
+              "model": "installed-model"
+            }
+          }
+        }
+      ],
+      "name": "models.load",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Loads an installed GGUF model using the existing Engine host",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "installed-model"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "dir": "models/chat/installed-model",
+              "model": "installed-model"
+            }
+          }
+        }
+      ],
+      "name": "models.remove",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Unloads the selected model if active and removes its installed package",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "n7"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "note": {
+                "id": "n7",
+                "pinned": false,
+                "scope": "workspace",
+                "status": "confirmed",
+                "text": "Prefers tabs over spaces"
+              },
+              "superseded": []
+            }
+          }
+        }
+      ],
+      "name": "notes.confirm",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A proposed note becomes confirmed (and supersedes a live note on the same subject)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "scope",
+              "value": "workspace"
+            },
+            {
+              "name": "text",
+              "value": "Prefers tabs over spaces"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "note": {
+                "id": "n7",
+                "pinned": false,
+                "scope": "workspace",
+                "status": "confirmed",
+                "text": "Prefers tabs over spaces"
+              },
+              "superseded": []
+            }
+          }
+        }
+      ],
+      "name": "notes.create",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The chat, for scope chat",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "pinned",
+          "required": false,
+          "schema": {
+            "default": false,
+            "description": "Pinned notes go into the system prompt of new chats",
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "scope",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "chat, workspace (default) or global",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "text",
+          "required": true,
+          "schema": {
+            "description": "1 to 2000 characters",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A note written by the user, confirmed at once; it supersedes a live note on the same subject",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "n7"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "note": {
+                "id": "n7",
+                "pinned": false,
+                "scope": "workspace",
+                "status": "confirmed",
+                "text": "Prefers tabs over spaces"
+              },
+              "superseded": []
+            }
+          }
+        }
+      ],
+      "name": "notes.invalidate",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The note no longer holds (it is kept, with the time)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "status",
+              "value": "confirmed"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "notes": [
+                {
+                  "id": "n7",
+                  "pinned": false,
+                  "scope": "workspace",
+                  "status": "confirmed",
+                  "text": "Prefers tabs over spaces"
+                }
+              ],
+              "workspace": "D:/work"
+            }
+          }
+        }
+      ],
+      "name": "notes.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "chat_id",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only notes that apply to this chat (with the current workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "scope",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "chat, workspace or global",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "status",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "proposed, confirmed, superseded or invalidated",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Notes, newest last",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "n7"
+            },
+            {
+              "name": "pinned",
+              "value": true
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "note": {
+                "id": "n7",
+                "pinned": false,
+                "scope": "workspace",
+                "status": "confirmed",
+                "text": "Prefers tabs over spaces"
+              },
+              "superseded": []
+            }
+          }
+        }
+      ],
+      "name": "notes.pin",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "pinned",
+          "required": true,
+          "schema": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Pins or unpins a note; pinned notes go into the system prompt of new chats",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "group",
+              "value": "tasks"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "info": {
+                "title": "Cluaiz Engine Protocol"
+              },
+              "methods": [],
+              "openrpc": "1.3.2"
+            }
+          }
+        }
+      ],
+      "name": "rpc.discover",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "group",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only this group, for example \"fs\"",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The OpenRPC description of the methods you may call",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "freed_bytes": 0,
+              "removed_files": 0
+            }
+          }
+        }
+      ],
+      "name": "storage.clean",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Removes cached temporary media",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "file_count": 0,
+              "total_size_bytes": 0,
+              "total_size_mb": "0.00 MB"
+            }
+          }
+        }
+      ],
+      "name": "storage.status",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Temporary media storage usage",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "limit",
+              "value": 1
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "lines": [
+                {
+                  "code": null,
+                  "method": "fs.write",
+                  "ms": 3,
+                  "params_sha256": "9f2c…",
+                  "principal": "owner",
+                  "scope": "write",
+                  "ts": "2026-10-25T10:30:00.000Z"
+                }
+              ],
+              "path": "C:/Users/me/.cluaiz/cep-audit.jsonl"
+            }
+          }
+        }
+      ],
+      "name": "system.audit",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "How many of the newest lines (default 100, at most 1000)",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The newest lines of the CEP audit log, newest first",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "command",
+              "value": "echo hi"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "exit_code": 0,
+              "stderr": "",
+              "stdout": "hi\n"
+            }
+          }
+        }
+      ],
+      "name": "system.exec",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "command",
+          "required": true,
+          "schema": {
+            "description": "One shell command line",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Runs a command in the host's shell and returns its output",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "cep_version": 1,
+              "engine": "Cluaiz Engine",
+              "hardware": {
+                "cpu": {},
+                "gpus": [],
+                "memory": {}
+              },
+              "network": {
+                "lan_ip": "192.168.1.20"
+              },
+              "version": "0.1.0"
+            }
+          }
+        }
+      ],
+      "name": "system.info",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Engine name and version, CEP version, hardware, and the LAN address",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "cpu": {},
+              "gpus": [],
+              "memory": {
+                "available_gb": 8,
+                "total_gb": 16,
+                "used_gb": 8
+              },
+              "process_id": 1
+            }
+          }
+        }
+      ],
+      "name": "system.live",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Current process, memory, CPU and GPU telemetry",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "installed-model"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "execution_plan": {},
+              "hardware_info": {},
+              "model_info": {}
+            }
+          }
+        }
+      ],
+      "name": "system.plan",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "batch_tokens",
+          "required": false,
+          "schema": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "model_path",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "n_ctx",
+          "required": false,
+          "schema": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "ram_buffer_gb",
+          "required": false,
+          "schema": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "vram_buffer_gb",
+          "required": false,
+          "schema": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Plans an installed model without loading its weights or changing saved settings",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "active_processes": [],
+              "hardware_snapshot": {}
+            }
+          }
+        }
+      ],
+      "name": "system.ps",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Loaded model execution plan and hardware snapshot",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "task_id",
+              "value": "t_5f0c…"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "status": "cancelled",
+              "status_message": "Cancelled by request"
+            }
+          }
+        }
+      ],
+      "name": "tasks.cancel",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Cancels a running task",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "after",
+              "value": 0
+            },
+            {
+              "name": "task_id",
+              "value": "t_5f0c…"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "events": [],
+              "next": 0,
+              "progress": {
+                "done": 1,
+                "total": 3
+              },
+              "status": "working"
+            }
+          }
+        }
+      ],
+      "name": "tasks.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "after",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Events after this cursor (`next` of the last answer); 0 or absent = all kept events",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A task's status, progress and new events",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "tasks": [
+                {
+                  "created_at": "2026-10-25T10:30:00Z",
+                  "last_updated_at": "2026-10-25T10:30:02Z",
+                  "method": "ingest.run",
+                  "poll_ms": 500,
+                  "status": "working",
+                  "task_id": "t_5f0c…",
+                  "ttl_ms": 3600000
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "tasks.list",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Your tasks that have not expired, newest first",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "task_id",
+              "value": "t_5f0c…"
+            },
+            {
+              "name": "wait_ms",
+              "value": 30000
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "any": "the result the method returns"
+            }
+          }
+        }
+      ],
+      "name": "tasks.result",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "wait_ms",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "How long to wait for the end, at most 30000 ms; 0 or absent = do not wait",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A task's final result or error; waits up to wait_ms",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "api_auth_required": false,
+              "token": "sk-cluaiz-1f0c…",
+              "tokens": [
+                "sk-cluaiz-1f0c…"
+              ]
+            }
+          }
+        }
+      ],
+      "name": "tokens.create",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Makes a new API key (at most 5)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "api_auth_required": false,
+              "tokens": [
+                "sk-cluaiz-1f0c…"
+              ]
+            }
+          }
+        }
+      ],
+      "name": "tokens.list",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The API keys, and whether API authentication is required",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "index",
+              "value": 1
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "api_auth_required": false,
+              "revoked_token": "sk-cluaiz-1f0c…",
+              "tokens": []
+            }
+          }
+        }
+      ],
+      "name": "tokens.revoke",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "index",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Or its position in `tokens.list`, from 1",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "token",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The key itself, or its masked form (at least 4 visible trailing characters)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Removes an API key; with none left, API authentication turns off (as before)",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": []
+          }
+        }
+      ],
+      "name": "tools.cache",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Actual cache entries and byte counts for installed tools",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "fn",
+              "value": "run"
+            },
+            {
+              "name": "input",
+              "value": {}
+            },
+            {
+              "name": "kind",
+              "value": "plugin"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "result": "tool output"
+            }
+          }
+        }
+      ],
+      "name": "tools.call",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "fn",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "input",
+          "required": true,
+          "schema": true
+        },
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Execute an installed tool using the existing ToolsEngine",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "exec"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "freed_bytes": 0,
+              "removed": 0
+            }
+          }
+        }
+      ],
+      "name": "tools.clear_cache",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Remove cached files without uninstalling tools",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "query",
+              "value": "Find a tool for this task"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "candidates": [],
+              "installed": 0
+            }
+          }
+        }
+      ],
+      "name": "tools.discover",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "explain",
+          "required": false,
+          "schema": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "previous",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "query",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Dry-run the existing installed-tool matcher",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "cache": {},
+              "files": [],
+              "skipped": 0,
+              "truncated": false
+            }
+          }
+        }
+      ],
+      "name": "tools.files",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Files inside a tool package, with cache counts",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "schema": {},
+              "values": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "name": "tools.get_settings",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Read installed tool settings",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "registry-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "task": {
+                "status": "working",
+                "task_id": "t_example"
+              }
+            }
+          }
+        }
+      ],
+      "name": "tools.install",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Install a registry tool; task result reports the actual outcome",
+      "x-cep": {
+        "destructive": false,
+        "execution": "task",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": []
+          }
+        }
+      ],
+      "name": "tools.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Kind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Installed tools with settings and known function schemas",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "opened": true
+            }
+          }
+        }
+      ],
+      "name": "tools.open_file",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Ask the local file editor to open a tool file (owner only)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": false,
+        "owner_only": true,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            },
+            {
+              "name": "path",
+              "value": "SKILL.md"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "SKILL.md",
+              "text": "Tool instructions"
+            }
+          }
+        }
+      ],
+      "name": "tools.read_file",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Read a UTF-8 file inside an installed tool package",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "kind": "skill",
+              "name": "installed-tool"
+            }
+          }
+        }
+      ],
+      "name": "tools.remove",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Remove an installed tool and update its registry",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            },
+            {
+              "name": "patch",
+              "value": {
+                "enabled": true
+              }
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "schema": {},
+              "values": {
+                "enabled": true
+              }
+            }
+          }
+        }
+      ],
+      "name": "tools.set_settings",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "patch",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Patch"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Validate and save a tool settings patch",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "skill"
+            },
+            {
+              "name": "name",
+              "value": "installed-tool"
+            },
+            {
+              "name": "text",
+              "value": "Updated instructions"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "bytes": 20,
+              "path": "SKILL.md"
+            }
+          }
+        }
+      ],
+      "name": "tools.write_file",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/Kind"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "text",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Write SKILL.md or package.json in an installed tool package",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project"
+            }
+          }
+        }
+      ],
+      "name": "workspace.get",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Returns the current workspace directory",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "path",
+              "value": "/project"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project"
+            }
+          }
+        }
+      ],
+      "name": "workspace.set",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Changes the workspace to an existing directory",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    }
+  ],
+  "openrpc": "1.3.2"
+}

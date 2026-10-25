@@ -138,15 +138,17 @@ cluaiz llm-optimization
 ```
 *(Provides interactive toggles for Extreme MoE SSD Streaming, Flash Attention, VRAM/RAM buffers, and Hybrid Memory).*
 
-### 2. REST API Dynamic Update (Zero Downtime)
-Update engine settings dynamically via REST API without restarting the daemon:
+### 2. Settings over CEP
+Read and change the optimization settings with CEP `config.get` / `config.set` (section `optimization`):
 
 ```bash
-# Check current optimization status
-curl -X GET http://localhost:8080/v1/optimization/status
+# Current optimization settings (the field names config.set accepts)
+curl -X POST http://localhost:8000/v1/cep -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"config.get","params":{"section":"optimization"}}'
 
-# Enable Extreme MoE SSD Streaming
-curl -X POST http://localhost:8080/v1/optimization/update \
-  -H "Content-Type: application/json" \
-  -d '{"extreme_moe_streaming": "on"}'
+# Change fields: send only the ones to change
+curl -X POST http://localhost:8000/v1/cep -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"config.set","params":{"section":"optimization","patch":{"<field>":"<value>"}}}'
 ```
+
+Add `-H "Authorization: Bearer <token>"` when API authentication is on. An unknown field or invalid value is refused with `-32602`.

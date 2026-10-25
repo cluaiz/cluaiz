@@ -1,17 +1,16 @@
-# List Installed & Available Models API
+# List Installed Models
 
-`GET /v1/models/installed` & `GET /api/tags`
+CEP `models.list` · `GET /v1/models` (OpenAI) · `GET /api/tags` (Ollama)
 
-Returns a list of all locally installed GGUF and ONNX models synchronized on user hardware, including their category, parameters, quantization, supported tasks, and file metadata.
+Returns the locally installed GGUF and ONNX models, with their category, parameters, quantization, supported tasks and file metadata.
 
 ---
 
 ## 📌 Endpoint Information
 
-* **HTTP Method:** `GET`
-* **Paths:**
-  * `/v1/models/installed` — Full synchronized registry metadata (Engine Standard).
-  * `/api/tags` — Standard tag summary format.
+* `models.list` (CEP, `POST /v1/cep`): the full registry entries, optionally filtered by `category`. The result is the array of entries.
+* `GET /v1/models`: OpenAI's list format (`{"object": "list", "data": [...]}`).
+* `GET /api/tags`: Ollama's tag summary format.
 
 ---
 
@@ -20,7 +19,8 @@ Returns a list of all locally installed GGUF and ONNX models synchronized on use
 ### 1. cURL
 
 ```bash
-curl -X GET http://localhost:8000/v1/models/installed
+curl -X POST http://localhost:8000/v1/cep -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"models.list","params":{}}'
 ```
 
 ### 2. Python (Requests)
@@ -28,26 +28,23 @@ curl -X GET http://localhost:8000/v1/models/installed
 ```python
 import requests
 
-response = requests.get("http://localhost:8000/v1/models/installed")
-data = response.json()
-
-if data.get("status") == "success":
-    for model in data.get("models", []):
-        meta = model.get("metadata", {})
-        print(f"ID: {model['id']} | Category: {model.get('category')} | Format: {model.get('format_type')} | Params: {meta.get('parameters', 'N/A')}")
+call = {"jsonrpc": "2.0", "id": 1, "method": "models.list", "params": {}}
+models = requests.post("http://localhost:8000/v1/cep", json=call).json()["result"]
+for model in models:
+    meta = model.get("metadata", {})
+    print(f"ID: {model['id']} | Category: {model.get('category')} | Format: {model.get('format_type')} | Params: {meta.get('parameters', 'N/A')}")
 ```
+
+Add the header `Authorization: Bearer <token>` when API authentication is on.
 
 ---
 
-## 📤 Response Format (`/v1/models/installed`)
+## 📤 Response Format (`models.list` result)
 
 Each model also has `experimental`: `true` for a text-to-speech family whose engine support is unfinished (Audio8, Supertonic, Matcha, CosyVoice, Chatterbox, OmniVoice; list in `engine/onnx/src/audio/tts/data/tts_families.json`). Such a model still runs when chosen by name, but the engine never picks it automatically, and clients should label it and keep it out of default choices.
 
 ```json
-{
-  "status": "success",
-  "count": 2,
-  "models": [
+[
     {
       "id": "qwen2.5-7b-instruct",
       "category": "chat",
@@ -100,6 +97,5 @@ Each model also has `experimental`: `true` for a text-to-speech family whose eng
         "bit_depth": "32-bit"
       }
     }
-  ]
-}
+]
 ```

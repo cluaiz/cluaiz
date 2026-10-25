@@ -1,6 +1,6 @@
 # Document Ingest API
 
-`POST /v1/ingest` (alias: `POST /v1/ingest/file`)
+`ingest.run` (alias: `ingest.run`)
 
 Reads documents/images and returns text chunks, selected-model output, or vectors. **Model selection is optional.** Without a model the engine uses native document/OCR providers. With a model it runs that installed package through the existing inference owner.
 
@@ -24,7 +24,7 @@ The API Explorer has two controls: **Model** (including Native extraction) and *
 | Field | Type | Default | Meaning |
 |:---|:---|:---|:---|
 | `source` | string or string[] | Required | Authorized server-local path/file URI, allowed HTTP(S) URL, or actual data URI. Arrays preserve source order. |
-| `model` | string | Native extraction | Exact installed ID from `GET /v1/models/installed`. Omit/`auto` for native processing. Explicit missing/unsupported models error. |
+| `model` | string | Native extraction | Exact installed ID from `models.list`. Omit/`auto` for native processing. Explicit missing/unsupported models error. |
 | `output_controls.return_text` | boolean | `true` | Return available text/chunks. False removes raw text while retaining metadata. Image-only vectors do not produce text. |
 | `output_controls.return_embeddings` | boolean | Implied by an embedding model | True requires a selected embedding model. False conflicts with selecting an embedding model. Vision text models do not produce vectors. |
 | `chunking_strategy.type` | string | `semantic` | Only semantic chunking is supported. |
@@ -229,13 +229,13 @@ Native PDF/OCR provides text; the selected backbone reads that text. This mode d
 
 ## Code snippets
 
-Save a chosen payload as `request.json`, after replacing its model/source. In a POSIX shell:
+`ingest.run` is a CEP task: it answers at once with a `task`, and `tasks.result` gives the result shown below (`tasks.get` shows one event per finished source). Save a chosen payload as `params.json`, after replacing its model/source. In a POSIX shell, with `jq`:
 
 ```bash
-curl --fail-with-body http://127.0.0.1:8000/v1/ingest \
-  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary @request.json
+call() { curl -s http://127.0.0.1:8000/v1/cep -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  -H "Content-Type: application/json" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}"; }
+task=$(call ingest.run "$(cat params.json)" | jq -r .result.task.task_id)
+call tasks.result "{\"task_id\":\"$task\",\"wait_ms\":30000}"
 ```
 
 PowerShell request/authentication example: [API reference](../README.md#model-selection-and-media-routes).
@@ -253,10 +253,15 @@ payload = {
     "output_controls": {"return_text": True}
 }
 # Optional: payload["model"] = os.environ["CLUAIZ_MODEL"]
-response = requests.post("http://127.0.0.1:8000/v1/ingest",
-    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]}, json=payload)
-response.raise_for_status()
-data = response.json()
+def cep(method, params):
+    reply = requests.post("http://127.0.0.1:8000/v1/cep", json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+                          headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]}).json()
+    if "error" in reply:
+        raise RuntimeError(reply["error"])
+    return reply["result"]
+
+task = cep("ingest.run", payload)["task"]
+data = cep("tasks.result", {"task_id": task["task_id"], "wait_ms": 30000})
 for item in data["processed_sources"]:
     print(item["status"], item.get("processing", "native"), item.get("chunks", []))
     print(item.get("embeddings", []))
@@ -290,13 +295,13 @@ Model text appears in `parts[].text` and returned `chunks`. Page numbers are one
 ## Partial results and errors
 
 - Native/no-model behavior remains extraction, without loading an LLM.
-- Missing explicit models return HTTP 404. Unsupported model tasks/options return errors before dispatch where possible.
-- No/invalid Bearer token returns HTTP 401 when API authentication is required. Source policy can reject an unauthorized file before processing.
-- Mixed source successes/errors or incomplete pages can return HTTP 200 with `status:"partial"`. Inspect every source's status, omissions and warnings.
-- If every source errors, the response is an error; a nested embedding executor's HTTP status/error is preserved. Native parse failures return HTTP 400.
+- A missing explicit model fails the task with `-32004`. Unsupported model tasks/options fail before dispatch where possible.
+- No/invalid Bearer token returns HTTP 401 when API authentication is on. Every source path is checked (`Call::check_path`) before the task starts; a missing file is `-32602`.
+- Mixed source successes/errors or incomplete pages give a completed task with `status:"partial"`. Inspect every source's status, omissions and warnings.
+- If every source errors, the task fails. The code follows the first source's error (`-32004` not found, `-32005` conflict, `-32006` too large, `-32010` unavailable, else `-32602`), with `data.type: "ingest_failed"` and the full result in `data.result`.
 - Renderer/projector/helper failures, model admission failures and graph/input mismatches are explicit. The engine does not silently choose another model or substitute hashes as vectors.
 - `namespace`, unknown fields, non-semantic chunking and nonzero overlap are not implemented.
-- Inline JSON over `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB` returns HTTP 413 `request_too_large`. Encoded bytes, decoded buffers, output size, context and live memory admission have separate bounds.
+- A `/v1/cep` body over `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB` returns HTTP 413. Encoded bytes, decoded buffers, output size, context and live memory admission have separate bounds.
 - RAM/VRAM reserves, native drivers and the downloader are unchanged. A small model download is not a promise about peak runtime memory or realtime performance.
 
 Ingest can return vectors, but saving, indexing and searching them remains your application's responsibility.

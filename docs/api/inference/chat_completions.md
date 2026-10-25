@@ -6,7 +6,7 @@ Generates conversational completions, structured outputs, tool/function calling,
 
 ## Select a model for the request
 
-Read `GET /v1/models/installed` and use an exact `models[].id`. The API Explorer Model dropdown writes that value into the JSON `model`. Its choices follow declared tasks and the payload's media parts; the engine still validates the actual model/projector assets.
+Read `models.list` and use an exact `models[].id`. The API Explorer Model dropdown writes that value into the JSON `model`. Its choices follow declared tasks and the payload's media parts; the engine still validates the actual model/projector assets.
 
 | Request content | Selected model / assets |
 |:---|:---|
@@ -17,7 +17,7 @@ Read `GET /v1/models/installed` and use an exact `models[].id`. The API Explorer
 | `video_url`, `include_audio:true` | Both visual and audio capabilities/assets |
 | `file_url` | PDF pages go to the selected image-capable package with a projector; otherwise shared native extraction/OCR supplies text. DOC/DOCX/code/text use native text extraction. |
 
-`model:"auto"` uses the configured active chat/vision slot. It does not promise to discover a model that supports every supplied attachment. Choose an explicit compatible ID when testing media. An ONNX image embedding model returns vectors through `/v1/embeddings`; it is not a vision chat model. Native `/v1/ingest` extracts text without selecting a model.
+`model:"auto"` uses the configured active chat/vision slot. It does not promise to discover a model that supports every supplied attachment. Choose an explicit compatible ID when testing media. An ONNX image embedding model returns vectors through `/v1/embeddings`; it is not a vision chat model. Native `ingest.run` extracts text without selecting a model.
 
 The content fragments later in this page belong inside `messages`. A complete request looks like this (replace the model ID with your installed vision package):
 
@@ -124,7 +124,7 @@ After projector loading, the incremental request-RAM check returns an error cont
 ## 🔒 Security Notice: Local File Paths
 
 > [!WARNING]
-> Local paths refer to the engine host and must pass filesystem policy. Bearer authentication and source authorization are separate checks; `x-caller: user` does not grant unrestricted access. Allowed remote sources and inline bytes use shared source/decoded limits. Always use the actual configured engine address and authentication settings.
+> Local paths refer to the engine host. A standard route runs as the authenticated owner; the path is canonicalized before it is read. Allowed remote sources and inline bytes use shared source/decoded limits. Always use the actual configured engine address and authentication settings.
 
 ---
 
@@ -444,7 +444,7 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
 
 Tools switched off in the App's Tools page are never offered and cannot run. Every other installed skill, plugin and MCP server can be used without binding it to the chat first, and none of them is put into the prompt in full unless the model asks for it:
 
-1. **Bound tools.** Tools bound to the chat (`/v1/chat/{session_id}/tools` or `tools`) go into the system prompt with their whole schemas and instructions. A tool that does not fit is left out whole; nothing is cut in the middle.
+1. **Bound tools.** Tools bound to the chat (`chat.tools` or `tools`) go into the system prompt with their whole schemas and instructions. A tool that does not fit is left out whole; nothing is cut in the middle.
 2. **Suggestions.** The engine matches the user's message against the other tools on whole words (never parts of words, so "trust" does not match "rust"), including common Hinglish and Devanagari words ("padho" → read, "chalao" → run). A tool with clear evidence (its name, a trigger phrase, or two separate matches on its name, function names or trigger words) is shown as a short card with its load cost; weaker matches as a one-line title. Suggestions go into the current user message inside `<tools_hint>`, not into the system prompt. An ordinary message ("Hi") gets no tool text at all.
 3. **Meta-tools.** With suggestions the model gets three functions, answered by the engine itself without an approval prompt:
    - `load_tool` (`{"id": "filesystem"}`, optional `"functions": [...]`): returns the tool's instructions and, whole, up to six of its functions closest to the user's message (the others are named; ask for them with `"functions"`), within the room left in the context. A tool that does not fit is refused with the reason, never cut. The tool's MCP server is started only now; a server unused for 10 minutes is stopped again, and at most four run at once.
@@ -452,16 +452,16 @@ Tools switched off in the App's Tools page are never offered and cannot run. Eve
    - `find_tools` (`{"query": "read a file"}`): searches the other installed tools and returns cards. `tool_search` is still accepted as its old name.
    - `read_tool_file` (`{"id": "code-interpreter", "path": "references/LANGUAGES.md"}`): one more file of a tool, such as a reference its instructions point to; an empty path lists the tool's text files (a `load_tool` result names them too). Only files inside the tool's folder; a file larger than the room left is refused with its size, never cut.
 
-   A tool loaded with `load_tool` is unloaded after 3 answers that did not use it (or the tool's `default_turns`, when above 0); its earlier load results become short notes. A tool pinned with `POST /v1/chat/{session_id}/tools` (`{"tools": [{"id": "filesystem", "turns": -1, "inline": true, "pinned": true}]}`) stays. An MCP server that exits on its own starts again on the next call, after 1 s (2 s after a second crash); after 3 crashes in 10 minutes it is not started again until that window passes, and its card says it is unavailable.
+   A tool loaded with `load_tool` is unloaded after 3 answers that did not use it (or the tool's `default_turns`, when above 0); its earlier load results become short notes. A tool pinned with `chat.set_tools` (`{"tools": [{"id": "filesystem", "turns": -1, "inline": true, "pinned": true}]}`) stays. An MCP server that exits on its own starts again on the next call, after 1 s (2 s after a second crash); after 3 crashes in 10 minutes it is not started again until that window passes, and its card says it is unavailable.
 
    The stream reports meta-tool calls like any tool call (`tool_calls`, then `tool_result`, with category `tools`). Send `tool_search: false` to turn suggestions off, or `tool_choice: "none"` for no tools at all.
-4. **Calling.** Calling a loaded tool's functions asks for approval under the agent security mode, in streaming and non-streaming requests alike: a non-streaming request waits until the call is approved or rejected through `/v1/system/permission/approve|reject` (it is listed under `/v1/system/permission/pending`) or the 120-second timeout passes. A tool called by its id before it was loaded is loaded instead, so the model can call the right function next.
+4. **Calling.** Calling a loaded tool's functions asks for approval under the agent security mode, in streaming and non-streaming requests alike: a non-streaming request waits until the call is approved or rejected through `approvals.approve|reject` (it is listed under `approvals.list`) or the 120-second timeout passes. A tool called by its id before it was loaded is loaded instead, so the model can call the right function next.
 
 In a chat with `session_id`, a tool loaded with `load_tool` stays in the conversation where it was loaded until the model unloads it; it is not moved into the system prompt. The Engine keeps, per chat, the hint it put in front of each user message and that turn's tool steps (`<CLUAIZ_HOME>/memory/chats/<chat>/ledger.json`), and puts them back when the client sends the turn again as plain text, so earlier turns render exactly as the model saw them and their KV cache is reused. The chat's loaded tools come back after an Engine restart. Private chats (`temporary_chat`) keep none of this.
 
 **Context report.** A streaming response sends a chunk with `context.tools` before the first token: the suggested tools (id, `card` or `title`, score, matched words, estimated load cost), whether the meta-tools were offered, and the estimated tokens of the hint. The last chunk (with `engine`) and the non-streaming response carry `context_report.tools` with the same data plus `events`: every `load_tool`, `unload_tool` and `find_tools` call with its target and result size. `hint_tokens`, `system_tools_tokens` and `conversation_tokens` (the text of all messages) are counted with the loaded model's tokenizer (`token_counts: "tokenizer"`); without a loaded model, and for load costs and `load_room_tokens`, they are estimated from characters.
 
-**Dry run.** `POST /v1/tools/discover` with `{"query": "...", "previous": "..."}` returns what would be suggested for a message, without loading or starting anything. With `"explain": true` it also returns `evidence`: for every tool with any match, its score, matched words and whether the match was on its name, a function or trigger (`good`), or decisive. A file name or link in the message counts as a file or a web address, not by its words ("notes.txt" is a file, not a note).
+**Dry run.** `tools.discover` with `{"query": "...", "previous": "..."}` returns what would be suggested for a message, without loading or starting anything. With `"explain": true` it also returns `evidence`: for every tool with any match, its score, matched words and whether the match was on its name, a function or trigger (`good`), or decisive. A file name or link in the message counts as a file or a web address, not by its words ("notes.txt" is a file, not a note).
 
 ---
 
