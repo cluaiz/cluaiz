@@ -72,14 +72,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/ingest", ingest.clone())
         .route("/v1/ingest/file", ingest)
         // ── 13. System Control, Telemetry & Processes ──
-        .route(
-            "/v1/system/auth/token/generate",
-            post(handlers::permission::generate_auth_token),
-        )
-        .route(
-            "/v1/system/auth/token/revoke",
-            post(handlers::permission::revoke_auth_token),
-        )
         // ── 15. Storage Control API ──
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),

@@ -8,4 +8,3 @@ pub mod embeddings;
 pub mod ingest;
 mod ingest_model;
 pub mod models;
-pub mod permission;
