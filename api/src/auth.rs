@@ -105,10 +105,10 @@ pub async fn auth_middleware(
         return Ok(next.run(req).await);
     }
 
-    // 2. Sensitive System Routes: Filesystem, Shell Command, Token Management & Permission Mutations
+    // 2. Token management
     let is_token_management = path == "/v1/system/auth/token/generate" || path == "/v1/system/auth/token/revoke";
 
-    if path == "/v1/system/cmd" || is_token_management {
+    if is_token_management {
         if !is_authenticated {
             return Err(unauthorized_response(
                 "Missing or invalid Authorization token. Valid session or API Bearer token is required for sensitive system and security operations.",

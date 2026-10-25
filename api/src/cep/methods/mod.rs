@@ -20,6 +20,7 @@ pub mod models;
 pub mod notes;
 pub mod storage;
 pub mod system;
+pub mod system_exec;
 pub mod tokens;
 pub mod tools;
 pub mod workspace;
@@ -39,6 +40,7 @@ pub fn registry() -> Registry<CallCtx> {
     notes::register(&mut registry);
     storage::register(&mut registry);
     system::register(&mut registry);
+    system_exec::register(&mut registry);
     tokens::register(&mut registry);
     tools::register(&mut registry);
     workspace::register(&mut registry);
