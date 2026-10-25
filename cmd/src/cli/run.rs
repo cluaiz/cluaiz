@@ -54,7 +54,7 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
         Lookup::Ambiguous(_) => return models::resolve_installed(&name).map(|_| ()),
         Lookup::NotInstalled => match install::resolve(&name, args.all).await? {
             Resolved::OnDisk(path) => {
-                let id = models::id_for_path(&path);
+                let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
                 (path, id)
             }
             Resolved::AlreadyInstalled(id) => {
@@ -65,7 +65,7 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
                 install::confirm(&plan)?;
                 let path = install::download(&plan).await?;
                 // `run` makes the model it downloaded the active one (as before)
-                let id = models::id_for_path(&path);
+                let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
                 if plan.manifest.architecture_type == "onnx" {
                     cluaiz_security::PermissionSchema::set_active_embedding_model(id);
                 } else {

@@ -38,6 +38,18 @@ impl InstalledStateRegistry {
         reg
     }
 
+    /// Registry id of an installed weight file, else its file name
+    pub fn id_for_path(path: &Path) -> String {
+        let canonical = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+        let target = canonical(path);
+        Self::load()
+            .installed_models
+            .values()
+            .find(|e| e.primary_path().map(|p| canonical(&p) == target).unwrap_or(false))
+            .map(|e| e.id.clone())
+            .unwrap_or_else(|| path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())
+    }
+
     /// Resolve one installed model without refreshing/writing every other package.
     /// The caller inspects the selected package; the authoritative registry is reread each call.
     pub fn find(model_id: &str) -> Option<ModelRegistryEntry> {
