@@ -157,11 +157,9 @@ def _non_streaming(engine, decision):
 
     def answer():
         while not done.is_set():
-            pending = engine.get("/v1/system/permission/pending").get("pending", [])
-            for item in pending:
-                if item.get("status") == "pending":
-                    engine.post("/v1/system/permission/" + decision, {"request_id": item["id"]}, timeout=60)
-                    return
+            for item in engine.cep("approvals.list")["pending"]:
+                engine.cep("approvals." + decision, approval_id=item["id"])
+                return
             time.sleep(0.5)
 
     worker = threading.Thread(target=answer, daemon=True)

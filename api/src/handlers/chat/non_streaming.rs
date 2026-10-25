@@ -117,7 +117,7 @@ pub async fn execute_non_streaming(
             );
 
             // Same approval gate as streaming: the call waits for the user's decision, which the
-            // App sees under /v1/system/permission/pending
+            // App sees with approvals.list
             // Searching other chats asks the user first (policy cross_chat: ask), like a tool call
                     let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload) {
                         super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }

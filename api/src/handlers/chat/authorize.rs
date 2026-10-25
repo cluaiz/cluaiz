@@ -1,10 +1,12 @@
 //! One approval gate for every way the agent runs a tool (streaming and non-streaming).
 //!
-//! `assess` decides whether a call needs the user's approval. `request` registers it where the
-//! App sees it (`/v1/system/permission/pending`, and the SSE `permission_request` chunk when
-//! streaming), and `wait` holds the call until the user approves, rejects or the time runs out.
+//! `assess` decides whether a call needs the user's approval. `request` registers it in the CEP
+//! approval store, where the App sees it (`approvals.list`, and the SSE `permission_request` chunk
+//! when streaming), and `wait` holds the call until the owner answers (`approvals.approve` /
+//! `approvals.reject`) or the time runs out.
 
-use crate::state::{AppState, ApprovalDecision, PendingPermissionRequest};
+use crate::state::AppState;
+use cluaiz_cep::approval::Decision;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Instant;
@@ -127,35 +129,21 @@ fn read_only_trusted(entry: &cluaiz_agents::ToolEntry, master_mode: &str, functi
 
 /// A call waiting for the user's decision.
 pub struct PendingApproval {
+    /// The approval id the owner answers (`approvals.approve {approval_id}`)
     pub request_id: String,
-    decision: oneshot::Receiver<ApprovalDecision>,
+    decision: oneshot::Receiver<Decision>,
 }
 
 /// Registers the call for approval. The caller shows it to the user (the streaming path sends
-/// a `permission_request` chunk; every path lists it under `/v1/system/permission/pending`).
+/// a `permission_request` chunk; every path lists it in `approvals.list`).
 pub async fn request(state: &Arc<AppState>, comp_type: &str, tool_name: &str, payload: &str, chat: Option<&str>) -> PendingApproval {
-    let request_id = format!("perm_{}", uuid::Uuid::new_v4());
+    let approvals = &state.cep.shared().approvals;
+    let approval = approvals.request("agent", &format!("{comp_type}:{tool_name}"), [0; 32], payload);
     if let Some(chat) = chat {
-        REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).insert(request_id.clone(), (chat.to_string(), tool_name.to_string()));
+        REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).insert(approval.id.clone(), (chat.to_string(), tool_name.to_string()));
     }
-    let (tx, decision) = oneshot::channel::<ApprovalDecision>();
-    state.active_approvals.write().await.insert(request_id.clone(), tx);
-    let timestamp_ms = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
-    state.pending_permissions.write().await.insert(
-        request_id.clone(),
-        PendingPermissionRequest {
-            id: request_id.clone(),
-            action: format!("{}:{}", comp_type, tool_name),
-            target: payload.to_string(),
-            caller: "agent".to_string(),
-            timestamp_ms,
-            status: "pending".to_string(),
-        },
-    );
-    PendingApproval { request_id, decision }
+    let decision = approvals.wait(&approval.id);
+    PendingApproval { request_id: approval.id, decision }
 }
 
 /// Waits for the decision. `Err` carries the reason the call must not run.
@@ -172,13 +160,11 @@ pub async fn wait(state: &Arc<AppState>, pending: PendingApproval, tool_name: &s
         Ok(Err(_)) => Err("Approval channel disconnected".to_string()),
         Err(_) => {
             tracing::warn!("⏱️ [API] Confirmation timed out for tool '{}'", tool_name);
-            if let Some(req) = state.pending_permissions.write().await.get_mut(&pending.request_id) {
-                req.status = "timeout".to_string();
-            }
             Err(format!("User confirmation timed out after {} seconds. Operation skipped.", APPROVAL_TIMEOUT_SECS))
         }
     };
-    state.active_approvals.write().await.remove(&pending.request_id);
+    // A late answer finds nothing waiting
+    state.cep.shared().approvals.forget(&pending.request_id);
     REQUESTS.lock().unwrap_or_else(|e| e.into_inner()).remove(&pending.request_id);
     outcome
 }

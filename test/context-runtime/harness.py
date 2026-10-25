@@ -125,7 +125,7 @@ class Engine:
                             out["asked"].append(pr)
                             choice = decide(pr) if callable(decide) else decide
                             if choice in ("approve", "reject"):
-                                self.post("/v1/system/permission/" + choice, {"request_id": pr["request_id"]}, timeout=60)
+                                self.cep("approvals." + choice, approval_id=pr["request_id"])
         except urllib.error.HTTPError as e:
             out["error"] = {"status": e.code, "body": e.read()[:300].decode("utf-8", "replace")}
         except Exception as e:  # network or timeout
