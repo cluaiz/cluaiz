@@ -17,13 +17,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(host: Arc<EngineHost>) -> Self {
+    /// `session_token`: what local clients must present (written to the home by the daemon)
+    pub fn new(host: Arc<EngineHost>, session_token: String) -> Self {
         let workspace = cluaiz_core::EnvironmentManager::current().local_dir.clone();
         cluaiz_agents::ToolsEngine::set_workspace_dir(workspace.clone());
         Self {
             host,
             current_workspace_dir: Arc::new(RwLock::new(workspace)),
-            session_token: Arc::new(crate::auth::initialize_session_token()),
+            session_token: Arc::new(session_token),
             permission_schema: Arc::new(RwLock::new(cluaiz_security::PermissionSchema::load())),
             cep: Arc::new(crate::cep::engine()),
         }

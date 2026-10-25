@@ -1,0 +1,18 @@
+[package]
+name = "cluaiz-ffi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "The Cluaiz Engine as a C library: cep_call / cep_free (CEP over the C ABI)"
+
+[lib]
+# cluaiz_cep.dll / libcluaiz_cep.so / libcluaiz_cep.dylib ("cluaiz" would clash with the cluaiz.exe build files)
+name = "cluaiz_cep"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Same features as the `cmd` build, so building both together shares one GPU backend build
+cluaiz-api = { path = "../api" }
+cluaiz-cep = { path = "../cep" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
