@@ -7,7 +7,7 @@ use axum::{
     extract::{DefaultBodyLimit, Request},
     middleware::{from_fn, Next},
     response::Response,
-    routing::{delete, get, post},
+    routing::{get, post},
     Router,
 };
 use std::sync::Arc;
@@ -66,67 +66,8 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
         .route("/api/pull", post(handlers::models::pull_model))
-        // ── 5. Unified Tools & Session Governance API ──
-        .route("/v1/tools", get(handlers::session_tools::get_all_tools))
-        .route("/v1/tools/discover", post(handlers::session_tools::discover_tools))
-        // ── 6. WASM Skills API ──
-        .route("/v1/skills/list", get(handlers::skills::list_skills))
-        .route("/v1/skills/install", post(handlers::skills::install_skill))
-        .route("/v1/skills/remove", delete(handlers::skills::remove_skill))
-        .route(
-            "/v1/skills/cache",
-            get(handlers::skills::list_cache).delete(handlers::skills::clear_cache),
-        )
-        // ── 7. Plugins API ──
-        .route("/v1/plugins/list", get(handlers::plugins::list_plugins))
-        .route(
-            "/v1/plugins/install",
-            post(handlers::plugins::install_plugin),
-        )
-        .route(
-            "/v1/plugins/remove",
-            delete(handlers::plugins::remove_plugin),
-        )
-        .route(
-            "/v1/plugins/cache",
-            get(handlers::plugins::list_cache).delete(handlers::plugins::clear_cache),
-        )
-        // ── 8. MCP API & Native MCP Server ──
         // MCP server over the CEP registry
         .route("/mcp", post(crate::cep::mcp::handle))
-        .route("/v1/mcp/list", get(handlers::mcp::list_mcp))
-        .route("/v1/mcp/install", post(handlers::mcp::install_mcp))
-        .route("/v1/mcp/remove", delete(handlers::mcp::remove_mcp))
-        .route(
-            "/v1/mcp/cache",
-            get(handlers::mcp::list_cache).delete(handlers::mcp::clear_cache),
-        )
-        // ── 9. Components API (Dashboard) ──
-        .route(
-            "/api/components/list",
-            get(handlers::components::list_components),
-        )
-        .route(
-            "/api/components/settings",
-            get(handlers::components::get_settings).post(handlers::components::update_settings),
-        )
-        .route(
-            "/api/components/file",
-            get(handlers::components::get_specific_file).post(handlers::components::update_file),
-        )
-        .route(
-            "/api/components/files",
-            get(handlers::components::get_files),
-        )
-        .route(
-            "/api/components/cache",
-            post(handlers::components::clear_cache),
-        )
-        // ── 10. Dynamic Ecosystem & Control Execution ──
-        .route(
-            "/v1/execute/{component_name}/{function_name}",
-            post(handlers::control::execute_dynamic),
-        )
         // ── 12. Vector Ingest API ──
         .route("/v1/ingest", ingest.clone())
         .route("/v1/ingest/file", ingest)
