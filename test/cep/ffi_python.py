@@ -101,6 +101,16 @@ def main():
         grown = working_set_mb() - before
         check("10 000 calls, no leak", grown < 20, f"working set {before:.0f} MB, grew {grown:+.1f} MB")
 
+    # CEP-P1: overhead of a small read in-process (envelope, registry, dispatch, JSON both ways)
+    timings = []
+    for _ in range(1000):
+        begin = time.perf_counter()
+        cep("tasks.list")
+        timings.append((time.perf_counter() - begin) * 1000)
+    timings.sort()
+    p95 = timings[int(0.95 * (len(timings) - 1))]
+    check("in-process tasks.list p95 <= 1 ms", p95 <= 1.0, f"p50 {timings[len(timings) // 2]:.3f} ms, p95 {p95:.3f} ms")
+
     token_after = open(os.path.join(args.home, "session.token"), encoding="utf-8").read()
     check("home session token left alone", token_before == token_after, "")
     print(f"\n{sum(results)} of {len(results)} passed")
