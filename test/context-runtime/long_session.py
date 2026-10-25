@@ -56,11 +56,11 @@ class Client:
         worker.start()
         seen = set()
         while worker.is_alive():
-            _, pending = self.call("/v1/system/permission/pending")
-            for item in pending.get("pending", []):
-                if item.get("status") == "pending" and item["id"] not in seen:
+            _, pending = self.call("/v1/cep", {"jsonrpc": "2.0", "id": 1, "method": "approvals.list"})
+            for item in pending.get("result", {}).get("pending", []):
+                if item["id"] not in seen:
                     seen.add(item["id"])
-                    self.call("/v1/system/permission/approve", {"request_id": item["id"], "feedback": None})
+                    self.call("/v1/cep", {"jsonrpc": "2.0", "id": 1, "method": "approvals.approve", "params": {"approval_id": item["id"]}})
             time.sleep(0.3)
         return result["code"], result["data"]
 

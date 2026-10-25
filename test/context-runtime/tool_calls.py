@@ -96,7 +96,7 @@ def run_row(args, row):
                         text.append(d["content"])
                     pr = d.get("permission_request")
                     if pr:
-                        post(args.url + "/v1/system/permission/approve", args.token, {"request_id": pr["request_id"]}, timeout=60).read()
+                        post(args.url + "/v1/cep", args.token, {"jsonrpc": "2.0", "id": 1, "method": "approvals.approve", "params": {"approval_id": pr["request_id"]}}, timeout=60).read()
                     for tc in d.get("tool_calls") or []:
                         fn = tc.get("function", {})
                         # MCP servers report the server as the name and the function as sub_function

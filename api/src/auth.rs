@@ -83,7 +83,6 @@ pub async fn auth_middleware(
     }
 
     let path = req.uri().path().to_string();
-    let method = req.method().clone();
 
     // 1. Extract Bearer Token from Authorization header
     let bearer_token = extract_bearer_token(&req);
@@ -108,11 +107,8 @@ pub async fn auth_middleware(
 
     // 2. Sensitive System Routes: Filesystem, Shell Command, Token Management & Permission Mutations
     let is_token_management = path == "/v1/system/auth/token/generate" || path == "/v1/system/auth/token/revoke";
-    let is_permission_mutation = (path == "/v1/system/permission" && method == axum::http::Method::POST)
-        || path.starts_with("/v1/system/permission/approve")
-        || path.starts_with("/v1/system/permission/reject");
 
-    if path.starts_with("/v1/fs/") || path == "/v1/system/cmd" || is_token_management || is_permission_mutation {
+    if path == "/v1/system/cmd" || is_token_management {
         if !is_authenticated {
             return Err(unauthorized_response(
                 "Missing or invalid Authorization token. Valid session or API Bearer token is required for sensitive system and security operations.",

@@ -140,17 +140,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/execute/{component_name}/{function_name}",
             post(handlers::control::execute_dynamic),
         )
-        .route(
-            "/v1/control/execute",
-            post(handlers::control::execute_script),
-        )
-        // ── 11. Typed Agent Control (z-plan) ──
-        .route("/v1/control", post(handlers::control::handle_control_op))
-        .route(
-            "/v1/control/batch",
-            post(handlers::control::handle_control_batch),
-        )
-        .route("/v1/control/ops", get(handlers::control::list_control_ops))
         // ── 12. Vector Ingest API ──
         .route("/v1/ingest", ingest.clone())
         .route("/v1/ingest/file", ingest)
@@ -162,18 +151,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route(
             "/v1/system/auth/token/revoke",
             post(handlers::permission::revoke_auth_token),
-        )
-        .route(
-            "/v1/system/permission/pending",
-            get(handlers::permission::get_pending_permissions),
-        )
-        .route(
-            "/v1/system/permission/approve",
-            post(handlers::permission::approve_permission),
-        )
-        .route(
-            "/v1/system/permission/reject",
-            post(handlers::permission::reject_permission),
         )
         // ── 15. Storage Control API ──
         .layer(axum::middleware::from_fn_with_state(
