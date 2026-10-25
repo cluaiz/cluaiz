@@ -34,6 +34,18 @@ fn default_api_host() -> String {
     "0.0.0.0".to_string()
 }
 
+/// What CEP `system.exec` may do. Both off by default: every call asks the owner, and only a
+/// program with its arguments runs (no shell line).
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ExecPolicy {
+    /// Accept `{"command": "<shell line>"}` (cmd /C, sh -c) besides `{"program", "args"}`
+    #[serde(default)]
+    pub allow_shell: bool,
+    /// Run without the owner's approval of each call
+    #[serde(default)]
+    pub without_approval: bool,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiAuth {
     #[serde(default = "default_require_api_auth")]
@@ -171,6 +183,8 @@ pub struct PermissionSchema {
     pub api_auth: ApiAuth,
     #[serde(default = "default_agent_security_mode")]
     pub agent_security_mode: String,
+    #[serde(default)]
+    pub exec: ExecPolicy,
 }
 
 impl Default for PermissionSchema {
@@ -191,6 +205,7 @@ impl Default for PermissionSchema {
             connection_protocol: default_connection_protocol(),
             api_auth: ApiAuth::default(),
             agent_security_mode: default_agent_security_mode(),
+            exec: ExecPolicy::default(),
         }
     }
 }
@@ -300,6 +315,11 @@ impl PermissionSchema {
             if let Some(cm) = obj.get("chat_models") {
                 if let Ok(parsed) = serde_json::from_value::<ModelSelection>(cm.clone()) {
                     self.chat_models = parsed;
+                }
+            }
+            if let Some(exec) = obj.get("exec") {
+                if let Ok(parsed) = serde_json::from_value::<ExecPolicy>(exec.clone()) {
+                    self.exec = parsed;
                 }
             }
             if let Some(vm) = obj.get("vector_models") {
