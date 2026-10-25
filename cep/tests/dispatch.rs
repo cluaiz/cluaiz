@@ -27,6 +27,13 @@ struct Nested {
     size: u32,
 }
 
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct Copy {
+    from: String,
+    to: String,
+}
+
 #[derive(Default)]
 struct Log(Mutex<Vec<(String, String, Option<i32>)>>);
 
@@ -45,6 +52,15 @@ fn engine(log: Arc<Log>) -> Engine<()> {
             |_: (), call: Call, p: Write| async move {
                 call.check_path(&PathBuf::from(&p.path))?;
                 Ok(json!({ "bytes": p.text.unwrap_or_default().len() }))
+            },
+        )
+        .add(
+            "fs.copy",
+            Meta::new(Scope::Write, "Two paths, one approval").example(json!({"from": "a", "to": "b"}), json!({"copied": true})),
+            |_: (), call: Call, p: Copy| async move {
+                call.check_path(&PathBuf::from(&p.from))?;
+                call.check_path(&PathBuf::from(&p.to))?;
+                Ok(json!({ "copied": true }))
             },
         )
         .add(
@@ -184,8 +200,8 @@ async fn test_tasks_panics_and_discovery_document() {
 
     let doc = call(&engine, &owner, json!({"jsonrpc": "2.0", "id": 5, "method": "rpc.discover", "params": {"group": "fs"}})).await.unwrap()["result"].clone();
     assert_eq!(doc["openrpc"], "1.3.2");
-    assert_eq!(doc["methods"].as_array().unwrap().len(), 1);
-    let method = &doc["methods"][0];
+    assert_eq!(doc["methods"].as_array().unwrap().len(), 2, "fs.copy and fs.write");
+    let method = doc["methods"].as_array().unwrap().iter().find(|m| m["name"] == "fs.write").unwrap();
     assert_eq!((method["name"].as_str(), method["x-cep"]["scope"].as_str()), (Some("fs.write"), Some("write")));
     let params: Vec<(&str, bool)> = method["params"].as_array().unwrap().iter().map(|p| (p["name"].as_str().unwrap(), p["required"].as_bool().unwrap())).collect();
     assert!(params.contains(&("path", true)) && params.contains(&("text", false)));
@@ -195,4 +211,19 @@ async fn test_tasks_panics_and_discovery_document() {
         let name = target.strip_prefix("#/components/schemas/").expect(target);
         assert!(doc["components"]["schemas"].get(name).is_some(), "{name}");
     }
+}
+
+#[tokio::test]
+async fn test_one_approval_covers_every_path_of_the_call() {
+    let engine = engine(Arc::default());
+    let asker = token(&[Scope::Read, Scope::Write], OnDenied::Ask);
+    let copy = json!({"jsonrpc": "2.0", "id": 1, "method": "fs.copy", "params": {"from": "/other/a", "to": "/elsewhere/b"}});
+    let asked = call(&engine, &asker, copy.clone()).await.unwrap();
+    let approval = asked["error"]["data"]["approval_id"].as_str().unwrap().to_string();
+    engine.shared().approvals.decide(&approval, true, None).unwrap();
+    let mut retry = copy;
+    retry["params"]["_meta"] = json!({"approval": approval});
+    // Both outside paths pass on the one approval; it is still used up for any later call
+    assert_eq!(call(&engine, &asker, retry.clone()).await.unwrap()["result"]["copied"], true);
+    assert_eq!(call(&engine, &asker, retry).await.unwrap()["error"]["code"], APPROVAL_REQUIRED);
 }

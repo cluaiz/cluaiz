@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 
 /// Whether a method answers directly or returns a task handle
@@ -102,21 +103,34 @@ pub struct Shared {
     pub(crate) discovery: OnceLock<crate::discover::Discovery>,
 }
 
-/// One call, as its method sees it: who calls, and the protocol services
+/// One call, as its method sees it: who calls, and the protocol services. A clone (for work
+/// that outlives the request, such as a task) is the same call: it shares its approval.
+#[derive(Clone)]
 pub struct Call {
     pub principal: Arc<Principal>,
     pub method: &'static str,
     pub digest: [u8; 32],
     pub approval: Option<String>,
     pub shared: Arc<Shared>,
+    /// Set once this call's approval is used: one approval covers every check of the call
+    /// (a copy with two outside paths, an audio run with an outside model and source)
+    approved: Arc<AtomicBool>,
 }
 
 impl Call {
+    pub(crate) fn new(principal: Arc<Principal>, method: &'static str, digest: [u8; 32], approval: Option<String>, shared: Arc<Shared>) -> Self {
+        Self { principal, method, digest, approval, shared, approved: Arc::new(AtomicBool::new(false)) }
+    }
+
     /// Goes on only with an approval made for exactly this call; otherwise asks the owner
     pub fn require_approval(&self, target: &str) -> Result<(), CepError> {
+        if self.approved.load(Ordering::Acquire) {
+            return Ok(());
+        }
         let approvals = &self.shared.approvals;
         if let Some(id) = &self.approval {
             if approvals.consume(id, &self.principal.id, self.method, self.digest) {
+                self.approved.store(true, Ordering::Release);
                 return Ok(());
             }
         }
