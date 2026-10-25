@@ -7,6 +7,7 @@ pub mod ingest;
 pub mod install;
 pub mod keys;
 pub mod list;
+pub mod mcp_server;
 pub mod models;
 pub mod ps;
 pub mod pull;

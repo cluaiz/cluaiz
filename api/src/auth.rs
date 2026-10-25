@@ -122,8 +122,8 @@ pub async fn auth_middleware(
         return Ok(next.run(req).await);
     }
 
-    // 4. Public probes: health and MCP endpoints always pass
-    let is_probe = path == "/health" || path == "/mcp" || path == "/v1/mcp/rpc";
+    // 4. Public probe: health always passes
+    let is_probe = path == "/health";
     if is_probe {
         return Ok(next.run(req).await);
     }

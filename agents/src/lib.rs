@@ -21,7 +21,7 @@ use serde_json::Value;
 /// Folder the App currently has open; set by the API whenever the workspace changes.
 static WORKSPACE_DIR: LazyLock<RwLock<Option<PathBuf>>> = LazyLock::new(|| RwLock::new(None));
 
-pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult, ControlOp, ControlResult, ControlDispatcher};
+pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
 pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
 pub use lifecycle::{turn_key, ChatLedger, RecordedStep, SessionToolBinding, SessionToolManager, TurnLifecycleEngine, TurnRecord};
 pub use mcp::{McpClient, McpManifest};

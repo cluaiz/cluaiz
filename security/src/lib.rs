@@ -2,9 +2,6 @@
 //! Contains filesystem jails, permission verification schemas, and audit guards.
 
 pub mod permission_schema;
-pub mod permissions;
-pub mod guard;
 pub mod audit;
 
 pub use permission_schema::{PermissionSchema, ApiAuth, SlotConfig, ModelSelection};
-pub use guard::{PermissionGuard, PermissionLevel};

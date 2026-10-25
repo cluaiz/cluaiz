@@ -13,8 +13,12 @@ pub fn base_url() -> String {
 }
 
 pub fn request(method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
+    request_with_timeout(method, path, std::time::Duration::from_secs(10))
+}
+
+pub fn request_with_timeout(method: reqwest::Method, path: &str, timeout: std::time::Duration) -> reqwest::RequestBuilder {
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
+        .timeout(timeout)
         .build()
         .unwrap_or_default();
     let builder = client.request(method, format!("{}{}", base_url(), path));
