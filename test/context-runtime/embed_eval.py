@@ -86,7 +86,7 @@ def main():
     args = parser.parse_args()
     client = Client(args.url, args.token)
     rows = [json.loads(l) for l in open(HERE / "routing_set.jsonl", encoding="utf-8") if l.strip()]
-    tools = [t for t in client.call("/v1/tools")["tools"] if t.get("enabled") and t.get("category") in ("skill", "plugin", "mcp")]
+    tools = [t for t in client.cep("tools.list") if t.get("enabled") and t.get("category") in ("skill", "plugin", "mcp")]
     positive = [r for r in rows if r["expect"]]
     negative = [r for r in rows if not r["expect"]]
 
