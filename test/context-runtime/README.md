@@ -327,6 +327,7 @@ Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journe
 | PERF5 preemption | first text +81, +228 and +483 ms in three runs (at most the rest of one 64-token chunk, about 650 ms on this machine); before the fix +1,389 ms |
 | C2 earlier tool step in client mode | the 4th turn's prompt had the first turn's `read_text_file` call and its result; the answer quoted the file's first line |
 | J9T (in `journeys.py`) | nobody answered the approval: the request waited 140 s and the tool did not run |
+| EXT1 `storage: "external"` (2026-10-25) | the first turn's model card and a `remember` note came in the second answer's `memory_events`, each event once; no chat folder and no note in the Engine's files |
 
 MEM5 found that `tool_only` (design §11.7) was missing: recall showed the answer around a tool
 run, never its output. PERF5 found that a job could not be stopped while its prompt was processed
@@ -357,6 +358,9 @@ between runs (9216, 8704, 8192 tokens for Qwen3). Qwen3 with thinking failed 4 o
 `"llama": {"n_ctx": 9216}` in every request: 5/5 and 5/5). Compare tool-call runs at a fixed
 `n_ctx`.
 
-**J15 needs a fresh Engine.** Run back to back in one Engine, its third kill hits the crash limit
-(3 in 10 minutes), so the call fails by design. With the restart working, Gemma 4 sometimes wrote
-no answer (its first token was `<eos>`) at the default temperature, with the old build too.
+**J15 now restarts the Engine first and checks the Engine's part.** Run back to back in one
+Engine, its third kill hit the crash limit (3 in 10 minutes), so the call failed by design. With
+the restart working, Gemma 4 wrote no answer after the `calc.py` result (its first token was
+`<eos>`; at temperature 0 every time, with the old build too), although the result was in its
+prompt. J15 therefore checks that the server started again and that its result reached the model
+(`return_prompt`), and shows the answer in its detail line.
