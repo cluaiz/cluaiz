@@ -67,7 +67,7 @@ cluaiz adopts extreme performance hacks and deep architectural patterns to ensur
 
 - **Surgical Silence (OS-level C++ Mute) 🔇**: During active inference, the system intercepts `stderr` via `libc::freopen("NUL\0")` to block noisy C++ backend logs from breaking the TUI, restoring `CONOUT$` immediately when done (`dashboard.rs`).
 - **Live Keystroke Interception ⚡**: While streams are generating, `crossterm::event::poll` listens at the OS level. `Ctrl+T` instantly triggers `GLOBAL_SKIP_THINKING_SIGNAL` to hide reasoning chains dynamically, and `Ctrl+C` initiates an **Agentic Pause**, pausing inference safely in VRAM and asking the user for `[PIVOT_CONTINUE]` mid-stream.
-- **Process-Isolated Benchmarking 🏎️**: `benchmark.rs` does not run in the same process. It uses `std::process::Command::new(current_exe)` to fork itself, ensuring absolute 100% VRAM release between evaluations.
+- **Process-Isolated Benchmarking 🏎️**: `benchmark.rs` does not run in the same process. It uses `std::process::Command::new(current_exe)` to start itself again for each evaluation, so that evaluation's VRAM is freed when its process exits.
 - **FFI Vectorization Hooks 🧠**: Upon chat input, `EmbeddingGenerator::generate_vector` is invoked blockingly, storing prompt context dynamically into the local LMDB `storage_bridge`.
 
 ---
