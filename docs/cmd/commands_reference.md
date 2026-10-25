@@ -27,7 +27,8 @@
 | `cluaiz` | Launches the interactive Main Menu TUI |
 | `cluaiz menu` | Explicitly open the Main Menu TUI |
 | `cluaiz help` | Show the rich formatted help screen (loads commands.json) |
-| `cluaiz serve` | Start the background Engine API Daemon on `http://localhost:<api_port>` + Named Pipe IPC |
+| `cluaiz serve` | Start the Engine API on `http://<api_host>:<api_port>` |
+| `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
 
 ---
 
@@ -245,50 +246,33 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 
 ---
 
-## 🌐 HTTP API (Port Configurable — default `8000` when `cluaiz serve` is running)
+## 🌐 HTTP API (host and port are the owner's settings; default port `8000`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/chat` | Chat with cluaiz (streaming) |
-| `GET` | `/hardware` | System hardware status |
-| `GET` | `/models/installed` | List installed models |
-| `GET` | `/models/tags` | Full model roster |
-| `POST` | `/models/load` | Load/activate a model |
-| `POST` | `/models/download` | Download a model from HuggingFace |
-| `POST` | `/v1/db/execute` | Execute a CDQL database query |
-| `GET` | `/v1/permission` | Read Permission.json |
-| `POST` | `/v1/permission/update` | Update a permission field |
-| `POST` | `/v1/system/brain` | Toggle brain mode |
-| `GET` | `/v1/system/control` | Read system_control.json |
-| `GET` | `/v1/booster/status` | Read booster settings |
-| `POST` | `/v1/booster/update` | Update booster settings |
-| `POST` | `/v1/ingest/file` | Ingest a document |
-| `GET` | `/health` | Health check ping |
+| `POST` | `/v1/cep` | Every Cluaiz operation, as JSON-RPC 2.0 methods (`system.info`, `models.load`, `config.set`, `ingest.run`, `fs.*`, `memory.*`, …). See [docs/api/cep](../api/cep/README.md) |
+| `POST` | `/mcp` | The same methods for MCP clients (read-only) |
+| `POST` | `/v1/chat/completions`, `/api/chat` | Chat (OpenAI / Ollama), streaming |
+| `POST` | `/v1/embeddings` | Embeddings (OpenAI) |
+| `POST` | `/v1/audio/speech`, `/v1/audio/transcriptions` | Text-to-speech and speech-to-text (OpenAI) |
+| `GET` | `/v1/models`, `/api/tags` | Installed models (OpenAI / Ollama) |
+| `POST` | `/api/pull` | Ollama pull (answers "queued"; downloads go through CEP `models.download`) |
+| `GET` | `/health` | Health check, always open |
+
+Example:
+
+```bash
+curl -X POST http://localhost:8000/v1/cep -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"system.info","params":{}}'
+```
+
+Add `-H 'Authorization: Bearer <token>'` when API authentication is on.
 
 ---
 
-## 🔌 IPC Named Pipe Commands (App ↔ Engine)
+## 🔌 In-process apps
 
-> Pipe: `\\.\pipe\cluaiz_engine_pipe` — used by Tauri Desktop App. JSON format.
-
-| Action | Payload | Description |
-|--------|---------|-------------|
-| `GET_SETTINGS` | `{"action":"GET_SETTINGS"}` | Get all settings (permissions + booster + models) |
-| `UPDATE_PERMISSION` | `{"action":"UPDATE_PERMISSION","payload":{"key":"...","value":"..."}}` | Update one Permission.json field |
-| `UPDATE_BOOSTER` | `{"action":"UPDATE_BOOSTER","payload":{"key":"...","value":"..."}}` | Update one llm_optimization.json field |
-| `BOOSTER_UPDATE` | `{"action":"BOOSTER_UPDATE","payload":{<full booster obj>}}` | Bulk booster update (CLI/legacy style) |
-| `SYSTEM_BRAIN` | `{"action":"SYSTEM_BRAIN","payload":{"state":true}}` | Toggle brain mode on/off |
-| `CDQL_FETCH_HISTORY` | `{"action":"CDQL_FETCH_HISTORY","session_id":"..."}` | Fetch chat history from LMDB |
-| `CDQL_DELETE_SESSION` | `{"action":"CDQL_DELETE_SESSION"}` | Delete a session (pending) |
-| `SYSTEM_PS` | `{"action":"SYSTEM_PS"}` | List active engine processes |
-| `HARDWARE_CALIBRATE` | `{"action":"HARDWARE_CALIBRATE"}` | Re-calibrate hardware |
-| `BENCHMARK_RUN` | `{"action":"BENCHMARK_RUN"}` | Start full benchmark |
-| `MODEL_RM` | `{"action":"MODEL_RM","payload":{"model_id":"..."}}` | Remove a model file from vault |
-| `SET_MODEL` | `{"action":"SET_MODEL",...}` | Hotswap model (stub — not yet wired) |
-| `SET_HARDWARE` | `{"action":"SET_HARDWARE",...}` | Adjust compute device (stub) |
-| `EAGER_LOAD` | `{"action":"EAGER_LOAD"}` | Pre-load model into memory (stub) |
-| `SYSTEM_PROFILE_SETUP` | `{"action":"SYSTEM_PROFILE_SETUP"}` | Detect and write hardware profile |
-| `<natural text>` | Plain string (no JSON) | Chat inference → token-by-token stream response |
+An app that embeds the Engine calls the same methods through the C library (`cluaiz_cep`: `cep_call` / `cep_free`, header `ffi/include/cep.h`), with the same JSON-RPC text as `/v1/cep`.
 
 ---
 

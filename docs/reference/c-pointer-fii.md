@@ -50,7 +50,7 @@ The zero-copy dynamic linking cycle operates under the following sequence:
 
 ```mermaid
 flowchart TD
-    A["CEL Invoke / Pipeline Execution"] --> B{"Cluaiz Engine"}
+    A["Tool call"] --> B{"Cluaiz Engine"}
     B -->|Resolve Dynamic Symbol| C["Function Pointer: process_data"]
     C -->|Construct Input Pointer| D["Shared Memory Segment"]
     D -->|FFI Boundary Transition| E["Plugin Execution"]

@@ -8,7 +8,6 @@ Complete reference index for the cluaiz engine — all specifications, APIs, CLI
 
 ### Reference Index
 Core language and system specifications:
-* **[CEL Manual](../reference/cluaiz-expression-language)** — Cluaiz Execution Language master reference.
 * **[C-Pointer Specifications](../reference/c-pointer-fii)** — FFI boundary contracts and memory layout rules.
 * **[System Dictionary](../reference/dictionary)** — Global type registry and term definitions.
 
@@ -16,7 +15,7 @@ Core language and system specifications:
 * **[Core CLI Manual](../reference/terminal-commands)** — Full command argument reference and shell integration.
 
 ### HTTP API Reference
-* **[Unified API Reference](../reference/api)** — REST endpoint contracts, request/response schemas, and error codes.
+* **[Unified API Reference](../reference/api)** — The routes and CEP (`/v1/cep`), with links to every method.
 
 ### Configuration Profiles
 * **[Engine Configurations](../reference/engine-configuration)** — `llm_optimization.json` and `system_control.json` field-level specs.
@@ -29,12 +28,12 @@ Core language and system specifications:
 flowchart LR
     CLI["💻 CLI\ncluaiz-cli"]
     ENGINE["⚙️ Engine\nAxum + Tokio"]
-    CEL["🧩 CEL\nExpression VM"]
+    CEP["🔗 CEP\nJSON-RPC 2.0"]
     FFI["🔌 FFI Bridge\nC / WASM"]
     DRIVER["🖥️ Driver\nCUDA / Metal"]
 
-    CLI -->|"REST"| ENGINE
-    ENGINE --> CEL
+    CLI -->|"HTTP"| ENGINE
+    ENGINE --> CEP
     ENGINE --> FFI
     FFI --> DRIVER
 ```
@@ -45,7 +44,6 @@ flowchart LR
 
 | Document | Status | Path |
 |---|---|---|
-| CEL Manual | ✅ Complete | `docs/reference/cluaiz-expression-language.md` |
 | C-Pointer FFI | ✅ Complete | `docs/reference/c-pointer-fii.md` |
 | System Dictionary | ✅ Complete | `docs/reference/dictionary.md` |
 | CLI Manual | ✅ Complete | `docs/reference/terminal-commands.md` |

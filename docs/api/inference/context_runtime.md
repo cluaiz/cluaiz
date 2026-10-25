@@ -6,12 +6,12 @@ the answer, and what it did for each request. The plan itself is described in
 
 | Endpoint | What it does |
 | --- | --- |
-| `GET /v1/context/settings` | The planner's default policy |
-| `POST /v1/context/settings` | Changes fields of the default policy |
-| `POST /v1/chat/{session_id}/context/preview` | The plan a chat request would get, without running it |
-| `GET /v1/chat/{session_id}/context/report` | Ids of the chat's kept context reports |
-| `GET /v1/chat/{session_id}/context/report/{request_id}` | One kept context report |
-| `GET /v1/context/jobs` | The idle-time scheduler: queue, counts and recent results |
+| `config.get {section: "context"}` | The planner's default policy |
+| `config.set {section: "context"}` | Changes fields of the default policy |
+| `context.preview` | The plan a chat request would get, without running it |
+| `context.reports` | Ids of the chat's kept context reports |
+| `context.report` | One kept context report |
+| `context.jobs` | The idle-time scheduler: queue, counts and recent results |
 
 ## Policy
 
@@ -38,7 +38,7 @@ thinking), reusing the chat's KV prefix. Where a template switches thinking at t
 prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, so the KV is still
 reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once: between two tokens, or while the job's prompt is processed, between two chunks of 64 tokens (the KV keeps the cached part). Measured (Gemma 4 E4B with 5 of 42 layers on the GPU): a short request's first text came 81, 228 and 483 ms later than with no job in three runs: at most the rest of one chunk, which takes about 650 ms there. A job that has
 not started yet is dropped without touching the KV. It never loads a model. Cards appear in
-`GET /v1/chat/{id}/index` (`enrichment`), their titles and keywords are searched by recall, and
+`memory.index` (`enrichment`), their titles and keywords are searched by recall, and
 recalled lines show the title. Measured on an RTX 3050 4 GB with about half of the model's layers on
 the GPU (2026-10-25): Qwen3-4B 4.1 s per card (56 tokens), Gemma 4 E4B 7.0 s (84 tokens); before
 the grammar was checked per picked token (see `grammar` in Chat Completions) they took 9.8 s and
@@ -124,7 +124,7 @@ that drops a message falls back to the inline form, and a template with no `tool
 for one) gets tool results as `<tool_response>` user turns. A request with `"return_prompt": true` (for
 template tests) also gets the rendered prompt in `context.prompt`.
 
-## GET /v1/context/jobs
+## context.jobs
 
 ```json
 { "indexer": "auto", "requests_in_flight": 0, "running": false,
@@ -141,25 +141,25 @@ A chat request can change fields for itself with `context_policy`, for example
 with a warning in the Engine log, and the request still runs. The policy used is reported in
 `context_report.plan.policy`.
 
-## GET /v1/context/settings
+## config.get {section: "context"}
 
 ```json
 { "settings": { "recent_turns_min": 2, "evidence_cap_pct": 15, "suggestions_cap_pct": 5, "margin_pct": 2, "compact_at_pct": 85, "compact_to_pct": 60, "indexer": "auto", "notes": "ask", "cross_chat": "ask", "tool_format": "native", "auto_load": "off", "mcp_prewarm": "on" } }
 ```
 
-## POST /v1/context/settings
+## config.set {section: "context"}
 
-Send only the fields to change. An unknown field or an invalid value is refused with HTTP 400.
+Send only the fields to change. An unknown field or an invalid value is refused (`-32602`).
 Saved in `settings.json` (`context_runtime`); the first time the section is written, the file is
 copied to `settings.json.bak-<date>-<time>` next to it.
 
 ```bash
-curl -X POST http://localhost:8000/v1/context/settings \
+curl -X POST http://localhost:8000/v1/cep \
   -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' \
-  -d '{"compact_at_pct": 80}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"config.set","params":{"section":"context","patch":{"compact_at_pct":80}}}'
 ```
 
-## POST /v1/chat/{session_id}/context/preview
+## context.preview
 
 The body is a chat request (`messages`, `model`, `tools`, `context_policy`, `history_mode`, …).
 The response is the `plan` and `tools` parts of the context report the same request would get.
@@ -173,11 +173,11 @@ The model is loaded first if it is not, because the counts use its tokenizer.
 }
 ```
 
-## GET /v1/chat/{session_id}/context/report[/{request_id}]
+## context.reports[/{request_id}]
 
 The Engine keeps the context report (`tools` and `plan`) of the newest 20 requests of each chat,
 in memory (gone after a restart). Without `request_id` the response lists their ids, newest last;
-with it, the report. An unknown id gives HTTP 404.
+with it, the report. An unknown id gives `-32004` (not found).
 
 ```json
 { "chat_id": "p26", "request_id": "chatcmpl-2605…", "context_report": { "tools": { "…": "…" }, "plan": { "…": "…" }, "timing": { "…": "…" } } }

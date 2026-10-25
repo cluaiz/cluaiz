@@ -10,14 +10,14 @@ Unsupported GGUF architectures, models without supported sequence pooling, reran
 
 ## Choose the model and input
 
-Read `GET /v1/models/installed` with your Bearer token and copy an exact `models[].id`. A Hugging Face repository name or a guessed quantization suffix is not an installed ID. In the API Explorer, the Model dropdown writes this ID into the JSON `model` field. Reset Payload restores the shipped example; a previously saved body otherwise stays in the editor.
+Read `models.list` with your Bearer token and copy an exact `models[].id`. A Hugging Face repository name or a guessed quantization suffix is not an installed ID. In the API Explorer, the Model dropdown writes this ID into the JSON `model` field. Reset Payload restores the shipped example; a previously saved body otherwise stays in the editor.
 
 | Task | Model required | Request input | Result |
 |:---|:---|:---|:---|
 | One text | Compatible ONNX or GGUF text embedding package | `"input": "Find similar documents"` | One vector at `data[0].embedding` |
 | Text batch | Same text embedding package for the whole batch | `"input": ["First chunk", "Second chunk"]` | One vector per string, in input order |
 | Image | ONNX image embedding graph and its processor assets | `"input": [{"type":"image","source":"<source>"}]` | One image vector |
-| Document | `/v1/ingest` can extract and run a selected embedding model; alternatively send its returned chunks here | `"input": ["extracted chunk"]` on this route | Text vectors; no document storage is created |
+| Document | `ingest.run` can extract and run a selected embedding model; alternatively send its returned chunks here | `"input": ["extracted chunk"]` on this route | Text vectors; no document storage is created |
 
 The pinned native backend now supports `gemma-embedding2`. The locally exercised EmbeddingGemma-2 Q8_0 package returns its projected 768-dimensional **text** vector; its 512-wide hidden state is not the API output. The exercised BGE packages return 1024 dimensions, and the ONNX FashionCLIP package returns 512 image dimensions. These are package examples, not a fixed width for every model. GGUF image/audio/video embeddings are not implemented, even if an installed package advertises a visual task.
 
@@ -28,7 +28,7 @@ The pinned native backend now supports `gemma-embedding2`. The locally exercised
 * **HTTP Method:** `POST`
 * **Path:** `/v1/embeddings`
 * **Content-Type:** `application/json`
-* **Authentication:** `Authorization: Bearer <session-token>` (Optional header: `x-caller: user`)
+* **Authentication:** `Authorization: Bearer <session-token>` when API authentication is on
 * **Output Format:** Normalized F32 floating point vector arrays (`data[].embedding`)
 * **Request Body Limit:** `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB` for inline JSON, refreshed from current settings per request. Oversized bodies return HTTP413 `request_too_large`; source/decoded byte limits and native resource checks remain separate.
 
@@ -106,7 +106,7 @@ The engine uses the selected tokenizer and pooling/projected output. Supply the 
 }
 ```
 
-Use this mixed-input example only for a graph that actually accepts both `pixel_values` and `input_ids`. The installed FashionCLIP graph declares both inputs and image/text embedding outputs; this route selects its image vector when an image is supplied. It does not generate captions or OCR text. Use exactly one image; this is not a batch of independent image vectors. `source` can be an allowed HTTP(S) URL, an authorized server-local path, or a real image data URI. `image_url` is the chat content shape, not the embeddings shape. Audio, video and document parts are rejected on this route; document sources use `/v1/ingest`.
+Use this mixed-input example only for a graph that actually accepts both `pixel_values` and `input_ids`. The installed FashionCLIP graph declares both inputs and image/text embedding outputs; this route selects its image vector when an image is supplied. It does not generate captions or OCR text. Use exactly one image; this is not a batch of independent image vectors. `source` can be an allowed HTTP(S) URL, an authorized server-local path, or a real image data URI. `image_url` is the chat content shape, not the embeddings shape. Audio, video and document parts are rejected on this route; document sources use `ingest.run`.
 
 ---
 
@@ -189,7 +189,7 @@ print(len(response.json()["data"][0]["embedding"]))
 
 Use an installed ONNX image embedding ID and a real PNG file. Placeholders and shortened Base64 strings elsewhere in this page illustrate the source shape; they are not executable image fixtures.
 
-### 5. PDF file directly to text vectors: send this to `/v1/ingest`
+### 5. PDF file directly to text vectors: send this to `ingest.run`
 
 ```json
 {
@@ -201,7 +201,7 @@ Use an installed ONNX image embedding ID and a real PNG file. Placeholders and s
 
 The ingest endpoint performs native PDF text/OCR extraction, chunks the extracted text, and runs the selected text embedding executor. Read `processed_sources[].embeddings[].data[].embedding`. Do not send a raw PDF as an `input` string here: a string on `/v1/embeddings` is text to tokenize, not a file locator.
 
-### 6. DOCX file directly to text vectors: send this to `/v1/ingest`
+### 6. DOCX file directly to text vectors: send this to `ingest.run`
 
 ```json
 {
@@ -211,7 +211,7 @@ The ingest endpoint performs native PDF text/OCR extraction, chunks the extracte
 }
 ```
 
-Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `/v1/ingest`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest payload types](ingest.md#payload-examples-by-file-type).
+Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `ingest.run`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest payload types](ingest.md#payload-examples-by-file-type).
 
 The Explorer's Body Payload menu also provides separate single-text, batch, extracted-document chunks, local image, data-URI image and remote-image templates. Switching an example resolves an installed model of its declared task; it does not invent or install a model.
 

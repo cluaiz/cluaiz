@@ -16,7 +16,7 @@ Controls the memory boundaries for RAG and semantic routing.
 * Dictates the primary autoregressive Core LLM (`text`). The engine reads this to allocate the primary KV Cache buffer. 
 
 ### C. WebAssembly Security (`wasm_firewall`)
-When a plugin asks for execution power via the `/v1/cel/execute` endpoint, this firewall determines its OS-level syscall access:
+When a plugin asks for execution power via the `/v1/cep` endpoint, this firewall determines its OS-level syscall access:
 * **`auto`**: The engine creates an isolated ring-buffer for the WASM payload, granting only the specific `file_system` or `network_access` defined in the plugin's YAML manifest.
 * **`strict`**: Absolute lockdown. All host bindings (FFI) are severed except for STDIN/STDOUT. Network sockets and file I/O will instantly throw a backend trap.
 
@@ -35,7 +35,7 @@ sequenceDiagram
     participant Engine
     participant Plugin
     
-    User/UI->>Engine: Sends CEL Command `<cel>use plugin::search...</cel>`
+    User/UI->>Engine: Model emits a tool call `<tool_call>{"name":"cluaiz-search",...}</tool_call>`
     Engine->>Engine: Pauses LLM Generation (Agentic Pause)
     Engine->>Engine: Reads `Permission.json` & `llm_optimization.json`
     

@@ -1,48 +1,29 @@
-# 🌐 Axum Route Handlers (`api/src/handlers/`)
+# Market-standard route handlers (`api/src/handlers/`)
 
-<p align="center"><strong>The External Request Translators</strong></p>
-
----
-
-## 🎯 Deep Purpose
-
-The `handlers/` directory is the edge layer of the cluaiz inference engine. When external clients (Desktop UIs, Web Dashboards, or OpenAI-compatible scripts) send HTTP REST requests, those requests land here. 
-
-The strict architectural rule of this module is that **handlers contain zero core business logic**. They are purely translation layers. A handler's only job is to:
-1. Parse the incoming JSON/Multipart payload via Axum.
-2. Validate the structural schema (JWT tokens, parameter boundaries).
-3. Translate the HTTP request into an `engine_core` internal Rust struct.
-4. Dispatch that struct safely to the inner `engines/` core for execution.
-
-## 🏛️ Architectural Flow
+This folder holds only the routes that existing clients already speak. Everything Cluaiz-specific is a CEP method in [`../cep/`](../cep/) (`POST /v1/cep`, `/mcp`, `cep_call`).
 
 ```mermaid
 graph LR
-    Client["External Client (HTTP)"] --> Router["Axum Router (routes.rs)"]
-    Router --> Handler["api/src/handlers/*.rs"]
-    Handler -->|"Translates to Core Struct"| Engine["engines/ (Core Inference)"]
-    Engine -->|"Returns Stream/Result"| Handler
-    Handler -->|"Formats to JSON/SSE"| Client
+    Client["OpenAI / Ollama clients"] --> Router["routes.rs"]
+    Router --> Chat["chat/: /v1/chat/completions, /api/chat"]
+    Router --> Emb["embeddings.rs: /v1/embeddings"]
+    Router --> Audio["audio.rs: /v1/audio/speech, /v1/audio/transcriptions"]
+    Router --> Models["models.rs: /v1/models, /api/tags, /api/pull"]
+    Router --> Health["health.rs: /health"]
+    Router --> CEP["../cep: /v1/cep, /mcp"]
+    CEP -->|"methods reuse"| Chat
+    CEP -->|"methods reuse"| Audio
+    CEP -->|"methods reuse"| Emb
 ```
 
-## 🧬 Significant Files
+| File | Routes | Shared with CEP |
+|---|---|---|
+| `chat/` | `/v1/chat/completions`, `/api/chat` | The whole chat pipeline. `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
+| `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `ingest.run` with a model |
+| `audio.rs` (+ `audio_types.rs`, `audio_tests.rs`) | `/v1/audio/speech`, `/v1/audio/transcriptions` | One dispatch for the standard routes and `audio.run`; `audio.voices` / `audio.languages` use its model selection |
+| `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` still answers "queued" without downloading (open decision O6). |
+| `health.rs` | `/health` | — |
 
-### 1. `chat.rs`
-- **The Core Logic:** Handles `/v1/chat/completions` (OpenAI format) and `/chat` (Legacy cluaiz format).
-- **The "Why":** Standardizes incoming prompts. Converts HTTP Server-Sent Events (SSE) subscriptions into internal MPSC channel listeners to stream tokens back to the browser in real-time.
-
-### 2. `models.rs`
-- **The Core Logic:** Handles model registry requests (`/api/tags`, `/models/download`).
-- **The "Why":** When a user asks to download a 20GB GGUF model, this handler spawns the async download task within the Engine and immediately returns a 202 Accepted response, preventing the HTTP socket from timing out.
-
-### 3. `system.rs` & `booster.rs`
-- **The Core Logic:** Handles engine configuration (`/health`, `/hardware`, `/v1/booster/update`).
-- **The "Why":** Provides endpoints for the Desktop App to dynamically toggle HugePages or AVX-512 offloading without restarting the engine process.
-
-### 4. `skills.rs` & `db.rs`
-- **The Core Logic:** Routing for WASM Skill installation and CDQL Database execution.
-- **The "Why":** Allows the inference engine to dynamically install new `.wasm` plugins via HTTP POST requests, securely saving them to the `.cluaiz/skills/` directory.
-
-### 5. `control.rs` (Control Gateway & Dynamic Dispatcher)
-- **The Core Logic:** Handles `/v1/control`, `/v1/control/batch`, `/v1/control/ops`, and `/v1/control/execute`. Routes structured `ControlOp` payloads directly to the `ControlDispatcher` or native engine hooks.
-- **The "Why":** Provides a unified execution gateway for external clients and desktop applications to control runtime functions dynamically, including memory inspections, cache operations, and tool actions.
+Rules for this folder:
+- No new custom route here; a new Cluaiz operation is a CEP method (`../cep/methods/`).
+- A function needed by both a route and a method lives in one place, and both call it.

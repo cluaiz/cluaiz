@@ -59,12 +59,12 @@ Navigate through the system specifications based on your development targets:
 ### ⚙️ 3. Reference Manuals (Configuration & API Contracts)
 *   **[Configuration Registry Index](/docs/reference/engine-configuration)** — Parameters for [llm_optimization.json](/docs/reference/engine-configuration#2-compute-acceleration--optimization-profile-llm_optimizationjson), [Permission.json](/docs/reference/engine-configuration#3-security-boundaries--capability-rules-profile-permissionjson), and [system_control.json](/docs/reference/engine-configuration#1-silicon-truth--hardware-governance-profile-system_controljson).
 *   **[Terminal CLI Commands Reference](/docs/reference/terminal-commands)** — Comprehensive command arguments, dynamic options, and local workspace hooks.
-*   **[HTTP API Interface](/docs/reference/api)** — Complete OpenAPI specification, POST endpoints, and schema declarations for server models.
+*   **[HTTP API Interface](/docs/reference/api)** — The routes, CEP and where each is documented.
 
 
 ### 🧠 4. Explanation (Architectural Deep Dives)
 *   **[Zero-Latency Unified FFI Bridging](/docs/architecture/unified-brain-ffi)** — C-ABI bindings, zero-copy operations, and runtime CPU/GPU hardware-agnostic dispatch loops.
 *   **[CLI Engine Process Design](/docs/architecture/cli-process-design)** — Deeper breakdown of execution threads and backend socket IPC handlers.
-*   **[CEL Evaluation & Execution Model](/docs/architecture/cel-ffi-api-execution)** — Logic parsing pipelines, security constraints, and custom script integrations.
+*   **[CEP (Cluaiz Engine Protocol)](/docs/api/cep/README)** — One JSON-RPC 2.0 protocol for every engine operation, over HTTP, MCP and the in-process C library.
 
 

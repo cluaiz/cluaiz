@@ -28,7 +28,6 @@
           "group": "Reference Index",
           "pages": [
             { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
-            { "slug": "cluaiz-expression-language", "title": "🧩 CEL Manual", "file_path": "docs/reference/cluaiz-expression-language.md" },
             { "slug": "c-pointer-fii", "title": "🔌 C-Pointer Specifications", "file_path": "docs/reference/c-pointer-fii.md" },
             { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
           ]
@@ -43,8 +42,8 @@
           "group": "HTTP API Reference",
           "pages": [
             { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" },
-            { "slug": "fs-api", "title": "📁 Filesystem & Jail API", "file_path": "docs/api/fs/filesystem.md" },
-            { "slug": "permission-api", "title": "🔒 Permission & HITL Gate", "file_path": "docs/api/system/permission.md" }
+            { "slug": "cep", "title": "🔗 CEP (Cluaiz Engine Protocol)", "file_path": "docs/api/cep/README.md" },
+            { "slug": "cep-methods", "title": "📜 CEP Method Reference", "file_path": "docs/api/cep/methods.md" }
           ]
         },
         {
@@ -99,72 +98,6 @@
     ]
   },
   {
-    "id": "cel-environment",
-    "title": "🧩 CEL",
-    "groups": [
-      {
-        "group": "Core Language", 
-        "pages": [
-          { "slug": "cel-language-bindings", "title": "🔗 Language Bindings", "file_path": "docs/cel/cel-language-bindings.md" },
-          { "slug": "cel-syntax-reference", "title": "📖 Syntax Reference", "file_path": "docs/cel/cel-syntax-reference.md" },
-          { "slug": "plugins", "title": "🔌 Plugins & Sandboxes", "file_path": "docs/cel/plugins.md" }
-        ]
-      },
-      {
-        "group": "Authoring",
-        "pages": [
-          { "slug": "embedding-rules", "title": "📝 Embedding Rules", "file_path": "docs/cel/authoring/embedding_rules.md" },
-          { "slug": "pure-cel-files", "title": "📄 Pure CEL Files", "file_path": "docs/cel/authoring/pure_cel_files.md" },
-          { "slug": "wasm-vs-rhai-vs-pure", "title": "⚖️ WASM vs Rhai vs Pure", "file_path": "docs/cel/authoring/wasm_vs_rhai_vs_pure.md" }
-        ]
-      },
-      {
-        "group": "SDK Integrations",
-        "pages": [
-          { "slug": "sdk-overview", "title": "📦 SDK Overview", "file_path": "docs/cel/sdk/sdk.md" },
-          { "slug": "c-ffi", "title": "C FFI", "file_path": "docs/cel/sdk/c-ffi.md" },
-          { "slug": "cpp-ffi", "title": "C++ FFI", "file_path": "docs/cel/sdk/cpp-ffi.md" },
-          { "slug": "go-ffi", "title": "Go FFI", "file_path": "docs/cel/sdk/go-ffi.md" },
-          { "slug": "nodejs-ffi", "title": "Node.js FFI", "file_path": "docs/cel/sdk/nodejs-ffi.md" },
-          { "slug": "python-cffi", "title": "Python CFFI", "file_path": "docs/cel/sdk/python-cffi.md" },
-          { "slug": "rust-native", "title": "Rust Native", "file_path": "docs/cel/sdk/rust-native.md" },
-          { "slug": "pure-cel", "title": "Pure CEL", "file_path": "docs/cel/sdk/pure-cel.md" },
-          { "slug": "custom-wasm-plugin", "title": "Custom WASM Plugin", "file_path": "docs/cel/sdk/custom-wasm-plugin.md" },
-          { "slug": "manifest-architecture", "title": "Manifest Architecture", "file_path": "docs/cel/sdk/manifest-architecture.md" }
-        ]
-      },
-      {
-        "group": "Tutorials",
-        "pages": [
-          { "slug": "getting-started", "title": "🚀 Getting Started", "file_path": "docs/cel/tutorials/getting_started.md" },
-          { "slug": "control-flow", "title": "🔀 Control Flow", "file_path": "docs/cel/tutorials/control_flow.md" },
-          { "slug": "dynamic-execution-architecture", "title": "🏗️ Dynamic Execution Arch", "file_path": "docs/cel/tutorials/dynamic_execution_architecture.md" },
-          { "slug": "dynamic-linking", "title": "🔗 Dynamic Linking", "file_path": "docs/cel/tutorials/dynamic_linking.md" },
-          { "slug": "engine-directives", "title": "⚙️ Engine Directives", "file_path": "docs/cel/tutorials/engine_directives.md" },
-          { "slug": "executor-protocol", "title": "📜 Executor Protocol", "file_path": "docs/cel/tutorials/executor_protocol.md" },
-          { "slug": "filter", "title": "🔍 Filter", "file_path": "docs/cel/tutorials/filter.md" },
-          { "slug": "hardware-vector-search", "title": "🤖 Hardware Vector Search", "file_path": "docs/cel/tutorials/hardware_vector_search.md" },
-          { "slug": "invoke", "title": "⚡ Invoke", "file_path": "docs/cel/tutorials/invoke.md" },
-          { "slug": "iterating-data", "title": "🔄 Iterating Data", "file_path": "docs/cel/tutorials/iterating_data.md" },
-          { "slug": "parameterized-queries", "title": "❓ Parameterized Queries", "file_path": "docs/cel/tutorials/parameterized_queries.md" },
-          { "slug": "process", "title": "⚙️ Process", "file_path": "docs/cel/tutorials/process.md" },
-          { "slug": "select", "title": "🎯 Select", "file_path": "docs/cel/tutorials/select.md" },
-          { "slug": "time-window", "title": "⏱️ Time Window", "file_path": "docs/cel/tutorials/time_window.md" },
-          { "slug": "variable-assignments", "title": "📝 Variable Assignments", "file_path": "docs/cel/tutorials/variable_assignments.md" }
-        ]
-      },
-      {
-        "group": "Usecases",
-        "pages": [
-          { "slug": "log-processor", "title": "📄 Log Processor", "file_path": "docs/cel/usecases/log_processor.md" },
-          { "slug": "rag-pipeline", "title": "🧠 RAG Pipeline", "file_path": "docs/cel/usecases/rag_pipeline.md" },
-          { "slug": "vision-agent", "title": "👁️ Vision Agent", "file_path": "docs/cel/usecases/vision_agent.md" }
-        ]
-      }
-    ]
-  },
-
-  {
     "id": "architecture-topics",
     "title": "⚙️ Architecture",
     "groups": [
@@ -173,7 +106,6 @@
         "pages": [
           { "slug": "security-and-auth-architecture", "title": "🛡️ Security & Auth Architecture", "file_path": "docs/architecture/security-and-auth-architecture.md" },
           { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
-          { "slug": "cel-ffi-api-execution", "title": "🔌 CEL FFI API Execution", "file_path": "docs/architecture/cel-ffi-api-execution.md" },
           { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
           { "slug": "cli-deep-audit", "title": "🔍 CLI Deep Audit", "file_path": "docs/architecture/cli-deep-audit.md" },
           { "slug": "cli-process-design", "title": "⚙️ CLI Process Design", "file_path": "docs/architecture/cli-process-design.md" }

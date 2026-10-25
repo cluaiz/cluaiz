@@ -1,6 +1,6 @@
 # Cluaiz Core CLI Reference Manual
 
-This is the definitive engineering reference for the `cluaiz` binary. It details the execution flow, internal JSON state mutations, and API route mappings for all 32 commands natively supported by the Cluaiz engine.
+This is the definitive engineering reference for the `cluaiz` binary. It details the execution flow, internal JSON state mutations, and API mappings of the `cluaiz` commands (`cluaiz --help` is the full list).
 
 
 ---
@@ -11,36 +11,27 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 * **Usage:** `cluaiz`
 * **Description:** Launch the interactive dashboard (TUI).
 * **Execution Flow:** Initializes the Ratatui-based Terminal User Interface (TUI). It acts as the primary visual orchestrator, polling the background daemon (if active) or spinning up an embedded local thread. It dynamically polls system health and active engines.
-* **API Mapping:** Internally calls local IPC pipes or polls `GET /health` and `GET /info` to discover active engines.
+* **API Mapping:** `GET /health` and CEP `system.info` (`POST /v1/cep`).
 
-### `cluaiz serve` (aliases: `api`, `server`)
+### `cluaiz serve`
 * **Usage:** `cluaiz serve`
-* **Action:** Starts the HTTP REST Gateway and Native IPC Background Service.
-* **Execution Flow:** Acquires a system-wide lock (`.serve_lock`), initializes the Axum HTTP server on the configured API port (default 8000), and spawns the Named Pipe IPC listener (`\\.\pipe\cluaiz_engine_pipe`). This daemon exposes the Cluaiz engine to local applications.
-* **Use Case:** Run this when you want external tools (like Postman, or custom Web UIs) to interact with Cluaiz via REST, or when connecting the Tauri Desktop App.
-* **API Mapping:** Binds all 36+ REST endpoints defined in `routes.rs` and initializes the HTTP listener.
+* **Action:** Starts the HTTP API on the configured host and port (default port 8000).
+* **API Mapping:** The standard routes (`/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`), CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
+
+### `cluaiz mcp-server`
+* **Usage:** `cluaiz mcp-server` (launched by an MCP client: `"command": "cluaiz", "args": ["mcp-server"]`)
+* **Description:** MCP over stdio, backed by the running Engine's `/mcp`. Read-only methods only.
 
 ### `cluaiz ingest`
 * **Usage:** `cluaiz ingest <file_path>`
 * **Description:** Ingest a document natively for semantic chunking and RAG.
 * **Execution Flow:** Invokes the local vectorization pipeline. Parses the document (PDF, TXT, MD), chunks it semantically based on NLP boundaries, and passes the chunks to the active ONNX embedding model to store in the local LMDB namespace.
-* **API Mapping:** Maps to `POST /v1/ingest/file` (`ingest::file_ingest`).
+* **API Mapping:** Maps to `ingest.run`.
 
 ### `cluaiz setup profile`
 * **Usage:** `cluaiz setup profile`
 * **Description:** Setup cluaiz Node Profile and Identity (Vectorization and DB Injection).
 * **Execution Flow:** Initializes the native Node Profile. Prompts the user for local workspace defaults and configures initial `system_control.json` values for identity and database access.
-
-### `cluaiz cel execute`
-* **Usage:** `cluaiz cel execute <script.cel>`
-* **Description:** Natively executes a cluaiz Execution Language (CEL) script.
-* **Execution Flow:** The Engine parses the CEL script's Abstract Syntax Tree (AST) and hooks directly into native C-Pointers in shared memory (`payload_ptr`) to execute complex agentic logic mid-inference without requiring an external Python SDK.
-* **API Mapping:** `POST /v1/cel/execute` (`cel_handler::execute_cel_script`).
-
-### `cluaiz cel test`
-* **Usage:** `cluaiz cel test <script.cel>`
-* **Description:** Compiles and validates a CEL script without executing state-mutating actions.
-* **Execution Flow:** Runs the CEL compiler pipeline to validate syntax and sandbox constraints (dry-run mode).
 
 ### `cluaiz help`
 * **Usage:** `cluaiz help`
@@ -65,25 +56,25 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
   2. If the model is not on disk, it automatically pulls it.
   3. Conducts a Pre-flight Silicon Audit (checks VRAM, RAM, and projects TPS).
   4. Spawns the native inference thread via FFI and launches the Ratatui Dashboard for interactive chat.
-* **API Mapping:** `POST /v1/chat/completions` (OpenAI compatible) and `POST /chat` (legacy).
+* **API Mapping:** `POST /v1/chat/completions` (OpenAI compatible).
 
 ### `cluaiz pull`
 * **Usage:** `cluaiz pull <model-id>`
 * **Description:** Download and register a model into the local vault without running it.
 * **Execution Flow:** Authenticates with HuggingFace Hub or external registry, selects the requested variant, and streams the `.gguf` weights directly to the `~/.cluaiz/models/` secure vault. It exits immediately after download, intentionally preserving VRAM.
-* **API Mapping:** `POST /api/pull` (`models::pull_model`) & `POST /models/download`.
+* **API Mapping:** CEP `models.download`.
 
 ### `cluaiz rm`
 * **Usage:** `cluaiz rm <model-id>`
 * **Description:** Remove a model from the local vault (physically deletes the .gguf file).
 * **Execution Flow:** Verifies if the model is actively loaded in RAM/VRAM. Unlinks metadata and unloads it safely, then physically deletes the `.gguf` file to free up SSD space.
-* **API Mapping:** `DELETE /v1/models/{model_id}` (`models::rm_model`).
+* **API Mapping:** CEP `models.remove`.
 
 ### `cluaiz list`
 * **Usage:** `cluaiz list`
 * **Description:** List all downloaded models in the local vault.
 * **Execution Flow:** Scans the `~/.cluaiz/models/` directory and internal manifest files to construct a table showing model IDs, architectures, and physical SSD sizes.
-* **API Mapping:** `GET /v1/models/installed` (`models::list_installed_models`) & `GET /api/tags`.
+* **API Mapping:** CEP `models.list`; `GET /v1/models` and `GET /api/tags` for OpenAI / Ollama clients.
 
 ### `cluaiz model`
 * **Usage:** `cluaiz model <set-chat|set-vector> <model_id>`
@@ -98,37 +89,34 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 * **Usage:** `cluaiz ps`
 * **Description:** Show active neural engines in memory and auto-heal stale PIDs.
 * **Execution Flow:** Probes active Neural Engines and memory-mapped files. Detects if a daemon crashed and auto-heals stale Process IDs.
-* **API Mapping:** `GET /v1/system/ps` (`ps::get_processes`).
+* **API Mapping:** CEP `system.ps`.
 
 ### `cluaiz status`
 * **Usage:** `cluaiz status`
 * **Description:** Show hardware status and silicon health metrics.
 * **Execution Flow:** Fetches hardware health, silicone truth metrics (Total VRAM, active layers), and active Booster configurations.
-* **API Mapping:** Iterates `GET /v1/booster/status` and `GET /info`.
+* **API Mapping:** CEP `system.info`.
 
 ### `cluaiz calibrate`
 * **Usage:** `cluaiz calibrate`
 * **Description:** Re-scan hardware and synchronize SiliconTruth profile.
 * **Execution Flow:** Runs real-time RDTSC hardware clocking, SIMD profiling, and VRAM boundary detection. Synchronizes this data to create a perfect hardware profile.
-* **API Mapping:** `POST /v1/hardware/calibrate` (`models::calibrate`).
+* **API Mapping:** none (runs locally).
 
-### `cluaiz benchmark`
-* **Usage:** `cluaiz benchmark`
-* **Description:** Run a full hardware performance benchmark.
-* **Execution Flow:** Stress tests CPU/GPU via standardized neural prompt sequences. Outputs Tokens/Sec (TPS), Time To First Token (TTFT), and wattage reports to the `test/benchmark/` directory.
-* **API Mapping:** `POST /v1/benchmark/run` (`benchmark::run`).
+### `cluaiz bench`
+* **Usage:** `cluaiz bench <model>`
+* **Description:** Measure prompt and generation speed (llama-bench). Runs locally, without the API.
 
-### `cluaiz booster`
-* **Usage:** `cluaiz booster` (Can accept flags like `--kv-quant`)
-* **Description:** View or configure the system performance booster settings interactively.
-* **Execution Flow:** Interactively configures or injects parameters into `llm_optimization.json` (e.g. Context Shifting limits, FlashAttention modes, KV Cache quantization). The memory arbiter applies these natively to optimize inference.
-* **API Mapping:** `GET /v1/booster/status` and `POST /v1/booster/update` (`booster::update`).
+### `cluaiz config`
+* **Usage:** `cluaiz config`
+* **Description:** View and change engine settings (`settings.json`).
+* **API Mapping:** CEP `config.get` / `config.set` (sections `gguf`, `onnx`, `optimization`, `context`, `storage`, `kv`).
 
 ### `cluaiz permission`
 * **Usage:** `cluaiz permission <key> <value>`
 * **Description:** Change engine permissions and firewalls natively from CLI.
 * **Execution Flow:** Edits firewall rules and telemetry flags natively in `Permission.json` (e.g., `wasm_firewall strict`, `stream_telemetry off`). Controls what the active engine is permitted to execute.
-* **API Mapping:** `GET /v1/system/permission` and `POST /v1/system/permission` (`permission::update_permission`).
+* **API Mapping:** CEP `config.get` / `config.set` with `section: "engine"` (permission.json).
 
 ### `cluaiz test-prefix`
 * **Usage:** `cluaiz test-prefix`
@@ -145,10 +133,10 @@ Cluaiz provides deep native extensibility via Skills, Plugins, and MCP integrati
 Skills are cognitive instruction sets (`SKILL.md`) that teach the AI how to reason and call tools.
 * **`cluaiz skill install <skill_name>`** (alias: `i`)
   * **Flow:** Downloads and installs the skill.
-  * **API Mapping:** `POST /v1/skills/install` (`skills::install_skill`).
+  * **API Mapping:** `tools.install`.
 * **`cluaiz skill list`** (alias: `ls`)
   * **Flow:** Lists active installed skills.
-  * **API Mapping:** `GET /v1/skills/list` (`skills::list_skills`).
+  * **API Mapping:** `tools.list`.
 * **`cluaiz skill remove <skill_name>`** (alias: `rm`)
   * **Flow:** Deletes the skill and its local footprint.
 * **`cluaiz skill cache ls`** & **`cluaiz skill cache clear [cache_id]`**
@@ -158,10 +146,10 @@ Skills are cognitive instruction sets (`SKILL.md`) that teach the AI how to reas
 Plugins provide high-performance execution power, either in a secure `WASM` micro-sandbox or as a bare-metal `NATIVE` C-FFI binary (`cluaiz-search`, `cluaiz-db`).
 * **`cluaiz plugin install <plugin_name>`** (alias: `i`)
   * **Flow:** Downloads and compiles/installs the plugin.
-  * **API Mapping:** `POST /v1/plugins/install` (`plugins::install_plugin`).
+  * **API Mapping:** `tools.install`.
 * **`cluaiz plugin list`** (alias: `ls`)
   * **Flow:** Lists active installed plugins.
-  * **API Mapping:** `GET /v1/plugins/list` (`plugins::list_plugins`).
+  * **API Mapping:** `tools.list`.
 * **`cluaiz plugin remove <plugin_name>`** (alias: `rm`)
   * **Flow:** Deletes the plugin and its local binaries.
 * **`cluaiz plugin cache ls`** & **`cluaiz plugin cache clear [cache_id]`**
@@ -175,4 +163,4 @@ MCP integrations allow Cluaiz to interface with external standard tools.
 * **`cluaiz mcp start <mcp_name>`**
   * **Flow:** Registers a new MCP server configuration and manages its lifecycle.
 * **`cluaiz mcp cache ls`** & **`cluaiz mcp cache clear [cache_id]`**
-  * **API Mapping:** `GET /v1/mcp/cache` and `DELETE /v1/mcp/cache`.
+  * **API Mapping:** `tools.cache` and `tools.clear_cache`.
