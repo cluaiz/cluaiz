@@ -266,6 +266,7 @@ extern "C" {
     ) -> *mut std::ffi::c_void;
     pub fn llama_sampler_sample(sampler: *mut std::ffi::c_void, ctx: *mut std::ffi::c_void, idx: i32) -> i32;
     pub fn llama_sampler_accept(sampler: *mut std::ffi::c_void, token: i32);
+    pub fn llama_sampler_apply(sampler: *mut std::ffi::c_void, cur_p: *mut LlamaTokenDataArray);
     pub fn llama_sampler_free(sampler: *mut std::ffi::c_void);
 
     /// 🧵 Memory Sequence Management (Signal Stitching)
@@ -416,6 +417,25 @@ extern "C" {
 }
 
 pub type LlamaLogCallback = extern "C" fn(level: i32, text: *const c_char, user_data: *mut std::ffi::c_void);
+
+/// Matches `llama_token_data` in llama.h
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LlamaTokenData {
+    pub id: i32,
+    pub logit: f32,
+    pub p: f32,
+}
+
+/// Matches `llama_token_data_array` in llama.h (samplers may move `data`)
+#[repr(C)]
+#[derive(Debug)]
+pub struct LlamaTokenDataArray {
+    pub data: *mut LlamaTokenData,
+    pub size: usize,
+    pub selected: i64,
+    pub sorted: bool,
+}
 
 /// ✅ Matches `llama_sampler_chain_params` in llama.h exactly.
 #[repr(C)]
