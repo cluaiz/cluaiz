@@ -63,3 +63,13 @@ cargo test --offline --manifest-path test/cep/wave_b/Cargo.toml --target-dir tar
 ```
 
 The method tests cover schema rejection before side effects, text/binary round trips, recursive copy/list/delete, scope denial, real symlink escape denial, workspace synchronization, discovery metadata and comparison with the old B0 filesystem snapshots. The golden comparison preserves domain content and renamed list fields; it intentionally excludes modification timestamps. Passing these isolated contracts does not complete route cutover or verify the unfinished full API integration. The first build includes real agent/model-metadata dependencies, but does not build the inference runtime/CUDA.
+
+## B1: live HTTP journey (requires route cutover)
+
+`fs_http_journey.py` reuses the existing Engine process owner and B0 isolation helpers. It runs the file/workspace flow against a copied built executable in a fresh home and requires the old filesystem/workspace routes to return 404. Old folder-picker detection uses GET, so it cannot open the POST-only native dialog. It writes actual results to `<fresh-home>/fs-http-report.json` and stops only its own process.
+
+```powershell
+python test/cep/wave_b/fs_http_journey.py --exe <built-CEP-executable> --seed-home <isolated-seed-home> --home <fresh-home> --port <wave-b-port>
+```
+
+Preparing or syntax-checking this journey is not a live pass. Run it only after the core builds and the old routes are removed; the old executable is expected to fail. This owner-token HTTP journey does not replace the principal/scope/approval contracts above or certify the transport's authentication implementation.
