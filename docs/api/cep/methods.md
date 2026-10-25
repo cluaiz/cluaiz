@@ -658,17 +658,17 @@ scope `read` · `sync` · MCP tool
 
 ### models.download
 
-Model download control is not implemented yet
+Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as `cluaiz pull` does; the `:QUANT` variant, else the first
 
 scope `write` · `task` · MCP tool
 
 | Param | Type | Required | Description |
 |---|---|---|---|
-| `model` | string | yes |  |
+| `model` | string | yes | A catalog id, or a Hugging Face repo `owner/name` (optionally `:QUANT`, an `hf://` or https URL) |
 
 ```json
-{"jsonrpc": "2.0", "id": 1, "method": "models.download", "params": {"model": "registry-model"}}
-{"jsonrpc": "2.0", "id": 1, "result": {"task": {}}}
+{"jsonrpc": "2.0", "id": 1, "method": "models.download", "params": {"model": "owner/name-GGUF:Q4_K_M"}}
+{"jsonrpc": "2.0", "id": 1, "result": {"task": {"method": "models.download", "status": "working", "task_id": "t_5f0c…"}}}
 ```
 
 ### models.inspect
@@ -879,17 +879,19 @@ scope `admin` · `sync` · not on MCP
 
 ### system.exec
 
-Runs a command in the host's shell and returns its output
+Runs a program on the host and returns its output; the owner approves each call
 
 scope `admin` · `sync` · destructive · not on MCP
 
 | Param | Type | Required | Description |
 |---|---|---|---|
-| `command` | string | yes | One shell command line |
+| `args` | string[] | no | Its arguments, each passed as it is |
+| `command` | string \| null | no | One shell line instead of `program`; only when permission.json `exec.allow_shell` is on |
+| `program` | string \| null | no | The program to run (a name on PATH or a path); not passed through a shell |
 
 ```json
-{"jsonrpc": "2.0", "id": 1, "method": "system.exec", "params": {"command": "echo hi"}}
-{"jsonrpc": "2.0", "id": 1, "result": {"exit_code": 0, "stderr": "", "stdout": "hi\n"}}
+{"jsonrpc": "2.0", "id": 1, "method": "system.exec", "params": {"args": ["--version"], "program": "git"}}
+{"jsonrpc": "2.0", "id": 1, "result": {"exit_code": 0, "stderr": "", "stdout": "git version 2.47.0\n"}}
 ```
 
 ### system.info

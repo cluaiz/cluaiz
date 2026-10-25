@@ -86,7 +86,7 @@ What the caller may do comes after authentication, in CEP:
 | `POST /v1/cep` (HTTP), the C library (`cep_call`) | `owner` | read, write, exec, admin | no roots: any canonical path |
 | `/mcp` and `cluaiz mcp-server` | `mcp` | read only; methods marked `no_mcp` (for example `system.exec`) are not listed | over its roots: `forbidden` |
 
-`system.exec` is an `admin` method, marked destructive and hidden from MCP. Whether it should also ask for an approval is an open decision (O1).
+`system.exec` is an `admin` method, marked destructive and hidden from MCP. Every call needs the owner's approval, and it runs a program with its arguments (`{program, args}`), not a shell line. permission.json `exec` holds the owner's two switches, both off by default: `allow_shell` (accept `{command}`, run by `cmd /C` / `sh -c`) and `without_approval`.
 
 ---
 
@@ -99,6 +99,7 @@ Located in [`api/src/cep/roots.rs`](../../api/src/cep/roots.rs) (path resolution
 1. **Relative paths** are joined to the workspace root, never to the process working directory. Drive-relative and root-relative paths (`C:foo`, `\foo`) are refused as ambiguous (`-32602`).
 2. **Canonicalization:** the candidate path is canonicalized with `std::fs::canonicalize`, so links and `..` are resolved before any check, and Windows `\\?\` prefixes compare the same.
 3. **New files:** for a write to a path that does not exist yet, the closest existing ancestor is canonicalized and the missing parts are folded onto it, so `new/../../outside` cannot keep a workspace prefix.
+4. **Links are removed or renamed themselves:** `fs.delete` and `fs.rename` canonicalize the parent and keep the last component (`roots::resolve_entry`), as `rm` / `mv` do. Deleting a link to a folder removes the link; the folder and its files stay. Reads and writes still follow links, and the canonical target must be inside the roots.
 
 ### 3.2 Roots and approvals
 
