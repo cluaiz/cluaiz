@@ -111,7 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if content.contains("No active model") || content.contains("FFI Kernel not active") {
             println!("❌ Model is NOT loaded: {}", content.trim());
-            println!("   Load a model first: POST /models/load or use the cluaiz UI.");
+            println!("   Load a model first: CEP models.load (POST /v1/cep) or use the cluaiz UI.");
             save_output(&json!({
                 "status": "FAILED",
                 "error": format!("Model not loaded: {}", content.trim()),
