@@ -1,6 +1,6 @@
 use crate::{state::AppState, utils::prepare_authorized_audio};
 use axum::{
-    extract::{Query, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
     response::{sse::Event, IntoResponse, Response, Sse},
     Json,
@@ -9,69 +9,76 @@ use cluaiz_models::types::manifest::{ModelRegistry, ModelRegistryEntry};
 use cluaiz_runtime::onnx_host::{
     AudioEvent, AudioInput, AudioOutput as NativeOutput, AudioTask, OnnxModel, SttOptions,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{convert::Infallible, sync::Arc};
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct InputSource {
-    #[serde(rename = "type")]
-    pub source_type: String,
-    pub data: String,
-}
+#[path = "audio_types.rs"]
+mod types;
+pub use types::{
+    AudioExecuteRequest, AudioExecuteResponse, AudioOutput, AudioParameters, AudioSegment,
+    InputSource,
+};
 
-#[derive(Deserialize, Debug, Clone, Default)]
-pub struct AudioParameters {
-    pub temperature: Option<f32>,
-    pub language: Option<String>,
-    /// The speaker's languages (ISO 639-1): without `language`, speech is detected among only these
-    #[serde(default)]
-    pub languages: Vec<String>,
-    pub speed: Option<f32>,
-    pub voice_id: Option<String>,
-    pub translate_to: Option<String>,
-    pub timestamps: Option<bool>,
-    pub beam_size: Option<u32>,
-    pub vad_filter: Option<bool>,
-    pub speaker_labels: Option<bool>,
-}
+use crate::utils::task_error as http_error;
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct AudioExecuteRequest {
-    pub model: Option<String>,
-    pub task: Option<String>,
-    pub instruction: Option<String>,
-    pub input_source: InputSource,
-    pub parameters: Option<AudioParameters>,
-    pub stream: Option<bool>,
-    pub keep_alive: Option<i32>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct AudioSegment {
-    pub start: f32,
-    pub end: f32,
-    pub text: String,
-    pub speaker: Option<String>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct AudioOutput {
-    pub text: Option<String>,
-    pub audio_data: Option<String>,
-    pub segments: Option<Vec<AudioSegment>>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct AudioExecuteResponse {
-    pub status: String,
-    pub task: String,
+pub(crate) struct DispatchedAudio {
+    pub events: tokio::sync::mpsc::Receiver<Result<AudioEvent, String>>,
+    pub task: AudioTask,
     pub model: String,
-    pub info: Option<String>,
-    pub output: AudioOutput,
 }
 
-use crate::utils::task_error as error;
+pub(crate) enum AudioError {
+    Http(Response, &'static str),
+    Policy(cluaiz_cep::CepError),
+}
+
+impl AudioError {
+    pub async fn into_cep(self) -> cluaiz_cep::CepError {
+        match self {
+            Self::Http(response, kind) => {
+                let mut error = crate::cep::error_from_response(response).await;
+                error.data.get_or_insert_with(|| json!({}))["type"] = json!(kind);
+                error
+            }
+            Self::Policy(error) => error,
+        }
+    }
+
+    fn into_standard(self) -> Response {
+        match self {
+            Self::Http(response, _) => response,
+            // Standard routes pass no CEP Call; keep a defensive failure for policy errors.
+            Self::Policy(error) => http_error(StatusCode::FORBIDDEN, "permission_error", error),
+        }
+    }
+}
+
+fn error<T>(
+    status: StatusCode,
+    kind: &'static str,
+    message: impl ToString,
+) -> Result<T, AudioError> {
+    Err(AudioError::Http(http_error(status, kind, message), kind))
+}
+
+pub(crate) async fn selected_model(
+    state: &Arc<AppState>,
+    selected: Option<&str>,
+    task: AudioTask,
+) -> Result<ModelRegistryEntry, AudioError> {
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    let schema = state.permission_schema.read().await;
+    let slot = schema
+        .active_slots
+        .get(task.slot())
+        .or_else(|| schema.active_slots.get("audio_slot"))
+        .and_then(|slot| slot.model_id.as_deref());
+    match select_model(&registry, selected, slot, task) {
+        Ok(entry) => Ok(entry.clone()),
+        Err(message) => error(StatusCode::NOT_FOUND, "model_not_found", message),
+    }
+}
 
 fn select_model<'a>(
     registry: &'a ModelRegistry,
@@ -113,9 +120,16 @@ fn select_model<'a>(
         .collect();
     // Automatic choice: working families first (an unfinished one only when nothing else is installed)
     let experimental = |e: &ModelRegistryEntry| {
-        e.metadata.tts_family.as_deref().is_some_and(cluaiz_runtime::onnx_host::is_experimental_family)
+        e.metadata
+            .tts_family
+            .as_deref()
+            .is_some_and(cluaiz_runtime::onnx_host::is_experimental_family)
     };
-    candidates.sort_by(|a, b| experimental(a).cmp(&experimental(b)).then_with(|| a.id.cmp(&b.id)));
+    candidates.sort_by(|a, b| {
+        experimental(a)
+            .cmp(&experimental(b))
+            .then_with(|| a.id.cmp(&b.id))
+    });
     candidates
         .first()
         .copied()
@@ -145,25 +159,43 @@ fn validate_options(payload: &AudioExecuteRequest, task: AudioTask) -> anyhow::R
     // TTS voice and rate: "default"/"auto"/empty lets the engine pick a voice for the text's language
     if task != AudioTask::TextToSpeech
         && (params.speed.is_some_and(|v| v != 1.0)
-            || params.voice_id.as_ref().is_some_and(|v| !is_default_voice(v)))
+            || params
+                .voice_id
+                .as_ref()
+                .is_some_and(|v| !is_default_voice(v)))
     {
         anyhow::bail!("voice and speed apply to text_to_speech only");
     }
-    if params.speed.is_some_and(|v| !(SPEED_RANGE.0..=SPEED_RANGE.1).contains(&v)) {
-        anyhow::bail!("speed must be between {} and {}", SPEED_RANGE.0, SPEED_RANGE.1);
+    if params
+        .speed
+        .is_some_and(|v| !(SPEED_RANGE.0..=SPEED_RANGE.1).contains(&v))
+    {
+        anyhow::bail!(
+            "speed must be between {} and {}",
+            SPEED_RANGE.0,
+            SPEED_RANGE.1
+        );
     }
-    if task == AudioTask::TextToSpeech && (params.translate_to.is_some() || !params.languages.is_empty()) {
+    if task == AudioTask::TextToSpeech
+        && (params.translate_to.is_some() || !params.languages.is_empty())
+    {
         anyhow::bail!("languages and translate_to apply to speech-to-text only");
     }
     // TTS `language`: the text's language (Cluaiz extension, like Google/Azure languageCode)
     if params.language.as_deref().is_some_and(|code| {
-        !(2..=12).contains(&code.len()) || !code.chars().all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
+        !(2..=12).contains(&code.len())
+            || !code
+                .chars()
+                .all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
     }) {
         anyhow::bail!("language must be a language code such as \"cs\", \"hi\" or \"en-US\"");
     }
     if params.languages.len() > MAX_SPEAKER_LANGUAGES
         || params.languages.iter().any(|code| {
-            !(2..=5).contains(&code.len()) || !code.chars().all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
+            !(2..=5).contains(&code.len())
+                || !code
+                    .chars()
+                    .all(|c| c.is_ascii_alphabetic() || c == '-' || c == '_')
         })
     {
         anyhow::bail!("languages must be at most {MAX_SPEAKER_LANGUAGES} language codes such as \"hi\" or \"en\"");
@@ -197,30 +229,36 @@ fn is_default_voice(voice: &str) -> bool {
     voice.is_empty() || voice.eq_ignore_ascii_case("default") || voice.eq_ignore_ascii_case("auto")
 }
 
-fn completed(model: String, task: AudioTask, output: NativeOutput) -> AudioExecuteResponse {
+pub(crate) fn audio_output(output: NativeOutput) -> AudioOutput {
     let (text, audio_data) = match output {
         NativeOutput::Transcript(text) => (Some(text), None),
         NativeOutput::WavDataUri(wav) => (None, Some(wav)),
     };
+    AudioOutput {
+        text,
+        audio_data,
+        segments: None,
+    }
+}
+
+fn completed(model: String, task: AudioTask, output: NativeOutput) -> AudioExecuteResponse {
     AudioExecuteResponse {
         status: "success".into(),
         task: task.as_str().into(),
         model,
         info: None,
-        output: AudioOutput {
-            text,
-            audio_data,
-            segments: None,
-        },
+        output: audio_output(output),
     }
 }
 
-/// Existing audio routes share one typed ONNX boundary; no chat dispatch occurs here.
-pub async fn execute_audio(
-    State(state): State<Arc<AppState>>,
+/// One dispatch/preparation boundary for standard routes and CEP; no chat dispatch.
+pub(crate) async fn dispatch_audio(
+    state: &Arc<AppState>,
     headers: HeaderMap,
-    Json(payload): Json<AudioExecuteRequest>,
-) -> Response {
+    payload: AudioExecuteRequest,
+    call: Option<&cluaiz_cep::Call>,
+    cancellation: Arc<std::sync::atomic::AtomicBool>,
+) -> Result<DispatchedAudio, AudioError> {
     let is_text = payload
         .input_source
         .source_type
@@ -253,61 +291,101 @@ pub async fn execute_audio(
         Ok(options) => options,
         Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e),
     };
-    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
-    let schema = state.permission_schema.read().await;
-    let slot_id = schema
-        .active_slots
-        .get(task.slot())
-        .or_else(|| schema.active_slots.get("audio_slot"))
-        .and_then(|s| s.model_id.as_deref());
-    let entry = match select_model(&registry, payload.model.as_deref(), slot_id, task) {
-        Ok(entry) => entry,
-        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
-    };
-    drop(schema);
+    let entry = selected_model(state, payload.model.as_deref(), task).await?;
+    if let Some(call) = call {
+        authorize_model(state, call, &entry)
+            .await
+            .map_err(AudioError::Policy)?;
+    }
     let model_id = entry.id.clone();
-    let stream = payload.stream.unwrap_or(true);
     let settings = cluaiz_core::Settings::current();
     let admission = if task == AudioTask::TextToSpeech {
         match state.host.speech.try_acquire() {
             Ok(lease) => Some(lease),
             Err(e) => return error(StatusCode::TOO_MANY_REQUESTS, "speech_busy", e),
         }
-    } else { None };
+    } else {
+        None
+    };
     if entry.format_type.eq_ignore_ascii_case("gguf") {
         if task != AudioTask::TextToSpeech {
-            return error(StatusCode::BAD_REQUEST, "model_contract_error", "A GGUF speech model makes speech; speech-to-text needs an ONNX model");
+            return error(
+                StatusCode::BAD_REQUEST,
+                "model_contract_error",
+                "A GGUF speech model makes speech; speech-to-text needs an ONNX model",
+            );
         }
-        if let Some(language) = options.language.as_deref().filter(|l| !l.eq_ignore_ascii_case("auto")) {
-            let caps = match cluaiz_runtime::speech_host::capabilities(entry) {
+        if let Some(language) = options
+            .language
+            .as_deref()
+            .filter(|l| !l.eq_ignore_ascii_case("auto"))
+        {
+            let caps = match cluaiz_runtime::speech_host::capabilities(&entry) {
                 Ok(caps) => caps,
                 Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
             };
             if let Err(e) = caps.validate_language_control(Some(language)) {
                 return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e);
             }
-            let base = language.split(['-', '_']).next().unwrap_or(language).to_ascii_lowercase();
+            let base = language
+                .split(['-', '_'])
+                .next()
+                .unwrap_or(language)
+                .to_ascii_lowercase();
             if !caps.languages.is_empty() && !caps.languages.contains(&base) {
                 return error(StatusCode::BAD_REQUEST, "unsupported_language", format!("Selected speech model does not support language '{language}'. Supported languages: {}", caps.languages.join(", ")));
             }
         }
         let Some(admission) = admission else {
-            return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_admission_error", "Missing speech admission");
+            return error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "speech_admission_error",
+                "Missing speech admission",
+            );
         };
-        let speaker_reference = if let Some(source) = options.voice {
-            let (owner, request_headers, request_settings) = (Arc::clone(&state), headers.clone(), settings.clone());
-            let preparation = admission.clone().prepare(Arc::new(std::sync::atomic::AtomicBool::new(false)), async move {
-                prepare_authorized_audio(&owner, &request_headers, source, &request_settings).await
-            }).await;
+        let speaker_reference = if let Some(mut source) = options.voice {
+            if let Some(call) = call {
+                crate::utils::authorize_source_for_call(state, call, &mut source)
+                    .await
+                    .map_err(AudioError::Policy)?;
+            }
+            let (owner, request_headers, request_settings) =
+                (Arc::clone(state), headers.clone(), settings.clone());
+            let source_cancel = Arc::clone(&cancellation);
+            let preparation = admission
+                .clone()
+                .prepare(Arc::clone(&cancellation), async move {
+                    prepare_authorized_audio(
+                        &owner,
+                        &request_headers,
+                        source,
+                        &request_settings,
+                        Some(source_cancel),
+                    )
+                    .await
+                })
+                .await;
             let prepared = match preparation {
                 Ok((result, _lease)) => result,
                 Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, "audio_decode_error", e),
             };
             match prepared {
                 Ok(audio) => Some(audio),
-                Err((kind, message)) => return error(if kind == "permission_error" {StatusCode::FORBIDDEN} else {StatusCode::BAD_REQUEST}, kind, message),
+                Err((kind, message)) => {
+                    return error(
+                        if kind == "permission_error" {
+                            StatusCode::FORBIDDEN
+                        } else {
+                            StatusCode::BAD_REQUEST
+                        },
+                        kind,
+                        message,
+                    )
+                }
             }
-        } else { None };
+        } else {
+            None
+        };
         let speech_options = cluaiz_runtime::speech_host::SpeechOptions {
             language: options.language,
             speed: options.speed,
@@ -317,27 +395,52 @@ pub async fn execute_audio(
         };
         let onnx = state.host.onnx.clone();
         let release_lease = admission.clone();
-        match tokio::task::spawn_blocking(move || { let _lease = release_lease; onnx.unload_tts() }).await {
-            Ok(Ok(_)) => {},
-            result => return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_transition_error", format!("{result:?}")),
+        match tokio::task::spawn_blocking(move || {
+            let _lease = release_lease;
+            onnx.unload_tts()
+        })
+        .await
+        {
+            Ok(Ok(_)) => {}
+            result => {
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "speech_transition_error",
+                    format!("{result:?}"),
+                )
+            }
         }
-        let events = state.host.speech.dispatch(entry.clone(), payload.input_source.data, speech_options, settings, payload.keep_alive, admission);
-        return respond(events, task, model_id, stream).await;
+        let events = state.host.speech.dispatch(
+            entry,
+            payload.input_source.data,
+            speech_options,
+            settings,
+            payload.keep_alive,
+            admission,
+        );
+        return Ok(DispatchedAudio {
+            events,
+            task,
+            model: model_id,
+        });
     }
-    let model = match OnnxModel::from_registry(entry, task) {
+    let model = match OnnxModel::from_registry(&entry, task) {
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
     };
     if task == AudioTask::TextToSpeech {
-        match model.tts_capabilities().and_then(|caps| caps.validate_language_control(options.language.as_deref())) {
-            Ok(()) => {},
+        match model
+            .tts_capabilities()
+            .and_then(|caps| caps.validate_language_control(options.language.as_deref()))
+        {
+            Ok(()) => {}
             Err(e) => return error(StatusCode::BAD_REQUEST, "unsupported_parameter", e),
         }
     }
     let input = if is_text {
         AudioInput::Text(payload.input_source.data)
     } else {
-        let source = match payload
+        let mut source = match payload
             .input_source
             .source_type
             .to_ascii_lowercase()
@@ -362,34 +465,85 @@ pub async fn execute_audio(
                 )
             }
         };
-        match prepare_authorized_audio(&state, &headers, source, &settings).await {
-                Ok(audio) => AudioInput::Pcm(audio),
-                Err((kind, message)) => {
-                    return error(
-                        if kind == "permission_error" {
-                            StatusCode::FORBIDDEN
-                        } else {
-                            StatusCode::BAD_REQUEST
-                        },
-                        kind,
-                        message,
-                    )
-                }
+        if let Some(call) = call {
+            crate::utils::authorize_source_for_call(state, call, &mut source)
+                .await
+                .map_err(AudioError::Policy)?;
+        }
+        match prepare_authorized_audio(state, &headers, source, &settings, Some(cancellation)).await
+        {
+            Ok(audio) => AudioInput::Pcm(audio),
+            Err((kind, message)) => {
+                return error(
+                    if kind == "permission_error" {
+                        StatusCode::FORBIDDEN
+                    } else {
+                        StatusCode::BAD_REQUEST
+                    },
+                    kind,
+                    message,
+                )
+            }
         }
     };
     if task == AudioTask::TextToSpeech {
         let speech = state.host.speech.clone();
         let release_lease = admission.clone();
-        match tokio::task::spawn_blocking(move || { let _lease = release_lease; speech.unload() }).await {
-            Ok(Ok(())) => {},
-            result => return error(StatusCode::INTERNAL_SERVER_ERROR, "speech_transition_error", format!("{result:?}")),
+        match tokio::task::spawn_blocking(move || {
+            let _lease = release_lease;
+            speech.unload()
+        })
+        .await
+        {
+            Ok(Ok(())) => {}
+            result => {
+                return error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "speech_transition_error",
+                    format!("{result:?}"),
+                )
+            }
         }
     }
-    let events = state
-        .host
-        .onnx
-        .dispatch(model, task, input, options, settings, payload.keep_alive, admission);
-    respond(events, task, model_id, stream).await
+    let events = state.host.onnx.dispatch(
+        model,
+        task,
+        input,
+        options,
+        settings,
+        payload.keep_alive,
+        admission,
+    );
+    Ok(DispatchedAudio {
+        events,
+        task,
+        model: model_id,
+    })
+}
+
+pub(crate) async fn authorize_model(
+    state: &Arc<AppState>,
+    call: &cluaiz_cep::Call,
+    entry: &ModelRegistryEntry,
+) -> Result<(), cluaiz_cep::CepError> {
+    let path = entry.primary_path().ok_or_else(|| {
+        cluaiz_cep::CepError::not_found("model_not_found", "Audio model weight is missing")
+    })?;
+    let mut source = path.to_string_lossy().to_string();
+    crate::utils::authorize_source_for_call(state, call, &mut source).await
+}
+
+async fn standard_audio(
+    state: Arc<AppState>,
+    headers: HeaderMap,
+    request: AudioExecuteRequest,
+    stream: bool,
+) -> Response {
+    let cancellation = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    match dispatch_audio(&state, headers, request, None, cancellation).await {
+        Ok(ready) => respond(ready.events, ready.task, ready.model, stream).await,
+        Err(error) => error.into_standard(),
+    }
 }
 
 /// The task's events as Server-Sent Events (`stream`) or one JSON result.
@@ -432,11 +586,11 @@ async fn respond(
                 return Json(completed(model_id, task, output)).into_response()
             }
             Err(message) => {
-                return error(StatusCode::INTERNAL_SERVER_ERROR, "engine_error", message)
+                return http_error(StatusCode::INTERNAL_SERVER_ERROR, "engine_error", message)
             }
         }
     }
-    error(
+    http_error(
         StatusCode::INTERNAL_SERVER_ERROR,
         "engine_error",
         "Audio worker ended without a result",
@@ -481,7 +635,7 @@ pub async fn speech(
 ) -> Response {
     let payload: SpeechRequest = match serde_json::from_value(payload) {
         Ok(request) => request,
-        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_input", e),
+        Err(e) => return http_error(StatusCode::BAD_REQUEST, "invalid_input", e),
     };
     let request = AudioExecuteRequest {
         model: payload.model,
@@ -497,78 +651,9 @@ pub async fn speech(
             language: payload.language,
             ..Default::default()
         }),
-        stream: payload.stream.or(Some(false)),
         keep_alive: payload.keep_alive,
     };
-    execute_audio(State(state), headers, Json(request)).await
-}
-
-#[derive(Deserialize)]
-pub struct VoicesQuery {
-    model: Option<String>,
-}
-
-/// GET /v1/audio/voices?model=<id>: the voices a TTS model can speak with. "default" (the engine
-/// picks a voice for the text's language) comes first; a single-voice model has only it.
-pub async fn voices(State(state): State<Arc<AppState>>, Query(query): Query<VoicesQuery>) -> Response {
-    let task = AudioTask::TextToSpeech;
-    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
-    let schema = state.permission_schema.read().await;
-    let slot_id = schema
-        .active_slots
-        .get(task.slot())
-        .or_else(|| schema.active_slots.get("audio_slot"))
-        .and_then(|s| s.model_id.as_deref());
-    let entry = match select_model(&registry, query.model.as_deref(), slot_id, task) {
-        Ok(entry) => entry,
-        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
-    };
-    drop(schema);
-    let mut data = vec![json!({"id": "default", "language": null, "default": true})];
-    // A GGUF speech model has no voice files; a nondefault voice is a reference audio source.
-    if entry.format_type.eq_ignore_ascii_case("gguf") {
-        return match cluaiz_runtime::speech_host::capabilities(entry) {
-            Ok(capabilities) => Json(json!({"object":"list", "model":entry.id, "data":data, "capabilities":capabilities})).into_response(),
-            Err(e) => error(StatusCode::BAD_REQUEST, "model_contract_error", e),
-        };
-    }
-    let model = match OnnxModel::from_registry(entry, task) {
-        Ok(model) => model,
-        Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
-    };
-    data.extend(
-        model
-            .voices()
-            .into_iter()
-            .map(|v| json!({"id": v.id, "language": v.language, "default": false})),
-    );
-    match model.tts_capabilities() {
-        Ok(capabilities) => Json(json!({"object":"list", "model":model.id, "data":data, "capabilities":capabilities})).into_response(),
-        Err(e) => error(StatusCode::BAD_REQUEST, "model_contract_error", e),
-    }
-}
-
-/// GET /v1/audio/languages?model=<id>: the languages a speech-to-text model can transcribe (codes
-/// for `language` and `languages`). Empty for a model that reads a single language.
-pub async fn languages(State(state): State<Arc<AppState>>, Query(query): Query<VoicesQuery>) -> Response {
-    let task = AudioTask::SpeechToText;
-    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
-    let schema = state.permission_schema.read().await;
-    let slot_id = schema
-        .active_slots
-        .get(task.slot())
-        .or_else(|| schema.active_slots.get("audio_slot"))
-        .and_then(|s| s.model_id.as_deref());
-    let entry = match select_model(&registry, query.model.as_deref(), slot_id, task) {
-        Ok(entry) => entry,
-        Err(e) => return error(StatusCode::NOT_FOUND, "model_not_found", e),
-    };
-    drop(schema);
-    let model = match OnnxModel::from_registry(entry, task) {
-        Ok(model) => model,
-        Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
-    };
-    Json(json!({"object": "list", "model": model.id, "data": model.stt_languages()})).into_response()
+    standard_audio(state, headers, request, payload.stream.unwrap_or(false)).await
 }
 
 pub async fn transcriptions(
@@ -578,7 +663,7 @@ pub async fn transcriptions(
 ) -> Response {
     let payload: TranscriptionRequest = match serde_json::from_value(payload) {
         Ok(request) => request,
-        Err(e) => return error(StatusCode::BAD_REQUEST, "invalid_input", e),
+        Err(e) => return http_error(StatusCode::BAD_REQUEST, "invalid_input", e),
     };
     let input_source = payload.input_source.unwrap_or(InputSource {
         source_type: "file".into(),
@@ -596,99 +681,11 @@ pub async fn transcriptions(
             timestamps: payload.timestamps,
             ..Default::default()
         }),
-        stream: payload.stream.or(Some(false)),
         keep_alive: payload.keep_alive,
     };
-    execute_audio(State(state), headers, Json(request)).await
+    standard_audio(state, headers, request, payload.stream.unwrap_or(false)).await
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    fn request() -> AudioExecuteRequest {
-        AudioExecuteRequest {
-            model: None,
-            task: None,
-            instruction: None,
-            input_source: InputSource {
-                source_type: "text".into(),
-                data: "sample".into(),
-            },
-            parameters: None,
-            stream: None,
-            keep_alive: None,
-        }
-    }
-    #[test]
-    fn test_unsupported_audio_options_are_errors() {
-        let mut request = request();
-        assert!(validate_options(&request, AudioTask::TextToSpeech).is_ok());
-        request.parameters = Some(AudioParameters {
-            voice_id: Some("hf_alpha".into()),
-            speed: Some(1.5),
-            ..Default::default()
-        });
-        let options = validate_options(&request, AudioTask::TextToSpeech).unwrap();
-        assert_eq!((options.voice.as_deref(), options.speed), (Some("hf_alpha"), Some(1.5)));
-        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
-        request.parameters = Some(AudioParameters {
-            voice_id: Some("default".into()),
-            ..Default::default()
-        });
-        assert!(validate_options(&request, AudioTask::TextToSpeech).unwrap().voice.is_none());
-        request.parameters = Some(AudioParameters {
-            speed: Some(9.0),
-            ..Default::default()
-        });
-        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
-        // The text's language for TTS; the speaker's languages only for STT
-        request.parameters = Some(AudioParameters {
-            language: Some("cs".into()),
-            ..Default::default()
-        });
-        assert_eq!(validate_options(&request, AudioTask::TextToSpeech).unwrap().language.as_deref(), Some("cs"));
-        request.parameters = Some(AudioParameters {
-            language: Some("not a code!".into()),
-            ..Default::default()
-        });
-        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
-        request.parameters = Some(AudioParameters {
-            languages: vec!["hi".into()],
-            ..Default::default()
-        });
-        assert!(validate_options(&request, AudioTask::TextToSpeech).is_err());
-        assert!(validate_options(&request, AudioTask::SpeechToText).is_ok());
-        request.parameters = Some(AudioParameters {
-            timestamps: Some(true),
-            ..Default::default()
-        });
-        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
-        request.parameters = None;
-        request.keep_alive = Some(-2);
-        assert!(validate_options(&request, AudioTask::SpeechToText).is_err());
-    }
-    #[test]
-    fn test_explicit_missing_model_is_not_replaced() {
-        let entry:ModelRegistryEntry=serde_json::from_value(json!({
-            "id":"model-long","category":"tts","format_type":"ONNX","huggingface_repo":"",
-            "local_dir":"","files":[],"extra_files":null,"supported_tasks":["text-to-speech"],"requires_gpu":false,
-            "metadata":{"architecture":"test","parameters":"","context_window":"",
-            "quantization":null,"bit_depth":null,"chat_template":null}
-        })).expect("Test registry fixture");
-        let mut registry = ModelRegistry::default();
-        registry.installed_models.insert(entry.id.clone(), entry);
-        assert_eq!(
-            select_model(&registry, None, None, AudioTask::TextToSpeech)
-                .expect("Declared TTS model")
-                .id,
-            "model-long"
-        );
-        assert!(select_model(
-            &registry,
-            Some("model"),
-            Some("other"),
-            AudioTask::TextToSpeech
-        )
-        .is_err());
-    }
-}
+#[path = "audio_tests.rs"]
+mod tests;
