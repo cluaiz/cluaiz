@@ -104,6 +104,15 @@ mod tests {
     }
 
     #[test]
+    fn test_a_call_from_an_async_runtime_thread_is_an_error_not_a_deadlock() {
+        let runtime = tokio::runtime::Builder::new_current_thread().build().unwrap();
+        let reply = runtime.block_on(async { call(br#"{"jsonrpc":"2.0","id":1,"method":"tasks.list"}"#) }).unwrap();
+        let reply: serde_json::Value = serde_json::from_slice(&reply).unwrap();
+        assert_eq!(reply["error"]["code"], cluaiz_cep::error::INTERNAL_ERROR);
+        assert!(reply["error"]["message"].as_str().unwrap().contains("async runtime"));
+    }
+
+    #[test]
     fn test_null_input_and_free_null() {
         unsafe {
             let reply = cep_call(std::ptr::null());
