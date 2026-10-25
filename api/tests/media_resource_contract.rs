@@ -158,8 +158,8 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
     let limit = cluaiz_api::routes::inline_body_bytes(input);
     // A declared oversize body rejects before allocation; chunked bodies cannot bypass the cap.
     for (route, declared) in [
-        ("/v1/ingest", true),
-        ("/v1/ingest", false),
+        ("/v1/cep", true),
+        ("/v1/cep", false),
         ("/v1/embeddings", true),
         ("/v1/embeddings", false),
     ] {

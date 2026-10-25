@@ -312,8 +312,7 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
             "data:{mime};base64,{}",
             base64::engine::general_purpose::STANDARD.encode(bytes)
         );
-        let (status, body) = post(&router, "/v1/ingest", json!({"source":source}), "user").await?;
-        assert_eq!(status, StatusCode::OK, "{body}");
+        let body = support::ingest(&router, json!({"source":source})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
         let document: Value = serde_json::from_str(&body)?;
         assert_eq!(document["status"], "success");
         let chunks = document["processed_sources"][0]["chunks"].clone();

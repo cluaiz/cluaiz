@@ -36,14 +36,13 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/ingest")
+                .uri("/v1/cep")
                 .header("content-type", "application/json")
-                .body(Body::from(request.to_string()))?,
+                .body(Body::from(json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":request}).to_string()))?,
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
-    let (status, body) = support::post(&router, "/v1/ingest", request, "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, request).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     let response: Value = serde_json::from_str(&body)?;
     assert_eq!(response["status"], "success");
     let item = &response["processed_sources"][0];
@@ -59,15 +58,8 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         .iter()
         .all(|chunk| chunk.as_str().is_some_and(|text| text.len() <= 32)));
     let docx = document_fixtures::docx(document_fixtures::DOCX_XML)?;
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest/file",
-        json!({"source":inline(
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", &docx)}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":inline(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", &docx)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     assert!(
         serde_json::from_str::<Value>(&body)?["processed_sources"][0]["parts"][0]["text"]
             .as_str()
@@ -98,14 +90,7 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
             "नमस्ते 3187",
         ),
     ] {
-        let (status, body) = support::post(
-            &router,
-            "/v1/ingest/file",
-            json!({"source":inline(mime, &bytes)}),
-            "user",
-        )
-        .await?;
-        assert_eq!(status, StatusCode::OK, "{body}");
+        let body = support::ingest(&router, json!({"source":inline(mime, &bytes)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
         let response: Value = serde_json::from_str(&body)?;
         assert_eq!(response["status"], "success", "{body}");
         assert!(
@@ -116,14 +101,7 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         );
     }
     let mixed = document_fixtures::pdf(&[Some("Known page content"), None])?;
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"source":inline("application/pdf", &mixed)}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":inline("application/pdf", &mixed)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     let response: Value = serde_json::from_str(&body)?;
     assert_eq!(response["status"], "partial");
     assert!(!response["processed_sources"][0]["parts"][1]["omissions"]
@@ -140,45 +118,25 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         json!({"source":inline("text/plain", b"binary\0content")}),
         json!({"source":"missing.pdf"}),
     ] {
-        let (status, body) = support::post(&router, "/v1/ingest", request, "user").await?;
-        assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+        let body = support::ingest(&router, request).await?.expect_err("ingest must fail").to_string();
+        assert!(body.contains("\"code\":-32602"), "{body}");
     }
     let local = workspace.path().join("local.pdf");
     std::fs::write(&local, pdf)?;
-    let (status, body) =
-        support::post(&router, "/v1/ingest", json!({"source":"local.pdf"}), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":"local.pdf"})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     std::fs::write(
         workspace.path().join("source.ts"),
         "const actual_order = 23;",
     )?;
-    let (status, body) =
-        support::post(&router, "/v1/ingest", json!({"source":"source.ts"}), "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":"source.ts"})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     assert!(body.contains("actual_order = 23"), "{body}");
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"source":"local.pdf"}),
-        "agent",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":"local.pdf"})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     let outside = tempfile::tempdir()?;
     let external = outside.path().join("owner.md");
     std::fs::write(&external, "external owner document")?;
-    let (status, body) =
-        support::post(&router, "/v1/ingest", json!({"source":external}), "agent").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":external})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     assert!(body.contains("external owner document"), "{body}");
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"source":source,"output_controls":{"return_text":false}}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, json!({"source":source,"output_controls":{"return_text":false}})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     let response: Value = serde_json::from_str(&body)?;
     assert!(response["processed_sources"][0].get("chunks").is_none());
     assert!(response["processed_sources"][0]["parts"][0]
@@ -254,14 +212,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
             assert!(!scanned
                 .windows(code.len())
                 .any(|window| window == code.as_bytes()));
-            let (status, body) = support::post(
-                &router,
-                "/v1/ingest",
-                json!({"source":inline("application/pdf", &scanned)}),
-                "user",
-            )
-            .await?;
-            assert_eq!(status, StatusCode::OK, "{body}");
+            let body = support::ingest(&router, json!({"source":inline("application/pdf", &scanned)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
             let extracted: Value = serde_json::from_str(&body)?;
             assert_eq!(extracted["status"], "success");
             assert_eq!(
@@ -272,14 +223,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
                 .as_str()
                 .is_some_and(|text| text.contains(code)));
             let png = document_fixtures::raster::encoded(&image, image::ImageOutputFormat::Png)?;
-            let (status, body) = support::post(
-                &router,
-                "/v1/ingest/file",
-                json!({"source":inline("image/png", &png)}),
-                "user",
-            )
-            .await?;
-            assert_eq!(status, StatusCode::OK, "{body}");
+            let body = support::ingest(&router, json!({"source":inline("image/png", &png)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
             let extracted: Value = serde_json::from_str(&body)?;
             assert_eq!(
                 extracted["processed_sources"][0]["parts"][0]["method"],

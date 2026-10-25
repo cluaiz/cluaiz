@@ -44,8 +44,7 @@ fn vectors(item: &Value) -> Result<Vec<Vec<f32>>> {
     Ok(result)
 }
 async fn ingest(router: &axum::Router, payload: Value) -> Result<Value> {
-    let (status, body) = support::post(router, "/v1/ingest", payload, "user").await?;
-    assert_eq!(status, StatusCode::OK, "{body}");
+    let body = support::ingest(&router, payload).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
     let value: Value = serde_json::from_str(&body)?;
     assert_eq!(value["status"], "success", "{value}");
     Ok(value["processed_sources"][0].clone())
@@ -206,20 +205,14 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/ingest")
+                .uri("/v1/cep")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"source":inline}).to_string()))?,
+                .body(Body::from(json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":{"source":inline}}).to_string()))?,
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
-    let (status, _) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"source":inline,"model":"uninstalled-ingest-model"}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    let missing = support::ingest(&router, json!({"source":inline,"model":"uninstalled-ingest-model"})).await?.expect_err("ingest must fail").to_string();
+    assert!(missing.contains("\"code\":-32004"), "{missing}");
     let native = ingest(&router, json!({"source":inline})).await?;
     assert!(native["chunks"][0]
         .as_str()
@@ -301,14 +294,8 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
     assert_eq!(status, StatusCode::OK, "{body}");
 
     assert!(state.host.model_description().await.is_none());
-    let (status, body) = support::post(
-        &router,
-        "/v1/ingest",
-        json!({"model":ids[4],"source":red}),
-        "user",
-    )
-    .await?;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    let body = support::ingest(&router, json!({"model":ids[4],"source":red})).await?.expect_err("ingest must fail").to_string();
+    assert!(body.contains("\"code\":-32602"), "{body}");
     assert!(body.contains("projector"), "{body}");
     assert!(
         state.host.model_description().await.is_none(),

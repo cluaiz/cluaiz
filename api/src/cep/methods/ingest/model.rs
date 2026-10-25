@@ -1,8 +1,6 @@
 //! Optional ingest model processing through the existing embedding and native media owners.
-use super::{
-    embeddings::{self, EmbeddingExecutor},
-    ingest::{IngestPayload, VisionSettings},
-};
+use super::{IngestPayload, VisionSettings};
+use crate::handlers::embeddings::{self, EmbeddingExecutor};
 use crate::{utils::task_error, AppState};
 use anyhow::{bail, Context, Result};
 use axum::{body::to_bytes, http::StatusCode, response::Response};
@@ -410,7 +408,7 @@ async fn vision(
 ) -> Result<DocumentPart> {
     let instruction = match &options.system_instruction {
         Some(value) if !value.trim().is_empty() => value.clone(),
-        _ => serde_json::from_str::<Value>(include_str!("../../data/ingest.json"))?["instruction"]
+        _ => serde_json::from_str::<Value>(include_str!("../../../../data/ingest.json"))?["instruction"]
             .as_str()
             .context("Ingest instruction resource is missing")?
             .to_owned(),
@@ -436,7 +434,7 @@ async fn vision(
     };
     let maximum = options
         .max_tokens
-        .unwrap_or(super::chat::DEFAULT_MAX_TOKENS);
+        .unwrap_or(crate::handlers::chat::DEFAULT_MAX_TOKENS);
     let dispatch = state
         .host
         .dispatch_prepared_with_progress(

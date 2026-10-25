@@ -33,7 +33,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .allow_origin(tower_http::cors::Any);
 
     let chat = post(handlers::chat::chat_completions).layer(from_fn(attachment_body_limit));
-    let ingest = post(handlers::ingest::file_ingest).layer(from_fn(attachment_body_limit));
 
     Router::new()
         // ── 1. Core Health & Info ──
@@ -62,9 +61,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/pull", post(handlers::models::pull_model))
         // MCP server over the CEP registry
         .route("/mcp", post(crate::cep::mcp::handle))
-        // ── 12. Vector Ingest API ──
-        .route("/v1/ingest", ingest.clone())
-        .route("/v1/ingest/file", ingest)
         // ── 13. System Control, Telemetry & Processes ──
         // ── 15. Storage Control API ──
         .layer(axum::middleware::from_fn_with_state(
