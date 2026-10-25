@@ -2,6 +2,13 @@
 
 Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.
 
+An explicit local OS transport can serve the same router with
+`cluaiz serve --native-endpoint <local-pipe-or-socket>`, without a TCP listener.
+Its mandatory session authentication, framing, lifecycle and platform limits are
+documented in [`src/native/README.md`](src/native/README.md). Plain `serve` retains
+the existing HTTP mode. Native transport is host-level connectivity, not a
+per-extension authorization boundary.
+
 ## Chat planner reference
 
 `POST /v1/system/plan` accepts a registered `model`, optional `model_path`, and transient `n_ctx`, `batch_tokens`, `ram_buffer_gb`, `vram_buffer_gb` overrides. `n_ctx`: `0` selects Auto, `-1` selects the native maximum, and positive values request a context capped by the model's native limit. Batch tokens must be positive and buffers finite/nonnegative. Invalid values return HTTP400; unknown fields (including removed synthetic `weights_gb`/`total_layers`) return HTTP422. A plan request never persists settings or loads model weights.

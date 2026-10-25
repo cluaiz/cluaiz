@@ -16,6 +16,9 @@ cluaiz-security = { path = "../security" }
 cluaiz-context = { path = "../context" }
 
 axum = { version = "0.8", features = ["macros"] }
+hyper = { version = "1", features = ["http1", "server", "client"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["cors"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -32,6 +35,9 @@ dirs = "5.0"
 rfd = "0.15"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [features]
 default = ["cuda"]
 cuda = ["cluaiz-runtime/cuda"]
@@ -43,7 +49,6 @@ rocm = ["cluaiz-runtime/rocm"]
 tempfile = "3"
 cfb = "0.14"
 image = "0.24"
-tower = { version = "0.5", features = ["util"] }
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
 
 [[test]]
