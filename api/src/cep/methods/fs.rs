@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-// Preserve the old listing's bounded recursion; reaching the bound is now explicit.
+// Preserve bounded recursion and report partial listings explicitly.
 const MAX_LIST_DEPTH: usize = 12;
 
 #[derive(Deserialize, JsonSchema)]
@@ -62,6 +62,19 @@ struct DiskItem {
     modified: String,
 }
 
+#[derive(Default)]
+struct ListingStats {
+    truncated: bool,
+    skipped: usize,
+}
+
+impl ListingStats {
+    fn skip(&mut self) {
+        self.truncated = true;
+        self.skipped += 1;
+    }
+}
+
 pub fn register(registry: &mut Registry<CallCtx>) {
     registry.add(
         "fs.read",
@@ -90,7 +103,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     registry.add(
         "fs.list",
         Meta::new(Scope::Read, "Lists directory entries, optionally recursively")
-            .example(json!({"path":".","recursive":false}), json!({"items":[{"path":"notes.txt","name":"notes.txt","is_folder":false,"size":5,"modified":"SystemTime { .. }"}]})),
+            .example(json!({"path":".","recursive":false}), json!({"items":[{"path":"notes.txt","name":"notes.txt","is_folder":false,"size":5,"modified":"2026-10-25T00:00:00.000Z"}],"truncated":false,"skipped":0})),
         |ctx: CallCtx, call: Call, p: ListParams| blocking(ctx, call, p, list),
     );
     registry.add(
@@ -231,6 +244,10 @@ fn list(call: &Call, workspace: &Path, params: ListParams) -> Result<Value, CepE
         false,
     )?;
     let mut items = Vec::new();
+    if !dir.is_dir() {
+        return Err(roots::invalid("path", "Listing path must be a directory"));
+    }
+    let mut stats = ListingStats::default();
     walk(
         call,
         workspace,
@@ -239,8 +256,9 @@ fn list(call: &Call, workspace: &Path, params: ListParams) -> Result<Value, CepE
         params.recursive,
         0,
         &mut items,
-    )?;
-    Ok(json!({"items": items}))
+        &mut stats,
+    );
+    Ok(json!({"items": items,"truncated":stats.truncated,"skipped":stats.skipped}))
 }
 
 fn walk(
@@ -251,39 +269,33 @@ fn walk(
     recursive: bool,
     depth: usize,
     items: &mut Vec<DiskItem>,
-) -> Result<(), CepError> {
+    stats: &mut ListingStats,
+) {
     if depth > MAX_LIST_DEPTH {
-        return Err(CepError::too_large(MAX_LIST_DEPTH as u64, depth as u64));
+        stats.skip();
+        return;
     }
-    for entry in fs::read_dir(dir).map_err(|e| roots::io_error("list directory", e))? {
-        let entry = entry.map_err(|e| roots::io_error("read directory entry", e))?;
-        let entry_path = entry.path();
-        let canonical = checked(call, workspace, &entry_path.to_string_lossy(), false)?;
-        let kind = entry
-            .file_type()
-            .map_err(|e| roots::io_error("read file type", e))?;
-        let metadata = entry
-            .metadata()
-            .map_err(|e| roots::io_error("read metadata", e))?;
-        let relative = entry_path
-            .strip_prefix(root)
-            .unwrap_or_else(|_| Path::new(""));
-        items.push(DiskItem {
-            path: if relative.as_os_str().is_empty() {
-                entry.file_name().to_string_lossy().into()
-            } else {
-                relative.to_string_lossy().replace('\\', "/")
-            },
-            name: entry.file_name().to_string_lossy().into(),
-            is_folder: kind.is_dir(),
-            size: if kind.is_dir() { 0 } else { metadata.len() },
-            modified: metadata
-                .modified()
-                .map(|time| format!("{time:?}"))
-                .unwrap_or_default(),
-        });
-        // Do not follow directory symlinks into loops; each target was still authorized above.
-        if recursive && kind.is_dir() {
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => {
+            stats.skip();
+            return;
+        }
+    };
+    for entry in entries {
+        let prepared = entry
+            .map_err(|e| roots::io_error("read directory entry", e))
+            .and_then(|entry| list_item(call, workspace, root, entry));
+        let (item, canonical, is_dir) = match prepared {
+            Ok(item) => item,
+            Err(_) => {
+                stats.skip();
+                continue;
+            }
+        };
+        items.push(item);
+        // Do not follow directory symlinks into loops; each target was authorized above.
+        if recursive && is_dir {
             walk(
                 call,
                 workspace,
@@ -292,10 +304,48 @@ fn walk(
                 recursive,
                 depth + 1,
                 items,
-            )?;
+                stats,
+            );
         }
     }
-    Ok(())
+}
+
+fn list_item(
+    call: &Call,
+    workspace: &Path,
+    root: &Path,
+    entry: fs::DirEntry,
+) -> Result<(DiskItem, PathBuf, bool), CepError> {
+    let entry_path = entry.path();
+    let canonical = checked(call, workspace, &entry_path.to_string_lossy(), false)?;
+    let kind = entry
+        .file_type()
+        .map_err(|e| roots::io_error("read file type", e))?;
+    let metadata = entry
+        .metadata()
+        .map_err(|e| roots::io_error("read metadata", e))?;
+    let modified = metadata
+        .modified()
+        .map_err(|e| roots::io_error("read modification time", e))?;
+    let relative = entry_path
+        .strip_prefix(root)
+        .unwrap_or_else(|_| Path::new(""));
+    Ok((
+        DiskItem {
+            path: if relative.as_os_str().is_empty() {
+                entry.file_name().to_string_lossy().into()
+            } else {
+                relative.to_string_lossy().replace('\\', "/")
+            },
+            name: entry.file_name().to_string_lossy().into(),
+            is_folder: kind.is_dir(),
+            size: if kind.is_dir() { 0 } else { metadata.len() },
+            modified: chrono::DateTime::<chrono::Utc>::from(modified)
+                .to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        },
+        canonical,
+        kind.is_dir(),
+    ))
 }
 
 fn delete(call: &Call, workspace: &Path, params: PathParams) -> Result<Value, CepError> {
@@ -324,15 +374,16 @@ fn copy(call: &Call, workspace: &Path, params: TransferParams) -> Result<Value, 
         return Err(roots::invalid("to", "Cannot copy a path into itself"));
     }
     parents(&to)?;
-    copy_tree(call, workspace, &from, &to, &mut HashSet::new())?;
+    copy_tree(workspace, &from, &to, &from, &to, &mut HashSet::new())?;
     Ok(json!({"from": roots::display(&from), "to": roots::display(&to)}))
 }
 
 fn copy_tree(
-    call: &Call,
     workspace: &Path,
     from: &Path,
     to: &Path,
+    source_root: &Path,
+    target_root: &Path,
     active: &mut HashSet<PathBuf>,
 ) -> Result<(), CepError> {
     // Endpoints were resolved and authorized by the caller. Rechecking an outside
@@ -350,14 +401,23 @@ fn copy_tree(
     fs::create_dir_all(to).map_err(|e| roots::io_error("create copied directory", e))?;
     for entry in fs::read_dir(from).map_err(|e| roots::io_error("list copied directory", e))? {
         let entry = entry.map_err(|e| roots::io_error("read copied entry", e))?;
-        let child_from = checked(call, workspace, &entry.path().to_string_lossy(), false)?;
-        let child_to = checked(
-            call,
-            workspace,
+        let child_from = roots::resolve(&entry.path().to_string_lossy(), workspace, false)?;
+        let child_to = roots::resolve(
             &to.join(entry.file_name()).to_string_lossy(),
+            workspace,
             true,
         )?;
-        copy_tree(call, workspace, &child_from, &child_to, active)?;
+        if !child_from.starts_with(source_root) || !child_to.starts_with(target_root) {
+            return Err(CepError::forbidden("roots"));
+        }
+        copy_tree(
+            workspace,
+            &child_from,
+            &child_to,
+            source_root,
+            target_root,
+            active,
+        )?;
     }
     active.remove(from);
     Ok(())

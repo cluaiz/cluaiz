@@ -88,6 +88,17 @@ fn test_display_preserves_unc_server_prefix() {
 }
 
 #[test]
+fn test_os_permission_denied_is_distinct_from_missing_cep_scope() {
+    let error = roots::io_error(
+        "read file",
+        std::io::Error::from(std::io::ErrorKind::PermissionDenied),
+    );
+    assert_eq!(error.code, error::FORBIDDEN);
+    assert_eq!(error.kind(), Some("os_permission_denied"));
+    assert!(error.data.unwrap().get("needs").is_none());
+}
+
+#[test]
 fn test_existing_parent_traversal_is_outside_token_root() {
     let dir = tempfile::tempdir().unwrap();
     let workspace = dir.path().join("workspace");
