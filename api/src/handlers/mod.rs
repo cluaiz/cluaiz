@@ -6,8 +6,6 @@ pub mod chat;
 pub mod components;
 pub mod control;
 pub mod embeddings;
-pub mod fs;
-pub mod fs_jail;
 pub mod ingest;
 mod ingest_model;
 pub mod mcp;

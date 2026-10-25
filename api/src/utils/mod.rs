@@ -2,12 +2,13 @@ pub mod slots;
 
 /// Shared filesystem authorization for every attachment consumer. Remote/inline data
 /// has no client-selected local file; temporary source lifetime belongs to cluaiz-media.
+/// Standard routes execute as the authenticated owner; client-supplied caller/approval
+/// headers do not define a principal. CEP methods check their own `Call` principal.
 pub(crate) async fn authorize_source(
     state: &std::sync::Arc<crate::AppState>,
-    headers: &axum::http::HeaderMap,
+    _headers: &axum::http::HeaderMap,
     source: &mut String,
 ) -> Result<Option<std::path::PathBuf>, (&'static str, String)> {
-    use crate::handlers::fs_jail::{check_permission_gate, resolve_workspace_path};
     let Some(path) = cluaiz_media::source::local_source_path(source)
         .map_err(|error| ("invalid_request_error", error.to_string()))?
     else {
@@ -17,24 +18,8 @@ pub(crate) async fn authorize_source(
     let path = path
         .to_str()
         .ok_or_else(|| ("invalid_request_error", "Media path must be UTF-8".into()))?;
-    let verification = resolve_workspace_path(path, &workspace, false)
-        .map_err(|(_, error)| ("invalid_request_error", error.to_string()))?;
-    check_permission_gate(
-        state,
-        "fs_read",
-        &verification,
-        source,
-        headers
-            .get("x-caller")
-            .and_then(|value| value.to_str().ok()),
-        None,
-        headers
-            .get("x-approval-id")
-            .and_then(|value| value.to_str().ok()),
-    )
-    .await
-    .map_err(|(_, error)| ("permission_error", error.to_string()))?;
-    let canonical = verification.resolved_path().to_path_buf();
+    let canonical = crate::cep::roots::resolve(path, &workspace, false)
+        .map_err(|error| ("invalid_request_error", error.to_string()))?;
     *source = canonical
         .to_str()
         .ok_or_else(|| ("invalid_request_error", "Media path must be UTF-8".into()))?
@@ -138,4 +123,63 @@ pub(crate) fn task_error(
     (status, axum::Json(json!({"status":"error", "error":{"type":kind,
         "message":details.as_ref().and_then(|d|d.get("message")).and_then(Value::as_str).unwrap_or(&message),
         "details":details}}))).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::authorize_source;
+    use axum::http::HeaderMap;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_standard_local_source_uses_owner_and_shared_canonical_path() {
+        let workspace = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let file = outside.path().join("owner.md");
+        std::fs::write(&file, "owner attachment").unwrap();
+        let state = Arc::new(crate::AppState::new_test_state(workspace.path().to_owned()));
+        state.permission_schema.write().await.agent_security_mode = "strict".into();
+        let mut headers = HeaderMap::new();
+        headers.insert("x-caller", "agent".parse().unwrap());
+        headers.insert("x-approval-id", "untrusted-header".parse().unwrap());
+        let mut source = file.to_string_lossy().to_string();
+        let canonical = authorize_source(&state, &headers, &mut source)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(canonical, std::fs::canonicalize(file).unwrap());
+        assert_eq!(source, canonical.to_str().unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_standard_relative_missing_and_inline_sources_share_one_boundary() {
+        let workspace = tempfile::tempdir().unwrap();
+        std::fs::write(workspace.path().join("notes.md"), "notes").unwrap();
+        let state = Arc::new(crate::AppState::new_test_state(workspace.path().to_owned()));
+        let headers = HeaderMap::new();
+        let mut relative = "notes.md".to_owned();
+        let resolved = authorize_source(&state, &headers, &mut relative)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved,
+            std::fs::canonicalize(workspace.path().join("notes.md")).unwrap()
+        );
+        let mut missing = "missing.md".to_owned();
+        assert_eq!(
+            authorize_source(&state, &headers, &mut missing)
+                .await
+                .unwrap_err()
+                .0,
+            "invalid_request_error"
+        );
+        let mut inline = "data:text/plain;base64,bm90ZXM=".to_owned();
+        let before = inline.clone();
+        assert!(authorize_source(&state, &headers, &mut inline)
+            .await
+            .unwrap()
+            .is_none());
+        assert_eq!(inline, before);
+    }
 }
