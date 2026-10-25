@@ -4,21 +4,6 @@ use std::sync::Arc;
 use crate::AppState;
 use cluaiz_security::permission_schema::PermissionSchema;
 
-fn get_local_ip() -> Option<String> {
-    use std::net::UdpSocket;
-    let socket = match UdpSocket::bind("0.0.0.0:0") {
-        Ok(s) => s,
-        Err(_) => return None,
-    };
-    match socket.connect("8.8.8.8:80") {
-        Ok(()) => match socket.local_addr() {
-            Ok(addr) => Some(addr.ip().to_string()),
-            Err(_) => None,
-        },
-        Err(_) => None,
-    }
-}
-
 // ─── GET /v1/system/permission ───────────────────────────────────────
 pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> {
     let schema = PermissionSchema::load();
@@ -88,7 +73,7 @@ pub async fn get_permission(State(_state): State<Arc<AppState>>) -> Json<Value> 
         let _ = schema.save(); // Persist clean state to Permission.json
     }
 
-    let lan_ip = get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string());
+    let lan_ip = crate::cep::methods::system::lan_ip().unwrap_or_else(|| "127.0.0.1".to_string());
     
     // Inject available list properties into permission JSON so UI gets them
     let mut perm_json = serde_json::to_value(&schema).unwrap_or(json!({}));

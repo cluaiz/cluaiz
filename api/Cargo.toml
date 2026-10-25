@@ -14,6 +14,8 @@ cluaiz-media = { path = "../engine/media" }
 cluaiz-agents = { path = "../agents" }
 cluaiz-security = { path = "../security" }
 cluaiz-context = { path = "../context" }
+cluaiz-cep = { path = "../cep" }
+schemars = "1"
 
 axum = { version = "0.8", features = ["macros"] }
 hyper = { version = "1", features = ["http1", "server", "client"] }

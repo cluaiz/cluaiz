@@ -2,6 +2,8 @@
 //! Single unified HTTP/SSE gateway.
 
 pub mod auth;
+pub mod boot;
+pub mod cep;
 pub mod handlers;
 pub mod native;
 pub mod routes;
@@ -26,13 +28,9 @@ pub async fn run_daemon() -> anyhow::Result<()> {
 /// The explicit native mode serves the same router without opening a TCP listener.
 pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow::Result<()> {
     let native = endpoint.as_deref().map(native::NativeListener::bind).transpose()?;
-    // Register model folders that are on disk but not in model_registry.json (as the server did before)
-    cluaiz_models::registry::InstalledStateRegistry::sync_from_disk(
-        &cluaiz_models::registry::ModelVault::root_dir(),
-    );
-    let host = Arc::new(cluaiz_runtime::EngineHost::new());
+    let state = boot::boot();
+    let host = state.host.clone();
     let perms = cluaiz_security::PermissionSchema::load();
-    let state = AppState::new(host.clone());
     let session_token = state.session_token.clone();
     let app = create_router(state);
 

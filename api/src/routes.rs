@@ -38,12 +38,9 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
     Router::new()
         // ── 1. Core Health & Info ──
         .route("/health", get(handlers::system::health_check))
-        .route("/info", get(handlers::system::system_info))
+        // CEP: every Engine-specific method (`.agent/plans/CEP/`)
+        .route("/v1/cep", post(crate::cep::http::handle).layer(from_fn(attachment_body_limit)))
         .route("/v1/system/cmd", post(handlers::system::execute_cmd))
-        .route(
-            "/v1/system/profile",
-            post(handlers::setup::configure_profile),
-        )
         // ── 2. External Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", chat.clone())
         .route("/api/chat", chat)
@@ -98,7 +95,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/models/installed",
             get(handlers::models::list_installed_models),
         )
-        .route("/hardware", get(handlers::models::hardware_status))
         .route("/models/download", post(handlers::models::download_model))
         .route("/models/load", post(handlers::models::load_model))
         .route(
@@ -106,7 +102,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::models::inspect_raw_header),
         )
         .route("/v1/models/{model_id}", delete(handlers::models::rm_model))
-        .route("/v1/hardware/calibrate", post(handlers::models::calibrate))
         // ── 4. Optimization & Hardware Tuning API ──
         .route(
             "/v1/optimization/status",
@@ -228,11 +223,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/ingest/file", ingest)
         // ── 13. System Control, Telemetry & Processes ──
         .route("/v1/system/ps", get(handlers::ps::get_processes))
-        .route("/v1/system/info", get(handlers::system::get_system_info))
-        .route(
-            "/v1/system/control",
-            get(handlers::system::get_system_control),
-        )
         .route("/v1/system/live", get(handlers::system::get_system_live))
         .route("/v1/system/plan", post(handlers::system::plan_execution))
         .route(

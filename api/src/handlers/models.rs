@@ -26,15 +26,6 @@ pub async fn list_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
     }))
 }
 
-/// GET /hardware
-pub async fn hardware_status() -> Json<Value> {
-    let hw = HardwareProber::current();
-    Json(json!({
-        "status": "success",
-        "hardware": hw
-    }))
-}
-
 /// GET /v1/models/installed
 pub async fn list_installed_models() -> Json<Value> {
     let registry = InstalledStateRegistry::load();
@@ -287,14 +278,4 @@ pub async fn rm_model(
             "message": e
         }))),
     }
-}
-
-/// POST /v1/hardware/calibrate
-pub async fn calibrate(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let hw = HardwareProber::current();
-    Json(json!({
-        "status": "success",
-        "message": "Hardware calibration completed.",
-        "hardware": hw
-    }))
 }
