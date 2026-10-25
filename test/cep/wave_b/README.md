@@ -143,3 +143,51 @@ The quality scan's five signals were reviewed: the large diff is chiefly moved p
 - Rules: the founder's same-checkout/main instruction overrides the original separate-worktree setup. Foreign agent changes are excluded from B's commits.
 
 Not verified here: optional real-model inference/artifact cases, ONNX positive planning in this live seed, native folder-picker UI, scoped HTTP credentials, or App integration. Storage cleanup reports failures but is not transactional: an error can occur after some entries were removed. This step does not complete the remaining Wave B model/tool/audio/ingest/documentation groups. Founder review status: `WAITING_FOR_REVIEW`.
+
+## B3 model controls
+
+`models.list`, `models.inspect`, `models.load`, `models.remove` and `models.download` now use the CEP method registry. The six retired model paths merge two old listing routes into one method and replace the remaining load/inspect/remove/download routes. The OpenAI `/v1/models` and Ollama `/api/tags` response adapters remain. All three listings use the existing `cluaiz_models::registry::InstalledStateRegistry::load`; there is no second registry reader/parser or new model runtime.
+
+`models.list` returns a sorted domain array, supports the catalog's category filter, retains entry metadata/experimental-family flags, and exposes `format`/`size`. `models.inspect` reads an installed GGUF primary file, or a file inside that package, using the existing GGUF parser. The result contains the parser's metadata, integer arrays, speech languages and tensor table; large metadata arrays remain summaries as in that parser. ONNX graph inspection is not added by this method. IDs containing `..`, slash, backslash or NUL are rejected before lookup. Optional file paths cannot escape their package, including through a symlink. Selected canonical paths also pass the principal's roots check.
+
+`models.load` reuses `EngineHost::ensure_loaded`, returns measured `loaded_ms`, and reports real load errors. Explicit eager loading of non-GGUF packages returns `not_implemented`; their existing task-specific standard APIs are unchanged. `models.remove` checks the installed directory, unloads an active GGUF package before deleting it, and reuses `ModelDownloader::uninstall` for directory/registry removal. This is not a new transactional model lifecycle or concurrency guarantee.
+
+`models.download` is declared as a task method but immediately returns `-32007 not_implemented`; it creates no fake successful task. **Known exception:** `/api/pull` still reports fake queued work. B3's explicit instruction defers that body until the founder's O6 decision; P3.4 is therefore not fully accepted, and this report does not claim that all fake responses are removed.
+
+### B3 proof, 25 October 2026
+
+```text
+cargo test --offline --manifest-path test/cep/wave_b/Cargo.toml --target-dir target/cep-wave-b-contracts
+14 passed; 0 failed; 0 ignored (filesystem methods)
+10 passed; 0 failed; 0 ignored (paths)
+
+# CLUAIZ_HOME points to target/cep-wave-b-baseline/b3-api-home
+cargo test --release --offline -p cluaiz-api --lib --test cep_models_contract --test cep_system_contract --test cep_fs_contract -- --test-threads=1
+23 passed; 0 failed; 1 ignored (library)
+1 passed; 0 failed; 0 ignored (filesystem router)
+1 passed; 0 failed; 0 ignored (model contract)
+3 passed; 0 failed; 0 ignored (system contract)
+
+cargo build --release --offline -p cmd
+Finished `release` profile [optimized] target(s) in 2m 11s
+
+python test/cep/wave_b/models_http_journey.py --exe target/release/cluaiz.exe --seed-home C:/Users/Aryan/AppData/Local/cluaiz-test/installhome --home target/cep-wave-b-baseline/b3-http-loaded-remove --port 8012 --check-load
+49 checks; real_model_load_completed: true; passed: true
+owned_process_stopped: true; seed_config_unchanged: true
+```
+
+The model contract uses an actual router, dispatcher, disposable registry and existing GGUF/ONNX metadata fixture writers. These small packages certify metadata/removal/validation behavior, not inference. It checks category/schema errors, missing IDs, all four path-like ID forms, an actual escaping file symlink, roots denial, unimplemented download/non-GGUF eager load, retired routes and actual removal without affecting the other package.
+
+The live journey compares actual installed IDs against both standard listings, reads a real GGUF header, and loads a real model on CPU with context 512 and two threads in a copied test settings file. For loaded-package removal it creates an owned hard link to the existing weight, allocating no second weight copy, loads that test package, verifies removing an unrelated fixture keeps it loaded, and then verifies removing the loaded test package unloads it first. The original weight remains present with its original size; only the owned directory/link is removed. The observed load duration in this run was 2573 ms; this single observation is not a performance benchmark. No generation or model download was run.
+
+Executable SHA-256: `d9ff1ca698a8bea9ead4a155d924651ea8a1c087a7d9dbfb9a2bee4adb8b2dd0`. Local ignored report: `target/cep-wave-b-baseline/b3-http-loaded-remove/models-http-report.json`. Logs: `b3-review-recheck.log`, `b3-api-isolated-final.log`, `b3-build.log`, `b3-http-loaded-remove.log` in the same baseline folder. The executable was frozen before the later test-only symlink assertion; Wave A also develops in this shared checkout, so the hash identifies the tested executable rather than claiming a clean single-commit build.
+
+### B3 walkthrough and limits
+
+Required diff-helper line numbers for `api/src/cep/methods/models.rs`: `register` L54 declares the five methods/scopes and reuses the existing load/uninstall implementations; `validate_id` L148 rejects path-like IDs; `worker` L158 keeps blocking registry/probe/delete work off the async thread; `list` L170 adapts the shared domain registry; `selected` L207 resolves the installed entry/file and checks roots; `inspect` L260 projects the existing parser's real header/tensor values. Old model handler functions and six route lines are removed together. The standard list/pull functions stay in `handlers/models.rs`.
+
+The quality scan's generic-name signals (`as_str`, `inspect`, `list`, `register`, `worker`) are scoped adapters/registry conventions, not duplicate parsers, loaders or installers. The filesystem worker takes workspace/params and the model worker supports different domain return types; neither duplicates model logic. The large diff is the method cutover plus tests/deleted old handlers. No new unsafe code or production unwrap was added. Stub-pattern scanning found no hits; that heuristic does not detect the known `/api/pull` fake described above.
+
+Engineer/security: actual router/root/error/native-load/removal checks above passed. SDLC: one B3 cutover commit; founder review pending. User: Windows was exercised, Linux/macOS were not. Founder/market: no new model-family support, downloader or performance claim. Over-engineering: existing registry, parser, host, uninstaller, fixture writers and process harness are reused. Rules: only B-owned changes and the model-route deletion belong in B's commit; Wave A's concurrent MCP/auth changes remain its own.
+
+Remaining: O6 `/api/pull`, a shared downloadable task implementation, explicit non-GGUF eager loading, App callers, and the later Wave B tools/audio/ingest/docs groups. The native loaded-removal test covers one GGUF package; ONNX resident removal and concurrent lifecycle races are not certified. Founder walkthrough review remains `WAITING_FOR_REVIEW`.

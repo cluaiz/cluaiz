@@ -37,10 +37,9 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
 
     Router::new()
         // ── 1. Core Health & Info ──
-        .route("/health", get(handlers::system::health_check))
+        .route("/health", get(handlers::health::health_check))
         // CEP: every Engine-specific method (`.agent/plans/CEP/`)
         .route("/v1/cep", post(crate::cep::http::handle).layer(from_fn(attachment_body_limit)))
-        .route("/v1/system/cmd", post(handlers::system::execute_cmd))
         // ── 2. External Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", chat.clone())
         .route("/api/chat", chat)
@@ -67,18 +66,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
         .route("/api/pull", post(handlers::models::pull_model))
-        .route("/models/available", get(handlers::models::list_models))
-        .route(
-            "/v1/models/installed",
-            get(handlers::models::list_installed_models),
-        )
-        .route("/models/download", post(handlers::models::download_model))
-        .route("/models/load", post(handlers::models::load_model))
-        .route(
-            "/v1/models/{model_id}/inspect_raw_header",
-            get(handlers::models::inspect_raw_header),
-        )
-        .route("/v1/models/{model_id}", delete(handlers::models::rm_model))
         // ── 5. Unified Tools & Session Governance API ──
         .route("/v1/tools", get(handlers::session_tools::get_all_tools))
         .route("/v1/tools/discover", post(handlers::session_tools::discover_tools))
