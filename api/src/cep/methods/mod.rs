@@ -9,6 +9,7 @@ use cluaiz_cep::Registry;
 
 pub mod approvals;
 pub mod audio;
+pub mod audit;
 pub mod chat;
 pub mod config;
 pub mod context;
@@ -29,6 +30,7 @@ pub fn registry() -> Registry<CallCtx> {
     let mut registry = Registry::new();
     approvals::register(&mut registry);
     audio::register(&mut registry);
+    audit::register(&mut registry);
     chat::register(&mut registry);
     config::register(&mut registry);
     context::register(&mut registry);
