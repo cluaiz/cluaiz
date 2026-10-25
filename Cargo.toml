@@ -13,6 +13,7 @@ members = [
     "context",
     "security",
     "cep",
+    "ffi",
     "cmd",
     "tools/cluaiz-builder",
     "test/dummy_plugin",
