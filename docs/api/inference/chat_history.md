@@ -121,16 +121,23 @@ A chat request's `storage` decides where the Engine keeps the chat:
 | `external` | In RAM only; nothing of the chat is written to disk | The app keeps the chat (its own files or database) |
 | `none` | Nothing (same as `temporary_chat: "lite"`) | Private chats |
 
-With `external`, every answer carries the events it added to the chat: `memory_events` in the
-non-streaming response, and in the closing stream chunk (the one with `engine`). The app stores
-them. After an Engine restart (RAM is empty) it sends them back with
+With `external`, every answer carries every event the app has not had yet: `memory_events` in the
+non-streaming response, and in the closing stream chunk (the one with `engine`). That is what the
+request and the answer added, and what was added after the previous answer: the model's idle-time
+card (`card_enrichment`) is written after an answer, so it comes with the next one (or at once from
+`GET /v1/chat/{session_id}/events?from_seq=…`). Each event goes out once; the app stores them. A note
+the model makes with `remember` is a `note` event of the chat (`text`, `scope`, `status`, `by`,
+`source`) and is not kept by the Engine; the app shows it, keeps it, and can put the notes it wants
+into its system message. After an Engine restart (RAM is empty) the app sends the events back with
 `POST /v1/chat/{session_id}/import` (`{"events": [...]}`, at most 200,000), and recall, the Chat Map
-and the event endpoints work again. No idle-time cards are made for such chats (they would be
-written by the Engine), and the chat's KV is not saved to disk.
+and the event endpoints work again. The chat's KV is not saved to disk.
 
 Measured (2026-10-24, isolated server): two turns with `storage: "external"` left no file of the
 chat on disk (no event log, ledger or saved KV); after a restart and an import of the 4 collected
-events, `history_mode: "none"` recalled "vega" and port 6060 from them.
+events, `history_mode: "none"` recalled "vega" and port 6060 from them. 2026-10-25
+(`memory_journeys.py` EXT1): the card of the first turn and a `remember` note came in the second
+answer's `memory_events`, each event once, with no chat folder and no note in the Engine's notes
+file.
 
 ## Export format (for apps and their databases)
 
@@ -149,7 +156,7 @@ a database.
 | --- | --- |
 | `v` | Event format version (1) |
 | `id`, `seq`, `ts` | Unique id, order in the chat (from 1), time (RFC 3339, UTC) |
-| `kind` | `message`, `message.edited`, `message.retracted`, `tool_call`, `tool_result`, `approval`, `context_edit`, `card_enrichment`, `card_enrichment_failed`, `episode_summary`, `episode_summary_failed`, `task`, `grant` |
+| `kind` | `message`, `message.edited`, `message.retracted`, `tool_call`, `tool_result`, `approval`, `context_edit`, `card_enrichment`, `card_enrichment_failed`, `episode_summary`, `episode_summary_failed`, `task`, `grant`, `note` (external chats) |
 | `pos` | Position of a message in the visible transcript (message kinds) |
 | `source` | `client`, `engine` or `app-import` (message kinds) |
 

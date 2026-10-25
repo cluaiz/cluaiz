@@ -2,7 +2,9 @@
 
 Durable notes: facts and preferences that outlive a chat ("mera deploy server ka port 9090 hai",
 "answers in Hinglish"). Stored in `<CLUAIZ_HOME>/memory/notes/notes.jsonl`, one line per change,
-so nothing is overwritten.
+so nothing is overwritten. In a chat sent with `storage: "external"` the Engine keeps no note: a
+`remember` call becomes a `note` event of the chat in `memory_events`, for the app to keep (see
+[Chat History](./chat_history.md#where-a-chat-is-kept-storage)).
 
 | Endpoint | What it does |
 | --- | --- |
