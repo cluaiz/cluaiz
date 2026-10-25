@@ -224,12 +224,12 @@ pub async fn generate_embeddings(
 }
 
 /// Shared prepared-input execution; callers own source authorization and decoding.
-pub(super) struct EmbeddingExecutor {
+pub(crate) struct EmbeddingExecutor {
     entry: cluaiz_models::types::manifest::ModelRegistryEntry,
     model: Option<OnnxModel>,
 }
 impl EmbeddingExecutor {
-    pub(super) fn new(
+    pub(crate) fn new(
         entry: cluaiz_models::types::manifest::ModelRegistryEntry,
     ) -> anyhow::Result<Self> {
         let model = if entry.format_type.eq_ignore_ascii_case("gguf") {
@@ -240,7 +240,7 @@ impl EmbeddingExecutor {
         Ok(Self { entry, model })
     }
 
-    pub(super) async fn execute(
+    pub(crate) async fn execute(
         &self,
         state: &AppState,
         inputs: Vec<PreparedEmbedding>,

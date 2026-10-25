@@ -66,11 +66,9 @@ async fn real_final_executable_embeddings_and_vision() -> Result<()> {
         );
     }
     let document = client
-        .json(
-            "/v1/ingest",
-            json!({"source":inline("text/plain", text.as_bytes())}),
-        )
-        .await?;
+        .ingest(json!({"source":inline("text/plain", text.as_bytes())}))
+        .await?
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     assert_eq!(document["status"], "success");
     let result = client.json("/v1/embeddings", json!({"model":ids[0],"input":document["processed_sources"][0]["chunks"],"keep_alive":0})).await?;
     vector(&result)?;

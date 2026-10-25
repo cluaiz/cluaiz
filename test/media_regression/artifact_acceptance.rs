@@ -59,6 +59,24 @@ impl Client {
         }
         reply.get("result").cloned().context("Missing CEP result")
     }
+    /// `ingest.run` to its end: the task's result, or the error (at once, or the task's failure)
+    async fn ingest(&self, params: Value) -> Result<std::result::Result<Value, Value>> {
+        let envelope = |method: &str, params: Value| json!({"jsonrpc":"2.0","id":1,"method":method,"params":params});
+        let started = self.json("/v1/cep", envelope("ingest.run", params)).await?;
+        if let Some(error) = started.get("error") {
+            return Ok(Err(error.clone()));
+        }
+        let id = started["result"]["task"]["task_id"].as_str().context("Ingest task id")?.to_string();
+        for _ in 0..40 {
+            let reply = self.json("/v1/cep", envelope("tasks.result", json!({"task_id":id,"wait_ms":30000}))).await?;
+            match reply.get("error") {
+                Some(error) if error["data"]["type"] == "timeout" => continue,
+                Some(error) => return Ok(Err(error.clone())),
+                None => return Ok(Ok(reply["result"].clone())),
+            }
+        }
+        bail!("Ingest task {id} did not finish")
+    }
     async fn chat(&self, model: &str, parts: Value, stream: bool, release: bool) -> Result<String> {
         let (status, body) = self
             .post(
@@ -538,8 +556,9 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         ("scanned PDF", "application/pdf", scanned.as_slice()),
     ] {
         let result = client
-            .json("/v1/ingest", json!({"source":inline(mime,bytes)}))
-            .await?;
+            .ingest(json!({"source":inline(mime,bytes)}))
+            .await?
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         assert_eq!(result["status"], "success", "{result}");
         assert!(
             result["processed_sources"][0]["chunks"]
@@ -550,37 +569,29 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         println!("FINAL EXECUTABLE INGEST: {label} -> actual code 741923");
     }
     let docx = client
-        .json(
-            "/v1/ingest",
-            json!({"source":inline(
+        .ingest(json!({"source":inline(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        &documents::docx(documents::DOCX_XML)?)}),
-        )
-        .await?;
+        &documents::docx(documents::DOCX_XML)?)}))
+        .await?
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     assert!(docx["processed_sources"][0]["chunks"]
         .to_string()
         .contains("First"));
     println!("FINAL EXECUTABLE INGEST: DOCX -> actual body/table text");
     let bad = client
-        .post(
-            "/v1/ingest",
-            json!({"source":inline("application/pdf",b"corrupt")}),
-            "user",
-        )
-        .await?;
-    assert_eq!(bad.0, 400, "{}", bad.1);
+        .ingest(json!({"source":inline("application/pdf",b"corrupt")}))
+        .await?
+        .expect_err("corrupt PDF must fail");
+    assert_eq!(bad["code"], -32602, "{bad}");
     let outside = tempfile::tempdir()?;
     let outside_document = outside.path().join("owner.md");
     std::fs::write(&outside_document, "external owner attachment")?;
     let owner_source = client
-        .post("/v1/ingest", json!({"source":outside_document}), "agent")
-        .await?;
-    assert_eq!(owner_source.0, 200, "{}", owner_source.1);
-    assert!(
-        owner_source.1.contains("external owner attachment"),
-        "{}",
-        owner_source.1
-    );
+        .ingest(json!({"source":outside_document}))
+        .await?
+        .map_err(|e| anyhow::anyhow!("{e}"))?
+        .to_string();
+    assert!(owner_source.contains("external owner attachment"), "{owner_source}");
     let transport_limit = cluaiz_api::routes::inline_body_bytes(
         cluaiz_core::Settings::current()
             .media
@@ -589,8 +600,8 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
     );
     let oversized = client
         .post(
-            "/v1/ingest",
-            json!({"source":"x".repeat(transport_limit)}),
+            "/v1/cep",
+            json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":{"source":"x".repeat(transport_limit)}}),
             "user",
         )
         .await?;

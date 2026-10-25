@@ -48,3 +48,22 @@ async fn test_routes_folded_into_system_info_are_gone() {
         assert_eq!(router().oneshot(request).await.unwrap().status(), StatusCode::NOT_FOUND, "{path}");
     }
 }
+
+/// CEP-C1: after the migration the route table is the market-standard routes plus `/v1/cep`
+#[test]
+fn test_route_table_is_the_standard_routes_and_cep() {
+    let source = include_str!("../src/routes.rs");
+    let mut routes: Vec<&str> = source
+        .split(".route(")
+        .skip(1)
+        .filter_map(|rest| rest.split('"').nth(1))
+        .collect();
+    routes.sort_unstable();
+    let mut expected = vec![
+        "/health", "/v1/cep", "/mcp",
+        "/v1/chat/completions", "/api/chat", "/v1/embeddings", "/v1/audio/speech", "/v1/audio/transcriptions",
+        "/v1/models", "/api/tags", "/api/pull",
+    ];
+    expected.sort_unstable();
+    assert_eq!(routes, expected);
+}
