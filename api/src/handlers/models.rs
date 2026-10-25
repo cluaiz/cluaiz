@@ -1,62 +1,11 @@
-//! 📦 Model Discovery, Hardware Status, Inspection & Ollama Compatibility Handlers (`api/src/handlers/models.rs`)
+//! Standard OpenAI/Ollama model routes. CEP controls live in `cep::methods::models`.
 
 use crate::AppState;
-use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
-    Json,
-};
-use cluaiz_core::EnvironmentManager;
-use cluaiz_hw::HardwareProber;
+use axum::{extract::State, Json};
 use cluaiz_models::registry::InstalledStateRegistry;
-use cluaiz_models::GgufProber;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
-
-/// GET /models/available
-pub async fn list_models(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    let hw = HardwareProber::current();
-    let registry = InstalledStateRegistry::load();
-
-    Json(json!({
-        "success": true,
-        "hardware": hw,
-        "available_models": registry.installed_models,
-    }))
-}
-
-/// GET /v1/models/installed
-pub async fn list_installed_models() -> Json<Value> {
-    let registry = InstalledStateRegistry::load();
-    // `experimental`: a TTS family whose runtime is unfinished (data/tts_families.json); clients
-    // keep it out of default choices and label it, it still runs when chosen by name
-    let with_flags = |entry: &cluaiz_models::types::manifest::ModelRegistryEntry| {
-        let mut value = serde_json::to_value(entry).unwrap_or(Value::Null);
-        if let Some(object) = value.as_object_mut() {
-            let experimental = entry
-                .metadata
-                .tts_family
-                .as_deref()
-                .is_some_and(cluaiz_runtime::onnx_host::is_experimental_family);
-            object.insert("experimental".into(), Value::Bool(experimental));
-        }
-        value
-    };
-    let installed_vec: Vec<Value> = registry.installed_models.values().map(with_flags).collect();
-    let installed_map: serde_json::Map<String, Value> = registry
-        .installed_models
-        .iter()
-        .map(|(id, entry)| (id.clone(), with_flags(entry)))
-        .collect();
-    Json(json!({
-        "status": "success",
-        "count": installed_vec.len(),
-        "installed": installed_vec.clone(),
-        "models": installed_vec,
-        "installed_models": installed_map
-    }))
-}
 
 /// GET /v1/models (OpenAI Standard Format)
 pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
@@ -139,7 +88,7 @@ pub struct PullPayload {
     pub model_id: String,
 }
 
-/// POST /api/pull
+/// POST /api/pull. Pending O6: this body still reports queued without downloading.
 pub async fn pull_model(
     State(_state): State<Arc<AppState>>,
     Json(payload): Json<PullPayload>,
@@ -149,133 +98,4 @@ pub async fn pull_model(
         "status": "success",
         "message": format!("Model pull for '{}' queued natively in background.", model_id)
     }))
-}
-
-/// POST /models/download
-pub async fn download_model(State(_state): State<Arc<AppState>>) -> Json<Value> {
-    Json(json!({
-        "success": true,
-        "status": "Download feature queued."
-    }))
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LoadPayload {
-    pub model_id: String,
-}
-
-/// POST /models/load
-pub async fn load_model(
-    State(state): State<Arc<AppState>>,
-    Json(payload): Json<LoadPayload>,
-) -> (StatusCode, Json<Value>) {
-    let model_path = crate::utils::slots::resolve_model_by_id(&payload.model_id)
-        .or_else(|| {
-            let env = EnvironmentManager::current();
-            let p = env.models_dir().join(format!("{}.gguf", payload.model_id));
-            if p.exists() {
-                Some(p)
-            } else {
-                None
-            }
-        })
-        .or_else(|| {
-            let env = EnvironmentManager::current();
-            let p = env.models_dir().join(&payload.model_id);
-            if p.exists() {
-                Some(p)
-            } else {
-                None
-            }
-        });
-
-    if let Some(path) = model_path {
-        match state
-            .host
-            .ensure_loaded(&payload.model_id, &path, &cluaiz_core::Settings::current())
-            .await
-        {
-            Ok(_) => (StatusCode::OK, Json(json!({
-                "status": "success",
-                "message": format!("Model '{}' loaded successfully from '{:?}'.", payload.model_id, path)
-            }))),
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "status": "error",
-                "message": format!("Failed to load model '{}': {}", payload.model_id, e)
-            }))),
-        }
-    } else {
-        (StatusCode::NOT_FOUND, Json(json!({
-            "status": "error",
-            "message": format!("Model '{}' not found in vault.", payload.model_id)
-        })))
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct InspectQuery {
-    pub filename: Option<String>,
-}
-
-/// GET /v1/models/{model_id}/inspect_raw_header
-pub async fn inspect_raw_header(
-    State(_state): State<Arc<AppState>>,
-    Path(model_id): Path<String>,
-    Query(_query): Query<InspectQuery>,
-) -> Json<Value> {
-    let env = EnvironmentManager::current();
-    let model_path = env.models_dir().join(format!("{}.gguf", model_id));
-
-    if model_path.exists() {
-        match GgufProber::probe_geometry(&model_path) {
-            Ok(geom) => Json(json!({
-                "status": "success",
-                "geometry": geom
-            })),
-            Err(e) => Json(json!({
-                "status": "error",
-                "message": format!("Failed to probe GGUF header: {}", e)
-            })),
-        }
-    } else {
-        Json(json!({
-            "status": "error",
-            "message": format!("Model '{}' not found in vault.", model_id)
-        }))
-    }
-}
-
-/// DELETE /v1/models/{model_id}
-pub async fn rm_model(
-    State(state): State<Arc<AppState>>,
-    Path(model_id): Path<String>,
-) -> (StatusCode, Json<Value>) {
-    // A loaded model keeps its file open (Windows cannot delete it): unload it first
-    let Some(model_dir) = InstalledStateRegistry::load()
-        .installed_models
-        .get(&model_id)
-        .map(|e| std::path::PathBuf::from(&e.local_dir))
-    else {
-        return (StatusCode::NOT_FOUND, Json(json!({
-            "status": "error",
-            "message": format!("model '{}' is not installed (see `cluaiz list`)", model_id)
-        })));
-    };
-    let loaded = state.host.active_model_path.lock().await.clone();
-    if let Some(loaded) = loaded {
-        if std::path::Path::new(&loaded).starts_with(&model_dir) {
-            state.host.unload_model().await;
-        }
-    }
-    // Same delete as `cluaiz rm`: the model's folder and its model_registry.json entry
-    match cluaiz_models::ModelDownloader::uninstall(&model_id) {
-        Ok(dir) => (StatusCode::OK, Json(json!({
-            "status": "success",
-            "message": format!("Model '{}' deleted ({}).", model_id, dir.display())
-        }))),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "status": "error",
-            "message": e
-        }))),
-    }
 }
