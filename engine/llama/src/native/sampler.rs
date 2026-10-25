@@ -2,6 +2,59 @@ use crate::ffi::llama_cpp;
 use cluaiz_models::types::StructuralDNA;
 use tracing::info;
 
+/// One token the way llama.cpp's `common_sampler_sample` picks it: the chain picks, the grammar
+/// checks only that token, and only when it rejects it does the grammar go over the whole
+/// vocabulary before the chain picks again. A grammar first in the chain would go over every
+/// token of the vocabulary for every token generated (262k for Gemma 4: half the speed). The
+/// token is then accepted by the grammar and the chain (`common_sampler_accept`).
+///
+/// # Safety
+/// `chain` and `grammar` (null = none) are live samplers of this generation thread; `ctx` holds
+/// the logits of the last decoded token.
+pub unsafe fn sample_token(chain: *mut std::ffi::c_void, grammar: *mut std::ffi::c_void, ctx: *mut std::ffi::c_void, n_vocab: i32) -> i32 {
+    // No grammar of its own: llama.cpp's own sampling, unchanged
+    if grammar.is_null() {
+        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+    }
+    let logits = llama_cpp::llama_get_logits_ith(ctx, -1);
+    if logits.is_null() {
+        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+    }
+    let logits = std::slice::from_raw_parts(logits, n_vocab.max(0) as usize);
+    let candidates = || -> Vec<llama_cpp::LlamaTokenData> {
+        logits.iter().enumerate().map(|(id, &logit)| llama_cpp::LlamaTokenData { id: id as i32, logit, p: 0.0 }).collect()
+    };
+    let pick = |data: &mut Vec<llama_cpp::LlamaTokenData>, with_grammar: bool| -> i32 {
+        let mut cur = llama_cpp::LlamaTokenDataArray { data: data.as_mut_ptr(), size: data.len(), selected: -1, sorted: false };
+        if with_grammar {
+            llama_cpp::llama_sampler_apply(grammar, &mut cur);
+        }
+        llama_cpp::llama_sampler_apply(chain, &mut cur);
+        if cur.selected < 0 || cur.selected as usize >= cur.size {
+            return -1;
+        }
+        (*cur.data.add(cur.selected as usize)).id
+    };
+    let mut data = candidates();
+    let mut id = pick(&mut data, false);
+    if id >= 0 {
+        let mut single = llama_cpp::LlamaTokenData { id, logit: 1.0, p: 0.0 };
+        let mut one = llama_cpp::LlamaTokenDataArray { data: &mut single, size: 1, selected: -1, sorted: false };
+        llama_cpp::llama_sampler_apply(grammar, &mut one);
+        if (*one.data).logit == f32::NEG_INFINITY {
+            // Resampling: the grammar over every candidate, then the chain
+            let mut data = candidates();
+            id = pick(&mut data, true);
+        }
+    }
+    if id < 0 {
+        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+    }
+    llama_cpp::llama_sampler_accept(grammar, id);
+    llama_cpp::llama_sampler_accept(chain, id);
+    id
+}
+
 /// 🎲 Builds a dynamic sampler chain based on model DNA (handles BitNet 1-bit logic natively).
 pub unsafe fn build_sampler_chain(
     dna: &StructuralDNA,

@@ -722,12 +722,18 @@ pub(crate) fn stream_tokens_with_media(
                 apply["triggers"].as_array().map_or(0, Vec::len)
             );
         }
+        // The request's own grammar (a card, `grammar`, `response_format`) stays out of the chain:
+        // `sample_token` checks only the picked token against it (llama.cpp's common_sampler), and
+        // this guard frees it. A tool-call grammar stays first in the chain, which owns it, as
+        // before (the per-token check was not measured on tool calls).
+        let checked_grammar = if grammar_lazy { std::ptr::null_mut() } else { tool_grammar };
+        let _grammar_owner = SafeSampler { sampler: checked_grammar };
         let sampler_chain_raw = crate::native::sampler::build_sampler_chain(
             dna,
             &full_prompt_tokens,
             req_samplers.as_ref(),
             n_vocab,
-            tool_grammar,
+            if grammar_lazy { tool_grammar } else { std::ptr::null_mut() },
         )?;
         let mut safe_sampler = SafeSampler {
             sampler: sampler_chain_raw,
@@ -792,7 +798,7 @@ pub(crate) fn stream_tokens_with_media(
 
         reasoning.poll(skip_requested(), &mut ended_by);
         let mut next_token_id =
-            llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
+            crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
         tracing::debug!(
             "🎲 [NativeStream] Initial sampled token_id: {}",
             next_token_id
@@ -817,7 +823,7 @@ pub(crate) fn stream_tokens_with_media(
                 break;
             }
 
-            // llama_sampler_sample already accepted this token into the chain (penalties see it once)
+            // sample_token already accepted this token into the chain (penalties see it once)
             history.push(next_token_id);
 
             // Convert token to UTF-8 piece (special = true ensures reasoning control tokens like <think> and <|channel> are emitted)
@@ -990,7 +996,7 @@ pub(crate) fn stream_tokens_with_media(
             // Sample next token
             reasoning.poll(skip_requested(), &mut ended_by);
             next_token_id =
-                llama_cpp::llama_sampler_sample(safe_sampler.sampler, llama.ctx_ptr, -1);
+                crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
         }
 
         // Native tool calls: the rest of the answer, then each call as a <tool_call> block
