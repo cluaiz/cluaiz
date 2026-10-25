@@ -341,6 +341,13 @@ fn template_renders_tool_role(template: &str) -> bool {
 mod tests {
     use super::*;
 
+    fn messages(turns: &ToolTurns) -> Vec<Value> {
+        step_messages(&turns.steps, turns.tool_role)
+            .into_iter()
+            .map(|(role, content)| json!({ "role": role, "content": content }))
+            .collect()
+    }
+
     #[test]
     fn test_tool_role_detection() {
         assert!(template_renders_tool_role("{%- elif message.role == \"tool\" %}"));
@@ -353,7 +360,7 @@ mod tests {
         let mut turns = ToolTurns::new(template_has_tool_role(Some("message.role == \"tool\"")));
         turns.push("{\"name\":\"a\"}", "a", "first");
         turns.push("{\"name\":\"b\"}", "b", "second");
-        let messages = turns.messages();
+        let messages = messages(&turns);
         assert_eq!(messages.len(), 4);
         assert_eq!(messages[1]["role"], "tool");
         assert_eq!(messages[1]["content"], "first");
@@ -366,7 +373,7 @@ mod tests {
     fn test_templates_without_tool_role_get_a_user_tool_response() {
         let mut turns = ToolTurns::new(template_has_tool_role(Some("{{ message.role }}")));
         turns.push("{\"name\":\"a\"}", "a", "done");
-        let messages = turns.messages();
+        let messages = messages(&turns);
         assert_eq!(messages[1]["role"], "user");
         assert!(messages[1]["content"].as_str().unwrap().starts_with("<tool_response>"));
     }
