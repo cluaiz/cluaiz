@@ -50,7 +50,11 @@ enum CliCommand {
     /// Show the model the running server has loaded
     Ps,
     /// Start the API server
-    Serve,
+    Serve {
+        /// Serve through this explicit local named pipe / Unix socket instead of TCP.
+        #[arg(long)]
+        native_endpoint: Option<String>,
+    },
     /// Measure prompt and generation speed (llama-bench)
     Bench(cli::bench::BenchArgs),
     /// View and change engine settings (settings.json)
@@ -298,7 +302,7 @@ async fn main() -> Result<()> {
     }
 
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(std::env::args()));
-    init_logging(cli.verbose, matches!(cli.command, CliCommand::Serve));
+    init_logging(cli.verbose, matches!(cli.command, CliCommand::Serve { .. }));
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");
@@ -342,10 +346,14 @@ async fn main() -> Result<()> {
                 fail("ps", e);
             }
         }
-        CliCommand::Serve => {
-            let perms = cluaiz_security::PermissionSchema::load();
-            eprintln!("Starting the Cluaiz API server on http://localhost:{} ...", cluaiz_api::api_port(&perms));
-            if let Err(e) = cluaiz_api::run_daemon().await {
+        CliCommand::Serve { native_endpoint } => {
+            if native_endpoint.is_some() {
+                eprintln!("Starting the Cluaiz API server on its explicit local native endpoint ...");
+            } else {
+                let perms = cluaiz_security::PermissionSchema::load();
+                eprintln!("Starting the Cluaiz API server on http://localhost:{} ...", cluaiz_api::api_port(&perms));
+            }
+            if let Err(e) = cluaiz_api::run_daemon_with_native_endpoint(native_endpoint).await {
                 fail("serve", e);
             }
         }
