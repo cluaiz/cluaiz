@@ -38,13 +38,14 @@ def held_out(row):
 
 
 def discover(url, token, row):
-    body = {"query": row["query"], "previous": row.get("previous"), "explain": True}
+    params = {"query": row["query"], "previous": row.get("previous"), "explain": True}
+    body = {"jsonrpc": "2.0", "id": 1, "method": "tools.discover", "params": params}
     request = urllib.request.Request(
-        url.rstrip("/") + "/v1/tools/discover",
+        url.rstrip("/") + "/v1/cep",
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
     )
-    return json.load(urllib.request.urlopen(request, timeout=30))
+    return json.load(urllib.request.urlopen(request, timeout=30))["result"]
 
 
 def levels(evidence, actionable, rule):
