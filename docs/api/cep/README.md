@@ -70,7 +70,7 @@ These methods answer at once with `{"task": {"task_id", "status": "working", …
 - `audio.run`
 - `tools.install`
 - `chat.import_app`
-- `models.download` (`-32007` for now)
+- `models.download`
 
 | Method | Does |
 |---|---|
@@ -162,7 +162,7 @@ void  cep_free(char *reply);
 |---|---|
 | `/info`, `/hardware`, `/v1/system/info`, `/v1/system/control`, `/v1/system/profile`, `/v1/hardware/calibrate` | `system.info` |
 | `/v1/system/live`, `/v1/system/ps`, `/v1/system/plan` | `system.live`, `system.ps`, `system.plan` |
-| `/v1/system/cmd` | `system.exec {command}` |
+| `/v1/system/cmd` | `system.exec {program, args}` (the owner approves each call; a shell line `{command}` only with permission.json `exec.allow_shell`) |
 | `/v1/system/storage/temp_media`, `…/clean` | `storage.status`, `storage.clean` |
 | `/v1/system/gguf_config`, `/v1/system/onnx_config`, `/v1/optimization/*`, `/v1/context/settings`, `/v1/system/storage/settings`, `/v1/chat/memory/settings`, `/v1/system/permission` | `config.get {section?}`, `config.set {section, patch}` (sections `gguf`, `onnx`, `optimization`, `context`, `storage`, `kv`, `engine`) |
 | `/v1/system/auth/token/generate`, `…/revoke` | `tokens.create`, `tokens.revoke` (`tokens.list`) |

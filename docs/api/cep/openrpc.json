@@ -2671,13 +2671,17 @@
           "params": [
             {
               "name": "model",
-              "value": "registry-model"
+              "value": "owner/name-GGUF:Q4_K_M"
             }
           ],
           "result": {
             "name": "result",
             "value": {
-              "task": {}
+              "task": {
+                "method": "models.download",
+                "status": "working",
+                "task_id": "t_5f0c…"
+              }
             }
           }
         }
@@ -2689,6 +2693,7 @@
           "name": "model",
           "required": true,
           "schema": {
+            "description": "A catalog id, or a Hugging Face repo `owner/name` (optionally `:QUANT`, an `hf://` or https URL)",
             "type": "string"
           }
         }
@@ -2699,7 +2704,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Model download control is not implemented yet",
+      "summary": "Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as `cluaiz pull` does; the `:QUANT` variant, else the first",
       "x-cep": {
         "destructive": false,
         "execution": "task",
@@ -3433,8 +3438,14 @@
           "name": "example",
           "params": [
             {
-              "name": "command",
-              "value": "echo hi"
+              "name": "args",
+              "value": [
+                "--version"
+              ]
+            },
+            {
+              "name": "program",
+              "value": "git"
             }
           ],
           "result": {
@@ -3442,7 +3453,7 @@
             "value": {
               "exit_code": 0,
               "stderr": "",
-              "stdout": "hi\n"
+              "stdout": "git version 2.47.0\n"
             }
           }
         }
@@ -3451,11 +3462,37 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "name": "command",
-          "required": true,
+          "name": "args",
+          "required": false,
           "schema": {
-            "description": "One shell command line",
-            "type": "string"
+            "default": [],
+            "description": "Its arguments, each passed as it is",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        {
+          "name": "command",
+          "required": false,
+          "schema": {
+            "description": "One shell line instead of `program`; only when permission.json `exec.allow_shell` is on",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "program",
+          "required": false,
+          "schema": {
+            "description": "The program to run (a name on PATH or a path); not passed through a shell",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       ],
@@ -3465,7 +3502,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Runs a command in the host's shell and returns its output",
+      "summary": "Runs a program on the host and returns its output; the owner approves each call",
       "x-cep": {
         "destructive": true,
         "execution": "sync",
