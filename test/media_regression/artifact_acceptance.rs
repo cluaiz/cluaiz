@@ -388,8 +388,8 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
         .send()
         .await?;
     assert_eq!(unauth.status().as_u16(), 401);
-    let updated = client.json("/v1/system/gguf_config", json!({"hardware_and_execution":{"n_ctx":2048,"n_gpu_layers":0,"batch_size":64,"ubatch_size":32}})).await?;
-    assert_eq!(updated["status"], "success");
+    let updated = client.json("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"config.set","params":{"section":"gguf","patch":{"hardware_and_execution":{"n_ctx":2048,"n_gpu_layers":0,"batch_size":64,"ubatch_size":32}}}})).await?;
+    assert!(updated.get("error").is_none(), "{updated}");
     let plan = client.json("/v1/system/plan", json!({"model":id})).await?;
     assert_eq!(plan["active_user_settings"]["custom_context_window"], 2048);
     assert_eq!(plan["active_user_settings"]["n_gpu_layers"], 0);
@@ -557,12 +557,13 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         .await?;
     assert_eq!(bad.0, 400, "{}", bad.1);
     let outside = tempfile::tempdir()?;
-    let outside_image = outside.path().join("outside.png");
-    std::fs::write(&outside_image, png.get_ref())?;
-    let denied = client
-        .post("/v1/ingest", json!({"source":outside_image}), "agent")
+    let outside_document = outside.path().join("owner.md");
+    std::fs::write(&outside_document, "external owner attachment")?;
+    let owner_source = client
+        .post("/v1/ingest", json!({"source":outside_document}), "agent")
         .await?;
-    assert_eq!(denied.0, 403, "{}", denied.1);
+    assert_eq!(owner_source.0, 200, "{}", owner_source.1);
+    assert!(owner_source.1.contains("external owner attachment"), "{}", owner_source.1);
     let transport_limit = cluaiz_api::routes::inline_body_bytes(
         cluaiz_core::Settings::current()
             .media
@@ -579,7 +580,7 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
     assert_eq!(oversized.0, 413, "{}", oversized.1);
     let error: Value = serde_json::from_str(&oversized.1)?;
     assert_eq!(error["error"]["type"], "request_too_large");
-    println!("FINAL EXECUTABLE NEGATIVE: corrupt PDF -> 400; unauthorized agent path -> 403; oversized JSON -> 413");
+    println!("FINAL EXECUTABLE CONTRACT: corrupt PDF -> 400; external owner source -> 200; oversized JSON -> 413");
 
     let answer = client
         .chat(

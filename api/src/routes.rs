@@ -44,20 +44,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         // ── 2. External Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", chat.clone())
         .route("/api/chat", chat)
-        // Chat memory: saved KV cache per chat (session_id)
-        .route(
-            "/v1/chat/memory",
-            get(handlers::chat_memory::get_chat_memory)
-                .delete(handlers::chat_memory::clear_chat_memory),
-        )
-        .route(
-            "/v1/chat/memory/settings",
-            post(handlers::chat_memory::update_chat_memory_settings),
-        )
-        .route(
-            "/v1/chat/memory/{chat_id}",
-            delete(handlers::chat_memory::delete_chat_memory),
-        )
         .route(
             "/v1/embeddings",
             post(handlers::embeddings::generate_embeddings).layer(from_fn(attachment_body_limit)),
@@ -93,23 +79,9 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             get(handlers::models::inspect_raw_header),
         )
         .route("/v1/models/{model_id}", delete(handlers::models::rm_model))
-        // ── 4. Optimization & Hardware Tuning API ──
-        .route(
-            "/v1/optimization/status",
-            get(handlers::optimization::status),
-        )
-        .route(
-            "/v1/optimization/update",
-            post(handlers::optimization::update),
-        )
         // ── 5. Unified Tools & Session Governance API ──
         .route("/v1/tools", get(handlers::session_tools::get_all_tools))
         .route("/v1/tools/discover", post(handlers::session_tools::discover_tools))
-        // Context runtime: planner settings, plan preview, kept reports
-        .route(
-            "/v1/context/settings",
-            get(handlers::context::get_context_settings).post(handlers::context::update_context_settings),
-        )
         // ── 6. WASM Skills API ──
         .route("/v1/skills/list", get(handlers::skills::list_skills))
         .route("/v1/skills/install", post(handlers::skills::install_skill))
@@ -187,10 +159,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/v1/system/live", get(handlers::system::get_system_live))
         .route("/v1/system/plan", post(handlers::system::plan_execution))
         .route(
-            "/v1/system/permission",
-            get(handlers::permission::get_permission).post(handlers::permission::update_permission),
-        )
-        .route(
             "/v1/system/auth/token/generate",
             post(handlers::permission::generate_auth_token),
         )
@@ -218,19 +186,6 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route(
             "/v1/system/storage/temp_media/clean",
             post(handlers::storage::clean_temp_media),
-        )
-        .route(
-            "/v1/system/storage/settings",
-            get(handlers::storage::get_storage_settings)
-                .post(handlers::storage::update_storage_settings),
-        )
-        .route(
-            "/v1/system/gguf_config",
-            get(handlers::system::get_gguf_config).post(handlers::system::update_gguf_config),
-        )
-        .route(
-            "/v1/system/onnx_config",
-            get(handlers::system::get_onnx_config).post(handlers::system::update_onnx_config),
         )
         // ── 16. Native High-Speed File System API ──
         .route("/v1/fs/read", post(handlers::fs::read_file))

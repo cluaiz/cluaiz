@@ -6,7 +6,7 @@ isolated Engine.
 
 MEM3 and MEM5 import a chat with times and tool steps of their own (CEP `memory.import`),
 so their checks do not depend on the model. MEM6 changes `cross_chat` with
-`POST /v1/context/settings` and sets it back after. The fixture folder holds notes.txt
+CEP `config.set` (section context) and sets it back after. The fixture folder holds notes.txt
 ("The secret word is MANGO-42.").
 """
 import argparse
@@ -125,12 +125,12 @@ def mem5(engine):
 
 
 def _set_cross_chat(engine, value):
-    engine.post("/v1/context/settings", {"cross_chat": value})
+    engine.cep("config.set", section="context", patch={"cross_chat": value})
 
 
 def mem6(engine):
     """Cross-chat recall with ask, allow and deny: deny never returns another chat's text"""
-    before = engine.get("/v1/context/settings")["settings"]["cross_chat"]
+    before = engine.cep("config.get", section="context")["context"]["cross_chat"]
     code = f"HERON-{uuid.uuid4().hex[:4].upper()}"
     first = session("mem6-a")
     engine.chat(body(f"Yaad rakhna: hamare naye project ka codename {code} hai. Bas 'ok' bolo.", first, max_tokens=20))
@@ -165,7 +165,7 @@ def mem6(engine):
 
 def _drain(engine, timeout=120):
     """Empties the job queue of earlier tests: with the indexer off, queued jobs are skipped"""
-    engine.post("/v1/context/settings", {"indexer": "off"})
+    engine.cep("config.set", section="context", patch={"indexer": "off"})
     deadline = time.time() + timeout
     while time.time() < deadline:
         jobs = engine.cep("context.jobs")
@@ -188,11 +188,11 @@ def _wait_job(engine, chat, timeout=90):
 def enr1(engine):
     """Card enrichment on the hot KV: the next request reuses the cache as much as with no card job"""
     processed, details = {}, []
-    before = engine.get("/v1/context/settings")["settings"]["indexer"]
+    before = engine.cep("config.get", section="context")["context"]["indexer"]
     try:
         for indexer in ("off", "always"):
             _drain(engine)
-            engine.post("/v1/context/settings", {"indexer": indexer})
+            engine.cep("config.set", section="context", patch={"indexer": indexer})
             chat = session(f"enr1-{indexer}")
             history = [{"role": "user", "content": "Mera deploy server ka naam orion hai aur port 8011. Ek line me confirm karo."}]
             r = engine.chat(dict(body("", chat, max_tokens=40), messages=history))
@@ -206,7 +206,7 @@ def enr1(engine):
             details.append(f"{indexer}: job {outcome}, card {bool(card)}, processed {processed[indexer]} of {context.get('prompt_tokens')}")
             engine.cep("memory.delete", chat_id=chat)
     finally:
-        engine.post("/v1/context/settings", {"indexer": before})
+        engine.cep("config.set", section="context", patch={"indexer": before})
     # The new message only, as without the job: the job's own prompt left no trace in the KV
     ok = "card True" in details[1] and processed["always"] <= processed["off"] + 2
     return ok, "; ".join(details)
@@ -227,12 +227,12 @@ def _ttft(engine, payload):
 
 def perf5(engine):
     """Preemption: a request that arrives during an idle-time job waits for one prompt chunk at most"""
-    before = engine.get("/v1/context/settings")["settings"]["indexer"]
+    before = engine.cep("config.get", section="context")["context"]["indexer"]
     # A new question each time: no probe finds its prompt in the cache
     probe = lambda: body(f"Say hi in one word. ({uuid.uuid4().hex[:6]})", max_tokens=5, storage="none", tool_search=False)
     try:
         _drain(engine)
-        engine.post("/v1/context/settings", {"indexer": "always"})
+        engine.cep("config.set", section="context", patch={"indexer": "always"})
         _ttft(engine, probe())  # warm
         normal = sorted(_ttft(engine, probe()) for _ in range(5))[2]
         chat = session("perf5")
@@ -245,7 +245,7 @@ def perf5(engine):
         outcome = _wait_job(engine, chat, 30)[0]
         engine.cep("memory.delete", chat_id=chat)
     finally:
-        engine.post("/v1/context/settings", {"indexer": before})
+        engine.cep("config.set", section="context", patch={"indexer": before})
     extra_ms = round((during - normal) * 1000)
     # The job stops between two prompt chunks (or tokens): the wait is at most one decode, which
     # is about one short prompt's time to first text (plan: 50 ms; not reachable when one decode
@@ -280,12 +280,12 @@ def ext1(engine):
     if not engine.home:
         return None, "needs --home (it checks the Engine's files)"
     from pathlib import Path
-    before = engine.get("/v1/context/settings")["settings"]["indexer"]
+    before = engine.cep("config.get", section="context")["context"]["indexer"]
     chat = session("ext1")
     got = []
     try:
         _drain(engine)
-        engine.post("/v1/context/settings", {"indexer": "always"})
+        engine.cep("config.set", section="context", patch={"indexer": "always"})
         history = [{"role": "user", "content": "Mera deploy server orion hai, port 8011. Ek line me confirm karo."}]
         r = engine.chat(dict(body("", chat, storage="external", max_tokens=40), messages=history))
         got += r.get("memory_events") or []
@@ -295,7 +295,7 @@ def ext1(engine):
         r = engine.chat(dict(body("", chat, storage="external", max_tokens=80), messages=history))
         got += r.get("memory_events") or []
     finally:
-        engine.post("/v1/context/settings", {"indexer": before})
+        engine.cep("config.set", section="context", patch={"indexer": before})
     kinds = [e.get("kind") for e in got]
     note = next((e for e in got if e.get("kind") == "note"), None)
     # Nothing of the chat in the Engine's files: no chat folder, the note not in its notes file
