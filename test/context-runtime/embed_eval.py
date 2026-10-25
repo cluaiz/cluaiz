@@ -93,7 +93,7 @@ def main():
     # The word matcher, for comparison
     matcher_hit = {}
     for r in positive:
-        found = client.call("/v1/tools/discover", {"query": r["query"], "previous": r.get("previous")})["candidates"]
+        found = client.cep("tools.discover", query=r["query"], previous=r.get("previous"))["candidates"]
         matcher_hit[r["id"]] = all(e in [c["id"] for c in found] for e in r["expect"])
 
     # A 200-message chat for the memory check
