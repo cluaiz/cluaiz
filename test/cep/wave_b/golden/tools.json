@@ -1,0 +1,513 @@
+[
+  {
+    "route": "/v1/tools",
+    "verb": "GET",
+    "method": "tools.list",
+    "case": "default",
+    "request": {
+      "path": "/v1/tools",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "tools": [
+        {
+          "activation_events": [],
+          "binary_path": null,
+          "capabilities": [],
+          "category": "skill",
+          "default_turns": -1,
+          "description": "Local CEP baseline fixture.",
+          "enabled": true,
+          "execution_mode": "auto",
+          "id": "cep-baseline",
+          "local_dir": "<test_home>\\tools\\skills\\cep-baseline",
+          "name": "cep-baseline",
+          "permissions": [],
+          "security_mode": "inherit",
+          "semantic_triggers": [],
+          "trust_annotations": false,
+          "version": ""
+        }
+      ],
+      "total": 1
+    },
+    "seconds": 0.012
+  },
+  {
+    "route": "/v1/tools/discover",
+    "verb": "POST",
+    "method": "tools.discover",
+    "case": "default",
+    "request": {
+      "path": "/v1/tools/discover",
+      "body": {
+        "query": "Read local notes",
+        "explain": true
+      }
+    },
+    "status": 200,
+    "body": {
+      "actionable": true,
+      "candidates": [],
+      "evidence": [
+        {
+          "decisive": false,
+          "good": 0,
+          "id": "cep-baseline",
+          "matched": [
+            "local"
+          ],
+          "named": false,
+          "score": 0.69
+        }
+      ],
+      "installed": 1,
+      "query": "Read local notes"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/skills/list",
+    "verb": "GET",
+    "method": "tools.list",
+    "case": "default",
+    "request": {
+      "path": "/v1/skills/list",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "skills": [
+        "cep-baseline"
+      ],
+      "status": "success"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/skills/install",
+    "verb": "POST",
+    "method": "tools.install",
+    "case": "invalid_id",
+    "request": {
+      "path": "/v1/skills/install",
+      "body": {
+        "skill_name": "../outside"
+      }
+    },
+    "status": 500,
+    "body": {
+      "message": "Failed to install skill '../outside': Invalid skill name '../outside'.",
+      "status": "error"
+    },
+    "seconds": 0.001
+  },
+  {
+    "route": "/v1/skills/cache",
+    "verb": "DELETE",
+    "method": "tools.clear_cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/skills/cache",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "files_removed": 0,
+      "freed_bytes": 0,
+      "message": "Removed 0 cached files.",
+      "status": "success"
+    },
+    "seconds": 0.013
+  },
+  {
+    "route": "/v1/plugins/list",
+    "verb": "GET",
+    "method": "tools.list",
+    "case": "default",
+    "request": {
+      "path": "/v1/plugins/list",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "plugins": [],
+      "status": "success"
+    },
+    "seconds": 0.016
+  },
+  {
+    "route": "/v1/plugins/install",
+    "verb": "POST",
+    "method": "tools.install",
+    "case": "invalid_id",
+    "request": {
+      "path": "/v1/plugins/install",
+      "body": {
+        "plugin_name": "../outside"
+      }
+    },
+    "status": 500,
+    "body": {
+      "message": "Failed to install plugin '../outside': Invalid plugin name '../outside'.",
+      "status": "error"
+    },
+    "seconds": 0.013
+  },
+  {
+    "route": "/v1/plugins/cache",
+    "verb": "GET",
+    "method": "tools.cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/plugins/cache",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "message": "Cached plugin components: []",
+      "status": "success"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/plugins/cache",
+    "verb": "DELETE",
+    "method": "tools.clear_cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/plugins/cache",
+      "body": {
+        "plugin_name": "<missing_id>"
+      }
+    },
+    "status": 404,
+    "body": {
+      "message": "plugin '<missing_id>' is not installed.",
+      "status": "error"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/mcp/list",
+    "verb": "GET",
+    "method": "tools.list",
+    "case": "default",
+    "request": {
+      "path": "/v1/mcp/list",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "mcp_servers": [],
+      "status": "success"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/mcp/install",
+    "verb": "POST",
+    "method": "tools.install",
+    "case": "invalid_id",
+    "request": {
+      "path": "/v1/mcp/install",
+      "body": {
+        "mcp_name": "../outside"
+      }
+    },
+    "status": 500,
+    "body": {
+      "message": "Failed to install mcp '../outside': Invalid mcp name '../outside'.",
+      "status": "error"
+    },
+    "seconds": 0.009
+  },
+  {
+    "route": "/v1/mcp/cache",
+    "verb": "GET",
+    "method": "tools.cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/mcp/cache",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "message": "Cached mcp components: []",
+      "status": "success"
+    },
+    "seconds": 0.012
+  },
+  {
+    "route": "/v1/mcp/cache",
+    "verb": "DELETE",
+    "method": "tools.clear_cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/mcp/cache",
+      "body": {
+        "mcp_name": "<missing_id>"
+      }
+    },
+    "status": 404,
+    "body": {
+      "message": "mcp '<missing_id>' is not installed.",
+      "status": "error"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/api/components/list",
+    "verb": "GET",
+    "method": "tools.list",
+    "case": "default",
+    "request": {
+      "path": "/api/components/list",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "mcp": [],
+      "plugin": [],
+      "rich": {
+        "mcp": [],
+        "plugin": [],
+        "skill": [
+          {
+            "category": "skill",
+            "description": "Local CEP baseline fixture.",
+            "enabled": true,
+            "execution_mode": "auto",
+            "icon_svg": null,
+            "id": "cep-baseline",
+            "name": "cep-baseline",
+            "security_mode": "inherit",
+            "semantic_triggers": [],
+            "tokens": 6,
+            "version": ""
+          }
+        ]
+      },
+      "skill": [
+        "cep-baseline"
+      ]
+    },
+    "seconds": 0.003
+  },
+  {
+    "route": "/api/components/settings",
+    "verb": "GET",
+    "method": "tools.get_settings",
+    "case": "default",
+    "request": {
+      "path": "/api/components/settings?component_type=skill&component_id=cep-baseline",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "schema": {},
+      "status": "success",
+      "values": {
+        "enabled": true,
+        "execution_mode": "auto",
+        "security_mode": "inherit",
+        "trust_annotations": false
+      }
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/api/components/settings",
+    "verb": "POST",
+    "method": "tools.set_settings",
+    "case": "default",
+    "request": {
+      "path": "/api/components/settings",
+      "body": {
+        "component_type": "skill",
+        "component_id": "cep-baseline",
+        "settings": {
+          "enabled": true
+        }
+      }
+    },
+    "status": 200,
+    "body": {
+      "message": "Settings for component 'cep-baseline' updated successfully",
+      "status": "success"
+    },
+    "seconds": 0.016
+  },
+  {
+    "route": "/api/components/file",
+    "verb": "GET",
+    "method": "tools.open_file",
+    "case": "default",
+    "request": {
+      "path": "/api/components/file?component_type=skill&component_id=cep-baseline&file_path=SKILL.md",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "content": "---\r\nname: cep-baseline\r\ndescription: Local CEP baseline fixture.\r\n---\r\n\r\nCEP migration baseline: UTF-8 file, document extraction, and local tools.\r\n",
+      "status": "success"
+    },
+    "seconds": 0.018
+  },
+  {
+    "route": "/api/components/file",
+    "verb": "POST",
+    "method": "tools.write_file",
+    "case": "default",
+    "request": {
+      "path": "/api/components/file",
+      "body": {
+        "component_type": "skill",
+        "component_id": "cep-baseline",
+        "content": "CEP migration baseline: UTF-8 file, document extraction, and local tools.\n"
+      }
+    },
+    "status": 200,
+    "body": {
+      "status": "success"
+    },
+    "seconds": 0.003
+  },
+  {
+    "route": "/api/components/files",
+    "verb": "GET",
+    "method": "tools.files",
+    "case": "default",
+    "request": {
+      "path": "/api/components/files?component_type=skill&component_id=cep-baseline",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "cache": {
+        "all_bytes": 0,
+        "temp_bytes": 0
+      },
+      "files": [
+        {
+          "is_dir": false,
+          "name": "SKILL.md",
+          "path": "SKILL.md"
+        }
+      ],
+      "status": "success"
+    },
+    "seconds": 0.003
+  },
+  {
+    "route": "/api/components/cache",
+    "verb": "POST",
+    "method": "tools.clear_cache",
+    "case": "default",
+    "request": {
+      "path": "/api/components/cache",
+      "body": {
+        "component_type": "skill",
+        "component_id": "cep-baseline",
+        "all": true
+      }
+    },
+    "status": 200,
+    "body": {
+      "files_removed": 0,
+      "freed_bytes": 0,
+      "message": "Removed 0 cached files.",
+      "status": "success"
+    },
+    "seconds": 0.012
+  },
+  {
+    "route": "/v1/execute/{component}/{function}",
+    "verb": "POST",
+    "method": "tools.call",
+    "case": "missing",
+    "request": {
+      "path": "/v1/execute/<missing_id>/missing",
+      "body": {
+        "params": {}
+      }
+    },
+    "status": 500,
+    "body": {
+      "message": "Execution failed for <missing_id>: Plugin '<missing_id>' not found in \"<test_home>\\\\tools\\\\plugins\\\\<missing_id>\"",
+      "status": "error"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/skills/cache",
+    "verb": "GET",
+    "method": "tools.cache",
+    "case": "default",
+    "request": {
+      "path": "/v1/skills/cache",
+      "body": null
+    },
+    "status": 200,
+    "body": {
+      "message": "Cached skill components: [\"cep-baseline\"]",
+      "status": "success"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/skills/remove",
+    "verb": "DELETE",
+    "method": "tools.remove",
+    "case": "default",
+    "request": {
+      "path": "/v1/skills/remove",
+      "body": {
+        "skill_name": "cep-baseline"
+      }
+    },
+    "status": 200,
+    "body": {
+      "message": "skill 'cep-baseline' removed.",
+      "status": "success"
+    },
+    "seconds": 0.019
+  },
+  {
+    "route": "/v1/plugins/remove",
+    "verb": "DELETE",
+    "method": "tools.remove",
+    "case": "default",
+    "request": {
+      "path": "/v1/plugins/remove",
+      "body": {
+        "plugin_name": "<missing_id>"
+      }
+    },
+    "status": 404,
+    "body": {
+      "message": "plugin '<missing_id>' is not installed.",
+      "status": "error"
+    },
+    "seconds": 0.002
+  },
+  {
+    "route": "/v1/mcp/remove",
+    "verb": "DELETE",
+    "method": "tools.remove",
+    "case": "default",
+    "request": {
+      "path": "/v1/mcp/remove",
+      "body": {
+        "mcp_name": "<missing_id>"
+      }
+    },
+    "status": 404,
+    "body": {
+      "message": "mcp '<missing_id>' is not installed.",
+      "status": "error"
+    },
+    "seconds": 0.002
+  }
+]
