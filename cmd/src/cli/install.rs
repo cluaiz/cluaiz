@@ -1,12 +1,16 @@
 //! Download flow shared by `cluaiz pull` and `cluaiz run` (a model that is not installed yet):
-//! resolve the id (registry, Hugging Face repo, `:QUANT` tag, `--all` file picker), show what will be
-//! downloaded, ask, then download and register through `ModelDownloader::install`.
+//! resolve the id (`cluaiz_models::resolve`, shared with the API), show what will be downloaded,
+//! ask, then download and register through `ModelDownloader::install`. This file is the terminal
+//! side: the printed steps, the variant prompt and the `--all` file picker.
 
 use color_eyre::Result;
 use colored::Colorize;
-use cluaiz_models::{CoreRoster, HfTreeItem, HfVariant, HuggingFaceHub, ModelDownloader, ModelManifest, parse_hf_repository, resolve_model_repo_with_fallback, RegistryResolveError};
+use cluaiz_models::fetcher::{ResolveStep, ResolveUi};
+use cluaiz_models::{HfTreeItem, HfVariant, ModelDownloader};
 use std::io::{self, Write};
 use std::path::PathBuf;
+
+pub use cluaiz_models::fetcher::{DownloadPlan, Resolved};
 
 /// Downloads run without questions (first variant, no confirm) when this is set, e.g. in scripts
 pub const NON_INTERACTIVE_ENV: &str = "CLUAIZ_NONINTERACTIVE";
@@ -15,261 +19,63 @@ fn non_interactive() -> bool {
     std::env::var(NON_INTERACTIVE_ENV).is_ok()
 }
 
-/// What a model id turned out to be
-pub enum Resolved {
-    /// The weight file is on disk already
-    OnDisk(PathBuf),
-    /// The chosen variant is installed under this id
-    AlreadyInstalled(String),
-    Download(DownloadPlan),
-}
+/// The terminal's side of the resolution: printed steps, prompts
+struct Terminal;
 
-pub struct DownloadPlan {
-    pub manifest: ModelManifest,
-    /// Repository paths to download (all files of the chosen variant)
-    pub files: Vec<String>,
-    pub quant: String,
+impl ResolveUi for Terminal {
+    fn step(&self, step: ResolveStep<'_>) {
+        match step {
+            ResolveStep::Resolving(id) => {
+                print!("  {} Resolving model ID '{}' via Registry...", "🔍".cyan(), id.bold());
+                let _ = io::stdout().flush();
+            }
+            ResolveStep::RepoFound(repo) => println!(" -> Found HuggingFace Repo: '{}'", repo.yellow().bold()),
+            ResolveStep::NotInCatalog => println!(" -> no matching catalogue ID"),
+            ResolveStep::CatalogFailed => println!(" -> request failed"),
+            ResolveStep::Scanning(repo) => println!("  {} Scanning HuggingFace Hub for '{}'...", "🔍".cyan(), repo),
+            ResolveStep::FetchingTree(repo) => println!("  {} Fetching full repository file tree for '{}'...", "🌐".cyan(), repo),
+            ResolveStep::TagMatched { tag, variant } => println!(
+                "  {} Direct Quantization Tag Matched: ':{}' -> {} ({:.2} GB)",
+                "⚡".green().bold(),
+                tag.yellow().bold(),
+                variant.variant_id.cyan().bold(),
+                variant.size_gb
+            ),
+            ResolveStep::TagNotFound { tag, repo } => println!(
+                "  {} Quantization tag ':{}' not found in '{}'. Available variants listed below:",
+                "⚠️".yellow(),
+                tag.bold(),
+                repo.cyan()
+            ),
+            ResolveStep::Repairing => println!("  Existing package is incomplete; keeping valid files and preparing repair."),
+            ResolveStep::FetchingMetadata => println!("  {} Fetching precise metadata...", "📡".cyan()),
+        }
+    }
+
+    fn pick_variant(&self, _: &str, variants: &[HfVariant]) -> Result<usize, String> {
+        if non_interactive() {
+            return Ok(0);
+        }
+        let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
+        inquire::Select::new("Select model variant bundle to download:", options)
+            .with_page_size(12)
+            .raw_prompt()
+            .map(|selected| selected.index)
+            .map_err(|e| format!("Selection cancelled: {}", e))
+    }
+
+    fn pick_files(&self, repo: &str, tree: &[HfTreeItem]) -> Result<Vec<String>, String> {
+        run_directory_tree_picker(repo, tree).map_err(|e| e.to_string())
+    }
 }
 
 /// Finds what `model_id` means: a catalog id, a Hugging Face repo (`owner/name`, `hf://`, a URL),
 /// optionally with `:QUANT`. Asks for the variant when there is a choice.
 pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
-    // 🎨 Display the Logo
     let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
     println!("{}", logo.cyan());
-
     println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "⚙️".yellow(), model_id.bold());
-
-    let mut manifest: Option<ModelManifest>;
-    let mut selected_variant_bundle: Option<HfVariant> = None;
-    let is_local;
-
-    let roster = CoreRoster::load_roster();
-
-    // Extract optional explicit quantization/variant tag if specified with colon (e.g. 'repo/model:IQ3_XXS' or 'model:Q4_K_M')
-    let (base_input, explicit_tag) = if let Some((base, tag)) = model_id.rsplit_once(':') {
-        if !tag.is_empty() && !base.ends_with("http") && !base.ends_with("https") && !base.ends_with("hf") {
-            (base, Some(tag.to_string()))
-        } else {
-            (model_id, None)
-        }
-    } else {
-        (model_id, None)
-    };
-
-    let mut target_hf_repo: Option<String> = None;
-    let mut registry_failure: Option<String> = None;
-    if !base_input.contains('/') && !base_input.starts_with("hf://") && !base_input.starts_with("https://") {
-        // Check if model already exists locally
-        let safe_id = model_id.replace(':', "-");
-        let safe_base_id = base_input.replace(':', "-");
-        let local_exists = roster.iter().any(|m| {
-            if m.id.to_lowercase() == model_id.to_lowercase() || m.id.to_lowercase() == base_input.to_lowercase() {
-                let model_path = ModelDownloader::model_dir(&m.category, &safe_id);
-                let base_path = ModelDownloader::model_dir(&m.category, &safe_base_id);
-                model_path.join(&m.huggingface_filename).exists() || base_path.join(&m.huggingface_filename).exists()
-            } else {
-                false
-            }
-        });
-
-        let locally_known = roster.iter().any(|model| model.id.eq_ignore_ascii_case(model_id));
-        if !local_exists && !locally_known {
-            // Short ID given and not present locally -> Resolve upstream Hugging Face repo from Registry
-            print!("  {} Resolving model ID '{}' via Registry...", "🔍".cyan(), base_input.bold());
-            let _ = std::io::Write::flush(&mut std::io::stdout());
-            let fallback = (base_input != model_id).then_some(base_input);
-            match resolve_model_repo_with_fallback(model_id, fallback).await {
-                Ok(Some(hf_repo)) => {
-                    println!(" -> Found HuggingFace Repo: '{}'", hf_repo.yellow().bold());
-                    target_hf_repo = Some(hf_repo);
-                }
-                Ok(None) => {
-                    println!(" -> no matching catalogue ID");
-                    registry_failure = Some(RegistryResolveError::NotFound(model_id.to_string()).to_string());
-                }
-                Err(error) => {
-                    println!(" -> request failed");
-                    registry_failure = Some(error.to_string());
-                }
-            }
-        }
-    }
-
-    if base_input.contains('/') || target_hf_repo.is_some() {
-        // HUGGINGFACE REQUEST (EXPLICIT OR RESOLVED)
-        let resolved_id = target_hf_repo.unwrap_or_else(|| base_input.to_string());
-        let repo_id = parse_hf_repository(&resolved_id)
-            .ok_or(RegistryResolveError::InvalidInput)?;
-        
-        println!("  {} Scanning HuggingFace Hub for '{}'...", "🔍".cyan(), repo_id);
-        
-        let selected_variant = if all {
-            println!("  {} Fetching full repository file tree for '{}'...", "🌐".cyan(), repo_id);
-            let raw_tree = HuggingFaceHub::list_raw_tree(&repo_id).await
-                .map_err(|e| color_eyre::eyre::eyre!(e))?;
-
-            if raw_tree.is_empty() {
-                return Err(color_eyre::eyre::eyre!("No files found in repository '{}'", repo_id));
-            }
-
-            let selected_files = run_directory_tree_picker(&repo_id, &raw_tree)?;
-
-            if selected_files.is_empty() {
-                return Err(color_eyre::eyre::eyre!("No files selected for download."));
-            }
-
-            let primary_file = selected_files.iter()
-                .find(|f| f.ends_with(".gguf") || f.ends_with(".onnx") || f.ends_with(".safetensors"))
-                .cloned()
-                .unwrap_or_else(|| selected_files[0].clone());
-
-            let total_size_bytes: u64 = selected_files.iter()
-                .filter_map(|f| raw_tree.iter().find(|item| &item.path == f).and_then(|i| i.size))
-                .sum();
-            let size_gb = total_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-
-            let custom = HfVariant {
-                revision: None,
-                variant_id: "UNFILTERED CUSTOM BUNDLE".to_string(),
-                format_type: if primary_file.ends_with(".onnx") { "onnx".to_string() } else { "gguf".to_string() },
-                quant_tag: "CUSTOM".to_string(),
-                primary_file: primary_file.clone(),
-                all_files: selected_files,
-                filename: primary_file,
-                size_gb,
-            };
-            cluaiz_models::fetcher::package_bundler::complete_custom(&repo_id, &raw_tree, custom).await
-                .map_err(|e| color_eyre::eyre::eyre!(e))?
-        } else {
-            let variants = HuggingFaceHub::list_variants(&repo_id).await
-                .map_err(|e| color_eyre::eyre::eyre!(e))?;
-
-            if variants.is_empty() {
-                return Err(color_eyre::eyre::eyre!("No variants found in repository '{}'", repo_id));
-            }
-
-            // ⚡ If an explicit quantization tag was given (e.g. :IQ3_XXS or :Q4_K_M), auto-select it directly!
-            let matched_from_tag = if let Some(ref tag) = explicit_tag {
-                let tag_upper = tag.to_uppercase();
-                let clean_tag = tag_upper.replace(['-', '_'], "");
-                
-                variants.iter().find(|v| {
-                    v.quant_tag.to_uppercase() == tag_upper
-                        || v.variant_id.to_uppercase().contains(&tag_upper)
-                        || v.filename.to_uppercase().contains(&tag_upper)
-                        || v.quant_tag.to_uppercase().replace(['-', '_'], "") == clean_tag
-                        || v.filename.to_uppercase().replace(['-', '_'], "").contains(&clean_tag)
-                }).cloned()
-            } else {
-                None
-            };
-
-            if let Some(matched) = matched_from_tag {
-                println!(
-                    "  {} Direct Quantization Tag Matched: ':{}' -> {} ({:.2} GB)",
-                    "⚡".green().bold(),
-                    explicit_tag.as_ref().unwrap().yellow().bold(),
-                    matched.variant_id.cyan().bold(),
-                    matched.size_gb
-                );
-                matched
-            } else {
-                if let Some(ref tag) = explicit_tag {
-                    println!(
-                        "  {} Quantization tag ':{}' not found in '{}'. Available variants listed below:",
-                        "⚠️".yellow(),
-                        tag.bold(),
-                        repo_id.cyan()
-                    );
-                }
-
-                if non_interactive() {
-                    variants.first().ok_or_else(|| color_eyre::eyre::eyre!("No variants found"))?.clone()
-                } else {
-                    let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
-                    let selected_option = inquire::Select::new("Select model variant bundle to download:", options)
-                        .with_page_size(12)
-                        .raw_prompt()
-                        .map_err(|e| color_eyre::eyre::eyre!("Selection cancelled: {}", e))?;
-                    
-                    variants.into_iter().nth(selected_option.index)
-                        .ok_or_else(|| color_eyre::eyre::eyre!("Selected variant not found"))?
-                }
-            }
-        };
-
-        let selected_filename = selected_variant.primary_file.clone();
-        
-        // 🚀 Check if this specific variant is already in the local roster!
-        if let Some(existing) = roster.iter().find(|m| m.huggingface_repo.to_lowercase() == repo_id.to_lowercase() && m.huggingface_filename.to_lowercase() == selected_filename.to_lowercase()) {
-            let primary = ModelDownloader::model_dir(&existing.category, &existing.id).join(&existing.huggingface_filename);
-            if ModelDownloader::validate_package(&primary).is_ok() {
-                return Ok(Resolved::AlreadyInstalled(existing.id.clone()));
-            }
-            println!("  Existing package is incomplete; keeping valid files and preparing repair.");
-        }
-
-        println!("  {} Fetching precise metadata...", "📡".cyan());
-        let hf_manifest = HuggingFaceHub::build_manifest(&repo_id, &selected_variant, None);
-            
-        manifest = Some(hf_manifest);
-        selected_variant_bundle = Some(selected_variant);
-        is_local = false;
-
-        // Append quant tag to manifest ID for flat vault folder naming
-        // e.g. GLM-5.2-GGUF + UD-IQ1_S → GLM-5.2-GGUF-UD-IQ1_S (flat, not nested)
-        if let (Some(ref mut m), Some(ref bundle)) = (&mut manifest, &selected_variant_bundle) {
-            let qt = bundle.quant_tag.clone();
-            if !qt.is_empty() && qt != "DEFAULT" {
-                let qt_upper = qt.to_uppercase();
-                let id_upper = m.id.to_uppercase();
-                if !id_upper.contains(&qt_upper) {
-                    m.id = format!("{}-{}", m.id, qt);
-                }
-            }
-            // Set huggingface_filename to the flat basename of the primary file
-            let flat_name = bundle.primary_file.rsplit('/').next().unwrap_or(&bundle.primary_file).to_string();
-            m.huggingface_filename = flat_name;
-        }
-    } else {
-        // REGISTRY OR LOCAL ID REQUEST
-        if let Some(m) = roster.into_iter().find(|m| m.id.to_lowercase() == model_id.to_lowercase()) {
-            let safe_id = m.id.replace(':', "-");
-            let model_path = ModelDownloader::model_dir(&m.category, &safe_id);
-            let model_file = model_path.join(&m.huggingface_filename);
-
-            if model_file.exists() {
-                manifest = Some(m);
-                is_local = true;
-            } else {
-                manifest = Some(m);
-                is_local = false;
-            }
-        } else {
-            // The one resolver request already covered the remote catalogue.
-            return Err(color_eyre::eyre::eyre!(registry_failure.unwrap_or_else(|| {
-                RegistryResolveError::NotFound(model_id.to_string()).to_string()
-            })));
-        }
-    }
-
-    let manifest = manifest.ok_or_else(|| color_eyre::eyre::eyre!("ID '{}' not found in any registry.", model_id))?;
-    let model_file = ModelDownloader::model_dir(&manifest.category, &manifest.id).join(&manifest.huggingface_filename);
-    if is_local && ModelDownloader::validate_package(&model_file).is_ok() {
-        return Ok(Resolved::OnDisk(model_file));
-    }
-    if is_local && selected_variant_bundle.is_none() {
-        let (repaired, files) = HuggingFaceHub::bundle_for_manifest(&manifest).await
-            .map_err(|e| color_eyre::eyre::eyre!(e))?;
-        let quant = cluaiz_models::taxonomy::quantization::UniversalQuantization::extract_quant_tag(&repaired.huggingface_filename);
-        return Ok(Resolved::Download(DownloadPlan { manifest: repaired, files, quant }));
-    }
-    let quant = selected_variant_bundle.as_ref().map(|v| v.quant_tag.clone()).unwrap_or_else(|| "DEFAULT".to_string());
-    let files = selected_variant_bundle
-        .map(|v| v.all_files)
-        .unwrap_or_else(|| vec![manifest.huggingface_filename.clone()]);
-    Ok(Resolved::Download(DownloadPlan { manifest, files, quant }))
+    cluaiz_models::fetcher::resolve(model_id, all, &Terminal).await.map_err(|e| color_eyre::eyre::eyre!(e))
 }
 
 /// Shows what will be downloaded and asks to go on. Memory placement is decided when loading;
@@ -321,7 +127,7 @@ pub async fn download(plan: &DownloadPlan) -> Result<PathBuf> {
     let path = ModelDownloader::install(&plan.manifest, &plan.files, tx, abort)
         .await
         .map_err(|e| color_eyre::eyre::eyre!("download failed: {}", e))?;
-    let id = crate::cli::models::id_for_path(&path);
+    let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
     println!("\n  {} Model downloaded and registered successfully!", "✅".green().bold());
     println!("  ┌─────────────────────────────────────────────────────────────┐");
     println!("  │ 🆔 Registered ID:  {}", id.cyan().bold());

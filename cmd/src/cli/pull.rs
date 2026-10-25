@@ -8,7 +8,7 @@ use crate::cli::install::{self, Resolved};
 pub async fn execute(model_id: &str) -> Result<()> {
     let plan = match install::resolve(model_id, false).await? {
         Resolved::OnDisk(path) => {
-            let id = crate::cli::models::id_for_path(&path);
+            let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
             println!("\n  {} Model '{}' is already downloaded.", "⚠️".yellow(), id.cyan());
             println!("     If you wish to re-download, please delete the old one first using: cluaiz rm {}\n", id.red());
             return Ok(());

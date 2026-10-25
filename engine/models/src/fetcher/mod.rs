@@ -4,12 +4,14 @@ pub mod client;
 pub mod downloader;
 pub mod hf_hub;
 pub mod package_bundler;
+pub mod resolve;
 
 pub use asset_bundler::AssetBundler;
 pub use auto_heal::AutoHeal;
 pub use client::{parse_hf_repository, resolve_model_repo, resolve_model_repo_with_fallback, RegistryClient, RegistryResolveError};
 pub use downloader::{DownloadEvent, FileDownloader};
 pub use hf_hub::{HfTreeItem, HfVariant, HuggingFaceHub};
+pub use resolve::{pull, resolve, DownloadPlan, FirstVariant, Pulled, ResolveStep, ResolveUi, Resolved};
 
 use crate::models::types::manifest::{ModelAsset, ModelManifest};
 use std::path::{Path, PathBuf};
