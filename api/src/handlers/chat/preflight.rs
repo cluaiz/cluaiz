@@ -60,8 +60,6 @@ pub struct PreparedChatContext {
     pub memory_tools: bool,
     /// Pinned notes in this chat's system prompt (kept in its ledger)
     pub z0_note_ids: Vec<String>,
-    /// Events this request added to the chat's log (sent back to apps with external storage)
-    pub request_events: Vec<cluaiz_agents::memory::Event>,
     /// Keeps idle-time jobs away until the request ends
     _foreground: super::background::Foreground,
     pub json_prompt: String,
@@ -482,10 +480,9 @@ impl PreparedChatContext {
         block_notes.extend(relevant_notes);
         context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
         // The chat's event log: what the client sent (a preview changes nothing)
-        let mut request_events = Vec::new();
         let ingest_started = std::time::Instant::now();
         if let (Some(chat), false) = (&ledger_chat, request.preview) {
-            request_events = super::ingest_events::ingest_request(chat, &request.messages);
+            super::ingest_events::ingest_request(chat, &request.messages);
         }
         let ingest_ms = ingest_started.elapsed().as_millis() as u64;
         let current_turn_key = rendered.current_key;
@@ -1172,7 +1169,6 @@ impl PreparedChatContext {
             ledger_turn: ledger_chat.clone().zip(current_turn_key),
             message_count: request.messages.len(),
             memory_tools: memory_tools || remember_tool,
-            request_events,
             z0_note_ids,
             _foreground: foreground,
             tool_hint: turn_block,
@@ -1344,12 +1340,13 @@ pub fn record_turn(
     let Some((chat, key)) = &ctx.ledger_turn else {
         return None;
     };
-    let turn_events = super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
+    super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
     // The Chat Map with this turn, ready for the next request
     super::recall::refresh_later(chat);
     let external = cluaiz_agents::memory::is_external(chat);
-    // Idle-time card for this turn, written by the model while its KV is still hot
-    if let (Some(model_path), false, false) = (&ctx.active_model_path, answer.trim().is_empty(), external) {
+    // Idle-time card for this turn, written by the model while its KV is still hot (for an
+    // external chat too: the card is an event in RAM and goes to the app with the next answer)
+    if let (Some(model_path), false) = (&ctx.active_model_path, answer.trim().is_empty()) {
         if let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(&ctx.json_prompt) {
             if let Some(messages) = envelope.get_mut("messages").and_then(serde_json::Value::as_array_mut) {
                 // The conversation as the next turn will render it: this turn's tool steps (put
@@ -1369,6 +1366,7 @@ pub fn record_turn(
                         settings: Some(ctx.request_settings.clone()),
                         cold: false,
                         episode: None,
+                        external,
                     },
                 );
             }
@@ -1379,9 +1377,7 @@ pub fn record_turn(
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
     ledger.notes = Some(ctx.z0_note_ids.clone());
     cluaiz_agents::ChatLedger::put(chat, ledger);
-    external.then(|| {
-        let mut all = ctx.request_events.clone();
-        all.extend(turn_events);
-        json!(all)
-    })
+    // Every event the app has not had: this request's and answer's, and those added since the
+    // last answer (an idle-time card, a note)
+    external.then(|| json!(cluaiz_agents::memory::external::mem_store().undelivered(chat)))
 }

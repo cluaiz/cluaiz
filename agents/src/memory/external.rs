@@ -14,16 +14,33 @@ use std::sync::{LazyLock, Mutex};
 pub struct MemStore {
     chats: Mutex<HashMap<String, Vec<Event>>>,
     blobs: Mutex<HashMap<String, Vec<u8>>>,
+    /// The last seq the app was given, per chat
+    delivered: Mutex<HashMap<String, u64>>,
 }
 
 impl MemStore {
-    /// Replaces a chat's events (import)
+    /// Replaces a chat's events (import); the app has all of them
     pub fn load(&self, chat: &str, mut events: Vec<Event>) {
         events.sort_by_key(|e| e.seq);
         for event in &mut events {
             event.chat = chat.to_string();
         }
+        let last = events.last().map_or(0, |e| e.seq);
         self.chats.lock().unwrap_or_else(|e| e.into_inner()).insert(chat.to_string(), events);
+        self.delivered.lock().unwrap_or_else(|e| e.into_inner()).insert(chat.to_string(), last);
+    }
+
+    /// Events the app has not been given yet, oldest first: what a request and its answer added,
+    /// and what was added after the last answer (an idle-time card, a note). They count as given.
+    pub fn undelivered(&self, chat: &str) -> Vec<Event> {
+        let chats = self.chats.lock().unwrap_or_else(|e| e.into_inner());
+        let mut delivered = self.delivered.lock().unwrap_or_else(|e| e.into_inner());
+        let after = delivered.get(chat).copied().unwrap_or(0);
+        let events: Vec<Event> = chats.get(chat).map(|log| log.iter().filter(|e| e.seq > after).cloned().collect()).unwrap_or_default();
+        if let Some(last) = events.last() {
+            delivered.insert(chat.to_string(), last.seq);
+        }
+        events
     }
 }
 
@@ -83,6 +100,7 @@ impl EventStore for MemStore {
 
     fn delete_chat(&self, chat: &str) -> Result<DeleteReport> {
         // One in-RAM log; bytes as its JSON size
+        self.delivered.lock().unwrap_or_else(|e| e.into_inner()).remove(chat);
         let removed = self.chats.lock().unwrap_or_else(|e| e.into_inner()).remove(chat);
         Ok(match removed {
             Some(events) => DeleteReport { files: 1, bytes: serde_json::to_vec(&events).map_or(0, |b| b.len() as u64) },
@@ -129,6 +147,23 @@ mod tests {
     #[test]
     fn test_mem_store_conformance() {
         crate::memory::store::tests::conformance(&MemStore::default());
+    }
+
+    #[test]
+    fn test_undelivered_events_go_out_once() {
+        let store = MemStore::default();
+        let message = |text: &str| NewEvent::new("message", serde_json::json!({ "role": "user", "text": text }));
+        store.append("c", vec![message("a"), message("b")]).unwrap();
+        assert_eq!(store.undelivered("c").len(), 2);
+        assert!(store.undelivered("c").is_empty());
+        // Added after the answer (an idle-time card): it goes out with the next one
+        store.append("c", vec![NewEvent::new("card_enrichment", serde_json::json!({ "title": "t" }))]).unwrap();
+        let next = store.undelivered("c");
+        assert_eq!((next.len(), next[0].kind.as_str()), (1, "card_enrichment"));
+        // An import counts as given
+        let events = store.read("c").unwrap().events;
+        store.load("c", events);
+        assert!(store.undelivered("c").is_empty());
     }
 
     #[test]
