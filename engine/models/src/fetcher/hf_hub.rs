@@ -488,13 +488,7 @@ impl HuggingFaceHub {
         variant: &HfVariant,
         pipeline_tag: Option<&str>,
     ) -> ModelManifest {
-        let classification = UniversalModelClassifier::classify(
-            repo_id,
-            pipeline_tag,
-            &[],
-            &variant.all_files,
-            None,
-        );
+        let classification = UniversalModelClassifier::classify(pipeline_tag, &[]);
 
         let safe_name = repo_id.split('/').next_back().unwrap_or(repo_id);
         let download_url = format!(

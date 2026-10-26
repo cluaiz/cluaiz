@@ -149,45 +149,6 @@ impl TtsTaxonomy {
             || basename.contains("synth")
     }
 
-    /// Determines the exact TTS Family tag from repo/model identifiers and local files (Universal Taxonomy Engine).
-    pub fn detect_family(repo_or_dir: &str, file_inventory: &str) -> TtsFamily {
-        let lower = repo_or_dir.to_lowercase();
-        let files_joined = file_inventory.to_lowercase();
-        let combined = format!("{} {}", lower, files_joined);
-
-        if combined.contains("kokoro") || files_joined.contains("voices/") {
-            TtsFamily::Kokoro
-        } else if combined.contains("supertonic") || files_joined.contains("vector_estimator") || files_joined.contains("duration_predictor") {
-            TtsFamily::Supertonic
-        } else if combined.contains("matcha") || files_joined.contains("matcha_acoustic") || files_joined.contains("matxa") {
-            TtsFamily::Matcha
-        } else if combined.contains("cosyvoice") || combined.contains("cosy_voice") || files_joined.contains("campplus") || files_joined.contains("speech_llm") {
-            TtsFamily::CosyVoice
-        } else if combined.contains("audio8") || files_joined.contains("slow_ar") || files_joined.contains("fast_ar") {
-            TtsFamily::Audio8
-        } else if combined.contains("chatterbox") || files_joined.contains("chatterbox_generator") {
-            TtsFamily::Chatterbox
-        } else if combined.contains("omnivoice") || files_joined.contains("genai_config") {
-            TtsFamily::OmniVoice
-        } else if combined.contains("vits") || combined.contains("piper") || combined.contains("mms-tts") || files_joined.contains("phonemes.json") {
-            TtsFamily::Piper
-        } else if combined.contains("chattts") || combined.contains("chat_tts") {
-            TtsFamily::ChatTts
-        } else if combined.contains("parler") {
-            TtsFamily::ParlerTts
-        } else if combined.contains("bark") {
-            TtsFamily::Bark
-        } else if combined.contains("f5") {
-            TtsFamily::F5Tts
-        } else if combined.contains("whisper") {
-            TtsFamily::Whisper
-        } else if files_joined.ends_with(".onnx") || files_joined.contains(".onnx") {
-            TtsFamily::GenericOnnxTts
-        } else {
-            TtsFamily::Unknown
-        }
-    }
-
     /// Evaluates candidate TTS model files for priority scoring (0 = Primary Graph, 1 = Sub-Graph/Encoder, 2 = Vocoder, 3 = Helper/Speaker).
     pub fn score_tts_file(filename: &str) -> usize {
         let name = filename.to_lowercase();

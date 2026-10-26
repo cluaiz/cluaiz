@@ -40,12 +40,10 @@ impl VotingArbitrator {
         }
     }
 
-    /// Performs 3-Way Vote to determine the actual tasks for the model
-    pub fn resolve_tasks(
-        model_dir: &Path,
-        header_tasks: &[String],
-        arch_lower: &str,
-    ) -> Vec<String> {
+    /// Tasks a model declares: its weights' header (GGUF / ONNX), the Hugging Face pipeline tag
+    /// and tags saved with it (`hf_metadata.json`), and a `tts.json` beside it. Names of models
+    /// and files are never read.
+    pub fn resolve_tasks(model_dir: &Path, header_tasks: &[String]) -> Vec<String> {
         let mut scores: HashMap<String, u32> = HashMap::new();
 
         // SOURCE 1: Model Binary Header (Weight: 30)
@@ -56,76 +54,20 @@ impl VotingArbitrator {
 
         // SOURCE 2: HF API Metadata (Weight: 45)
         let hf_meta_path = model_dir.join("hf_metadata.json");
-        if hf_meta_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&hf_meta_path) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(pipeline_tag) = json.get("pipeline_tag").and_then(|v| v.as_str()) {
-                        let norm = Self::normalize_task(pipeline_tag);
-                        *scores.entry(norm).or_insert(0) += 45;
-                    }
-                    if let Some(tags) = json.get("tags").and_then(|v| v.as_array()) {
-                        for tag in tags {
-                            if let Some(tag_str) = tag.as_str() {
-                                let norm = Self::normalize_task(tag_str);
-                                *scores.entry(norm).or_insert(0) += 10;
-                            }
-                        }
-                    }
+        if let Ok(content) = std::fs::read_to_string(&hf_meta_path) {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(pipeline_tag) = json.get("pipeline_tag").and_then(|v| v.as_str()) {
+                    *scores.entry(Self::normalize_task(pipeline_tag)).or_insert(0) += 45;
+                }
+                for tag in json.get("tags").and_then(|v| v.as_array()).into_iter().flatten().filter_map(|t| t.as_str()) {
+                    *scores.entry(Self::normalize_task(tag)).or_insert(0) += 10;
                 }
             }
         }
 
-        // SOURCE 3: Filesystem & Name Heuristics (Weight: 25)
-        let dir_name = model_dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_lowercase();
-        let combined_ident = format!("{} {}", arch_lower, dir_name);
-
-        if model_dir.join("tts.json").exists()
-            || combined_ident.contains("tts")
-            || combined_ident.contains("kokoro")
-            || combined_ident.contains("vits")
-            || combined_ident.contains("supertonic")
-            || combined_ident.contains("piper")
-            || combined_ident.contains("matcha")
-            || combined_ident.contains("cosyvoice")
-        {
+        // SOURCE 3: A speech configuration file beside the weights (Weight: 25)
+        if model_dir.join("tts.json").exists() {
             *scores.entry("text-to-speech".to_string()).or_insert(0) += 25;
-        }
-
-        if combined_ident.contains("whisper")
-            || combined_ident.contains("sensevoice")
-            || combined_ident.contains("moonshine")
-            || combined_ident.contains("paraformer")
-        {
-            *scores
-                .entry("automatic-speech-recognition".to_string())
-                .or_insert(0) += 25;
-        }
-
-        let is_embed = combined_ident.contains("bert")
-            || combined_ident.contains("embed")
-            || combined_ident.contains("embedding")
-            || combined_ident.contains("bge")
-            || combined_ident.contains("nomic")
-            || combined_ident.contains("gte")
-            || combined_ident.contains("minilm");
-
-        if is_embed {
-            *scores.entry("embedding".to_string()).or_insert(0) += 40;
-        }
-
-        let is_vision_embed = combined_ident.contains("clip")
-            || combined_ident.contains("siglip")
-            || combined_ident.contains("colpali")
-            || combined_ident.contains("colqwen");
-
-        if is_vision_embed {
-            *scores
-                .entry("image-feature-extraction".to_string())
-                .or_insert(0) += 40;
         }
 
         let mut final_tasks = Vec::new();
@@ -226,27 +168,10 @@ impl ModelProber {
         }
 
         // 3-Way Task Voting
-        let arch_lower = architecture.to_lowercase();
-        let voted_tasks = VotingArbitrator::resolve_tasks(model_dir, &header_tasks, &arch_lower);
+        let voted_tasks = VotingArbitrator::resolve_tasks(model_dir, &header_tasks);
 
-        // Classify into Sovereign Category
-        let model_dir_name = model_dir.file_name().and_then(|s| s.to_str()).unwrap_or("");
-        let filenames: Vec<String> = std::fs::read_dir(model_dir)
-            .map(|entries| {
-                entries
-                    .flatten()
-                    .filter_map(|e| e.file_name().into_string().ok())
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let classification = UniversalModelClassifier::classify(
-            model_dir_name,
-            voted_tasks.first().map(|s| s.as_str()),
-            &voted_tasks,
-            &filenames,
-            Some(&architecture),
-        );
+        // Classify from the declared tasks (never from names)
+        let classification = UniversalModelClassifier::classify(voted_tasks.first().map(|s| s.as_str()), &voted_tasks);
 
         let mut caps = classification.capabilities;
         caps.explicit_tasks = voted_tasks;
