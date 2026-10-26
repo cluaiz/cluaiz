@@ -107,22 +107,6 @@ pub fn load_language_lexicon(lang: &str) -> HashMap<String, String> {
     }
 }
 
-/// The dictionary for `lang` only when it is already on disk (never downloads), loaded once per
-/// process. Used to tell real words of that language apart (e.g. English inside Hinglish).
-pub fn cached_language_lexicon(lang: &str) -> Option<std::sync::Arc<HashMap<String, String>>> {
-    type Cache = HashMap<String, std::sync::Arc<HashMap<String, String>>>;
-    static CACHE: std::sync::Mutex<Option<Cache>> = std::sync::Mutex::new(None);
-    let source = source_for(sources()?, lang)?;
-    let mut guard = CACHE.lock().ok()?;
-    let cache = guard.get_or_insert_with(HashMap::new);
-    if let Some(dict) = cache.get(&source.file) {
-        return Some(dict.clone());
-    }
-    let dict = std::sync::Arc::new(load_bin_lexicon(&bin_path(&lexicon_dir(), source)).ok()?);
-    cache.insert(source.file.clone(), dict.clone());
-    Some(dict)
-}
-
 /// Downloads one dictionary at the pinned commit, verifies it and writes the compiled file. Nothing
 /// is left behind on failure; the compiled file appears only complete (written aside, then renamed).
 fn fetch(sources: &Sources, source: &Source, dir: &Path, bin: &Path) -> Result<()> {
