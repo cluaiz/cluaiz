@@ -261,7 +261,7 @@
                 "id": "ap_41c2…",
                 "method": "mcp:web-search",
                 "principal": "agent",
-                "status": "pending",
+                "status": "approved",
                 "target": "{\"query\":\"news\"}"
               },
               "grant": {
@@ -421,7 +421,7 @@
                 "id": "ap_41c2…",
                 "method": "mcp:web-search",
                 "principal": "agent",
-                "status": "pending",
+                "status": "rejected",
                 "target": "{\"query\":\"news\"}"
               }
             }
@@ -2457,7 +2457,7 @@
               },
               "folder_removed": true,
               "ledger": true,
-              "saved_kv": {}
+              "saved_kv": true
             }
           }
         }
