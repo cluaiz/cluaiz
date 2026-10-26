@@ -73,7 +73,7 @@ def filler(start, turns):
 
 
 def mem3(engine):
-    """Time questions: kal, parso and a weekday keep to that day, in the user's own clock"""
+    """Time questions: the model turns the user's words into dates; recall keeps to that day"""
     chat = session("mem3")
     today = datetime.now().astimezone().replace(hour=11, minute=0, second=0, microsecond=0)
     if datetime.now().astimezone().hour < 11:
@@ -83,19 +83,37 @@ def mem3(engine):
     for back in (2, 1, 0):
         at = today - timedelta(days=back)
         items += [user(at, f"Deploy server ka port {days[back]} rakhte hain"), assistant(at + timedelta(seconds=5), f"Theek hai, port {days[back]}.")]
-    import_chat(engine, chat, items + filler(today + timedelta(minutes=5), 10))
+    items += filler(today + timedelta(minutes=5), 10)
+    import_chat(engine, chat, items)
     rows = []
-    weekday = (today - timedelta(days=2)).strftime("%A")
-    for query, want, other in [("kal deploy port kya tha?", "7070", ("9090", "5050")),
-                               ("parso deploy port kya rakha?", "5050", ("9090", "7070")),
-                               (f"{weekday} ko deploy port kya tha?", "5050", ("9090", "7070")),
-                               ("aaj deploy port kya hai?", "9090", ("7070", "5050"))]:
-        results = engine.cep("memory.search", chat_id=chat, query=query, limit=5)["results"]
+    # The Engine: a window from the caller, the question in any language
+    for query, back, other in [("deploy port", 1, ("9090", "5050")),
+                               ("நேற்று என்ன port வைத்தோம்?", 1, ("9090", "5050")),
+                               ("¿qué puerto usamos?", 2, ("9090", "7070")),
+                               ("deploy port", 0, ("7070", "5050"))]:
+        day = (today - timedelta(days=back)).strftime("%Y-%m-%d")
+        results = engine.cep("memory.search", chat_id=chat, query=query, limit=5, **{"from": day, "to": day})["results"]
         texts = [engine.cep("memory.item", chat_id=chat, ref=r["ref"]).get("text", "") for r in results]
-        found = any(want in t for t in texts) and not any(o in t for t in texts for o in other)
-        rows.append((query, found))
+        rows.append((f"search {query!r} {day}", any(days[back] in t for t in texts) and not any(o in t for t in texts for o in other)))
+    try:
+        engine.cep("memory.search", chat_id=chat, query="port", **{"from": "kal"})
+        rows.append(("search from='kal' refused", False))
+    except CepCallError as e:
+        rows.append(("search from='kal' refused", e.code == -32602))
+    # The model: "kal" / "ayer" / "நேற்று" become yesterday's date in its recall call
+    yesterday = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    history = [{"role": f["role"], "content": f["text"]} for _, kind, f in items if kind == "message"]
+    for question in ["kal deploy server ka port kya tha? recall se dhundo", "¿Qué puerto del servidor de deploy usamos ayer? Búscalo con recall.",
+                     "நேற்று deploy server port என்ன? recall பயன்படுத்து."]:
+        r = engine.stream(dict(body(question, chat, storage="external", history_mode="none", tool_search=False, max_tokens=400),
+                               messages=history + [{"role": "user", "content": question}]))
+        # Right when the answer has yesterday's port only; whether the call named the date is shown
+        dated = any(c["name"] == "recall" and yesterday in c["arguments"] for c in r["calls"])
+        right = "7070" in r["text"] and not any(o in r["text"] for o in ("9090", "5050"))
+        rows.append((f"model {question[:24]!r} (date {'sent' if dated else 'not sent'})", right))
+        print(f"      {question[:40]!r}: calls {[(c['name'], c['arguments']) for c in r['calls']]} answer {r['text'][-80:]!r}", flush=True)
     engine.cep("memory.delete", chat_id=chat)
-    return all(ok for _, ok in rows), "; ".join(f"{q!r} {'right day' if ok else 'WRONG'}" for q, ok in rows)
+    return all(ok for _, ok in rows), "; ".join(f"{q} {'ok' if ok else 'WRONG'}" for q, ok in rows)
 
 
 def mem5(engine):

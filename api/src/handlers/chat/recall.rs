@@ -7,7 +7,7 @@
 
 use cluaiz_agents::memory::transcript::transcript;
 use cluaiz_context::memory::{
-    active_task, asks_about_tool_run, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate,
+    active_task, build_cards, episodes, expand, recall, tasks, Card, CardIndex, Enrichment, Episode, EpisodeRules, EpisodeSummary, MessageIn, Task, TaskUpdate, Window,
 };
 use serde_json::{json, Value};
 use std::collections::HashSet;
@@ -257,11 +257,39 @@ impl ChatMap {
 
     /// The tool steps behind a recalled message (an answer's own, or for a question the answer
     /// after it) at `tool_only` level, each run once
-    fn tool_only_line(&self, card: &Card, shown: &mut HashSet<u64>) -> Option<String> {
-        let pos = [card.pos, card.pos + 1]
+    /// The newest user message: the one being answered
+    fn asking(&self) -> HashSet<u64> {
+        self.cards.iter().rev().find(|c| c.role == "user").map(|c| c.pos).into_iter().collect()
+    }
+
+    /// Whether the chat has nothing before the message being answered (only acknowledgements)
+    fn only_this_message(&self) -> bool {
+        let asking = self.asking();
+        self.cards.iter().all(|c| asking.contains(&c.pos) || c.trivial)
+    }
+
+    /// Position of the answer whose tool steps belong to `card` (its own, or the answer to it)
+    fn steps_at(&self, card: &Card) -> Option<u64> {
+        [card.pos, card.pos + 1]
             .into_iter()
             .take(if card.role == "user" { 2 } else { 1 })
-            .find(|pos| self.steps.get(pos).is_some_and(|s| !s.is_empty()))?;
+            .find(|pos| self.steps.get(pos).is_some_and(|s| !s.is_empty()))
+    }
+
+    /// Whether the hit matched on what its tools returned rather than on the message itself
+    /// ("ZEBRA-7781 kis run me aaya?" finds a run whose output printed it): such a hit is shown
+    /// at `tool_only` level. Read from the match, not from words of the question.
+    fn matched_tool_output(&self, hit: &cluaiz_context::memory::Hit) -> bool {
+        let card = &self.cards[hit.card];
+        let Some(pos) = self.steps_at(card) else { return false };
+        let message: HashSet<String> = cluaiz_context::analyze::terms(&self.texts[hit.card]).into_iter().collect();
+        let output: HashSet<String> = self.steps[&pos].iter().flat_map(|(_, result)| cluaiz_context::analyze::terms(result)).collect();
+        let raw = self.steps[&pos].iter().map(|(_, result)| result.to_lowercase()).collect::<Vec<_>>().join(" ");
+        hit.why.iter().any(|w| !message.contains(w) && (output.contains(w) || raw.contains(&w.to_lowercase())))
+    }
+
+    fn tool_only_line(&self, card: &Card, shown: &mut HashSet<u64>) -> Option<String> {
+        let pos = self.steps_at(card)?;
         if !shown.insert(pos) {
             return None;
         }
@@ -305,19 +333,6 @@ pub fn remember_schema() -> Value {
     }})
 }
 
-/// Words that ask to remember something ("yaad rakhna", "remember that")
-pub fn asks_to_remember(text: &str) -> bool {
-    let lower = text.to_lowercase();
-    ["yaad rakh", "yaad rakhna", "remember that", "remember this", "note kar", "note karo", "note kar lo", "याद रख"].iter().any(|w| lower.contains(w))
-}
-
-/// Words that point at other chats ("pichli chat", "dusri chat", "other chat")
-pub fn asks_about_other_chats(text: &str) -> bool {
-    let lower = text.to_lowercase();
-    ["pichli chat", "pichhli chat", "dusri chat", "doosri chat", "purani chat", "other chat", "another chat", "previous chat", "last chat", "earlier chat"]
-        .iter()
-        .any(|w| lower.contains(w))
-}
 
 /// Notes for a chat: the pinned ones and the live ones that fit the message (at most 3)
 pub fn notes_for(chat: Option<&str>, workspace: &str, message: &str) -> (Vec<cluaiz_agents::memory::notes::Note>, Vec<cluaiz_agents::memory::notes::Note>) {
@@ -388,15 +403,27 @@ pub fn task_block(task: &Task) -> String {
     block
 }
 
-/// Schemas of the memory meta-tools (offered when the prompt does not show the whole chat)
+/// Schemas of the memory meta-tools (offered when the prompt does not show the whole chat). The
+/// recall tool names today's date (it changes once a day), so the model can turn "yesterday" or
+/// "Monday" in any language into dates.
 pub fn memory_schemas() -> Vec<Value> {
+    let today = chrono::Local::now().date_naive();
+    let yesterday = today.pred_opt().unwrap_or(today);
     vec![
         json!({"type": "function", "function": {
             "name": RECALL_TOOL,
-            "description": "Search the earlier messages of this chat that are not shown, or (scope workspace or all) other chats, which may need the user's approval. Returns short records with refs.",
+            "description": format!(
+                "Search the earlier messages of this chat that are not shown, or (scope workspace or all) other chats, which may need the user's approval. Returns short records with refs and times. \
+                 When the user names a time in any language (yesterday, a weekday, a date, this morning), also set from and to. Today is {} ({}); for yesterday send from \"{yesterday}\" and to \"{yesterday}\".",
+                today.format("%Y-%m-%d"),
+                today.format("%A")
+            ),
             "parameters": {"type": "object", "properties": {
                 "query": {"type": "string"},
-                "scope": {"type": "string", "enum": ["chat", "workspace", "all"], "description": "Default chat"}
+                "scope": {"type": "string", "enum": ["chat", "workspace", "all"], "description": "Default chat"},
+                "from": {"type": "string", "description": "Earliest time: YYYY-MM-DD (from the start of that day) or YYYY-MM-DDTHH:MM"},
+                "to": {"type": "string", "description": "Latest time: YYYY-MM-DD (to the end of that day) or YYYY-MM-DDTHH:MM"},
+                "within_hours": {"type": "integer", "minimum": 1, "description": "Only the last this many hours"}
             }, "required": ["query"]}
         }}),
         json!({"type": "function", "function": {
@@ -478,26 +505,41 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
     }
     let query = arg("query");
     let scope = arg("scope");
+    let hours = args.get("within_hours").and_then(Value::as_u64).map(|h| h.min(u32::MAX as u64) as u32);
+    let window = match cluaiz_context::memory::window(Some(&arg("from")), Some(&arg("to")), hours, chrono::Utc::now()) {
+        Ok(window) => window,
+        Err(e) => return format!("recall: {e}."),
+    };
     if matches!(scope.as_str(), "workspace" | "all") {
         if cluaiz_core::Settings::current().context_runtime.cross_chat == "deny" {
             return "Searching other chats is turned off (cross_chat: deny). Only this chat can be searched.".to_string();
         }
         let workspace = (scope == "workspace").then(current_workspace);
-        return search_other_chats(&query, chat, workspace.as_deref(), 5);
+        return search_other_chats(&query, chat, workspace.as_deref(), window, 5);
     }
-    let hits = recall(&map.cards, &map.index, &query, &HashSet::new(), chrono::Utc::now(), 5);
-    let hits = expand(&hits, &map.cards, &HashSet::new(), 7);
+    // The message being answered is the newest user message; finding it says nothing
+    let asking = map.asking();
+    let hits = recall(&map.cards, &map.index, &query, &asking, window, 5);
+    let hits = expand(&hits, &map.cards, &asking, 7);
     if hits.is_empty() {
-        return format!("Nothing earlier in this chat matches \"{query}\".");
+        let cross_chat = cluaiz_core::Settings::current().context_runtime.cross_chat;
+        // A chat with nothing before this message can only mean another chat: with allow it runs
+        // here, with ask the user approved it before this call (needs_cross_chat_approval)
+        if map.only_this_message() && cross_chat != "deny" {
+            return search_other_chats(&query, chat, None, window, 5);
+        }
+        return format!(
+            "Nothing earlier in this chat matches \"{query}\".{}",
+            if cross_chat != "deny" { " To search the user's other chats, call recall again with scope workspace or all." } else { "" }
+        );
     }
-    // A question about an earlier tool run gets the run's results, not the answer
-    let tool_run = asks_about_tool_run(&query);
+    // A hit found by what a tool returned gets the run's results, not the answer
     let mut shown = HashSet::new();
     let lines: Vec<(u64, String)> = hits
         .iter()
         .map(|hit| {
             let card = &map.cards[hit.card];
-            if let Some(line) = tool_run.then(|| map.tool_only_line(card, &mut shown)).flatten() {
+            if let Some(line) = map.matched_tool_output(hit).then(|| map.tool_only_line(card, &mut shown)).flatten() {
                 return (card.pos, line);
             }
             let text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
@@ -507,15 +549,8 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
     records(lines)
 }
 
-/// One recalled message: `[m:<pos> · <time> · <role>[ · correction|decision]] <text>`
+/// One recalled message: `[m:<pos> · <time> · <role>] <text>`
 fn record_line(card: &Card, text: &str) -> String {
-    let mark = if card.signals.iter().any(|s| s == "correction") {
-        " · correction"
-    } else if card.signals.iter().any(|s| s == "decision") {
-        " · decision"
-    } else {
-        ""
-    };
     let mut done = String::new();
     if !card.tools.is_empty() {
         done = format!(" · ran {}", card.tools.join(", "));
@@ -524,7 +559,7 @@ fn record_line(card: &Card, text: &str) -> String {
         }
     }
     let title = card.enrichment.as_ref().map(|e| format!(" · {}", e.title)).unwrap_or_default();
-    format!("[m:{} · {} · {}{}{}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, mark, done, title, text)
+    format!("[m:{} · {} · {}{}{}] {}", card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, done, title, text)
 }
 
 /// Recalled messages in chat order, so a later correction reads after what it corrects
@@ -566,15 +601,15 @@ pub fn episode_request(map: &ChatMap, episode: &Episode) -> String {
 const CROSS_CHAT_LIMIT: usize = 50;
 const CROSS_CHAT_DAYS: u64 = 90;
 
-/// Whether this meta-tool call searches other chats and the policy wants the user to approve it
-pub fn needs_cross_chat_approval(name: &str, payload: &str) -> bool {
+/// Whether this meta-tool call searches other chats and the policy wants the user to approve it:
+/// scope workspace or all, or any recall from a chat with nothing before its current message
+/// (which [`run_memory_tool`] answers from the other chats)
+pub fn needs_cross_chat_approval(name: &str, payload: &str, chat: Option<&str>) -> bool {
     if name != RECALL_TOOL || cluaiz_core::Settings::current().context_runtime.cross_chat != "ask" {
         return false;
     }
-    serde_json::from_str::<Value>(payload)
-        .ok()
-        .and_then(|args| args.get("scope").and_then(Value::as_str).map(|s| matches!(s, "workspace" | "all")))
-        .unwrap_or(false)
+    let scope = serde_json::from_str::<Value>(payload).ok().and_then(|args| args.get("scope").and_then(Value::as_str).map(str::to_string));
+    matches!(scope.as_deref(), Some("workspace" | "all")) || chat.and_then(chat_map_hot).is_some_and(|map| map.only_this_message())
 }
 
 /// The workspace a chat was used in (from its first client message), if it was recorded
@@ -584,13 +619,13 @@ fn chat_workspace(chat: &str) -> Option<String> {
     log.events.iter().find_map(|e| e.str("workspace").map(str::to_string))
 }
 
-/// Messages of other chats that fit `query` (the chat's own messages excluded)
 /// The current workspace folder (the owner of workspace notes)
 pub fn current_workspace() -> String {
     cluaiz_agents::ToolsEngine::workspace_dir().to_string_lossy().to_string()
 }
 
-pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>, limit: usize) -> String {
+/// Messages of other chats that fit `query` (the chat's own messages excluded), within `window`
+pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>, window: Option<Window>, limit: usize) -> String {
     let mut found: Vec<(f32, String)> = Vec::new();
     let mut searched = 0;
     let chats: Vec<String> = super::background::chats_within(CROSS_CHAT_DAYS).into_iter().filter(|c| c != this_chat).take(CROSS_CHAT_LIMIT).collect();
@@ -604,7 +639,7 @@ pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>,
         }
         let Some(map) = chat_map_uncached(chat) else { continue };
         searched += 1;
-        for hit in recall(&map.cards, &map.index, query, &HashSet::new(), chrono::Utc::now(), 3) {
+        for hit in recall(&map.cards, &map.index, query, &HashSet::new(), window, 3) {
             let card = &map.cards[hit.card];
             let text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
             found.push((hit.score + recency, format!("[chat {} · m:{} · {} · {}] {}", chat, card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, text)));
@@ -638,18 +673,17 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
     let map = chat_map_hot(chat)?;
     let hidden: HashSet<u64> = hidden.iter().map(|i| *i as u64).collect();
     let visible: HashSet<u64> = map.cards.iter().map(|c| c.pos).filter(|pos| !hidden.contains(pos)).collect();
-    let hits = recall(&map.cards, &map.index, message, &visible, chrono::Utc::now(), MAX_HITS);
-    // Linked messages come along: a later correction, the same file or value
+    let hits = recall(&map.cards, &map.index, message, &visible, None, MAX_HITS);
+    // Linked messages come along: a later message on the same thing, the same file or value
     let hits = expand(&hits, &map.cards, &visible, MAX_HITS + MAX_LINKED);
     let mut lines: Vec<(u64, String)> = Vec::new();
     let mut refs = Vec::new();
     let mut used = 0;
-    // A question about an earlier tool run gets the run's results, not the answer
-    let tool_run = asks_about_tool_run(message);
+    // A hit found by what a tool returned gets the run's results, not the answer
     let mut shown = HashSet::new();
     for hit in hits {
         let card = &map.cards[hit.card];
-        let tool_only = tool_run.then(|| map.tool_only_line(card, &mut shown)).flatten();
+        let tool_only = map.matched_tool_output(&hit).then(|| map.tool_only_line(card, &mut shown)).flatten();
         let level = if tool_only.is_some() { "tool_only" } else { "summary" };
         let line = tool_only.unwrap_or_else(|| {
             let mut text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ");

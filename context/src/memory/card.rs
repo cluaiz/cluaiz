@@ -3,9 +3,7 @@
 
 use crate::analyze::{raw_words, terms};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
 
 /// A message as the card builder sees it
 #[derive(Debug, Clone, Default)]
@@ -65,14 +63,15 @@ pub struct Card {
     pub ts: String,
     /// Estimated tokens of the message (characters ÷ 3.5)
     pub tokens: usize,
-    /// Short acknowledgement with nothing new ("ok", "haan", "theek hai")
+    /// Short acknowledgement with nothing new ("ok", "theek hai"): two words or fewer, no file,
+    /// value, link, tool or question
     pub trivial: bool,
     /// Top terms by TF-IDF against the chat's own frequencies
     pub keywords: Vec<String>,
     pub entities: Entities,
     pub tools: Vec<String>,
     pub files: Vec<String>,
-    /// correction, decision, question, request, error
+    /// What the message's form shows: `question` (it ends with a question mark of any script)
     pub signals: Vec<String>,
     pub importance: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -83,29 +82,9 @@ pub struct Card {
 }
 
 const MAX_KEYWORDS: usize = 8;
-
-struct SignalWords {
-    acknowledgement: HashSet<String>,
-    lists: Vec<(&'static str, Vec<Vec<String>>)>,
-}
-
-static SIGNALS: LazyLock<SignalWords> = LazyLock::new(|| {
-    let data: Value = serde_json::from_str(include_str!("../../data/words.json")).unwrap_or_default();
-    let memory = data.get("memory").cloned().unwrap_or_default();
-    let list = |key: &str| -> Vec<String> {
-        memory.get(key).and_then(Value::as_array).map(|items| items.iter().filter_map(Value::as_str).map(str::to_lowercase).collect()).unwrap_or_default()
-    };
-    let phrases = |key: &str| -> Vec<Vec<String>> { list(key).iter().map(|p| raw_words(p)).filter(|p| !p.is_empty()).collect() };
-    SignalWords {
-        acknowledgement: list("acknowledgement").into_iter().collect(),
-        lists: vec![("correction", phrases("correction")), ("decision", phrases("decision")), ("error", phrases("error"))],
-    }
-});
-
-/// Whether the words contain `phrase` as consecutive whole words
-pub fn has_phrase(words: &[String], phrase: &[String]) -> bool {
-    !phrase.is_empty() && words.windows(phrase.len()).any(|window| window == phrase)
-}
+/// A message this short, with no file, value, link or tool, is an acknowledgement ("ok",
+/// "theek hai", "thanks") and is never recalled
+const TRIVIAL_WORDS: usize = 2;
 
 /// Files, links, numbers and quoted strings named in a text
 pub fn entities(text: &str) -> Entities {
@@ -171,35 +150,15 @@ pub fn build_cards(messages: &[MessageIn]) -> Vec<Card> {
 
             let entities = entities(&message.text);
             let words = raw_words(&message.text);
-            let signals_data = &*SIGNALS;
-            let mut signals: Vec<String> = signals_data
-                .lists
-                .iter()
-                .filter(|(_, phrases)| phrases.iter().any(|p| has_phrase(&words, p)))
-                .map(|(name, _)| name.to_string())
-                .collect();
-            let is_user = message.role.eq_ignore_ascii_case("user");
-            if message.text.trim_end().ends_with('?') {
+            let mut signals: Vec<String> = Vec::new();
+            // A question mark of any script (Latin, full-width, Arabic, Greek)
+            let question = message.text.trim_end().ends_with(['?', '？', '؟', '\u{037E}']);
+            if question {
                 signals.push("question".into());
             }
-            if is_user && message_terms.iter().any(|t| crate::analyze::WORDS.actions.contains(t)) {
-                signals.push("request".into());
-            }
-            // Corrections and decisions count when the user says them
-            if !is_user {
-                signals.retain(|s| s != "correction" && s != "decision");
-            }
-            let trivial = entities.is_empty()
-                && message.tools.is_empty()
-                && words.len() <= 4
-                && words.iter().all(|w| signals_data.acknowledgement.contains(w));
+            let trivial = entities.is_empty() && message.tools.is_empty() && !question && words.len() <= TRIVIAL_WORDS;
             let mut importance: f32 = if trivial { 0.0 } else { 0.2 };
             if !trivial {
-                for (signal, weight) in [("decision", 0.3), ("correction", 0.3), ("error", 0.1), ("request", 0.1)] {
-                    if signals.iter().any(|s| s == signal) {
-                        importance += weight;
-                    }
-                }
                 if !entities.is_empty() {
                     importance += 0.1;
                 }
@@ -250,19 +209,23 @@ mod tests {
             msg(0, "user", "notes.txt padho aur secret word batao"),
             msg(1, "assistant", "The secret word is \"MANGO-42\"."),
             msg(2, "user", "ok"),
-            msg(3, "user", "nahi, galat file thi, README.md padho"),
-            msg(4, "user", "final: isi ko rakho, we use port 8011"),
+            msg(3, "user", "README.md padho"),
+            msg(4, "user", "we use port 8011"),
+            msg(5, "user", "நேற்று என்ன பேசினோம்?"),
+            msg(6, "user", "சரி நன்றி"),
         ]);
-        assert_eq!(cards.len(), 5);
+        assert_eq!(cards.len(), 7);
         assert_eq!(cards[0].entities.files, ["notes.txt"]);
-        assert!(cards[0].signals.contains(&"request".to_string()));
         assert!(cards[1].entities.quoted.contains(&"MANGO-42".to_string()));
         assert!(cards[2].trivial && cards[2].importance == 0.0);
-        assert!(cards[3].signals.contains(&"correction".to_string()));
-        assert!(cards[4].signals.contains(&"decision".to_string()));
         assert!(cards[4].entities.numbers.contains(&"8011".to_string()));
-        assert!(cards[4].importance > cards[0].importance);
+        assert!(cards[4].importance > cards[2].importance);
         assert!(cards[0].keywords.iter().any(|k| k == "secret"));
+        // Any script: a question is not trivial, a two-word thanks is
+        assert!(cards[5].signals.contains(&"question".to_string()) && !cards[5].trivial);
+        assert!(cards[6].trivial);
+        // Tamil vowel signs stay inside the word
+        assert!(cards[5].terms.contains(&"பேசினோம்".to_string()), "{:?}", cards[5].terms);
     }
 
     #[test]

@@ -30,6 +30,25 @@ CLUAIZ_HOME=<test home> python test/context-runtime/calibrate.py --url http://12
 The exit code is 0 when the held-out half meets P1.3: hit ≥ 90%, chit-chat clean ≥ 98%, no
 trap cards.
 
+## Results without word lists (2026-10-27)
+
+The Engine no longer has `words.json` (Hinglish aliases, stopwords, action, follow-up, time and
+signal words): it runs models in every language, and the list covered two. The matcher now uses
+the words as written in any script, IDF over the catalog, a file/link/code check, message length
+for follow-ups (what a short message borrows earns at most a title), and description-only words
+earn nothing. The 2026-10-24 numbers below were measured with the list, which was grown on this
+same set, so they are not a fair baseline.
+
+| | hit | card | chit-chat clean | trap cards | wrong cards | noise |
+| --- | --- | --- | --- | --- | --- | --- |
+| All rows | 78.7% | 52.8% | 100% | 1 | 8 | 25 |
+| Held-out half | 76.0% | 52.0% | 100% | 0 | 4 | 13 |
+
+By kind: direct 83.3%, follow-up 83.3%, paraphrase 57.9%, chit-chat clean 100%. By language:
+English 82.9%, Hinglish (Latin) 85.7%, Devanagari 30.0%. A missed suggestion is not a missed
+tool: the model searches the rest with `find_tools`. The one trap card is r124 ("move on with
+your life": `move` is a filesystem function).
+
 ## Results (2026-10-24, matcher only, no model involved)
 
 | | hit | card | chit-chat clean | trap cards | wrong cards | noise |

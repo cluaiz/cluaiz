@@ -17,6 +17,11 @@ params:
     req: true
     desc: "The chat: the same value as `session_id` in chat completions"
     example: "c1"
+  - name: "from"
+    type: "string | null"
+    req: false
+    desc: "Only messages from this time: `YYYY-MM-DD` (start of that day on the Engine machine's clock), `YYYY-MM-DDTHH:MM` (that clock) or RFC 3339"
+    example: null
   - name: "limit"
     type: "integer | null"
     req: false
@@ -31,6 +36,16 @@ params:
     type: "string | null"
     req: false
     desc: "`chat` (default), or `workspace` / `all` to search the other chats (not with cross_chat: deny)"
+    example: null
+  - name: "to"
+    type: "string | null"
+    req: false
+    desc: "Only messages up to this time: `YYYY-MM-DD` (to the end of that day), `YYYY-MM-DDTHH:MM` or RFC 3339"
+    example: null
+  - name: "within_hours"
+    type: "integer | null"
+    req: false
+    desc: "Only messages of the last this many hours"
     example: null
 request_payload: |
   {
@@ -67,7 +82,7 @@ errors:
     when: "`scope` workspace / all while `config` context `cross_chat` is deny (`data.needs: \"cross_chat\"`)"
   - code: -32602
     type: "invalid_params"
-    when: "`scope` is not chat, workspace or all"
+    when: "`scope` is not chat, workspace or all, or `from` / `to` is not a time or `from` is not before `to`"
   - code: -32010
     type: "event_log_unreadable"
     when: "The chat's event log could not be read"
@@ -91,14 +106,16 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 
 ## How it works
 
-1. Validate scope and enforce cross_chat:deny for workspace/all
+1. Read the time window from `from`, `to` and `within_hours`, if given; validate scope and enforce cross_chat:deny for workspace/all
 2. For chat scope, score the chat map and return message references/cards
 3. For cross-chat scope, search the selected other-chat range and return recalled text
+
+The Engine reads no time words in the query, in any language. "What did we discuss yesterday?" is a query plus `from` / `to` set to yesterday's date; the client (or the chat model, through the `recall` tool) turns the user's words into dates. With a window and no matching words, every message of that time is a candidate.
 
 ```mermaid
 flowchart TD
     C["Client request"] --> A["Authentication, principal and typed params"]
-    A --> P0["Validate scope and enforce cross_chat:deny for workspace/all"]
+    A --> P0["Read the time window; validate scope and enforce cross_chat:deny for workspace/all"]
     P0 --> P1["For chat scope, score the chat map and return message references/cards"]
     P1 --> P2["For cross-chat scope, search the selected other-chat range and return recalled text"]
     P2 --> R["JSON-RPC result or explicit error"]
@@ -109,9 +126,12 @@ flowchart TD
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
 | `chat_id` | string | Yes | The chat: the same value as `session_id` in chat completions Use the same chat_id that the client sends as session_id to chat completions. A stream id, note id or title is not a chat id. For cross-chat search this is the current chat excluded from other-chat results. |
+| `from` | string \| null | No | Only messages from this time. `2026-10-23` starts at midnight of that day on the Engine machine's clock; `2026-10-23T21:00` is that clock's time; RFC 3339 (`2026-10-23T15:30:00Z`, `…+05:30`) keeps its own offset. Omitted: from the start of the chat. |
 | `limit` | integer \| null | No | Most results (default 5; at most 50 in a chat, 20 across chats) Defaults to 5. Same-chat path caps at 50; cross-chat path caps at 20. |
 | `query` | string | Yes | Words to look for (matched against the cards' titles, keywords and text) Required words matched through existing title/keyword/text recall. |
 | `scope` | string \| null | No | `chat` (default), or `workspace` / `all` to search the other chats (not with cross_chat: deny) Omitted or chat: same-chat structured results. workspace or all: other chats. Other strings are rejected. The CEP handler blocks deny, but does not itself request approval for ask. |
+| `to` | string \| null | No | Only messages up to this time (exclusive). A bare date includes that whole day, so `from` and `to` both `2026-10-23` is that one day. Same formats as `from`. Omitted: up to now. `from` must be before `to`. |
+| `within_hours` | integer \| null | No | Only messages of the last this many hours ("a few hours ago" → 3). Combined with `from`, the later start wins. |
 
 Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.
 
@@ -171,6 +191,51 @@ Requires cross-chat access not set to deny; returns recalled text rather than th
 }
 ```
 
+### 4. Search one day ("kal kya baat hui?", "what did we discuss yesterday?")
+
+The client turns the user's words into dates; the query can be the user's own words in any language. If no word matches, every message of that day is a candidate.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "memory.search",
+  "params": {
+    "chat_id": "c1",
+    "query": "what did we discuss",
+    "from": "2026-10-23",
+    "to": "2026-10-23"
+  }
+}
+```
+
+### 5. Search part of a day, or the last few hours
+
+`from` / `to` with a time narrow it to the evening of 23 October on the Engine machine's clock; `within_hours` alone means "the last 3 hours".
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "memory.search",
+  "params": {
+    "chat_id": "c1",
+    "query": "deploy",
+    "from": "2026-10-23T17:00",
+    "to": "2026-10-23T21:00"
+  }
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "memory.search",
+  "params": { "chat_id": "c1", "query": "deploy", "within_hours": 3 }
+}
+```
+
 ## Response and field meanings
 
 Same-chat result contains results[] with ref, score, why and card. score is a ranking value, not a calibrated probability. Cross-chat result instead includes scope and text; clients must not assume results[] exists for every scope. Resolve a same-chat ref using memory.item.
@@ -206,7 +271,7 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 | `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
 | `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
 | `-32002` / `forbidden` | `scope` workspace / all while `config` context `cross_chat` is deny (`data.needs: "cross_chat"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
-| `-32602` / `invalid_params` | `scope` is not chat, workspace or all | Correct the option/value combination; install required assets where relevant |
+| `-32602` / `invalid_params` | `scope` is not chat, workspace or all, or `from` / `to` is not a time (`"kal"`, `"23 Oct"`) or `from` is not before `to` | Send dates as `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`; `error.data.example` shows one |
 | `-32010` / `event_log_unreadable` | The chat's event log could not be read | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 
 ### Invalid-field example
