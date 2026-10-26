@@ -1,16 +1,11 @@
 //! Embeds every per-language JSON file of the TTS data folders (letter-to-sound rules in
-//! `data/g2p_rules/`, romanized-writing rules in `data/transliteration/`, number words in
-//! `data/numbers/`), so adding a language is
-//! adding a file: no code lists them.
+//! `data/g2p_rules/`, number words in `data/numbers/`), so adding a language is adding a file: no
+//! code lists them.
 
 use std::path::Path;
 
 /// (folder under src/audio/tts/data, generated constant)
-const FOLDERS: [(&str, &str); 3] = [
-    ("g2p_rules", "RULE_FILES"),
-    ("transliteration", "TRANSLITERATION_FILES"),
-    ("numbers", "NUMBER_FILES"),
-];
+const FOLDERS: [(&str, &str); 2] = [("g2p_rules", "RULE_FILES"), ("numbers", "NUMBER_FILES")];
 
 fn main() {
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/audio/tts/data");
