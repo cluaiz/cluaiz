@@ -1,5 +1,5 @@
 //! CEP errors: the JSON-RPC 2.0 codes, and the server codes in -32000..-32099 with a stable
-//! `data.type` that clients switch on (01-architecture §7.4)
+//! `data.type` that clients switch on
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -61,7 +61,7 @@ impl CepError {
 
     /// `errors` holds `{path, message}` per problem; `example` is the method's example params
     pub fn invalid_params(message: impl Into<String>, errors: Vec<Value>, example: Option<Value>) -> Self {
-        Self::new(INVALID_PARAMS, message, Some(json!({ "errors": errors, "example": example })))
+        Self::typed(INVALID_PARAMS, "invalid_params", message, json!({ "errors": errors, "example": example }))
     }
 
     /// Details go to the log under `trace_id`, never to the client

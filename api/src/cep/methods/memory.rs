@@ -1,6 +1,5 @@
 //! `memory.*`: a chat's event log, its Chat Map (cards), search over it, export and import, and
-//! deleting a chat's history with everything derived from it (03-method-catalog Part B).
-//! Owner: Claude (Wave A).
+//! deleting a chat's history with everything derived from it.
 
 use crate::cep::CallCtx;
 use crate::handlers::chat::{authorize, context_plan, recall};
@@ -23,6 +22,7 @@ struct ChatId {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Events {
+    /// The chat: the same value as `session_id` in chat completions
     chat_id: String,
     /// First seq to return (default 1)
     #[serde(default)]
@@ -35,7 +35,9 @@ struct Events {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Search {
+    /// The chat: the same value as `session_id` in chat completions
     chat_id: String,
+    /// Words to look for (matched against the cards' titles, keywords and text)
     query: String,
     /// Most results (default 5; at most 50 in a chat, 20 across chats)
     #[serde(default)]
@@ -48,6 +50,7 @@ struct Search {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Item {
+    /// The chat: the same value as `session_id` in chat completions
     chat_id: String,
     /// A reference from a search result, `m:<position>`
     #[serde(rename = "ref")]
@@ -57,6 +60,7 @@ struct Item {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Import {
+    /// The chat: the same value as `session_id` in chat completions
     chat_id: String,
     /// The events of `memory.export` (or the `memory_events` an app collected)
     events: Vec<Value>,
@@ -65,6 +69,7 @@ struct Import {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Revoke {
+    /// The chat: the same value as `session_id` in chat completions
     chat_id: String,
     /// Only this tool; all of the chat's grants when absent
     #[serde(default)]
@@ -83,7 +88,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     registry
         .add(
             "memory.events",
-            Meta::new(Scope::Read, "A chat's event log, oldest first").example(
+            Meta::new(Scope::Read, "A chat's event log, oldest first")
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
+                .example(
                 json!({ "chat_id": "c1", "from_seq": 1, "limit": 2 }),
                 json!({ "chat_id": "c1", "total": 40, "skipped_lines": 0, "next_from_seq": 3,
                         "events": [{ "seq": 1, "kind": "message", "data": { "role": "user", "text": "Hi" } }] }),
@@ -100,7 +107,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.index",
-            Meta::new(Scope::Read, "A chat's cards (one per visible message, no text), episodes, tasks and graph").example(
+            Meta::new(Scope::Read, "A chat's cards (one per visible message, no text), episodes, tasks and graph")
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
+                .example(
                 json!({ "chat_id": "c1" }),
                 json!({ "chat_id": "c1", "cards": [{ "pos": 0, "role": "user", "title": "Greeting" }], "episodes": [], "tasks": [], "graph": {} }),
             ),
@@ -112,7 +121,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.search",
-            Meta::new(Scope::Read, "Messages of a chat that fit a query, or text from the other chats").example(
+            Meta::new(Scope::Read, "Messages of a chat that fit a query, or text from the other chats")
+                .error(-32002, "forbidden", "`scope` workspace / all while `config` context `cross_chat` is deny (`data.needs: \"cross_chat\"`)")
+                .error(-32602, "invalid_params", "`scope` is not chat, workspace or all")
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
+                .example(
                 json!({ "chat_id": "c1", "query": "deploy port" }),
                 json!({ "chat_id": "c1", "query": "deploy port", "results": [{ "ref": "m:12", "score": 3.2, "why": ["port"], "card": {} }] }),
             ),
@@ -142,7 +155,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.item",
-            Meta::new(Scope::Read, "The exact message behind a reference (m:<position>)").example(
+            Meta::new(Scope::Read, "The exact message behind a reference (m:<position>)")
+                .error(-32602, "invalid_params", "`ref` does not look like m:<position>")
+                .error(-32004, "message_not_found", "No visible message at that position")
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
+                .example(
                 json!({ "chat_id": "c1", "ref": "m:12" }),
                 json!({ "chat_id": "c1", "ref": "m:12", "card": {}, "text": "The deploy server listens on port 8443." }),
             ),
@@ -157,7 +174,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.export",
-            Meta::new(Scope::Read, "A chat's events and cards, for an app's own store").example(
+            Meta::new(Scope::Read, "A chat's events and cards, for an app's own store")
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
+                .example(
                 json!({ "chat_id": "c1" }),
                 json!({ "format": "cluaiz-chat-export", "version": 1, "chat_id": "c1", "events": [], "cards": [] }),
             ),
@@ -169,7 +188,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.import",
-            Meta::new(Scope::Write, "Gives back a chat an app keeps itself (storage external), held in RAM only").no_mcp().example(
+            Meta::new(Scope::Write, "Gives back a chat an app keeps itself (storage external), held in RAM only")
+                .no_mcp()
+                .error(-32006, "too_large", "More than 200 000 events")
+                .error(-32602, "invalid_params", "An event does not have the event shape of `memory.export`")
+                .example(
                 json!({ "chat_id": "c1", "events": [] }),
                 json!({ "chat_id": "c1", "storage": "external", "events": 0, "cards": 0 }),
             ),
@@ -189,7 +212,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "memory.delete",
-            Meta::new(Scope::Write, "Deletes a chat's event log, ledger, saved KV, context reports and Chat Map").destructive().example(
+            Meta::new(Scope::Write, "Deletes a chat's event log, ledger, saved KV, context reports and Chat Map")
+                .destructive()
+                .error(-32010, "event_log_unreadable", "The chat's event log could not be removed")
+                .example(
                 json!({ "chat_id": "c1" }),
                 json!({ "chat_id": "c1", "events": { "files": 1, "bytes": 2048 }, "ledger": true, "saved_kv": {}, "folder_removed": true }),
             ),

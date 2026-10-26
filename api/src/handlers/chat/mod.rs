@@ -57,7 +57,6 @@ pub(crate) fn engine_history(request: &mut types::ExternalChatRequest) {
 /// POST /v1/chat/completions (Full OpenAI-compatible endpoint)
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,
-    headers: axum::http::HeaderMap,
     Json(mut request): Json<types::ExternalChatRequest>,
 ) -> Response {
     engine_history(&mut request);
@@ -76,11 +75,11 @@ pub async fn chat_completions(
 
     let req_id = format!("chatcmpl-{}", uuid::Uuid::new_v4().simple());
     if request.stream && request.return_progress {
-        return processing::stream_with_progress(state, headers, request, req_id).await;
+        return processing::stream_with_progress(state, request, req_id).await;
     }
 
     let ctx =
-        match preflight::PreparedChatContext::prepare(&state, &request, &req_id, &headers, None)
+        match preflight::PreparedChatContext::prepare(&state, &request, &req_id, None)
             .await
         {
             Ok(c) => c,

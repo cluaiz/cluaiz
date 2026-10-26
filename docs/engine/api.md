@@ -7,4 +7,4 @@ The Engine's HTTP server is built on Axum and Tokio (`api/src/routes.rs`). It se
 
 The route handlers are in `api/src/handlers/`, the CEP methods in `api/src/cep/methods/`. A function used by both a route and a method lives in one place.
 
-References: [API overview](../api/README.md), [CEP](../api/cep/README.md), [method reference](../api/cep/methods.md).
+References: [API overview](../api/README.md), [CEP](../api/cep/README.md), [methods by category](../api/cep/README.md#the-methods).

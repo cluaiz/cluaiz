@@ -250,7 +250,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
             {"type":"text","text":"Read the attached document. What is the recorded order code? Reply with the code only."}]}],
             "stream":stream,"temperature":0,"max_tokens":48,"think_mode":"off"});
         let (status, body) =
-            support::post(&router, "/v1/chat/completions", request, "user").await?;
+            support::post(&router, "/v1/chat/completions", request).await?;
         assert_eq!(status, StatusCode::OK, "{body}");
         assert!(!body.contains("\"error\""), "{body}");
         let mut answer = String::new();
@@ -297,7 +297,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
                 {"type":"file_url", "file_url":{"url":inline(mime, &bytes)}},
                 {"type":"text", "text":"Read the attached document. What is the recorded order code? Reply with the code only."}
             ]}], "temperature":0, "max_tokens":48, "think_mode":"off"
-        }), "user").await?;
+        })).await?;
         assert_eq!(status, StatusCode::OK, "{body}");
         let response: Value = serde_json::from_str(&body)?;
         let answer = response["choices"][0]["message"]["content"]
@@ -311,7 +311,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
     }
     let mixed = document_fixtures::pdf(&[Some("Known text"), None])?;
     let (status, body) = support::post(&router, "/v1/chat/completions", json!({"model":id,"messages":[{"role":"user","content":[
-        {"type":"file_url","file_url":{"url":inline("application/pdf", &mixed)}}, {"type":"text","text":"Summarize the full document"}]}]}), "user").await?;
+        {"type":"file_url","file_url":{"url":inline("application/pdf", &mixed)}}, {"type":"text","text":"Summarize the full document"}]}]})).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     assert!(body.contains("partial"), "{body}");
     let plan = support::cep(&router, "system.plan", json!({"model":id}))

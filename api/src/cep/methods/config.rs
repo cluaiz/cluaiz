@@ -1,6 +1,5 @@
-//! `config.*`: the saved settings, by section (03-method-catalog Part B). Every section was its
-//! own route before (gguf_config, onnx_config, optimization, context settings, storage settings,
-//! chat memory settings, permission). Owner: Claude (Wave A).
+//! `config.*`: the saved settings, by section (`gguf`, `onnx`, `optimization`, `context`,
+//! `storage`, `kv`, `engine`).
 //!
 //! `config.set` changes only the fields it is given and answers with the section as saved.
 
@@ -17,6 +16,7 @@ use serde_json::{json, Value};
 enum Section {
     /// llama.cpp loading and the default samplers
     Gguf,
+    /// ONNX Runtime: execution provider, device, threads
     Onnx,
     /// Context window, KV cache type, mmap, think mode…
     Optimization,
@@ -57,6 +57,7 @@ struct Get {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Set {
+    /// The section to change
     section: Section,
     /// Only the fields to change
     patch: Value,
@@ -310,7 +311,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "config.set",
-            Meta::new(Scope::Write, "Changes the given fields of one settings section; answers with the section as saved").no_mcp().example(
+            Meta::new(Scope::Write, "Changes the given fields of one settings section; answers with the section as saved")
+                .no_mcp()
+                .error(-32602, "invalid_params", "An unknown field or an invalid value in `patch` (section engine ignores unknown fields instead)")
+                .error(-32010, "settings_not_saved", "settings.json or permission.json could not be written")
+                .example(
                 json!({ "section": "context", "patch": { "cross_chat": "ask" } }),
                 json!({ "context": { "cross_chat": "ask" } }),
             ),

@@ -1,5 +1,4 @@
-//! `system.*`: the Engine and the machine it runs on (03-method-catalog Part B).
-//! Owner: Claude until `system.info` is in, then Wave B (05-chatgpt-plan.md §2).
+//! `system.*`: the Engine and the machine it runs on.
 
 use crate::cep::{roots, CallCtx};
 use cluaiz_cep::{Call, CepError, Meta, NoParams, Registry, Scope};
@@ -14,14 +13,21 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         Meta::new(Scope::Read, "Engine name and version, CEP version, hardware, and the LAN address").example(
             json!({}),
             json!({ "engine": "Cluaiz Engine", "version": "0.1.0", "cep_version": 1,
-                    "hardware": { "cpu": {}, "memory": {}, "gpus": [] }, "network": { "lan_ip": "192.168.1.20" } }),
+                    "hardware": { "architecture": "x86_64", "os_name": "Windows", "os_version": "11",
+                                  "cpu": { "brand": "AMD Ryzen 7 7435HS", "physical_cores": 8, "logical_threads": 16 },
+                                  "memory": { "total_gb": 23.69, "available_gb": 7.47 },
+                                  "gpus": [{ "index": 0, "vendor": "NVIDIA", "name": "NVIDIA GeForce RTX 3050 A Laptop GPU", "vram_total_gb": 4.0, "compute_capability": "8.9" }] },
+                    "network": { "lan_ip": "192.168.1.20" } }),
         ),
         |_: CallCtx, _: Call, _: NoParams| async move { Ok(info()) },
     );
     registry.add(
         "system.live",
         Meta::new(Scope::Read, "Current process, memory, CPU and GPU telemetry")
-            .example(json!({}), json!({"process_id":1,"memory":{"total_gb":16,"available_gb":8,"used_gb":8},"cpu":{},"gpus":[]})),
+            .example(json!({}), json!({"process_id":18356,"memory":{"total_gb":23.69,"available_gb":7.47,"used_gb":16.23},
+                "cpu":{"brand":"AMD Ryzen 7 7435HS","physical_cores":8,"logical_threads":16,"frequency_mhz":2002},
+                "gpus":[{"index":0,"vendor":"NVIDIA","name":"NVIDIA GeForce RTX 3050 A Laptop GPU","vram_total_bytes":4292870144_u64,
+                         "vram_free_bytes":2816151552_u64,"compute_capability":"8.9","pcie_gen":2,"pcie_width":8}]})),
         |_: CallCtx, _: Call, _: NoParams| async move { Ok(live()) },
     );
     registry.add(
@@ -32,7 +38,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .example(
             json!({}),
-            json!({"active_processes":[],"hardware_snapshot":{}}),
+            json!({"active_processes":[{"pid":"18356","model_id":"qwen3-4b-gguf-Q4_K_M","vram_gb":3.2,"context_size":8192,
+                                         "tier":"Gpu","n_gpu_layers":37,"engine":"llama-engine (static rlib)"}],
+                   "hardware_snapshot":{"architecture":"x86_64","cpu":{},"gpus":[],"memory":{},"storage":{}}}),
         ),
         |ctx: CallCtx, _: Call, _: NoParams| async move {
             let plan = ctx.state.host.current_plan.lock().await.clone();
@@ -45,9 +53,22 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Plans an installed model without loading its weights or changing saved settings",
         )
+        .error(-32602, "invalid_params", "`model` is empty, `n_ctx` is below -1, `batch_tokens` is 0, or a buffer is negative")
+        .error(-32004, "model_not_found", "No installed model with this id, and no usable `model_path`")
+        .error(-32002, "forbidden", "`model_path` is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32010, "gguf_probe_failed", "The GGUF header could not be read")
+        .error(-32010, "onnx_probe_failed", "The ONNX package could not be inspected")
         .example(
             json!({"model":"installed-model"}),
-            json!({"model_info":{},"execution_plan":{},"hardware_info":{}}),
+            json!({"model_info":{"model_id":"bonsai-27b-gguf-q1_0","architecture":"qwen35","context_window":262144,"total_layers":64,
+                                 "model_size_gb":3.54,"inputs":[{"type":"text","available":true}],"outputs":["text"]},
+                   "execution_plan":{"context_window":4096,"context_reason":"Auto: floor 4096 tokens, KV Kv8; model does not fit on one device",
+                                     "gpu_layers":16,"n_gpu_layers":17,"batch_size":512,"kv_cache_type":"Kv8",
+                                     "kv_cache_location":"vram + ram (next to each layer)",
+                                     "decision_reason":"GPU + RAM split: 16 / 64 blocks + output head on GPU (1.57 GB), 48 blocks in RAM",
+                                     "model_memory_breakdown":{"vram_gb":1.57,"ram_gb":2.96,"kv_cache_vram_gb":0.13,"kv_cache_ram_gb":0.4}},
+                   "active_user_settings":{"flash_attention":"Auto","kv_cache_quantization":"Auto"},
+                   "hardware_info":{},"candidates":[]}),
         ),
         |ctx: CallCtx, call: Call, payload: PlanRequest| async move {
             plan_execution(ctx, call, payload).await
@@ -100,15 +121,21 @@ pub fn lan_ip() -> Option<String> {
     Some(socket.local_addr().ok()?.ip().to_string())
 }
 
-// Model execution planning, moved from the retired system-plan handler.
+// Model execution planning (`system.plan`).
 #[derive(serde::Deserialize, serde::Serialize, JsonSchema, Default)]
 #[serde(deny_unknown_fields)]
 pub struct PlanRequest {
+    /// An installed model id (from `models.list`)
     pub model: String,
+    /// Plan this weight file instead of the model's primary file (it must pass the caller's roots)
     pub model_path: Option<String>,
+    /// Logical batch size in tokens for the plan (llama.cpp `-b`; default: the saved setting)
     pub batch_tokens: Option<u32>,
+    /// Context size: -1 = the model's maximum, 0 = automatic, N = N tokens (default: the saved setting)
     pub n_ctx: Option<i64>,
+    /// VRAM to keep free, in GB (default: the planner's rule)
     pub vram_buffer_gb: Option<f64>,
+    /// RAM to keep free, in GB (default: the planner's rule)
     pub ram_buffer_gb: Option<f64>,
 }
 

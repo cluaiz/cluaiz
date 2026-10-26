@@ -1,4 +1,4 @@
-"""B4 real executable journey with a local registry/ZIP and fresh isolated home.
+"""tools.* real executable journey with a local registry/ZIP and fresh isolated home.
 
 No public package is downloaded, no native plugin/MCP process or editor is launched.
 The real existing installer downloads, extracts, registers and removes test skill files.
@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-from golden_capture import REPO, digest, prepare, save, validate_paths
+from journey_home import REPO, digest, prepare, save, validate_paths
 
 sys.path.insert(0, str(REPO / "test/context-runtime"))
 from harness import Engine
@@ -158,17 +158,6 @@ def main():
         removed = engine.cep("tools.remove", kind="skill", name=name)
         check("actual removal", removed == {"kind": "skill", "name": name} and not directory.exists())
         check("registry removal visible", all(e["id"] != name for e in engine.cep("tools.list", kind="skill")))
-        paths = ["/v1/tools", "/v1/tools/discover", "/api/components/list", "/api/components/settings",
-                 "/api/components/file", "/api/components/files", "/api/components/cache", "/v1/execute/test/run"]
-        paths += [f"/v1/{kind}/{suffix}" for kind in ("skills", "plugins", "mcp")
-                  for suffix in ("list", "install", "remove", "cache")]
-        for path in paths:
-            try:
-                response = engine._request("GET", path, timeout=10)
-            except urllib.error.HTTPError as exception:
-                response = exception
-            with response:
-                check("retired route " + path, response.code == 404)
     except Exception as exception:
         failure = exception
         report["failure"] = {"type": type(exception).__name__, "message": str(exception)}

@@ -1,3 +1,93 @@
+---
+method: "POST"
+path: "/v1/embeddings"
+standard: "OpenAI"
+category: "ai-inference"
+summary: "Vectors for text (GGUF or ONNX) or for an image (ONNX image graph)"
+params:
+  - name: "input"
+    type: "String, Array of Strings, or Array of Objects"
+    req: true
+    default: "—"
+    allowed: "Non-empty string, string array, or image object array"
+    desc: "The data to vectorize. For text, pass a string or array of strings. For images, pass `[{\"type\": \"image\", \"source\": \"<uri-or-path>\"}]`."
+  - name: "model"
+    type: "String"
+    req: false
+    default: "Active slot model"
+    allowed: "Installed compatible embedding model ID"
+    desc: "Exact selected ONNX or GGUF model; GGUF accepts text only."
+  - name: "encoding_format"
+    type: "String"
+    req: false
+    default: "\"float\""
+    allowed: "`\"float\"`"
+    desc: "Numerical encoding format for vectors. Non-float encodings are rejected."
+  - name: "keep_alive"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "Minutes (e.g. `5`, `0` to unload, `-1` forever)"
+    desc: "Session memory retention policy in minutes."
+  - name: "user"
+    type: "String"
+    req: false
+    default: "—"
+    allowed: "Caller identifier"
+    desc: "Accepted for compatibility; does not create a namespace or user-specific vector store."
+request_payload: |
+  {
+    "model": "bge-m3-GGUF",
+    "input": [
+      "Cluaiz runs models locally."
+    ]
+  }
+response: |
+  {
+    "object": "list",
+    "data": [
+      {
+        "object": "embedding",
+        "embedding": [
+          -0.06533846,
+          0.055673946,
+          -0.04819885,
+          -0.0075248517,
+          "… 1024 numbers"
+        ],
+        "index": 0
+      }
+    ],
+    "model": "bge-m3-GGUF",
+    "usage": {
+      "prompt_tokens": 10,
+      "total_tokens": 10
+    }
+  }
+errors:
+  - status: 400
+    type: "invalid_request_error"
+    when: "Empty input, an unknown field, or an encoding other than float"
+  - status: 400
+    type: "unsupported_task"
+    when: "The model does not declare an embedding task"
+  - status: 400
+    type: "unsupported_input"
+    when: "Image or object parts sent to a GGUF model"
+  - status: 401
+    type: "unauthenticated"
+    when: "API authentication is on and no valid token was sent"
+  - status: 404
+    type: "model_not_found"
+    when: "The model is not installed"
+  - status: 413
+    type: "request_too_large"
+    when: "The body (with inline images) is over the attachment limit"
+  - status: 429
+    type: "embedding_busy"
+    when: "Another GGUF embedding request is running"
+---
+
 # Vector Embeddings API (`/v1/embeddings`)
 
 `POST /v1/embeddings`
@@ -211,7 +301,7 @@ The ingest endpoint performs native PDF text/OCR extraction, chunks the extracte
 }
 ```
 
-Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `ingest.run`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest payload types](ingest.md#payload-examples-by-file-type).
+Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `ingest.run`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest params by file type](../cep/ai-inference/ingest/ingest.run.md#params-by-file-type).
 
 The Explorer's Body Payload menu also provides separate single-text, batch, extracted-document chunks, local image, data-URI image and remote-image templates. Switching an example resolves an installed model of its declared task; it does not invent or install a model.
 

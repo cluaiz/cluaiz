@@ -2,7 +2,7 @@
 use crate::{utils::prepare_authorized_media, AppState};
 use axum::{
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
@@ -108,7 +108,6 @@ fn validate(payload: &EmbeddingRequest) -> anyhow::Result<()> {
 /// POST /v1/embeddings: string/string batch, or one image with optional text parts.
 pub async fn generate_embeddings(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     Json(payload): Json<EmbeddingRequest>,
 ) -> Response {
     if let Err(e) = validate(&payload) {
@@ -179,7 +178,7 @@ pub async fn generate_embeddings(
                 response_format: None,
             };
             let request = match prepare_authorized_media(
-                &state, &headers, request, &settings, false, None, None,
+                &state, request, &settings, false, None, None,
             )
             .await
             {

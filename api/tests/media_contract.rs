@@ -250,7 +250,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         &router,
         "/v1/chat/completions",
         image_request.clone(),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{image}");
@@ -269,7 +268,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         &router,
         "/v1/chat/completions",
         chat(model_id, audio_content, true),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK);
@@ -304,7 +302,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         &router,
         "/v1/chat/completions",
         chat(model_id, mixed, false),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{mixed}");
@@ -336,9 +333,8 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     assert!(after["model_info"].get("supported_attachments").is_none());
 
     let request: ExternalChatRequest = serde_json::from_value(image_request.clone())?;
-    let headers = axum::http::HeaderMap::new();
     let ctx =
-        PreparedChatContext::prepare(&state, &request, "continuation-fixture", &headers, None)
+        PreparedChatContext::prepare(&state, &request, "continuation-fixture", None)
             .await
             .map_err(|response| {
                 anyhow::anyhow!("Media preparation failed: {}", response.status())
@@ -409,7 +405,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
             ]),
             false,
         ),
-        "agent",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{external_reply}");
@@ -421,13 +416,10 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         ]),
         false,
     ))?;
-    let mut agent_headers = axum::http::HeaderMap::new();
-    agent_headers.insert("x-caller", "agent".parse()?);
     let inside_ctx = PreparedChatContext::prepare(
         &state,
         &inside,
         "owner-inside-fixture",
-        &agent_headers,
         None,
     )
     .await
@@ -437,7 +429,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         &router,
         "/v1/chat/completions",
         chat("missing-model-fixture", image_content, false),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -447,13 +438,13 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     );
     let mut oversized = image_request;
     oversized["max_tokens"] = json!(4096);
-    let (status, failed) = post(&router, "/v1/chat/completions", oversized.clone(), "user").await?;
+    let (status, failed) = post(&router, "/v1/chat/completions", oversized.clone()).await?;
     assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{failed}");
     assert!(serde_json::from_str::<Value>(&failed)?
         .get("error")
         .is_some());
     oversized["stream"] = json!(true);
-    let (_, failed_events) = post(&router, "/v1/chat/completions", oversized, "user").await?;
+    let (_, failed_events) = post(&router, "/v1/chat/completions", oversized).await?;
     assert!(failed_events
         .lines()
         .filter_map(|line| line.strip_prefix("data: "))
@@ -468,7 +459,6 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
             json!("What is 2 plus 3? Reply with the digit only."),
             false,
         ),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK);
@@ -608,7 +598,6 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         &router,
         "/v1/audio/speech",
         json!({"model":ids[0],"input":text}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -621,7 +610,6 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         &router,
         "/v1/audio/speech",
         json!({"model":ids[0],"input":text,"speed":"invalid"}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -675,7 +663,6 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         "/v1/audio/transcriptions",
         json!({"model":ids[1],"input_source":{
         "type":"base64","data":audio_data}}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");

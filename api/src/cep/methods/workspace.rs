@@ -1,4 +1,4 @@
-//! `workspace.*: the Engine's workspace folder` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
+//! `workspace.*`: the Engine's workspace folder.
 
 use crate::cep::{roots, CallCtx};
 use cluaiz_cep::{Call, Meta, NoParams, Registry, Scope};
@@ -9,6 +9,7 @@ use serde_json::json;
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct SetParams {
+    /// An existing folder: absolute, or relative to the current workspace
     path: String,
 }
 
@@ -31,6 +32,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Changes the workspace to an existing directory",
         )
         .no_mcp()
+        .error(-32602, "invalid_params", "The path is not a folder, or is drive-relative / root-relative")
+        .error(-32004, "file_not_found", "The folder does not exist")
+        .error(-32002, "forbidden", "The folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .example(json!({"path": "/project"}), json!({"path": "/project"})),
         |ctx: CallCtx, call: Call, params: SetParams| async move {
             let workspace = ctx.state.current_workspace_dir.read().await.clone();

@@ -1,4 +1,4 @@
-//! Who is calling, and what they may do (02-security §4.2–4.4). A principal always comes from the
+//! Who is calling, and what they may do. A principal always comes from the
 //! credential the transport checked, never from a field in the request.
 
 use crate::error::CepError;

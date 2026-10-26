@@ -142,7 +142,7 @@ $ cluaiz plugin install web-scraper
 ### 2. Execution & Native Logic
 
 - **[CEP (Cluaiz Engine Protocol)](docs/api/cep/README.md)**
-  One JSON-RPC 2.0 endpoint for every Cluaiz operation (system, settings, models, files, tools, chat memory, notes, context, audio tasks, ingest, approvals), the same over HTTP, MCP and the in-process C library. The [method reference](docs/api/cep/methods.md) is generated from the Engine's own `rpc.discover`.
+  One JSON-RPC 2.0 endpoint for every Cluaiz operation (system, settings, models, files, tools, chat memory, notes, context, audio tasks, ingest, approvals), the same over HTTP, MCP and the in-process C library. Each method has its own page, in [five categories](docs/api/cep/README.md#the-methods); the payload block of every page is generated from the Engine's method registry.
 
 ### 3. Core Engine Architecture
 

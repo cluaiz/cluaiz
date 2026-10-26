@@ -339,7 +339,8 @@ def main():
           f"{sum(r['status'] in ('SKIP', 'NOT-FIT') for r in rows)} skipped / not fitting")
 
     if args.report:
-        info = (api(args.api, token, "/v1/system/info").get("info") or {})
+        call = {"jsonrpc": "2.0", "id": 1, "method": "system.info", "params": {}}
+        info = (api(args.api, token, "/v1/cep", call).get("result") or {}).get("hardware") or {}
         cpu, mem, gpus = info.get("cpu") or {}, info.get("memory") or {}, info.get("gpus") or []
         driver = ""
         if shutil.which("nvidia-smi"):

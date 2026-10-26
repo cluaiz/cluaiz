@@ -1,4 +1,4 @@
-//! `storage.*: temporary media status and cleanup` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
+//! `storage.*`: temporary media status and cleanup.
 
 use crate::cep::{roots, CallCtx};
 use cluaiz_cep::{Call, CepError, Meta, NoParams, Registry, Scope};
@@ -14,6 +14,8 @@ struct Usage {
 pub fn register(registry: &mut Registry<CallCtx>) {
     registry.add("storage.status",
         Meta::new(Scope::Read, "Temporary media storage usage")
+            .error(-32005, "storage_path_invalid", "The temporary media path exists but is not a folder")
+            .error(-32002, "forbidden", "The temporary media folder is a symbolic link (`data.needs: \"roots\"`)")
             .example(json!({}), json!({"file_count":0,"total_size_bytes":0,"total_size_mb":"0.00 MB"})),
         |_: CallCtx, _: Call, _: NoParams| async move {
             let path = cluaiz_core::EnvironmentManager::current().local_dir.join("temp_media");
@@ -25,6 +27,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "storage.clean",
         Meta::new(Scope::Write, "Removes cached temporary media")
             .destructive()
+            .error(-32005, "storage_path_invalid", "The temporary media path exists but is not a folder")
+            .error(-32002, "forbidden", "The temporary media folder is a symbolic link (`data.needs: \"roots\"`)")
+            .error(-32010, "filesystem_error", "A file could not be removed (for example, another program holds it open)")
             .example(json!({}), json!({"removed_files":0,"freed_bytes":0})),
         |_: CallCtx, _: Call, _: NoParams| async move {
             let path = cluaiz_core::EnvironmentManager::current()

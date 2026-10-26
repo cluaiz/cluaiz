@@ -1,8 +1,7 @@
-//! `system.exec`: runs a program on the host (what `/v1/system/cmd` did, 03-method-catalog Part B),
-//! decided as O1 in 01-architecture: admin scope, never an MCP tool, the owner's approval on every
-//! call, and a program with its arguments by default. A shell line (`cmd /C`, `sh -c`) and running
-//! without approval are the owner's choices in permission.json (`exec.allow_shell`,
-//! `exec.without_approval`, both off). Owner: Claude (Wave A).
+//! `system.exec`: runs a program on the host. Admin scope, never an MCP tool, the owner's approval
+//! on every call, and a program with its arguments by default. A shell line (`cmd /C`, `sh -c`) and
+//! running without approval are the owner's choices in permission.json (`exec.allow_shell`,
+//! `exec.without_approval`, both off).
 
 use crate::cep::roots::invalid;
 use crate::cep::CallCtx;
@@ -33,6 +32,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             .destructive()
             .no_mcp()
             .idempotent(false)
+            .error(-32003, "approval_required", "Every call, until the owner approves it (`data.approval_id`); send it again with `_meta.approval`")
+            .error(-32602, "invalid_params", "Both or neither of `program` / `command`, `args` with `command`, or a shell line while `exec.allow_shell` is off")
+            .error(-32006, "too_large", "The command is over 8192 characters")
+            .error(-32010, "process_failed", "The program could not be started (not found, not executable)")
             .example(
                 json!({ "program": "git", "args": ["--version"] }),
                 json!({ "exit_code": 0, "stdout": "git version 2.47.0\n", "stderr": "" }),

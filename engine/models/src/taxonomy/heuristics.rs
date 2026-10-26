@@ -24,7 +24,7 @@ pub const MULTIMODAL_CHAT_KEYWORDS: &[&str] = &[
     "pixtral",
 ];
 
-// ─── 2. Ingest Document AI / OCR / Spatial Vision Slot (/v1/ingest) ────
+// ─── 2. Ingest Document AI / OCR / Spatial Vision Slot (CEP ingest.run) ────
 pub const INGEST_KEYWORDS: &[&str] = &[
     "got-ocr",
     "nougat",

@@ -5,6 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "beam_size": {
+            "description": "Only 1 is supported",
             "format": "uint32",
             "minimum": 0,
             "type": [
@@ -13,6 +14,7 @@
             ]
           },
           "language": {
+            "description": "Speech: the text's language (\"cs\", \"hi\", \"en-US\"). Transcription: the spoken language, or \"auto\"",
             "type": [
               "string",
               "null"
@@ -27,12 +29,14 @@
             "type": "array"
           },
           "speaker_labels": {
+            "description": "Only false is supported",
             "type": [
               "boolean",
               "null"
             ]
           },
           "speed": {
+            "description": "Speech rate, 0.25 to 4.0 (speech only)",
             "format": "float",
             "type": [
               "number",
@@ -40,6 +44,7 @@
             ]
           },
           "temperature": {
+            "description": "Transcription sampling temperature; only 0 (greedy) is supported",
             "format": "float",
             "type": [
               "number",
@@ -47,24 +52,28 @@
             ]
           },
           "timestamps": {
+            "description": "Only false is supported",
             "type": [
               "boolean",
               "null"
             ]
           },
           "translate_to": {
+            "description": "\"en\" with a model that declares speech_translation; other targets are refused",
             "type": [
               "string",
               "null"
             ]
           },
           "vad_filter": {
+            "description": "Only false is supported",
             "type": [
               "boolean",
               "null"
             ]
           },
           "voice_id": {
+            "description": "A voice id from `audio.voices`; \"default\" / \"auto\" picks one for the text's language (speech only)",
             "type": [
               "string",
               "null"
@@ -116,12 +125,23 @@
         "type": "object"
       },
       "Kind": {
-        "enum": [
-          "skill",
-          "plugin",
-          "mcp"
-        ],
-        "type": "string"
+        "oneOf": [
+          {
+            "const": "skill",
+            "description": "Instructions for the model (`SKILL.md`)",
+            "type": "string"
+          },
+          {
+            "const": "plugin",
+            "description": "A WASM or native library (`package.json`)",
+            "type": "string"
+          },
+          {
+            "const": "mcp",
+            "description": "An MCP server the Engine starts (`package.json`)",
+            "type": "string"
+          }
+        ]
       },
       "OutputControls": {
         "additionalProperties": false,
@@ -147,24 +167,28 @@
         "additionalProperties": false,
         "properties": {
           "enabled": {
+            "description": "false: the tool is not offered to the model (an MCP server is also stopped)",
             "type": [
               "boolean",
               "null"
             ]
           },
           "execution_mode": {
+            "description": "auto, manual or confirm_destructive",
             "type": [
               "string",
               "null"
             ]
           },
           "security_mode": {
+            "description": "inherit, require_approval or always_allow",
             "type": [
               "string",
               "null"
             ]
           },
           "trust_annotations": {
+            "description": "Trust the MCP server's own read-only / destructive hints",
             "type": [
               "boolean",
               "null"
@@ -176,14 +200,13 @@
       "Section": {
         "oneOf": [
           {
-            "enum": [
-              "onnx"
-            ],
+            "const": "gguf",
+            "description": "llama.cpp loading and the default samplers",
             "type": "string"
           },
           {
-            "const": "gguf",
-            "description": "llama.cpp loading and the default samplers",
+            "const": "onnx",
+            "description": "ONNX Runtime: execution provider, device, threads",
             "type": "string"
           },
           {
@@ -230,9 +253,11 @@
         "additionalProperties": false,
         "properties": {
           "data": {
+            "description": "The text; a file path; an http(s) URL; or a `data:audio/...;base64,` URI",
             "type": "string"
           },
           "type": {
+            "description": "text (speech), or file / url / audio / base64 (transcription)",
             "type": "string"
           }
         },
@@ -246,12 +271,14 @@
         "additionalProperties": false,
         "properties": {
           "detail_level": {
+            "description": "Not supported: any value is refused",
             "type": [
               "string",
               "null"
             ]
           },
           "max_tokens": {
+            "description": "Most tokens the vision model writes per page or image (only with a vision `model`)",
             "format": "uint",
             "minimum": 0,
             "type": [
@@ -260,12 +287,14 @@
             ]
           },
           "system_instruction": {
+            "description": "The instruction the vision model gets with each page or image (only with a vision `model`)",
             "type": [
               "string",
               "null"
             ]
           },
           "use_vision": {
+            "description": "false: a vision model's text is not generated (only with a vision `model`)",
             "type": [
               "boolean",
               "null"
@@ -283,6 +312,29 @@
   },
   "methods": [
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "approval_not_found"
+          },
+          "message": "No pending approval with this id, or it expired (5 minutes)"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "approval_decided"
+          },
+          "message": "The approval was already approved or rejected"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`remember` is something other than \"chat\""
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -328,6 +380,7 @@
           "name": "approval_id",
           "required": true,
           "schema": {
+            "description": "The `id` from `approvals.list`, the `-32003` error's `data.approval_id`, or the chat stream's `permission_request.request_id`",
             "type": "string"
           }
         },
@@ -387,6 +440,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -429,6 +483,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "approval_not_found"
+          },
+          "message": "No pending approval with this id, or it expired (5 minutes)"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "approval_decided"
+          },
+          "message": "The approval was already approved or rejected"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -465,6 +535,7 @@
           "name": "approval_id",
           "required": true,
           "schema": {
+            "description": "The `id` of the pending approval",
             "type": "string"
           }
         },
@@ -498,6 +569,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or no installed model for the task"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "model_contract_error"
+          },
+          "message": "The model's package does not match its declared task (missing voices, config or assets)"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -505,8 +599,19 @@
           "result": {
             "name": "result",
             "value": {
-              "data": [],
-              "model": "installed-model",
+              "data": [
+                "af",
+                "ar",
+                "bn",
+                "de",
+                "en",
+                "es",
+                "fr",
+                "hi",
+                "ja",
+                "zh"
+              ],
+              "model": "whisper-large-v3-turbo-INT8",
               "object": "list"
             }
           }
@@ -519,6 +624,7 @@
           "name": "model",
           "required": false,
           "schema": {
+            "description": "An installed model id (default: the active slot, else the first installed model for the task)",
             "type": [
               "string",
               "null"
@@ -543,6 +649,78 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "unsupported_parameter"
+          },
+          "message": "An option the model does not support: timestamps, VAD, speaker labels, beam size above 1, temperature above 0, voice / speed for transcription"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "unsupported_language"
+          },
+          "message": "The speech model does not support `language`"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "unsupported_task"
+          },
+          "message": "`task` is not text_to_speech, speech_to_text or speech_translation, or the model does not declare it"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_input"
+          },
+          "message": "An unreadable source: a bare base64 string, a missing file, a non-audio file"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or no installed model for the task"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "model_contract_error"
+          },
+          "message": "The model's package does not match its declared task (missing voices, config or assets)"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "speech_busy"
+          },
+          "message": "Another speech request is running (from the task's result)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "engine_error"
+          },
+          "message": "The model failed while running (from the task's result)"
+        },
+        {
+          "code": -32008,
+          "data": {
+            "type": "cancelled"
+          },
+          "message": "`tasks.cancel` stopped it (from the task's result)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -573,13 +751,15 @@
           "name": "input_source",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/StrictInputSource"
+            "$ref": "#/components/schemas/StrictInputSource",
+            "description": "Input descriptor: text for speech generation, or a local/remote/inline audio source for transcription"
           }
         },
         {
           "name": "instruction",
           "required": false,
           "schema": {
+            "description": "Not supported: a non-empty value is refused",
             "type": [
               "string",
               "null"
@@ -590,6 +770,7 @@
           "name": "keep_alive",
           "required": false,
           "schema": {
+            "description": "Minutes the model stays loaded after the task: -1 = until replaced, 0 = unload now, N = N minutes",
             "format": "int32",
             "type": [
               "integer",
@@ -601,6 +782,7 @@
           "name": "model",
           "required": false,
           "schema": {
+            "description": "An installed speech or transcription model id (default: the active slot, else the first installed model for the task)",
             "type": [
               "string",
               "null"
@@ -618,13 +800,15 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Task options"
           }
         },
         {
           "name": "task",
           "required": false,
           "schema": {
+            "description": "text_to_speech, speech_to_text or speech_translation (default: from `input_source.type`, text = speech)",
             "type": [
               "string",
               "null"
@@ -649,15 +833,69 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or no installed model for the task"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "model_contract_error"
+          },
+          "message": "The model's package does not match its declared task (missing voices, config or assets)"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
-          "params": [],
+          "params": [
+            {
+              "name": "model",
+              "value": "kokoro-82m-onnx"
+            }
+          ],
           "result": {
             "name": "result",
             "value": {
-              "data": [],
-              "model": "installed-model",
+              "capabilities": {
+                "coherent_input": false,
+                "language_control": "explicit",
+                "languages": [
+                  "en-US",
+                  "en-GB",
+                  "hi"
+                ],
+                "voice_mode": "preset"
+              },
+              "data": [
+                {
+                  "default": true,
+                  "id": "default",
+                  "language": null
+                },
+                {
+                  "default": false,
+                  "id": "af_heart",
+                  "language": "en-US"
+                },
+                {
+                  "default": false,
+                  "id": "hf_alpha",
+                  "language": "hi"
+                }
+              ],
+              "model": "kokoro-82m-onnx",
               "object": "list"
             }
           }
@@ -670,6 +908,7 @@
           "name": "model",
           "required": false,
           "schema": {
+            "description": "An installed model id (default: the active slot, else the first installed model for the task)",
             "type": [
               "string",
               "null"
@@ -694,6 +933,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "stream_not_found"
+          },
+          "message": "No running stream with this id (it ended, or never started)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -720,6 +968,7 @@
           "required": false,
           "schema": {
             "default": null,
+            "description": "Written to the Engine log with the cancel (optional)",
             "type": [
               "string",
               "null"
@@ -752,6 +1001,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "Neither `chat_id` nor `all: true` was sent"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -784,6 +1042,7 @@
           "required": false,
           "schema": {
             "default": false,
+            "description": "Import every App chat that has no Engine event log yet",
             "type": "boolean"
           }
         },
@@ -826,6 +1085,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An entry of `tools` is neither a tool id nor `{\"id\", \"turns\"}`"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -872,6 +1140,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat (`session_id` of its chat requests)",
             "type": "string"
           }
         },
@@ -915,6 +1184,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "stream_not_found"
+          },
+          "message": "No running stream with this id (it ended, or never started)"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "reasoning_unavailable"
+          },
+          "message": "The stream's model has no native reasoning control, or thinking is off"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -941,6 +1226,7 @@
           "required": false,
           "schema": {
             "default": null,
+            "description": "Written to the Engine log with the cancel (optional)",
             "type": [
               "string",
               "null"
@@ -973,6 +1259,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -1004,6 +1291,7 @@
           "required": false,
           "schema": {
             "default": null,
+            "description": "The chat whose attached tools are counted (default: \"default\")",
             "type": [
               "string",
               "null"
@@ -1015,6 +1303,7 @@
           "required": false,
           "schema": {
             "default": null,
+            "description": "The model whose context window is measured (default: the active chat model, \"default\")",
             "type": [
               "string",
               "null"
@@ -1039,6 +1328,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -1069,6 +1359,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat (`session_id` of its chat requests)",
             "type": "string"
           }
         }
@@ -1090,6 +1381,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -1147,6 +1439,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An unknown field or an invalid value in `patch` (section engine ignores unknown fields instead)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "settings_not_saved"
+          },
+          "message": "settings.json or permission.json could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1186,7 +1494,8 @@
           "name": "section",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Section"
+            "$ref": "#/components/schemas/Section",
+            "description": "The section to change"
           }
         }
       ],
@@ -1207,6 +1516,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -1214,9 +1524,31 @@
           "result": {
             "name": "result",
             "value": {
-              "done": [],
-              "queued": 0,
-              "running": null
+              "counts": {
+                "done": 12,
+                "failed": 0,
+                "skipped": 0,
+                "stopped": 0
+              },
+              "indexer": "auto",
+              "queue": [
+                {
+                  "answer_pos": 3,
+                  "chat_id": "c1",
+                  "kind": "cold"
+                }
+              ],
+              "recent": [
+                {
+                  "answer_pos": 5,
+                  "chat": "c2",
+                  "cold": false,
+                  "ms": 8017,
+                  "outcome": "done"
+                }
+              ],
+              "requests_in_flight": 0,
+              "running": false
             }
           }
         }
@@ -1241,6 +1573,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`request` is not a chat request, or its `messages` is empty"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "The request's model is not installed"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1283,6 +1631,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat the request belongs to (its event log, ledger and loaded tools are used)",
             "type": "string"
           }
         },
@@ -1311,6 +1660,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "report_not_found"
+          },
+          "message": "No such report: only the newest 20 per chat are kept, in memory, until a restart"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1345,6 +1703,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat (`session_id` of its chat requests)",
             "type": "string"
           }
         },
@@ -1352,6 +1711,7 @@
           "name": "request_id",
           "required": true,
           "schema": {
+            "description": "One id from `context.reports` (the chat completion's `id`)",
             "type": "string"
           }
         }
@@ -1373,6 +1733,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -1400,6 +1761,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat (`session_id` of its chat requests)",
             "type": "string"
           }
         }
@@ -1421,6 +1783,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "`from` does not exist"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`to` is inside `from`, or the copied folder holds a link cycle"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1450,6 +1835,7 @@
           "name": "from",
           "required": true,
           "schema": {
+            "description": "The existing file or folder: absolute, or relative to the workspace",
             "type": "string"
           }
         },
@@ -1457,6 +1843,7 @@
           "name": "to",
           "required": true,
           "schema": {
+            "description": "The new path: absolute, or relative to the workspace; missing parent folders are created",
             "type": "string"
           }
         }
@@ -1478,6 +1865,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "The path does not exist"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The path does not end in a file or folder name (for example `..`)"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1502,6 +1912,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "Absolute, or relative to the workspace",
             "type": "string"
           }
         }
@@ -1512,7 +1923,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Deletes a file or directory",
+      "summary": "Deletes a file or directory; a link is removed itself, never its target",
       "x-cep": {
         "destructive": true,
         "execution": "sync",
@@ -1523,6 +1934,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The path is not a folder, or is drive-relative / root-relative"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "The folder does not exist"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1561,6 +1995,7 @@
           "name": "path",
           "required": false,
           "schema": {
+            "description": "The folder to list (default: `root`, else the workspace)",
             "type": [
               "string",
               "null"
@@ -1572,6 +2007,7 @@
           "required": false,
           "schema": {
             "default": false,
+            "description": "Also list sub-folders, at most 12 levels deep",
             "type": "boolean"
           }
         },
@@ -1579,6 +2015,7 @@
           "name": "root",
           "required": false,
           "schema": {
+            "description": "The folder the answered `path` values are relative to (default: the workspace)",
             "type": [
               "string",
               "null"
@@ -1603,6 +2040,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An empty, drive-relative or root-relative path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1627,6 +2080,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "Absolute, or relative to the workspace",
             "type": "string"
           }
         }
@@ -1648,6 +2102,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The caller is not the owner (`data.needs: \"owner\"`): it opens a dialog on the host"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1680,6 +2143,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "The path does not exist"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An empty, drive-relative or root-relative path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1708,6 +2194,7 @@
           "required": false,
           "schema": {
             "default": false,
+            "description": "Always answer `data_base64`, even for UTF-8 text",
             "type": "boolean"
           }
         },
@@ -1715,6 +2202,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "Absolute, or relative to the workspace",
             "type": "string"
           }
         }
@@ -1736,6 +2224,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "`from` does not exist"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`from` does not end in a file or folder name, or a path is drive-relative / root-relative"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "file_exists"
+          },
+          "message": "The OS refused because `to` exists and cannot be replaced"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1765,6 +2283,7 @@
           "name": "from",
           "required": true,
           "schema": {
+            "description": "The existing file or folder: absolute, or relative to the workspace",
             "type": "string"
           }
         },
@@ -1772,6 +2291,7 @@
           "name": "to",
           "required": true,
           "schema": {
+            "description": "The new path: absolute, or relative to the workspace; missing parent folders are created",
             "type": "string"
           }
         }
@@ -1782,7 +2302,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Moves a file or directory between authorized paths",
+      "summary": "Moves a file or directory between authorized paths; a link is moved itself",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -1793,6 +2313,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "Both or neither of `text` / `data_base64`, invalid base64, or a bad path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1822,6 +2358,7 @@
           "name": "data_base64",
           "required": false,
           "schema": {
+            "description": "The file's content as standard base64 (send this or `text`)",
             "type": [
               "string",
               "null"
@@ -1832,6 +2369,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "Absolute, or relative to the workspace; missing parent folders are created",
             "type": "string"
           }
         },
@@ -1839,6 +2377,7 @@
           "name": "text",
           "required": false,
           "schema": {
+            "description": "The file's content as UTF-8 text (send this or `data_base64`)",
             "type": [
               "string",
               "null"
@@ -1863,6 +2402,71 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "No source, an empty source, unsupported chunking (overlap or a type other than semantic), vision settings without a vision model, or vectors without an embedding model"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "A source path does not exist or is drive-relative / root-relative"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "`model` is not installed"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "A source path is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "ingest_failed"
+          },
+          "message": "Every source failed and the first failure was a missing file or model (from the task's result; `data.result` holds every source)"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "ingest_failed"
+          },
+          "message": "Every source failed and the first failure was a bad input (from the task's result)"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "ingest_failed"
+          },
+          "message": "Every source failed and the first failure was a busy model (from the task's result)"
+        },
+        {
+          "code": -32006,
+          "data": {
+            "type": "ingest_failed"
+          },
+          "message": "Every source failed and the first failure was a source over the size limit (from the task's result)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "ingest_failed"
+          },
+          "message": "Every source failed and the first failure was the model or the machine (from the task's result)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -1904,7 +2508,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "How extracted text is cut into chunks"
           }
         },
         {
@@ -1929,7 +2534,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "What each source's result contains"
           }
         },
         {
@@ -1951,7 +2557,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Options for a generative vision `model`"
           }
         }
       ],
@@ -1972,6 +2579,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -2004,6 +2612,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -2029,6 +2638,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the `session_id` its chat requests send",
             "type": "string"
           }
         }
@@ -2050,6 +2660,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -2057,9 +2668,20 @@
           "result": {
             "name": "result",
             "value": {
-              "bytes": 52428800,
-              "chats": [],
-              "directory": "C:/Users/me/.cluaiz/kv_cache"
+              "bytes": 28774640,
+              "chats": [
+                {
+                  "bytes": 28774640,
+                  "chat_id": "c1",
+                  "key": "C:/Users/me/.cluaiz/models/chat/gemma-4-e4b/gemma-4-E4B-it-Q4_K_M.gguf|ctx=Auto|ngl=None",
+                  "last_used": 1792951094,
+                  "model": "C:/Users/me/.cluaiz/models/chat/gemma-4-e4b/gemma-4-E4B-it-Q4_K_M.gguf",
+                  "positions": 743,
+                  "saved_at": 1792951094,
+                  "tokens": 743
+                }
+              ],
+              "directory": "C:/Users/me/.cluaiz/kv_cache/chats"
             }
           }
         }
@@ -2084,6 +2706,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be removed"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2137,6 +2768,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be read"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2182,6 +2822,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
             "type": "string"
           }
         },
@@ -2231,6 +2872,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be read"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2281,6 +2931,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -2333,6 +2984,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32006,
+          "data": {
+            "type": "too_large"
+          },
+          "message": "More than 200 000 events"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An event does not have the event shape of `memory.export`"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2364,6 +3031,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
             "type": "string"
           }
         },
@@ -2394,6 +3062,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be read"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2450,6 +3127,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`ref` does not look like m:<position>"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "message_not_found"
+          },
+          "message": "No visible message at that position"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be read"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2481,6 +3181,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
             "type": "string"
           }
         },
@@ -2510,6 +3211,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -2539,6 +3241,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
             "type": "string"
           }
         },
@@ -2572,6 +3275,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "`scope` workspace / all while `config` context `cross_chat` is deny (`data.needs: \"cross_chat\"`)"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`scope` is not chat, workspace or all"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "event_log_unreadable"
+          },
+          "message": "The chat's event log could not be read"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2611,6 +3337,7 @@
           "name": "chat_id",
           "required": true,
           "schema": {
+            "description": "The chat: the same value as `session_id` in chat completions",
             "type": "string"
           }
         },
@@ -2632,6 +3359,7 @@
           "name": "query",
           "required": true,
           "schema": {
+            "description": "Words to look for (matched against the cards' titles, keywords and text)",
             "type": "string"
           }
         },
@@ -2665,6 +3393,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty, over 512 characters, or has control characters"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "pull_running"
+          },
+          "message": "This model is being downloaded already (from the task's result)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "download_failed"
+          },
+          "message": "Resolving or downloading failed: no such repo or variant, network, disk (from the task's result)"
+        },
+        {
+          "code": -32008,
+          "data": {
+            "type": "cancelled"
+          },
+          "message": "`tasks.cancel` stopped the download (from the task's result)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2715,21 +3473,84 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or its weight file is missing"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty or looks like a path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`file` leaves the model's folder"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "gguf_probe_failed"
+          },
+          "message": "The file is not a readable GGUF"
+        }
+      ],
       "examples": [
         {
           "name": "example",
           "params": [
             {
               "name": "model",
-              "value": "installed-model"
+              "value": "bonsai-27b-gguf-q1_0"
             }
           ],
           "result": {
             "name": "result",
             "value": {
-              "metadata": {},
-              "model": "installed-model",
-              "tensors": []
+              "file": "C:/Users/me/.cluaiz/models/chat/bonsai-27b-gguf-q1_0/Bonsai-27B-Q1_0.gguf",
+              "int_arrays": {
+                "qwen35.rope.dimension_sections": [
+                  11,
+                  11,
+                  10,
+                  0
+                ]
+              },
+              "metadata": {
+                "general.architecture": "qwen35",
+                "general.name": "Bonsai 27B",
+                "qwen35.block_count": 64,
+                "qwen35.context_length": 262144
+              },
+              "model": "bonsai-27b-gguf-q1_0",
+              "speech_languages": [],
+              "tensors": [
+                {
+                  "dims": [
+                    5120,
+                    248320
+                  ],
+                  "ggml_type": 41,
+                  "name": "output.weight",
+                  "offset": 0,
+                  "size_bytes": 178790400
+                }
+              ]
             }
           }
         }
@@ -2741,6 +3562,7 @@
           "name": "file",
           "required": false,
           "schema": {
+            "description": "A file inside the model's folder, relative to it (default: the primary weight file)",
             "type": [
               "string",
               "null"
@@ -2751,6 +3573,7 @@
           "name": "model",
           "required": true,
           "schema": {
+            "description": "An installed model id (from `models.list`)",
             "type": "string"
           }
         }
@@ -2772,13 +3595,53 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
-          "params": [],
+          "params": [
+            {
+              "name": "category",
+              "value": "stt"
+            }
+          ],
           "result": {
             "name": "result",
-            "value": []
+            "value": [
+              {
+                "category": "stt",
+                "experimental": false,
+                "extra_files": [
+                  "config.json",
+                  "tokenizer.json"
+                ],
+                "files": [
+                  {
+                    "is_primary": true,
+                    "name": "decoder_model_int8.onnx",
+                    "size_bytes": 439684851
+                  },
+                  {
+                    "is_primary": false,
+                    "name": "encoder_model_int8.onnx",
+                    "size_bytes": 644822094
+                  }
+                ],
+                "format": "onnx",
+                "huggingface_repo": "onnx-community/whisper-large-v3-turbo",
+                "id": "whisper-large-v3-turbo-INT8",
+                "local_dir": "C:/Users/me/.cluaiz/models/stt/whisper-large-v3-turbo-INT8",
+                "metadata": {
+                  "architecture": "onnx-generic",
+                  "backend_type": "onnx"
+                },
+                "size": 1950984246,
+                "supported_tasks": [
+                  "speech_to_text",
+                  "automatic-speech-recognition"
+                ]
+              }
+            ]
           }
         }
       ],
@@ -2796,7 +3659,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Only models of this category; all when absent"
           }
         }
       ],
@@ -2817,6 +3681,43 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or its weight file is missing"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty or looks like a path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32007,
+          "data": {
+            "type": "not_implemented"
+          },
+          "message": "The model is not a GGUF (ONNX models load on their first request)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "model_load_failed"
+          },
+          "message": "llama.cpp could not load it (memory, a broken file, an unsupported architecture)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2842,6 +3743,7 @@
           "name": "model",
           "required": true,
           "schema": {
+            "description": "An installed model id (from `models.list`)",
             "type": "string"
           }
         }
@@ -2863,6 +3765,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, or its weight file is missing"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty or looks like a path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "model_remove_failed"
+          },
+          "message": "The folder or the registry entry could not be removed"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2888,6 +3820,7 @@
           "name": "model",
           "required": true,
           "schema": {
+            "description": "An installed model id (from `models.list`)",
             "type": "string"
           }
         }
@@ -2909,6 +3842,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "note_not_found"
+          },
+          "message": "No note with this id"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "notes_unavailable"
+          },
+          "message": "The notes file could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -2940,6 +3889,7 @@
           "name": "id",
           "required": true,
           "schema": {
+            "description": "The note's `id` (from `notes.list`)",
             "type": "string"
           }
         }
@@ -2961,6 +3911,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`text` is empty or over 2000 characters, `scope` is unknown, or scope chat has no `chat_id`"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "notes_unavailable"
+          },
+          "message": "The notes file could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3051,6 +4017,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "note_not_found"
+          },
+          "message": "No note with this id"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "notes_unavailable"
+          },
+          "message": "The notes file could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3082,6 +4064,7 @@
           "name": "id",
           "required": true,
           "schema": {
+            "description": "The note's `id` (from `notes.list`)",
             "type": "string"
           }
         }
@@ -3103,6 +4086,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3186,6 +4170,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "note_not_found"
+          },
+          "message": "No note with this id"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "notes_unavailable"
+          },
+          "message": "The notes file could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3221,6 +4221,7 @@
           "name": "id",
           "required": true,
           "schema": {
+            "description": "The note's `id` (from `notes.list`)",
             "type": "string"
           }
         },
@@ -3228,6 +4229,7 @@
           "name": "pinned",
           "required": true,
           "schema": {
+            "description": "true: goes into the system prompt of new chats; false: does not",
             "type": "boolean"
           }
         }
@@ -3249,6 +4251,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3303,6 +4306,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32005,
+          "data": {
+            "type": "storage_path_invalid"
+          },
+          "message": "The temporary media path exists but is not a folder"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The temporary media folder is a symbolic link (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "filesystem_error"
+          },
+          "message": "A file could not be removed (for example, another program holds it open)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3336,6 +4362,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32005,
+          "data": {
+            "type": "storage_path_invalid"
+          },
+          "message": "The temporary media path exists but is not a folder"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The temporary media folder is a symbolic link (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3370,6 +4412,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3433,6 +4476,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32003,
+          "data": {
+            "type": "approval_required"
+          },
+          "message": "Every call, until the owner approves it (`data.approval_id`); send it again with `_meta.approval`"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "Both or neither of `program` / `command`, `args` with `command`, or a shell line while `exec.allow_shell` is off"
+        },
+        {
+          "code": -32006,
+          "data": {
+            "type": "too_large"
+          },
+          "message": "The command is over 8192 characters"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "process_failed"
+          },
+          "message": "The program could not be started (not found, not executable)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3513,6 +4586,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3523,9 +4597,27 @@
               "cep_version": 1,
               "engine": "Cluaiz Engine",
               "hardware": {
-                "cpu": {},
-                "gpus": [],
-                "memory": {}
+                "architecture": "x86_64",
+                "cpu": {
+                  "brand": "AMD Ryzen 7 7435HS",
+                  "logical_threads": 16,
+                  "physical_cores": 8
+                },
+                "gpus": [
+                  {
+                    "compute_capability": "8.9",
+                    "index": 0,
+                    "name": "NVIDIA GeForce RTX 3050 A Laptop GPU",
+                    "vendor": "NVIDIA",
+                    "vram_total_gb": 4.0
+                  }
+                ],
+                "memory": {
+                  "available_gb": 7.47,
+                  "total_gb": 23.69
+                },
+                "os_name": "Windows",
+                "os_version": "11"
               },
               "network": {
                 "lan_ip": "192.168.1.20"
@@ -3555,6 +4647,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3562,14 +4655,30 @@
           "result": {
             "name": "result",
             "value": {
-              "cpu": {},
-              "gpus": [],
-              "memory": {
-                "available_gb": 8,
-                "total_gb": 16,
-                "used_gb": 8
+              "cpu": {
+                "brand": "AMD Ryzen 7 7435HS",
+                "frequency_mhz": 2002,
+                "logical_threads": 16,
+                "physical_cores": 8
               },
-              "process_id": 1
+              "gpus": [
+                {
+                  "compute_capability": "8.9",
+                  "index": 0,
+                  "name": "NVIDIA GeForce RTX 3050 A Laptop GPU",
+                  "pcie_gen": 2,
+                  "pcie_width": 8,
+                  "vendor": "NVIDIA",
+                  "vram_free_bytes": 2816151552,
+                  "vram_total_bytes": 4292870144
+                }
+              ],
+              "memory": {
+                "available_gb": 7.47,
+                "total_gb": 23.69,
+                "used_gb": 16.23
+              },
+              "process_id": 18356
             }
           }
         }
@@ -3594,6 +4703,43 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty, `n_ctx` is below -1, `batch_tokens` is 0, or a buffer is negative"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
+          "message": "No installed model with this id, and no usable `model_path`"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "`model_path` is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "gguf_probe_failed"
+          },
+          "message": "The GGUF header could not be read"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "onnx_probe_failed"
+          },
+          "message": "The ONNX package could not be inspected"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3606,9 +4752,44 @@
           "result": {
             "name": "result",
             "value": {
-              "execution_plan": {},
+              "active_user_settings": {
+                "flash_attention": "Auto",
+                "kv_cache_quantization": "Auto"
+              },
+              "candidates": [],
+              "execution_plan": {
+                "batch_size": 512,
+                "context_reason": "Auto: floor 4096 tokens, KV Kv8; model does not fit on one device",
+                "context_window": 4096,
+                "decision_reason": "GPU + RAM split: 16 / 64 blocks + output head on GPU (1.57 GB), 48 blocks in RAM",
+                "gpu_layers": 16,
+                "kv_cache_location": "vram + ram (next to each layer)",
+                "kv_cache_type": "Kv8",
+                "model_memory_breakdown": {
+                  "kv_cache_ram_gb": 0.4,
+                  "kv_cache_vram_gb": 0.13,
+                  "ram_gb": 2.96,
+                  "vram_gb": 1.57
+                },
+                "n_gpu_layers": 17
+              },
               "hardware_info": {},
-              "model_info": {}
+              "model_info": {
+                "architecture": "qwen35",
+                "context_window": 262144,
+                "inputs": [
+                  {
+                    "available": true,
+                    "type": "text"
+                  }
+                ],
+                "model_id": "bonsai-27b-gguf-q1_0",
+                "model_size_gb": 3.54,
+                "outputs": [
+                  "text"
+                ],
+                "total_layers": 64
+              }
             }
           }
         }
@@ -3620,6 +4801,7 @@
           "name": "batch_tokens",
           "required": false,
           "schema": {
+            "description": "Logical batch size in tokens for the plan (llama.cpp `-b`; default: the saved setting)",
             "format": "uint32",
             "minimum": 0,
             "type": [
@@ -3632,6 +4814,7 @@
           "name": "model",
           "required": true,
           "schema": {
+            "description": "An installed model id (from `models.list`)",
             "type": "string"
           }
         },
@@ -3639,6 +4822,7 @@
           "name": "model_path",
           "required": false,
           "schema": {
+            "description": "Plan this weight file instead of the model's primary file (it must pass the caller's roots)",
             "type": [
               "string",
               "null"
@@ -3649,6 +4833,7 @@
           "name": "n_ctx",
           "required": false,
           "schema": {
+            "description": "Context size: -1 = the model's maximum, 0 = automatic, N = N tokens (default: the saved setting)",
             "format": "int64",
             "type": [
               "integer",
@@ -3660,6 +4845,7 @@
           "name": "ram_buffer_gb",
           "required": false,
           "schema": {
+            "description": "RAM to keep free, in GB (default: the planner's rule)",
             "format": "double",
             "type": [
               "number",
@@ -3671,6 +4857,7 @@
           "name": "vram_buffer_gb",
           "required": false,
           "schema": {
+            "description": "VRAM to keep free, in GB (default: the planner's rule)",
             "format": "double",
             "type": [
               "number",
@@ -3696,6 +4883,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3703,8 +4891,24 @@
           "result": {
             "name": "result",
             "value": {
-              "active_processes": [],
-              "hardware_snapshot": {}
+              "active_processes": [
+                {
+                  "context_size": 8192,
+                  "engine": "llama-engine (static rlib)",
+                  "model_id": "qwen3-4b-gguf-Q4_K_M",
+                  "n_gpu_layers": 37,
+                  "pid": "18356",
+                  "tier": "Gpu",
+                  "vram_gb": 3.2
+                }
+              ],
+              "hardware_snapshot": {
+                "architecture": "x86_64",
+                "cpu": {},
+                "gpus": [],
+                "memory": {},
+                "storage": {}
+              }
             }
           }
         }
@@ -3729,6 +4933,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "task_not_found"
+          },
+          "message": "No task with this id for this caller, or it expired"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The task has already ended"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3754,6 +4974,7 @@
           "name": "task_id",
           "required": true,
           "schema": {
+            "description": "The `task.task_id` a task method answered with",
             "type": "string"
           }
         }
@@ -3775,6 +4996,15 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "task_not_found"
+          },
+          "message": "No task with this id for this caller, or it expired"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3823,6 +5053,7 @@
           "name": "task_id",
           "required": true,
           "schema": {
+            "description": "The `task.task_id` a task method answered with",
             "type": "string"
           }
         }
@@ -3844,6 +5075,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -3886,6 +5118,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "task_not_found"
+          },
+          "message": "No task with this id for this caller, or it expired"
+        },
+        {
+          "code": -32009,
+          "data": {
+            "type": "timeout"
+          },
+          "message": "The task is still running after `wait_ms`: ask again"
+        },
+        {
+          "code": -32008,
+          "data": {
+            "type": "cancelled"
+          },
+          "message": "The task was cancelled"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3914,6 +5169,7 @@
           "name": "task_id",
           "required": true,
           "schema": {
+            "description": "The `task.task_id` a task method answered with",
             "type": "string"
           }
         },
@@ -3949,6 +5205,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32005,
+          "data": {
+            "type": "token_limit"
+          },
+          "message": "There are 5 keys already: revoke one first"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "settings_not_saved"
+          },
+          "message": "permission.json could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -3985,6 +5257,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -4020,6 +5293,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "Neither `token` nor `index` was sent"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "token_not_found"
+          },
+          "message": "No key matches `token`, or `index` is out of range"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "settings_not_saved"
+          },
+          "message": "permission.json could not be written"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4086,6 +5382,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4097,7 +5416,15 @@
           ],
           "result": {
             "name": "result",
-            "value": []
+            "value": [
+              {
+                "all_bytes": 0,
+                "entries": [],
+                "kind": "skill",
+                "name": "code-interpreter",
+                "temp_bytes": 0
+              }
+            ]
           }
         }
       ],
@@ -4108,13 +5435,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": false,
           "schema": {
+            "description": "One tool; every tool of `kind` when absent",
             "type": [
               "string",
               "null"
@@ -4139,6 +5468,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "A bad `name`, or `fn` looks like a path"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "tool_operation_failed"
+          },
+          "message": "The installer, registry or tool itself failed (its message is passed on)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4175,6 +5534,7 @@
           "name": "fn",
           "required": false,
           "schema": {
+            "description": "The function to run (a plugin export or an MCP tool); the tool's default when absent",
             "type": [
               "string",
               "null"
@@ -4184,19 +5544,23 @@
         {
           "name": "input",
           "required": true,
-          "schema": true
+          "schema": {
+            "description": "The function's arguments, as JSON"
+          }
         },
         {
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         }
@@ -4218,6 +5582,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "filesystem_error"
+          },
+          "message": "A cached file could not be removed"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4243,13 +5637,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": false,
           "schema": {
+            "description": "One tool; every tool of `kind` when absent",
             "type": [
               "string",
               "null"
@@ -4274,20 +5670,48 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
           "params": [
             {
               "name": "query",
-              "value": "Find a tool for this task"
+              "value": "read notes.txt from my project"
             }
           ],
           "result": {
             "name": "result",
             "value": {
-              "candidates": [],
-              "installed": 0
+              "actionable": true,
+              "candidates": [
+                {
+                  "category": "mcp",
+                  "id": "filesystem",
+                  "level": "card",
+                  "load_cost_tokens": 1650,
+                  "matched": [
+                    "read",
+                    "project",
+                    "file"
+                  ],
+                  "score": 9.56,
+                  "summary": "Official Model Context Protocol secure file system bridge"
+                },
+                {
+                  "category": "mcp",
+                  "id": "pynotes",
+                  "level": "title",
+                  "load_cost_tokens": 55,
+                  "matched": [
+                    "read"
+                  ],
+                  "score": 3.58,
+                  "summary": "Test notes server"
+                }
+              ],
+              "installed": 10,
+              "query": "read notes.txt from my project"
             }
           }
         }
@@ -4300,6 +5724,7 @@
           "required": false,
           "schema": {
             "default": false,
+            "description": "Also answer `evidence`: each matching tool's score, matched words and where they matched",
             "type": "boolean"
           }
         },
@@ -4307,6 +5732,7 @@
           "name": "previous",
           "required": false,
           "schema": {
+            "description": "The message before it (follow-ups such as \"and in Hindi?\" use it)",
             "type": [
               "string",
               "null"
@@ -4317,6 +5743,7 @@
           "name": "query",
           "required": true,
           "schema": {
+            "description": "A user message, as the chat would see it",
             "type": "string"
           }
         }
@@ -4338,6 +5765,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4354,8 +5804,23 @@
           "result": {
             "name": "result",
             "value": {
-              "cache": {},
-              "files": [],
+              "cache": {
+                "all_bytes": 0,
+                "entries": [],
+                "temp_bytes": 0
+              },
+              "files": [
+                {
+                  "is_dir": false,
+                  "name": "SKILL.md",
+                  "path": "SKILL.md"
+                },
+                {
+                  "is_dir": true,
+                  "name": "assets",
+                  "path": "assets"
+                }
+              ],
               "skipped": 0,
               "truncated": false
             }
@@ -4369,13 +5834,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         }
@@ -4397,17 +5864,33 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        }
+      ],
       "examples": [
         {
           "name": "example",
           "params": [
             {
               "name": "kind",
-              "value": "skill"
+              "value": "mcp"
             },
             {
               "name": "name",
-              "value": "installed-tool"
+              "value": "filesystem"
             }
           ],
           "result": {
@@ -4415,7 +5898,10 @@
             "value": {
               "schema": {},
               "values": {
-                "enabled": true
+                "enabled": true,
+                "execution_mode": "manual",
+                "security_mode": "inherit",
+                "trust_annotations": false
               }
             }
           }
@@ -4428,13 +5914,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         }
@@ -4456,6 +5944,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "tool_operation_failed"
+          },
+          "message": "The installer, registry or tool itself failed (its message is passed on)"
+        },
+        {
+          "code": -32008,
+          "data": {
+            "type": "cancelled"
+          },
+          "message": "`tasks.cancel` stopped it before or after the download (from the task's result)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4487,13 +6005,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         }
@@ -4515,13 +6035,50 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
-          "params": [],
+          "params": [
+            {
+              "name": "kind",
+              "value": "mcp"
+            }
+          ],
           "result": {
             "name": "result",
-            "value": []
+            "value": [
+              {
+                "category": "mcp",
+                "default_turns": 3,
+                "description": "Official Model Context Protocol secure file system bridge",
+                "enabled": true,
+                "execution_mode": "manual",
+                "functions": [
+                  {
+                    "annotations": {
+                      "openWorldHint": false,
+                      "readOnlyHint": true
+                    },
+                    "description": "Read the complete contents of a file from the file system as text.",
+                    "inputSchema": {
+                      "properties": {
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "path"
+                      ],
+                      "type": "object"
+                    },
+                    "name": "read_text_file"
+                  }
+                ],
+                "id": "filesystem",
+                "security_mode": "inherit"
+              }
+            ]
           }
         }
       ],
@@ -4539,7 +6096,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Only tools of this kind; all when absent"
           }
         }
       ],
@@ -4560,6 +6118,22 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`path` leaves the tool folder or is not a file"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4588,13 +6162,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         },
@@ -4602,6 +6178,7 @@
           "name": "path",
           "required": false,
           "schema": {
+            "description": "A file inside the tool's folder (default: `SKILL.md` or `package.json`)",
             "type": [
               "string",
               "null"
@@ -4626,6 +6203,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`path` leaves the tool folder"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "No such file in the tool folder"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4659,13 +6259,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         },
@@ -4673,6 +6275,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "A file inside the tool's folder, relative to it",
             "type": "string"
           }
         }
@@ -4694,6 +6297,36 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "tool_operation_failed"
+          },
+          "message": "The installer, registry or tool itself failed (its message is passed on)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4723,13 +6356,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         }
@@ -4751,6 +6386,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "An unknown `security_mode` / `execution_mode`, or a bad `name`"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "tool_operation_failed"
+          },
+          "message": "The tool registry could not be saved"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4788,13 +6446,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         },
@@ -4802,7 +6462,8 @@
           "name": "patch",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Patch"
+            "$ref": "#/components/schemas/Patch",
+            "description": "Only the fields to change"
           }
         }
       ],
@@ -4823,6 +6484,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "tool_not_found"
+          },
+          "message": "No installed tool of this kind and name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4856,13 +6540,15 @@
           "name": "kind",
           "required": true,
           "schema": {
-            "$ref": "#/components/schemas/Kind"
+            "$ref": "#/components/schemas/Kind",
+            "description": "skill, plugin or mcp"
           }
         },
         {
           "name": "name",
           "required": true,
           "schema": {
+            "description": "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens",
             "type": "string"
           }
         },
@@ -4870,6 +6556,7 @@
           "name": "text",
           "required": true,
           "schema": {
+            "description": "The new content of `SKILL.md` (skill) or `package.json` (plugin, mcp)",
             "type": "string"
           }
         }
@@ -4891,6 +6578,7 @@
       }
     },
     {
+      "errors": [],
       "examples": [
         {
           "name": "example",
@@ -4923,6 +6611,29 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The path is not a folder, or is drive-relative / root-relative"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "file_not_found"
+          },
+          "message": "The folder does not exist"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
       "examples": [
         {
           "name": "example",
@@ -4947,6 +6658,7 @@
           "name": "path",
           "required": true,
           "schema": {
+            "description": "An existing folder: absolute, or relative to the current workspace",
             "type": "string"
           }
         }

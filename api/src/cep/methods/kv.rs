@@ -1,6 +1,5 @@
-//! `kv.*`: the saved KV cache per chat (03-method-catalog Part B). Its settings are `config`
-//! section `kv`. Any client that sends a `session_id` with its chat requests gets the same saved
-//! KV. Owner: Claude (Wave A).
+//! `kv.*`: the saved KV cache per chat. Its settings are `config` section `kv`. Any client that
+//! sends a `session_id` with its chat requests gets the same saved KV.
 
 use crate::cep::CallCtx;
 use cluaiz_cep::{Call, Meta, NoParams, Registry, Scope};
@@ -12,6 +11,7 @@ use serde_json::json;
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ChatId {
+    /// The chat: the `session_id` its chat requests send
     chat_id: String,
 }
 
@@ -20,7 +20,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         .add(
             "kv.status",
             Meta::new(Scope::Read, "Where saved KV caches are kept, the disk they use, and the saved chats (most recently used first)")
-                .example(json!({}), json!({ "directory": "C:/Users/me/.cluaiz/kv_cache", "bytes": 52428800, "chats": [] })),
+                .example(json!({}), json!({ "directory": "C:/Users/me/.cluaiz/kv_cache/chats", "bytes": 28774640,
+                    "chats": [{ "chat_id": "c1", "bytes": 28774640, "tokens": 743, "positions": 743,
+                        "model": "C:/Users/me/.cluaiz/models/chat/gemma-4-e4b/gemma-4-E4B-it-Q4_K_M.gguf",
+                        "key": "C:/Users/me/.cluaiz/models/chat/gemma-4-e4b/gemma-4-E4B-it-Q4_K_M.gguf|ctx=Auto|ngl=None",
+                        "saved_at": 1792951094, "last_used": 1792951094 }] })),
             |_: CallCtx, _: Call, _: NoParams| async move {
                 let usage = chat_memory::usage();
                 Ok(json!({ "directory": chat_memory::directory(), "bytes": usage.bytes, "chats": usage.chats }))

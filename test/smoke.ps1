@@ -1,4 +1,4 @@
-# Cluaiz 100% Direct System Plan Audit & Smoke Test
+# Cluaiz System Plan Audit & Smoke Test (CEP `models.list` + `system.plan`)
 # Usage:
 #   .\test\smoke.ps1                           (Audits all installed chat models against :8000)
 #   .\test\smoke.ps1 -Port 8080                (Custom port)
@@ -11,9 +11,17 @@ param (
 
 $BaseUrl = "http://127.0.0.1:$Port"
 
+# One CEP call: the method's result, or a terminating error with the CEP error message
+function Invoke-Cep([string]$Method, [hashtable]$Params = @{}, [int]$TimeoutSec = 15) {
+    $body = @{ jsonrpc = "2.0"; id = 1; method = $Method; params = $Params } | ConvertTo-Json -Compress -Depth 10
+    $reply = Invoke-RestMethod -Uri "$BaseUrl/v1/cep" -Method Post -Body $body -ContentType "application/json" -TimeoutSec $TimeoutSec -ErrorAction Stop
+    if ($null -ne $reply.error) { throw "$($reply.error.code) $($reply.error.message)" }
+    return $reply.result
+}
+
 Write-Host ""
 Write-Host "==========================================================================================" -ForegroundColor Cyan
-Write-Host "              CLUAIZ CHAT MODELS SYSTEM PLAN AUDIT (/v1/system/plan)                      " -ForegroundColor Cyan
+Write-Host "              CLUAIZ CHAT MODELS SYSTEM PLAN AUDIT (CEP system.plan)                       " -ForegroundColor Cyan
 Write-Host "==========================================================================================" -ForegroundColor Cyan
 Write-Host "Target Server : $BaseUrl" -ForegroundColor DarkGray
 Write-Host "Audit Output  : $OutputFile" -ForegroundColor DarkGray
@@ -30,16 +38,15 @@ try {
 }
 
 # 2. Fetch Installed Models & Filter Strictly for Chat Models (Zero Khichdi)
-Write-Host "Discovering installed chat models from $BaseUrl/v1/models/installed..." -ForegroundColor Cyan
-$installedRes = $null
+Write-Host "Discovering installed chat models with CEP models.list..." -ForegroundColor Cyan
+$allModels = @()
 try {
-    $installedRes = Invoke-RestMethod -Uri "$BaseUrl/v1/models/installed" -Method Get -TimeoutSec 5 -ErrorAction Stop
+    $allModels = @(Invoke-Cep "models.list" @{} 5)
 } catch {
     Write-Host "❌ Failed to fetch installed models: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
-$allModels = @($installedRes.installed)
 $chatModels = @($allModels | Where-Object { 
     $_.category -eq "chat" -or ($_.supported_tasks -and ($_.supported_tasks -contains "chat-completion" -or $_.supported_tasks -contains "text-generation"))
 })
@@ -68,13 +75,12 @@ foreach ($m in $chatModels) {
     $index++
     $modelId = $m.id
 
-    $payload = @{ model = $modelId } | ConvertTo-Json -Compress
     try {
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $res = Invoke-RestMethod -Uri "$BaseUrl/v1/system/plan" -Method Post -Body $payload -ContentType "application/json" -TimeoutSec 15 -ErrorAction Stop
+        $res = Invoke-Cep "system.plan" @{ model = $modelId }
         $sw.Stop()
 
-        if ($res.status -eq "success") {
+        if ($null -ne $res) {
             if ($null -eq $HardwareSnapshot) {
                 $HardwareSnapshot = $res.hardware_info
                 $ReportLines.Add("Probed GPU   : $($HardwareSnapshot.gpu.model) (Total VRAM: $($HardwareSnapshot.gpu.total_vram_gb) GB | Initial Free: $($HardwareSnapshot.gpu.free_vram_gb) GB)")
@@ -215,7 +221,7 @@ foreach ($m in $chatModels) {
             }
 
         } else {
-            Write-Host "[$index/$($chatModels.Count)] ❌ FAILED: $modelId ($($res.message))" -ForegroundColor Red
+            Write-Host "[$index/$($chatModels.Count)] ❌ FAILED: $modelId (no plan returned)" -ForegroundColor Red
         }
     } catch {
         Write-Host "[$index/$($chatModels.Count)] ❌ ERROR: $modelId ($($_.Exception.Message))" -ForegroundColor Red
@@ -252,7 +258,7 @@ foreach ($r in $AuditResults) {
 }
 
 $ReportLines.Add("==================================================================================================================================================================================================")
-$ReportLines.Add("Total Chat Models Evaluated: $($AuditResults.Count) | Direct 1:1 Mapping From /v1/system/plan Live Probing")
+$ReportLines.Add("Total Chat Models Evaluated: $($AuditResults.Count) | From CEP system.plan Live Probing")
 $ReportLines.Add("==================================================================================================================================================================================================")
 
 # Write Final Table to Console

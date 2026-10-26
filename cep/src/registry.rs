@@ -1,5 +1,5 @@
 //! The method table. Dispatch, `rpc.discover`, the MCP tool list and the docs all read it, so a
-//! method is described once: its Rust params type is its schema (01-architecture §6, §7.3).
+//! method is described once: its Rust params type is its schema.
 
 use crate::approval::{params_digest, ApprovalStore};
 use crate::error::CepError;
@@ -42,6 +42,19 @@ pub struct Meta {
     pub owner_only: bool,
     pub example_params: Value,
     pub example_result: Value,
+    /// The method's own errors (the protocol's are the same for every method)
+    pub errors: Vec<ErrorDoc>,
+}
+
+/// One error a method can answer, for discovery and the docs
+#[derive(Debug, Clone, Serialize)]
+pub struct ErrorDoc {
+    pub code: i32,
+    /// `data.type`
+    #[serde(rename = "type")]
+    pub kind: &'static str,
+    /// When it happens
+    pub when: &'static str,
 }
 
 impl Meta {
@@ -58,12 +71,19 @@ impl Meta {
             owner_only: false,
             example_params: json!({}),
             example_result: Value::Null,
+            errors: Vec::new(),
         }
     }
 
     pub fn example(mut self, params: Value, result: Value) -> Self {
         self.example_params = params;
         self.example_result = result;
+        self
+    }
+
+    /// An error this method answers: `code`, `data.type`, and when
+    pub fn error(mut self, code: i32, kind: &'static str, when: &'static str) -> Self {
+        self.errors.push(ErrorDoc { code, kind, when });
         self
     }
 

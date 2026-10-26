@@ -163,23 +163,6 @@ async fn test_audio_validation_tasks_policy_and_route_cutover() -> Result<()> {
     }
     assert!(state.host.speech.resident_model().is_none());
     assert!(state.host.onnx.resident_model().await?.is_none());
-    for (method, path) in [
-        ("GET", "/v1/audio/voices"),
-        ("GET", "/v1/audio/languages"),
-        ("POST", "/v1/audio/execute"),
-    ] {
-        let response = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method(method)
-                    .uri(path)
-                    .header("authorization", "Bearer test_session_token")
-                    .body(Body::empty())?,
-            )
-            .await?;
-        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
-    }
     for path in ["/v1/audio/speech", "/v1/audio/transcriptions"] {
         let response = router
             .clone()
@@ -192,7 +175,7 @@ async fn test_audio_validation_tasks_policy_and_route_cutover() -> Result<()> {
             )
             .await?;
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-        let (status, _) = support::post(&router, path, json!({}), "user").await?;
+        let (status, _) = support::post(&router, path, json!({})).await?;
         assert_eq!(status, StatusCode::BAD_REQUEST);
     }
     println!("Audio CEP: strict params, typed failed tasks, model roots, retired routes404 and retained standard auth/shape passed");

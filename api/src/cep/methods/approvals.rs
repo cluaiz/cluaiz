@@ -1,6 +1,6 @@
-//! `approvals.*`: the owner's answers to approval requests (03-method-catalog Part B). One store
-//! for everything that asks: a chat tool call waiting in the agent loop, and a CEP call outside
-//! its caller's roots. Only the owner answers. Owner: Claude (Wave A).
+//! `approvals.*`: the owner's answers to approval requests. One store for everything that asks:
+//! a chat tool call waiting in the agent loop, a `system.exec` call, and a CEP call outside its
+//! caller's roots. Only the owner answers.
 
 use crate::cep::CallCtx;
 use crate::handlers::chat::authorize;
@@ -12,6 +12,7 @@ use serde_json::json;
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Approve {
+    /// The `id` from `approvals.list`, the `-32003` error's `data.approval_id`, or the chat stream's `permission_request.request_id`
     approval_id: String,
     /// "chat": also allow this tool in this chat without asking again, for `minutes`
     #[serde(default)]
@@ -27,6 +28,7 @@ struct Approve {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Reject {
+    /// The `id` of the pending approval
     approval_id: String,
     /// Passed to the waiting call (the model sees it as the reason)
     #[serde(default)]
@@ -46,6 +48,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "approvals.approve",
             Meta::new(Scope::Admin, "Allows the waiting call; with remember chat, the tool also runs without asking in that chat for a while")
                 .owner_only()
+                .error(-32004, "approval_not_found", "No pending approval with this id, or it expired (5 minutes)")
+                .error(-32005, "approval_decided", "The approval was already approved or rejected")
+                .error(-32602, "invalid_params", "`remember` is something other than \"chat\"")
                 .example(json!({ "approval_id": "ap_41c2…", "remember": "chat", "minutes": 60 }), json!({ "approval": approval, "grant": { "chat_id": "c1", "tool": "web-search", "minutes": 60 } })),
             |ctx: CallCtx, _: Call, p: Approve| async move {
                 let grant = match p.remember.as_deref() {
@@ -63,7 +68,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "approvals.reject",
-            Meta::new(Scope::Admin, "Refuses the waiting call").owner_only().example(
+            Meta::new(Scope::Admin, "Refuses the waiting call")
+                .owner_only()
+                .error(-32004, "approval_not_found", "No pending approval with this id, or it expired (5 minutes)")
+                .error(-32005, "approval_decided", "The approval was already approved or rejected")
+                .example(
                 json!({ "approval_id": "ap_41c2…", "feedback": "Not this site" }),
                 json!({ "approval": approval }),
             ),

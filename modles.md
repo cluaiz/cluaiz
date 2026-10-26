@@ -30,7 +30,7 @@ A family can have many sizes, quantizations and fine-tunes. The architecture in 
 | Dedicated speech-to-text | Compatible ONNX STT package | Whisper; Moonshine adapter | `/v1/audio/transcriptions` |
 | Text vectors | ONNX or GGUF embedding model | BGE, EmbeddingGemma-2 | `/v1/embeddings` |
 | Image/page vectors | Compatible ONNX image embedding graph | FashionCLIP / compatible CLIP-style exports | Embeddings or ingest |
-| Document text/OCR | Native providers; optional model processing | PDF, DOCX, DOC, text/code, images | `/v1/ingest` |
+| Document text/OCR | Native providers; optional model processing | PDF, DOCX, DOC, text/code, images | CEP `ingest.run` |
 
 The example column identifies families; it does not give every family the same status. Use the detailed tables below.
 
@@ -187,7 +187,7 @@ Native extraction uses the shared document providers: `pdf-extract` for PDF text
 
 A folder named `ingest`, or a registry label such as `document-ocr`, does not turn an embedding graph into a generative OCR model. Dedicated ONNX Florence-2/TrOCR/Donut-style generation pipelines are not implemented. General XLSX/PPTX parsing, DOCX embedded-image reasoning and a persistent vector index are outside current ingest support.
 
-Use [ingest payload examples](docs/api/inference/ingest.md) for native, model text, text-vector and image-vector requests.
+Use [ingest params by file type](docs/api/cep/ai-inference/ingest/ingest.run.md#params-by-file-type) for native, model text, text-vector and image-vector requests.
 
 ## Package and device requirements
 
@@ -214,7 +214,7 @@ GGUF placement can use CPU, GPU or a supported split according to settings and r
 
 Small and large variants can share architecture support but have different hardware requirements. Download size is not peak RAM/VRAM. A model already loaded on CPU does not move automatically when GPU memory becomes available.
 
-Use the exact ID from `GET /v1/models/installed`. Request `model` selection chooses an installed package; a Hugging Face repository name is not always that installed ID.
+Use the exact ID from CEP `models.list` (or `GET /v1/models`). Request `model` selection chooses an installed package; a Hugging Face repository name is not always that installed ID.
 
 ## Complete bundled architecture inventory
 
@@ -319,7 +319,7 @@ Input encoders, speaker encoders and speech generators serve different roles. An
 | Speech synthesis and voice/language selection | [Speech API](docs/api/inference/audio_speech.md) |
 | Speech recognition | [Transcription API](docs/api/inference/audio_transcriptions.md) |
 | Text/image vectors | [Embeddings API](docs/api/inference/embeddings.md) |
-| Documents and selected-model processing | [Ingest API](docs/api/inference/ingest.md) |
+| Documents and selected-model processing | [`ingest.run`](docs/api/cep/ai-inference/ingest/ingest.run.md) |
 | Overall release scope | [Release reference](RELEASE.md) |
 
 Tested entries refer to recorded selected-package results, including Windows acceptance on October 20–21, 2026 and earlier chat/Kokoro records. This documentation update does not add a new inference test. Reproduction lives in [media acceptance](test/media_regression/README.md), [selected-model ingest tests](api/tests/ingest_models.rs) and [historical chat regression](test/engine_regression/RESULTS.md).

@@ -1,6 +1,5 @@
 //! `chat.*`: control of chats running on `/v1/chat/completions` (cancel, skip reasoning), their
-//! tools and context telemetry, and the read-only import of the App's old chats
-//! (03-method-catalog Part B). Owner: Claude (Wave A).
+//! tools and context telemetry, and the read-only import of the App's chats.
 
 mod app_import;
 
@@ -18,6 +17,7 @@ use std::sync::atomic::Ordering;
 struct Stream {
     /// The `id` of the running chat stream (from its SSE chunks)
     stream_id: String,
+    /// Written to the Engine log with the cancel (optional)
     #[serde(default)]
     reason: Option<String>,
 }
@@ -25,8 +25,10 @@ struct Stream {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Telemetry {
+    /// The model whose context window is measured (default: the active chat model, "default")
     #[serde(default)]
     model: Option<String>,
+    /// The chat whose attached tools are counted (default: "default")
     #[serde(default)]
     chat_id: Option<String>,
 }
@@ -34,12 +36,14 @@ struct Telemetry {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ChatId {
+    /// The chat (`session_id` of its chat requests)
     chat_id: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct SetTools {
+    /// The chat (`session_id` of its chat requests)
     chat_id: String,
     /// Tools to attach or update: a tool id (its default turns), or `{"id", "turns"}`
     #[serde(default)]
@@ -55,6 +59,7 @@ struct ImportApp {
     /// One App chat id (its folder name); leave out with `all: true` for every chat
     #[serde(default)]
     chat_id: Option<String>,
+    /// Import every App chat that has no Engine event log yet
     #[serde(default)]
     all: bool,
     /// Count what would be imported, write nothing
@@ -90,7 +95,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     registry
         .add(
             "chat.cancel",
-            Meta::new(Scope::Write, "Stops a running chat stream").example(
+            Meta::new(Scope::Write, "Stops a running chat stream")
+                .error(-32004, "stream_not_found", "No running stream with this id (it ended, or never started)")
+                .example(
                 json!({ "stream_id": "chatcmpl-1a2b" }),
                 json!({ "stream_id": "chatcmpl-1a2b", "status": "cancelled" }),
             ),
@@ -107,7 +114,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "chat.skip_reasoning",
-            Meta::new(Scope::Write, "Ends the model's reasoning; the same stream continues with the answer").example(
+            Meta::new(Scope::Write, "Ends the model's reasoning; the same stream continues with the answer")
+                .error(-32004, "stream_not_found", "No running stream with this id (it ended, or never started)")
+                .error(-32005, "reasoning_unavailable", "The stream's model has no native reasoning control, or thinking is off")
+                .example(
                 json!({ "stream_id": "chatcmpl-1a2b" }),
                 json!({ "stream_id": "chatcmpl-1a2b", "status": "skip_requested" }),
             ),
@@ -151,7 +161,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "chat.set_tools",
-            Meta::new(Scope::Write, "Attaches, updates or detaches a chat's tools").example(
+            Meta::new(Scope::Write, "Attaches, updates or detaches a chat's tools")
+                .error(-32602, "invalid_params", "An entry of `tools` is neither a tool id nor `{\"id\", \"turns\"}`")
+                .example(
                 json!({ "chat_id": "c1", "tools": ["web-search", { "id": "calc", "turns": 2 }], "detach": ["old-tool"] }),
                 json!({ "chat_id": "c1", "active_tools": [{ "id": "web-search", "turns": 3 }] }),
             ),
@@ -172,6 +184,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Meta::new(Scope::Write, "Imports the App's old chats (read-only) into the Engine's event logs, as a task")
                 .task()
                 .no_mcp()
+                .error(-32602, "invalid_params", "Neither `chat_id` nor `all: true` was sent")
                 .example(json!({ "all": true, "dry_run": true }), json!({ "task": { "task_id": "t_5f0c…", "status": "working" } })),
             |_: CallCtx, call: Call, p: ImportApp| async move {
                 if p.chat_id.is_none() && !p.all {

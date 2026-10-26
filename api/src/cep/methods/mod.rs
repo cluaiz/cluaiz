@@ -1,8 +1,5 @@
-//! Every CEP method of the Engine, one module per group (03-method-catalog Part B). The protocol's
-//! own methods (`rpc.discover`, `tasks.*`) come from the `cluaiz-cep` crate.
-//!
-//! Every group is declared and registered here up front, so the two agents migrating routes only
-//! edit their own group files (`.agent/plans/CEP/05-chatgpt-plan.md` §2).
+//! Every CEP method of the Engine, one module per group. The protocol's own methods
+//! (`rpc.discover`, `tasks.*`) come from the `cluaiz-cep` crate.
 
 use super::CallCtx;
 use cluaiz_cep::Registry;

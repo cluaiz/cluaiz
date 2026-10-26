@@ -16,9 +16,7 @@ members = [
     "ffi",
     "cmd",
     "tools/cluaiz-builder",
-    "test/dummy_plugin",
     "test/plugin_testing",
-    "test/ai_search_e2e_test",
     "test/comprehensive_e2e_trace",
 ]
 

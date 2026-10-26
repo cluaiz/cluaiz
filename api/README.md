@@ -65,7 +65,7 @@ flowchart TD
     I --> J
 ```
 
-The implementation is in `handlers/ingest.rs`, `handlers/ingest_model.rs` and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/inference/ingest.md).
+The implementation is in `cep/methods/ingest/` (`mod.rs`, `model.rs`) and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/cep/ai-inference/ingest/ingest.run.md).
 
 For live attachment stages on chat SSE, add `return_progress:true` and handle named `cluaiz.progress` events separately from answer deltas. Read the exact fields, attachment indices, limits and terminal ordering in the [chat processing reference](../docs/api/inference/chat_completions.md#attachment-processing-events). The default contract and ONNX task SSE remain separate.
 
@@ -82,7 +82,7 @@ The daemon and CLI resolve `session.token` through the same `EnvironmentManager`
 | Speech generation | `POST /v1/audio/speech` | Selected supported ONNX TTS package |
 | Text vectors | `POST /v1/embeddings` | Selected compatible ONNX graph or GGUF sequence-embedding model |
 | Image vectors | `POST /v1/embeddings` | Selected supported ONNX image embedding graph |
-| Document content preview | `ingest.run` or `ingest.run` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/inference/ingest.md) |
+| Document content preview | CEP `ingest.run` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/cep/ai-inference/ingest/ingest.run.md) |
 
 Image chat (`image_url.url` can also be an authorized path or HTTP URL):
 
@@ -289,7 +289,7 @@ graph TD
 - **Routes:** `POST /v1/chat/completions` and its existing `/api/chat` alias use the same handler for text and supported native multimodal chat. No backend-specific chat URL is added. An explicit missing model returns an error; an image does not substitute another slot model.
 - **Parts:** a message's existing `content` array accepts `text`, `image_url: {url}`, `audio_url: {url}`, `input_audio: {format, data}` with base64 data, and additive `file_url: {url}` for document extraction. URL sources can be HTTP(S), data URIs or authorized local paths/file URIs. Inline audio format hints use the MIME registry. Source decoding preserves message/part ordering. These are Cluaiz request forms, not a claim of full OpenAI upload/file-ID compatibility.
 - **Model contract:** selected GGUF image/audio chat requires the declared modality and one compatible projector validated by the native backend. A document is extracted into actual text; a text-only GGUF does not need a projector for that request. Typed ONNX chat media and video remain unavailable. Selecting an unsupported model returns an error without an automatic backend/model substitution.
-- **Local access:** a standard route runs as the authenticated owner; local paths are canonicalized (`cep::roots`) before they are read. Headers such as `x-caller` / `x-approval-id` are ignored. Tool calls the model makes still go through the agent's security mode and `approvals.*`.
+- **Local access:** a standard route runs as the authenticated owner; local paths are canonicalized (`cep::roots`) before they are read. Tool calls the model makes still go through the agent's security mode and `approvals.*`.
 - **Continuations:** both JSON and SSE tool turns keep original decoded buffers/options and regenerate full media context with cumulative tool-result instructions. No text-only KV pivot is used to represent missing media. This preserves input lifetime; an installed plugin/MCP's actual behavior still needs its own acceptance.
 - **Errors:** capability/source failures are request errors; permission failures are forbidden responses; runtime generation failures are non-success JSON responses or SSE `error` objects followed by `[DONE]`, not successful assistant prose. A streaming failure may follow already emitted pieces. Axum's existing request-body ceiling still applies.
 - **Control:** unique chat IDs and retained per-request cancellation flags scope chat cancellation to its request. This does not certify immediate interruption inside a native encoder call. Legacy text dispatch remains usable.

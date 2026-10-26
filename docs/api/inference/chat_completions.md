@@ -1,3 +1,278 @@
+---
+method: "POST"
+path: "/v1/chat/completions"
+standard: "OpenAI"
+category: "ai-inference"
+summary: "Chat with an installed model: text and media in, text out, streamed or whole"
+params:
+  - name: "messages"
+    type: "Array"
+    req: true
+    default: "—"
+    allowed: "Array of message objects"
+    desc: "Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses native document text or rendered PDF pages for a selected image-capable package with projector. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the media route reference."
+  - name: "model"
+    type: "String"
+    req: false
+    default: "\"auto\""
+    allowed: "Model ID or `\"auto\"`"
+    desc: "Model to use. `\"auto\"` uses the active model loaded in the chat or vision slot."
+  - name: "stream"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`true`, `false`"
+    desc: "Whether to stream tokens incrementally via Server-Sent Events (SSE)."
+  - name: "return_progress"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`true`, `false`"
+    desc: "With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses."
+  - name: "temperature"
+    type: "Float"
+    req: false
+    default: "0.7"
+    allowed: "`0.0 - 2.0`"
+    desc: "Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety."
+  - name: "max_tokens"
+    type: "Integer"
+    req: false
+    default: "until the model ends or the context is full (`2048` with attachments)"
+    allowed: "$\\ge 1$"
+    desc: "Maximum number of completion tokens to generate. Also the room kept free for the answer when the history is fitted; see Context window."
+  - name: "think_mode"
+    type: "String / Integer"
+    req: false
+    default: "\"auto\""
+    allowed: "`\"auto\"`, `\"off\"`, `\"on\"`, or integer (e.g. `768`)"
+    desc: "Controls Chain-of-Thought reasoning token emission and budget."
+  - name: "reasoning_effort"
+    type: "String"
+    req: false
+    default: "\"auto\""
+    allowed: "`\"low\"`, `\"medium\"`, `\"high\"`, `\"max\"`, `\"auto\"`"
+    desc: "OpenAI-compatible alias for reasoning token budget."
+  - name: "skip_reasoning"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`true`, `false`"
+    desc: "Bypasses the reasoning monologue phase entirely for lower latency."
+  - name: "temporary_chat"
+    type: "String"
+    req: false
+    default: "null"
+    allowed: "`\"lite\"`, `\"strict\"`"
+    desc: "Privacy isolation mode: `\"lite\"` (no vector write) or `\"strict\"` (brain and memory bypass)."
+  - name: "session_id"
+    type: "String"
+    req: false
+    default: "null"
+    allowed: "String"
+    desc: "Session identifier used to preserve conversation tool-call state across multi-turn sessions."
+  - name: "top_p"
+    type: "Float"
+    req: false
+    default: "0.95"
+    allowed: "`0.0 - 1.0`"
+    desc: "Nucleus sampling probability mass threshold."
+  - name: "top_k"
+    type: "Integer"
+    req: false
+    default: "40"
+    allowed: "$\\ge 1$"
+    desc: "Top-k tokens to sample from at each step."
+  - name: "min_p"
+    type: "Float"
+    req: false
+    default: "0.05"
+    allowed: "`0.0 - 1.0`"
+    desc: "Minimum probability threshold relative to the top token."
+  - name: "repetition_penalty"
+    type: "Float"
+    req: false
+    default: "1.1"
+    allowed: "$\\ge 1.0$"
+    desc: "Penalizes repetitive phrases and token loops."
+  - name: "presence_penalty"
+    type: "Float"
+    req: false
+    default: "0.0"
+    allowed: "$\\ge 0.0$"
+    desc: "Penalizes new tokens based on whether they appear in the text so far."
+  - name: "frequency_penalty"
+    type: "Float"
+    req: false
+    default: "0.0"
+    allowed: "$\\ge 0.0$"
+    desc: "Penalizes new tokens based on their frequency in the text so far."
+  - name: "stop"
+    type: "Array"
+    req: false
+    default: "null"
+    allowed: "Array of strings"
+    desc: "Custom token strings that halt generation immediately when matched."
+  - name: "seed"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "Integer"
+    desc: "Random seed for deterministic, reproducible generation."
+  - name: "keep_alive"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "Minutes (e.g. `5`, `0`, `-1`)"
+    desc: "Positive minutes retain after completion; `0` unloads, omission/`-1` retains. This value is not seconds."
+  - name: "response_format"
+    type: "Object"
+    req: false
+    default: "null"
+    allowed: "Object"
+    desc: "The answer is JSON, held to its shape by a grammar (llama-server's way): `{\"type\": \"json_object\"}` (any object, or the object's `schema`), or `{\"type\": \"json_schema\", \"json_schema\": {\"schema\": {...}}}`. The grammar applies after thinking. Note: the Engine keeps request JSON in sorted maps, so the properties of a schema come out in alphabetical order; send a `grammar` when the order matters. Ignored when native tool calls carry their own grammar."
+  - name: "tools"
+    type: "Array"
+    req: false
+    default: "null"
+    allowed: "Array of tool definitions"
+    desc: "List of tools the model may call (Function Calling) in the model's own format when its chat template renders tools, else via `<tool_call>` XML (`context_policy: {\"tool_format\": \"inline\"}` always uses the XML; see Native tool calls)."
+  - name: "tool_choice"
+    type: "String / Object"
+    req: false
+    default: "\"auto\""
+    allowed: "`\"none\"`, `\"auto\"`"
+    desc: "`\"none\"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide."
+  - name: "tool_search"
+    type: "Boolean"
+    req: false
+    default: "true"
+    allowed: "`true`, `false`"
+    desc: "Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See Tools on demand."
+  - name: "history"
+    type: "String"
+    req: false
+    default: "\"client\""
+    allowed: "`\"client\"`, `\"engine\"`"
+    desc: "`client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See Chat event log."
+  - name: "storage"
+    type: "String"
+    req: false
+    default: "\"engine\""
+    allowed: "`\"engine\"`, `\"external\"`, `\"none\"`"
+    desc: "Where the chat is kept: on disk (`engine`), by the app with the Engine holding it in RAM only and sending `memory_events` with each answer (`external`), or not at all (`none`). See Chat History → storage."
+  - name: "history_mode"
+    type: "String"
+    req: false
+    default: "\"recent\""
+    allowed: "`\"recent\"`, `\"adaptive\"`, `\"none\"`"
+    desc: "`recent`: the whole history; when it does not fit, the Engine first compacts the chat, then drops the oldest turns. `adaptive`: the newest `recent_turns_min` turns in full; older messages come back through recall when they fit the message. `none`: only the system prompt and the current message (plus recall)."
+  - name: "context_policy"
+    type: "Object"
+    req: false
+    default: "settings"
+    allowed: "see context runtime → Policy"
+    desc: "Planner fields for this request only, e.g. `{\"recent_turns_min\": 3}`. Unknown fields and invalid values are ignored."
+  - name: "kv_reuse"
+    type: "String"
+    req: false
+    default: "auto"
+    allowed: "`\"prefix\"`, `\"chunk\"`"
+    desc: "How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change."
+  - name: "grammar"
+    type: "String"
+    req: false
+    default: "null"
+    allowed: "GBNF string"
+    desc: "llama.cpp GBNF grammar the answer must follow (after thinking); takes precedence over `response_format`. A grammar llama.cpp cannot parse is logged and the answer is not constrained. As in llama-server, the sampler picks a token first and the grammar checks only that token; only a rejected token makes the grammar go over the whole vocabulary, so a grammar costs almost no speed (Gemma 4: 14.6 tokens/s with a grammar, 7.5 before this). The same holds for `response_format`; the grammar of native tool calls still masks every candidate, as before."
+  - name: "chat_template_kwargs"
+    type: "Object"
+    req: false
+    default: "null"
+    allowed: "Object"
+    desc: "Additional keyword arguments passed directly to the Jinja chat tokenizer template."
+  - name: "logit_bias"
+    type: "Object"
+    req: false
+    default: "null"
+    allowed: "Map of token ID to bias"
+    desc: "Token ID probability bias adjustments (-100 to +100)."
+request_payload: |
+  {
+    "model": "llama_3.2_instruct-3b-gguf-q4_k_m",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say hello in one word."
+      }
+    ],
+    "max_tokens": 8,
+    "temperature": 0
+  }
+response: |
+  {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "Hello",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1792975420,
+    "engine": {
+      "context": {
+        "prompt_tokens": 16,
+        "processed_tokens": 16,
+        "cache_n": 0,
+        "n_ctx": 6912,
+        "stop": "eos"
+      },
+      "load": {
+        "placement": "Hybrid",
+        "n_gpu_layers": 11,
+        "n_ctx": 6912,
+        "cache_type": "Kv8"
+      },
+      "timings": {
+        "predicted_n": 1
+      }
+    },
+    "id": "chatcmpl-315047ab1f6e41d787ff2b2a61fa0dec",
+    "model": "llama_3.2_instruct-3b-gguf-q4_k_m",
+    "object": "chat.completion",
+    "context_report": {
+      "plan": {
+        "n_ctx": 6912,
+        "available_tokens": 6760,
+        "history_mode": "recent",
+        "needs_compaction": false
+      },
+      "tools": {},
+      "timing": {}
+    }
+  }
+streaming: "`stream: true`: Server-Sent Events, OpenAI `chat.completion.chunk` deltas, then `[DONE]`; with `return_progress: true`, named `cluaiz.progress` events too"
+errors:
+  - status: 400
+    type: "invalid_request_error"
+    when: "`messages` is empty, a field is invalid, or the model is not installed (`code: model_not_found`)"
+  - status: 400
+    type: "exceed_context_size_error"
+    when: "The request does not fit the context and context shifting is off"
+  - status: 401
+    type: "unauthenticated"
+    when: "API authentication is on and no valid token was sent"
+  - status: 413
+    type: "request_too_large"
+    when: "The body (with inline media) is over the attachment limit"
+  - status: 503
+    type: "resource_error"
+    when: "Another attachment request holds the media buffers (`code: media_busy`); retry after it ends"
+---
+
 # Chat & Multimodal Completions API
 
 `POST /v1/chat/completions`
@@ -57,7 +332,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
 | **`return_progress`** | Boolean | No | `false` | `true`, `false` | With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses. |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
-| **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of completion tokens to generate (alias: `n_predict`). Also the room kept free for the answer when the history is fitted; see [Context window](#-context-window--context-shifting). |
+| **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of completion tokens to generate. Also the room kept free for the answer when the history is fitted; see [Context window](#-context-window--context-shifting). |
 | **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"on"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
 | **`reasoning_effort`** | String | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"` | OpenAI-compatible alias for reasoning token budget. |
 | **`skip_reasoning`** | Boolean | No | `false` | `true`, `false` | Bypasses the reasoning monologue phase entirely for lower latency. |
@@ -66,20 +341,20 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 | **`top_p`** | Float | No | `0.95` | `0.0 - 1.0` | Nucleus sampling probability mass threshold. |
 | **`top_k`** | Integer | No | `40` | $\ge 1$ | Top-k tokens to sample from at each step. |
 | **`min_p`** | Float | No | `0.05` | `0.0 - 1.0` | Minimum probability threshold relative to the top token. |
-| **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops (alias: `repeat_penalty`). |
+| **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops. |
 | **`presence_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on whether they appear in the text so far. |
 | **`frequency_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on their frequency in the text so far. |
 | **`stop`** | Array | No | `null` | Array of strings | Custom token strings that halt generation immediately when matched. |
 | **`seed`** | Integer | No | `null` | Integer | Random seed for deterministic, reproducible generation. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0`, `-1`) | Positive minutes retain after completion; `0` unloads, omission/`-1` retains. This value is not seconds. |
 | **`response_format`** | Object | No | `null` | Object | The answer is JSON, held to its shape by a grammar (llama-server's way): `{"type": "json_object"}` (any object, or the object's `schema`), or `{"type": "json_schema", "json_schema": {"schema": {...}}}`. The grammar applies after thinking. Note: the Engine keeps request JSON in sorted maps, so the properties of a schema come out in alphabetical order; send a `grammar` when the order matters. Ignored when native tool calls carry their own grammar. |
-| **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) in the model's own format when its chat template renders tools, else via `<tool_call>` XML (`context_policy: {"tool_format": "inline"}` always uses the XML; see [Native tool calls](./context_runtime.md#native-tool-calls)). |
+| **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) in the model's own format when its chat template renders tools, else via `<tool_call>` XML (`context_policy: {"tool_format": "inline"}` always uses the XML; see [Native tool calls](../cep/ai-inference/context/README.md#native-tool-calls)). |
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
 | **`history`** | String | No | `"client"` | `"client"`, `"engine"` | `client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See [Chat event log](#-chat-event-log). |
-| **`storage`** | String | No | `"engine"` | `"engine"`, `"external"`, `"none"` | Where the chat is kept: on disk (`engine`), by the app with the Engine holding it in RAM only and sending `memory_events` with each answer (`external`), or not at all (`none`). See [Chat History → storage](./chat_history.md#where-a-chat-is-kept-storage). |
+| **`storage`** | String | No | `"engine"` | `"engine"`, `"external"`, `"none"` | Where the chat is kept: on disk (`engine`), by the app with the Engine holding it in RAM only and sending `memory_events` with each answer (`external`), or not at all (`none`). See [Chat History → storage](../cep/ai-inference/memory/README.md#where-a-chat-is-kept-storage). |
 | **`history_mode`** | String | No | `"recent"` | `"recent"`, `"adaptive"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat, then drops the oldest turns. `adaptive`: the newest `recent_turns_min` turns in full; older messages come back through [recall](#-recall) when they fit the message. `none`: only the system prompt and the current message (plus recall). |
-| **`context_policy`** | Object | No | settings | see [Context Runtime API](./context_runtime.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
+| **`context_policy`** | Object | No | settings | see [context runtime → Policy](../cep/ai-inference/context/README.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | GBNF string | llama.cpp GBNF grammar the answer must follow (after thinking); takes precedence over `response_format`. A grammar llama.cpp cannot parse is logged and the answer is not constrained. As in llama-server, the sampler picks a token first and the grammar checks only that token; only a rejected token makes the grammar go over the whole vocabulary, so a grammar costs almost no speed (Gemma 4: 14.6 tokens/s with a grammar, 7.5 before this). The same holds for `response_format`; the grammar of native tool calls still masks every candidate, as before. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
@@ -221,7 +496,7 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 - `protected_tokens`: the system prompt and the current message, which must fit.
 - `available_tokens` / `used_tokens`: room for the history and what it uses.
 - `needs_compaction`: the history uses `compact_at_pct` (85%) of the room or more, or does not fit.
-- `policy`: the planner policy used (settings plus the request's `context_policy`). Settings, preview and kept reports: [Context Runtime API](./context_runtime.md).
+- `policy`: the planner policy used (settings plus the request's `context_policy`). Settings, preview and kept reports: [context runtime](../cep/ai-inference/context/README.md).
 
 **Compaction.** In a chat with `session_id`, when the history needs it, the Engine changes what it added to earlier turns, cheapest loss first:
 
@@ -281,13 +556,13 @@ The question about a fact never given (a passport number) was answered with an i
 
 ## 📝 Notes
 
-Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it; and the model can propose notes with `remember` when the user asks to remember something. See [Notes API](./notes.md).
+Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it; and the model can propose notes with `remember` when the user asks to remember something. See [`notes.*`](../cep/ai-inference/notes/notes.list.md).
 
 ---
 
 ## 💾 Chat Memory (saved KV cache per chat)
 
-Send a `session_id` with every request of a chat. After each answer (once per answer, not after every tool step) the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](./chat_memory.md).
+Send a `session_id` with every request of a chat. After each answer (once per answer, not after every tool step) the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](../cep/ai-inference/kv/kv.status.md).
 
 ---
 

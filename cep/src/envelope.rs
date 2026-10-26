@@ -1,6 +1,6 @@
 //! The JSON-RPC 2.0 envelope (https://www.jsonrpc.org/specification): requests, notifications,
 //! batches and responses. One deviation, on purpose: params are by name only (an object), because
-//! positional params are hard to read for people and small models (01-architecture §7.1).
+//! positional params are hard to read for people and small models.
 
 use crate::error::CepError;
 use serde::Deserialize;

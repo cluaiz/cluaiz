@@ -31,19 +31,18 @@ struct Client {
     token: String,
 }
 impl Client {
-    async fn post(&self, route: &str, body: Value, caller: &str) -> Result<(u16, String)> {
+    async fn post(&self, route: &str, body: Value) -> Result<(u16, String)> {
         let result = self
             .http
             .post(format!("{}{route}", self.base))
             .bearer_auth(&self.token)
-            .header("x-caller", caller)
             .json(&body)
             .send()
             .await?;
         Ok((result.status().as_u16(), result.text().await?))
     }
     async fn json(&self, route: &str, body: Value) -> Result<Value> {
-        let (status, body) = self.post(route, body, "user").await?;
+        let (status, body) = self.post(route, body).await?;
         assert_eq!(status, 200, "{route}: {body}");
         Ok(serde_json::from_str(&body)?)
     }
@@ -86,7 +85,6 @@ impl Client {
                     "temperature":0.0,"seed":31,"think_mode":"off","max_tokens":96,
                     "messages":[{"role":"user","content":parts}]
                 }),
-                "user",
             )
             .await?;
         assert_eq!(status, 200, "{body}");
@@ -257,7 +255,7 @@ async fn real_chat_planner_only_selected_models_settings_and_timings() -> Result
         for entry in &entries {
             let start = Instant::now();
             let (status, body) = client
-                .post("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":entry.id}}), "user")
+                .post("/v1/cep", json!({"jsonrpc":"2.0","id":1,"method":"system.plan","params":{"model":entry.id}}))
                 .await?;
             let ms = start.elapsed().as_secs_f64() * 1000.0;
             assert_eq!(status, 200, "{body}");
@@ -602,7 +600,6 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         .post(
             "/v1/cep",
             json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":{"source":"x".repeat(transport_limit)}}),
-            "user",
         )
         .await?;
     assert_eq!(oversized.0, 413, "{}", oversized.1);
@@ -739,7 +736,6 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
             "/v1/embeddings",
             json!({"model":incomplete_id,
         "input":[{"type":"image","source":"https://invalid.example/not-fetched.png"}]}),
-            "user",
         )
         .await?;
     assert_eq!(status, 400, "{body}");

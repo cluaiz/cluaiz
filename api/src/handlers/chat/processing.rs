@@ -9,7 +9,6 @@ use super::{
 use crate::AppState;
 use axum::{
     body::{Body, Bytes},
-    http::HeaderMap,
     response::{IntoResponse, Response},
 };
 use cluaiz_core::processing::{
@@ -45,7 +44,6 @@ fn event_bytes(id: &str, event: ProcessingEvent) -> Bytes {
 
 pub(super) async fn stream_with_progress(
     state: Arc<AppState>,
-    headers: HeaderMap,
     request: ExternalChatRequest,
     id: String,
 ) -> Response {
@@ -66,7 +64,7 @@ pub(super) async fn stream_with_progress(
         // Preflight contains synchronous native/metadata calls. Polling it inside the HTTP body
         // can delay flushing an already-yielded event; its owned task keeps transport polling separate.
         let mut prepare = tokio::spawn(async move {
-            let ctx = match PreparedChatContext::prepare(&state, &request, &prepare_id, &headers, Some(prepare_progress.clone())).await {
+            let ctx = match PreparedChatContext::prepare(&state, &request, &prepare_id, Some(prepare_progress.clone())).await {
                 Ok(ctx) => ctx,
                 Err(response) => {
                     prepare_progress.finish(if prepare_progress.cancelled() { ProcessingState::Cancelled } else { ProcessingState::Failed });

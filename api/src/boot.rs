@@ -1,5 +1,5 @@
 //! One start for every way the Engine runs: the HTTP / native-pipe daemon, and the in-process C
-//! library (`cep_call`) (`.agent/plans/CEP/04-implementation-plan.md` P1.2, P5)
+//! library (`cep_call`)
 
 use crate::state::AppState;
 use std::sync::Arc;

@@ -89,7 +89,7 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
         )
         .await?;
     assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
-    let (status, body) = post(&router, "/v1/embeddings", request.clone(), "user").await?;
+    let (status, body) = post(&router, "/v1/embeddings", request.clone()).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     let a = vector(&body, 0)?;
     assert_eq!(a, vector(&body, 1)?);
@@ -123,13 +123,12 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
             &router,
             "/v1/embeddings",
             json!({"model":id,"input":input}),
-            "agent",
         )
         .await?;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     }
     let admission = state.host.embeddings.try_acquire()?;
-    let (status, body) = post(&router, "/v1/embeddings", request.clone(), "user").await?;
+    let (status, body) = post(&router, "/v1/embeddings", request.clone()).await?;
     assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
     assert_eq!(
         serde_json::from_str::<Value>(&body)?["error"]["type"],
@@ -163,7 +162,6 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
         &router,
         "/v1/embeddings",
         json!({"model":id,"input":first,"keep_alive":1}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -174,11 +172,10 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
         &router,
         "/v1/embeddings",
         json!({"model":id,"input":first,"keep_alive":1}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
-    let (status, body) = post(&router, "/v1/embeddings", request, "user").await?;
+    let (status, body) = post(&router, "/v1/embeddings", request).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     println!("REAL GGUF RETENTION: waiting for old timer after indefinite renewal");
     tokio::time::sleep(std::time::Duration::from_secs(61)).await;
@@ -189,7 +186,6 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
         &router,
         "/v1/embeddings",
         json!({"model":id,"input":first,"keep_alive":0}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -269,7 +265,7 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         )
         .await?;
     assert_eq!(unauth.status(), StatusCode::UNAUTHORIZED);
-    let (status, body) = post(&router, "/v1/embeddings", request, "user").await?;
+    let (status, body) = post(&router, "/v1/embeddings", request).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     let first = vector(&body, 0)?;
     assert_eq!(first, vector(&body, 1)?);
@@ -328,7 +324,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
             &router,
             "/v1/embeddings",
             json!({"model":ids[0],"input":chunks,"keep_alive":-1}),
-            "user",
         )
         .await?;
         assert_eq!(status, StatusCode::OK, "{body}");
@@ -364,7 +359,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
             "/v1/embeddings",
             json!({"model":ids[1],
             "input":[{"type":"image","source":source}],"keep_alive":-1}),
-            "user",
         )
         .await?;
         assert_eq!(status, StatusCode::OK, "{body}");
@@ -444,7 +438,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         "/v1/embeddings",
         json!({"model":incomplete_id,
         "input":[{"type":"image","source":"https://invalid.example/not-fetched.png"}]}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
@@ -488,14 +481,13 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
             StatusCode::INTERNAL_SERVER_ERROR,
         ),
     ] {
-        let (status, body) = post(&router, "/v1/embeddings", request, "agent").await?;
+        let (status, body) = post(&router, "/v1/embeddings", request).await?;
         assert_eq!(status, expected, "{body}");
     }
     let (status, body) = post(
         &router,
         "/v1/embeddings",
         json!({"model":ids[0],"input":text,"keep_alive":0}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");

@@ -1,7 +1,7 @@
 use crate::{state::AppState, utils::prepare_authorized_audio};
 use axum::{
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::{sse::Event, IntoResponse, Response, Sse},
     Json,
 };
@@ -254,7 +254,6 @@ fn completed(model: String, task: AudioTask, output: NativeOutput) -> AudioExecu
 /// One dispatch/preparation boundary for standard routes and CEP; no chat dispatch.
 pub(crate) async fn dispatch_audio(
     state: &Arc<AppState>,
-    headers: HeaderMap,
     payload: AudioExecuteRequest,
     call: Option<&cluaiz_cep::Call>,
     cancellation: Arc<std::sync::atomic::AtomicBool>,
@@ -349,15 +348,13 @@ pub(crate) async fn dispatch_audio(
                     .await
                     .map_err(AudioError::Policy)?;
             }
-            let (owner, request_headers, request_settings) =
-                (Arc::clone(state), headers.clone(), settings.clone());
+            let (owner, request_settings) = (Arc::clone(state), settings.clone());
             let source_cancel = Arc::clone(&cancellation);
             let preparation = admission
                 .clone()
                 .prepare(Arc::clone(&cancellation), async move {
                     prepare_authorized_audio(
                         &owner,
-                        &request_headers,
                         source,
                         &request_settings,
                         Some(source_cancel),
@@ -470,7 +467,7 @@ pub(crate) async fn dispatch_audio(
                 .await
                 .map_err(AudioError::Policy)?;
         }
-        match prepare_authorized_audio(state, &headers, source, &settings, Some(cancellation)).await
+        match prepare_authorized_audio(state, source, &settings, Some(cancellation)).await
         {
             Ok(audio) => AudioInput::Pcm(audio),
             Err((kind, message)) => {
@@ -535,12 +532,11 @@ pub(crate) async fn authorize_model(
 
 async fn standard_audio(
     state: Arc<AppState>,
-    headers: HeaderMap,
     request: AudioExecuteRequest,
     stream: bool,
 ) -> Response {
     let cancellation = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    match dispatch_audio(&state, headers, request, None, cancellation).await {
+    match dispatch_audio(&state, request, None, cancellation).await {
         Ok(ready) => respond(ready.events, ready.task, ready.model, stream).await,
         Err(error) => error.into_standard(),
     }
@@ -630,7 +626,6 @@ struct TranscriptionRequest {
 
 pub async fn speech(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     Json(payload): Json<Value>,
 ) -> Response {
     let payload: SpeechRequest = match serde_json::from_value(payload) {
@@ -653,12 +648,11 @@ pub async fn speech(
         }),
         keep_alive: payload.keep_alive,
     };
-    standard_audio(state, headers, request, payload.stream.unwrap_or(false)).await
+    standard_audio(state, request, payload.stream.unwrap_or(false)).await
 }
 
 pub async fn transcriptions(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     Json(payload): Json<Value>,
 ) -> Response {
     let payload: TranscriptionRequest = match serde_json::from_value(payload) {
@@ -683,7 +677,7 @@ pub async fn transcriptions(
         }),
         keep_alive: payload.keep_alive,
     };
-    standard_audio(state, headers, request, payload.stream.unwrap_or(false)).await
+    standard_audio(state, request, payload.stream.unwrap_or(false)).await
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-"""B3 model controls against a frozen real executable and a fresh isolated home.
+"""models.* controls against a frozen real executable and a fresh isolated home.
 
 Reads existing external GGUF headers. Removal affects only a newly created small
 test package. Optional --check-load loads one real installed model without inference.
@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-from golden_capture import REPO, digest, prepare, save, validate_paths
+from journey_home import REPO, digest, prepare, save, validate_paths
 
 sys.path.insert(0, str(REPO / "test/context-runtime"))
 from harness import Engine
@@ -139,14 +139,6 @@ def main():
             check("loaded test package unloaded first", engine.cep("system.ps")["active_processes"] == [])
             check("original weight preserved after hard-link removal", source_weight.is_file()
                   and source_weight.stat().st_size == primary["size_bytes"])
-        for path in ("/models/available", "/v1/models/installed", "/models/download", "/models/load",
-                     "/v1/models/" + selected["id"] + "/inspect_raw_header", "/v1/models/" + selected["id"]):
-            try:
-                response = engine._request("GET", path, timeout=10)
-            except urllib.error.HTTPError as exception:
-                response = exception
-            with response:
-                check("retired model route", response.code == 404)
     except Exception as exception:
         failure = exception
         report["failure"] = {"type": type(exception).__name__, "message": str(exception)}

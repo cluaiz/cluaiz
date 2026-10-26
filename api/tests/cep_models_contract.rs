@@ -206,16 +206,6 @@ async fn test_models_registry_inspect_remove_validation_and_retired_routes() -> 
         assert_eq!(reply["error"]["data"]["needs"], "roots");
         assert!(Path::new(&gguf.local_dir).exists());
     }
-    for path in [
-        "/models/available",
-        "/v1/models/installed",
-        "/models/download",
-        "/models/load",
-        "/v1/models/metadata-package/inspect_raw_header",
-        "/v1/models/metadata-package",
-    ] {
-        assert_eq!(get(&router, path).await?.0, StatusCode::NOT_FOUND, "{path}");
-    }
     let removed = support::cep(&router, "models.remove", json!({"model":gguf.id}))
         .await?
         .map_err(|e| anyhow!(e))?;

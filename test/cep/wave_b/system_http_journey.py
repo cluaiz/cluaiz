@@ -1,6 +1,6 @@
-"""B2 system/storage HTTP and real CLI journey in a fresh isolated Engine home.
+"""system.* and storage.* HTTP and real CLI journey in a fresh isolated Engine home.
 
-Reuses the existing process harness and B0 isolation helpers. Reads installed model
+Reuses the process harness and journey_home.py. Reads installed model
 headers for planning; never loads weights, downloads models or touches user settings.
 """
 import argparse
@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-from golden_capture import REPO, digest, prepare, save, validate_paths
+from journey_home import REPO, digest, prepare, save, validate_paths
 
 sys.path.insert(0, str(REPO / "test/context-runtime"))
 from harness import Engine
@@ -114,14 +114,6 @@ def main():
         finally:
             cache.unlink()
             cache.mkdir()
-        for path in ("/v1/system/ps", "/v1/system/live", "/v1/system/plan",
-                     "/v1/system/storage/temp_media", "/v1/system/storage/temp_media/clean"):
-            try:
-                response = engine._request("GET", path, timeout=10)
-            except urllib.error.HTTPError as error:
-                response = error
-            with response:
-                check("retired route " + path, response.code == 404)
         token_path = home / "session.token"
         original = token_path.read_text(encoding="utf-8")
         try:

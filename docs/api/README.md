@@ -43,12 +43,11 @@ The current middleware bypasses Bearer checks when `api_auth.required` is false.
   - `/health`
 - **Everything Cluaiz-specific is CEP**, one JSON-RPC 2.0 endpoint: `POST /v1/cep`.
   - Files, system, settings, models, tools, chat memory, notes, context, audio tasks, ingest, approvals.
-  - Start with [cep/README.md](./cep/README.md). Every method is in [cep/methods.md](./cep/methods.md).
-  - The old REST routes are listed there with their replacement.
+  - Start with [cep/README.md](./cep/README.md). Every method has its own page, in five categories.
 
 ## Model selection and media routes
 
-`models.list` returns the installed models. Use an exact `id`, and inspect `format_type`, `supported_tasks`, `metadata` and `experimental`. Task names can use hyphens or underscores. Registry declarations identify candidates; runtime assets still determine compatibility.
+`models.list` returns the installed models. Use an exact `id`, and inspect `format`, `supported_tasks`, `metadata` and `experimental`. Task names can use hyphens or underscores. Registry declarations identify candidates; runtime assets still determine compatibility.
 
 PowerShell discovery on the engine's own computer (the configured token/home may differ):
 
@@ -59,7 +58,7 @@ $token = (Get-Content -LiteralPath $tokenPath -Raw).Trim()
 $headers = @{ Authorization = "Bearer $token" }
 $call = @{ jsonrpc = '2.0'; id = 1; method = 'models.list'; params = @{} } | ConvertTo-Json
 $catalog = (Invoke-RestMethod "$base/v1/cep" -Method Post -Headers $headers -ContentType 'application/json' -Body $call).result
-$catalog | Select-Object id, category, format_type, supported_tasks, experimental
+$catalog | Select-Object id, category, format, supported_tasks, experimental
 # Save the Body Payload as request.json after selecting your installed model.
 $body = Get-Content -LiteralPath './request.json' -Raw
 Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
@@ -85,27 +84,27 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 ## 📦 Dedicated API Documentation Modules
 
 ### 1. CEP (Cluaiz Engine Protocol)
-* [**`POST /v1/cep`**](./cep/README.md): the envelope, errors, tasks, approvals, MCP (`/mcp`, `cluaiz mcp-server`), the C library (`cep_call` / `cep_free`), and the old-route table.
-* [**Method reference**](./cep/methods.md): every method with params, scope and example (generated; [openrpc.json](./cep/openrpc.json)).
+* [**`POST /v1/cep`**](./cep/README.md): the envelope, errors, tasks, approvals, MCP (`/mcp`, `cluaiz mcp-server`), and the C library (`cep_call` / `cep_free`).
+* One page per method, in five categories (the App's API sidebar):
+  * [AI & Inference Core](./cep/ai-inference/README.md): `chat.*`, `audio.*`, `ingest.run`, `memory.*` ([overview](./cep/ai-inference/memory/README.md)), `notes.*`, `context.*` ([overview](./cep/ai-inference/context/README.md)), `kv.*`
+  * [Agents, MCP & Tools](./cep/agents-tools/README.md): `tools.*`, `approvals.*`
+  * [Filesystem & Security Jail](./cep/filesystem/README.md): `fs.*`, `workspace.*`
+  * [Models & Engine Vault](./cep/models/README.md): `models.*`
+  * [System & Infrastructure](./cep/system/README.md): `system.*`, `config.*`, `storage.*`, `tokens.*`, `tasks.*`, `rpc.discover`
+* [openrpc.json](./cep/openrpc.json): every method, machine-readable.
 
-### 2. Inference & Multimodal Execution
-* [**`POST /v1/chat/completions`**](./inference/chat_completions.md): conversational dialogue, multimodal input, streaming SSE, reasoning tokens. Control a running stream with CEP `chat.cancel` / `chat.skip_reasoning`.
-* [**Chat memory**](./inference/chat_history.md): `memory.*` (event log, Chat Map, recall, export/import) and `notes.*`.
-* [**Context runtime**](./inference/context_runtime.md): `context.*` and `config` section `context`.
+### 2. Inference & Multimodal Execution (OpenAI routes)
+* [**`POST /v1/chat/completions`**](./inference/chat_completions.md): conversational dialogue, multimodal input, streaming SSE, reasoning tokens. Control a running stream with [`chat.cancel`](./cep/ai-inference/chat/chat.cancel.md) / [`chat.skip_reasoning`](./cep/ai-inference/chat/chat.skip_reasoning.md).
 * [**`POST /v1/embeddings`**](./inference/embeddings.md): vector generation with GGUF/ONNX routing.
-* [**`POST /v1/audio/speech`**](./inference/audio_speech.md): text-to-speech; voices with CEP `audio.voices`, speech tasks with `audio.run`.
-* [**`POST /v1/audio/transcriptions`**](./inference/audio_transcriptions.md): speech-to-text; languages with CEP `audio.languages`.
-* [**`ingest.run`**](./inference/ingest.md): document extraction and optional model processing, as a CEP task.
-* [**`POST /v1/rerank`**](./inference/rerank.md): cross-encoder document re-ranking.
+* [**`POST /v1/audio/speech`**](./inference/audio_speech.md): text-to-speech; voices with [`audio.voices`](./cep/ai-inference/audio/audio.voices.md), speech tasks with [`audio.run`](./cep/ai-inference/audio/audio.run.md).
+* [**`POST /v1/audio/transcriptions`**](./inference/audio_transcriptions.md): speech-to-text; languages with [`audio.languages`](./cep/ai-inference/audio/audio.languages.md).
 
-### 3. Model Management
-* [**`GET /v1/models` & `GET /api/tags`**](./models/list_models.md): list installed and active models (CEP `models.list`, `models.load`, `models.inspect`, `models.remove` manage them).
-* [**`POST /api/pull`**](./models/pull_model.md): download weights.
+### 3. Models
+* [**`GET /v1/models` & `GET /api/tags`**](./models/list_models.md): installed models in the OpenAI and Ollama formats. Manage them with [`models.*`](./cep/models/README.md).
+* [**`POST /api/pull`**](./models/pull_model.md): download a model (Ollama); the CEP task is [`models.download`](./cep/models/models/models.download.md).
 
-### 4. System
-* [**`GET /health`**](./system/health.md): engine health.
-* [**`system.plan`**](./system/plan.md): the execution plan for a model against live hardware, without loading it.
-* Everything else (`system.info`, `system.live`, `system.ps`, `system.exec`, `storage.*`, `config.*`, `tokens.*`, `approvals.*`, `fs.*`, `workspace.*`, `tools.*`): [cep/methods.md](./cep/methods.md).
+### 4. Health
+* [**`GET /health`**](./system/health.md): the only route that is always open.
 
 ---
 

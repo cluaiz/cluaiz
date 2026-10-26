@@ -107,7 +107,7 @@ async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Re
             {"type":"video_url","video_url":{"url":video_path,"include_audio":false}}
         ]}]});
         let (status, body) =
-            support::post(&router, "/v1/chat/completions", request, "user").await?;
+            support::post(&router, "/v1/chat/completions", request).await?;
         assert_eq!(status, StatusCode::OK, "{body}");
         let answer = if stream {
             let mut answer = String::new();
@@ -166,7 +166,7 @@ async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Re
     assert!(plan["model_info"].get("supported_attachments").is_none());
     std::fs::write(&video_path, b"corrupt video container")?;
     let (status, body) = support::post(&router, "/v1/chat/completions", json!({"model":model_id,"stream":false,
-        "messages":[{"role":"user","content":[{"type":"video_url","video_url":{"url":video_path}}]}]}), "user").await?;
+        "messages":[{"role":"user","content":[{"type":"video_url","video_url":{"url":video_path}}]}]})).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     assert!(serde_json::from_str::<Value>(&body)?["error"].is_object());
     state.host.unload_model().await;

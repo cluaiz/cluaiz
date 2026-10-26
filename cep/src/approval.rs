@@ -1,4 +1,4 @@
-//! Approvals (02-security §4.5): the owner's yes for one exact call. An approval is bound to the
+//! Approvals: the owner's yes for one exact call. An approval is bound to the
 //! principal, the method and a hash of the params, is used once, and expires.
 
 use crate::error::CepError;

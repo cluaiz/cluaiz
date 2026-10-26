@@ -1,5 +1,5 @@
-//! 🗺️ Central Single-Page Master Routing Map (`api/src/routes.rs`)
-//! All Cluaiz endpoints unified in one master routing table with zero omissions.
+//! The Engine's HTTP routes: the market-standard routes, `/health`, and CEP (`/v1/cep`, `/mcp`).
+//! Everything Cluaiz-specific is a CEP method, not a route.
 
 use crate::handlers;
 use crate::AppState;
@@ -18,17 +18,12 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .allow_methods([
             axum::http::Method::GET,
             axum::http::Method::POST,
-            axum::http::Method::PUT,
-            axum::http::Method::DELETE,
             axum::http::Method::OPTIONS,
         ])
         .allow_headers([
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
             axum::http::header::ACCEPT,
-            axum::http::HeaderName::from_static("x-cluaiz-session"),
-            axum::http::HeaderName::from_static("x-caller"),
-            axum::http::HeaderName::from_static("x-approval-id"),
         ])
         .allow_origin(tower_http::cors::Any);
 
@@ -37,7 +32,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
     Router::new()
         // ── 1. Core Health & Info ──
         .route("/health", get(handlers::health::health_check))
-        // CEP: every Engine-specific method (`.agent/plans/CEP/`)
+        // CEP: every Engine-specific method (docs/api/cep)
         .route("/v1/cep", post(crate::cep::http::handle).layer(from_fn(attachment_body_limit)))
         // ── 2. External Streaming, Embeddings & Audio API ──
         .route("/v1/chat/completions", chat.clone())
@@ -55,14 +50,12 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             "/v1/audio/transcriptions",
             post(handlers::audio::transcriptions).layer(from_fn(attachment_body_limit)),
         )
-        // ── 3. External Compatible & Legacy Models API ──
+        // ── 3. Models (OpenAI, Ollama) ──
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
         .route("/api/pull", post(handlers::models::pull_model))
         // MCP server over the CEP registry
         .route("/mcp", post(crate::cep::mcp::handle))
-        // ── 13. System Control, Telemetry & Processes ──
-        // ── 15. Storage Control API ──
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             crate::auth::auth_middleware,

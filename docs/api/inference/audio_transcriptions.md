@@ -1,3 +1,100 @@
+---
+method: "POST"
+path: "/v1/audio/transcriptions"
+standard: "OpenAI"
+category: "ai-inference"
+summary: "Speech to text with an installed STT model (Whisper and others)"
+params:
+  - name: "input_source"
+    type: "Object"
+    req: false
+    default: "—"
+    allowed: "`{\"type\": \"file\" | \"audio\" | \"base64\" | \"url\", \"data\": \"...\"}`"
+    desc: "Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted)."
+  - name: "file"
+    type: "String"
+    req: false
+    default: "—"
+    allowed: "Local file path or URI"
+    desc: "Direct file path shortcut (OpenAI-compatible alternative to `input_source`)."
+  - name: "model"
+    type: "String"
+    req: false
+    default: "Active/eligible installed STT package"
+    allowed: "Installed STT model ID"
+    desc: "Exact registry ID. Do not send a Hugging Face repository name or invent a quantization suffix."
+  - name: "language"
+    type: "String"
+    req: false
+    default: "\"auto\""
+    allowed: "ISO-639-1 code (e.g. `\"en\"`, `\"hi\"`, `\"es\"`, `\"fr\"`, `\"auto\"`)"
+    desc: "Target spoken language. Setting `\"auto\"` runs Whisper language identification."
+  - name: "languages"
+    type: "String[]"
+    req: false
+    default: "[]"
+    allowed: "Up to 10 language codes (e.g. `[\"hi\", \"en\"]`)"
+    desc: "Candidate languages for automatic identification; prefer omitting `language` when using this list. Unknown candidates are skipped; if none match, available model languages are considered. Monolingual packages ignore this list. Identification and mixed-language accuracy are not guaranteed."
+  - name: "temperature"
+    type: "Float"
+    req: false
+    default: "0.0"
+    allowed: "`0.0` only"
+    desc: "Nonzero sampling temperature is not implemented and is rejected."
+  - name: "timestamps"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`false` only"
+    desc: "`true` is rejected; `output.segments` is currently null."
+  - name: "stream"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`true`, `false`"
+    desc: "When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object."
+  - name: "keep_alive"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "Minutes (e.g. `5`, `0` to unload, `-1` forever)"
+    desc: "Session cache lifetime in memory before automatic session cleanup."
+request_payload: |
+  {
+    "model": "whisper-large-v3-turbo-INT8",
+    "file": "D:/audio/memo.wav"
+  }
+response: |
+  {
+    "status": "success",
+    "task": "speech_to_text",
+    "model": "whisper-large-v3-turbo-INT8",
+    "info": null,
+    "output": {
+      "text": "The secret word is mango. Please remember it!",
+      "audio_data": null,
+      "segments": null
+    }
+  }
+streaming: "`stream: true`: Server-Sent Events `{status: \"chunk\", token}`, then `{status: \"done\", result}`"
+errors:
+  - status: 400
+    type: "unsupported_parameter"
+    when: "Timestamps, VAD, beam size above 1, or temperature above 0"
+  - status: 400
+    type: "invalid_input"
+    when: "No `input_source` / `file`, a bare base64 string, or an unreadable source"
+  - status: 401
+    type: "unauthenticated"
+    when: "API authentication is on and no valid token was sent"
+  - status: 404
+    type: "model_not_found"
+    when: "The model is not installed, or no installed model declares speech_to_text"
+  - status: 413
+    type: "request_too_large"
+    when: "Inline audio is over the attachment limit"
+---
+
 # Speech-to-Text (STT) Transcriptions API (`/v1/audio/transcriptions`)
 
 `POST /v1/audio/transcriptions` (alias: `audio.run` with task `speech_to_text`)

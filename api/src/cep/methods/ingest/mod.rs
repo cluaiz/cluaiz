@@ -1,7 +1,6 @@
-//! `ingest.run`: documents and media to text, chunks or vectors, as a task (03-method-catalog
-//! Part B); what `/v1/ingest` and `/v1/ingest/file` did. Each source's result is a task event as it
-//! finishes; the task's result holds all of them. Source access goes through the same
-//! canonicalizer as chat attachments, then the caller's roots. Owner: Claude (took over Wave B6).
+//! `ingest.run`: documents and media to text, chunks or vectors, as a task. Each source's result
+//! is a task event as it finishes; the task's result holds all of them. Source access goes through
+//! the same canonicalizer as chat attachments, then the caller's roots.
 
 mod model;
 
@@ -40,9 +39,13 @@ pub struct ChunkingStrategy {
 #[derive(Deserialize, Serialize, Debug, Clone, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct VisionSettings {
+    /// false: a vision model's text is not generated (only with a vision `model`)
     pub use_vision: Option<bool>,
+    /// Not supported: any value is refused
     pub detail_level: Option<String>,
+    /// The instruction the vision model gets with each page or image (only with a vision `model`)
     pub system_instruction: Option<String>,
+    /// Most tokens the vision model writes per page or image (only with a vision `model`)
     pub max_tokens: Option<usize>,
 }
 
@@ -60,8 +63,11 @@ pub struct IngestPayload {
     pub source: SourceInput,
     /// An installed embedding, vision or chat model; extraction only when absent
     pub model: Option<String>,
+    /// What each source's result contains
     pub output_controls: Option<OutputControls>,
+    /// How extracted text is cut into chunks
     pub chunking_strategy: Option<ChunkingStrategy>,
+    /// Options for a generative vision `model`
     pub vision_settings: Option<VisionSettings>,
 }
 
@@ -74,6 +80,15 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "ingest.run",
         Meta::new(Scope::Read, "Extracts documents (and optionally runs a model on them), as a task; one event per source")
             .task()
+            .error(-32602, "invalid_params", "No source, an empty source, unsupported chunking (overlap or a type other than semantic), vision settings without a vision model, or vectors without an embedding model")
+            .error(-32602, "invalid_params", "A source path does not exist or is drive-relative / root-relative")
+            .error(-32004, "model_not_found", "`model` is not installed")
+            .error(-32002, "forbidden", "A source path is outside the caller's roots (`data.needs: \"roots\"`)")
+            .error(-32004, "ingest_failed", "Every source failed and the first failure was a missing file or model (from the task's result; `data.result` holds every source)")
+            .error(-32602, "ingest_failed", "Every source failed and the first failure was a bad input (from the task's result)")
+            .error(-32005, "ingest_failed", "Every source failed and the first failure was a busy model (from the task's result)")
+            .error(-32006, "ingest_failed", "Every source failed and the first failure was a source over the size limit (from the task's result)")
+            .error(-32010, "ingest_failed", "Every source failed and the first failure was the model or the machine (from the task's result)")
             .example(
                 json!({ "source": "docs/report.pdf", "chunking_strategy": { "max_chunk_size": 2000 } }),
                 json!({ "task": { "task_id": "t_5f0c…", "method": "ingest.run", "status": "working" } }),

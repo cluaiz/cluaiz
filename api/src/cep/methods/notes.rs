@@ -1,5 +1,5 @@
-//! `notes.*`: durable notes, facts and preferences that outlive a chat (03-method-catalog Part B).
-//! See `cluaiz_agents::memory::notes`. Owner: Claude (Wave A).
+//! `notes.*`: durable notes, facts and preferences that outlive a chat. See
+//! `cluaiz_agents::memory::notes`.
 
 use crate::cep::CallCtx;
 use crate::handlers::chat::recall::current_workspace;
@@ -42,13 +42,16 @@ struct Create {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Id {
+    /// The note's `id` (from `notes.list`)
     id: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct Pin {
+    /// The note's `id` (from `notes.list`)
     id: String,
+    /// true: goes into the system prompt of new chats; false: does not
     pinned: bool,
 }
 
@@ -85,6 +88,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "notes.create",
             Meta::new(Scope::Write, "A note written by the user, confirmed at once; it supersedes a live note on the same subject")
                 .idempotent(false)
+                .error(-32602, "invalid_params", "`text` is empty or over 2000 characters, `scope` is unknown, or scope chat has no `chat_id`")
+                .error(-32010, "notes_unavailable", "The notes file could not be written")
                 .example(json!({ "text": "Prefers tabs over spaces", "scope": "workspace" }), json!({ "note": note, "superseded": [] })),
             |_: CallCtx, _: Call, p: Create| async move {
                 let text = p.text.trim();
@@ -106,18 +111,24 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         .add(
             "notes.confirm",
             Meta::new(Scope::Write, "A proposed note becomes confirmed (and supersedes a live note on the same subject)")
+                .error(-32004, "note_not_found", "No note with this id")
+                .error(-32010, "notes_unavailable", "The notes file could not be written")
                 .example(json!({ "id": "n7" }), json!({ "note": note, "superseded": [] })),
             |_: CallCtx, _: Call, p: Id| async move { change(&p.id, Some("confirmed"), None) },
         )
         .add(
             "notes.invalidate",
             Meta::new(Scope::Write, "The note no longer holds (it is kept, with the time)")
+                .error(-32004, "note_not_found", "No note with this id")
+                .error(-32010, "notes_unavailable", "The notes file could not be written")
                 .example(json!({ "id": "n7" }), json!({ "note": note, "superseded": [] })),
             |_: CallCtx, _: Call, p: Id| async move { change(&p.id, Some("invalidated"), None) },
         )
         .add(
             "notes.pin",
             Meta::new(Scope::Write, "Pins or unpins a note; pinned notes go into the system prompt of new chats")
+                .error(-32004, "note_not_found", "No note with this id")
+                .error(-32010, "notes_unavailable", "The notes file could not be written")
                 .example(json!({ "id": "n7", "pinned": true }), json!({ "note": note, "superseded": [] })),
             |_: CallCtx, _: Call, p: Pin| async move { change(&p.id, None, Some(p.pinned)) },
         );

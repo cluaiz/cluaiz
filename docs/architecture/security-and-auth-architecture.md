@@ -84,7 +84,7 @@ What the caller may do comes after authentication, in CEP:
 | Caller | Principal | Scopes | Paths |
 |---|---|---|---|
 | `POST /v1/cep` (HTTP), the C library (`cep_call`) | `owner` | read, write, exec, admin | no roots: any canonical path |
-| `/mcp` and `cluaiz mcp-server` | `mcp` | read only; methods marked `no_mcp` (for example `system.exec`) are not listed | over its roots: `forbidden` |
+| `/mcp` and `cluaiz mcp-server` | `mcp` | read only; methods marked `no_mcp` (for example `system.exec`) are not listed | any canonical path (read methods only) |
 
 `system.exec` is an `admin` method, marked destructive and hidden from MCP. Every call needs the owner's approval, and it runs a program with its arguments (`{program, args}`), not a shell line. permission.json `exec` holds the owner's two switches, both off by default: `allow_shell` (accept `{command}`, run by `cmd /C` / `sh -c`) and `without_approval`.
 

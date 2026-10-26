@@ -2,11 +2,9 @@ pub mod slots;
 
 /// Shared filesystem authorization for every attachment consumer. Remote/inline data
 /// has no client-selected local file; temporary source lifetime belongs to cluaiz-media.
-/// Standard routes execute as the authenticated owner; client-supplied caller/approval
-/// headers do not define a principal. CEP methods check their own `Call` principal.
+/// Standard routes execute as the authenticated owner. CEP methods check their own `Call` principal.
 pub(crate) async fn authorize_source(
     state: &std::sync::Arc<crate::AppState>,
-    _headers: &axum::http::HeaderMap,
     source: &mut String,
 ) -> Result<Option<std::path::PathBuf>, (&'static str, String)> {
     let Some(path) = cluaiz_media::source::local_source_path(source)
@@ -30,7 +28,6 @@ pub(crate) async fn authorize_source(
 /// Actual shared request policy/preparation owner; consumers import it directly.
 pub(crate) async fn prepare_authorized_media(
     state: &std::sync::Arc<crate::AppState>,
-    headers: &axum::http::HeaderMap,
     mut request: cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::InputPart>>,
     settings: &cluaiz_core::ActiveUserSettings,
     document_images: bool,
@@ -52,7 +49,7 @@ pub(crate) async fn prepare_authorized_media(
             | InputPart::Video { source, .. } => source,
             _ => continue,
         };
-        if let Some(canonical) = authorize_source(state, headers, source).await? {
+        if let Some(canonical) = authorize_source(state, source).await? {
             allowed.insert(canonical);
         }
     }
@@ -77,7 +74,6 @@ pub(crate) async fn prepare_authorized_media(
 /// Prepare one authorized audio source for STT or a speech speaker reference.
 pub(crate) async fn prepare_authorized_audio(
     state: &std::sync::Arc<crate::AppState>,
-    headers: &axum::http::HeaderMap,
     source: String,
     settings: &cluaiz_core::ActiveUserSettings,
     cancellation: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
@@ -100,7 +96,7 @@ pub(crate) async fn prepare_authorized_audio(
         response_format: None,
     };
     let prepared =
-        prepare_authorized_media(state, headers, request, settings, false, cancellation, None)
+        prepare_authorized_media(state, request, settings, false, cancellation, None)
             .await?;
     match prepared.messages.into_iter().flat_map(|m| m.content).next() {
         Some(PreparedPart::Audio { audio }) => Ok(audio),
@@ -114,7 +110,7 @@ pub(crate) async fn authorize_source_for_call(
     call: &cluaiz_cep::Call,
     source: &mut String,
 ) -> Result<(), cluaiz_cep::CepError> {
-    let path = authorize_source(state, &axum::http::HeaderMap::new(), source)
+    let path = authorize_source(state, source)
         .await
         .map_err(|(_, message)| crate::cep::roots::invalid("source", &message))?;
     if let Some(path) = path {
@@ -145,7 +141,6 @@ pub(crate) fn task_error(
 #[cfg(test)]
 mod tests {
     use super::authorize_source;
-    use axum::http::HeaderMap;
     use std::sync::Arc;
 
     #[tokio::test]
@@ -156,11 +151,8 @@ mod tests {
         std::fs::write(&file, "owner attachment").unwrap();
         let state = Arc::new(crate::AppState::new_test_state(workspace.path().to_owned()));
         state.permission_schema.write().await.agent_security_mode = "strict".into();
-        let mut headers = HeaderMap::new();
-        headers.insert("x-caller", "agent".parse().unwrap());
-        headers.insert("x-approval-id", "untrusted-header".parse().unwrap());
         let mut source = file.to_string_lossy().to_string();
-        let canonical = authorize_source(&state, &headers, &mut source)
+        let canonical = authorize_source(&state, &mut source)
             .await
             .unwrap()
             .unwrap();
@@ -173,9 +165,8 @@ mod tests {
         let workspace = tempfile::tempdir().unwrap();
         std::fs::write(workspace.path().join("notes.md"), "notes").unwrap();
         let state = Arc::new(crate::AppState::new_test_state(workspace.path().to_owned()));
-        let headers = HeaderMap::new();
         let mut relative = "notes.md".to_owned();
-        let resolved = authorize_source(&state, &headers, &mut relative)
+        let resolved = authorize_source(&state, &mut relative)
             .await
             .unwrap()
             .unwrap();
@@ -185,7 +176,7 @@ mod tests {
         );
         let mut missing = "missing.md".to_owned();
         assert_eq!(
-            authorize_source(&state, &headers, &mut missing)
+            authorize_source(&state, &mut missing)
                 .await
                 .unwrap_err()
                 .0,
@@ -193,7 +184,7 @@ mod tests {
         );
         let mut inline = "data:text/plain;base64,bm90ZXM=".to_owned();
         let before = inline.clone();
-        assert!(authorize_source(&state, &headers, &mut inline)
+        assert!(authorize_source(&state, &mut inline)
             .await
             .unwrap()
             .is_none());

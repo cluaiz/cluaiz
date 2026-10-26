@@ -9,14 +9,18 @@ use serde_json::{json, Value};
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct List {
+    /// Only tools of this kind; all when absent
     pub kind: Option<Kind>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Discover {
+    /// A user message, as the chat would see it
     pub query: String,
+    /// The message before it (follow-ups such as "and in Hindi?" use it)
     pub previous: Option<String>,
+    /// Also answer `evidence`: each matching tool's score, matched words and where they matched
     #[serde(default)]
     pub explain: bool,
 }
@@ -24,17 +28,24 @@ pub struct Discover {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Patch {
+    /// false: the tool is not offered to the model (an MCP server is also stopped)
     pub enabled: Option<bool>,
+    /// inherit, require_approval or always_allow
     pub security_mode: Option<String>,
+    /// auto, manual or confirm_destructive
     pub execution_mode: Option<String>,
+    /// Trust the MCP server's own read-only / destructive hints
     pub trust_annotations: Option<bool>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Set {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
+    /// Only the fields to change
     pub patch: Patch,
 }
 

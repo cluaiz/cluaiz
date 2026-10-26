@@ -1,4 +1,4 @@
-//! The CEP audit log (02-security §4.7): one JSON line per write, exec or admin call and per
+//! The CEP audit log: one JSON line per write, exec or admin call and per
 //! denial. The params are kept only as a hash: never file contents, tokens or chat text.
 
 use cluaiz_cep::{Audit, AuditEntry};

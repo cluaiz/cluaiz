@@ -1,4 +1,4 @@
-//! Tasks for long work (01-architecture §9), with the same states as MCP tasks. A task belongs to
+//! Tasks for long work, with the same states as MCP tasks. A task belongs to
 //! the principal that started it; others get `not_found`. Kept in memory only.
 
 use crate::approval::{now_ms, rfc3339};
