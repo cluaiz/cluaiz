@@ -28,7 +28,7 @@ response: |
         {
           "created_at": "2026-10-25T10:30:00Z",
           "last_updated_at": "2026-10-25T10:30:02Z",
-          "method": "ingest.run",
+          "method": "audio.run",
           "poll_ms": 500,
           "status": "working",
           "task_id": "t_5f0c…",

@@ -1,7 +1,7 @@
 ---
 method: "POST"
 path: "/v1/chat/completions"
-standard: "OpenAI"
+group: "Chat"
 category: "ai-inference"
 summary: "Chat with an installed model: text and media in, text out, streamed or whole"
 params:
@@ -292,7 +292,7 @@ Read `models.list` and use an exact `models[].id`. The API Explorer Model dropdo
 | `video_url`, `include_audio:true` | Both visual and audio capabilities/assets |
 | `file_url` | PDF pages go to the selected image-capable package with a projector; otherwise shared native extraction/OCR supplies text. DOC/DOCX/code/text use native text extraction. |
 
-`model:"auto"` uses the configured active chat/vision slot. It does not promise to discover a model that supports every supplied attachment. Choose an explicit compatible ID when testing media. An ONNX image embedding model returns vectors through `/v1/embeddings`; it is not a vision chat model. Native `ingest.run` extracts text without selecting a model.
+`model:"auto"` uses the configured active chat/vision slot. It does not promise to discover a model that supports every supplied attachment. Choose an explicit compatible ID when testing media. An ONNX image embedding model returns vectors through `/v1/embeddings`; it is not a vision chat model. Native `/v1/ingest` extracts text without selecting a model.
 
 The content fragments later in this page belong inside `messages`. A complete request looks like this (replace the model ID with your installed vision package):
 
@@ -311,7 +311,18 @@ The content fragments later in this page belong inside `messages`. A complete re
 
 Use a URL serving a real image, an authorized server-local path, or a real data URI. A browser-local filename alone does not upload its bytes. Multiple parts keep their message order; do not nest an embeddings-style `{type:"image",source:...}` inside chat.
 
----
+
+## Request flow
+
+```mermaid
+flowchart LR
+    C["POST /v1/chat/completions: messages"] --> A["Auth and request validation"]
+    A --> P["Shared attachment preparation: text, pages, images, audio or video samples"]
+    P --> H["Selected chat model, context planning and admission"]
+    H --> T["Generation and permitted tool loop"]
+    T --> J["stream false: one chat completion JSON"]
+    T --> S["stream true: SSE deltas and completion"]
+```
 
 ## 📌 Endpoint Information
 
@@ -321,7 +332,6 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 * **Authentication:** `Authorization: Bearer <session-token>` when API authentication is required
 * **Streaming Protocol:** Server-Sent Events (SSE) via `text/event-stream` (when `stream: true`)
 
----
 
 ## 📥 Request Parameters
 
@@ -364,7 +374,6 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 > **BitNet (1-bit / 1.58-bit) Models**:
 > 1-bit and ternary quantized architectures operate natively with greedy argmax decoding for deterministic mathematical stability. For BitNet models, `temperature`, `top_p`, `top_k`, and `min_p` overrides are safely bypassed while penalty samplers remain active.
 
----
 
 ## Attachment processing events
 
@@ -394,14 +403,12 @@ Early `usage.context_telemetry` remains a text estimate. For attachment requests
 
 After projector loading, the incremental request-RAM check returns an error containing `required_bytes`, `workspace_bytes`, `additional_buffer_bytes`, `free_bytes`, `reserve_bytes` and `usable_bytes`. Cold projector admission separately reports its estimated host cost and usable RAM budget. These checks use the existing safety reserve and prepared geometry/copy estimates. Configured byte ceilings are limits, not automatic per-request allocation charges. Workspace is still a conservative configured estimate rather than a measured encoder peak. Under RAM pressure an idle projector can be dropped before a fresh admission attempt; Chat model placement, context, KV settings and SSD policy are unchanged.
 
----
 
 ## 🔒 Security Notice: Local File Paths
 
 > [!WARNING]
 > Local paths refer to the engine host. A standard route runs as the authenticated owner; the path is canonicalized before it is read. Allowed remote sources and inline bytes use shared source/decoded limits. Always use the actual configured engine address and authentication settings.
 
----
 
 ## 🧠 Reasoning Budget Levels (`think_mode` & `reasoning_effort`)
 
@@ -429,7 +436,6 @@ Responses include explicit reasoning token counts inside `completion_tokens_deta
 }
 ```
 
----
 
 ## 📏 Context Window & Context Shifting
 
@@ -472,14 +478,13 @@ What happened is reported in the closing `engine.context` object (and `usage.pro
 
 `cache_n` = prompt tokens reused from the KV cache (`reused_chunk_tokens` of them by moving shared chunks, `kv_reuse: "chunk"`); `processed_tokens` = prompt tokens computed for this request, and `cause` says why: `cold` (nothing cached), `append` (the prompt continues the cache), `edit` (the prompt differs inside the cache from position `edit_at`, e.g. after an unload or a compaction), `history_drop` (old turns dropped to fit), `shift` (a tool-step continuation shifted the context), `restart` (sliding-window or recurrent memory could not be cut at the change) or `media`; `truncated` = the context cut the history or the answer (llama-server's field); `stop` = `eos`, `limit` (max_tokens or the context; `finish_reason: "length"`), `cancel` or `error`.
 
----
 
 ## 🗜️ Context plan and compaction
 
 Every response carries `context_report.plan`: how the context is shared, in the loaded model's tokens.
 
 ```json
-"plan": {
+{"plan": {
   "history_mode": "recent",
   "n_ctx": 4096,
   "reserve": { "answer": 600, "thinking": 600, "margin": 81 },
@@ -489,7 +494,7 @@ Every response carries `context_report.plan`: how the context is shared, in the 
   "messages_over_budget": 0,
   "needs_compaction": false,
   "compaction": null
-}
+}}
 ```
 
 - `reserve`: kept for the answer, again for thinking models, and 2% of the context for template tokens.
@@ -506,7 +511,6 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 
 A compaction frees enough to bring the history down to `compact_to_pct` (60%) of the room, and happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
 
----
 
 ## 🧾 Chat event log
 
@@ -525,7 +529,6 @@ Messages are matched by position and by the optional `messages[].id` (else a has
 
 With `history: "engine"` the client sends only the new messages, and the Engine puts the logged transcript in front of them.
 
----
 
 ## 🔁 Recall
 
@@ -552,7 +555,6 @@ Measured with `test/context-runtime/memory_suite.py` (Qwen3-4B, `n_ctx` 4096, fa
 
 The question about a fact never given (a passport number) was answered with an invented number in every mode.
 
----
 
 ## 📝 Notes
 
@@ -745,9 +747,10 @@ In a chat with `session_id`, a tool loaded with `load_tool` stays in the convers
 ### 1. Python (Official OpenAI SDK)
 
 ```python
+import os
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:8000/v1", api_key="not-needed")
+client = OpenAI(base_url="http://localhost:8000/v1", api_key=os.environ["CLUAIZ_TOKEN"])
 
 response = client.chat.completions.create(
     model="auto",
@@ -755,13 +758,30 @@ response = client.chat.completions.create(
         {"role": "system", "content": "You are a concise assistant."},
         {"role": "user", "content": "Explain gravity in 2 sentences."}
     ],
-    temperature=0.7
+    temperature=0.7,
+    stream=False
 )
 
 print(response.choices[0].message.content)
 ```
 
 ---
+
+### JavaScript / Node.js: complete response
+
+```js
+const response = await fetch("http://127.0.0.1:8000/v1/chat/completions", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify({ model: "auto", stream: false, max_tokens: 128,
+    messages: [{ role: "user", content: "Explain gravity briefly." }] }),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+console.log(JSON.parse(raw).choices[0].message.content);
+```
+
+Use `stream:false` when parsing one JSON object. With `stream:true`, parse SSE frames and `choices[].delta` instead. Media fragments below are content parts, not standalone top-level requests. An installed model ID selects the package; it does not enable modalities missing from that package.
 
 ## 📤 Response Formats
 

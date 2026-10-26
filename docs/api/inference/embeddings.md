@@ -1,7 +1,7 @@
 ---
 method: "POST"
 path: "/v1/embeddings"
-standard: "OpenAI"
+group: "Embeddings"
 category: "ai-inference"
 summary: "Vectors for text (GGUF or ONNX) or for an image (ONNX image graph)"
 params:
@@ -100,6 +100,28 @@ Unsupported GGUF architectures, models without supported sequence pooling, reran
 
 ## Choose the model and input
 
+```mermaid
+flowchart TD
+    C["POST /v1/embeddings"] --> V["Validate input shape and float encoding"]
+    V --> T["String or string batch: model tokenizer"]
+    V --> I["One image with optional text parts: shared image preparation"]
+    T --> R["Existing ONNX or GGUF embedding executor"]
+    I --> O["Compatible ONNX image graph"]
+    R --> N["Finite L2-normalized vectors"]
+    O --> N
+    N --> J["JSON data entries in input order"]
+```
+
+| Input choice | Meaning | Use another API when |
+|---|---|---|
+| `"input":"report.pdf"` | Embed the literal text `report.pdf` | To read the PDF's contents, send `source` to [Ingest](ingest.md) |
+| `"input":["query","document chunk"]` | Independent text entries, one result per entry | The strings still need to fit the selected model's sequence limit |
+| `"input":[{"type":"image","source":"..."}]` | One actual image encoded by an ONNX image graph | To ask what the image shows in words, use generative vision via Chat/Ingest |
+| Image plus optional text objects | One multimodal input for a compatible joint graph | It is not a batch of separate image vectors or a chat message |
+| `encoding_format:"float"` | JSON numeric arrays | Base64 vector encoding is rejected rather than silently substituted |
+
+The list response uses `object`, `data`, `model` and `usage`. Image inputs and lifecycle controls are Cluaiz extensions. There is no persistent vector store, document collection or automatic retrieval on this route. Vector dimensions come from the actual selected export and cannot be inferred from quantization bits alone.
+
 Read `models.list` with your Bearer token and copy an exact `models[].id`. A Hugging Face repository name or a guessed quantization suffix is not an installed ID. In the API Explorer, the Model dropdown writes this ID into the JSON `model` field. Reset Payload restores the shipped example; a previously saved body otherwise stays in the editor.
 
 | Task | Model required | Request input | Result |
@@ -107,7 +129,7 @@ Read `models.list` with your Bearer token and copy an exact `models[].id`. A Hug
 | One text | Compatible ONNX or GGUF text embedding package | `"input": "Find similar documents"` | One vector at `data[0].embedding` |
 | Text batch | Same text embedding package for the whole batch | `"input": ["First chunk", "Second chunk"]` | One vector per string, in input order |
 | Image | ONNX image embedding graph and its processor assets | `"input": [{"type":"image","source":"<source>"}]` | One image vector |
-| Document | `ingest.run` can extract and run a selected embedding model; alternatively send its returned chunks here | `"input": ["extracted chunk"]` on this route | Text vectors; no document storage is created |
+| Document | `/v1/ingest` can extract and run a selected embedding model; alternatively send its returned chunks here | `"input": ["extracted chunk"]` on this route | Text vectors; no document storage is created |
 
 The pinned native backend now supports `gemma-embedding2`. The locally exercised EmbeddingGemma-2 Q8_0 package returns its projected 768-dimensional **text** vector; its 512-wide hidden state is not the API output. The exercised BGE packages return 1024 dimensions, and the ONNX FashionCLIP package returns 512 image dimensions. These are package examples, not a fixed width for every model. GGUF image/audio/video embeddings are not implemented, even if an installed package advertises a visual task.
 
@@ -196,7 +218,7 @@ The engine uses the selected tokenizer and pooling/projected output. Supply the 
 }
 ```
 
-Use this mixed-input example only for a graph that actually accepts both `pixel_values` and `input_ids`. The installed FashionCLIP graph declares both inputs and image/text embedding outputs; this route selects its image vector when an image is supplied. It does not generate captions or OCR text. Use exactly one image; this is not a batch of independent image vectors. `source` can be an allowed HTTP(S) URL, an authorized server-local path, or a real image data URI. `image_url` is the chat content shape, not the embeddings shape. Audio, video and document parts are rejected on this route; document sources use `ingest.run`.
+Use this mixed-input example only for a graph that actually accepts both `pixel_values` and `input_ids`. The installed FashionCLIP graph declares both inputs and image/text embedding outputs; this route selects its image vector when an image is supplied. It does not generate captions or OCR text. Use exactly one image; this is not a batch of independent image vectors. `source` can be an allowed HTTP(S) URL, an authorized server-local path, or a real image data URI. `image_url` is the chat content shape, not the embeddings shape. Audio, video and document parts are rejected on this route; document sources use `/v1/ingest`.
 
 ---
 
@@ -279,7 +301,7 @@ print(len(response.json()["data"][0]["embedding"]))
 
 Use an installed ONNX image embedding ID and a real PNG file. Placeholders and shortened Base64 strings elsewhere in this page illustrate the source shape; they are not executable image fixtures.
 
-### 5. PDF file directly to text vectors: send this to `ingest.run`
+### 5. PDF file directly to text vectors: send this to `/v1/ingest`
 
 ```json
 {
@@ -291,7 +313,7 @@ Use an installed ONNX image embedding ID and a real PNG file. Placeholders and s
 
 The ingest endpoint performs native PDF text/OCR extraction, chunks the extracted text, and runs the selected text embedding executor. Read `processed_sources[].embeddings[].data[].embedding`. Do not send a raw PDF as an `input` string here: a string on `/v1/embeddings` is text to tokenize, not a file locator.
 
-### 6. DOCX file directly to text vectors: send this to `ingest.run`
+### 6. DOCX file directly to text vectors: send this to `/v1/ingest`
 
 ```json
 {
@@ -301,13 +323,36 @@ The ingest endpoint performs native PDF text/OCR extraction, chunks the extracte
 }
 ```
 
-Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `ingest.run`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest params by file type](../cep/ai-inference/ingest/ingest.run.md#params-by-file-type).
+Choose an installed text embedding graph. Legacy supported DOC and text files use the same ingest flow. For PDFs as **images**, select an ONNX image graph on `/v1/ingest`; that returns one rendered-page vector per page rather than text-chunk vectors. See [all ingest params by file type](ingest.md#payload-examples-by-file-type).
 
 The Explorer's Body Payload menu also provides separate single-text, batch, extracted-document chunks, local image, data-URI image and remote-image templates. Switching an example resolves an installed model of its declared task; it does not invent or install a model.
 
 ---
 
 ## 📤 Response Schema & Fields
+
+### JavaScript / Node.js: text batch and actual image bytes
+
+```js
+import { readFile } from "node:fs/promises";
+async function embed(model, input) {
+  const response = await fetch("http://127.0.0.1:8000/v1/embeddings", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+    body: JSON.stringify({ model, input, encoding_format: "float", keep_alive: 0 }),
+  });
+  const raw = await response.text();
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+  return JSON.parse(raw);
+}
+const text = await embed(process.env.CLUAIZ_TEXT_EMBED_MODEL, ["A document paragraph", "A search query"]);
+console.log(text.data.map((entry) => [entry.index, entry.embedding.length]));
+const image = "data:image/png;base64," + (await readFile("photo.png")).toString("base64");
+const visual = await embed(process.env.CLUAIZ_IMAGE_EMBED_MODEL, [{ type: "image", source: image }]);
+console.log(visual.data[0].embedding);
+```
+
+Set the two environment variables to installed compatible text/image embedding IDs. They can be different models. The PNG must exist and contain actual PNG bytes. This example returns vectors for application-owned storage/search; it does not add a collection to the Engine.
 
 ### Success Response (`HTTP 200`)
 
@@ -364,7 +409,8 @@ The numerical arrays below are shortened illustrations, not complete model outpu
 | Explicit model is not installed | HTTP 404 `model_not_found` |
 | Selected package does not declare an embedding task | HTTP 400 `unsupported_task` |
 | GGUF receives object parts | HTTP 400 `unsupported_input`; use text strings or an ONNX image graph |
-| Empty batch/text, unsupported encoding or unknown fields | HTTP 400 |
+| Empty batch/text or unsupported encoding | HTTP 400 |
+| Unknown fields or wrong field types | HTTP 422 JSON schema rejection |
 | Input exceeds the selected GGUF sequence limit | Error; no silent truncation |
 | Another GGUF embedding operation is active | HTTP 429 `embedding_busy` |
 | Inline JSON exceeds the configured transport ceiling | HTTP 413 `request_too_large` |

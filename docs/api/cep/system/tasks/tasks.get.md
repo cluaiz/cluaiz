@@ -62,7 +62,7 @@ A task's status, its progress, and the events it produced after a cursor. Poll i
 |---|---|
 | `status` | `working`, `completed`, `failed` or `cancelled` |
 | `progress` | `done`, `total`, `unit` (`bytes`, `sources`, `chats`…), `message`, when the method reports it |
-| `events` | Output the task produced after `after`: one per ingested source, an audio chunk, a download step… |
+| `events` | Output the task produced after `after`: an audio chunk, a download step… |
 | `next` | The cursor to send as `after` next time |
 
 A task keeps its newest 1000 events. Only the caller that started a task sees it; for anyone else it does not exist.

@@ -1,5 +1,5 @@
 //! The Engine's HTTP routes: the market-standard routes, `/health`, and CEP (`/v1/cep`, `/mcp`).
-//! Everything Cluaiz-specific is a CEP method, not a route.
+//! Ingest is a direct document API; Engine controls use CEP.
 
 use crate::handlers;
 use crate::AppState;
@@ -49,6 +49,10 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route(
             "/v1/audio/transcriptions",
             post(handlers::audio::transcriptions).layer(from_fn(attachment_body_limit)),
+        )
+        .route(
+            "/v1/ingest",
+            post(handlers::ingest::file_ingest).layer(from_fn(attachment_body_limit)),
         )
         // ── 3. Models (OpenAI, Ollama) ──
         .route("/v1/models", get(handlers::models::v1_models))

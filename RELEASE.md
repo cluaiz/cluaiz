@@ -104,7 +104,7 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 
 ## Documents and ingest
 
-CEP `ingest.run` (a task) supports native extraction or an optional selected model.
+`POST /v1/ingest` supports native extraction or an optional selected model.
 
 | Input | Native processing |
 |:---|:---|
@@ -174,7 +174,8 @@ Quantization support depends on the native kernels or ONNX export/provider combi
 | [`POST /v1/audio/transcriptions`](docs/api/inference/audio_transcriptions.md) | ONNX speech-to-text |
 | [`POST /v1/embeddings`](docs/api/inference/embeddings.md) | Text or supported image vectors |
 | `GET /v1/models` | Installed models (OpenAI format) |
-| [`POST /v1/cep`](docs/api/cep/README.md) | Every Cluaiz-specific operation as a CEP method: `ingest.run`, `audio.run`, `audio.voices`, `audio.languages`, `models.list`, … |
+| [`POST /v1/ingest`](docs/api/inference/ingest.md) | Direct document/image extraction, optional selected-model text or vectors; final JSON response |
+| [`POST /v1/cep`](docs/api/cep/README.md) | Engine controls as CEP methods: `audio.run`, `audio.voices`, `audio.languages`, `models.list`, … |
 
 Use the exact installed model ID in the request.
 

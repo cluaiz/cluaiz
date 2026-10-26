@@ -1,7 +1,7 @@
 ---
 method: "GET"
 path: "/v1/models"
-standard: "OpenAI"
+group: "Models"
 category: "models"
 summary: "List locally installed models in the OpenAI list format"
 params: []

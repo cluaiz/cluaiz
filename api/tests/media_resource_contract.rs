@@ -162,6 +162,8 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
         ("/v1/cep", false),
         ("/v1/embeddings", true),
         ("/v1/embeddings", false),
+        ("/v1/ingest", true),
+        ("/v1/ingest", false),
     ] {
         let mut request = Request::builder()
             .method("POST")

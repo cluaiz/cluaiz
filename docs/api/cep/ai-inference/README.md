@@ -19,7 +19,6 @@ How it works: [`memory.*` overview](./memory/README.md), [`context.*` overview](
 | [`context.preview`](./context/context.preview.md) | read | sync | The plan and tool choices a chat request would get, without generating (loads the model for its tokenizer) |
 | [`context.report`](./context/context.report.md) | read | sync | One of a chat's last 20 context reports (kept in memory) |
 | [`context.reports`](./context/context.reports.md) | read | sync | Ids of a chat's kept context reports, newest last |
-| [`ingest.run`](./ingest/ingest.run.md) | read | task | Extracts documents (and optionally runs a model on them), as a task; one event per source |
 | [`kv.clear`](./kv/kv.clear.md) | write | sync | Forgets every chat's saved KV |
 | [`kv.delete`](./kv/kv.delete.md) | write | sync | Forgets one chat's saved KV |
 | [`kv.status`](./kv/kv.status.md) | read | sync | Where saved KV caches are kept, the disk they use, and the saved chats (most recently used first) |

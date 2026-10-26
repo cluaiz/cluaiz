@@ -250,7 +250,8 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/v1/cep` | Every Cluaiz operation, as JSON-RPC 2.0 methods (`system.info`, `models.load`, `config.set`, `ingest.run`, `fs.*`, `memory.*`, …). See [docs/api/cep](../api/cep/README.md) |
+| `POST` | `/v1/ingest` | Direct document/image extraction with optional selected-model processing |
+| `POST` | `/v1/cep` | Engine control operations, as JSON-RPC 2.0 methods (`system.info`, `models.load`, `config.set`, `fs.*`, `memory.*`, …). See [docs/api/cep](../api/cep/README.md) |
 | `POST` | `/mcp` | The same methods for MCP clients (read-only) |
 | `POST` | `/v1/chat/completions`, `/api/chat` | Chat (OpenAI / Ollama), streaming |
 | `POST` | `/v1/embeddings` | Embeddings (OpenAI) |

@@ -44,7 +44,7 @@ struct TaskId {
 }
 
 pub(crate) fn register<Ctx: Send + 'static>(registry: &mut Registry<Ctx>) {
-    let task = json!({ "task_id": "t_5f0c…", "method": "ingest.run", "status": "working", "created_at": "2026-10-25T10:30:00Z",
+    let task = json!({ "task_id": "t_5f0c…", "method": "audio.run", "status": "working", "created_at": "2026-10-25T10:30:00Z",
                        "last_updated_at": "2026-10-25T10:30:02Z", "ttl_ms": 3600000, "poll_ms": 500 });
     registry
         .add(

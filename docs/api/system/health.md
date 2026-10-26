@@ -1,7 +1,7 @@
 ---
 method: "GET"
 path: "/health"
-standard: "Cluaiz"
+group: "System"
 category: "system"
 summary: "Whether the Engine is up; the only route that is always open"
 params: []

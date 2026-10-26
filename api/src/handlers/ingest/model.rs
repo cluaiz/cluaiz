@@ -408,7 +408,7 @@ async fn vision(
 ) -> Result<DocumentPart> {
     let instruction = match &options.system_instruction {
         Some(value) if !value.trim().is_empty() => value.clone(),
-        _ => serde_json::from_str::<Value>(include_str!("../../../../data/ingest.json"))?["instruction"]
+        _ => serde_json::from_str::<Value>(include_str!("../../../data/ingest.json"))?["instruction"]
             .as_str()
             .context("Ingest instruction resource is missing")?
             .to_owned(),

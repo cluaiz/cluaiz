@@ -1,7 +1,7 @@
 ---
 method: "POST"
 path: "/v1/audio/speech"
-standard: "OpenAI"
+group: "TTS"
 category: "ai-inference"
 summary: "Text to speech with an installed TTS model; the answer holds a WAV"
 params:
@@ -123,6 +123,27 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 ---
 
 ## Choose the model, language and voice
+
+```mermaid
+flowchart LR
+    C["POST /v1/audio/speech: input text"] --> A["Auth, typed controls and model selection"]
+    A --> O["Existing audio dispatch and resource admission"]
+    O --> N["ONNX family runtime or GGUF speech owner"]
+    N --> W["Generated PCM encoded as WAV"]
+    W --> J["stream false: JSON output.audio_data"]
+    W --> S["stream true: audio SSE events and final result"]
+```
+
+| Change | Effect | What it does not select |
+|---|---|---|
+| `model` | Exact installed TTS package and its runtime/assets | A chat or STT model cannot synthesize speech merely because it is installed |
+| `voice` | ONNX preset where supported; GGUF reference recording for conditioning | Preset IDs are not portable across different packages |
+| `language` | The selected runtime's language/phoneme controls | It does not install missing languages or voices |
+| `speed` | Supported duration control or shared output tempo | It does not guarantee a lower synthesis latency |
+| `stream:true` | SSE audio chunks according to that runtime, then completion | It is not a raw WAV HTTP response or a WebSocket |
+| `keep_alive:0` | Release the selected resident after this request | It does not unload unrelated chat/embedding residents |
+
+This is a Cluaiz inference API. Its URL and some input names follow familiar client conventions, but the result is Cluaiz JSON containing a WAV data URI. Code that expects a binary-audio response must decode `output.audio_data`, as the Python/JavaScript examples below do.
 
 Read `models.list` and select an exact installed TTS ID. The API Explorer Model dropdown writes it into the JSON `model` field; its Voice dropdown reads `audio.voices` for that package. Switching models resets the previous package's speaker selection. A Hugging Face repository ID is not necessarily the installed ID.
 

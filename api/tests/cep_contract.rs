@@ -36,6 +36,9 @@ async fn test_cep_endpoint_basics() {
 
     let (_, reply) = post("/v1/cep", "application/json", json!({"jsonrpc": "2.0", "id": 2, "method": "rpc.discover"})).await;
     let names: Vec<&str> = reply["result"]["methods"].as_array().unwrap().iter().filter_map(|m| m["name"].as_str()).collect();
+    assert!(!names.contains(&"ingest.run"));
+    let (_, missing) = post("/v1/cep", "application/json", json!({"jsonrpc":"2.0","id":3,"method":"ingest.run","params":{}})).await;
+    assert_eq!(missing["error"]["code"], -32601);
     for name in ["rpc.discover", "system.info", "tasks.get", "tasks.result", "tasks.cancel", "tasks.list"] {
         assert!(names.contains(&name), "{name} missing from {names:?}");
     }
@@ -53,7 +56,7 @@ fn test_route_table_is_the_standard_routes_and_cep() {
     routes.sort_unstable();
     let mut expected = vec![
         "/health", "/v1/cep", "/mcp",
-        "/v1/chat/completions", "/api/chat", "/v1/embeddings", "/v1/audio/speech", "/v1/audio/transcriptions",
+        "/v1/chat/completions", "/api/chat", "/v1/ingest", "/v1/embeddings", "/v1/audio/speech", "/v1/audio/transcriptions",
         "/v1/models", "/api/tags", "/api/pull",
     ];
     expected.sort_unstable();
