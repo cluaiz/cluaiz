@@ -217,7 +217,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32010, "event_log_unreadable", "The chat's event log could not be removed")
                 .example(
                 json!({ "chat_id": "c1" }),
-                json!({ "chat_id": "c1", "events": { "files": 1, "bytes": 2048 }, "ledger": true, "saved_kv": {}, "folder_removed": true }),
+                json!({ "chat_id": "c1", "events": { "files": 1, "bytes": 2048 }, "ledger": true, "saved_kv": true, "folder_removed": true }),
             ),
             |_: CallCtx, _: Call, p: ChatId| async move {
                 let chat = p.chat_id;

@@ -55,30 +55,202 @@ errors:
 
 # fs.copy
 
-Copies a file, or a folder with everything in it.
+Copy a file or directory tree while keeping the original. The copy uses the already authorized source/destination boundary and checks child paths for escapes and cycles.
 
-## How a path is resolved
+## Endpoint, execution and permissions
 
-1. A relative path is joined to the Engine's workspace ([`workspace.get`](../workspace/workspace.get.md)), never to the Engine's own working folder. `C:foo` (drive-relative) and `\foo` (root-relative) are refused as ambiguous.
-2. The path is canonicalized: links and `..` are resolved, so the check below sees the real target.
-3. The canonical path must be inside the caller's roots. The owner (`/v1/cep`, the C library) has no roots and may use any path; the MCP principal may only read.
+| Property | Contract |
+|---|---|
+| Wire endpoint | `POST /v1/cep`; logical method `fs.copy` |
+| Execution | Synchronous domain result in the JSON-RPC result field |
+| Required scope | `write` |
+| MCP facade | Not exposed by the current read-only MCP facade |
+| Side effects | Updates the state described below |
 
-The answered paths are canonical and absolute, without the Windows `\\?\` prefix.
+Send a Bearer token when API authentication is enabled. Authentication failures are HTTP 401; ordinary CEP method errors are JSON-RPC error objects, normally with HTTP 200. A successful HTTP status alone does not prove the operation succeeded. See [the common CEP contract](../../README.md).
 
-## What it does
+## How it works
 
-1. Resolves `from` (must exist) and `to` (missing parents are created); both are checked against the caller's roots once.
-2. Refuses a copy into itself (`to` inside `from`).
-3. Copies. For a folder, each entry is copied in turn; an entry whose real path leaves `from`, or whose copy would leave `to`, stops the copy with `-32002`, and a link cycle stops it with `-32602`.
+1. Canonicalize/authorize from and to; reject copying into itself
+2. Create destination parents and walk the source tree
+3. Copy bytes while rejecting escaping child links or active directory cycles
 
-Answers `from` and `to` as canonical paths.
-
-## Example
-
-```bash
-curl -s http://127.0.0.1:8000/v1/cep -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"fs.copy","params":{"from":"templates/base","to":"projects/new"}}'
+```mermaid
+flowchart TD
+    C["Client request"] --> A["Authentication, principal and typed params"]
+    A --> P0["Canonicalize/authorize from and to; reject copying into itself"]
+    P0 --> P1["Create destination parents and walk the source tree"]
+    P1 --> P2["Copy bytes while rejecting escaping child links or active directory cycles"]
+    P2 --> R["JSON-RPC result or explicit error"]
 ```
 
-Leave out the `Authorization` header when API authentication is off.
+## Parameters, defaults and value effects
+
+| Parameter | Type | Required | Meaning, default and constraints |
+|---|---|---|---|
+| `from` | string | Yes | The existing file or folder: absolute, or relative to the workspace Paths are on the Engine host, not the browser. Absolute paths or paths relative to the selected workspace are accepted after canonicalization and caller-root checks. Empty, drive-relative and root-relative ambiguous paths are invalid. Must exist. |
+| `to` | string | Yes | The new path: absolute, or relative to the workspace; missing parent folders are created Paths are on the Engine host, not the browser. Absolute paths or paths relative to the selected workspace are accepted after canonicalization and caller-root checks. Empty, drive-relative and root-relative ambiguous paths are invalid. Must not be the source or a descendant of it. |
+
+Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.
+
+## Request examples
+
+Examples describe contracts, not measured execution. Replace IDs, paths and installed-package names with real values from your Engine. Do not execute write/delete/process examples against valuable data merely to read the documentation.
+
+### 1. Basic request
+
+This request uses the documented selection. Read the result semantics below before acting on it.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "fs.copy",
+  "params": {
+    "from": "notes.txt",
+    "to": "copy.txt"
+  }
+}
+```
+
+### 2. Copy a disposable folder
+
+Keep the destination outside src; copying src into src/backup is rejected.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "fs.copy",
+  "params": {
+    "from": "src",
+    "to": "backup/src"
+  }
+}
+```
+
+## Response and field meanings
+
+from and to identify the copied endpoints; no per-file byte total or job/task id is returned. Copy completion is a synchronous result from the filesystem worker.
+
+The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
+
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "from": "/project/notes.txt",
+    "to": "/project/copy.txt"
+  }
+}
+```
+
+## Errors and recovery
+
+| Code / boundary | Meaning | Recovery |
+|---|---|---|
+| HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token; a CEP params change cannot repair authentication |
+| `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
+| `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
+| `-32004` / `file_not_found` | `from` does not exist | Refresh the relevant inventory/IDs and check whether the resource expired |
+| `-32602` / `invalid_params` | `to` is inside `from`, or the copied folder holds a link cycle | Correct the option/value combination; install required assets where relevant |
+| `-32002` / `forbidden` | The path is outside the caller's roots (`data.needs: "roots"`), or the OS refused access (`os_permission_denied`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+
+### Invalid-field example
+
+This is deliberately invalid. The extra field must be removed; it is not an alternate feature toggle.
+
+```text
+{
+  "jsonrpc": "2.0",
+  "id": 90,
+  "method": "fs.copy",
+  "params": {
+    "from": "notes.txt",
+    "to": "copy.txt",
+    "__unknown_option": true
+  }
+}
+```
+
+The error envelope is `{"jsonrpc":"2.0","id":90,"error":{"code":-32602,"message":"...","data":{"type":"invalid_params", "errors":[...]}}}`. Exact message and field diagnostics are generated by typed deserialization; callers should use codes and structured data, not match a sentence.
+
+## cURL
+
+Save one valid request above as `request.json`:
+
+```bash
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
+```
+
+## Python
+
+Install `requests` in your client environment. This executes the basic request; edit `params` for a different valid case.
+
+```python
+import json
+import os
+import requests
+
+payload = json.loads(r'''{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "fs.copy",
+  "params": {
+    "from": "notes.txt",
+    "to": "copy.txt"
+  }
+}''')
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = {
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "fs.copy",
+  "params": {
+    "from": "notes.txt",
+    "to": "copy.txt"
+  }
+};
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
+
+Tree copies are not atomic and have no rollback: some files/directories may exist at the destination when a later child fails. It is not a general symlink-preserving backup/metadata tool. The single call’s approval covers its checked endpoints rather than requesting a fresh approval for every child.
+
+- [`fs.list`](fs.list.md): use its separate documented contract.
+- [`fs.rename`](fs.rename.md): use its separate documented contract.
+- [`fs.read`](fs.read.md): use its separate documented contract.
+
+## Implementation reference
+
+- [api/src/cep/methods/fs.rs](../../../../../api/src/cep/methods/fs.rs)

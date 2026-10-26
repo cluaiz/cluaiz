@@ -46,7 +46,7 @@ Every method has its own page, grouped like the App's API sidebar:
 
 | Category | Groups | Index |
 |---|---|---|
-| AI & Inference Core | `chat`, `audio`, `ingest`, `memory`, `notes`, `context`, `kv` | [ai-inference/](ai-inference/README.md) |
+| AI & Inference Core | `chat`, `audio`, `memory`, `notes`, `context`, `kv`; direct Ingest is separate | [ai-inference/](ai-inference/README.md) |
 | Agents, MCP & Tools | `tools`, `approvals` | [agents-tools/](agents-tools/README.md) |
 | Filesystem & Security Jail | `fs`, `workspace` | [filesystem/](filesystem/README.md) |
 | Models & Engine Vault | `models` | [models/](models/README.md) |
@@ -73,7 +73,9 @@ A page such as [`filesystem/fs/fs.read.md`](filesystem/fs/fs.read.md) has two pa
 | `response` | The answer to that request |
 | `errors[]` | `code`, `type` (`data.type`) and `when`, for this method's own errors |
 
-2. **The text under it** explains the method: what it does step by step, its limits, each error, and examples.
+2. **The text under it** gives the method-specific flow/diagram, parameter defaults and value effects, complete request variants, response field meanings, error recovery, cURL/Python/JavaScript clients, state/limits and implementation links. The App displays this written body in its Documentation tab. Request-shaped JSON examples also supply its payload choices; deliberately invalid requests are marked as text so they are not offered as valid choices.
+
+Examples are contract illustrations, not measured successful operations. Replace host paths, installed package IDs, chat/task IDs and tokens with your actual values. Reading documentation must not require executing destructive, installation, token or process examples. A metadata flag such as `destructive` classifies the operation; it is not itself a promise that every caller receives an approval dialog. The method's actual scope, principal and policy checks determine access.
 
 The pages are written and checked by `api/tests/cep_docs.rs`. A change to a method's params, example or errors that is not written to its page fails that test.
 

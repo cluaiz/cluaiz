@@ -52,58 +52,203 @@ errors:
 
 # memory.index
 
-A chat's Chat Map: one card per visible message (title, keywords, motive and summary, no message text), the episodes the chat falls into, open tasks, and a graph linking them. Recall searches these cards; a UI can draw a chat's outline from them.
+Read a chat’s derived Chat Map: compact cards, episodes, tasks and a graph useful for navigation. This is not an embedding vector index, a fresh model response or a substitute for exact message text.
 
-A chat is named by `chat_id`: the same string a client sends as `session_id` in its `/v1/chat/completions` requests. Chats without a `session_id` have no memory.
+## Endpoint, execution and permissions
 
-The Chat Map is built from the event log in the background after each answer; this call answers the newest one.
+| Property | Contract |
+|---|---|
+| Wire endpoint | `POST /v1/cep`; logical method `memory.index` |
+| Execution | Synchronous domain result in the JSON-RPC result field |
+| Required scope | `read` |
+| MCP facade | Eligible for the current read-only MCP facade |
+| Side effects | Read/control behavior described below; this scope alone is not a promise of zero side effects |
 
-## Cards
+Send a Bearer token when API authentication is enabled. Authentication failures are HTTP 401; ordinary CEP method errors are JSON-RPC error objects, normally with HTTP 200. A successful HTTP status alone does not prove the operation succeeded. See [the common CEP contract](../../README.md).
+
+## How it works
+
+1. Load/build the Chat Map for chat_id
+2. Build graph relationships from cards and episodes
+3. Return cards, episodes, tasks and graph
+
+```mermaid
+flowchart TD
+    C["Client request"] --> A["Authentication, principal and typed params"]
+    A --> P0["Load/build the Chat Map for chat_id"]
+    P0 --> P1["Build graph relationships from cards and episodes"]
+    P1 --> P2["Return cards, episodes, tasks and graph"]
+    P2 --> R["JSON-RPC result or explicit error"]
+```
+
+## Parameters, defaults and value effects
+
+| Parameter | Type | Required | Meaning, default and constraints |
+|---|---|---|---|
+| `chat_id` | string | Yes | The chat: the same value as `session_id` in chat completions Use the same chat_id that the client sends as session_id to chat completions. A stream id, note id or title is not a chat id. |
+
+Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.
+
+## Request examples
+
+Examples describe contracts, not measured execution. Replace IDs, paths and installed-package names with real values from your Engine. Do not execute write/delete/process examples against valuable data merely to read the documentation.
+
+### 1. Basic request
+
+This request uses the documented selection. Read the result semantics below before acting on it.
 
 ```json
-{ "id": "ev_aef3…", "pos": 0, "role": "user", "ts": "…", "tokens": 18, "trivial": false,
-  "keywords": ["deploy", "naam", "orion", "port", "server"], "entities": { "files": [], "urls": [], "numbers": ["8011"], "quoted": [] },
-  "tools": [], "files": [], "signals": [], "importance": 0.3 }
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "memory.index",
+  "params": {
+    "chat_id": "c1"
+  }
+}
 ```
 
-A card the model wrote at idle time carries `enrichment`: `title`, `motive`, `summary`,
-`keywords` and `by` (`model:<file>`); see the `indexer` policy in [the context runtime](../context/README.md).
+### 2. Read another chat map
 
-## Episodes
+Use a real chat id; this does not create a new conversation.
 
-`episodes` lists stretches of the chat about one thing, found by rules: a new episode starts after
-a pause of more than 30 minutes, when the user says so ("new topic", "naya topic"), or when a
-message shares almost no keywords with the current one (short follow-ups such as "phir se" stay).
-Each has `id` (`ep:<first position>`), `first_pos`, `last_pos`, `start`, `end`, `messages`,
-`keywords`, a rule `title`, `files`, `tools` and `key_moments` (corrections and decisions).
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "memory.index",
+  "params": {
+    "chat_id": "conversation-for-navigation"
+  }
+}
+```
 
-A closed episode of at least 4 messages gets a `summary` (`title`, `summary`, `by`) written by
-the model at idle time, like the cards; with `history_mode: "none"` the outline of earlier topics
-uses it.
+## Response and field meanings
 
-## Tasks
+cards holds the navigation records of visible messages; their positions identify m:<position> references. episodes and tasks group conversational context. graph is derived from these structures. Use memory.item for the exact message rather than treating a card title/summary as the complete source.
 
-`tasks` lists work over several turns. Implicit tasks come from episodes in which tools changed
-something (write, edit, create, move, delete, run, execute); their `checkpoint` says how they
-started and what was done. The model can keep a task itself with the `task_update` function
-(`goal`, `stage`: open, in_progress, blocked, done, abandoned, `checkpoint`), offered while a task
-is open; its word wins over the implicit task, also when it says the work is done. While a task is
-open and the prompt does not show the whole chat (or was just compacted), a `<task>` block with the
-checkpoint goes in front of the current message (`context_report.plan.task`).
+The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
-## Graph
+```json
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "cards": [
+      {
+        "pos": 0,
+        "role": "user",
+        "title": "Greeting"
+      }
+    ],
+    "chat_id": "c1",
+    "episodes": [],
+    "graph": {},
+    "tasks": []
+  }
+}
+```
 
-`graph` has `nodes` (`m:<pos>` messages, `ep:<pos>` episodes, `tool:`, `file:`, `value:`) and
-`edges` (`next`, `part_of`, `uses_tool`, `touches_file`, `mentions`, `corrects`), built by rules,
-for apps that keep the Chat Map in their own graph store. Recall uses it to bring along one hop:
-a later correction of a recalled message, or a message with the same file or value.
+## Errors and recovery
 
-## Example
+| Code / boundary | Meaning | Recovery |
+|---|---|---|
+| HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token; a CEP params change cannot repair authentication |
+| `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
+| `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
+| `-32010` / `event_log_unreadable` | The chat's event log could not be read | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+
+### Invalid-field example
+
+This is deliberately invalid. The extra field must be removed; it is not an alternate feature toggle.
+
+```text
+{
+  "jsonrpc": "2.0",
+  "id": 90,
+  "method": "memory.index",
+  "params": {
+    "chat_id": "c1",
+    "__unknown_option": true
+  }
+}
+```
+
+The error envelope is `{"jsonrpc":"2.0","id":90,"error":{"code":-32602,"message":"...","data":{"type":"invalid_params", "errors":[...]}}}`. Exact message and field diagnostics are generated by typed deserialization; callers should use codes and structured data, not match a sentence.
+
+## cURL
+
+Save one valid request above as `request.json`:
 
 ```bash
-curl -s http://127.0.0.1:8000/v1/cep -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"memory.index","params":{"chat_id":"c1"}}'
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
 ```
 
-Leave out the `Authorization` header when API authentication is off.
+## Python
+
+Install `requests` in your client environment. This executes the basic request; edit `params` for a different valid case.
+
+```python
+import json
+import os
+import requests
+
+payload = json.loads(r'''{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "memory.index",
+  "params": {
+    "chat_id": "c1"
+  }
+}''')
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = {
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "memory.index",
+  "params": {
+    "chat_id": "c1"
+  }
+};
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
+
+The map is a derived cache over events; the read may construct it. No query, limit or cross-chat scope field is accepted. Indexing metadata is not proof of semantic-search model quality or that every background enrichment has finished.
+
+- [`memory.events`](memory.events.md): use its separate documented contract.
+- [`memory.item`](memory.item.md): use its separate documented contract.
+- [`memory.search`](memory.search.md): use its separate documented contract.
+
+## Implementation reference
+
+- [api/src/cep/methods/memory.rs](../../../../../api/src/cep/methods/memory.rs)

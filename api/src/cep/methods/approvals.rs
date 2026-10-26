@@ -38,6 +38,10 @@ struct Reject {
 pub fn register(registry: &mut Registry<CallCtx>) {
     let approval = json!({ "id": "ap_41c2…", "principal": "agent", "method": "mcp:web-search", "target": "{\"query\":\"news\"}",
                            "created_at": "2026-10-25T10:30:00Z", "expires_at": "2026-10-25T10:35:00Z", "status": "pending" });
+    let mut approved = approval.clone();
+    approved["status"] = json!("approved");
+    let mut rejected = approval.clone();
+    rejected["status"] = json!("rejected");
     registry
         .add(
             "approvals.list",
@@ -51,7 +55,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32004, "approval_not_found", "No pending approval with this id, or it expired (5 minutes)")
                 .error(-32005, "approval_decided", "The approval was already approved or rejected")
                 .error(-32602, "invalid_params", "`remember` is something other than \"chat\"")
-                .example(json!({ "approval_id": "ap_41c2…", "remember": "chat", "minutes": 60 }), json!({ "approval": approval, "grant": { "chat_id": "c1", "tool": "web-search", "minutes": 60 } })),
+                .example(json!({ "approval_id": "ap_41c2…", "remember": "chat", "minutes": 60 }), json!({ "approval": approved, "grant": { "chat_id": "c1", "tool": "web-search", "minutes": 60 } })),
             |ctx: CallCtx, _: Call, p: Approve| async move {
                 let grant = match p.remember.as_deref() {
                     Some("chat") => authorize::grant_from_request(&p.approval_id, p.minutes),
@@ -74,7 +78,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32005, "approval_decided", "The approval was already approved or rejected")
                 .example(
                 json!({ "approval_id": "ap_41c2…", "feedback": "Not this site" }),
-                json!({ "approval": approval }),
+                json!({ "approval": rejected }),
             ),
             |ctx: CallCtx, _: Call, p: Reject| async move {
                 let approval = ctx.state.cep.shared().approvals.decide(&p.approval_id, false, p.feedback)?;
