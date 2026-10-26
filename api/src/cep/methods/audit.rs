@@ -1,5 +1,5 @@
-//! `system.audit`: the newest lines of the CEP audit log (02-security §4.7): write, exec and
-//! admin calls and every denial, with the params only as a hash. Owner: Claude (Wave A).
+//! `system.audit`: the newest lines of the CEP audit log: write, exec and admin calls and every
+//! denial, with the params only as a hash.
 
 use crate::cep::CallCtx;
 use cluaiz_cep::{Call, Meta, Registry, Scope};

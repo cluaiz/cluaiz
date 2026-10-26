@@ -22,45 +22,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 2. Execute the Search Plugin natively via Execute Dynamic
-    println!("🌐 [Step 2] Executing Native Web Search via Plugin API...");
-    let cel_url = "http://127.0.0.1:8000/v1/execute/cluaiz-search/search";
-    
-    let cel_payload = json!({
+    // 2. Run the search plugin through CEP `tools.call`
+    println!("🌐 [Step 2] Executing Native Web Search via CEP tools.call...");
+    let cep_url = "http://127.0.0.1:8000/v1/cep";
+    let call = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools.call",
         "params": {
-            "action": "query",
-            "target": "Who is the current CEO of OpenAI?"
+            "kind": "plugin",
+            "name": "cluaiz-search",
+            "fn": "search",
+            "input": { "action": "query", "target": "Who is the current CEO of OpenAI?" }
         }
     });
 
-    println!("   Sending Execution Payload to cluaiz-search...");
-    
+    println!("   Sending tools.call to cluaiz-search...");
+
     let start_search = std::time::Instant::now();
-    let search_res = client.post(cel_url).json(&cel_payload).send().await?;
+    let reply: Value = client.post(cep_url).json(&call).send().await?.json().await?;
     let search_elapsed = start_search.elapsed();
 
-    let mut search_json_result = String::new();
-
-    if search_res.status().is_success() {
-        let data: Value = search_res.json().await?;
-        println!("✅ Search Completed in {:.2}s!\n", search_elapsed.as_secs_f32());
-        
-        println!("==================== PLUGIN JSON RESPONSE ====================");
-        let pretty_json = serde_json::to_string_pretty(&data)?;
-        println!("{}", pretty_json);
-        println!("=================================================================\n");
-
-        if let Some(res) = data.get("result").and_then(|r| r.as_str()) {
-            search_json_result = res.to_string();
-        } else {
-            search_json_result = pretty_json;
+    let search_json_result = match (reply.get("result"), reply.get("error")) {
+        (Some(result), None) => {
+            println!("✅ Search Completed in {:.2}s!\n", search_elapsed.as_secs_f32());
+            println!("==================== PLUGIN JSON RESPONSE ====================");
+            let pretty_json = serde_json::to_string_pretty(result)?;
+            println!("{}", pretty_json);
+            println!("=================================================================\n");
+            result.get("result").and_then(|r| r.as_str()).map(str::to_string).unwrap_or(pretty_json)
         }
-    } else {
-        println!("❌ [Error] Plugin execution failed: {}", search_res.status());
-        let err_text = search_res.text().await?;
-        println!("Details: {}", err_text);
-        return Ok(());
-    }
+        _ => {
+            println!("❌ [Error] Plugin execution failed: {}", reply);
+            return Ok(());
+        }
+    };
 
     // 3. Send the JSON to the AI Model to Summarize
     let chat_url = "http://127.0.0.1:8000/v1/chat/completions";

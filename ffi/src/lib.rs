@@ -1,4 +1,4 @@
-//! The Cluaiz Engine as a C library (01-architecture §10.3): two functions, one JSON-RPC 2.0
+//! The Cluaiz Engine as a C library: two functions, one JSON-RPC 2.0
 //! message in and out, exactly as `POST /v1/cep`.
 //!
 //! ```c

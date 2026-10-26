@@ -4,7 +4,7 @@ Two checks, each against what the Engine does today without vectors:
 
 1. Tools: for every routing-set row that expects a tool, is the expected tool the nearest one
    by cosine (message vs the tool's name + description)? Compared with the word matcher's hit
-   (POST /v1/tools/discover). Reported by language (English, Hinglish, Devanagari) and for the
+   (CEP tools.discover). Reported by language (English, Hinglish, Devanagari) and for the
    paraphrase rows, plus how close trap and chit-chat rows get to any tool.
 2. Memory: in a 200-message synthetic chat (memory_suite.py), is the planted message in the top 3
    by cosine for each question? Compared with BM25 recall (CEP memory.search).

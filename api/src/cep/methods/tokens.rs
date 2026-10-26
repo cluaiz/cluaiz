@@ -1,6 +1,5 @@
-//! `tokens.*`: the API keys in permission.json (03-method-catalog Part B), what
-//! `/v1/system/auth/token/{generate,revoke}` did, unchanged (decision D9: keys and auth on/off are
-//! the owner's settings). Owner: Claude (Wave A).
+//! `tokens.*`: the API keys in permission.json. Keys and auth on/off are the owner's settings;
+//! these methods never turn auth on or off.
 
 use crate::cep::CallCtx;
 use cluaiz_cep::{Call, CepError, Meta, NoParams, Registry, Scope};
@@ -43,7 +42,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "tokens.create",
-            Meta::new(Scope::Admin, "Makes a new API key (at most 5)").no_mcp().idempotent(false).example(
+            Meta::new(Scope::Admin, "Makes a new API key (at most 5)")
+                .no_mcp()
+                .idempotent(false)
+                .error(-32005, "token_limit", "There are 5 keys already: revoke one first")
+                .error(-32010, "settings_not_saved", "permission.json could not be written")
+                .example(
                 json!({}),
                 json!({ "token": "sk-cluaiz-1f0c…", "tokens": ["sk-cluaiz-1f0c…"], "api_auth_required": false }),
             ),
@@ -67,6 +71,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Meta::new(Scope::Admin, "Removes an API key; with none left, API authentication turns off (as before)")
                 .no_mcp()
                 .destructive()
+                .error(-32602, "invalid_params", "Neither `token` nor `index` was sent")
+                .error(-32004, "token_not_found", "No key matches `token`, or `index` is out of range")
+                .error(-32010, "settings_not_saved", "permission.json could not be written")
                 .example(json!({ "index": 1 }), json!({ "revoked_token": "sk-cluaiz-1f0c…", "tokens": [], "api_auth_required": false })),
             |ctx: CallCtx, _: Call, p: Revoke| async move {
                 let target = match (p.index, p.token) {
@@ -77,7 +84,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 let mut schema = ctx.state.permission_schema.read().await.clone();
                 let revoked = schema.api_auth.remove_token(&target).map_err(|e| CepError::not_found("token_not_found", e))?;
                 if schema.api_auth.tokens.is_empty() {
-                    // Kept from the old route: no keys left would otherwise lock clients out
+                    // No keys left would lock every client out
                     schema.api_auth.required = false;
                     tracing::warn!("⚠️ All API tokens revoked: Automatically disabled api_auth.required to prevent engine lockout.");
                 }

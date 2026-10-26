@@ -1,4 +1,4 @@
-//! `models.*: installed models, load, inspect, remove, download` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
+//! `models.*`: installed models, load, inspect, remove, and download (a task).
 
 use crate::cep::{roots, CallCtx};
 use crate::handlers::models;
@@ -36,12 +36,14 @@ impl Category {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ListParams {
+    /// Only models of this category; all when absent
     category: Option<Category>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ModelParams {
+    /// An installed model id (from `models.list`)
     model: String,
 }
 
@@ -55,7 +57,9 @@ struct DownloadParams {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct InspectParams {
+    /// An installed model id (from `models.list`)
     model: String,
+    /// A file inside the model's folder, relative to it (default: the primary weight file)
     file: Option<String>,
 }
 
@@ -66,7 +70,16 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Installed registry entries, optionally filtered by category",
         )
-        .example(json!({}), json!([])),
+        .example(json!({"category": "stt"}), json!([{
+            "id": "whisper-large-v3-turbo-INT8", "category": "stt", "format": "onnx", "size": 1950984246, "experimental": false,
+            "huggingface_repo": "onnx-community/whisper-large-v3-turbo",
+            "local_dir": "C:/Users/me/.cluaiz/models/stt/whisper-large-v3-turbo-INT8",
+            "files": [{"name": "decoder_model_int8.onnx", "size_bytes": 439684851, "is_primary": true},
+                      {"name": "encoder_model_int8.onnx", "size_bytes": 644822094, "is_primary": false}],
+            "extra_files": ["config.json", "tokenizer.json"],
+            "supported_tasks": ["speech_to_text", "automatic-speech-recognition"],
+            "metadata": {"architecture": "onnx-generic", "backend_type": "onnx"}
+        }])),
         |_: CallCtx, _: Call, params: ListParams| async move { worker(move || list(params)).await },
     );
     registry.add(
@@ -75,9 +88,17 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Raw GGUF metadata and tensor table of an installed model",
         )
+        .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32602, "invalid_params", "`model` is empty or looks like a path")
+        .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32602, "invalid_params", "`file` leaves the model's folder")
+        .error(-32010, "gguf_probe_failed", "The file is not a readable GGUF")
         .example(
-            json!({"model":"installed-model"}),
-            json!({"model":"installed-model","metadata":{},"tensors":[]}),
+            json!({"model":"bonsai-27b-gguf-q1_0"}),
+            json!({"model":"bonsai-27b-gguf-q1_0","file":"C:/Users/me/.cluaiz/models/chat/bonsai-27b-gguf-q1_0/Bonsai-27B-Q1_0.gguf",
+                   "metadata":{"general.architecture":"qwen35","general.name":"Bonsai 27B","qwen35.context_length":262144,"qwen35.block_count":64},
+                   "int_arrays":{"qwen35.rope.dimension_sections":[11,11,10,0]},"speech_languages":[],
+                   "tensors":[{"name":"output.weight","dims":[5120,248320],"ggml_type":41,"offset":0,"size_bytes":178790400}]}),
         ),
         |ctx: CallCtx, call: Call, params: InspectParams| async move {
             let (entry, path) = selected(&ctx, call, params.model, params.file, false).await?;
@@ -90,6 +111,11 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Write,
             "Loads an installed GGUF model using the existing Engine host",
         )
+        .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32602, "invalid_params", "`model` is empty or looks like a path")
+        .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32007, "not_implemented", "The model is not a GGUF (ONNX models load on their first request)")
+        .error(-32010, "model_load_failed", "llama.cpp could not load it (memory, a broken file, an unsupported architecture)")
         .example(
             json!({"model":"installed-model"}),
             json!({"model":"installed-model","loaded_ms":125}),
@@ -117,6 +143,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Unloads the selected model if active and removes its installed package",
         )
         .destructive()
+        .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32602, "invalid_params", "`model` is empty or looks like a path")
+        .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32010, "model_remove_failed", "The folder or the registry entry could not be removed")
         .example(
             json!({"model":"installed-model"}),
             json!({"model":"installed-model","dir":"models/chat/installed-model"}),
@@ -146,6 +176,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .task()
         .idempotent(false)
+        .error(-32602, "invalid_params", "`model` is empty, over 512 characters, or has control characters")
+        .error(-32005, "pull_running", "This model is being downloaded already (from the task's result)")
+        .error(-32010, "download_failed", "Resolving or downloading failed: no such repo or variant, network, disk (from the task's result)")
+        .error(-32008, "cancelled", "`tasks.cancel` stopped the download (from the task's result)")
         .example(json!({"model": "owner/name-GGUF:Q4_K_M"}), json!({"task": {"task_id": "t_5f0c…", "method": "models.download", "status": "working"}})),
         |_: CallCtx, call: Call, params: DownloadParams| async move {
             let model = params.model.trim().to_string();

@@ -8,8 +8,11 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Copy, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
+    /// Instructions for the model (`SKILL.md`)
     Skill,
+    /// A WASM or native library (`package.json`)
     Plugin,
+    /// An MCP server the Engine starts (`package.json`)
     Mcp,
 }
 
@@ -43,7 +46,9 @@ impl Kind {
 #[derive(Clone, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Target {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
 }
 

@@ -104,7 +104,7 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 
 ## Documents and ingest
 
-`POST /v1/ingest` supports native extraction or an optional selected model.
+CEP `ingest.run` (a task) supports native extraction or an optional selected model.
 
 | Input | Native processing |
 |:---|:---|
@@ -172,14 +172,11 @@ Quantization support depends on the native kernels or ONNX export/provider combi
 | [`POST /v1/chat/completions`](docs/api/inference/chat_completions.md) | Text and compatible multimodal chat |
 | [`POST /v1/audio/speech`](docs/api/inference/audio_speech.md) | Text-to-speech |
 | [`POST /v1/audio/transcriptions`](docs/api/inference/audio_transcriptions.md) | ONNX speech-to-text |
-| `POST /v1/audio/execute` | Shared speech task endpoint |
 | [`POST /v1/embeddings`](docs/api/inference/embeddings.md) | Text or supported image vectors |
-| [`POST /v1/ingest`](docs/api/inference/ingest.md) | Document extraction and selected-model processing |
-| `GET /v1/models/installed` | Installed model IDs and capabilities |
-| `GET /v1/audio/voices?model=<id>` | TTS voices and language controls |
-| `GET /v1/audio/languages?model=<id>` | STT languages |
+| `GET /v1/models` | Installed models (OpenAI format) |
+| [`POST /v1/cep`](docs/api/cep/README.md) | Every Cluaiz-specific operation as a CEP method: `ingest.run`, `audio.run`, `audio.voices`, `audio.languages`, `models.list`, … |
 
-Use the exact installed model ID in the request. Ingest also accepts `/v1/ingest/file` as an alias.
+Use the exact installed model ID in the request.
 
 Requests use Bearer authentication. Media can be supplied through actual data URIs, authorized engine-local paths or permitted HTTP(S) sources. Size limits and resource admission apply before expensive processing. Streaming and retention controls are documented per endpoint; they are not identical across all tasks.
 

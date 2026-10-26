@@ -35,28 +35,28 @@ async fn test_busy_attachment_rejects_before_fetch_and_releases_for_retry() -> R
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     let (status, body) =
-        support::post(&router, "/v1/chat/completions", request.clone(), "user").await?;
+        support::post(&router, "/v1/chat/completions", request.clone()).await?;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
     let body: Value = serde_json::from_str(&body)?;
     assert_eq!(body["error"]["code"], "media_busy");
     request["stream"] = json!(true);
     request["return_progress"] = json!(true);
     let (status, body) =
-        support::post(&router, "/v1/chat/completions", request.clone(), "user").await?;
+        support::post(&router, "/v1/chat/completions", request.clone()).await?;
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains("\"code\":\"media_busy\""), "{body}");
     assert!(body.contains("\"state\":\"failed\""), "{body}");
     assert_eq!(body.matches("data: [DONE]").count(), 1, "{body}");
 
     let plain = json!({"model":model,"stream":false,"messages":[{"role":"user","content":"text"}]});
-    let (_, body) = support::post(&router, "/v1/chat/completions", plain, "user").await?;
+    let (_, body) = support::post(&router, "/v1/chat/completions", plain).await?;
     assert!(
         body.contains("model_not_found") && !body.contains("media_busy"),
         "{body}"
     );
     drop(lease);
     request["stream"] = json!(false);
-    let (_, body) = support::post(&router, "/v1/chat/completions", request, "user").await?;
+    let (_, body) = support::post(&router, "/v1/chat/completions", request).await?;
     assert!(
         body.contains("model_not_found") && !body.contains("media_busy"),
         "{body}"
@@ -76,7 +76,7 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
     let request = json!({"model":format!("missing-{}", uuid::Uuid::new_v4()),"stream":false,
         "messages":[{"role":"user","content":"x".repeat(3 * cluaiz_core::MIB as usize)}]});
     for route in ["/v1/chat/completions", "/api/chat"] {
-        let (status, body) = support::post(&router, route, request.clone(), "user").await?;
+        let (status, body) = support::post(&router, route, request.clone()).await?;
         assert_eq!(status, StatusCode::BAD_REQUEST);
         assert!(body.contains("model_not_found"));
     }
@@ -106,7 +106,7 @@ async fn test_inline_attachment_transport_accepts_large_json_and_bounds_oversize
     let error: Value = serde_json::from_slice(&bytes)?;
     assert_eq!(error["error"]["type"], "model_not_found");
     let (status, body) =
-        support::post(&router, "/v1/embeddings", embedding.clone(), "user").await?;
+        support::post(&router, "/v1/embeddings", embedding.clone()).await?;
     assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
     let denied = router
         .clone()

@@ -1,6 +1,6 @@
 """Routing-set check and calibration for the tool matcher.
 
-Sends every prompt of routing_set.jsonl to a running Engine's POST /v1/tools/discover (with
+Sends every prompt of routing_set.jsonl to a running Engine's CEP tools.discover (with
 "explain": true), scores what the Engine suggests today, then tries other level rules on the
 returned evidence: the rules are fitted on one half of the set and reported on the other half.
 

@@ -6,7 +6,7 @@ several tools at once, follow-ups (with `previous`), false-positive traps, chit-
 requests no installed tool can do. `expect` lists the tool ids that should be suggested, or is
 empty when none should be.
 
-`calibrate.py` sends every message to a running Engine's `POST /v1/tools/discover` and reports:
+`calibrate.py` sends every message to a running Engine's CEP `tools.discover` and reports:
 
 - **hit**: rows with tools where every expected tool is suggested (card or title)
 - **card**: the same, as cards
@@ -215,7 +215,7 @@ change to the rows.
 `calibrate.py` also reports the `auto_load` rule (exactly one card, ahead of every other candidate
 by a margin). On the routing set (2026-10-24): margin 2 loads a tool for 67 of the 108 rows that
 need one, 66 of them right (r016 "test this node.js function by running it" gets `everything`),
-and never for a row that needs no tool. See `docs/api/inference/context_runtime.md` for the
+and never for a row that needs no tool. See `docs/api/cep/ai-inference/context/README.md` for the
 `auto_load` and `mcp_prewarm` timings.
 
 ## Journeys (`journeys.py`, plan §10.2 J-suite)
@@ -322,7 +322,7 @@ Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journe
 | --- | --- |
 | MEM3 time questions | "kal", "parso", a weekday and "aaj" each found only that day's port (7070, 5050, 5050, 9090) |
 | MEM5 recalling a tool output | the run's result came back at level `tool_only` (`code-interpreter returned: stdout: checksum ZEBRA-7781 …`); the answer gave ZEBRA-7781, which no message had |
-| MEM6 cross-chat | `allow`: the model called `recall` and found the codename; `deny`: `/v1/recall/search` with `scope: all` gave 403 and the answer had no codename; `ask` with a reject: no codename |
+| MEM6 cross-chat | `allow`: the model called `recall` and found the codename; `deny`: CEP `memory.search` with `scope: all` gave `-32002` and the answer had no codename; `ask` with a reject: no codename |
 | ENR1 card on the hot KV | the card was written, and the next request processed 9 of 418 tokens (14 of 415 with no job) |
 | PERF5 preemption | first text +81, +228 and +483 ms in three runs (at most the rest of one 64-token chunk, about 650 ms on this machine); before the fix +1,389 ms |
 | C2 earlier tool step in client mode | the 4th turn's prompt had the first turn's `read_text_file` call and its result; the answer quoted the file's first line |

@@ -1,4 +1,4 @@
-//! The protocol's own methods: `rpc.discover` and `tasks.*` (01-architecture §7.6, §9)
+//! The protocol's own methods: `rpc.discover` and `tasks.*`
 
 use crate::error::CepError;
 use crate::principal::Scope;
@@ -19,6 +19,7 @@ struct Discover {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TaskGet {
+    /// The `task.task_id` a task method answered with
     task_id: String,
     /// Events after this cursor (`next` of the last answer); 0 or absent = all kept events
     #[serde(default)]
@@ -28,6 +29,7 @@ struct TaskGet {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TaskResult {
+    /// The `task.task_id` a task method answered with
     task_id: String,
     /// How long to wait for the end, at most 30000 ms; 0 or absent = do not wait
     #[serde(default)]
@@ -37,6 +39,7 @@ struct TaskResult {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TaskId {
+    /// The `task.task_id` a task method answered with
     task_id: String,
 }
 
@@ -57,7 +60,9 @@ pub(crate) fn register<Ctx: Send + 'static>(registry: &mut Registry<Ctx>) {
         )
         .add(
             "tasks.get",
-            Meta::new(Scope::Read, "A task's status, progress and new events").example(
+            Meta::new(Scope::Read, "A task's status, progress and new events")
+                .error(-32004, "task_not_found", "No task with this id for this caller, or it expired")
+                .example(
                 json!({ "task_id": "t_5f0c…", "after": 0 }),
                 json!({ "status": "working", "progress": { "done": 1, "total": 3 }, "events": [], "next": 0 }),
             ),
@@ -65,7 +70,11 @@ pub(crate) fn register<Ctx: Send + 'static>(registry: &mut Registry<Ctx>) {
         )
         .add(
             "tasks.result",
-            Meta::new(Scope::Read, "A task's final result or error; waits up to wait_ms").example(
+            Meta::new(Scope::Read, "A task's final result or error; waits up to wait_ms")
+                .error(-32004, "task_not_found", "No task with this id for this caller, or it expired")
+                .error(-32009, "timeout", "The task is still running after `wait_ms`: ask again")
+                .error(-32008, "cancelled", "The task was cancelled")
+                .example(
                 json!({ "task_id": "t_5f0c…", "wait_ms": 30000 }),
                 json!({ "any": "the result the method returns" }),
             ),
@@ -77,7 +86,11 @@ pub(crate) fn register<Ctx: Send + 'static>(registry: &mut Registry<Ctx>) {
         )
         .add(
             "tasks.cancel",
-            Meta::new(Scope::Read, "Cancels a running task").idempotent(false).example(
+            Meta::new(Scope::Read, "Cancels a running task")
+                .idempotent(false)
+                .error(-32004, "task_not_found", "No task with this id for this caller, or it expired")
+                .error(-32602, "invalid_params", "The task has already ended")
+                .example(
                 json!({ "task_id": "t_5f0c…" }),
                 json!({ "status": "cancelled", "status_message": "Cancelled by request" }),
             ),

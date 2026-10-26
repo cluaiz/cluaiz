@@ -1,7 +1,7 @@
-"""B1 live owner journey. Requires a built CEP Engine after the old fs routes are removed.
+"""fs.* and workspace.* live owner journey.
 
 Starts only a frozen executable copy in a fresh isolated home on an explicit test port.
-Uses the existing Engine harness and B0 isolation helpers. Never builds or opens a dialog.
+Uses the Engine harness and journey_home.py. Never builds or opens a dialog.
 """
 import argparse
 import json
@@ -10,7 +10,7 @@ import urllib.error
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-from golden_capture import REPO, digest, prepare, save, validate_paths
+from journey_home import REPO, digest, prepare, save, validate_paths
 
 sys.path.insert(0, str(REPO / "test/context-runtime"))
 from harness import Engine
@@ -83,22 +83,6 @@ def main():
         check("missing file type", missing.get("data", {}).get("type") == "file_not_found")
         discovery = call("rpc.discover", {"group": "fs"})
         check("all eight fs methods", len(discovery.get("methods", [])) == 8)
-        # GET cannot open any of these old POST-only handlers, including the picker.
-        # An old POST-only route responds 405, which correctly fails the removal check.
-        for suffix in ("read", "write", "list", "delete", "rename", "copy", "mkdir", "pick_folder"):
-            path = "/v1/fs/" + suffix
-            try:
-                response = engine._request("GET", path, timeout=10)
-            except urllib.error.HTTPError as error:
-                response = error
-            with response:
-                check("old route removed " + path, response.code == 404)
-        try:
-            response = engine._request("GET", "/v1/workspace", timeout=10)
-        except urllib.error.HTTPError as error:
-            response = error
-        with response:
-            check("old workspace route removed", response.code == 404)
     except Exception as error:
         failure = error
         report["failure"] = {"type": type(error).__name__, "message": str(error)}

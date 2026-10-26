@@ -1,0 +1,141 @@
+# Context runtime (`context.*`)
+
+How the Engine shares a model's context between the system prompt, the conversation, tools and
+the answer, and what it did for each request. The plan itself is described in
+[Chat Completions → Context plan and compaction](../../../inference/chat_completions.md#-context-plan-and-compaction).
+
+| Method | What it does |
+| --- | --- |
+| [`config.get`](../../system/config/config.get.md) / [`config.set`](../../system/config/config.set.md) `{section: "context"}` | The planner's default policy, and changing it |
+| [`context.preview`](context.preview.md) | The plan a chat request would get, without running it |
+| [`context.reports`](context.reports.md) / [`context.report`](context.report.md) | The chat's kept context reports |
+| [`context.jobs`](context.jobs.md) | The idle-time scheduler: queue, counts and recent results |
+
+```mermaid
+flowchart LR
+    Req["Chat request"] --> Plan["Planner: room for system prompt, history, tools, answer"]
+    Policy["config section context + request context_policy"] --> Plan
+    Plan -->|"history over compact_at_pct"| Compact["Compaction"]
+    Plan --> Recall["Recall from the Chat Map"]
+    Plan --> Tools["Tool suggestions / load_tool"]
+    Plan --> Report["context_report (context.report)"]
+    Idle["No request running"] --> Jobs["Idle-time cards (context.jobs)"]
+```
+
+## Policy
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `recent_turns_min` | 2 | Newest whole turns always kept (when they fit), and never compacted |
+| `evidence_cap_pct` | 15 | Most of the room recalled evidence may use (with recall, P3) |
+| `suggestions_cap_pct` | 5 | Most of the room tool suggestions may use |
+| `margin_pct` | 2 | Share of the context kept free for template tokens |
+| `compact_at_pct` | 85 | The chat is compacted when its history uses this share of the room |
+| `compact_to_pct` | 60 | A compaction frees enough to bring the history down to this share, so the next one is many turns away |
+| `indexer` | `"auto"` | Idle-time cards written by the model (title, motive, summary, keywords): `auto` when the model has GPU layers, `always`, `rules_only` (cards by rules only) or `off` |
+| `notes` | `"ask"` | Notes the model proposes with `remember`: `ask` (proposed until the user confirms), `auto` (confirmed at once), `off` (no `remember`). See [notes](../notes/notes.list.md) |
+| `tool_format` | `"native"` | How tools reach the model: `inline` (their schemas in the system prompt, calls as `<tool_call>` blocks) or `native` (the model's own chat template and call format, with llama.cpp's grammar and parser). See [Native tool calls](#native-tool-calls) |
+| `auto_load` | `"off"` | `on`: when the suggestions name one clear tool (one card, scoring 2 or more above every other candidate), the Engine loads it before the model answers, as if the model had called `load_tool` (one model step fewer; the stream shows it as a `load_tool` call with `"auto": true`, and `context.tools.auto_loaded` names it). `off`: the model loads tools itself |
+| `mcp_prewarm` | `"on"` | `on`: when the first tool card of a message is an MCP server, the server starts in the background while the model reads the prompt, so a `load_tool` that follows does not wait for it to start (the log shows `Prewarmed MCP`). `off`: a server starts when it is loaded |
+| `cross_chat` | `"ask"` | Searching other chats with `recall` (scope `workspace` or `all`): `ask` (the user approves each search, like a tool call: `permission_request` with capability `memory:other_chats`), `allow`, or `deny` (nothing from other chats is ever returned) |
+
+Percentages are whole numbers from 0 to 100; `recent_turns_min` is at most 50.
+
+**Idle-time cards.** After an answer in a chat with `session_id`, when no chat request is in
+flight, the model that answered writes a short card for the turn (at most 160 tokens, no
+thinking), reusing the chat's KV prefix. Where a template switches thinking at the start of the
+prompt (Gemma 4), the switch stays as in the turn and the thinking budget is 0, so the KV is still
+reused. The reply is held to the card's JSON shape by a grammar. A request that arrives stops the job at once: between two tokens, or while the job's prompt is processed, between two chunks of 64 tokens (the KV keeps the cached part). Measured (Gemma 4 E4B with 5 of 42 layers on the GPU): a short request's first text came 81, 228 and 483 ms later than with no job in three runs: at most the rest of one chunk, which takes about 650 ms there. A job that has
+not started yet is dropped without touching the KV. It never loads a model. Cards appear in
+`memory.index` (`enrichment`), their titles and keywords are searched by recall, and
+recalled lines show the title. Measured on an RTX 3050 4 GB with about half of the model's layers on
+the GPU (2026-10-25): Qwen3-4B 4.1 s per card (56 tokens), Gemma 4 E4B 7.0 s (84 tokens); before
+the grammar was checked per picked token (see `grammar` in Chat Completions) they took 9.8 s and
+27.2 s. The next request kept the whole conversation in the cache (it processed only its own new
+message).
+
+**Nothing is lost on a restart or a crash.** The chat's event log is the job list: a card is
+written only when it is done (`card_enrichment`, or `card_enrichment_failed` when the reply held
+no card, so it is not retried forever), and turns without one are found again. After 60 s
+without chat requests, the scheduler scans chats written to in the last 7 days and queues up to
+20 such turns as "cold" jobs: only that turn's question and answer are sent. Cold jobs run only
+when chat memory is on, because they replace the KV of the chat you were in (it comes back from
+disk on your next message). A turn whose job was stopped or replaced by a newer turn is picked up
+the same way.
+
+## Native tool calls
+
+With `tool_format: "native"` (the default) every function the model may call goes to its chat
+template as a `tools` list (llama-server's path): bound tools, tools loaded in the chat with
+`load_tool`, and the Engine's own functions (`load_tool`, `find_tools`, `recall`, …): the template writes them, and the earlier calls and results, the way the
+model was trained on, and llama.cpp gives a lazy grammar for the model's call format and the parser
+that reads its answer. The grammar sleeps while the model thinks and wakes up when thinking ends.
+The answer streams as the parser reads it, without the call markup; each call then arrives as a
+`<tool_call>` block, so clients, the chat's ledger and `tool_calls` events stay the same in both
+modes. A template that does not render tools gets them inline. Media prompts stay inline.
+
+The list is part of the system prompt, so a tool loaded during an answer changes it: the next step
+processes the prompt again from there (a few hundred tokens in a new chat, the whole history in a
+long one). Inline, a loaded tool's functions travel in the `load_tool` result and nothing earlier
+changes.
+
+Measured with `test/context-runtime/tool_calls.py` (14 rows: 11 that need a tool, 3 that need
+none; isolated server, temperature 0, 2026-10-24, RTX 3050 4 GB):
+
+| Model | `inline` | `native` |
+| --- | --- | --- |
+| Gemma 4 E4B (Q4_K_M) | 6/14 (tool called right 11/11, right answer 6/14) | 14/14 |
+| Qwen3-4B (Q4_K_M) | 13/14 | 14/14 |
+| Llama 3.2 3B (Q4_K_M) | 4/14 | 4/14 (its template has no tools: inline) |
+
+Gemma 4 called the tools in both modes, but inline it often wrote no answer after the result or
+answered from an invented one. Qwen3's own format is the `<tool_call>` block, so both modes are
+close for it.
+
+With no tools bound (the model sees suggestions and loads what it needs with `load_tool`, the
+App's usual case), same rows:
+
+| Model | loaded tools inline | loaded tools native | native + `auto_load: "on"` |
+| --- | --- | --- | --- |
+| Gemma 4 E4B | 4/14, 1275 s | 12/14, 849 s | 11/14, 777 s |
+| Qwen3-4B (thinking off) | 7/14, 100 s | 8/14, 142 s | 10/14, 140 s |
+
+`auto_load` saved about 9% of the time with Gemma 4 and none with Qwen3 (its extra step is short
+without thinking); the pass counts moved by one or two rows either way, so it stays off.
+
+`mcp_prewarm` (Gemma 4, "Read notes.txt…", fresh Engine each run so the `filesystem` server is not
+running, 3 runs each): off 54.2 / 56.4 / 56.4 s, on 48.5 / 50.8 / 51.1 s. The server start (about
+4.6 s with `npx`) overlaps the model's first step, and `load_tool` then answers in under a
+millisecond instead of 3.6–4.5 s.
+
+## Where the time before the first token goes
+
+`context_report.timing` (milliseconds, the Engine's own clock): `preflight_ms` (everything before
+the model starts), `model_load_ms`, `registry_template_ms`, `tools_ms` (matching, suggestions,
+tool schemas) and `plan_ms` (planning, recall, notes, rendering). Parts of these: `ingest_ms`
+(the client's messages matched against the chat's event log), `render_ms` (the history rendered
+from the ledger), `count_ms` (the first token count of the prompt), `recall_ms` and
+`matcher_ms` (the tool catalog and the matcher; 0.21 ms with 10 tools installed, 1.54 ms with 100).
+`test/context-runtime/perf.py` reads them.
+
+A long chat does not slow every request: the logs of the 4 most recent chats stay parsed in RAM
+(each append extends them; a log changed from outside is read again), and a request uses the
+chat's last Chat Map while a new one is built in the background after each answer (a map more
+than 8 events behind is built again; the messages added since are the newest ones, which the
+prompt shows). The client's messages are compared with the log without being copied. Measured
+with a 20,012-message chat (2026-10-24, 20 requests): ingest, render, tools and plan together
+13 ms (median), 14 ms (p95); the whole preparation 23 ms (before: 939 ms, of which ingest 217 and
+recall 209).
+
+The engine report's `context.template_dropped` lists messages the model's chat template did not
+show (a template with no place for a role or field drops it without an error); a native tool render
+that drops a message falls back to the inline form, and a template with no `tool` role (Gemma 4's,
+for one) gets tool results as `<tool_response>` user turns. A request with `"return_prompt": true` (for
+template tests) also gets the rendered prompt in `context.prompt`.
+
+## Per-request policy
+
+A chat request can change fields for itself with `context_policy`, for example
+`"context_policy": {"recent_turns_min": 3}`. There, unknown fields and invalid values are ignored
+with a warning in the Engine log, and the request still runs. The policy used is reported in
+`context_report.plan.policy`.

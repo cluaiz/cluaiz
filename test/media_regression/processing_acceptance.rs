@@ -49,7 +49,7 @@ async fn real_repeated_attachments_report_progress_and_keep_loaded_plan() -> Res
     for (run, (source, expected)) in fixtures.into_iter().enumerate() {
         let started = Instant::now();
         let response = client.http.post(format!("{}/v1/chat/completions", client.base)).bearer_auth(&client.token)
-            .header("x-caller", "user").json(&json!({
+            .json(&json!({
                 "model":model_id,"stream":true,"return_progress":true,"keep_alive":-1,
                 "temperature":0.0,"seed":31,"think_mode":"off","max_tokens":32,"temporary_chat":"strict",
                 "messages":[{"role":"user","content":[{"type":"text","text":if expected.is_some() {

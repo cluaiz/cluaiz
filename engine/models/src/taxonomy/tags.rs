@@ -17,7 +17,7 @@ pub const HF_TAGS_CHAT: &[&str] = &[
     "any-to-any",
 ];
 
-/// HuggingFace pipeline tags for Ingest / Document AI / Spatial Vision models (/v1/ingest)
+/// HuggingFace pipeline tags for Ingest / Document AI / Spatial Vision models (CEP ingest.run)
 pub const HF_TAGS_INGEST: &[&str] = &[
     "document-ocr",
     "document-question-answering",

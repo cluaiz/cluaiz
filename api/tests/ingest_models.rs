@@ -67,7 +67,6 @@ async fn chat_pdf(
                 {"type":"text","text":instruction}
             ]}]
         }),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -246,7 +245,6 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
             &router,
             "/v1/embeddings",
             json!({"model":ids[0],"input":item["chunks"],"keep_alive":0}),
-            "user",
         )
         .await?;
         assert_eq!(status, StatusCode::OK, "{body}");
@@ -264,7 +262,6 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         &router,
         "/v1/embeddings",
         json!({"model":ids[2],"input":"release resident","keep_alive":0}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");
@@ -288,7 +285,6 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         &router,
         "/v1/embeddings",
         json!({"model":ids[1],"input":[{"type":"image","source":blue}],"keep_alive":0}),
-        "user",
     )
     .await?;
     assert_eq!(status, StatusCode::OK, "{body}");

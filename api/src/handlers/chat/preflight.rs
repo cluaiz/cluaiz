@@ -135,7 +135,6 @@ impl PreparedChatContext {
         state: &Arc<AppState>,
         request: &ExternalChatRequest,
         request_id: &str,
-        headers: &axum::http::HeaderMap,
         progress: Option<cluaiz_core::processing::ProcessingReporter>,
     ) -> Result<Self, axum::response::Response> {
         let preflight_started = std::time::Instant::now();
@@ -1044,15 +1043,13 @@ impl PreparedChatContext {
                         Some("invalid_media"),
                     )
                 })?;
-            let (owned_state, owned_headers, owned_settings) =
-                (state.clone(), headers.clone(), settings.clone());
+            let (owned_state, owned_settings) = (state.clone(), settings.clone());
             let (cancellation, observer) = (cancel_signal.clone(), progress.clone());
             // A disconnected preflight must not release the permit while spawn_blocking decodes.
             let (prepared, _) = lease
                 .prepare(cancel_signal.clone(), async move {
                     prepare_authorized_media(
                         &owned_state,
-                        &owned_headers,
                         typed,
                         &owned_settings,
                         document_images,

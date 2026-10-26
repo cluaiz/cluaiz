@@ -1,3 +1,56 @@
+---
+method: "POST"
+path: "/api/pull"
+standard: "Ollama"
+category: "models"
+summary: "Downloads and registers a model, as cluaiz pull does; streams one JSON line per step"
+params:
+  - name: "model"
+    type: "String"
+    req: true
+    default: ""
+    allowed: "Catalog id, Hugging Face owner/name[:QUANT], hf:// or https URL"
+    desc: "The model to download"
+  - name: "stream"
+    type: "Boolean"
+    req: false
+    default: "true"
+    allowed: "true, false"
+    desc: "One NDJSON line per step; false answers once at the end"
+  - name: "insecure"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "true, false"
+    desc: "Accepted for Ollama clients; no effect (downloads use HTTPS)"
+request_payload: |
+  {
+    "model": "QuantFactory/SmolLM-135M-GGUF:Q2_K",
+    "stream": false
+  }
+response: |
+  {
+    "status": "success",
+    "model": "smollm-135m-gguf-Q2_K",
+    "path": "C:/Users/me/.cluaiz/models/chat/smollm-135m-gguf-Q2_K/SmolLM-135M.Q2_K.gguf",
+    "downloaded": true
+  }
+streaming: "`stream: true` (default): application/x-ndjson, one `{\"status\"}` line per step, `total` / `completed` bytes while downloading, then the result line or `{\"error\"}`"
+errors:
+  - status: 400
+    type: "error"
+    when: "`model` is empty, over 512 characters, or has control characters"
+  - status: 401
+    type: "unauthenticated"
+    when: "API authentication is on and no valid token was sent"
+  - status: 409
+    type: "error"
+    when: "The same model is being pulled already (stream: false)"
+  - status: 500
+    type: "error"
+    when: "Resolving or downloading failed (stream: false)"
+---
+
 # Download / Pull Model API
 
 `POST /api/pull` (Ollama) · CEP `models.download`

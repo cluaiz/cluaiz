@@ -1,3 +1,95 @@
+---
+method: "POST"
+path: "/v1/audio/speech"
+standard: "OpenAI"
+category: "ai-inference"
+summary: "Text to speech with an installed TTS model; the answer holds a WAV"
+params:
+  - name: "input"
+    type: "String"
+    req: true
+    default: "—"
+    allowed: "Any UTF-8 text string"
+    desc: "The text content to synthesize into speech."
+  - name: "model"
+    type: "String"
+    req: false
+    default: "active TTS slot, else first eligible installed package"
+    allowed: "Installed TTS package ID"
+    desc: "ONNX TTS or GGUF speech model with an audio-generation projector."
+  - name: "voice"
+    type: "String"
+    req: false
+    default: "\"default\""
+    allowed: "Model voice ID, or GGUF reference audio source"
+    desc: "ONNX: `\"default\"`/`\"auto\"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID."
+  - name: "language"
+    type: "String"
+    req: false
+    default: "ONNX: inferred; GGUF: native default"
+    allowed: "Language code such as `\"cs\"`, `\"hi\"`, `\"en-US\"`"
+    desc: "Phoneme runtimes: spelling/number rules from script/voice/model. GGUF: native selector; unsupported vocabulary languages return HTTP400 before model load. Audio8 determines language from text and rejects forcing; omit language or use `\"auto\"`."
+  - name: "speed"
+    type: "Float"
+    req: false
+    default: "1.0"
+    allowed: "`0.25` – `4.0`"
+    desc: "Kokoro/Piper use model duration controls. GGUF applies shared pitch-preserving output tempo at the native sample rate; this is not a native model prosody control. Other families' support depends on their runtime."
+  - name: "stream"
+    type: "Boolean"
+    req: false
+    default: "false"
+    allowed: "`true`, `false`"
+    desc: "`true`: Server-Sent Events. Kokoro/Piper emit WAV parts per settled sentence; GGUF emits new generated PCM as WAV parts (`speech.audio.delta`), then the whole WAV. Other families depend on their runtime."
+  - name: "keep_alive"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "Minutes (e.g. `5`, `0` to unload, `-1` to retain)"
+    desc: "Positive minutes after successful completion; `0` unloads after the request; omitted/`-1` retains until replacement/shutdown. Execution failures release the selected resident; validation rejected before dispatch preserves existing residency. New requests invalidate older expiry timers. Changing TTS backends releases the previous TTS resident before loading its replacement, while preserving chat and non-TTS ONNX residents."
+request_payload: |
+  {
+    "model": "kokoro-82m-onnx",
+    "input": "Hello from Cluaiz.",
+    "voice": "default"
+  }
+response: |
+  {
+    "status": "success",
+    "task": "text_to_speech",
+    "model": "kokoro-82m-onnx",
+    "info": null,
+    "output": {
+      "text": null,
+      "audio_data": "data:audio/wav;base64,UklGR…",
+      "segments": null
+    }
+  }
+streaming: "`stream: true`: Server-Sent Events with WAV parts (`speech.audio.delta`), then the whole result"
+errors:
+  - status: 400
+    type: "unsupported_parameter"
+    when: "An option the model does not support (voice, speed range, language control)"
+  - status: 400
+    type: "unsupported_language"
+    when: "The model does not support `language`"
+  - status: 400
+    type: "invalid_input"
+    when: "The body is not a speech request (unknown field, wrong type)"
+  - status: 401
+    type: "unauthenticated"
+    when: "API authentication is on and no valid token was sent"
+  - status: 404
+    type: "model_not_found"
+    when: "The model is not installed, or no installed model declares text_to_speech"
+  - status: 413
+    type: "request_too_large"
+    when: "A reference audio data URI is over the attachment limit"
+  - status: 429
+    type: "speech_busy"
+    when: "Another speech request is running"
+---
+
 # Text-to-Speech (TTS) Neural Synthesis API (`/v1/audio/speech`)
 
 `POST /v1/audio/speech` (CEP task: `audio.run` with task `text_to_speech`)

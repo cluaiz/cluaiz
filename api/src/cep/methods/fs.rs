@@ -1,4 +1,4 @@
-//! `fs.*: files inside the caller's roots` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
+//! `fs.*`: files inside the caller's roots. Paths go through `cep::roots` and `Call::check_path`.
 
 use crate::cep::{roots, CallCtx};
 use base64::prelude::*;
@@ -18,7 +18,9 @@ const MAX_LIST_DEPTH: usize = 12;
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ReadParams {
+    /// Absolute, or relative to the workspace
     path: String,
+    /// Always answer `data_base64`, even for UTF-8 text
     #[serde(default)]
     binary: bool,
 }
@@ -26,16 +28,22 @@ struct ReadParams {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct WriteParams {
+    /// Absolute, or relative to the workspace; missing parent folders are created
     path: String,
+    /// The file's content as UTF-8 text (send this or `data_base64`)
     text: Option<String>,
+    /// The file's content as standard base64 (send this or `text`)
     data_base64: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ListParams {
+    /// The folder to list (default: `root`, else the workspace)
     path: Option<String>,
+    /// The folder the answered `path` values are relative to (default: the workspace)
     root: Option<String>,
+    /// Also list sub-folders, at most 12 levels deep
     #[serde(default)]
     recursive: bool,
 }
@@ -43,13 +51,16 @@ struct ListParams {
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct PathParams {
+    /// Absolute, or relative to the workspace
     path: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TransferParams {
+    /// The existing file or folder: absolute, or relative to the workspace
     from: String,
+    /// The new path: absolute, or relative to the workspace; missing parent folders are created
     to: String,
 }
 
@@ -82,6 +93,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Reads a UTF-8 file, or returns base64 for binary data",
         )
+        .error(-32004, "file_not_found", "The path does not exist")
+        .error(-32602, "invalid_params", "An empty, drive-relative or root-relative path")
+        .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
         .example(
             json!({"path":"notes.txt"}),
             json!({"path":"/project/notes.txt","size":5,"binary":false,"text":"hello"}),
@@ -94,6 +108,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Write,
             "Writes exactly one of text or data_base64 to a file",
         )
+        .error(-32602, "invalid_params", "Both or neither of `text` / `data_base64`, invalid base64, or a bad path")
+        .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
         .example(
             json!({"path":"notes.txt","text":"hello"}),
             json!({"path":"/project/notes.txt","bytes":5}),
@@ -103,13 +119,19 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     registry.add(
         "fs.list",
         Meta::new(Scope::Read, "Lists directory entries, optionally recursively")
+            .error(-32602, "invalid_params", "The path is not a folder, or is drive-relative / root-relative")
+            .error(-32004, "file_not_found", "The folder does not exist")
+            .error(-32002, "forbidden", "The folder is outside the caller's roots (`data.needs: \"roots\"`)")
             .example(json!({"path":".","recursive":false}), json!({"items":[{"path":"notes.txt","name":"notes.txt","is_folder":false,"size":5,"modified":"2026-10-25T00:00:00.000Z"}],"truncated":false,"skipped":0})),
         |ctx: CallCtx, call: Call, p: ListParams| blocking(ctx, call, p, list),
     );
     registry.add(
         "fs.delete",
-        Meta::new(Scope::Write, "Deletes a file or directory")
+        Meta::new(Scope::Write, "Deletes a file or directory; a link is removed itself, never its target")
             .destructive()
+            .error(-32004, "file_not_found", "The path does not exist")
+            .error(-32602, "invalid_params", "The path does not end in a file or folder name (for example `..`)")
+            .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
             .example(
                 json!({"path":"old.txt"}),
                 json!({"path":"/project/old.txt"}),
@@ -120,8 +142,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "fs.rename",
         Meta::new(
             Scope::Write,
-            "Moves a file or directory between authorized paths",
+            "Moves a file or directory between authorized paths; a link is moved itself",
         )
+        .error(-32004, "file_not_found", "`from` does not exist")
+        .error(-32602, "invalid_params", "`from` does not end in a file or folder name, or a path is drive-relative / root-relative")
+        .error(-32005, "file_exists", "The OS refused because `to` exists and cannot be replaced")
+        .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
         .example(
             json!({"from":"old.txt","to":"new.txt"}),
             json!({"from":"/project/old.txt","to":"/project/new.txt"}),
@@ -134,6 +160,9 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Write,
             "Copies a file or directory between authorized paths",
         )
+        .error(-32004, "file_not_found", "`from` does not exist")
+        .error(-32602, "invalid_params", "`to` is inside `from`, or the copied folder holds a link cycle")
+        .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
         .example(
             json!({"from":"notes.txt","to":"copy.txt"}),
             json!({"from":"/project/notes.txt","to":"/project/copy.txt"}),
@@ -142,7 +171,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     );
     registry.add(
         "fs.mkdir",
-        Meta::new(Scope::Write, "Creates a directory and missing parents").example(
+        Meta::new(Scope::Write, "Creates a directory and missing parents")
+        .error(-32602, "invalid_params", "An empty, drive-relative or root-relative path")
+        .error(-32002, "forbidden", "The path is outside the caller's roots (`data.needs: \"roots\"`), or the OS refused access (`os_permission_denied`)")
+        .example(
             json!({"path":"documents"}),
             json!({"path":"/project/documents"}),
         ),
@@ -155,6 +187,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Opens the host folder picker and selects the workspace",
         )
         .owner_only()
+        .error(-32002, "forbidden", "The caller is not the owner (`data.needs: \"owner\"`): it opens a dialog on the host")
         .example(json!({}), json!({"path": "/project"})),
         |ctx: CallCtx, call: Call, _: NoParams| async move { pick_folder(ctx, call).await },
     );

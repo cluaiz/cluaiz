@@ -30,7 +30,7 @@ const COLD_IDLE: std::time::Duration = std::time::Duration::from_secs(60);
 const COLD_BATCH: usize = 20;
 /// Only chats written to within this time are scanned
 const COLD_RECENT_DAYS: u64 = 7;
-/// Results kept for `GET /v1/context/jobs`
+/// Results kept for CEP `context.jobs`
 const RECENT_RESULTS: usize = 20;
 
 /// A card enrichment for one turn
@@ -52,7 +52,7 @@ pub struct EnrichJob {
     pub external: bool,
 }
 
-/// What happened to a job, for `GET /v1/context/jobs`
+/// What happened to a job, for CEP `context.jobs`
 #[derive(Clone, serde::Serialize)]
 struct JobResult {
     chat: String,
@@ -137,7 +137,7 @@ pub fn enqueue(state: &Arc<AppState>, job: EnrichJob) {
     SCHEDULER.wake.notify_one();
 }
 
-/// The scheduler's queue, counts and recent results (`GET /v1/context/jobs`)
+/// The scheduler's queue, counts and recent results (CEP `context.jobs`)
 pub fn status() -> Value {
     let queue: Vec<Value> = SCHEDULER
         .queue

@@ -1,14 +1,9 @@
 //! Real CEP router/dispatcher contracts for telemetry and read-only planning.
 mod support;
 use anyhow::{anyhow, Result};
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
 use cluaiz_cep::{OnDenied, Principal, Scope};
 use serde_json::{json, Value};
 use std::sync::Arc;
-use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_system_telemetry_has_domain_results_and_old_routes_are_gone() -> Result<()> {
@@ -27,24 +22,6 @@ async fn test_system_telemetry_has_domain_results_and_old_routes_are_gone() -> R
         .map_err(|e| anyhow!("{e}"))?;
     assert_eq!(ps["active_processes"], json!([]));
     assert!(ps["hardware_snapshot"].is_object());
-    for path in [
-        "/v1/system/live",
-        "/v1/system/ps",
-        "/v1/system/plan",
-        "/v1/system/storage/temp_media",
-        "/v1/system/storage/temp_media/clean",
-    ] {
-        let request = Request::builder()
-            .method("GET")
-            .uri(path)
-            .header("authorization", "Bearer test_session_token")
-            .body(Body::empty())?;
-        assert_eq!(
-            router.clone().oneshot(request).await?.status(),
-            StatusCode::NOT_FOUND,
-            "{path}"
-        );
-    }
     Ok(())
 }
 

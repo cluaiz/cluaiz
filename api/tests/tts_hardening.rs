@@ -131,19 +131,19 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
     let lease = state.host.speech.try_acquire()?;
     for id in [&gguf, &onnx] {
         let (status, body) =
-            support::post(&router, "/v1/audio/speech", payload(id, 0), "user").await?;
+            support::post(&router, "/v1/audio/speech", payload(id, 0)).await?;
         assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
         assert!(body.contains("speech_busy"));
     }
     drop(lease);
     let mut unsupported = payload(&gguf, 0);
     unsupported["language"] = json!("hi");
-    let (status, body) = support::post(&router, "/v1/audio/speech", unsupported, "user").await?;
+    let (status, body) = support::post(&router, "/v1/audio/speech", unsupported).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     assert!(body.contains("unsupported_language"));
     let mut corrupt = payload(&gguf, 0);
     corrupt["voice"] = json!("data:audio/wav;base64,AAAA");
-    let (status, _) = support::post(&router, "/v1/audio/speech", corrupt, "user").await?;
+    let (status, _) = support::post(&router, "/v1/audio/speech", corrupt).await?;
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert!(state.host.speech.resident_model().is_none());
 
@@ -159,7 +159,7 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
         NonZeroU64::new(cluaiz_core::gib_to_bytes(free + 1.0)).context("Workspace")?;
     Settings::update(settings.clone())?;
     let (status, body) =
-        support::post(&router, "/v1/audio/speech", payload(&gguf, 0), "user").await?;
+        support::post(&router, "/v1/audio/speech", payload(&gguf, 0)).await?;
     assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{body}");
     assert!(body.contains("RAM") || body.contains("workspace"), "{body}");
     assert!(state.host.speech.resident_model().is_none());
@@ -185,7 +185,7 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
     Settings::update(settings.clone())?;
     let mut conditioned = payload(&gguf, -1);
     conditioned["voice"] = reference;
-    let (status, body) = support::post(&router, "/v1/audio/speech", conditioned, "user").await?;
+    let (status, body) = support::post(&router, "/v1/audio/speech", conditioned).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     std::fs::write(output.join("cpu-reconfigured.wav"), wav(&body)?)?;
     if std::env::var("CLUAIZ_TTS_TEST_GPU").as_deref() == Ok("true") {
@@ -193,7 +193,7 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
             settings.optimization.n_gpu_layers = layers;
             Settings::update(settings.clone())?;
             let (status, body) =
-                support::post(&router, "/v1/audio/speech", payload(&gguf, 0), "user").await?;
+                support::post(&router, "/v1/audio/speech", payload(&gguf, 0)).await?;
             assert_eq!(status, StatusCode::OK, "{body}");
             std::fs::write(output.join(format!("gpu-{layers:?}.wav")), wav(&body)?)?;
             assert!(state.host.speech.resident_model().is_none());
@@ -201,7 +201,7 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
         }
     }
     let (status, body) =
-        support::post(&router, "/v1/audio/speech", payload(&onnx, -1), "user").await?;
+        support::post(&router, "/v1/audio/speech", payload(&onnx, -1)).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     std::fs::write(output.join("onnx-swap.wav"), wav(&body)?)?;
     assert!(
@@ -213,7 +213,7 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
         Some(onnx.as_str())
     );
     let (status, body) =
-        support::post(&router, "/v1/audio/speech", payload(&gguf, 0), "user").await?;
+        support::post(&router, "/v1/audio/speech", payload(&gguf, 0)).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     std::fs::write(output.join("native-swap.wav"), wav(&body)?)?;
     assert!(

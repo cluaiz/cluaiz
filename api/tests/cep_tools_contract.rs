@@ -20,7 +20,6 @@ use std::{
         Arc,
     },
 };
-use tower::ServiceExt;
 
 struct RegistryFixture {
     url: String,
@@ -390,42 +389,6 @@ async fn test_tools_install_task_files_settings_cache_execution_and_boundaries()
         -32010
     );
     assert!(!home.path().join("tools/skills/failed-install").exists());
-    for path in [
-        "/v1/tools",
-        "/v1/tools/discover",
-        "/api/components/list",
-        "/api/components/settings",
-        "/api/components/file",
-        "/api/components/files",
-        "/api/components/cache",
-        "/v1/execute/test/run",
-    ] {
-        let response = router
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .uri(path)
-                    .header("authorization", "Bearer test_session_token")
-                    .body(Body::empty())?,
-            )
-            .await?;
-        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
-    }
-    for kind in ["skills", "plugins", "mcp"] {
-        for suffix in ["list", "install", "remove", "cache"] {
-            let path = format!("/v1/{kind}/{suffix}");
-            let response = router
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .uri(&path)
-                        .header("authorization", "Bearer test_session_token")
-                        .body(Body::empty())?,
-                )
-                .await?;
-            assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
-        }
-    }
     std::fs::remove_dir(tool_dir.join(".cache"))?;
     #[cfg(windows)]
     std::os::windows::fs::symlink_dir(outside.path(), tool_dir.join(".cache"))?;

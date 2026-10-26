@@ -5,7 +5,7 @@ The Engine has three ways in, and they all run the same code:
 | Way in | For | Reference |
 |---|---|---|
 | HTTP on the owner's host and port (default `8000`) | Apps, scripts, OpenAI / Ollama clients | [API overview](../api/README.md) |
-| `POST /v1/cep`: CEP, JSON-RPC 2.0 | Every Cluaiz operation: system, settings, models, files, tools, chat memory, notes, context, audio tasks, ingest, approvals | [CEP](../api/cep/README.md), [method reference](../api/cep/methods.md), [openrpc.json](../api/cep/openrpc.json) |
+| `POST /v1/cep`: CEP, JSON-RPC 2.0 | Every Cluaiz operation: system, settings, models, files, tools, chat memory, notes, context, audio tasks, ingest, approvals | [CEP](../api/cep/README.md), [methods by category](../api/cep/README.md#the-methods), [openrpc.json](../api/cep/openrpc.json) |
 | `/mcp` and `cluaiz mcp-server` | MCP clients (read-only methods) | [CEP → MCP](../api/cep/README.md) |
 | C library `cluaiz_cep` (`cep_call` / `cep_free`, `ffi/include/cep.h`) | Apps that embed the Engine in their own process | [CEP → C library](../api/cep/README.md) |
 
@@ -25,4 +25,4 @@ The Engine has three ways in, and they all run the same code:
 
 Every route except `/health` follows the owner's `api_auth.required` setting: when it is on, send `Authorization: Bearer <token>`. See [Security & Auth Architecture](../architecture/security-and-auth-architecture.md).
 
-The method list in [methods.md](../api/cep/methods.md) is generated from the Engine's own `rpc.discover`, so it is the list the running Engine serves.
+Each CEP method has its own page under [`docs/api/cep/`](../api/cep/README.md), in five categories. The `---` block at the top of each page is generated from the Engine's method registry (`api/tests/cep_docs.rs`), so it is what the running Engine accepts.

@@ -1,3 +1,20 @@
+---
+method: "GET"
+path: "/health"
+standard: "Cluaiz"
+category: "system"
+summary: "Whether the Engine is up; the only route that is always open"
+params: []
+response: |
+  {
+    "engine": "Cluaiz Engine",
+    "message": "Cluaiz Engine is alive and operational.",
+    "status": "alive",
+    "version": "0.1.0"
+  }
+errors:
+---
+
 # System Health API
 
 `GET /health`

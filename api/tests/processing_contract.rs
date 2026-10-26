@@ -32,7 +32,7 @@ async fn test_processing_unknown_model_reports_terminal_error_without_token_poll
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     let (status, body) =
-        support::post(&router, "/v1/chat/completions", request.clone(), "user").await?;
+        support::post(&router, "/v1/chat/completions", request.clone()).await?;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert!(body.contains("event: cluaiz.progress\n"), "{body}");
     let events: Vec<Value> = body
@@ -58,7 +58,7 @@ async fn test_processing_unknown_model_reports_terminal_error_without_token_poll
     assert!(body.find("\"state\":\"failed\"").unwrap() < body.find("data: [DONE]").unwrap());
     let mut legacy = request;
     legacy["return_progress"] = json!(false);
-    let (_, body) = support::post(&router, "/v1/chat/completions", legacy, "user").await?;
+    let (_, body) = support::post(&router, "/v1/chat/completions", legacy).await?;
     assert!(!body.contains("event: cluaiz.progress"));
     assert!(body.contains("data: [DONE]"));
     Ok(())

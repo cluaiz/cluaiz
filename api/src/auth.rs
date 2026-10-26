@@ -1,5 +1,5 @@
 //! 🔒 Bearer Token Authentication & Security Middleware (`api/src/auth.rs`)
-//! Validates session tokens and API tokens across endpoints, keeping /health and /info public.
+//! Validates session tokens and API tokens across endpoints, keeping /health public.
 
 use axum::{
     extract::{Request, State},

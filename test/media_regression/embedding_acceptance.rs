@@ -72,7 +72,7 @@ async fn real_final_executable_embeddings_and_vision() -> Result<()> {
     assert_eq!(document["status"], "success");
     let result = client.json("/v1/embeddings", json!({"model":ids[0],"input":document["processed_sources"][0]["chunks"],"keep_alive":0})).await?;
     vector(&result)?;
-    let (status, body) = client.post("/v1/embeddings", json!({"model":ids[0],"input":[{"type":"image","source":"https://invalid.example/not-fetched.png"}]}), "agent").await?;
+    let (status, body) = client.post("/v1/embeddings", json!({"model":ids[0],"input":[{"type":"image","source":"https://invalid.example/not-fetched.png"}]})).await?;
     assert_eq!(status, 400, "{body}");
     let mut images = Vec::new();
     let mut vectors = Vec::new();

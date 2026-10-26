@@ -1,6 +1,6 @@
 //! `POST /v1/cep` through the Engine's real router: content type, notifications, discovery,
-//! `system.info`, and the routes `system.info` replaced being gone. Only read methods are
-//! called, so nothing is written to the selected home.
+//! `system.info`, and the route table. Only read methods are called, so nothing is written to the
+//! selected home.
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -41,15 +41,7 @@ async fn test_cep_endpoint_basics() {
     }
 }
 
-#[tokio::test]
-async fn test_routes_folded_into_system_info_are_gone() {
-    for (method, path) in [("GET", "/info"), ("GET", "/hardware"), ("GET", "/v1/system/info"), ("GET", "/v1/system/control"), ("POST", "/v1/system/profile"), ("POST", "/v1/hardware/calibrate")] {
-        let request = Request::builder().method(method).uri(path).body(Body::empty()).unwrap();
-        assert_eq!(router().oneshot(request).await.unwrap().status(), StatusCode::NOT_FOUND, "{path}");
-    }
-}
-
-/// CEP-C1: after the migration the route table is the market-standard routes plus `/v1/cep`
+/// The route table is the market-standard routes plus CEP; nothing else exists
 #[test]
 fn test_route_table_is_the_standard_routes_and_cep() {
     let source = include_str!("../src/routes.rs");

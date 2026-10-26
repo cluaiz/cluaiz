@@ -1,7 +1,7 @@
 //! `POST /mcp`: the Engine as an MCP server (Streamable HTTP, JSON responses), built on the CEP
-//! registry (01-architecture §10.4). A tool is a CEP method with the same name, its params schema
+//! registry. A tool is a CEP method with the same name, its params schema
 //! as `inputSchema`; a call goes through the same dispatcher as `/v1/cep`. MCP clients act as the
-//! `mcp` principal: read-only methods unless decided otherwise (R3).
+//! `mcp` principal: read-only methods.
 
 use super::CallCtx;
 use crate::state::AppState;

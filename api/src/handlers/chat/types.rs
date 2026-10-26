@@ -47,11 +47,9 @@ pub struct ExternalChatRequest {
     pub skip_reasoning: Option<bool>,
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
-    #[serde(alias = "repeat_penalty")]
     pub repetition_penalty: Option<f32>,
 
     pub temperature: Option<f32>,
-    #[serde(alias = "n_predict")]
     pub max_tokens: Option<usize>,
     pub top_p: Option<f32>,
     pub top_k: Option<i32>,

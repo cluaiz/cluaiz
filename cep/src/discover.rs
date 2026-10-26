@@ -1,5 +1,5 @@
 //! `rpc.discover`: an OpenRPC document (https://spec.open-rpc.org/) built from the registry, showing
-//! a caller only the methods it may call (01-architecture §7.6)
+//! a caller only the methods it may call
 
 use crate::principal::{Principal, Scope};
 use crate::registry::Registry;
@@ -82,6 +82,7 @@ impl Discovery {
                 "paramStructure": "by-name",
                 "params": descriptors,
                 "result": { "name": "result", "schema": lift(method.result_schema.clone(), &mut schemas) },
+                "errors": meta.errors.iter().map(|e| json!({ "code": e.code, "message": e.when, "data": { "type": e.kind } })).collect::<Vec<_>>(),
                 "examples": [{
                     "name": "example",
                     "params": example_params,

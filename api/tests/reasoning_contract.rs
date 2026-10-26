@@ -164,7 +164,6 @@ async fn real_skip_reasoning_ends_native_thinking_and_preserves_next_request() -
                     .method("POST")
                     .uri("/v1/chat/completions")
                     .header("authorization", "Bearer test_session_token")
-                    .header("x-caller", "user")
                     .header("content-type", "application/json")
                     .body(Body::from(body.to_string()))?,
             )

@@ -1,4 +1,4 @@
-//! One entry for every transport: bytes in, bytes out (01-architecture §6, §12). HTTP, the native
+//! One entry for every transport: bytes in, bytes out. HTTP, the native
 //! pipe, the C ABI and the MCP facade all call `Engine::call` or `Engine::invoke`.
 
 use crate::approval::ApprovalStore;

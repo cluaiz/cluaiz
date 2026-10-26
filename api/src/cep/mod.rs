@@ -1,6 +1,6 @@
 //! The Engine side of CEP (Cluaiz Engine Protocol): the call context every method gets, the
 //! method registry, and the `POST /v1/cep` endpoint. The protocol itself (envelope, registry,
-//! approvals, tasks, discovery) is the `cluaiz-cep` crate. Design: `.agent/plans/CEP/`.
+//! approvals, tasks, discovery) is the `cluaiz-cep` crate. Reference: `docs/api/cep/`.
 
 pub mod http;
 pub mod mcp;

@@ -11,24 +11,33 @@ const MAX_TOOL_ENTRIES: usize = 10_000;
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Read {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
+    /// A file inside the tool's folder, relative to it
     pub path: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Write {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
+    /// The new content of `SKILL.md` (skill) or `package.json` (plugin, mcp)
     pub text: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Open {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
+    /// A file inside the tool's folder (default: `SKILL.md` or `package.json`)
     pub path: Option<String>,
 }
 

@@ -1,4 +1,5 @@
-//! `audio.*: voices, languages and audio tasks` (03-method-catalog Part B). Owner: Wave B (05-chatgpt-plan.md §2).
+//! `audio.*`: voices and languages of the installed speech models, and speech / transcription
+//! as a task (`audio.run`). The standard `/v1/audio/*` routes share the same dispatch.
 
 use crate::{
     cep::{roots, CallCtx},
@@ -17,6 +18,7 @@ use std::sync::{
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct CatalogParams {
+    /// An installed model id (default: the active slot, else the first installed model for the task)
     model: Option<String>,
 }
 
@@ -27,9 +29,15 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Voice inventory and speech capabilities without loading weights",
         )
+        .error(-32004, "model_not_found", "No installed model with this id, or no installed model for the task")
+        .error(-32602, "model_contract_error", "The model's package does not match its declared task (missing voices, config or assets)")
+        .error(-32002, "forbidden", "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)")
         .example(
-            json!({}),
-            json!({"object":"list","model":"installed-model","data":[]}),
+            json!({"model":"kokoro-82m-onnx"}),
+            json!({"object":"list","model":"kokoro-82m-onnx",
+                   "data":[{"id":"default","language":null,"default":true},{"id":"af_heart","language":"en-US","default":false},
+                           {"id":"hf_alpha","language":"hi","default":false}],
+                   "capabilities":{"languages":["en-US","en-GB","hi"],"language_control":"explicit","voice_mode":"preset","coherent_input":false}}),
         ),
         voices,
     );
@@ -39,9 +47,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             Scope::Read,
             "Languages declared by the selected transcription model",
         )
+        .error(-32004, "model_not_found", "No installed model with this id, or no installed model for the task")
+        .error(-32602, "model_contract_error", "The model's package does not match its declared task (missing voices, config or assets)")
+        .error(-32002, "forbidden", "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)")
         .example(
             json!({}),
-            json!({"object":"list","model":"installed-model","data":[]}),
+            json!({"object":"list","model":"whisper-large-v3-turbo-INT8","data":["af","ar","bn","de","en","es","fr","hi","ja","zh"]}),
         ),
         languages,
     );
@@ -52,6 +63,16 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Run the existing speech/transcription executor; chunks are task events",
         )
         .task()
+        .error(-32602, "unsupported_parameter", "An option the model does not support: timestamps, VAD, speaker labels, beam size above 1, temperature above 0, voice / speed for transcription")
+        .error(-32602, "unsupported_language", "The speech model does not support `language`")
+        .error(-32602, "unsupported_task", "`task` is not text_to_speech, speech_to_text or speech_translation, or the model does not declare it")
+        .error(-32602, "invalid_input", "An unreadable source: a bare base64 string, a missing file, a non-audio file")
+        .error(-32004, "model_not_found", "No installed model with this id, or no installed model for the task")
+        .error(-32602, "model_contract_error", "The model's package does not match its declared task (missing voices, config or assets)")
+        .error(-32002, "forbidden", "The model or the source file is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32010, "speech_busy", "Another speech request is running (from the task's result)")
+        .error(-32010, "engine_error", "The model failed while running (from the task's result)")
+        .error(-32008, "cancelled", "`tasks.cancel` stopped it (from the task's result)")
         .example(
             json!({"input_source":{"type":"text","data":"Speech input"}}),
             json!({"task":{"task_id":"t_example","status":"working"}}),
@@ -140,7 +161,7 @@ async fn run(
         tokio::pin!(cancel);
         let prepared = tokio::select! {
             _ = &mut cancel => return Err(CepError::cancelled()),
-            result = audio::dispatch_audio(&ctx.state, axum::http::HeaderMap::new(), params,
+            result = audio::dispatch_audio(&ctx.state, params,
                 Some(&task_call), cancellation) => result,
         };
         let ready = match prepared {

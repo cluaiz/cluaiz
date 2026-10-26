@@ -20,19 +20,19 @@ All incoming requests are evaluated through our standard HTTP Bearer token middl
 * **Configured API Keys (`sk-cluaiz-...`):** Saved securely in `permission.json` and configurable via the Developer Hub UI.
 * **Boot Session Token:** Generated dynamically on engine startup into `~/.cluaiz/session.token` with restricted (`0600`) POSIX permissions for zero-configuration local desktop security.
 * **Constant-Time Validation:** All token evaluations use `constant_time_compare()` to eliminate microsecond side-channel timing attacks.
-* **Sensitive Route Protection:** Operations against the host filesystem (`/v1/fs/*`) and operating system shell (`/v1/system/cmd`) **permanently enforce valid Bearer authentication**, even when general inference endpoints are opened for local dev prototyping.
+* **One rule for every route:** only `/health` is open; every other route, CEP (`/v1/cep`, `/mcp`) included, follows the owner's `api_auth.required` setting. What a caller may then do is CEP's scope and path check, and `system.exec` asks the owner on every call.
 
 ### 2. Workspace Canonical Jail & Ancestor Walking
 Filesystem interactions are strictly bound to the active workspace directory:
 * **Canonical Path Normalization:** Every path is resolved and validated using `std::fs::canonicalize` to eliminate symlink attacks, directory traversal sequences (`../../`), and Windows extended-length prefix variations (`\\?\`).
 * **Ancestor Walking:** New write operations verify the closest existing parent directory before creating files, ensuring agents cannot escape outside the workspace perimeter.
-* For complete endpoint documentation, see the [Filesystem API Reference](docs/api/fs/filesystem.md).
+* `fs.delete` and `fs.rename` act on a link itself, never on its target. See [Security & Auth Architecture](docs/architecture/security-and-auth-architecture.md) and the [CEP reference](docs/api/cep/README.md).
 
 ### 3. Capability-Based Human-in-the-Loop (HITL) Gate
 Tools declare granular capabilities (`exec`, `fs_write`, `network`). Under `sandboxed` and `strict` modes:
 * Any tool invocation declaring sensitive capabilities or undeclared MCP operations automatically pauses the token generation stream.
 * A transparent `permission_request` SSE chunk is delivered to the client with the exact, unmutated parameters.
-* Execution resumes only upon receiving an explicit approval signal via `POST /v1/system/permission/approve`.
+* Execution resumes only when the owner answers with CEP `approvals.approve` (or `approvals.reject`).
 
 ---
 

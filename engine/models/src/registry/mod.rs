@@ -9,7 +9,7 @@ pub mod discovery;
 pub mod auditor;
 pub mod provisioner;
 
-pub use vault::{CategoryDescriptor, ModelVault};
+pub use vault::ModelVault;
 pub use installed_state::InstalledStateRegistry;
 pub use catalog::{ModelCatalog, REGISTRY_URL};
 pub use discovery::AutonomousDiscovery;

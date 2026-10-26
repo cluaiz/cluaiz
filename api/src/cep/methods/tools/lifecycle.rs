@@ -12,17 +12,23 @@ use serde_json::{json, Value};
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Cache {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// One tool; every tool of `kind` when absent
     pub name: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Execute {
+    /// skill, plugin or mcp
     pub kind: Kind,
+    /// The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens
     pub name: String,
+    /// The function to run (a plugin export or an MCP tool); the tool's default when absent
     #[serde(rename = "fn")]
     pub function: Option<String>,
+    /// The function's arguments, as JSON
     pub input: Value,
 }
 
