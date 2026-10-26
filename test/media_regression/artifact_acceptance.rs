@@ -58,23 +58,11 @@ impl Client {
         }
         reply.get("result").cloned().context("Missing CEP result")
     }
-    /// `ingest.run` to its end: the task's result, or the error (at once, or the task's failure)
+    /// The direct route returns the final result or an HTTP error body.
     async fn ingest(&self, params: Value) -> Result<std::result::Result<Value, Value>> {
-        let envelope = |method: &str, params: Value| json!({"jsonrpc":"2.0","id":1,"method":method,"params":params});
-        let started = self.json("/v1/cep", envelope("ingest.run", params)).await?;
-        if let Some(error) = started.get("error") {
-            return Ok(Err(error.clone()));
-        }
-        let id = started["result"]["task"]["task_id"].as_str().context("Ingest task id")?.to_string();
-        for _ in 0..40 {
-            let reply = self.json("/v1/cep", envelope("tasks.result", json!({"task_id":id,"wait_ms":30000}))).await?;
-            match reply.get("error") {
-                Some(error) if error["data"]["type"] == "timeout" => continue,
-                Some(error) => return Ok(Err(error.clone())),
-                None => return Ok(Ok(reply["result"].clone())),
-            }
-        }
-        bail!("Ingest task {id} did not finish")
+        let (status, body) = self.post("/v1/ingest", params).await?;
+        let value = serde_json::from_str(&body)?;
+        Ok(if (200..300).contains(&status) { Ok(value) } else { Err(value) })
     }
     async fn chat(&self, model: &str, parts: Value, stream: bool, release: bool) -> Result<String> {
         let (status, body) = self
@@ -580,7 +568,8 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
         .ingest(json!({"source":inline("application/pdf",b"corrupt")}))
         .await?
         .expect_err("corrupt PDF must fail");
-    assert_eq!(bad["code"], -32602, "{bad}");
+    assert_eq!(bad["status"], "error", "{bad}");
+    assert!(bad["processed_sources"][0]["error"].is_string(), "{bad}");
     let outside = tempfile::tempdir()?;
     let outside_document = outside.path().join("owner.md");
     std::fs::write(&outside_document, "external owner attachment")?;
@@ -598,8 +587,8 @@ async fn real_final_executable_attachments_and_onnx_apis() -> Result<()> {
     );
     let oversized = client
         .post(
-            "/v1/cep",
-            json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":{"source":"x".repeat(transport_limit)}}),
+            "/v1/ingest",
+            json!({"source":"x".repeat(transport_limit)}),
         )
         .await?;
     assert_eq!(oversized.0, 413, "{}", oversized.1);

@@ -18,7 +18,7 @@ checkout beside the App or set `CLUAIZ_ENGINE_SOURCE` when building separately.
 Method examples describe payload shapes. They do not create sample local files,
 install model IDs, or prove that a given package can run inference.
 
-CEP carries every Cluaiz-specific Engine operation in one message shape, [JSON-RPC 2.0](https://www.jsonrpc.org/specification). The market-standard routes (`/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`) are documented in [the API overview](../README.md); everything else is a CEP method listed here.
+CEP carries Engine control operations in one message shape, [JSON-RPC 2.0](https://www.jsonrpc.org/specification). The market-standard routes (`/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`) are documented in [the API overview](../README.md); document extraction uses the separate direct [Ingest API](../inference/ingest.md). Controls and discovery use the CEP methods listed here.
 
 ```mermaid
 flowchart LR
@@ -28,7 +28,7 @@ flowchart LR
     HTTP --> Engine["CEP engine: parse, principal, scope"]
     FFI --> Engine
     MCP --> Engine
-    Engine --> Registry["Method registry (80 methods)"]
+    Engine --> Registry["Method registry (79 methods)"]
     Registry -->|"sync"| Result["result"]
     Registry -->|"task"| Tasks["tasks.get / tasks.result"]
     Registry -->|"outside roots, system.exec"| Approvals["approvals.approve"]
@@ -129,13 +129,13 @@ Every method can answer the protocol's errors below; each method page lists its 
 
 ## Long work: tasks
 
-Methods with `execution: task` answer at once with `{"task": {"task_id", "method", "status": "working", "created_at", "last_updated_at", "ttl_ms", "poll_ms"}}`: `ingest.run`, `audio.run`, `tools.install`, `chat.import_app`, `models.download`.
+Methods with `execution: task` answer at once with `{"task": {"task_id", "method", "status": "working", "created_at", "last_updated_at", "ttl_ms", "poll_ms"}}`: `audio.run`, `tools.install`, `chat.import_app`, `models.download`.
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant E as Engine
-    C->>E: ingest.run {source}
+    C->>E: audio.run {task: text_to_speech, input: "Hello"}
     E-->>C: {task: {task_id, status: "working"}}
     loop until it ends
         C->>E: tasks.get {task_id, after}
@@ -186,7 +186,7 @@ async function cep(method, params = {}, token) {
   return reply.result;
 }
 
-const { task } = await cep("ingest.run", { source: "report.pdf" });
+const { task } = await cep("audio.run", { task: "text_to_speech", input: "Hello" }, process.env.CLUAIZ_TOKEN);
 console.log(await cep("tasks.result", { task_id: task.task_id, wait_ms: 30000 }));
 ```
 

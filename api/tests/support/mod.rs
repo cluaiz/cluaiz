@@ -29,21 +29,11 @@ pub async fn post(
     Ok((status, response.text().await?))
 }
 
-/// `ingest.run` to its end: the task's result, or the error (at once, or the task's failure)
+/// Direct ingest returns its final domain result; it never starts a CEP task.
 pub async fn ingest(router: &Router, params: Value) -> Result<std::result::Result<Value, Value>> {
-    let task = match cep(router, "ingest.run", params).await? {
-        Ok(task) => task,
-        Err(error) => return Ok(Err(error)),
-    };
-    let id = task["task"]["task_id"].as_str().ok_or_else(|| anyhow::anyhow!("No task id: {task}"))?.to_string();
-    // Model work can take minutes; tasks.result waits at most 30 s per call
-    for _ in 0..40 {
-        match cep(router, "tasks.result", serde_json::json!({ "task_id": id, "wait_ms": 30000 })).await? {
-            Err(error) if error["data"]["type"] == "timeout" => continue,
-            done => return Ok(done),
-        }
-    }
-    anyhow::bail!("ingest task {id} did not finish in 20 minutes")
+    let (status, body) = post(router, "/v1/ingest", params).await?;
+    let value = serde_json::from_str(&body)?;
+    Ok(if status.is_success() { Ok(value) } else { Err(value) })
 }
 
 /// One CEP call through `POST /v1/cep`: the reply's `result`, or its `error` object

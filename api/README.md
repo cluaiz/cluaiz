@@ -46,7 +46,7 @@ Unknown/completed IDs return `-32004` `stream_not_found`; streams without enable
 
 ### Optional selected-model ingestion
 
-`ingest.run` keeps one source authorization/resolution loop. Native mode uses the shared document service. Selected text embedding models receive real extracted chunks; selected ONNX image graphs receive decoded images or sequentially rendered PDF pages. Generative GGUF processing uses `EngineHost` directly, with its existing planner, media admission and fingerprint checks. It does not enter the chat agent/tool controller or create a persistent chat session. A missing vision projector is rejected before visual model loading; explicit native-first text processing can still use a text-capable backbone.
+`/v1/ingest` keeps one source authorization/resolution loop. Native mode uses the shared document service. Selected text embedding models receive real extracted chunks; selected ONNX image graphs receive decoded images or sequentially rendered PDF pages. Generative GGUF processing uses `EngineHost` directly, with its existing planner, media admission and fingerprint checks. It does not enter the chat agent/tool controller or create a persistent chat session. A missing vision projector is rejected before visual model loading; explicit native-first text processing can still use a text-capable backbone.
 
 ```mermaid
 flowchart TD
@@ -65,7 +65,7 @@ flowchart TD
     I --> J
 ```
 
-The implementation is in `cep/methods/ingest/` (`mod.rs`, `model.rs`) and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/cep/ai-inference/ingest/ingest.run.md).
+The implementation is in `handlers/ingest/` (`mod.rs`, `model.rs`) and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/inference/ingest.md).
 
 For live attachment stages on chat SSE, add `return_progress:true` and handle named `cluaiz.progress` events separately from answer deltas. Read the exact fields, attachment indices, limits and terminal ordering in the [chat processing reference](../docs/api/inference/chat_completions.md#attachment-processing-events). The default contract and ONNX task SSE remain separate.
 
@@ -82,7 +82,7 @@ The daemon and CLI resolve `session.token` through the same `EnvironmentManager`
 | Speech generation | `POST /v1/audio/speech` | Selected supported ONNX TTS package |
 | Text vectors | `POST /v1/embeddings` | Selected compatible ONNX graph or GGUF sequence-embedding model |
 | Image vectors | `POST /v1/embeddings` | Selected supported ONNX image embedding graph |
-| Document content preview | CEP `ingest.run` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/cep/ai-inference/ingest/ingest.run.md) |
+| Document content preview | `POST /v1/ingest` | Omit model for native extraction; optional model processing is described in the [ingest reference](../docs/api/inference/ingest.md) |
 
 Image chat (`image_url.url` can also be an authorized path or HTTP URL):
 
@@ -189,9 +189,9 @@ This Windows CPU run used two threads, context 4096, a 16 MiB decoded ceiling, 5
 
 ## Native document API contract
 
-`ingest.run` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. `namespace`, explicit model/embedding output, model-vision options, non-semantic chunking and nonzero overlap return explicit unsupported-option errors. Generate vectors separately through `/v1/embeddings` using returned chunks.
+`/v1/ingest` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. Select an installed compatible model for text embeddings, ONNX image/page vectors or generative GGUF vision text. The existing model owners execute the request. `namespace`, unknown fields, non-semantic chunking and nonzero overlap are rejected. Prepared chunks can also be sent separately to `/v1/embeddings`.
 
-`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`, optional `ocr_confidence`). OCR methods are `native_ocr`, `pdf_ocr`, or `pdf_text_and_ocr`; confidence is Tesseract's mean score (0–100), not a correctness guarantee. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. When every source fails, the `ingest.run` task fails (`-32602`, or the model's own code such as `-32004`) with all per-source results in `data.result`. A path outside the caller's roots is `-32002` or an approval (`-32003`). Per-file error/partial results remain visible in a successful task result.
+`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`, optional `ocr_confidence`). OCR methods are `native_ocr`, `pdf_ocr`, or `pdf_text_and_ocr`; confidence is Tesseract's mean score (0–100), not a correctness guarantee. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. The direct HTTP route returns this final result without a task envelope. All native parse failures return HTTP 400; a nested model failure preserves the first source's model HTTP status where available. Direct inference executes as the owner using the shared canonicalizer; CEP principal roots are separate. Partial/per-file failures remain visible in `processed_sources`.
 
 PDF empty pages and image/form resources are attempted through packaged native OCR. Missing native assets, empty recognition or provider failures retain page omissions and actual warnings. Direct `file_url` chat uses the same extraction (including an image file used as an OCR document); `image_url` still sends real pixels to a selected vision model. DOCX headers/footers and embedded visuals remain omissions. Legacy DOC supplies recovered body/subdocument text without rendering graphics or evaluating fields/macros; incomplete text and parser recovery warnings are reported as omissions. Direct chat refuses still-partial extraction. OCR recognizes text, not image/diagram meaning. Password handling and full layout reconstruction remain unavailable. Source/output/ZIP text and raster workspace limits are checked; parser/native internal allocations, stack exhaustion and process isolation are not certified.
 
@@ -212,7 +212,7 @@ REAL DOCUMENT CHAT: partial extraction rejected; planner advertises PDF as extra
 test real_router_pdf_attachment_reaches_text_only_llama ... ok
 ```
 
-The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed `ingest.run` -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
+The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed document ingestion -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
 
 ## 📐 Architecture
 
@@ -259,7 +259,7 @@ graph TD
     Decode --> Runtime["EngineHost: paired native model/projector"]
     Policy --> Documents["Shared document extraction: text / PDF / DOCX"]
     Documents --> Text["Actual text through the existing chat sampler"]
-    Router --> Ingest["CEP ingest.run: ordered content / explicit omissions"]
+    Router --> Ingest["POST /v1/ingest: ordered content / explicit omissions"]
     Ingest --> Documents
     Router --> Models["handlers/models: Vault & Registry"]
     Router --> System["CEP system.plan: execution plan"]

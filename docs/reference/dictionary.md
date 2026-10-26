@@ -16,7 +16,7 @@ Global reference for every term, type, constant, and concept across the cluaiz e
 | **CEP** | Cluaiz Engine Protocol — JSON-RPC 2.0 methods for every Cluaiz operation, over `POST /v1/cep`, `/mcp` and the C library (`cep_call` / `cep_free`). |
 | **Principal** | Who a CEP call runs as (`owner`, `mcp`): its scopes (read, write, exec, admin) and the folders (roots) it may touch. |
 | **Approval** | The owner's yes for one call (`approvals.approve`): bound to the principal, method and params, single use, 5 minutes. |
-| **Task** | A long CEP call (`ingest.run`, `audio.run`) that returns a `task_id`; read it with `tasks.get` / `tasks.result`. |
+| **Task** | A long CEP call (`audio.run`, `models.download`) that returns a `task_id`; read it with `tasks.get` / `tasks.result`. |
 | **Silicon Truth** | The read-only artifact (`system_control.json`) generated at boot from physical hardware probing. Source of truth for all allocation decisions. |
 | **VRAM Arbiter** | Internal subsystem inside the Master Router that enforces GPU memory boundaries and prevents OOM crashes. |
 | **Conflict Manager** | Phase that cross-references `llm_optimization.json` requests against `system_control.json` constraints before execution. |

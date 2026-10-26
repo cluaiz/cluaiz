@@ -26,7 +26,7 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 * **Usage:** `cluaiz ingest <file_path>`
 * **Description:** Ingest a document natively for semantic chunking and RAG.
 * **Execution Flow:** Invokes the local vectorization pipeline. Parses the document (PDF, TXT, MD), chunks it semantically based on NLP boundaries, and passes the chunks to the active ONNX embedding model to store in the local LMDB namespace.
-* **API Mapping:** Maps to `ingest.run`.
+* **API Mapping:** Maps to `/v1/ingest`.
 
 ### `cluaiz setup profile`
 * **Usage:** `cluaiz setup profile`

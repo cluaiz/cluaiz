@@ -11,7 +11,6 @@ pub mod chat;
 pub mod config;
 pub mod context;
 pub mod fs;
-pub mod ingest;
 pub mod kv;
 pub mod memory;
 pub mod models;
@@ -32,7 +31,6 @@ pub fn registry() -> Registry<CallCtx> {
     config::register(&mut registry);
     context::register(&mut registry);
     fs::register(&mut registry);
-    ingest::register(&mut registry);
     kv::register(&mut registry);
     memory::register(&mut registry);
     models::register(&mut registry);

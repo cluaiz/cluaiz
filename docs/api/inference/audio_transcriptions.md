@@ -1,7 +1,7 @@
 ---
 method: "POST"
 path: "/v1/audio/transcriptions"
-standard: "OpenAI"
+group: "STT"
 category: "ai-inference"
 summary: "Speech to text with an installed STT model (Whisper and others)"
 params:
@@ -97,13 +97,34 @@ errors:
 
 # Speech-to-Text (STT) Transcriptions API (`/v1/audio/transcriptions`)
 
-`POST /v1/audio/transcriptions` (alias: `audio.run` with task `speech_to_text`)
+`POST /v1/audio/transcriptions` (CEP also exposes `audio.run` with task `speech_to_text`; that uses a task envelope over the shared audio dispatch)
 
 Transcribes a recording using a compatible installed ONNX STT package (for example Whisper or a supported Moonshine export). Returns text, rather than synthesized speech or an audio chat answer. Graph/tokenizer assets and language behavior depend on the package. Installing an arbitrary ONNX file does not establish compatibility.
 
 ## Choose an installed model
 
-Read `models.list` with your Bearer token and copy an exact `models[].id` that declares an STT task. The API Explorer Model dropdown updates the JSON `model`; on `audio.languages` it updates the URL's `?model=` instead. STT has language controls, not speaker voices. Use `/v1/audio/speech` for TTS and `/v1/chat/completions` for audio questions with a compatible multimodal chat model.
+```mermaid
+flowchart LR
+    C["POST /v1/audio/transcriptions: file or input_source"] --> A["Auth, source authorization and byte limits"]
+    A --> D["Shared audio decoding and resampling"]
+    D --> M["Selected ONNX STT family and tokenizer"]
+    M --> T["Recognized recording text"]
+    T --> J["stream false: JSON output.text"]
+    T --> S["stream true: token events, then final JSON result"]
+```
+
+| Input/control | Choose it when | Result/limitation |
+|---|---|---|
+| `file` with a server-local path | The recording already exists on the Engine machine | Shared canonical file resolution; no browser upload is performed |
+| `input_source` with a real data URI | Sending a recording from a browser/remote client | Actual encoded bytes travel in JSON; bare Base64 is invalid |
+| `language` | The recording's language is known and supported | Explicit model language selection; model coverage still applies |
+| `languages` | Restricting automatic detection candidates | Candidate list, not a request to translate the recording |
+| `stream:true` | Reading incremental transcription output | Recording transcription SSE; no bidirectional microphone session |
+| `timestamps:true` | Not available in this contract | Rejected; `output.segments` is null rather than invented timestamps |
+
+This Cluaiz endpoint accepts JSON. It does not implement a multipart upload contract. Use the file/data-URI Python and JavaScript examples below rather than passing an unmodified multipart SDK request.
+
+Read `models.list` with your Bearer token and copy an exact `models[].id` that declares an STT task. The API Explorer Model dropdown updates the JSON `model`; the CEP `audio.languages` method accepts the selected ID as `params.model`. STT has language controls, not speaker voices. Use `/v1/audio/speech` for TTS and `/v1/chat/completions` for audio questions with a compatible multimodal chat model.
 
 An explicit ID selects that installed package. Omission/`auto` uses the active eligible STT slot, otherwise an eligible installed package. The example IDs below are examples, not packages bundled with every installation. Paths are read on the engine's computer; browser clients normally send a data URI.
 

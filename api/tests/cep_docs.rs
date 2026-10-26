@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 /// The five categories (the App's API sidebar) and the CEP groups in each
 const CATEGORIES: [(&str, &str, &[&str]); 5] = [
-    ("ai-inference", "AI & Inference Core", &["chat", "audio", "ingest", "memory", "notes", "context", "kv"]),
+    ("ai-inference", "AI & Inference Core", &["chat", "audio", "memory", "notes", "context", "kv"]),
     ("agents-tools", "Agents, MCP & Tools", &["tools", "approvals"]),
     ("filesystem", "Filesystem & Security Jail", &["fs", "workspace"]),
     ("models", "Models & Engine Vault", &["models"]),

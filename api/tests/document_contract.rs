@@ -36,9 +36,9 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/cep")
+                .uri("/v1/ingest")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":request}).to_string()))?,
+                .body(Body::from(request.to_string()))?,
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
@@ -119,7 +119,7 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
         json!({"source":"missing.pdf"}),
     ] {
         let body = support::ingest(&router, request).await?.expect_err("ingest must fail").to_string();
-        assert!(body.contains("\"code\":-32602"), "{body}");
+        assert!(body.contains("\"error\""), "{body}");
     }
     let local = workspace.path().join("local.pdf");
     std::fs::write(&local, pdf)?;

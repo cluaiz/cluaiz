@@ -1,6 +1,6 @@
 # Cluaiz Engine API Reference
 
-Reference for the engine's HTTP routes (market-standard routes plus CEP at `/v1/cep`), model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and current limitations.
+Reference for the Engine's direct inference routes and CEP controls at `/v1/cep`, model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and current limitations.
 
 ---
 
@@ -10,7 +10,7 @@ Reference for the engine's HTTP routes (market-standard routes plus CEP at `/v1/
 |:---|:---|:---|
 | **HTTP REST** | `http://127.0.0.1:8000` | Default engine address; use your configured host/port |
 | **SSE** | `http://127.0.0.1:8000/v1/chat/completions` | Chat token streaming over HTTP; audio routes have their own event schema |
-| **CEP** | `http://127.0.0.1:8000/v1/cep` | Every Cluaiz-specific method (JSON-RPC 2.0); see [cep/README.md](./cep/README.md) |
+| **CEP** | `http://127.0.0.1:8000/v1/cep` | Engine control methods (JSON-RPC 2.0); see [cep/README.md](./cep/README.md) |
 
 ---
 
@@ -31,19 +31,21 @@ Authorization: Bearer <TOKEN>
 | Route | Auth Toggle OFF | Auth Toggle ON |
 |---|---|---|
 | `GET /health` | Public | Public |
-| Everything else: `/v1/cep`, `/mcp`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/*` | Open | **Bearer Token Required (401)** |
+| Everything else: `/v1/cep`, `/mcp`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, `/v1/ingest`, `/v1/models`, `/api/*` | Open | **Bearer Token Required (401)** |
 
-The current middleware bypasses Bearer checks when `api_auth.required` is false. Examples use a real session or configured token; placeholder API keys are not valid authentication. Filesystem paths are still checked separately (canonical path, the caller's roots); a Bearer token does not replace that.
+The current middleware bypasses Bearer checks when `api_auth.required` is false. Examples use a real session or configured token; placeholder API keys are not valid authentication. Direct inference runs as the owner; local sources still pass through shared canonical path resolution. CEP callers additionally have their own scopes/roots. A relative path is resolved on the Engine machine, not the browser.
 
-## Two kinds of routes
+## Direct inference and Engine controls
 
-- **Market-standard routes**, for existing clients:
-  - OpenAI: `/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`
-  - Ollama: `/api/chat`, `/api/tags`, `/api/pull`
-  - `/health`
-- **Everything Cluaiz-specific is CEP**, one JSON-RPC 2.0 endpoint: `POST /v1/cep`.
-  - Files, system, settings, models, tools, chat memory, notes, context, audio tasks, ingest, approvals.
-  - Start with [cep/README.md](./cep/README.md). Every method has its own page, in five categories.
+- **Chat:** [POST /v1/chat/completions](./inference/chat_completions.md), with `/api/chat` using the same handler.
+- **TTS:** [POST /v1/audio/speech](./inference/audio_speech.md).
+- **STT:** [POST /v1/audio/transcriptions](./inference/audio_transcriptions.md).
+- **Embeddings:** [POST /v1/embeddings](./inference/embeddings.md).
+- **Ingest:** [POST /v1/ingest](./inference/ingest.md), one final document-processing response.
+- **Controls:** [POST /v1/cep](./cep/README.md), JSON-RPC methods for files, system, settings, models, tools, memory, notes, context, audio tasks and approvals.
+- Model-list/download routes, `/health` and `/mcp` retain their individual contracts. See the [complete twelve-route reference](../reference/api.md).
+
+These are Cluaiz APIs. Chat and embeddings use familiar route/response shapes. TTS returns a WAV data URI inside JSON; STT takes JSON rather than multipart. Do not assume every option from another provider's SDK is supported.
 
 ## Model selection and media routes
 
@@ -74,10 +76,10 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 | Transcribe a recording | `POST /v1/audio/transcriptions` | Compatible ONNX STT package |
 | Text vectors | `POST /v1/embeddings` | Compatible ONNX/GGUF text embedding package, including supported EmbeddingGemma-2 text projection |
 | Image vectors | Same embeddings route, `{type:"image",source:...}` input | ONNX image embedding graph; GGUF multimodal embeddings are not implemented |
-| Extract document text/chunks | CEP `ingest.run`, omit model | Native PDF/OCR/DOCX/DOC/text extraction |
-| Document or image model processing | CEP `ingest.run`, select model | Text embedding model for native chunks; ONNX image graph for images/PDF pages; generative GGUF vision model for text |
+| Extract document text/chunks | `POST /v1/ingest`, omit model | Native PDF/OCR/DOCX/DOC/text extraction |
+| Document or image model processing | `POST /v1/ingest`, select model | Text embedding model for native chunks; ONNX image graph for images/PDF pages; generative GGUF vision model for text |
 
-`ingest.run` extracts chunks and can run a selected embedding or vision model. It is a task: poll `tasks.result`. `/v1/embeddings` accepts prepared text or image inputs directly. Your application stores, indexes and searches the returned vectors; these routes do not create a persistent RAG database. Retention for chat, speech, STT and direct embeddings is in **minutes** (`0` unloads, positive expires, `-1` retains). Ingest has no per-request retention field; its selected model uses the existing owner's cached lifecycle.
+`/v1/ingest` extracts chunks and can run a selected embedding or vision model. Its HTTP response is the final result; there is no CEP task or polling. `/v1/embeddings` accepts prepared text or image inputs directly. Your application stores, indexes and searches the returned vectors; these routes do not create a persistent RAG database. Retention for chat, speech, STT and direct embeddings is in **minutes** (`0` unloads, positive expires, `-1` retains). Ingest has no per-request retention field; its selected model uses the existing owner's cached lifecycle.
 
 ---
 
@@ -86,18 +88,20 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 ### 1. CEP (Cluaiz Engine Protocol)
 * [**`POST /v1/cep`**](./cep/README.md): the envelope, errors, tasks, approvals, MCP (`/mcp`, `cluaiz mcp-server`), and the C library (`cep_call` / `cep_free`).
 * One page per method, in five categories (the App's API sidebar):
-  * [AI & Inference Core](./cep/ai-inference/README.md): `chat.*`, `audio.*`, `ingest.run`, `memory.*` ([overview](./cep/ai-inference/memory/README.md)), `notes.*`, `context.*` ([overview](./cep/ai-inference/context/README.md)), `kv.*`
+  * [AI & Inference Core](./cep/ai-inference/README.md): `chat.*`, `audio.*`, `memory.*` ([overview](./cep/ai-inference/memory/README.md)), `notes.*`, `context.*` ([overview](./cep/ai-inference/context/README.md)), `kv.*`
   * [Agents, MCP & Tools](./cep/agents-tools/README.md): `tools.*`, `approvals.*`
   * [Filesystem & Security Jail](./cep/filesystem/README.md): `fs.*`, `workspace.*`
   * [Models & Engine Vault](./cep/models/README.md): `models.*`
   * [System & Infrastructure](./cep/system/README.md): `system.*`, `config.*`, `storage.*`, `tokens.*`, `tasks.*`, `rpc.discover`
 * [openrpc.json](./cep/openrpc.json): every method, machine-readable.
 
-### 2. Inference & Multimodal Execution (OpenAI routes)
+### 2. Dedicated inference domains
 * [**`POST /v1/chat/completions`**](./inference/chat_completions.md): conversational dialogue, multimodal input, streaming SSE, reasoning tokens. Control a running stream with [`chat.cancel`](./cep/ai-inference/chat/chat.cancel.md) / [`chat.skip_reasoning`](./cep/ai-inference/chat/chat.skip_reasoning.md).
 * [**`POST /v1/embeddings`**](./inference/embeddings.md): vector generation with GGUF/ONNX routing.
 * [**`POST /v1/audio/speech`**](./inference/audio_speech.md): text-to-speech; voices with [`audio.voices`](./cep/ai-inference/audio/audio.voices.md), speech tasks with [`audio.run`](./cep/ai-inference/audio/audio.run.md).
 * [**`POST /v1/audio/transcriptions`**](./inference/audio_transcriptions.md): speech-to-text; languages with [`audio.languages`](./cep/ai-inference/audio/audio.languages.md).
+
+* [**`POST /v1/ingest`**](./inference/ingest.md): native document/OCR extraction, optional selected-model text/vectors, fifteen file/mode examples.
 
 ### 3. Models
 * [**`GET /v1/models` & `GET /api/tags`**](./models/list_models.md): installed models in the OpenAI and Ollama formats. Manage them with [`models.*`](./cep/models/README.md).
@@ -110,15 +114,16 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 
 ## ⚡ OpenAI Client Quickstart (Python)
 
-Cluaiz Engine provides drop-in OpenAI Python and TypeScript SDK compatibility:
+The following example uses the chat completion interface. Other domains have the exact JSON and response contracts described in their own references:
 
 ```python
+import os
 from openai import OpenAI
 
 # Connect to local Cluaiz Engine
 client = OpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key="sk-cluaiz-e46c11e877b20afb49c4df0fcfa44351"
+    base_url="http://127.0.0.1:8000/v1",
+    api_key=os.environ["CLUAIZ_TOKEN"]
 )
 
 response = client.chat.completions.create(
@@ -128,7 +133,8 @@ response = client.chat.completions.create(
         {"role": "user", "content": "Explain prefix caching in 2 sentences."}
     ],
     temperature=0.7,
-    max_tokens=256
+    max_tokens=256,
+    stream=False
 )
 
 print(response.choices[0].message.content)
@@ -147,4 +153,4 @@ A missing or wrong token (with authentication on) is HTTP 401:
 }
 ```
 
-The standard routes answer errors in their own format (OpenAI style `{"error": {"message", "type"}}`). CEP answers JSON-RPC errors with HTTP 200: see [cep/README.md](./cep/README.md#errors).
+Direct routes use their documented domain envelopes; JSON parsing/schema rejections can be plain text, and Ingest all-source failures retain `processed_sources`. CEP method failures use JSON-RPC errors, usually with HTTP 200: see [cep/README.md](./cep/README.md#errors).

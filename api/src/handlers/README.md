@@ -1,11 +1,13 @@
-# Market-standard route handlers (`api/src/handlers/`)
+# Direct HTTP route handlers (`api/src/handlers/`)
 
-This folder holds only the routes that existing clients already speak. Everything Cluaiz-specific is a CEP method in [`../cep/`](../cep/) (`POST /v1/cep`, `/mcp`, `cep_call`).
+This folder holds direct inference, document extraction and compatibility routes. Engine control operations are CEP methods in [`../cep/`](../cep/) (`POST /v1/cep`, `/mcp`, `cep_call`).
 
 ```mermaid
 graph LR
     Client["OpenAI / Ollama clients"] --> Router["routes.rs"]
     Router --> Chat["chat/: /v1/chat/completions, /api/chat"]
+    Router --> Ingest["ingest/: /v1/ingest"]
+    Ingest --> Emb["embeddings.rs: shared EmbeddingExecutor"]
     Router --> Emb["embeddings.rs: /v1/embeddings"]
     Router --> Audio["audio.rs: /v1/audio/speech, /v1/audio/transcriptions"]
     Router --> Models["models.rs: /v1/models, /api/tags, /api/pull"]
@@ -19,11 +21,12 @@ graph LR
 | File | Routes | Shared with CEP |
 |---|---|---|
 | `chat/` | `/v1/chat/completions`, `/api/chat` | The whole chat pipeline. `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
-| `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `ingest.run` with a model |
+| `ingest/` (`mod.rs`, `model.rs`) | `/v1/ingest` | Shared document extraction/source resolution and existing embedding/native model owners; direct final JSON, not a CEP task |
+| `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `/v1/ingest` with a model |
 | `audio.rs` (+ `audio_types.rs`, `audio_tests.rs`) | `/v1/audio/speech`, `/v1/audio/transcriptions` | One dispatch for the standard routes and `audio.run`; `audio.voices` / `audio.languages` use its model selection |
 | `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` and CEP `models.download` share `pull()` here, which runs `cluaiz_models::fetcher::pull` (the resolver `cluaiz pull` uses). |
 | `health.rs` | `/health` | — |
 
 Rules for this folder:
-- No new custom route here; a new Cluaiz operation is a CEP method (`../cep/methods/`).
+- Ingest stays a direct inference route; new Engine control operations are CEP methods (`../cep/methods/`).
 - A function needed by both a route and a method lives in one place, and both call it.

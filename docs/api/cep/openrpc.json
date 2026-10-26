@@ -93,37 +93,6 @@
         ],
         "type": "string"
       },
-      "ChunkingStrategy": {
-        "additionalProperties": false,
-        "properties": {
-          "max_chunk_size": {
-            "description": "Maximum UTF-8 bytes in a returned chunk, not model tokens",
-            "format": "uint",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "overlap": {
-            "description": "Only 0",
-            "format": "uint",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "type": {
-            "description": "Only \"semantic\"",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        "type": "object"
-      },
       "Kind": {
         "oneOf": [
           {
@@ -142,26 +111,6 @@
             "type": "string"
           }
         ]
-      },
-      "OutputControls": {
-        "additionalProperties": false,
-        "properties": {
-          "return_embeddings": {
-            "description": "Vectors from the selected embedding model",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "return_text": {
-            "description": "Include the extracted text (default true)",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        },
-        "type": "object"
       },
       "Patch": {
         "additionalProperties": false,
@@ -236,19 +185,6 @@
           }
         ]
       },
-      "SourceInput": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        ]
-      },
       "StrictInputSource": {
         "additionalProperties": false,
         "properties": {
@@ -265,42 +201,6 @@
           "type",
           "data"
         ],
-        "type": "object"
-      },
-      "VisionSettings": {
-        "additionalProperties": false,
-        "properties": {
-          "detail_level": {
-            "description": "Not supported: any value is refused",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "max_tokens": {
-            "description": "Most tokens the vision model writes per page or image (only with a vision `model`)",
-            "format": "uint",
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
-          "system_instruction": {
-            "description": "The instruction the vision model gets with each page or image (only with a vision `model`)",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "use_vision": {
-            "description": "false: a vision model's text is not generated (only with a vision `model`)",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        },
         "type": "object"
       }
     }
@@ -2399,183 +2299,6 @@
         "mcp": true,
         "owner_only": false,
         "scope": "write"
-      }
-    },
-    {
-      "errors": [
-        {
-          "code": -32602,
-          "data": {
-            "type": "invalid_params"
-          },
-          "message": "No source, an empty source, unsupported chunking (overlap or a type other than semantic), vision settings without a vision model, or vectors without an embedding model"
-        },
-        {
-          "code": -32602,
-          "data": {
-            "type": "invalid_params"
-          },
-          "message": "A source path does not exist or is drive-relative / root-relative"
-        },
-        {
-          "code": -32004,
-          "data": {
-            "type": "model_not_found"
-          },
-          "message": "`model` is not installed"
-        },
-        {
-          "code": -32002,
-          "data": {
-            "type": "forbidden"
-          },
-          "message": "A source path is outside the caller's roots (`data.needs: \"roots\"`)"
-        },
-        {
-          "code": -32004,
-          "data": {
-            "type": "ingest_failed"
-          },
-          "message": "Every source failed and the first failure was a missing file or model (from the task's result; `data.result` holds every source)"
-        },
-        {
-          "code": -32602,
-          "data": {
-            "type": "ingest_failed"
-          },
-          "message": "Every source failed and the first failure was a bad input (from the task's result)"
-        },
-        {
-          "code": -32005,
-          "data": {
-            "type": "ingest_failed"
-          },
-          "message": "Every source failed and the first failure was a busy model (from the task's result)"
-        },
-        {
-          "code": -32006,
-          "data": {
-            "type": "ingest_failed"
-          },
-          "message": "Every source failed and the first failure was a source over the size limit (from the task's result)"
-        },
-        {
-          "code": -32010,
-          "data": {
-            "type": "ingest_failed"
-          },
-          "message": "Every source failed and the first failure was the model or the machine (from the task's result)"
-        }
-      ],
-      "examples": [
-        {
-          "name": "example",
-          "params": [
-            {
-              "name": "chunking_strategy",
-              "value": {
-                "max_chunk_size": 2000
-              }
-            },
-            {
-              "name": "source",
-              "value": "docs/report.pdf"
-            }
-          ],
-          "result": {
-            "name": "result",
-            "value": {
-              "task": {
-                "method": "ingest.run",
-                "status": "working",
-                "task_id": "t_5f0c…"
-              }
-            }
-          }
-        }
-      ],
-      "name": "ingest.run",
-      "paramStructure": "by-name",
-      "params": [
-        {
-          "name": "chunking_strategy",
-          "required": false,
-          "schema": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ChunkingStrategy"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "How extracted text is cut into chunks"
-          }
-        },
-        {
-          "name": "model",
-          "required": false,
-          "schema": {
-            "description": "An installed embedding, vision or chat model; extraction only when absent",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        },
-        {
-          "name": "output_controls",
-          "required": false,
-          "schema": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/OutputControls"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "What each source's result contains"
-          }
-        },
-        {
-          "name": "source",
-          "required": true,
-          "schema": {
-            "$ref": "#/components/schemas/SourceInput",
-            "description": "A path (inside the caller's roots), an http(s) URL or a data URI; or a list of them"
-          }
-        },
-        {
-          "name": "vision_settings",
-          "required": false,
-          "schema": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/VisionSettings"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Options for a generative vision `model`"
-          }
-        }
-      ],
-      "result": {
-        "name": "result",
-        "schema": {
-          "title": "AnyValue"
-        }
-      },
-      "summary": "Extracts documents (and optionally runs a model on them), as a task; one event per source",
-      "x-cep": {
-        "destructive": false,
-        "execution": "task",
-        "idempotent": true,
-        "mcp": true,
-        "owner_only": false,
-        "scope": "read"
       }
     },
     {
@@ -5087,7 +4810,7 @@
                 {
                   "created_at": "2026-10-25T10:30:00Z",
                   "last_updated_at": "2026-10-25T10:30:02Z",
-                  "method": "ingest.run",
+                  "method": "audio.run",
                   "poll_ms": 500,
                   "status": "working",
                   "task_id": "t_5f0c…",

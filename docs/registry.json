@@ -32,15 +32,46 @@
         ]
       },
       {
-        "group": "OpenAI routes",
+        "group": "Chat",
         "pages": [
-          { "slug": "chat-completions", "title": "POST /v1/chat/completions", "file_path": "docs/api/inference/chat_completions.md" },
-          { "slug": "embeddings", "title": "POST /v1/embeddings", "file_path": "docs/api/inference/embeddings.md" },
-          { "slug": "audio-speech", "title": "POST /v1/audio/speech", "file_path": "docs/api/inference/audio_speech.md" },
-          { "slug": "audio-transcriptions", "title": "POST /v1/audio/transcriptions", "file_path": "docs/api/inference/audio_transcriptions.md" },
-          { "slug": "list-models", "title": "GET /v1/models", "file_path": "docs/api/models/list_models.md" },
-          { "slug": "pull-model", "title": "POST /api/pull", "file_path": "docs/api/models/pull_model.md" },
-          { "slug": "health", "title": "GET /health", "file_path": "docs/api/system/health.md" }
+          {"slug": "chat-completions", "title": "POST /v1/chat/completions", "file_path": "docs/api/inference/chat_completions.md"}
+        ]
+      },
+      {
+        "group": "TTS",
+        "pages": [
+          {"slug": "audio-speech", "title": "POST /v1/audio/speech", "file_path": "docs/api/inference/audio_speech.md"}
+        ]
+      },
+      {
+        "group": "STT",
+        "pages": [
+          {"slug": "audio-transcriptions", "title": "POST /v1/audio/transcriptions", "file_path": "docs/api/inference/audio_transcriptions.md"}
+        ]
+      },
+      {
+        "group": "Embeddings",
+        "pages": [
+          {"slug": "embeddings", "title": "POST /v1/embeddings", "file_path": "docs/api/inference/embeddings.md"}
+        ]
+      },
+      {
+        "group": "Ingest",
+        "pages": [
+          {"slug": "ingest", "title": "POST /v1/ingest", "file_path": "docs/api/inference/ingest.md"}
+        ]
+      },
+      {
+        "group": "Models",
+        "pages": [
+          {"slug": "list-models", "title": "GET /v1/models", "file_path": "docs/api/models/list_models.md"},
+          {"slug": "pull-model", "title": "POST /api/pull", "file_path": "docs/api/models/pull_model.md"}
+        ]
+      },
+      {
+        "group": "System",
+        "pages": [
+          {"slug": "health", "title": "GET /health", "file_path": "docs/api/system/health.md"}
         ]
       },
       {
@@ -56,7 +87,6 @@
           { "slug": "cep-audio-languages", "title": "audio.languages", "file_path": "docs/api/cep/ai-inference/audio/audio.languages.md" },
           { "slug": "cep-audio-run", "title": "audio.run", "file_path": "docs/api/cep/ai-inference/audio/audio.run.md" },
           { "slug": "cep-audio-voices", "title": "audio.voices", "file_path": "docs/api/cep/ai-inference/audio/audio.voices.md" },
-          { "slug": "cep-ingest-run", "title": "ingest.run", "file_path": "docs/api/cep/ai-inference/ingest/ingest.run.md" },
           { "slug": "cep-memory-overview", "title": "memory: overview", "file_path": "docs/api/cep/ai-inference/memory/README.md" },
           { "slug": "cep-memory-delete", "title": "memory.delete", "file_path": "docs/api/cep/ai-inference/memory/memory.delete.md" },
           { "slug": "cep-memory-events", "title": "memory.events", "file_path": "docs/api/cep/ai-inference/memory/memory.events.md" },

@@ -1,7 +1,7 @@
 ---
 method: "POST"
 path: "/api/pull"
-standard: "Ollama"
+group: "Models"
 category: "models"
 summary: "Downloads and registers a model, as cluaiz pull does; streams one JSON line per step"
 params:

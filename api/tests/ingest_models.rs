@@ -204,14 +204,14 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/v1/cep")
+                .uri("/v1/ingest")
                 .header("content-type", "application/json")
-                .body(Body::from(json!({"jsonrpc":"2.0","id":1,"method":"ingest.run","params":{"source":inline}}).to_string()))?,
+                .body(Body::from(json!({"source":inline}).to_string()))?,
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
     let missing = support::ingest(&router, json!({"source":inline,"model":"uninstalled-ingest-model"})).await?.expect_err("ingest must fail").to_string();
-    assert!(missing.contains("\"code\":-32004"), "{missing}");
+    assert!(missing.contains("model_not_found"), "{missing}");
     let native = ingest(&router, json!({"source":inline})).await?;
     assert!(native["chunks"][0]
         .as_str()
@@ -291,7 +291,7 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
 
     assert!(state.host.model_description().await.is_none());
     let body = support::ingest(&router, json!({"model":ids[4],"source":red})).await?.expect_err("ingest must fail").to_string();
-    assert!(body.contains("\"code\":-32602"), "{body}");
+    assert!(body.contains("\"error\""), "{body}");
     assert!(body.contains("projector"), "{body}");
     assert!(
         state.host.model_description().await.is_none(),

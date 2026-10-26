@@ -75,7 +75,7 @@ The answered paths are canonical and absolute, without the Windows `\\?\` prefix
 | `binary` | `false` with `text`, `true` with `data_base64` |
 | `text` / `data_base64` | The content |
 
-The whole file is read into memory; there is no range read. For large binary files, prefer reading them where they are (chat attachments and `ingest.run` take paths).
+The whole file is read into memory; there is no range read. For large binary files, prefer reading them where they are (chat attachments and `/v1/ingest` take paths).
 
 ## Example
 
