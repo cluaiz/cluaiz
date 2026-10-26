@@ -102,35 +102,6 @@ impl SttTaxonomy {
             || !Self::is_subcomponent_file(filename)
     }
 
-    /// Determines the exact STT Family tag from repo/model identifiers and local files.
-    pub fn detect_family(repo_or_dir: &str, file_inventory: &str) -> SttFamily {
-        let lower = repo_or_dir.to_lowercase();
-        let files_joined = file_inventory.to_lowercase();
-        let combined = format!("{} {}", lower, files_joined);
-
-        if combined.contains("sensevoice") || files_joined.contains("am.mvn") {
-            SttFamily::SenseVoice
-        } else if combined.contains("moonshine") || files_joined.contains("cached_decode") {
-            SttFamily::Moonshine
-        } else if combined.contains("paraformer") {
-            SttFamily::Paraformer
-        } else if combined.contains("zipformer") || files_joined.contains("joiner") {
-            SttFamily::Zipformer
-        } else if combined.contains("wav2vec2") || combined.contains("mms-1b-all") || combined.contains("mms-300m") {
-            SttFamily::Wav2Vec2
-        } else if combined.contains("whisper") {
-            if files_joined.contains(".onnx") {
-                SttFamily::WhisperOnnx
-            } else {
-                SttFamily::WhisperGguf
-            }
-        } else if files_joined.contains(".onnx") {
-            SttFamily::GenericOnnxStt
-        } else {
-            SttFamily::Unknown
-        }
-    }
-
     /// Evaluates candidate STT model files for priority scoring (0 = Primary Acoustic / Encoder, 1 = Decoder / Joiner, 2 = Preprocessor / Feature Extractor).
     pub fn score_stt_file_priority(filename: &str) -> usize {
         let name = filename.to_lowercase();

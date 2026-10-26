@@ -184,11 +184,10 @@ impl FamilyAdapter {
             }
         }
 
-        for (name, session) in sessions {
+        for (_, session) in sessions {
             let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
-            let lower_name = name.to_lowercase();
 
-            if lower_name.contains("kokoro") || (input_names.iter().any(|n| n == "style") && input_names.iter().any(|x| x == "speed")) {
+            if input_names.iter().any(|n| n == "style") && input_names.iter().any(|x| x == "speed") {
                 return TtsFamily::Kokoro;
             }
 
