@@ -156,6 +156,19 @@ fn route_tts_input(
     // The text's language when the caller says it, else the one the voice speaks
     let voice_lang = requested_language.or_else(|| requested_voice.and_then(super::languages::voice_language));
     let base_language = voice_lang.unwrap_or(&model_language);
+    let base_code = base_language.split(['-', '_']).next().unwrap_or(base_language);
+    let allow_romanized = voice_lang.is_none()
+        || base_code.eq_ignore_ascii_case("en")
+        || super::rules_g2p::TRANSLITERATION_FILES
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case(base_code));
+    // Hindi typed in Latin letters (and other romanized languages) is read in its own script
+    let romanized = if allow_romanized {
+        super::romanized::to_native_script(raw_text_input, base_language)
+    } else {
+        std::borrow::Cow::Borrowed(raw_text_input)
+    };
+    let raw_text_input = romanized.as_ref();
     let language = super::rules_g2p::script_language(raw_text_input, base_language)
         .or_else(|| super::languages::script_language(raw_text_input))
         .map(str::to_owned)
