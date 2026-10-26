@@ -1,49 +1,29 @@
 //! Text analysis shared by the tool matcher and the chat memory: whole words (split on case,
-//! `_` and `-` too), English and Hinglish stopwords, a light plural stem, and aliases that map
-//! Hinglish and Devanagari words to their meaning ("padho" → read). The word lists are data
-//! (`data/words.json`), not code.
+//! `_` and `-` too) and a light plural stem. No word lists of any language: how common a word is
+//! comes from the text being searched (IDF), so "hai", "the" or "என்ன" weigh little on their own.
 
-use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
-
-/// Aliases, stopwords and action words (data, not code)
-pub struct Words {
-    pub aliases: HashMap<String, Vec<String>>,
-    pub stopwords: HashSet<String>,
-    pub actions: HashSet<String>,
-    /// Words that point back at the previous message ("isko", "that")
-    pub followup: HashSet<String>,
-    /// Words that ask for the previous request again ("phir se", "again")
-    pub repeat: HashSet<String>,
+/// Letters, digits and the vowel signs of any script (Devanagari, Tamil, Bengali… write them as
+/// marks, which are not alphanumeric); spaces and punctuation of any script split words
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || (!c.is_ascii() && !c.is_whitespace() && !is_punctuation(c))
 }
 
-pub static WORDS: LazyLock<Words> = LazyLock::new(|| {
-    let data: Value = serde_json::from_str(include_str!("../data/words.json")).unwrap_or_default();
-    let list = |key: &str| -> HashSet<String> {
-        data.get(key)
-            .and_then(Value::as_array)
-            .map(|items| items.iter().filter_map(Value::as_str).map(str::to_string).collect())
-            .unwrap_or_default()
-    };
-    let aliases = data
-        .get("aliases")
-        .and_then(Value::as_object)
-        .map(|map| {
-            map.iter()
-                .map(|(alias, terms)| {
-                    let terms = terms.as_array().map(|t| t.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
-                    (alias.to_lowercase(), terms)
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    Words { aliases, stopwords: list("stopwords"), actions: list("actions"), followup: list("followup"), repeat: list("repeat") }
-});
-
-fn is_word_char(c: char) -> bool {
-    // Devanagari vowel signs are marks, not letters, but they belong to the word
-    c.is_alphanumeric() || ('\u{0900}'..='\u{097F}').contains(&c)
+/// Punctuation and symbols outside ASCII: Latin-1 (¿ ¡ « » ·), general punctuation (“ ” — …),
+/// dandas (। ॥), CJK and full-width punctuation
+fn is_punctuation(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00A0}'..='\u{00BF}'
+            | '\u{00D7}'
+            | '\u{00F7}'
+            | '\u{0964}'..='\u{0965}'
+            | '\u{2000}'..='\u{206F}'
+            | '\u{3000}'..='\u{303F}'
+            | '\u{FF01}'..='\u{FF0F}'
+            | '\u{FF1A}'..='\u{FF20}'
+            | '\u{FF3B}'..='\u{FF40}'
+            | '\u{FF5B}'..='\u{FF65}'
+    )
 }
 
 /// Raw lowercase words: split on anything that is not part of a word, and on camelCase,
@@ -83,19 +63,8 @@ pub fn stem(word: &str) -> String {
     }
 }
 
-/// Search terms of a text: words without stopwords, with aliases mapped to their meaning
+/// Search terms of a text: its words, plural-stemmed. Bare numbers are left out (they say
+/// nothing about which tool is meant; values are matched as entities).
 pub fn terms(text: &str) -> Vec<String> {
-    let words = &*WORDS;
-    let mut out = Vec::new();
-    for word in raw_words(text) {
-        // Numbers say nothing about which tool is meant
-        if words.stopwords.contains(&word) || word.chars().all(|c| c.is_ascii_digit()) {
-            continue;
-        }
-        match words.aliases.get(&word) {
-            Some(meanings) => out.extend(meanings.iter().cloned()),
-            None => out.push(stem(&word)),
-        }
-    }
-    out
+    raw_words(text).into_iter().filter(|word| !word.chars().all(|c| c.is_ascii_digit())).map(|word| stem(&word)).collect()
 }

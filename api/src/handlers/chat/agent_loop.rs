@@ -322,7 +322,7 @@ pub async fn execute_streaming_loop(
 
                     // 🛡️ Human-In-The-Loop (HITL) Permission Gate (shared with the non-streaming path)
                     // Searching other chats asks the user first (policy cross_chat: ask), like a tool call
-                    let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload) {
+                    let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload, ctx.chat_id.as_deref()) {
                         super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
                     } else {
                         super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())

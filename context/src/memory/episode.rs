@@ -1,16 +1,14 @@
 //! Episodes: stretches of a chat about one thing (architecture §11.3), found by rules.
 //!
 //! A new episode starts at a user message when more than `gap_minutes` passed since the last
-//! message, when the user says so ("new topic", "naya topic", "/new"), or when the message
-//! shares almost no keywords with the current episode (and is not a short follow-up).
+//! message, when it starts with `/new`, or when it shares almost no keywords with the current
+//! episode (and is not a short follow-up). No words of any language are read.
 
-use super::card::{has_phrase, Card};
-use crate::analyze::{raw_words, WORDS};
+use super::card::Card;
+use crate::analyze::raw_words;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Episode {
@@ -27,7 +25,7 @@ pub struct Episode {
     pub title: String,
     pub files: Vec<String>,
     pub tools: Vec<String>,
-    /// Positions of messages marked as corrections or decisions
+    /// Positions of the user's messages that named a file or value
     pub key_moments: Vec<u64>,
     /// What the model wrote about the episode at idle time (title and summary), if any
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -58,13 +56,9 @@ impl Default for EpisodeRules {
     }
 }
 
-static NEW_TOPIC: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
-    let data: Value = serde_json::from_str(include_str!("../../data/words.json")).unwrap_or_default();
-    data.pointer("/memory/new_topic")
-        .and_then(Value::as_array)
-        .map(|items| items.iter().filter_map(Value::as_str).map(raw_words).collect())
-        .unwrap_or_default()
-});
+/// A message this short (in words) with no file or value continues the episode ("isko phir
+/// chalao", "and the raita?")
+const FOLLOW_UP_WORDS: usize = 6;
 
 const EPISODE_KEYWORDS: usize = 6;
 
@@ -75,7 +69,7 @@ fn minutes_between(a: &str, b: &str) -> Option<i64> {
 }
 
 /// Episodes of a chat, oldest first. `texts` are the messages' texts (same order as `cards`),
-/// used only for the "new topic" words.
+/// used only for `/new` and their length.
 pub fn episodes(cards: &[Card], texts: &[&str], rules: EpisodeRules) -> Vec<Episode> {
     let mut groups: Vec<Vec<usize>> = Vec::new();
     let mut topic: HashSet<&str> = HashSet::new();
@@ -83,11 +77,12 @@ pub fn episodes(cards: &[Card], texts: &[&str], rules: EpisodeRules) -> Vec<Epis
         let starts_new = match groups.last() {
             None => true,
             Some(current) if card.role == "user" => {
-                let words = raw_words(texts.get(i).copied().unwrap_or_default());
-                let said_so = NEW_TOPIC.iter().any(|p| has_phrase(&words, p));
+                let text = texts.get(i).copied().unwrap_or_default();
+                let words = raw_words(text);
+                let said_so = text.trim_start().starts_with("/new");
                 let gap = cards[current[current.len() - 1]].ts.as_str();
                 let long_pause = minutes_between(gap, &card.ts).is_some_and(|m| m > rules.gap_minutes);
-                let follow_up = words.len() <= 6 && words.iter().any(|w| WORDS.followup.contains(w) || WORDS.repeat.contains(w));
+                let follow_up = words.len() <= FOLLOW_UP_WORDS && card.entities.is_empty();
                 let keywords: HashSet<&str> = card.keywords.iter().map(String::as_str).collect();
                 let shared = keywords.intersection(&topic).count() as f32;
                 let union = keywords.union(&topic).count().max(1) as f32;
@@ -125,7 +120,7 @@ pub fn episodes(cards: &[Card], texts: &[&str], rules: EpisodeRules) -> Vec<Epis
             tools.dedup();
             let key_moments = group
                 .iter()
-                .filter(|&&i| cards[i].signals.iter().any(|s| s == "correction" || s == "decision"))
+                .filter(|&&i| cards[i].role == "user" && !cards[i].entities.is_empty())
                 .map(|&i| cards[i].pos)
                 .collect();
             Episode {
@@ -168,7 +163,7 @@ mod tests {
             msg(6, "user", "aur raita?", "2026-10-24T10:31:00Z"),
             msg(7, "assistant", "raita: dahi, kheera", "2026-10-24T10:31:05Z"),
             // The user says so
-            msg(8, "user", "naya topic: cricket score kya hai", "2026-10-24T10:32:00Z"),
+            msg(8, "user", "/new cricket score kya hai", "2026-10-24T10:32:00Z"),
             msg(9, "assistant", "cricket score 250/3", "2026-10-24T10:32:05Z"),
         ];
         let cards = build_cards(&messages);

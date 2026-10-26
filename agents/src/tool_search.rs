@@ -20,7 +20,7 @@ use crate::tools::mcp::McpClient;
 use crate::tools::prompt_compiler::ToolPromptCompiler;
 use crate::tools::registry::ToolsRegistry;
 pub use cluaiz_context::analyze::terms;
-use cluaiz_context::analyze::{raw_words, WORDS};
+use cluaiz_context::analyze::raw_words;
 
 /// Meta-tool: search the installed tools (cards only)
 pub const FIND_TOOLS_NAME: &str = "find_tools";
@@ -75,11 +75,11 @@ fn is_link_token(token: &str) -> bool {
     token.contains("://") || token.starts_with("www.")
 }
 
-/// Whether the message asks for something to be done (a verb like read, run or create, or a
-/// file, link or code block), so tools may be useful even when none matched by name
+/// Whether the message names something tools work on (a file, path, link or code block), so
+/// tools may be useful even when none matched by name. Read from the message's form, not from
+/// verbs of any language.
 pub fn is_actionable(text: &str) -> bool {
-    let words = &*WORDS;
-    !entity_terms(text).is_empty() || terms(text).iter().any(|term| words.actions.contains(term))
+    !entity_terms(text).is_empty()
 }
 
 /// How much of a tool the model is shown with a message
@@ -233,8 +233,9 @@ pub fn contains_phrase(text: &str, phrase: &str) -> bool {
 }
 
 fn phrase_in(query: &[String], phrase: &[String]) -> bool {
-    // All words of the phrase, in order, within a short window (allows one word in between)
-    let window = phrase.len() + 1;
+    // All words of the phrase, in order, within a short window: two words may sit in between
+    // (small words like "a", "the", "ka", "ko" are kept, in every language)
+    let window = phrase.len() + 2;
     (0..query.len()).any(|start| {
         let mut next = 0;
         for word in query.iter().skip(start).take(window) {
@@ -255,18 +256,24 @@ fn message_terms(message: &str) -> Vec<String> {
     query
 }
 
-/// Query terms of a message. A short message that asks again ("phir se", "again"), or points
-/// back and asks for something ("isko chalao"), borrows the previous one; "thanks, that's
-/// all" does not.
-fn query_terms(message: &str, previous: Option<&str>) -> Vec<String> {
+/// A message this short (in words) borrows the previous one's terms ("isko phir chalao",
+/// "again"). Without words of any language a closing "thanks, that's all" looks the same, so
+/// what is borrowed earns at most a title, never a card.
+const FOLLOW_UP_WORDS: usize = 4;
+
+/// Query terms of a message, and whether the previous message's terms were borrowed (a short
+/// message, in any language)
+fn query_terms(message: &str, previous: Option<&str>) -> (Vec<String>, bool) {
     let mut query = message_terms(message);
-    let words = raw_words(message);
-    let repeats = words.iter().any(|w| WORDS.repeat.contains(w));
-    let points = words.iter().any(|w| WORDS.followup.contains(w)) && is_actionable(message);
-    if let Some(previous) = previous.filter(|_| query.len() <= 3 && (repeats || points)) {
-        query.extend(message_terms(previous));
-    }
-    query
+    let short = raw_words(message).len() <= FOLLOW_UP_WORDS;
+    let borrowed = match previous.filter(|_| short) {
+        Some(previous) => {
+            query.extend(message_terms(previous));
+            true
+        }
+        None => false,
+    };
+    (query, borrowed)
 }
 
 /// How well one tool matched the query terms
@@ -442,10 +449,11 @@ impl ToolSearch {
     /// Tools worth showing with this message. `previous` is the user's previous message, used
     /// when this one is a short follow-up. Strong evidence (the tool named, a trigger phrase,
     /// or two separate matches on its name, function names or trigger words) earns a card; a
-    /// match on the tool's name, two weaker matches, or one good match in a message that asks
-    /// for something earn a title; one lone word in a plain message earns nothing.
+    /// match on the tool's name, or a good match (function name or trigger word) with a second
+    /// match or in a message that names a file, link or code, earns a title. Words found only in
+    /// descriptions ("how", "are", "the" of any language) earn nothing on their own.
     pub fn suggest(catalog: &[CatalogEntry], message: &str, previous: Option<&str>) -> Vec<Candidate> {
-        let query = query_terms(message, previous);
+        let (query, borrowed) = query_terms(message, previous);
         let actionable = is_actionable(message);
         let mut candidates: Vec<Candidate> = score_catalog(catalog, &query)
             .into_iter()
@@ -454,9 +462,9 @@ impl ToolSearch {
                 // Two separate good matches (name, function name or trigger word) earn a card;
                 // a lone trigger, function or description word ("protocol", "run", "text")
                 // earns nothing
-                let level = if scored.decisive || scored.good >= 2 {
+                let level = if (scored.decisive || scored.good >= 2) && !borrowed {
                     Level::Card
-                } else if scored.named || scored.matched.len() >= 2 || (actionable && scored.good >= 1) {
+                } else if scored.named || (scored.good >= 1 && (scored.matched.len() >= 2 || actionable || borrowed)) {
                     Level::Title
                 } else {
                     return None;
@@ -490,7 +498,7 @@ impl ToolSearch {
     /// The evidence behind the suggestions, for every tool with any match (for calibrating the
     /// levels against a labelled routing set)
     pub fn evidence(catalog: &[CatalogEntry], message: &str, previous: Option<&str>) -> Value {
-        let query = query_terms(message, previous);
+        let (query, _) = query_terms(message, previous);
         Value::Array(
             score_catalog(catalog, &query)
                 .into_iter()
@@ -904,16 +912,18 @@ mod tests {
     fn test_clear_requests_get_cards() {
         assert_eq!(ids("run this python: print(2+2)")[0], ("code-interpreter".into(), Level::Card));
         assert_eq!(ids("create a new skill")[0], ("tool-creator".into(), Level::Card));
-        assert_eq!(ids("notes.txt padho")[0], ("filesystem".into(), Level::Card));
-        assert_eq!(ids("ye code chalao")[0], ("code-interpreter".into(), Level::Card));
+        // A file named earns a title in any language; the words around it are not translated
+        assert_eq!(ids("notes.txt padho")[0], ("filesystem".into(), Level::Title));
+        assert_eq!(ids("notes.txt படி")[0], ("filesystem".into(), Level::Title));
     }
 
     #[test]
     fn test_terms_split_and_map_words() {
         assert_eq!(terms("readTextFile"), ["read", "text", "file"]);
-        assert_eq!(terms("list_directory"), ["list", "folder"]);
-        assert_eq!(terms("फाइल पढ़ो"), ["file", "read"]);
-        assert!(terms("ye kya hai").is_empty());
+        assert_eq!(terms("list_directory"), ["list", "directory"]);
+        // Words stay as written, vowel signs inside the word, in any script
+        assert_eq!(terms("फाइल पढ़ो"), ["फाइल", "पढ़ो"]);
+        assert_eq!(terms("நேற்று என்ன பேசினோம்?"), ["நேற்று", "என்ன", "பேசினோம்"]);
     }
 
     #[test]
@@ -926,18 +936,19 @@ mod tests {
     #[test]
     fn test_follow_up_uses_the_previous_message() {
         let c = ToolSearch::suggest(&catalog(), "phir se", Some("run this python code"));
-        assert_eq!(c[0].id, "code-interpreter");
+        assert_eq!((c[0].id.as_str(), c[0].level), ("code-interpreter", Level::Title));
     }
 
     #[test]
-    fn test_unrelated_short_message_does_not_borrow_the_previous_one() {
+    fn test_a_longer_message_does_not_borrow_the_previous_one() {
         assert!(ToolSearch::suggest(&catalog(), "2+2 kitna hota hai?", Some("run this python code")).is_empty());
         assert_eq!(ToolSearch::suggest(&catalog(), "isko phir chalao", Some("run this python code"))[0].id, "code-interpreter");
     }
 
     #[test]
-    fn test_closing_words_do_not_borrow_the_previous_message() {
-        assert!(ToolSearch::suggest(&catalog(), "thanks, that's all", Some("read notes.txt")).is_empty());
+    fn test_closing_words_get_no_card_from_the_previous_message() {
+        // A closing message looks like a follow-up: at most a title, never a card
+        assert!(ToolSearch::suggest(&catalog(), "thanks, that's all", Some("read notes.txt")).iter().all(|c| c.level == Level::Title));
         assert_eq!(ToolSearch::suggest(&catalog(), "again please", Some("read notes.txt"))[0].id, "filesystem");
     }
 

@@ -45,6 +45,17 @@ struct Search {
     /// `chat` (default), or `workspace` / `all` to search the other chats (not with cross_chat: deny)
     #[serde(default)]
     scope: Option<String>,
+    /// Only messages from this time: `YYYY-MM-DD` (start of that day on the Engine machine's
+    /// clock), `YYYY-MM-DDTHH:MM` (that clock) or RFC 3339
+    #[serde(default)]
+    from: Option<String>,
+    /// Only messages up to this time: `YYYY-MM-DD` (to the end of that day), `YYYY-MM-DDTHH:MM` or
+    /// RFC 3339
+    #[serde(default)]
+    to: Option<String>,
+    /// Only messages of the last this many hours
+    #[serde(default)]
+    within_hours: Option<u32>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -123,26 +134,28 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "memory.search",
             Meta::new(Scope::Read, "Messages of a chat that fit a query, or text from the other chats")
                 .error(-32002, "forbidden", "`scope` workspace / all while `config` context `cross_chat` is deny (`data.needs: \"cross_chat\"`)")
-                .error(-32602, "invalid_params", "`scope` is not chat, workspace or all")
+                .error(-32602, "invalid_params", "`scope` is not chat, workspace or all, or `from` / `to` is not a time or `from` is not before `to`")
                 .error(-32010, "event_log_unreadable", "The chat's event log could not be read")
                 .example(
                 json!({ "chat_id": "c1", "query": "deploy port" }),
                 json!({ "chat_id": "c1", "query": "deploy port", "results": [{ "ref": "m:12", "score": 3.2, "why": ["port"], "card": {} }] }),
             ),
             |_: CallCtx, _: Call, p: Search| async move {
+                let window = cluaiz_context::memory::window(p.from.as_deref(), p.to.as_deref(), p.within_hours, chrono::Utc::now())
+                    .map_err(|e| CepError::invalid_params(e, Vec::new(), Some(json!({ "chat_id": p.chat_id, "query": p.query, "from": "2026-10-23", "to": "2026-10-23" }))))?;
                 if let Some(scope @ ("workspace" | "all")) = p.scope.as_deref() {
                     if cluaiz_core::Settings::current().context_runtime.cross_chat == "deny" {
                         return Err(CepError::forbidden("cross_chat"));
                     }
                     let workspace = (scope == "workspace").then(recall::current_workspace);
-                    let text = recall::search_other_chats(&p.query, &p.chat_id, workspace.as_deref(), p.limit.unwrap_or(5).min(20));
+                    let text = recall::search_other_chats(&p.query, &p.chat_id, workspace.as_deref(), window, p.limit.unwrap_or(5).min(20));
                     return Ok(json!({ "chat_id": p.chat_id, "query": p.query, "scope": scope, "text": text }));
                 }
                 if p.scope.as_deref().is_some_and(|s| s != "chat") {
                     return Err(CepError::invalid_params("`scope` is chat, workspace or all", Vec::new(), None));
                 }
                 let map = chat_map(&p.chat_id)?;
-                let hits = cluaiz_context::memory::recall(&map.cards, &map.index, &p.query, &HashSet::new(), chrono::Utc::now(), p.limit.unwrap_or(5).min(50));
+                let hits = cluaiz_context::memory::recall(&map.cards, &map.index, &p.query, &HashSet::new(), window, p.limit.unwrap_or(5).min(50));
                 let results: Vec<Value> = hits
                     .iter()
                     .map(|hit| {

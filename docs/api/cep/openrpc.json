@@ -3011,7 +3011,7 @@
           "data": {
             "type": "invalid_params"
           },
-          "message": "`scope` is not chat, workspace or all"
+          "message": "`scope` is not chat, workspace or all, or `from` / `to` is not a time or `from` is not before `to`"
         },
         {
           "code": -32010,
@@ -3065,6 +3065,18 @@
           }
         },
         {
+          "name": "from",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only messages from this time: `YYYY-MM-DD` (start of that day on the Engine machine's\nclock), `YYYY-MM-DDTHH:MM` (that clock) or RFC 3339",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
           "name": "limit",
           "required": false,
           "schema": {
@@ -3094,6 +3106,32 @@
             "description": "`chat` (default), or `workspace` / `all` to search the other chats (not with cross_chat: deny)",
             "type": [
               "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "to",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only messages up to this time: `YYYY-MM-DD` (to the end of that day), `YYYY-MM-DDTHH:MM` or\nRFC 3339",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "within_hours",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only messages of the last this many hours",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
               "null"
             ]
           }

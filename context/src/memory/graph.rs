@@ -1,6 +1,7 @@
 //! The Chat Map graph (architecture §11.5), built by rules from cards and episodes: messages
 //! follow each other, belong to an episode, use tools, touch files and mention values. Recall uses
-//! it to bring along a message linked to a hit (the same file or value, a later correction).
+//! it to bring along a message linked to a hit (the same file or value, a later message on the same
+//! thing, which may correct it).
 
 use super::card::Card;
 use super::episode::Episode;
@@ -19,7 +20,7 @@ pub struct Node {
 pub struct Edge {
     pub from: String,
     pub to: String,
-    /// next, part_of, uses_tool, touches_file, mentions, corrects
+    /// next, part_of, uses_tool, touches_file, mentions, updates
     pub kind: &'static str,
 }
 
@@ -37,6 +38,15 @@ fn anchors(card: &Card) -> Vec<String> {
     out.sort();
     out.dedup();
     out
+}
+
+/// Keywords two messages share before the later one counts as saying more about the same thing
+const UPDATE_SHARED_KEYWORDS: usize = 2;
+
+/// Whether `later` says more about what `earlier` said (same speaker, two shared keywords): a
+/// correction ("meeting Wednesday, not Monday") is one, in any language
+fn updates(later: &Card, earlier: &Card) -> bool {
+    later.role == earlier.role && later.keywords.iter().filter(|k| earlier.keywords.contains(k)).count() >= UPDATE_SHARED_KEYWORDS
 }
 
 /// The graph of a chat
@@ -79,17 +89,10 @@ pub fn build_graph(cards: &[Card], episodes: &[Episode]) -> Graph {
             graph.edges.push(Edge { from: id.clone(), to: anchor, kind });
         }
     }
-    // A correction points at the earlier messages it shares a keyword with
-    for (i, card) in cards.iter().enumerate() {
-        if !card.signals.iter().any(|s| s == "correction") {
-            continue;
-        }
-        let keywords: HashSet<&str> = card.keywords.iter().map(String::as_str).collect();
-        for earlier in cards[..i].iter().rev().filter(|c| c.role == card.role).take(200) {
-            if earlier.keywords.iter().any(|k| keywords.contains(k.as_str())) {
-                graph.edges.push(Edge { from: format!("m:{}", card.pos), to: format!("m:{}", earlier.pos), kind: "corrects" });
-                break;
-            }
+    // A user message points at the latest earlier one it says more about
+    for (i, card) in cards.iter().enumerate().filter(|(_, c)| c.role == "user" && !c.trivial) {
+        if let Some(earlier) = cards[..i].iter().rev().take(200).find(|earlier| updates(card, earlier)) {
+            graph.edges.push(Edge { from: format!("m:{}", card.pos), to: format!("m:{}", earlier.pos), kind: "updates" });
         }
     }
     graph
@@ -109,13 +112,9 @@ pub fn expand(hits: &[Hit], cards: &[Card], visible: &HashSet<u64>, limit: usize
     for hit in hits {
         let card = &cards[hit.card];
         let mut linked: Vec<(usize, String)> = Vec::new();
-        // A later correction that shares a keyword
-        let keywords: HashSet<&str> = card.keywords.iter().map(String::as_str).collect();
-        for (i, later) in cards.iter().enumerate().skip(hit.card + 1) {
-            if later.signals.iter().any(|s| s == "correction") && later.keywords.iter().any(|k| keywords.contains(k.as_str())) {
-                linked.push((i, "corrects it".to_string()));
-                break;
-            }
+        // The latest later message on the same thing (it may correct the hit)
+        if let Some(i) = (hit.card + 1..cards.len()).rev().find(|&i| updates(&cards[i], card)) {
+            linked.push((i, "later on the same".to_string()));
         }
         for anchor in anchors(card).into_iter().filter(|a| !a.starts_with("tool:")) {
             for &i in by_anchor.get(&anchor).into_iter().flatten() {
@@ -148,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn test_edges_and_expansion_bring_the_correction() {
+    fn test_edges_and_expansion_bring_the_later_message() {
         let messages = vec![
             msg(0, "user", "Team meeting Monday ko hai."),
             msg(1, "assistant", "Noted."),
@@ -161,9 +160,9 @@ mod tests {
         let texts: Vec<&str> = messages.iter().map(|m| m.text.as_str()).collect();
         let eps = episodes(&cards, &texts, EpisodeRules::default());
         let graph = build_graph(&cards, &eps);
-        assert!(graph.edges.iter().any(|e| e.kind == "corrects" && e.from == "m:4" && e.to == "m:0"), "{:?}", graph.edges);
+        assert!(graph.edges.iter().any(|e| e.kind == "updates" && e.from == "m:4" && e.to == "m:0"), "{:?}", graph.edges);
         assert!(graph.edges.iter().any(|e| e.kind == "next"));
-        // Recall found only the old statement: expansion brings the correction
+        // Recall found only the old statement: expansion brings the later one, which corrects it
         let hits = vec![Hit { card: 0, score: 3.0, why: vec!["meeting".into()] }];
         let expanded = expand(&hits, &cards, &HashSet::new(), 3);
         assert!(expanded.iter().any(|h| cards[h.card].pos == 4), "{expanded:?}");

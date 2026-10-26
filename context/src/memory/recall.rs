@@ -3,7 +3,7 @@
 //! still fits pays nothing.
 //!
 //! score = bm25 (normalised) + 0.5·shared entities + 0.4·recency + 0.6·importance,
-//! restricted to a time window when the message names one ("kal", "2 din pehle", "last week").
+//! restricted to the time window the caller names (see [`super::time`]).
 
 use super::card::{entities, Card};
 use super::index::CardIndex;
@@ -24,30 +24,13 @@ pub struct Hit {
     pub why: Vec<String>,
 }
 
-pub use super::time::{time_window, time_window_in, Window};
-
-static TOOL_RUN: std::sync::LazyLock<Vec<Vec<String>>> = std::sync::LazyLock::new(|| {
-    let data: serde_json::Value = serde_json::from_str(include_str!("../../data/words.json")).unwrap_or_default();
-    data.pointer("/memory/tool_run")
-        .and_then(serde_json::Value::as_array)
-        .map(|items| items.iter().filter_map(serde_json::Value::as_str).map(crate::analyze::raw_words).collect())
-        .unwrap_or_default()
-});
-
-/// Whether a message asks about what an earlier tool run gave ("output kya aaya", "pichhle run
-/// ka result"): such a message gets the recalled steps' calls and results (`tool_only`), not the
-/// answers around them
-pub fn asks_about_tool_run(message: &str) -> bool {
-    let words = crate::analyze::raw_words(message);
-    TOOL_RUN.iter().any(|phrase| super::card::has_phrase(&words, phrase))
-}
+pub use super::time::{window, window_in, Window};
 
 /// Earlier messages worth recalling for `message`, best first. `visible` holds the positions
-/// already in the prompt; they are never recalled.
-pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSet<u64>, now: DateTime<Utc>, limit: usize) -> Vec<Hit> {
+/// already in the prompt; they are never recalled. With a `window`, only messages of that time.
+pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSet<u64>, window: Option<Window>, limit: usize) -> Vec<Hit> {
     let query = terms(message);
     let query_entities = entities(message);
-    let window = time_window(message, now);
     let ranked = index.search(&query);
     // Scores are relative to the best candidate (a visible message, such as the question itself,
     // must not push the hidden ones down)
@@ -56,9 +39,11 @@ pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSe
         .find(|(i, _)| !cards[*i].trivial && !visible.contains(&cards[*i].pos))
         .map_or(1.0, |(_, s)| s.max(1.0));
     let newest = cards.iter().map(|c| c.pos).max().unwrap_or(0).max(1) as f32;
-    let candidates: Vec<(usize, f32)> = if window.is_some() && ranked.is_empty() {
-        // "kal kya baat hui?": every message of that day is a candidate
-        (0..cards.len()).map(|i| (i, 0.0)).collect()
+    let candidates: Vec<(usize, f32)> = if window.is_some() {
+        // Every message of that time is a candidate ("what did we talk about yesterday?" may share
+        // no word with them); matching words rank them
+        let scores: std::collections::HashMap<usize, f32> = ranked.into_iter().collect();
+        (0..cards.len()).map(|i| (i, scores.get(&i).copied().unwrap_or(0.0))).collect()
     } else {
         ranked
     };
@@ -138,10 +123,10 @@ mod tests {
         let cards = chat();
         let index = CardIndex::build(&cards);
         let visible: HashSet<u64> = (40..60).collect();
-        let hits = recall(&cards, &index, "deploy server ka port kya tha?", &visible, now(), 3);
+        let hits = recall(&cards, &index, "deploy server ka port kya tha?", &visible, None, 3);
         assert!(!hits.is_empty());
         assert!([0, 1].contains(&cards[hits[0].card].pos), "{hits:?}");
-        let hits = recall(&cards, &index, "notes.txt me secret word kya tha?", &visible, now(), 3);
+        let hits = recall(&cards, &index, "notes.txt me secret word kya tha?", &visible, None, 3);
         assert_eq!(cards[hits[0].card].pos, 3);
     }
 
@@ -150,9 +135,9 @@ mod tests {
         let cards = chat();
         let index = CardIndex::build(&cards);
         let all: HashSet<u64> = (0..60).collect();
-        assert!(recall(&cards, &index, "deploy server ka port kya tha?", &all, now(), 3).is_empty());
+        assert!(recall(&cards, &index, "deploy server ka port kya tha?", &all, None, 3).is_empty());
         let visible: HashSet<u64> = (40..60).collect();
-        assert!(recall(&cards, &index, "tell me a joke", &visible, now(), 3).is_empty());
+        assert!(recall(&cards, &index, "tell me a joke", &visible, None, 3).is_empty());
     }
 
     #[test]
@@ -161,30 +146,29 @@ mod tests {
         let index = CardIndex::build(&cards);
         let visible: HashSet<u64> = (40..60).collect();
         // Many extra words: the question itself would score far above the old fact
-        let hits = recall(&cards, &index, "recall tool use karke dhundo maine deploy server port ke baare me kya kaha tha", &visible, now(), 3);
+        let hits = recall(&cards, &index, "recall tool use karke dhundo maine deploy server port ke baare me kya kaha tha", &visible, None, 3);
         assert!(hits.iter().any(|h| [0, 1].contains(&cards[h.card].pos)), "{hits:?}");
     }
 
     #[test]
     fn test_time_windows() {
         let utc = chrono::FixedOffset::east_opt(0).unwrap();
-        let w = time_window_in("kal kya baat hui?", now(), utc).unwrap();
-        assert_eq!(w.from.to_rfc3339(), "2026-10-23T00:00:00+00:00");
-        assert!(time_window_in("2 din pehle maine kya kaha", now(), utc).unwrap().from.to_rfc3339().starts_with("2026-10-22"));
-        assert!(time_window_in("what is rust", now(), utc).is_none());
+        // The model turned "yesterday" into a date; the question's language does not matter
+        let yesterday = window_in(Some("2026-10-23"), Some("2026-10-23"), None, now(), utc).unwrap();
         let cards = chat();
         let index = CardIndex::build(&cards);
         let visible: HashSet<u64> = (40..60).collect();
-        let hits = recall(&cards, &index, "kal kya baat hui thi?", &visible, now(), 5);
-        assert!(hits.iter().all(|h| cards[h.card].ts.starts_with("2026-10-23")), "{hits:?}");
-        assert!(!hits.is_empty());
+        for question in ["what did we talk about?", "कल क्या बात हुई थी?", "நேற்று என்ன பேசினோம்?"] {
+            let hits = recall(&cards, &index, question, &visible, yesterday, 5);
+            assert!(!hits.is_empty(), "{question}");
+            assert!(hits.iter().all(|h| cards[h.card].ts.starts_with("2026-10-23")), "{question}: {hits:?}");
+        }
+        // Without a window the same question recalls nothing by itself
+        assert!(recall(&cards, &index, "நேற்று என்ன பேசினோம்?", &visible, None, 5).is_empty());
     }
 
     #[test]
     fn test_a_tool_run_is_found_by_its_output() {
-        assert!(asks_about_tool_run("pichhle run ka output kya aaya tha?"));
-        assert!(asks_about_tool_run("script ka result dikhao"));
-        assert!(!asks_about_tool_run("run this python: print(2+2)"));
         let mut messages = vec![
             MessageIn { id: "e0".into(), pos: 0, role: "user".into(), text: "calc.py chalao".into(), ts: "2026-10-24T10:00:00Z".into(), ..Default::default() },
             MessageIn {
@@ -205,7 +189,7 @@ mod tests {
         let index = CardIndex::build(&cards);
         let visible: HashSet<u64> = (20..30).collect();
         // The checksum is only in the tool's output, not in any message
-        let hits = recall(&cards, &index, "ZEBRA-7781 checksum kis run me aaya tha?", &visible, now(), 3);
+        let hits = recall(&cards, &index, "ZEBRA-7781 checksum kis run me aaya tha?", &visible, None, 3);
         assert_eq!(cards[hits[0].card].pos, 1, "{hits:?}");
     }
 
