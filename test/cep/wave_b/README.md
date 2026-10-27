@@ -19,6 +19,12 @@ cargo test --offline --manifest-path test/cep/wave_b/Cargo.toml --target-dir tar
 
 Covered: schema rejection before any side effect, text and binary round trips, recursive copy / list / delete, scope denial, a real symbolic link that leaves the roots, drive-relative and root-relative paths, missing write parents, workspace synchronization, and discovery metadata. Windows must allow creating symbolic links; otherwise the link tests fail instead of skipping.
 
+`folder_picker_contract.rs` exercises the production picker helper's return and unwind paths. Its Windows desktop check is opt-in because it opens and cancels two real folder dialogs. It checks foreground HWND, removal of the temporary topmost style, cancellation/reopening, and isolation from a same-title dialog on another thread:
+
+```powershell
+cargo test --offline --manifest-path test/cep/wave_b/Cargo.toml --target-dir target/cep-wave-b-contracts --test folder_picker_contract -- --ignored --test-threads=1 --nocapture
+```
+
 ## Live journeys
 
 Each journey copies the config of an isolated seed home into a fresh home (`journey_home.py`: never weights, `session.token` or live tool state), starts a copy of the executable there on the given port, calls the methods over `POST /v1/cep`, and stops it. Ports 8000 and 8011 and the owner's `~/.cluaiz` are refused.
@@ -32,4 +38,4 @@ python test/cep/wave_b/tools_http_journey.py  --exe target/release/cluaiz.exe --
 
 `--check-load` also loads a small installed GGUF on the CPU and removes a hard-linked copy of it. Each journey writes `<home>/<group>-http-report.json` with every check.
 
-Not covered: the folder picker dialog (only a denied non-owner call is tested, so no dialog opens unattended), third-party native plugin execution, other operating systems.
+Not covered by the HTTP journeys: interactive folder picking (only a denied non-owner call is tested), third-party native plugin execution, other operating systems. The opt-in native picker test above does not prove the browser-to-Engine HTTP journey.
