@@ -42,6 +42,11 @@ pub fn learned(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Optio
     LEARNED.read().ok()?.as_ref()?.get(&key(geometry, settings)).copied()
 }
 
+/// A measurement by [`key`] or by another owner's key (an ONNX package's device use)
+pub fn learned_key(key: &str) -> Option<f64> {
+    LEARNED.read().ok()?.as_ref()?.get(key).copied()
+}
+
 /// Records a measured gap; the largest one seen is kept (a later load may hit a bigger peak)
 pub fn record(geometry: &ModelGeometry, settings: &ActiveUserSettings, gap_gb: f64) -> bool {
     record_key(&key(geometry, settings), gap_gb)

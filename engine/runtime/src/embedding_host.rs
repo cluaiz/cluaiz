@@ -61,6 +61,11 @@ impl EmbeddingHost {
         self.admission.try_acquire()
     }
 
+    /// Frees the resident model when no request is using it; true when one was freed
+    pub fn unload_idle(&self) -> bool {
+        self.state.try_lock().ok().and_then(|mut state| state.take()).is_some()
+    }
+
     /// Nonblocking status; a busy or empty owner has no currently reportable resident.
     pub fn resident_model(&self) -> Option<String> {
         self.state

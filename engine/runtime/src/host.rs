@@ -260,10 +260,32 @@ impl EngineHost {
         }
 
         self.unload_model_inner().await;
-        load_vram_margins();
-        let hw = cluaiz_hw::HardwareProber::with_live_memory();
+        crate::vram_use::load();
+        let mut hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
-        let plan = Planner::create_plan(model_id, &geometry, &hw, settings);
+        let mut plan = Planner::create_plan(model_id, &geometry, &hw, settings);
+        // The chat comes first on the GPU: when it would not run fully there, idle models of the
+        // other kinds (speech, transcription, embeddings) are freed and the chat is planned again on
+        // what that gave back. A model serving a request right now is never freed.
+        if !hw.gpus.is_empty() && settings.optimization.n_gpu_layers != Some(0) && plan.selected_tier != cluaiz_plan::PlacementTier::GpuOnly {
+            let freed: Vec<&str> = [
+                ("ONNX", self.onnx.unload_idle()),
+                ("speech", self.speech.unload_idle()),
+                ("embedding", self.embeddings.unload_idle()),
+            ]
+            .into_iter()
+            .filter_map(|(kind, freed)| freed.then_some(kind))
+            .collect();
+            if !freed.is_empty() {
+                hw = cluaiz_hw::HardwareProber::with_live_memory();
+                let replanned = Planner::create_plan(model_id, &geometry, &hw, settings);
+                tracing::info!(
+                    "♻️ [EngineHost] Freed idle {} model(s) for the chat: {} -> {} blocks on the GPU",
+                    freed.join(" + "), plan.block_split().0, replanned.block_split().0
+                );
+                plan = replanned;
+            }
+        }
         if !plan.is_feasible() {
             // Still report why, so the user sees the numbers behind the refusal
             self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings))
@@ -322,7 +344,7 @@ impl EngineHost {
                 return Ok(plan);
             }
         }
-        load_vram_margins();
+        crate::vram_use::load();
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         Ok(Planner::create_plan(model_id, &geometry, &hw, settings))
@@ -440,7 +462,7 @@ impl EngineHost {
                 // What the model took beyond the estimate (llama.cpp buffers, the GPU pool after the
                 // full-batch warmup): the planner adds it next time instead of a fixed margin
                 cluaiz_plan::margin::record(&geometry, settings, vram_delta - plan.vram_budget_gb);
-                save_vram_margins();
+                crate::vram_use::save();
                 *self.gpu_use.lock().await = Some(GpuUse {
                     key: cluaiz_plan::margin::key(&geometry, settings),
                     free_before_gb: pre_free_vram,
@@ -494,7 +516,7 @@ impl EngineHost {
         let gap = (gpu.free_before_gb - free_now) - gpu.planned_gb;
         if cluaiz_plan::margin::record_key(&gpu.key, gap) {
             tracing::info!("📏 [EngineHost] The loaded model now takes {:+.2} GB over its estimate; learned for its next load", gap);
-            save_vram_margins();
+            crate::vram_use::save();
         }
     }
 
@@ -934,38 +956,6 @@ struct GpuUse {
 fn is_better_placement(candidate: &ExecutionPlan, current: &ExecutionPlan) -> bool {
     let (gpu_new, gpu_now) = (candidate.block_split().0, current.block_split().0);
     gpu_new > gpu_now || (gpu_new == gpu_now && candidate.context_window > current.context_window)
-}
-
-/// Where the measured VRAM margins of this machine are kept
-fn vram_margins_path() -> std::path::PathBuf {
-    cluaiz_core::EnvironmentManager::current().engine_dir().join("vram_margins.json")
-}
-
-/// Reads the measured margins once per process
-fn load_vram_margins() {
-    static LOADED: std::sync::Once = std::sync::Once::new();
-    LOADED.call_once(|| {
-        let measured = std::fs::read_to_string(vram_margins_path())
-            .ok()
-            .and_then(|text| serde_json::from_str::<std::collections::HashMap<String, f64>>(&text).ok())
-            .unwrap_or_default();
-        cluaiz_plan::margin::restore(measured);
-    });
-}
-
-fn save_vram_margins() {
-    let path = vram_margins_path();
-    let saved = serde_json::to_string_pretty(&cluaiz_plan::margin::snapshot())
-        .map_err(anyhow::Error::from)
-        .and_then(|text| {
-            if let Some(dir) = path.parent() {
-                std::fs::create_dir_all(dir)?;
-            }
-            Ok(std::fs::write(&path, text)?)
-        });
-    if let Err(e) = saved {
-        tracing::warn!("⚠️ [EngineHost] Could not save the measured VRAM margins to {}: {}", path.display(), e);
-    }
 }
 
 /// The identity a saved chat KV must match for the loaded model (see `chat_memory::memory_key`)

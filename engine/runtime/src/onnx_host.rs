@@ -218,6 +218,39 @@ fn tts_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSetting
     Ok(effective)
 }
 
+/// The device an ONNX package loads on. Once it was measured on this GPU it goes there only when
+/// what it took then fits in the free VRAM beside whatever is loaded (the chat model first), with
+/// the desktop reserve left; otherwise it runs on the CPU. Never measured: the speech admission
+/// estimate and the engine's own check decide, and this load is measured.
+fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettings) -> Result<(cluaiz_core::OnnxSettings, String)> {
+    crate::vram_use::load();
+    let key = format!("onnx:{}:{}", model.id, task);
+    let mut effective = settings.onnx.clone();
+    if effective.n_gpu_layers != 0 {
+        if let Some(need) = cluaiz_plan::margin::learned_key(&key) {
+            let hw = cluaiz_hw::HardwareProber::with_live_memory();
+            let free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+            let reserve = cluaiz_plan::margin::reserve_gb(&hw);
+            if need + reserve > free && effective.n_gpu_layers < 0 {
+                effective.n_gpu_layers = 0;
+                tracing::info!(model = %model.id, task, "ONNX on the CPU: it took {:.2} GB on the GPU, {:.2} GB is free with {:.2} GB kept back", need, free, reserve);
+            } else {
+                tracing::info!(model = %model.id, task, "ONNX on the GPU: it took {:.2} GB there, {:.2} GB is free", need, free);
+            }
+            return Ok((effective, key));
+        }
+    }
+    Ok((tts_load_settings(model, task, settings)?, key))
+}
+
+/// Records what an ONNX package took on the GPU (the largest seen is kept)
+fn record_device_use(key: &str, taken_gb: f64) {
+    if taken_gb > 0.01 && cluaiz_plan::margin::record_key(key, taken_gb) {
+        tracing::info!("📏 [ONNX] {} takes {:.2} GB on the GPU", key, taken_gb);
+        crate::vram_use::save();
+    }
+}
+
 fn graph_asset_bytes(dir: &std::path::Path, graphs: &[cluaiz_models::prober::OnnxProbeResult]) -> Result<u64> {
     let mut paths = std::collections::BTreeSet::new();
     for graph in graphs {
@@ -235,6 +268,12 @@ fn graph_asset_bytes(dir: &std::path::Path, graphs: &[cluaiz_models::prober::Onn
 impl OnnxHost {
     pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
         Self { transition, ..Default::default() }
+    }
+
+    /// Frees the resident ONNX model (speech, transcription, embedding) when no request is using
+    /// it; true when one was freed
+    pub fn unload_idle(&self) -> bool {
+        self.state.try_lock().ok().and_then(|mut state| state.resident.take()).is_some()
     }
 
     /// Release only an inactive ONNX TTS resident when the GGUF speech backend is selected.
@@ -400,12 +439,20 @@ impl OnnxHost {
             .checked_add(1)
             .context("ONNX request generation overflow")?;
         let generation = state.generation;
+        // Free VRAM before a fresh GPU load, to measure what the package takes
+        let mut measuring: Option<(String, f64)> = None;
         if state.resident.as_ref().is_none_or(|r| r.key != key) {
             state.resident = None; // Free the previous graph before allocating its replacement.
             let _transition = self.transition.blocking_lock();
-            let effective = tts_load_settings(model, task, settings)?;
+            let (effective, measure_key) = onnx_load_settings(model, task, settings)?;
+            if effective.n_gpu_layers != 0 {
+                measuring = Some((measure_key, crate::vram_use::free_gb()));
+            }
             let mut engine = OnnxEngine::with_settings(effective)?;
             load(&mut engine)?;
+            if let Some((key, before)) = &measuring {
+                record_device_use(key, before - crate::vram_use::free_gb());
+            }
             state.resident = Some(Resident {
                 key: key.clone(),
                 task: task.to_owned(),
@@ -431,6 +478,10 @@ impl OnnxHost {
         }
         let resident = state.resident.as_mut().context("ONNX session was not published")?;
         let mut result = execute(&resident.engine);
+        // The first run grows the session's GPU arena: measure again
+        if let Some((key, before)) = &measuring {
+            record_device_use(key, before - crate::vram_use::free_gb());
+        }
         // Never restart speech after a part was emitted or its consumer disconnected.
         if task == "text_to_speech"
             && result
