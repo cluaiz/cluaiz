@@ -173,6 +173,9 @@ struct Resident {
 #[derive(Default)]
 struct AudioState {
     resident: Option<Resident>,
+    /// Models of the other tasks, kept loaded beside the active one (at most one per task), so a
+    /// voice turn (transcribe, then speak) does not reload both every time
+    parked: Vec<Resident>,
     generation: u64,
 }
 
@@ -292,13 +295,19 @@ impl OnnxHost {
     /// Frees the resident ONNX model (speech, transcription, embedding) when no request is using
     /// it; true when one was freed
     pub fn unload_idle(&self) -> bool {
-        self.state.try_lock().ok().and_then(|mut state| state.resident.take()).is_some()
+        let Ok(mut state) = self.state.try_lock() else { return false };
+        let parked = !state.parked.is_empty();
+        state.parked.clear();
+        state.resident.take().is_some() || parked
     }
 
     /// Release only an inactive ONNX TTS resident when the GGUF speech backend is selected.
     pub fn unload_tts(&self) -> Result<bool> {
         let mut state = self.state.lock().map_err(|_| anyhow::anyhow!("ONNX owner mutex poisoned"))?;
-        if !state.resident.as_ref().is_some_and(|r| r.task == "text_to_speech") { return Ok(false); }
+        let parked = state.parked.len();
+        state.parked.retain(|r| r.task != "text_to_speech");
+        let freed_parked = state.parked.len() != parked;
+        if !state.resident.as_ref().is_some_and(|r| r.task == "text_to_speech") { return Ok(freed_parked); }
         state.resident = None;
         Ok(true)
     }
@@ -458,6 +467,22 @@ impl OnnxHost {
             .checked_add(1)
             .context("ONNX request generation overflow")?;
         let generation = state.generation;
+        // Another task's model steps aside but stays loaded (one per task); a model of this task
+        // that is not the one asked for is freed; a parked model for this request comes back
+        if state.resident.as_ref().is_some_and(|r| r.key != key) {
+            if let Some(previous) = state.resident.take() {
+                if previous.task != task {
+                    state.parked.retain(|r| r.task != previous.task);
+                    state.parked.push(previous);
+                }
+            }
+        }
+        state.parked.retain(|r| r.task != task || r.key == key);
+        if state.resident.is_none() {
+            if let Some(i) = state.parked.iter().position(|r| r.key == key) {
+                state.resident = Some(state.parked.remove(i));
+            }
+        }
         // A package put on the CPU for lack of room goes back to the GPU once there is room
         if state.resident.as_ref().and_then(|r| r.cpu_for_room.as_deref()).is_some_and(fits_on_gpu_now) {
             tracing::info!(model = %model.id, task, "ONNX back to the GPU: there is room for it now");
@@ -476,8 +501,17 @@ impl OnnxHost {
             if effective.n_gpu_layers != 0 {
                 measuring = Some((measure_key, crate::vram_use::free_gb()));
             }
-            let mut engine = OnnxEngine::with_settings(effective)?;
-            load(&mut engine)?;
+            let mut engine = OnnxEngine::with_settings(effective.clone())?;
+            if let Err(error) = load(&mut engine) {
+                // Models kept for other tasks may be what left too little memory: free them, once
+                if state.parked.is_empty() {
+                    return Err(error);
+                }
+                tracing::warn!(model = %model.id, task, %error, "ONNX load failed with other tasks' models kept; freeing them and loading again");
+                state.parked.clear();
+                engine = OnnxEngine::with_settings(effective)?;
+                load(&mut engine)?;
+            }
             if let Some((key, before)) = &measuring {
                 record_device_use(key, before - crate::vram_use::free_gb());
             }
@@ -605,6 +639,11 @@ impl OnnxHost {
             .state
             .lock()
             .map_err(|_| anyhow::anyhow!("ONNX owner mutex poisoned"))?;
+        let parked = state.parked.len();
+        state.parked.retain(|r| !(r.key == key && r.generation == generation));
+        if state.parked.len() != parked {
+            return Ok(true);
+        }
         if !state
             .resident
             .as_ref()
@@ -627,6 +666,16 @@ impl OnnxHost {
             Ok(state.resident.as_ref().map(|r| r.id.clone()))
         })
         .await?
+    }
+
+    /// Whether any ONNX model is loaded (the active one or one kept for another task)
+    pub async fn any_resident(&self) -> bool {
+        let owner = self.clone();
+        tokio::task::spawn_blocking(move || {
+            owner.state.lock().map(|state| state.resident.is_some() || !state.parked.is_empty()).unwrap_or(true)
+        })
+        .await
+        .unwrap_or(true)
     }
 
     /// Trusted successful task evidence must match the current package/config identity.
