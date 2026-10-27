@@ -94,7 +94,7 @@ fn test_revision_and_graph_parent_are_preserved_without_registry_schema_change()
         Some(revision.clone()),
     )
     .unwrap();
-    let manifest = HuggingFaceHub::build_manifest("arbitrary-owner/arbitrary-name", &bundle, None);
+    let manifest = HuggingFaceHub::build_manifest("arbitrary-owner/arbitrary-name", &bundle, None, &[]);
     assert_eq!(HuggingFaceHub::manifest_revision(&manifest), revision);
     assert_eq!(
         HuggingFaceHub::primary_repository_path(&manifest),
