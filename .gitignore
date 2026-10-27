@@ -4,7 +4,9 @@
 target/
 **/target/
 **/*.rs.bk
-Cargo.lock
+# The workspace lock is committed so every build (and CI) uses the same dependency versions
+**/Cargo.lock
+!/Cargo.lock
 
 # --- C++ & Kernel Build Artifacts ---
 build/
