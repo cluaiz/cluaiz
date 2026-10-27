@@ -26,7 +26,7 @@ async fn actual_component_selection_and_legacy_primary_resolve_one_package() -> 
         filename: graph.clone(),
         size_gb: 0.0,
     };
-    let old = HuggingFaceHub::build_manifest(&repo, &custom, None);
+    let old = HuggingFaceHub::build_manifest(&repo, &custom, None, &[]);
     let manual = cluaiz_models::fetcher::package_bundler::complete_custom(&repo, &tree, custom)
         .await
         .map_err(anyhow::Error::msg)?;
@@ -78,7 +78,7 @@ async fn actual_fresh_package_install_and_repair_preserve_valid_files() -> Resul
         variant.all_files,
         variant.size_gb * cluaiz_core::GIB_F64
     );
-    let mut manifest = HuggingFaceHub::build_manifest(&repo, variant, None);
+    let mut manifest = HuggingFaceHub::build_manifest(&repo, variant, None, &[]);
     manifest.huggingface_filename = variant
         .primary_file
         .rsplit('/')

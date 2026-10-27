@@ -87,6 +87,7 @@ async fn actual_same_repository_helper_completion_preserves_pooling_directory() 
         &std::env::var("CLUAIZ_FIXTURE_REPO")?,
         &variant,
         Some("feature-extraction"),
+        &[],
     );
     complete_fixture_helpers(&manifest, &primary).await?;
     let after = PackageCapabilities::inspect(&primary)?;
@@ -142,6 +143,7 @@ async fn actual_image_helper_completion_uses_selected_repository() -> Result<()>
         &std::env::var("CLUAIZ_FIXTURE_REPO")?,
         &variant,
         Some("image-feature-extraction"),
+        &[],
     );
     complete_fixture_helpers(&manifest, &primary).await?;
     assert!(PackageCapabilities::inspect(&primary)?

@@ -52,7 +52,7 @@ impl HuggingFaceHub {
         if matches.next().is_some() {
             return Err("Ambiguous package source; choose an explicit repository variant".into());
         }
-        let mut resolved = Self::build_manifest(&manifest.huggingface_repo, &variant, None);
+        let mut resolved = Self::build_manifest(&manifest.huggingface_repo, &variant, None, &[]);
         resolved.id = manifest.id.clone();
         resolved.category = manifest.category.clone();
         resolved.huggingface_filename = variant
@@ -145,6 +145,28 @@ impl HuggingFaceHub {
         }
 
         None
+    }
+
+    /// What the repository declares it does: its pipeline tag and tags (empty when the Hub cannot
+    /// be read, and the model is then classified from its files once downloaded)
+    pub async fn declared_tasks(repo_id: &str) -> (Option<String>, Vec<String>) {
+        #[derive(serde::Deserialize)]
+        struct Info {
+            pipeline_tag: Option<String>,
+            #[serde(default)]
+            tags: Vec<String>,
+        }
+        let mut req = Client::new().get(format!("https://huggingface.co/api/models/{repo_id}"));
+        if let Some(token) = Self::resolve_hf_token() {
+            req = req.header("Authorization", format!("Bearer {token}"));
+        }
+        match req.send().await.and_then(|r| r.error_for_status()) {
+            Ok(response) => match response.json::<Info>().await {
+                Ok(info) => (info.pipeline_tag, info.tags),
+                Err(_) => (None, Vec::new()),
+            },
+            Err(_) => (None, Vec::new()),
+        }
     }
 
     /// Fetch raw file tree items from HuggingFace repository with pagination support
@@ -487,8 +509,9 @@ impl HuggingFaceHub {
         repo_id: &str,
         variant: &HfVariant,
         pipeline_tag: Option<&str>,
+        tags: &[String],
     ) -> ModelManifest {
-        let classification = UniversalModelClassifier::classify(pipeline_tag, &[]);
+        let classification = UniversalModelClassifier::classify(pipeline_tag, tags);
 
         let safe_name = repo_id.split('/').next_back().unwrap_or(repo_id);
         let download_url = format!(
