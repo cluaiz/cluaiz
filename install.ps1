@@ -1,297 +1,132 @@
-# cluaiz CORE INFRASTRUCTURE - VERSION 0.1.0
-# Industrial Standard Deployment Script (CURL ENHANCED)
-
-param ([string]$Version = 'latest')
+# Installs Cluaiz from its GitHub release:
+#
+#   irm https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.ps1 | iex
+#
+# It picks the Windows core, adds the GPU pack for the GPU it finds (NVIDIA: CUDA, AMD / Intel:
+# Vulkan), checks every file against the release's SHA256SUMS.txt and unpacks them into one folder.
+# Nothing asks a question; the only other change is that folder on the user PATH.
+#
+# Environment (all optional):
+#   CLUAIZ_VERSION      release to install, e.g. 0.1.0 (default: the newest release)
+#   CLUAIZ_INSTALL_DIR  where the files go (default: ~\.cluaiz\bin)
+#   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-
-# --- UI Matrix ---
-$E = [char]27
-$BOLD = "$E[1m"; $CYAN = "$E[36m"; $GRAY = "$E[90m"; $GREEN = "$E[32m"; $YELLOW = "$E[33m"; $RED = "$E[31m"; $NC = "$E[0m"
-
-# Professional UI Helpers (Pure ASCII - Industrial)
-function Write-Step ([string]$msg) {
-    # Initial state: Grey dot with message (No dots at end)
-    Write-Host ("  " + $GRAY + "* " + $msg + $NC) -NoNewline
-}
-
-function Complete-Step ([string]$msg) {
-    # Replaces the whole line with a Green [DONE] status + Message
-    $clear = "`r" + (" " * 100) + "`r"
-    Write-Host -NoNewline $clear
-    Write-Host ("  " + $GREEN + "[DONE] " + $NC + $msg)
-}
-
-function Write-Success ([string]$msg) { 
-    Write-Host ("`n  " + $GREEN + "[DONE] " + $msg + $NC)
-}
-
-function Write-Fail ([string]$msg) { 
-    Write-Host ("`n  " + $RED + "[ERROR] " + $msg + $NC) -ForegroundColor Red
-}
-
-# --- High-Performance Download Engine (With Sequential Spinner) ---
-function Invoke-cluaizdbownload ([string]$url, [string]$path, [string]$label) {
-    if (-not $url) { throw 'Download URL is null for ' + $label }
-    $dir = Split-Path $path
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-    
-    # 🌀 Spinner Animation Logic
-    $spinner = @('|', '/', '-', '\')
-    $i = 0
-    
-    # Start download in background using WebClient for async UI
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFileAsync($url, $path)
-    
-    # We strip any prefix for clean display
-    $cleanLabel = $label -replace '\[MOUNTING\] ', ''
-    
-    while ($webClient.IsBusy) {
-        $char = $spinner[$i % 4]
-        # Overwrite the line with current spinner + DOWNLOADING status (No dots)
-        $status = "`r  " + $CYAN + "[" + $char + "]" + $NC + " [DOWNLOADING] " + $cleanLabel
-        Write-Host -NoNewline $status
-        $i++
-        Start-Sleep -Milliseconds 150
-    }
-    
-    # Check if download actually finished successfully
-    if (-not (Test-Path $path)) { throw "Artifact retrieval failed for $cleanLabel" }
-    
-    # Clear the spinner line completely before showing MOUNTED
-    $clear = "`r" + (" " * 100) + "`r"
-    Write-Host -NoNewline $clear
-    Write-Host ("  " + $GREEN + "[MOUNTED] " + $NC + $cleanLabel)
-}
-
-# --- UTF-8 Safe ---
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-# --- Security ---
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+$Repo = 'cluaiz/cluaiz'
+$InstallDir = if ($env:CLUAIZ_INSTALL_DIR) { $env:CLUAIZ_INSTALL_DIR } else { Join-Path $HOME '.cluaiz\bin' }
+$Gpu = if ($env:CLUAIZ_GPU) { $env:CLUAIZ_GPU } else { 'auto' }
 
-Clear-Host
-
-# --- Unicode Safe Chars (As User Defined) ---
-$C1 = [char]0x2591  # ░
-$C2 = [char]0x2580  # ▀
-$C3 = [char]0x2584  # ▄
-$C4 = [char]0x2588  # █
+$E = [char]27
+$GRAY = "$E[90m"; $GREEN = "$E[32m"; $NC = "$E[0m"
+function Write-Step ([string]$msg) { Write-Host ("  " + $GRAY + "* " + $msg + $NC) }
+function Complete-Step ([string]$msg) { Write-Host ("  " + $GREEN + "[DONE] " + $NC + $msg) }
 
 # --- Logo ---
-$Logo1 = "  $C1$C2$C3$C1$C1$C1$C1$C1$C1$C1$C1$C4$C2$C2$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C2$C4$C2$C1$C2$C2$C4"
-$Logo2 = "  $C1$C1$C3$C2$C1$C1$C1$C1$C1$C1$C1$C4$C1$C1$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C1$C4$C1$C1$C3$C2$C1"
-$Logo3 = "  $C1$C2$C1$C1$C1$C2$C2$C2$C1$C1$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C1$C2$C1$C2$C2$C2$C1$C2$C2$C2"
-
-# --- Print Logo ---
+$C1 = [char]0x2591; $C2 = [char]0x2580; $C3 = [char]0x2584; $C4 = [char]0x2588
 Write-Host ""
-Write-Host $Logo1 -ForegroundColor Cyan
-Write-Host $Logo2 -ForegroundColor Cyan
-Write-Host $Logo3 -ForegroundColor Cyan
-
-# --- Header ---
+Write-Host "  $C1$C2$C3$C1$C1$C1$C1$C1$C1$C1$C1$C4$C2$C2$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C2$C4$C2$C1$C2$C2$C4" -ForegroundColor Cyan
+Write-Host "  $C1$C1$C3$C2$C1$C1$C1$C1$C1$C1$C1$C4$C1$C1$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C1$C4$C1$C1$C3$C2$C1" -ForegroundColor Cyan
+Write-Host "  $C1$C2$C1$C1$C1$C2$C2$C2$C1$C1$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C1$C2$C1$C2$C2$C2$C1$C2$C2$C2" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  >_ Installing cluaiz..." -ForegroundColor Gray
 Write-Host ""
 
 try {
-    $HubPath = if ($env:cluaiz_ROOT) { $env:cluaiz_ROOT } else { Join-Path $HOME '.cluaiz' }
-    $Repo = 'cluaiz/cluaiz'
+    if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw "Windows on $env:PROCESSOR_ARCHITECTURE is not supported yet (x64 only)" }
+    $Platform = 'win-x64'
 
-    # 1. Provisioning
-    $step1 = '[PROVISIONING] Silicon Environment Setup'
-    Write-Step $step1
-    $Folders = @('bin', 'apps/cli', 'engine', 'interface-engines', 'interface-engines/kernels', 'interface-engines/drivers')
-    foreach ($f in $Folders) {
-        $p = Join-Path $HubPath $f
-        if (-not (Test-Path $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }
-    }
-    Complete-Step $step1
-
-    # 2. Sovereign Registry Sync
-    $step2 = '[AUDITING] Neural Registry Sync'
-    Write-Step $step2
-    $MasterRegistryUrl = 'https://raw.githubusercontent.com/cluaiz/cluaiz/main/package.json'
-    $MasterRegistry = Invoke-RestMethod -Uri $MasterRegistryUrl
-    $Arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
-    Complete-Step $step2
-
-    # --- CLI Deployment (Driven by package.json) ---
-    $CliManifestUrl = $MasterRegistry.components.cli.manifest_url
-    $CliManifest = Invoke-RestMethod -Uri $CliManifestUrl
-    $CliUrl = $CliManifest.cli.$Arch
-    if (-not $CliUrl) { throw "No CLI asset matching $Arch found in registry." }
-    
-    $TargetCli = Join-Path $HubPath 'apps/cli/cluaiz.exe'
-    $CliLabel = "cluaiz CLI ($Arch) - latest"
-    Invoke-cluaizdbownload -url $CliUrl -path $TargetCli -label $CliLabel
-    
-    # 🚀 Zero-Copy Linkage
-    $BinPath = Join-Path $HubPath 'bin'
-    $BinLink = Join-Path $BinPath 'cluaiz.exe'
-    $step3 = 'Linking CLI Gateway'
-    Write-Step $step3
-    if (Test-Path $BinLink) { Remove-Item $BinLink -Force }
-    $cmdArgs = '/c mklink /H "' + $BinLink + '" "' + $TargetCli + '" >nul 2>&1'
-    Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdArgs -NoNewWindow -Wait
-    if (-not (Test-Path $BinLink)) { throw 'Hardlink creation failed.' }
-    Complete-Step $step3
-
-    # --- Engine Deployment (Driven by package.json) ---
-    $EngManifestUrl = $MasterRegistry.components.engine.manifest_url
-    $EngManifest = Invoke-RestMethod -Uri $EngManifestUrl
-    $EUrl = $EngManifest.engines.$Arch
-    if (-not $EUrl) { throw "No Engine asset matching $Arch found in registry." }
-    
-    $EngLabel = "cluaiz Engine ($Arch) - latest"
-    Invoke-cluaizdbownload -url $EUrl -path (Join-Path $HubPath 'engine/cluaiz-engine.dll') -label $EngLabel
-
-    # --- Kernel Deployment (Driven by package.json) ---
-    $KerManifestUrl = $MasterRegistry.components.kernel.manifest_url
-    $KerManifest = Invoke-RestMethod -Uri $KerManifestUrl
-    
-    # Check CPU ISA to pick best kernel
-    $AVX512_Enabled = $false
-    if ($env:PROCESSOR_IDENTIFIER -like "*AVX512*") { $AVX512_Enabled = $true }
-    $TargetPlatform = if ($AVX512_Enabled) { "win-x64-avx512" } else { "win-x64-avx2" }
-    if ($Arch -eq 'win-arm64') { $TargetPlatform = 'win-arm64' }
-
-    $KUrl = $KerManifest.kernels.$TargetPlatform
-    if ($KUrl) {
-        $KName = 'cluaiz-llama.dll'
-        $KerLabel = "cluaiz Llama Kernel ($TargetPlatform) - latest"
-        Invoke-cluaizdbownload -url $KUrl -path (Join-Path $HubPath "interface-engines/kernels/$KName") -label $KerLabel
+    # --- GPU ---
+    if ($Gpu -eq 'auto') {
+        $Gpu = 'cpu'
+        $names = @(Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name })
+        if ($names -match 'NVIDIA') { $Gpu = 'cuda' }
+        # Discrete AMD / Intel Arc; an integrated GPU is often slower than the CPU (CLUAIZ_GPU=vulkan to try it)
+        elseif ($names -match 'AMD|Radeon|Intel\(R\) Arc') { $Gpu = 'vulkan' }
     }
 
-    # ── Environment Path Update ──────────────────────────────────────────
-    [System.Environment]::SetEnvironmentVariable('cluaiz_ROOT', $HubPath, 'User')
-    $OldPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
-    if ($OldPath -notlike ('*' + $BinPath + '*')) {
-        $NewPath = $OldPath + ';' + $BinPath
-        [System.Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+    # --- Release ---
+    Write-Step 'Finding the release'
+    if ($env:CLUAIZ_VERSION) {
+        $Tag = 'v' + $env:CLUAIZ_VERSION.TrimStart('v')
+    } else {
+        # The newest release, pre-releases included
+        $Tag = (Invoke-RestMethod "https://api.github.com/repos/$Repo/releases?per_page=1")[0].tag_name
+        if (-not $Tag) { throw "No release found on github.com/$Repo" }
+    }
+    $Version = $Tag.TrimStart('v')
+    $Base = "https://github.com/$Repo/releases/download/$Tag"
+    Complete-Step "Release $Tag ($Platform, GPU: $Gpu)"
+
+    $Tmp = Join-Path ([IO.Path]::GetTempPath()) ("cluaiz-install-" + [Guid]::NewGuid())
+    New-Item -ItemType Directory -Force $Tmp | Out-Null
+    Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile "$Tmp\SHA256SUMS.txt"
+    $Sums = @{}
+    foreach ($line in Get-Content "$Tmp\SHA256SUMS.txt") {
+        $parts = $line -split '\s+\*?', 2
+        if ($parts.Count -eq 2) { $Sums[$parts[1].Trim()] = $parts[0].ToLower() }
     }
 
-    Write-Host ("`n  " + $GREEN + "[DONE] Deployment successful." + $NC)
-    
-    # 🧠 cluaizdb FFI Brain Setup
-    Write-Host ""
-    Write-Host ">_ Optional: Enable the cluaizdb Memory Brain? (y/n)" -ForegroundColor Yellow
-    $brainChoice = Read-Host "  Choice"
-    if ($brainChoice -match "^[yY]") {
-        [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '1', 'Process')
-        Write-Host ("  " + $GREEN + "[ENABLED] " + $NC + "cluaizdb FFI Memory Brain activated.")
-    }
-    else {
-        [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '0', 'Process')
-        Write-Host ("  " + $GRAY + "[DISABLED] " + $NC + "Using legacy file-based memory.")
+    $Core = "cluaiz-$Version-$Platform.zip"
+    $Files = @($Core)
+    switch ($Gpu) {
+        'cuda'   { $Files += "cluaiz-$Version-$Platform-llama-cuda12.zip", "cluaiz-$Version-$Platform-cudart12.zip", "cluaiz-$Version-$Platform-onnx-cuda.zip" }
+        'vulkan' { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
     }
 
-    # 🧬 Pre-Flight Calibration: Generate SiliconTruth before first boot
-    Write-Host "`n>_ Synchronizing Hardware DNA..." -ForegroundColor Cyan
-    & $BinLink --calibrate
-    
-    Write-Host '>_ Launching cluaiz CLI...' -ForegroundColor Gray
-    & $BinLink
+    # --- Download, check, unpack ---
+    $Got = @()
+    foreach ($file in $Files) {
+        if (-not $Sums.ContainsKey($file)) {
+            if ($file -eq $Core) { throw "Release $Tag has no build for $Platform" }
+            Write-Host "  $GRAY- $file is not in this release; models run on the CPU instead$NC"
+            continue
+        }
+        Write-Step "Downloading $file"
+        Invoke-WebRequest "$Base/$file" -OutFile "$Tmp\$file"
+        $actual = (Get-FileHash "$Tmp\$file" -Algorithm SHA256).Hash.ToLower()
+        if ($actual -ne $Sums[$file]) { throw "$file does not match SHA256SUMS.txt (expected $($Sums[$file]), got $actual)" }
+        Complete-Step "$file (checksum OK)"
+        $Got += $file
+    }
+
+    # A running server keeps its files open
+    if (Get-Process cluaiz -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$InstallDir\*" }) {
+        throw "Cluaiz is running from $InstallDir; stop it (or close the app) and run this again"
+    }
+
+    Write-Step "Installing into $InstallDir"
+    New-Item -ItemType Directory -Force $InstallDir | Out-Null
+    foreach ($file in $Got) { Expand-Archive "$Tmp\$file" -DestinationPath $InstallDir -Force }
+    Complete-Step "Installed into $InstallDir"
+
+    # --- Microsoft Visual C++ runtime (the engine is built with MSVC) ---
+    $sys = [Environment]::SystemDirectory
+    if (-not ((Test-Path "$sys\vcruntime140_1.dll") -and (Test-Path "$sys\msvcp140.dll") -and (Test-Path "$sys\vcomp140.dll"))) {
+        Write-Step 'Installing the Microsoft Visual C++ runtime (Windows may ask for permission)'
+        Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile "$Tmp\vc_redist.x64.exe"
+        Start-Process "$Tmp\vc_redist.x64.exe" -ArgumentList '/install', '/quiet', '/norestart' -Verb RunAs -Wait
+        Complete-Step 'Microsoft Visual C++ runtime'
+    }
+
+    # --- PATH ---
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($UserPath -split ';') -notcontains $InstallDir) {
+        [Environment]::SetEnvironmentVariable('Path', ($UserPath.TrimEnd(';') + ';' + $InstallDir), 'User')
+        Write-Host "  ${GRAY}Open a new terminal to use 'cluaiz'$NC"
+    }
+    $env:Path = "$InstallDir;$env:Path"
+
+    & (Join-Path $InstallDir 'cluaiz.exe') --version
+    Write-Host ("`n  " + $GREEN + "[DONE] Cluaiz is installed." + $NC)
+    Write-Host "  ${GRAY}Next: cluaiz pull <model>   then   cluaiz run <model>$NC`n"
 }
 catch {
-    Write-Fail ('Deployment failed: ' + $_.Exception.Message)
-    Write-Host "`n  [Troubleshoot] Check your connection." -ForegroundColor Gray
-    Write-Host '  Press any key to exit...' -ForegroundColor Gray
-    if ($Host.UI.RawUI) {
-        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-    }
-}   # 2. Sovereign Registry Sync
-$step2 = '[AUDITING] Neural Registry Sync'
-Write-Step $step2
-$MasterRegistryUrl = 'https://raw.githubusercontent.com/cluaiz/cluaiz/main/package.json'
-$MasterRegistry = Invoke-RestMethod -Uri $MasterRegistryUrl
-$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'win-arm64' } else { 'win-x64' }
-Complete-Step $step2
-
-# --- CLI Deployment (Driven by package.json) ---
-$CliManifestUrl = $MasterRegistry.components.cli.manifest_url
-$CliManifest = Invoke-RestMethod -Uri $CliManifestUrl
-$CliUrl = $CliManifest.cli.$Arch
-if (-not $CliUrl) { throw "No CLI asset matching $Arch found in registry." }
-    
-$TargetCli = Join-Path $HubPath 'apps/cli/cluaiz.exe'
-$CliLabel = "cluaiz CLI ($Arch) - latest"
-Invoke-cluaizdbownload -url $CliUrl -path $TargetCli -label $CliLabel
-    
-# 🚀 Zero-Copy Linkage
-$BinPath = Join-Path $HubPath 'bin'
-$BinLink = Join-Path $BinPath 'cluaiz.exe'
-$step3 = 'Linking CLI Gateway'
-Write-Step $step3
-if (Test-Path $BinLink) { Remove-Item $BinLink -Force }
-$cmdArgs = '/c mklink /H "' + $BinLink + '" "' + $TargetCli + '" >nul 2>&1'
-Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdArgs -NoNewWindow -Wait
-if (-not (Test-Path $BinLink)) { throw 'Hardlink creation failed.' }
-Complete-Step $step3
-
-# --- Engine Deployment (Driven by package.json) ---
-$EngManifestUrl = $MasterRegistry.components.engine.manifest_url
-$EngManifest = Invoke-RestMethod -Uri $EngManifestUrl
-$EUrl = $EngManifest.engines.$Arch
-if (-not $EUrl) { throw "No Engine asset matching $Arch found in registry." }
-    
-$EngLabel = "cluaiz Engine ($Arch) - latest"
-Invoke-cluaizdbownload -url $EUrl -path (Join-Path $HubPath 'engine/cluaiz-engine.dll') -label $EngLabel
-
-# --- Kernel Deployment (Driven by package.json) ---
-$KerManifestUrl = $MasterRegistry.components.kernel.manifest_url
-$KerManifest = Invoke-RestMethod -Uri $KerManifestUrl
-    
-# Check CPU ISA to pick best kernel
-$AVX512_Enabled = $false
-if ($env:PROCESSOR_IDENTIFIER -like "*AVX512*") { $AVX512_Enabled = $true }
-$TargetPlatform = if ($AVX512_Enabled) { "win-x64-avx512" } else { "win-x64-avx2" }
-if ($Arch -eq 'win-arm64') { $TargetPlatform = 'win-arm64' }
-
-$KUrl = $KerManifest.kernels.$TargetPlatform
-if ($KUrl) {
-    $KName = 'cluaiz-llama.dll'
-    $KerLabel = "cluaiz Llama Kernel ($TargetPlatform) - latest"
-    Invoke-cluaizdbownload -url $KUrl -path (Join-Path $HubPath "interface-engines/kernels/$KName") -label $KerLabel
+    Write-Host ("`n  [ERROR] Install failed: " + $_.Exception.Message) -ForegroundColor Red
 }
-
-# ── Environment Path Update ──────────────────────────────────────────
-[System.Environment]::SetEnvironmentVariable('cluaiz_ROOT', $HubPath, 'User')
-$OldPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
-if ($OldPath -notlike ('*' + $BinPath + '*')) {
-    $NewPath = $OldPath + ';' + $BinPath
-    [System.Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
-}
-
-Write-Host ("`n  " + $GREEN + "[DONE] Deployment successful." + $NC)
-    
-# 🧠 cluaizdb FFI Brain Setup
-Write-Host ""
-Write-Host ">_ Optional: Enable the cluaizdb Memory Brain? (y/n)" -ForegroundColor Yellow
-$brainChoice = Read-Host "  Choice"
-if ($brainChoice -match "^[yY]") {
-    [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '1', 'Process')
-    Write-Host ("  " + $GREEN + "[ENABLED] " + $NC + "cluaizdb FFI Memory Brain activated.")
-}
-else {
-    [System.Environment]::SetEnvironmentVariable('cluaizdb_FFI', '0', 'Process')
-    Write-Host ("  " + $GRAY + "[DISABLED] " + $NC + "Using legacy file-based memory.")
-}
-
-# 🧬 Pre-Flight Calibration: Generate SiliconTruth before first boot
-Write-Host "`n>_ Synchronizing Hardware DNA..." -ForegroundColor Cyan
-& $BinLink --calibrate
-    
-Write-Host '>_ Launching cluaiz CLI...' -ForegroundColor Gray
-& $BinLink
-}
-catch {
-    Write-Fail ('Deployment failed: ' + $_.Exception.Message)
-    Write-Host "`n  [Troubleshoot] Check your connection." -ForegroundColor Gray
-    Write-Host '  Press any key to exit...' -ForegroundColor Gray
-    if ($Host.UI.RawUI) {
-        $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-    }
+finally {
+    if ($Tmp -and (Test-Path $Tmp)) { Remove-Item -Recurse -Force $Tmp }
 }
