@@ -17,8 +17,10 @@ members = [
     "cmd",
     "tools/cluaiz-builder",
     "test/plugin_testing",
-    "test/comprehensive_e2e_trace",
 ]
+# Needs the sibling cluaiz-tools checkout (../cluaiz-tools); build it with
+# --manifest-path test/comprehensive_e2e_trace/Cargo.toml so a clone of this repo alone builds
+exclude = ["test/comprehensive_e2e_trace"]
 
 resolver = "2"
 

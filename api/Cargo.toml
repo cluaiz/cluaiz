@@ -40,6 +40,11 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# rfd's Linux folder dialog goes through the desktop portal with Wayland; loading libwayland-client
+# only when a dialog opens lets the engine build and start on servers without desktop libraries
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-sys = { version = "0.31", features = ["dlopen"] }
+
 [features]
 default = ["cuda"]
 cuda = ["cluaiz-runtime/cuda"]

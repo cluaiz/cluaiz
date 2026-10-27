@@ -211,6 +211,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-lib=static=llama-common");
     println!("cargo:rustc-link-lib=static=llama-common-base");
     println!("cargo:rustc-link-lib=static=ggml");
+    // GNU ld resolves in order: the CUDA backend goes before ggml-base, which it uses
+    if feature_cuda && target_os == "linux" {
+        println!("cargo:rustc-link-lib=static:+whole-archive=ggml-cuda");
+    }
     println!("cargo:rustc-link-lib=static=ggml-base");
     println!("cargo:rustc-link-lib=static=ggml-cpu");
 
@@ -308,7 +312,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rustc-link-lib=dylib=c++");
     } else {
         // Linux / Android
+        if feature_cuda && target_os == "linux" {
+            let cuda = env::var("CUDA_PATH")
+                .or_else(|_| env::var("CUDA_HOME"))
+                .unwrap_or_else(|_| "/usr/local/cuda".to_string());
+            println!("cargo:rustc-link-search=native={}/lib64", cuda);
+            println!("cargo:rustc-link-search=native={}/lib64/stubs", cuda);
+            for lib in ["cudart", "cublas", "cublasLt", "cuda"] {
+                println!("cargo:rustc-link-lib=dylib={}", lib);
+            }
+        }
         println!("cargo:rustc-link-lib=dylib=stdc++");
+        // ggml-cpu is built with OpenMP by gcc (GGML_OPENMP is on by default)
+        if target_os == "linux" {
+            println!("cargo:rustc-link-lib=dylib=gomp");
+        }
     }
 
     println!("cargo:warning=🧿 [Llama-Engine] Industrial CMake Build Complete.");

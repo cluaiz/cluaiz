@@ -28,5 +28,10 @@ hound = "3.5"
 sonic-rs-sys = "=0.1.9"
 office_oxide = { version = "=0.1.15", default-features = false }
 
+# Opus goes into the binary on Linux too (its default there links the system libopus.so, which a
+# server may not have); Windows and macOS link it statically already
+[target.'cfg(target_os = "linux")'.dependencies]
+audiopus_sys = { version = "0.1.8", features = ["static"] }
+
 [dev-dependencies]
 cfb = "0.14"
