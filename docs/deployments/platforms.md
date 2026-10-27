@@ -1,40 +1,33 @@
 # Platform Support
 
-cluaiz operates as a universal neural kernel, enforcing compile-time validation for a diverse matrix of processors, backends, and operating systems.
+Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](cicd.md)). The core runs every model on the CPU and picks the fastest CPU code for the processor at start. A GPU pack in the same folder adds the GPU; when its driver or GPU is missing, ggml skips it and models stay on the CPU.
 
 ---
 
-## Supported OS Targets
+## Operating systems
 
-The baseline CPU kernels are cross-compiled and validated for 9 primary platform profiles:
+| Platform | Core | Status |
+|---|---|---|
+| Windows 10 / 11 x64 | `win-x64` | Tested |
+| Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested on CPU (Ubuntu 24.04); GPU run pending |
+| Linux ARM64, glibc 2.38+ | `linux-arm64` | Built in CI; not yet run on hardware |
+| macOS Apple Silicon | `mac-arm64` | Built in CI; not yet run on hardware |
 
-*   **Windows:** x86_64 (Desktop, Server, Surface platforms).
-*   **Linux:**
-    *   x86_64: Mainstream server architectures.
-    *   Aarch64: Enterprise cloud edge configurations.
-    *   ARMv7: Embedded IoT modules.
-*   **macOS:**
-    *   ARM64: Native Apple Silicon (M-series SOCs).
-    *   x86_64: Intel-based Mac processors.
-*   **Mobile OS:**
-    *   Android (Aarch64): High-performance mobile devices.
-    *   iOS (ARM64): iPhones and iPads.
+Older Linux (Ubuntu 22.04, Debian 12) is not supported yet: the bundled ONNX Runtime needs glibc 2.38.
 
----
+## CPU
 
-## Execution Backends
+The core carries llama.cpp's CPU backend in several builds (x86: SSE4.2, AVX, AVX2, AVX-512, AVX-VNNI generations; ARM: NEON and newer). At start ggml loads the newest one the processor supports, so one download runs at full speed on old and new processors.
 
-The engine maps computing tasks across two distinct performance layers:
+## GPUs
 
-### 1. Baseline CPU Kernels (`cluaiz-kernel`)
-Highly optimized CPU interpreters utilizing native SIMD instruction sets:
-*   **Intel/AMD:** AVX512 and AVX2 vector extensions.
-*   **Apple/ARM:** Native Neon vector engines.
+| GPU | GGUF models (llama.cpp) | ONNX models (speech, transcription) |
+|---|---|---|
+| NVIDIA (GTX 900 series and newer) | `llama-cuda12` pack + `cudart12` runtime pack | `onnx-cuda` pack; cuDNN is fetched on first use |
+| AMD Radeon, Intel Arc (Windows, Linux) | `llama-vulkan` pack | CPU on Linux; DirectML on Windows (inside the core) |
+| Apple Silicon | Metal, inside the macOS core | CPU |
+| Integrated GPUs | CPU by default; the Vulkan pack can be installed by hand (`CLUAIZ_GPU=vulkan`) | as above |
 
-### 2. Accelerator Drivers (`cluaiz-driver`)
-Direct FFI interfaces bind specialized backends when accelerators are detected:
-*   **NVIDIA:** CUDA v11, v12, and v13 runtimes.
-*   **Apple:** Native Metal framework configurations.
-*   **Universal:** Vulkan-based hardware pipelines.
-*   **AMD:** ROCm and HIP compute backends.
-*   **Intel:** OpenVINO inference runtimes.
+Cluaiz never installs or ships the GPU driver itself. The driver comes from NVIDIA, AMD or Intel; the packs contain only llama.cpp's backend library and, for NVIDIA, the redistributable CUDA runtime (`cudart`, `cuBLAS`).
+
+The GPU packs are built from the same llama.cpp fork commit as the core (`engine/llama/llama.cpp`), so a pack only works with the core of the same release.
