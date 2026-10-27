@@ -709,6 +709,21 @@ mod tests {
     }
 
     #[test]
+    fn a_load_that_fell_back_is_not_planned_the_same_way_again() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // A size no other test uses: the measurements are process-wide
+        let g = qwen3_like(2.3319);
+        let hardware = hw(3.6, 8.0);
+        let first = Planner::create_plan("m", &g, &hardware, &s);
+        assert_eq!(first.selected_tier, PlacementTier::GpuOnly, "{}", first.explanation);
+        // llama.cpp could not load it there: the host keeps "needed all that was free"
+        crate::margin::record(&g, &s, 3.6 - first.vram_budget_gb);
+        let next = Planner::create_plan("m", &g, &hardware, &s);
+        assert!(next.vram_budget_gb < first.vram_budget_gb, "{}", next.explanation);
+        assert!(next.is_feasible(), "{}", next.explanation);
+    }
+
+    #[test]
     fn cpu_only_setting_uses_ram() {
         let mut s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         s.optimization.n_gpu_layers = Some(0);

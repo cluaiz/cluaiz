@@ -427,7 +427,14 @@ impl EngineHost {
         drop(dna_guard);
 
         let mut loaded_plan = plan.clone();
-        if llama.n_gpu_layers_loaded != plan.n_gpu_layers {
+        let fell_back = llama.n_gpu_layers_loaded != plan.n_gpu_layers;
+        if fell_back {
+            // The planned placement did not fit: it needed at least all the VRAM that was free, so
+            // the next plan for this model and settings leaves room for that and does not fail again
+            let free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+            if cluaiz_plan::margin::record(&geometry, settings, free - plan.vram_budget_gb) {
+                crate::vram_use::save();
+            }
             tracing::warn!(
                 "⚠️ [EngineHost] llama.cpp could not load the planned n_gpu_layers {}; loaded with {} instead",
                 plan.n_gpu_layers, llama.n_gpu_layers_loaded
@@ -461,7 +468,8 @@ impl EngineHost {
         let vram_delta = (pre_free_vram - post_free_vram).max(0.0);
 
         // Post-load check: VRAM llama.cpp really took vs what the plan predicted
-        if n_gpu_layers != 0 && !hw.gpus.is_empty() {
+        // After a load fallback the plan's numbers are not what was loaded: nothing to compare
+        if n_gpu_layers != 0 && !hw.gpus.is_empty() && !fell_back {
             tracing::info!(
                 "🔍 [EngineHost] VRAM planned {:.2} GB, taken {:.2} GB | n_ctx planned {} created {} | n_gpu_layers {} n_cpu_moe {}",
                 plan.vram_budget_gb, vram_delta, n_ctx, actual_n_ctx, n_gpu_layers, plan.n_cpu_moe
