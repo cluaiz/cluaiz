@@ -152,7 +152,7 @@ fn speak(
         let decoded = options.speaker_reference.as_ref().map_or(0, |a| a.samples().len().saturating_mul(std::mem::size_of::<f32>()) as u64);
         let mut free_before = 0.0;
         let plan = room.retry_freeing_others("speech", || {
-            let mut live = cluaiz_hw::HardwareProber::with_live_memory();
+            let mut live = crate::host::native_load::gguf_hardware();
             free_before = live.gpus.first().map_or(0.0, |g| g.vram_available_gb);
             if let Some(gpu) = live.gpus.first_mut() {
                 gpu.vram_available_gb = (gpu.vram_available_gb - extra).max(0.0);
@@ -173,7 +173,7 @@ fn speak(
                 let mut cpu_settings = settings.clone();
                 cpu_settings.optimization.n_gpu_layers = Some(0);
                 let cpu = select_placement(&geometry, codec_bytes, decoded,
-                    &cluaiz_hw::HardwareProber::with_live_memory(), &cpu_settings)?;
+                    &crate::host::native_load::gguf_hardware(), &cpu_settings)?;
                 tracing::info!(model = %entry.id, ?cpu, "Speech CPU retry admission (estimates, not a reservation)");
                 SpeechModel::load_with_placement(&model, &projector, cpu.placement)?
             }

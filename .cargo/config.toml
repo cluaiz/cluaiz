@@ -1,6 +1,10 @@
 [target.'cfg(windows)']
 rustflags = ["-C", "link-arg=/OPT:NOREF"]
 
+# The llama / ggml libraries sit beside the binary (engine/llama/build.rs)
+[target.'cfg(target_os = "linux")']
+rustflags = ["-C", "link-arg=-Wl,-rpath,$ORIGIN"]
+
 [alias]
 build-all = "run --manifest-path tools/cluaiz-builder/Cargo.toml -- all"
 build-core = "run --manifest-path tools/cluaiz-builder/Cargo.toml -- core"

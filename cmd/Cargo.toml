@@ -12,13 +12,13 @@ path = "src/main.rs"
 
 [dependencies]
 # ── Root Architecture ──
-cluaiz_api = { package = "cluaiz-api", path = "../api" }
+cluaiz_api = { package = "cluaiz-api", path = "../api", default-features = false }
 cluaiz-core = { path = "../engine/core" }
 cluaiz-hw = { path = "../engine/hardware" }
 cluaiz-models = { path = "../engine/models" }
 cluaiz-media = { path = "../engine/media" }
 cluaiz-plan = { path = "../engine/plan" }
-cluaiz-runtime = { path = "../engine/runtime" }
+cluaiz-runtime = { path = "../engine/runtime", default-features = false }
 cluaiz-agents = { path = "../agents" }
 cluaiz-security = { path = "../security" }
 onnx-engine = { path = "../engine/onnx" }
@@ -47,6 +47,8 @@ ctrlc = "3.5.2"
 winres = "0.1"
 
 [features]
+# Each GPU feature builds that ggml backend as a library beside the binary; the binary itself
+# links no GPU runtime (engine/llama/build.rs). `--no-default-features` builds the CPU-only set.
 default = ["cuda"]
 cuda = ["cluaiz-runtime/cuda"]
 metal = ["cluaiz-runtime/metal"]

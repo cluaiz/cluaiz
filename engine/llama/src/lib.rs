@@ -7,4 +7,4 @@ pub mod native;
 pub mod sampling;
 pub mod moe_override;
 
-pub use native::{route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};
+pub use native::{gpu_offload_available, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};

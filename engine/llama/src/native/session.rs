@@ -283,13 +283,7 @@ impl NativeSession {
             .optimization
             .resolved_threads(hw.cpu.physical_cores)
             .1;
-        let prefer_gpu = prefer_gpu
-            && cfg!(any(
-                feature = "cuda",
-                feature = "metal",
-                feature = "vulkan",
-                feature = "rocm"
-            ));
+        let prefer_gpu = prefer_gpu && super::gpu_offload_available();
         let key = ProjectorKey {
             path,
             file_bytes: metadata.len(),

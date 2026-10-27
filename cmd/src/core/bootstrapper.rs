@@ -281,6 +281,17 @@ impl Bootstrapper {
                     tracing::info!("🚀 [DevSync] CLI Executable Synced: {:?}", exe_dest);
                 }
             }
+            // The llama / ggml libraries and backends the executable loads from its own folder
+            for entry in std::fs::read_dir(target_dir).into_iter().flatten().flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                let stem = name.strip_prefix("lib").unwrap_or(&name);
+                let library = name.ends_with(".dll") || name.ends_with(".so") || name.contains(".so.");
+                if library && ["ggml", "llama", "mtmd"].iter().any(|p| stem.starts_with(p)) {
+                    if let Err(e) = copy_with_rename(&entry.path(), &bin_dir.join(&name)) {
+                        tracing::warn!("⚠️ [DevSync] {} Sync Failed (File might be in use): {}.", name, e);
+                    }
+                }
+            }
         }
 
         // 4. Sync Dev Environment Folders (brain, skills)

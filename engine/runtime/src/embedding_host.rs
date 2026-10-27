@@ -140,7 +140,7 @@ impl EmbeddingHost {
                     let path = path.to_str().context("UTF-8 model path")?;
                     let (mut hardware, mut plan) = (None, None);
                     let model = owner.room.retry_freeing_others("embedding", || {
-                        let live = cluaiz_hw::HardwareProber::with_live_memory();
+                        let live = crate::host::native_load::gguf_hardware();
                         let planned = cluaiz_plan::Planner::create_plan(&entry.id, &geometry, &live, &captured);
                         if !planned.is_feasible() {
                             bail!("{}", planned.explanation);
