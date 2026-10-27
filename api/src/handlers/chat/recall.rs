@@ -460,7 +460,6 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         // A chat the app keeps (storage external): the note is an event of the chat, which goes to
         // the app with the answer; the Engine keeps no note on disk
         if cluaiz_agents::memory::is_external(chat) {
-            use cluaiz_agents::memory::EventStore;
             let event = cluaiz_agents::memory::NewEvent::new(
                 "note",
                 json!({ "text": text, "scope": scope, "status": status, "by": "model", "source": [format!("{chat}:m:{pos}")] }),
@@ -483,7 +482,6 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
         }
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
         let checkpoint: String = arg("checkpoint").chars().take(600).collect();
-        use cluaiz_agents::memory::EventStore;
         let event = cluaiz_agents::memory::NewEvent::new("task", json!({ "goal": goal, "stage": stage, "checkpoint": checkpoint, "pos": pos }));
         return match cluaiz_agents::memory::store_for(chat).append(chat, vec![event]) {
             Ok(_) => format!("Task saved: {goal} ({stage})."),
@@ -614,7 +612,6 @@ pub fn needs_cross_chat_approval(name: &str, payload: &str, chat: Option<&str>) 
 
 /// The workspace a chat was used in (from its first client message), if it was recorded
 fn chat_workspace(chat: &str) -> Option<String> {
-    use cluaiz_agents::memory::EventStore;
     let log = cluaiz_agents::memory::store_for(chat).read(chat).ok()?;
     log.events.iter().find_map(|e| e.str("workspace").map(str::to_string))
 }

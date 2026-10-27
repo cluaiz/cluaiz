@@ -33,7 +33,6 @@ fn chat_grants(chat: &str) -> std::sync::MutexGuard<'static, cluaiz_agents::life
 
 /// The chat's `grant` events, oldest first
 fn grant_records(chat: &str) -> Vec<cluaiz_agents::lifecycle::grants::GrantRecord> {
-    use cluaiz_agents::memory::EventStore;
     let Ok(log) = cluaiz_agents::memory::store_for(chat).read_shared(chat) else { return Vec::new() };
     log.events
         .iter()
@@ -68,7 +67,6 @@ pub fn grant_from_request(request_id: &str, minutes: Option<u64>) -> Option<(Str
 pub fn revoke(chat: &str, tool: Option<&str>) -> usize {
     let removed = chat_grants(chat).revoke(chat, tool);
     if removed > 0 {
-        use cluaiz_agents::memory::EventStore;
         let event = cluaiz_agents::memory::NewEvent::new("grant", serde_json::json!({ "tool": tool, "revoked": true, "scope": "chat" }));
         let _ = cluaiz_agents::memory::store_for(chat).append(chat, vec![event]);
     }

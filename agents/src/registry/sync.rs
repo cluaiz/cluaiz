@@ -186,7 +186,7 @@ impl ToolsRegistry {
 
     fn probe_skill_metadata(dir: &std::path::Path) -> (String, String, String, Vec<String>, Option<SecurityMode>, ExecutionMode, i32) {
         let skill_md = dir.join("SKILL.md");
-        let (mut name, mut ver, mut desc, mut triggers, mut sec_mode, mut mode, mut default_turns) = if skill_md.exists() {
+        let (mut name, mut ver, mut desc, mut triggers, mut sec_mode, mode, default_turns) = if skill_md.exists() {
             if let Ok(content) = std::fs::read_to_string(&skill_md) {
                 Self::probe_skill_frontmatter(&content)
             } else {

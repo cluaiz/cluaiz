@@ -246,10 +246,6 @@ fn default_persistent_turns() -> i32 {
     -1
 }
 
-fn is_default_turn(t: &i32) -> bool {
-    *t == -1
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
