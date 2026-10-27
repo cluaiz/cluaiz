@@ -1,10 +1,11 @@
-//! Learned VRAM margin. llama.cpp keeps a fixed 1024 MiB free on a device (`--fit-target`) because
-//! part of what a model takes is not in any estimate: llama.cpp's compute buffers, and the CUDA
-//! pool that grows during the first full batch (about 0.6 GB for Qwen3-4B at ubatch 512 on an
-//! RTX 3050). The runtime measures what a loaded model really took after a full-batch warmup and
-//! records it here as the gap to the planner's estimate. A model measured on this machine is then
-//! planned with that gap plus a small reserve for the desktop, not with the fixed 1024 MiB; a model
-//! never measured still gets llama.cpp's rule. The user's `custom_vram_buffer_gb` replaces both.
+//! Learned VRAM numbers. llama.cpp keeps a fixed 1024 MiB free on a device (`--fit-target`)
+//! because part of what a model takes is not in any estimate. Two measurements replace it:
+//! - the **correction**: llama.cpp's own dry run of the model on the GPU (model + context +
+//!   compute buffers) minus the planner's estimate of the same placement, taken once per model;
+//! - the **pool gap**: what the loaded model really took after a full-batch warmup (the GPU pool
+//!   grows there) minus the corrected estimate, kept at its largest.
+//! A model measured on this machine is planned with both plus a small desktop reserve; a model never
+//! measured still gets llama.cpp's rule. The user's `custom_vram_buffer_gb` replaces the margin.
 
 use cluaiz_core::{ActiveUserSettings, FeatureState};
 use cluaiz_hw::SystemInfo;
@@ -37,9 +38,24 @@ pub fn key(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> String {
     )
 }
 
-/// The measured gap for this model and settings, if it was ever loaded on the GPU here
+/// The measured pool gap for this model and settings, if it was ever loaded on the GPU here
 pub fn learned(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Option<f64> {
-    LEARNED.read().ok()?.as_ref()?.get(&key(geometry, settings)).copied()
+    learned_key(&format!("pool:{}", key(geometry, settings)))
+}
+
+/// llama.cpp's dry run minus the planner's estimate for this model's GPU bytes, if it was run here
+pub fn correction(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Option<f64> {
+    learned_key(&format!("proj:{}", key(geometry, settings)))
+}
+
+/// Keeps a correction (replaces an earlier one: the dry run is exact, not a peak)
+pub fn record_correction(geometry: &ModelGeometry, settings: &ActiveUserSettings, gb: f64) {
+    if !gb.is_finite() {
+        return;
+    }
+    if let Ok(mut guard) = LEARNED.write() {
+        guard.get_or_insert_with(HashMap::new).insert(format!("proj:{}", key(geometry, settings)), gb);
+    }
 }
 
 /// A measurement by [`key`] or by another owner's key (an ONNX package's device use)
@@ -47,9 +63,14 @@ pub fn learned_key(key: &str) -> Option<f64> {
     LEARNED.read().ok()?.as_ref()?.get(key).copied()
 }
 
-/// Records a measured gap; the largest one seen is kept (a later load may hit a bigger peak)
+/// Records a measured pool gap; the largest one seen is kept (a later load may hit a bigger peak)
 pub fn record(geometry: &ModelGeometry, settings: &ActiveUserSettings, gap_gb: f64) -> bool {
-    record_key(&key(geometry, settings), gap_gb)
+    record_key(&pool_key(geometry, settings), gap_gb)
+}
+
+/// The key a pool gap is kept under
+pub fn pool_key(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> String {
+    format!("pool:{}", key(geometry, settings))
 }
 
 /// [`record`] by [`key`]; true when the kept value changed
@@ -77,8 +98,9 @@ pub fn snapshot() -> HashMap<String, f64> {
     LEARNED.read().ok().and_then(|g| g.clone()).unwrap_or_default()
 }
 
-/// Measurements read back from disk (replaces what is held)
-pub fn restore(measured: HashMap<String, f64>) {
+/// Measurements read back from disk (replaces what is held); entries of an older format are dropped
+pub fn restore(mut measured: HashMap<String, f64>) {
+    measured.retain(|key, _| ["pool:", "proj:", "onnx:"].iter().any(|prefix| key.starts_with(prefix)));
     if let Ok(mut guard) = LEARNED.write() {
         *guard = Some(measured);
     }
@@ -94,8 +116,11 @@ pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardwar
     if settings.optimization.custom_vram_buffer_gb.is_some() {
         return "user setting".to_string();
     }
+    let corrected = correction(geometry, settings)
+        .map(|c| format!("; estimate corrected by llama.cpp's dry run {:+.2} GB", c))
+        .unwrap_or_default();
     match learned(geometry, settings) {
-        Some(gap) => format!("measured: {:+.2} GB over the estimate + {:.2} GB reserve", gap, reserve_gb(hardware)),
-        None => format!("{:.0} MiB rule, model not measured on this machine yet", buffer_gb * 1024.0),
+        Some(gap) => format!("measured: GPU pool {:+.2} GB + {:.2} GB reserve{}", gap, reserve_gb(hardware), corrected),
+        None => format!("{:.0} MiB rule, model not measured on this machine yet{}", buffer_gb * 1024.0, corrected),
     }
 }

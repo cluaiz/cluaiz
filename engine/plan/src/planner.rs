@@ -202,6 +202,14 @@ impl Planner {
         let w = &geometry.weights;
         let n_layers = geometry.block_count as usize;
         let logits = geometry.logits_buffer_bytes(ubatch);
+        // llama.cpp's dry run of this model minus the estimate (crate::margin), counted with the
+        // logits buffer: both are bytes the GPU takes besides the blocks and their KV
+        let correction = crate::margin::correction(geometry, settings).unwrap_or(0.0);
+        let gpu_logits = if correction >= 0.0 {
+            logits + gib_to_bytes(correction)
+        } else {
+            logits.saturating_sub(gib_to_bytes(-correction))
+        };
         let experts = w.experts_total();
         let is_moe = experts > 0;
 
@@ -213,7 +221,7 @@ impl Planner {
         // GPU -> dense: all weights on GPU, MoE: attention/shared weights on GPU; CPU -> everything in RAM.
         let budget = if gpu_allowed {
             let gpu_weights = if is_moe { w.full_gpu() - experts } else { w.full_gpu() };
-            DeviceBudget { free_bytes: vram_free, fixed_bytes: gpu_weights + logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
+            DeviceBudget { free_bytes: vram_free, fixed_bytes: gpu_weights + gpu_logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
@@ -239,7 +247,7 @@ impl Planner {
             let first_gpu_block = n_layers - gpu_blocks;
             let mut p = Placement { vram: 0, ram: w.input_cpu, kv_gpu: 0, kv_ram: 0 };
             if n_gpu_layers != 0 {
-                p.vram += head_gpu + logits;
+                p.vram += head_gpu + gpu_logits;
             } else {
                 p.ram += head_cpu + logits;
             }
@@ -291,8 +299,8 @@ impl Planner {
             let p = place(-1, 0, true);
             candidates.push(Self::candidate(
                 "Full GPU", PlacementTier::GpuOnly, -1, 0, true, ctx, &p, ram_budget, over_vram(&p), is_moe,
-                format!("weights {:.2} + KV {:.2} + logits {:.2} = {:.2} GB vs usable VRAM {:.2} GB",
-                    gib(w.full_gpu()), gib(kv_total), gib(logits), gib(p.vram), gib(vram_usable)),
+                format!("weights {:.2} + KV {:.2} + buffers {:.2} = {:.2} GB vs usable VRAM {:.2} GB",
+                    gib(w.full_gpu()), gib(kv_total), gib(gpu_logits), gib(p.vram), gib(vram_usable)),
             ));
         }
 
@@ -303,8 +311,8 @@ impl Planner {
             let p = place(-1, n_cpu_moe, true);
             candidates.push(Self::candidate(
                 "MoE split", PlacementTier::MoeSplit, -1, n_cpu_moe as u32, true, ctx, &p, ram_budget, over_vram(&p), true,
-                format!("attention/shared {:.2} + KV {:.2} + logits {:.2} on GPU, experts of {} / {} layers in RAM ({:.2} GB)",
-                    gib(w.full_gpu() - experts), gib(kv_total), gib(logits), n_cpu_moe, n_layers,
+                format!("attention/shared {:.2} + KV {:.2} + buffers {:.2} on GPU, experts of {} / {} layers in RAM ({:.2} GB)",
+                    gib(w.full_gpu() - experts), gib(kv_total), gib(gpu_logits), n_cpu_moe, n_layers,
                     gib(w.layer_experts[..n_cpu_moe].iter().sum())),
             ));
         }
@@ -328,8 +336,8 @@ impl Planner {
             let p = place(-1, 0, false);
             candidates.push(Self::candidate(
                 "Weights GPU, KV RAM", PlacementTier::Hybrid, -1, 0, false, ctx, &p, ram_budget, over_vram(&p), false,
-                format!("weights {:.2} + logits {:.2} on GPU, KV {:.2} GB in RAM (attention on CPU, slower as the chat grows)",
-                    gib(w.full_gpu()), gib(logits), gib(kv_total)),
+                format!("weights {:.2} + buffers {:.2} on GPU, KV {:.2} GB in RAM (attention on CPU, slower as the chat grows)",
+                    gib(w.full_gpu()), gib(gpu_logits), gib(kv_total)),
             ));
         }
 

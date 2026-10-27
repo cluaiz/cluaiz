@@ -10,6 +10,7 @@ pub mod media;
 pub mod session;
 pub mod speech;
 pub mod embedding;
+pub mod projection;
 mod tokenizer;
 pub use tokenizer::VocabHandle;
 
