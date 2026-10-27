@@ -68,6 +68,15 @@ impl LlamaModelParams {
             (false, false) => 0,
         };
     }
+
+    /// No GPU at all: an empty device list (llama.cpp uses every device when the list is NULL).
+    /// With n_gpu_layers 0 alone llama.cpp still sets up the GPU and takes a little of its memory
+    /// (34 MiB for Qwen3-4B on an RTX 3050), which a model placed on the CPU must not take.
+    pub fn set_cpu_only(&mut self) {
+        static NO_DEVICES: [usize; 1] = [0];
+        self.devices = NO_DEVICES.as_ptr();
+        self.n_gpu_layers = 0;
+    }
 }
 
 #[repr(C)]

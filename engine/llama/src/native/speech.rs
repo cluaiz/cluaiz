@@ -116,6 +116,9 @@ impl SpeechModel {
         // SAFETY: default-parameter constructors take no handles.
         let mut model_params = unsafe { llama_cpp::llama_model_default_params() };
         model_params.n_gpu_layers = placement.n_gpu_layers;
+        if placement.n_gpu_layers == 0 {
+            model_params.set_cpu_only();
+        }
         model_params.set_mmap(placement.use_mmap);
         // SAFETY: valid C string; the returned model is owned below.
         let model = NonNull::new(unsafe { llama_cpp::llama_model_load_from_file(model_c.as_ptr(), model_params) })
