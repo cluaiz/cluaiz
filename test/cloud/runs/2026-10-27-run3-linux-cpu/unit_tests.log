@@ -1,0 +1,11 @@
+== unit tests
+cluaiz-core: passed 36 failed 0
+cluaiz-plan: passed 24 failed 0
+cluaiz-models: passed 25 failed 0
+cluaiz-media: passed 42 failed 0
+cluaiz-context: passed 28 failed 0
+cluaiz-agents: passed 63 failed 0
+cluaiz-cep: passed 19 failed 0
+cluaiz-runtime: passed 18 failed 0
+onnx-engine: passed 57 failed 0
+cluaiz-api: passed 54 failed 0

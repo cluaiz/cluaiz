@@ -1,0 +1,154 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/cluaiz/target/release/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/Kokoro-82M-v1.0-ONNX:uint8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/Kokoro-82M-v1.0-ONNX'...
+  ⚡ Direct Quantization Tag Matched: ':uint8' -> model_uint8.onnx (0.17 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: kokoro-82m-v1.0-onnx-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: transformer
+    ├─ 📁 Category: tts
+    ├─ 💾 Total Download Size: 0.17 GB
+    └─ 📁 Files to Download (59 files):
+       ├─ ⚖️  onnx/model_uint8.onnx
+       ├─ 📄 config.json
+       ├─ 📄 tokenizer.json
+       ├─ 📄 tokenizer_config.json
+       ├─ 📄 voices/af.bin
+       ├─ 📄 voices/af_alloy.bin
+       ├─ 📄 voices/af_aoede.bin
+       ├─ 📄 voices/af_bella.bin
+       ├─ 📄 voices/af_heart.bin
+       ├─ 📄 voices/af_jessica.bin
+       ├─ 📄 voices/af_kore.bin
+       ├─ 📄 voices/af_nicole.bin
+       ├─ 📄 voices/af_nova.bin
+       ├─ 📄 voices/af_river.bin
+       ├─ 📄 voices/af_sarah.bin
+       ├─ 📄 voices/af_sky.bin
+       ├─ 📄 voices/am_adam.bin
+       ├─ 📄 voices/am_echo.bin
+       ├─ 📄 voices/am_eric.bin
+       ├─ 📄 voices/am_fenrir.bin
+       ├─ 📄 voices/am_liam.bin
+       ├─ 📄 voices/am_michael.bin
+       ├─ 📄 voices/am_onyx.bin
+       ├─ 📄 voices/am_puck.bin
+       ├─ 📄 voices/am_santa.bin
+       ├─ 📄 voices/bf_alice.bin
+       ├─ 📄 voices/bf_emma.bin
+       ├─ 📄 voices/bf_isabella.bin
+       ├─ 📄 voices/bf_lily.bin
+       ├─ 📄 voices/bm_daniel.bin
+       ├─ 📄 voices/bm_fable.bin
+       ├─ 📄 voices/bm_george.bin
+       ├─ 📄 voices/bm_lewis.bin
+       ├─ 📄 voices/ef_dora.bin
+       ├─ 📄 voices/em_alex.bin
+       ├─ 📄 voices/em_santa.bin
+       ├─ 📄 voices/ff_siwis.bin
+       ├─ 📄 voices/hf_alpha.bin
+       ├─ 📄 voices/hf_beta.bin
+       ├─ 📄 voices/hm_omega.bin
+       ├─ 📄 voices/hm_psi.bin
+       ├─ 📄 voices/if_sara.bin
+       ├─ 📄 voices/im_nicola.bin
+       ├─ 📄 voices/jf_alpha.bin
+       ├─ 📄 voices/jf_gongitsune.bin
+       ├─ 📄 voices/jf_nezumi.bin
+       ├─ 📄 voices/jf_tebukuro.bin
+       ├─ 📄 voices/jm_kumo.bin
+       ├─ 📄 voices/pf_dora.bin
+       ├─ 📄 voices/pm_alex.bin
+       ├─ 📄 voices/pm_santa.bin
+       ├─ 📄 voices/zf_xiaobei.bin
+       ├─ 📄 voices/zf_xiaoni.bin
+       ├─ 📄 voices/zf_xiaoxiao.bin
+       ├─ 📄 voices/zf_xiaoyi.bin
+       ├─ 📄 voices/zm_yunjian.bin
+       ├─ 📄 voices/zm_yunxi.bin
+       ├─ 📄 voices/zm_yunxia.bin
+       └─ 📄 voices/zm_yunyang.bin
+   ├─ [1/59] Downloading onnx/model_uint8.onnx
+   ├─ [2/59] Downloading config.json
+   ├─ [3/59] Downloading tokenizer.json
+   ├─ [4/59] Downloading tokenizer_config.json
+   ├─ [5/59] Downloading voices/af.bin
+   ├─ [6/59] Downloading voices/af_alloy.bin
+   ├─ [7/59] Downloading voices/af_aoede.bin
+   ├─ [8/59] Downloading voices/af_bella.bin
+   ├─ [9/59] Downloading voices/af_heart.bin
+   ├─ [10/59] Downloading voices/af_jessica.bin
+   ├─ [11/59] Downloading voices/af_kore.bin
+   ├─ [12/59] Downloading voices/af_nicole.bin
+   ├─ [13/59] Downloading voices/af_nova.bin
+   ├─ [14/59] Downloading voices/af_river.bin
+   ├─ [15/59] Downloading voices/af_sarah.bin
+   ├─ [16/59] Downloading voices/af_sky.bin
+   ├─ [17/59] Downloading voices/am_adam.bin
+   ├─ [18/59] Downloading voices/am_echo.bin
+   ├─ [19/59] Downloading voices/am_eric.bin
+   ├─ [20/59] Downloading voices/am_fenrir.bin
+   ├─ [21/59] Downloading voices/am_liam.bin
+   ├─ [22/59] Downloading voices/am_michael.bin
+   ├─ [23/59] Downloading voices/am_onyx.bin
+   ├─ [24/59] Downloading voices/am_puck.bin
+   ├─ [25/59] Downloading voices/am_santa.bin
+   ├─ [26/59] Downloading voices/bf_alice.bin
+   ├─ [27/59] Downloading voices/bf_emma.bin
+   ├─ [28/59] Downloading voices/bf_isabella.bin
+   ├─ [29/59] Downloading voices/bf_lily.bin
+   ├─ [30/59] Downloading voices/bm_daniel.bin
+   ├─ [31/59] Downloading voices/bm_fable.bin
+   ├─ [32/59] Downloading voices/bm_george.bin
+   ├─ [33/59] Downloading voices/bm_lewis.bin
+   ├─ [34/59] Downloading voices/ef_dora.bin
+   ├─ [35/59] Downloading voices/em_alex.bin
+   ├─ [36/59] Downloading voices/em_santa.bin
+   ├─ [37/59] Downloading voices/ff_siwis.bin
+   ├─ [38/59] Downloading voices/hf_alpha.bin
+   ├─ [39/59] Downloading voices/hf_beta.bin
+   ├─ [40/59] Downloading voices/hm_omega.bin
+   ├─ [41/59] Downloading voices/hm_psi.bin
+   ├─ [42/59] Downloading voices/if_sara.bin
+   ├─ [43/59] Downloading voices/im_nicola.bin
+   ├─ [44/59] Downloading voices/jf_alpha.bin
+   ├─ [45/59] Downloading voices/jf_gongitsune.bin
+   ├─ [46/59] Downloading voices/jf_nezumi.bin
+   ├─ [47/59] Downloading voices/jf_tebukuro.bin
+   ├─ [48/59] Downloading voices/jm_kumo.bin
+   ├─ [49/59] Downloading voices/pf_dora.bin
+   ├─ [50/59] Downloading voices/pm_alex.bin
+   ├─ [51/59] Downloading voices/pm_santa.bin
+   ├─ [52/59] Downloading voices/zf_xiaobei.bin
+   ├─ [53/59] Downloading voices/zf_xiaoni.bin
+   ├─ [54/59] Downloading voices/zf_xiaoxiao.bin
+   ├─ [55/59] Downloading voices/zf_xiaoyi.bin
+   ├─ [56/59] Downloading voices/zm_yunjian.bin
+   ├─ [57/59] Downloading voices/zm_yunxi.bin
+   ├─ [58/59] Downloading voices/zm_yunxia.bin
+   ├─ [59/59] Downloading voices/zm_yunyang.bin
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  kokoro-82m-v1.0-onnx-INT8
+  │ 📁 Vault Path:     /home/Aryan/ch/models/tts/kokoro-82m-v1.0-onnx-INT8
+  │ 🚀 Run Command:   cluaiz run kokoro-82m-v1.0-onnx-INT8
+  └─────────────────────────────────────────────────────────────┘
+

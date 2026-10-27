@@ -1,0 +1,172 @@
+== machine
+Linux cluaiz-run1-t4 6.8.0-1070-gcp #78~22.04.1-Ubuntu SMP Thu Sep 17 21:46:54 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Ubuntu 22.04.5 LTS
+8
+               total        used        free      shared  buff/cache   available
+Mem:              50           0          43           0           6          49
+Swap:              0           0           0
+Tue Oct 27 14:12:38 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.178.04             Driver Version: 580.178.04     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla T4                       On  |   00000000:00:04.0 Off |                    0 |
+| N/A   32C    P8             10W /   70W |       0MiB /  15360MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+W: http://packages.cloud.google.com/apt/dists/apt-transport-artifact-registry-stable/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+W: https://us-apt.pkg.dev/projects/gce-ai-infra/dists/gpudirect-gib-apt/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+info: downloading installer
+warn: it looks like you have an existing rustup settings file at:
+warn: /home/Aryan/.rustup/settings.toml
+info: profile set to minimal
+info: default host tuple is x86_64-unknown-linux-gnu
+warn: Updating existing toolchain, profile choice will be ignored
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source the
+corresponding env file under $HOME/.cargo.
+
+Consider running the right command for your shell (note the leading DOT):
+. "$HOME/.cargo/env" # For sh/ash/dash/pdksh/bash
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+Build cuda_12.9.r12.9/compiler.35813241_0
+   Compiling ort-sys v2.0.0-rc.13
+   Compiling llama-engine v0.1.0 (/home/Aryan/cluaiz/engine/llama)
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/Aryan/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:733:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   733 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:49:20: warning: 'std::string jinja::type_to_string(jinja::token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    49 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling ort v2.0.0-rc.13
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+   Compiling cluaiz-runtime v0.1.0 (/home/Aryan/cluaiz/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (/home/Aryan/cluaiz/api)
+   Compiling cmd v0.1.0 (/home/Aryan/cluaiz/cmd)
+warning: trailing semicolon in macro used in expression position
+  --> cmd/src/cli/run.rs:50:17
+   |
+50 |         None => color_eyre::eyre::bail!("no model given and no active chat model (see `cluaiz list`)"),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: `#[warn(semicolon_in_expressions_from_non_local_macros)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: this warning originates in the macro `color_eyre::eyre::bail` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: variable does not need to be mutable
+   --> cmd/src/core/bootstrapper.rs:148:17
+    |
+148 |             let mut res = std::fs::copy(src, dest);
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `e`
+   --> cmd/src/core/bootstrapper.rs:149:24
+    |
+149 |             if let Err(ref e) = res {
+    |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+error: linking with `cc` failed: exit status: 1
+  |
+  = note:  "cc" "-m64" "/home/Aryan/cluaiz/target/release/deps/rustcyUZg4N/symbols.o" "<17 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "/home/Aryan/cluaiz/target/release/deps/{libcluaiz_api-6b0cd523eb21ef47,librfd-4011da65d3a9dff8,libpollster-2b9ae27892b28708,libashpd-a0843231621ab5bb,libasync_fs-cc9bb03ecb36ebf3,libraw_window_handle-859174e2410c3887,libasync_net-4d54dba7e7e0e03a,libwayland_protocols-f031526809c7e46d,libwayland_client-d1c1c636956d2951,libwayland_backend-3c29b6d6ef1ef89e,libdowncast_rs-db2d7b4d76d9bb2c,libscoped_tls-4e89c900bd6042d7,libwayland_sys-404ac6a8594af872,libdlib-ed29557979e0359c,libzbus-26d0f36438a6d206,libblocking-77a69168bde830a3,libpiper-196e17d4555b6cca,libhex-06ecfa8b1b55f264,libasync_executor-a25a0433fcf055b1,libasync_process-d3cc8bd00d5530c3,libasync_signal-d0275cf0cf22909c,libasync_lock-a40c5d413d205bf3,libasync_task-982847617bae18c8,libasync_channel-a10c77ab19fb8e72,libordered_stream-79aa0311eb6322cc,libasync_broadcast-c6c5fd96a101f334,libevent_listener_strategy-c51be7698931ae2e,libevent_listener-96088245a245d3b1,libasync_io-adc008b6e92e596d,libpolling-13182dc38811d4c7,libconcurrent_queue-2effe29d79d6dee3,libfutures_lite-b49bbfee54a5b877,libparking-4080e52e72ba5d24,libzbus_names-c6fa2bd30d1d4f2b,libzvariant-e44db8bb856b73f3,libenumflags2-c8acf9015138c175,libendi-c6d497e28332cf62,libzcheapstr-fff1463f5a6c45a9,libzvariant_utils-33c93e2d36f45b13,libwinnow-73a356804c1006cf,libsyn-a722cbae05aed400,libquote-66d7c824c8283680,libproc_macro2-18a032a4d3c13851,libunicode_ident-126753f74e806026}.rlib" "<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib/{libproc_macro-*,librustc_literal_escaper-*}.rlib" "/home/Aryan/cluaiz/target/release/deps/{libasync_stream-4d1f47b0d40fb4f6,libfutures-31fd3997bcf8f95d,libfutures_executor-e0b62c4f2cf71eec,libaxum-b6738181a1b511a1,libmatchit-9e83bf2a6e746842,libaxum_core-9f059ed7dd8bb0e8,libctrlc-2ce57eedf253dc2f,libnix-36f5144fcc4293d7,libinquire-4a571b273101e2c9,libunicode_width-9ac2b4280c518f7d,libfxhash-abac15dc610dc36d,libcrossterm-68d1771031625cff,libfuzzy_matcher-c2d4d24f27a1fbc7,libcrossterm-9f5b1934df4c8c52,librustix-8dcffebdb751f61b,liblinux_raw_sys-aaa256a6e36447f8,libsignal_hook_mio-eefd70c27fd81560,libsignal_hook-2f5a49e098812196,libmio-de8fe993de6cc9df,libcluaiz_agents-76f7758c723cc236,libcluaiz_security-489b4a9ee73980c5,libcluaiz_cep-d1ab73862e083583,libserde_path_to_error-48a9d769db0d81eb,libschemars-8c2416917053105a,libdyn_clone-a05d756a11de617c,libref_cast-973f5652d160589f,libserde_yaml-74837a93cc7cee59,libunsafe_libyaml-bc44acd0245d2a42,libzip-c799740f7bce735c,libpbkdf2-2bebf0d1f16de25f,libpassword_hash-7040e8d8df968114,libbase64ct-39f9c761048f2b5f,libzstd-470f7f890905bee1,libzstd_safe-24882355eaf34a6f,libzstd_sys-418bf6f5ce7dbca0,libbzip2-5aac276e4decc1a9,libbzip2_sys-fa7b8590932c6227,libaes-d061c0b76514872e,libcipher-bd0fcc6d703d0cec,libinout-528f09db914c0e74,libsha1-4d1a976aa36d8ef3,libhmac-fdc1caee03a83aab,libconstant_time_eq-a3b8586b03e0ae93,libcluaiz_runtime-97234ef96ea69592,libonnx_engine-313a6b1541c63ede,librustfft-c433040ec47362a8,libprimal_check-1b0753d29939ee5a,libtranspose-817beca7c453c7e4,libstrength_reduce-8c570c5557a5f03f,libtokenizers-2f89d66138975fc3,libesaxx_rs-177949742a2d7c09,libregex-0fb0f2987769c1f3,libregex_automata-34961c836391e325,libaho_corasick-a0ef542b40348a31,libregex_syntax-5ac52b00c0a16fc6,libunicode_normalization_alignments-bef2b43f0a2b97b6,libspm_precompiled-1eb7ff757fdfd5b8,libbase64-7a0bdfb5a661f6ff,libunicode_segmentation-8c0c511b3c2d6e40,libunicode_categories-de2ed4d19ed1239f,librand-c23485f56ff315bf,librand_chacha-2d163fe8f0a3acef,librand_core-588b90f3e96ee57f,libdary_heap-866885cf4759f7db,libcompact_str-662a190659238051,libcastaway-d9b413b62252451e,libmonostate-7d8f27ace0e40541,libmacro_rules_attribute-434f5a958af9064a,librayon_cond-ff6dcb2817e57848,libitertools-347b165ec48c2b60,libonig-2cf126be151b1e31,libonig_sys-99d2cb241a22c74d,libahash-b71e43c6aef9623c,libgetrandom-53c64fbd37899de5,libderive_builder-143a3c74bf63d1a4,librand-65cd1eadb5f2436a,librand_chacha-48ec176c1fc3fa96,libppv_lite86-36b0507dada135f7,librand_core-ec300351bfbe7016,libort-235b9378a6a0ec02,libort_sys-2ed44dce6c964bb9,libndarray-6c0173b3863d213d,libmatrixmultiply-fb5974ad4b784b95,libnum_integer-752551bdfaca7276,librawpointer-6d51d3fffd83ef8d,libllama_engine-02168e332b0c6d5e}.rlib" "-Wl,--whole-archive" "-Wl,/home/Aryan/cluaiz/target/release/deps/rustcyUZg4N/libggml-cuda.a" "-Wl,--no-whole-archive" "/home/Aryan/cluaiz/target/release/deps/{libcluaiz_media-0b83bab953536458,libhound-aaff9b171c9932e1,libinfer-c7781fbcbe53f876,libcfb-c791531ae264b59e,libweb_time-3b4180ebd63e6a3c,libuuid-b7bd642e642f6a8c,libfnv-3c7a2f41d215b820,libmime_guess-de2b2eb4735f65d9,libunicase-facb980fd7a766f4,libmime-6d90c1a54ceeffa3,libpdf_extract-d58e2fa938dfe93c,libunicode_normalization-e8af950602bea5d3,libtinyvec-312aaca2eab6dc97,libtinyvec_macros-f01926d8bb751cb5,libtype1_encoding_parser-baf31d43c2218430,libadobe_cmap_parser-136ff089accb7cfe,libpom-498964d4e8dccc17,libeuclid-5a517320a4350c15,liblopdf-082f5eb9f980eef0,libmd5-dce52af4ae1c9dc9,librangemap-700c6e58778cab86,libnom-611ee369c9a263a1,libtime-b5c4ae651806d3b5,libtime_core-eda205c82687fbfb,libnum_conv-9de5d8f68c02aa46,libderanged-d7f78f027ad23649,libpowerfmt-b92853495d90b1fe,libzip-44227ce08e65543f,libaudiopus-e8af8437630435c6,libaudiopus_sys-3dee68ec55f4e0ca,libsonic_rs_sys-19fc66ce51104b4b,libtempfile-710215a699bc7062,libgetrandom-4b4694b9d950389e,libfastrand-abb8aa46ee3e49df,librustix-ab579446fa32a75b,liblinux_raw_sys-45c026177c67ed9a,libsha2-177c498a94f05d37,libcpufeatures-08791a2c8cbb5f40,libdigest-3d03a0d8dcf39f14,libblock_buffer-ea375c105680de39,libcrypto_common-dfe8649620dad3d4,libgeneric_array-b90dae4202cd11cb,libtypenum-0ca327032321587a,libimage-05c91d79cf783dde,libqoi-16cbca921f6f3328,libpng-7ae429d645403826,libfdeflate-7ba619a596b4d53b,libexr-0514aadf3209a1ae,libzune_inflate-52158f0b18e2d2c3,libbit_field-a2ef88f1dfbb414a,libpulp-bdd7a96971ee2db0,libnum_complex-634811c7ac91d291,liblebe-943d2e21b2ebf351,libhalf-62e3b5b26950f27b,libzerocopy-09248515a7cf25b9,libgif-5a2c06b4ea4ab2f8,libcolor_quant-53b9db32136b2724,libbyteorder-f4533d6e39b2fd29,libtiff-2655f19756588c44,libweezl-1f41bc1cd6c65323,libjpeg_decoder-034f285144bc0bc8,libquick_xml-9d366447427790da,liboffice_oxide-c9ed29b1fd7f150a,libatoi_simd-2b6b7aa7f746d5b1,libdebug_unsafe-ef911be67e90d0eb,libfast_float2-fce957c1c586f93b,libthiserror-38c08422982362a2,libzip-e5f86d66742c1db1,libzopfli-e64ad03a39079801,libbumpalo-53bbc6720a5fdcd0,libflate2-04ffe295572163a1,libzlib_rs-3ba63746353ec35a,libindexmap-5eb1c66a7e038de9,libequivalent-98af79b631c9d18f,libhashbrown-3a1b02f794a63e8b,libtyped_path-c602fc9a23e682f5,libcrc32fast-88490cdce2de2bb7,libquick_xml-65fd01c95a2a2dac,libsymphonia-eef83d4f5761b57a,libsymphonia_format_riff-42a5eff24b877c02,libsymphonia_format_ogg-f4bd2ab929e40851,libsymphonia_format_mkv-0d48fc7e532dd175,libsymphonia_format_isomp4-93a42a24745843b4,libsymphonia_codec_vorbis-df3d25e93a559e41,libsymphonia_codec_pcm-99ad9de6d934e6d7,libsymphonia_codec_adpcm-3824e018da53e8ed,libsymphonia_codec_aac-9fd44ca808573c39,libsymphonia_bundle_mp3-4bb8487fe7c28fae,libsymphonia_bundle_flac-7b5a19ea2226e424,libsymphonia_utils_xiph-a819360f5ef5de86,libsymphonia_metadata-445ce081ffb6d13a,libencoding_rs-362b6cd4a2b037f5,libsymphonia_core-1ae41f150d978ce0,libbytemuck-f54b10f9a610fde1,libbitflags-a6f21e1b17c4455f,libarrayvec-c6474cec1cf67139,libcluaiz_plan-ff6b04eb8e94777b,libcluaiz_models-42213bfa233c0684,libindicatif-cb00af3aba067158,libportable_atomic-b481ca71e1e6b6c4,libunit_prefix-ad4b6f4edb53800e,libconsole-824d3b4eeacf6784,libunicode_width-4caff79d64a4935e,libcluaiz_hw-248de67c99a37bb5,libraw_cpuid-1ddcd45e32645fb1,libnvml_wrapper-fd62a7ae31e7bb48,libstatic_assertions-cb114ae2d5121859,libnvml_wrapper_sys-a9d94663b3f90a70,liblibloading-37c16d85b28fbb23,libsysinfo-1a04e5812cb93fe2,librayon-f903cbe5f95255a2,librayon_core-ae1440aeb06c8222,libcrossbeam_deque-0d73a689efdf62c3,libcrossbeam_epoch-4dff13596ab9898d,libcrossbeam_utils-763700043ac4756c,libeither-06cad9c01d9da61e,libreqwest-6e26cc49edb827af,libhyper_rustls-60620ab61c66a510,libwebpki_roots-f2adc01480abaa2a,libtokio_rustls-a6f9178478de04d5,librustls-81f45acbf2a23722,libsubtle-a146f6f1b0752ee2,libwebpki-426e84c896c79b7f,libring-42777d235f9963a5,libgetrandom-0f5b0ebefd56bf9d,libuntrusted-d60d81130374144d,librustls_pki_types-7864a35f7b7332f6,libzeroize-db57f94619f33834,libserde_urlencoded-847cb286e5526d1f,libryu-4378761217df4ae1,libtower_http-744180b16d5da188,libbitflags-8c8677c5ed42fd07,libiri_string-ef83a0cf1cafc36b,libtower-b97846d38419236d,libtower_layer-5bcac36bc5c5ffc9,libhyper_util-d06278b54158a108,libbase64-3c8ae60e1ec79d29,libipnet-1f55c01a00fd9d6c,libtower_service-c7f3a292f0d439ca,libhyper-c2fb888f0b7083a0,libwant-ae10edd4f2970edc,libtry_lock-7b5ad8ce6765cac7,libhttparse-1e2242f3a97db81d,libatomic_waker-9bd424d934baf608,libhttpdate-a491d2b0cf572516,libtokio_util-8ce3b4459013e46e,libtokio-2289592053d7fc2a,libsignal_hook_registry-f0c58292dd245386,liberrno-300aaba8ff28a282,libsocket2-4ecc15a8f4970db6,libmio-c32e35b0a5f09b4f,libparking_lot-9a8f0805929adc5f,libparking_lot_core-fc04a81ae569e285,liblock_api-0acba5ae9d697b29,libscopeguard-61f26deec9990f40,libhttp_body_util-a72546deed00ebae,libhttp_body-c23def8eb9e057cb,libfutures_util-8a3e0ddefb8fec30,libfutures_io-568a3c85252ad99e,libslab-7d91005e79ae2b3a,libfutures_channel-cb5dcf50d69e9eda,libfutures_sink-ac1a9ded21fce491,libfutures_task-8ccb259dd0dea12c,liburl-a7472ec2aed04eff,libidna-509a5d048ab7d8bb,libidna_adapter-7009eb9821209e99,libicu_properties-5aff7dbdaaa8178f,libicu_properties_data-e3a09ced3e21499f,libicu_normalizer-80a40a44e9233373,libicu_normalizer_data-28f957457e77ecd2,libicu_collections-7255de0ea296bb7a,libutf8_iter-91d043f55382ec4a,libpotential_utf-47de536d1e4f39c9,libicu_provider-39077c55c1c15ebc,libicu_locale_core-640316cfd4be8502,libtinystr-f85048cc17007441,liblitemap-019e7b8bde6e846e,libwriteable-c957fe69e5e344e3,libzerovec-6f47f01bc85d9815,libzerotrie-0be88adb34a518de,libyoke-12ebf1b11c7da5fa,libstable_deref_trait-3015cbdafd13eebc,libzerofrom-00feaf7743bcee93,libform_urlencoded-f38cf4be2f833ba7,libpercent_encoding-eefbb4bb1987f6af,libhttp-6aa9ddb47d68ee23,libbytes-41d0c5b87e95a43c,libsync_wrapper-a37a93cfb9f270e1,libfutures_core-7e158d8553596a29,libcluaiz_core-f3e1887921712543,libcluaiz_context-87076d175b40fdcf,libchrono-42c143e0569ef6b9,libnum_traits-3073907d29c71720,libiana_time_zone-a881546ec51db405,libdirs-a7824c402533f6de,libdirs_sys-4b33ce13ee5a93f3,liboption_ext-a86428f97936154d,libthiserror-72d213abb2c0bb93,libserde_json-12ca05eb8c91b97f,libitoa-d2a7e90627a4bc45,libzmij-02b8684f266f3390,libanyhow-e7c1ea9c8c88ad1d,libserde-844a717c211985a8,libserde_core-94d7c6ce0d1318e2,libcolored-5cfbc0ff19d918f4,libcolor_eyre-e1b3dcf038b7fc0b,libcolor_spantrace-84855c5e64a2fdcf,libtracing_error-bee2ae95b96e8b54,libtracing_subscriber-34179c91dfa03c95,libsmallvec-12f746c2eaffe027,libthread_local-56cb2259533c29e3,libnu_ansi_term-179085ac8ddf575c,libsharded_slab-dff9511ba7fb47ab,liblazy_static-5945a48f786cb48d,libtracing_log-77f0756c977cd510,libtracing-b00114ea6ead627c,liblog-74c04d3dd8149f5d,libpin_project_lite-92232c8df552889e,libtracing_core-e674a69905d0479a,libowo_colors-61ad4857b6e5f5fc,libeyre-41c86c1865a52fd3,libindenter-52cd5c2cbaae510c,libonce_cell-1d0b9bf1c4babec6,libbacktrace-c3ce2d87d64d55d5,libminiz_oxide-1d22d72a3d8b8575,libsimd_adler32-1d07d612b8ee18a2,libobject-c3a5cee45effc9d8,libmemchr-edbdacdd969f9fb6,liblibc-a65eb4927a48b6b6,libaddr2line-03ed6eed5dac4883,libgimli-61fe184c6e2a46b6,libcfg_if-1c9c37f95103e69f,librustc_demangle-b7dd5e28af03c61d,libclap-0412675d173764d4,libclap_builder-2577e72637a0158c,libstrsim-0efca37291e6b520,libanstream-582743430866a8a0,libanstyle_query-7be241654f8a67dd,libis_terminal_polyfill-736c6e46bc6c1772,libcolorchoice-c508bf8e12addea8,libanstyle_parse-8be87a58a8484cbf,libutf8parse-04127f67d1e740e1,libclap_lex-7b5e0fc44df39dab,libanstyle-78ff9b9d07b9c8c6}.rlib" "<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib/{libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "-Wl,-Bdynamic" "-lstdc++" "-lstdc++" "-lcudart" "-lcublas" "-lcublasLt" "-lcuda" "-lstdc++" "-lgomp" "-lopus" "-ldl" "-lgcc_s" "-lutil" "-lrt" "-lpthread" "-lm" "-ldl" "-lc" "-L" "/home/Aryan/cluaiz/target/release/deps/rustcyUZg4N/raw-dylibs" "-B<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/bin/gcc-ld" "-fuse-ld=lld" "-Wl,--eh-frame-hdr" "-Wl,-z,noexecstack" "-L" "/home/Aryan/cluaiz/target/release/build/ring-2e15ddba03e8380d/out" "-L" "/home/Aryan/cluaiz/target/release/build/esaxx-rs-466d5fd550640f0e/out" "-L" "/home/Aryan/cluaiz/target/release/build/onig_sys-603bdcac76ee0ba4/out" "-L" "/home/Aryan/cluaiz/target/release/build/bzip2-sys-a92c3e99a17a3894/out/lib" "-L" "/home/Aryan/cluaiz/target/release/build/zstd-sys-8eaed65579db9c5b/out" "-L" "/home/Aryan/cluaiz/target/release/build/audiopus_sys-055623e0852880d4/out/lib" "-L" "/home/Aryan/cluaiz/target/release/build/sonic-rs-sys-6733e95e41ccd959/out" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/lib" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/lib64" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/tools/mtmd" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/vendor/cpp-httplib" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/vendor/hash" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/common" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/src" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/ggml/src/ggml-cuda" "-L" "/home/Aryan/cluaiz/target/release/build/llama-engine-3f98f40a0b68d162/out/build/ggml/src" "-L" "/usr/local/cuda/lib64" "-L" "/usr/local/cuda/lib64/stubs" "-L" "/home/Aryan/.cache/ort.pyke.io/dfbin/x86_64-unknown-linux-gnu/b89451babb9d4ec77c3f381e8ef92b640e125021b59f9cc7747e73c9fe8d549b" "-L" "<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-o" "/home/Aryan/cluaiz/target/release/deps/cluaiz-b44ce632fe01ea24" "-Wl,--gc-sections" "-pie" "-Wl,-z,relro,-z,now" "-Wl,-O1" "-Wl,--strip-debug" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: rust-lld: error: undefined symbol: __isoc23_strtol
+          >>> referenced by inference_session.cc
+          >>>               inference_session.cc.o:(onnxruntime::InferenceSession::ConstructorCommon(onnxruntime::SessionOptions const&, onnxruntime::Environment const&)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by inference_session.cc
+          >>>               inference_session.cc.o:(onnxruntime::InferenceSession::ConstructorCommon(onnxruntime::SessionOptions const&, onnxruntime::Environment const&)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by inference_session.cc
+          >>>               inference_session.cc.o:(onnxruntime::InferenceSession::TransformGraph(onnxruntime::Graph&, bool)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced 8 more times
+          
+          rust-lld: error: undefined symbol: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>::_M_replace_cold(char*, unsigned long, char const*, unsigned long, unsigned long)
+          >>> referenced by custom_ops.cc
+          >>>               custom_ops.cc.o:(onnxruntime::CreateKernelCreateInfo(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&, OrtCustomOp const*)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by custom_ops.cc
+          >>>               custom_ops.cc.o:(onnxruntime::CreateKernelCreateInfo(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>> const&, OrtCustomOp const*)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by inference_session.cc
+          >>>               inference_session.cc.o:(onnxruntime::InferenceSession::PopulateEpDeviceInfo(onnxruntime::Graph const&)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced 15 more times
+          
+          rust-lld: error: undefined symbol: __isoc23_strtoull
+          >>> referenced by inference_session_utils.cc
+          >>>               inference_session_utils.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by model_package_context.cc
+          >>>               model_package_context.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<char const*>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by manifest_parser.cc
+          >>>               manifest_parser.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<nlohmann::json_abi_v3_11_3::ordered_map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced 11 more times
+          
+          rust-lld: error: undefined symbol: __isoc23_strtoll
+          >>> referenced by inference_session_utils.cc
+          >>>               inference_session_utils.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by model_package_context.cc
+          >>>               model_package_context.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<std::map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<char const*>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced by manifest_parser.cc
+          >>>               manifest_parser.cc.o:(nlohmann::json_abi_v3_11_3::detail::lexer<nlohmann::json_abi_v3_11_3::basic_json<nlohmann::json_abi_v3_11_3::ordered_map, std::vector, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>, bool, long, unsigned long, double, std::allocator, nlohmann::json_abi_v3_11_3::adl_serializer, std::vector<unsigned char, std::allocator<unsigned char>>, void>, nlohmann::json_abi_v3_11_3::detail::iterator_input_adapter<__gnu_cxx::__normal_iterator<char const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char>>>>>::scan_number()) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          >>> referenced 9 more times
+          
+          rust-lld: error: undefined symbol: std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_replace_cold(wchar_t*, unsigned long, wchar_t const*, unsigned long, unsigned long)
+          >>> referenced by logging.cc
+          >>>               logging.cc.o:(std::__cxx11::basic_string<wchar_t, std::char_traits<wchar_t>, std::allocator<wchar_t>>::_M_replace(unsigned long, unsigned long, wchar_t const*, unsigned long)) in archive /home/Aryan/cluaiz/target/release/deps/libort_sys-2ed44dce6c964bb9.rlib
+          collect2: error: ld returned 1 exit status
+          
+
+warning: `cmd` (bin "cluaiz") generated 3 warnings
+error: could not compile `cmd` (bin "cluaiz") due to 1 previous error; 3 warnings emitted
+== build exit 101 after 93 s

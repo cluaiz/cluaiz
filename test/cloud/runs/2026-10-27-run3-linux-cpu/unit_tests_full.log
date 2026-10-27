@@ -1,0 +1,1105 @@
+   Compiling syn v2.0.117
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling serde v1.0.228
+   Compiling libc v0.2.186
+   Compiling serde_json v1.0.150
+   Compiling memchr v2.8.0
+   Compiling tracing-core v0.1.36
+   Compiling dirs-sys v0.4.1
+   Compiling dirs v5.0.1
+   Compiling serde_derive v1.0.228
+   Compiling tracing-attributes v0.1.31
+   Compiling thiserror-impl v1.0.69
+   Compiling thiserror v1.0.69
+   Compiling tracing v0.1.44
+   Compiling chrono v0.4.34
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+    Finished `release` profile [optimized] target(s) in 12.28s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_core-1ca096f8e33c2205)
+
+running 36 tests
+test chat::tests::answer_reserve_follows_max_tokens_within_a_quarter ... ok
+test chat::tests::a_tool_result_is_never_left_without_its_call ... ok
+test chat::tests::modes_choose_how_much_to_free ... ok
+test chat::tests::output_constraints_follow_llama_server ... ok
+test chat::tests::envelope_has_the_engine_keys ... ok
+test chat::tests::shift_discards_like_llama_server ... ok
+test chat::tests::whole_turns_are_dropped_after_the_system_message ... ok
+test contracts::embedding_tests::test_normalize_real_vectors_rejects_empty_zero_and_nonfinite ... ok
+test media::tests::test_audio_invalid_rate_channels_and_frames_return_errors ... ok
+test media::tests::test_audio_non_finite_samples_return_errors ... ok
+test media::tests::test_audio_valid_stereo_preserves_rate_and_shares_samples ... ok
+test media::tests::test_image_invalid_dimensions_and_byte_count_return_errors ... ok
+test media::tests::test_image_valid_rgb_keeps_dimensions_and_shares_pixels ... ok
+test media::tests::test_media_old_settings_load_defaults_and_invalid_policy_rejects ... ok
+test media_limits::tests::test_limits_empty_and_maximum_counts_do_not_overflow ... ok
+test media_limits::tests::test_limits_exact_boundary_accepts_and_next_byte_rejects ... ok
+test media_limits::tests::test_limits_json_round_trip_preserves_caller_policy ... ok
+test media_limits::tests::test_limits_zero_configuration_rejects ... ok
+test env::bin_tests::bins_move_to_the_backup_and_json_stays ... ok
+test model_assets::tests::test_manifest_rejects_unsupported_precision_layout_and_missing_codec ... ok
+test model_assets::tests::test_manifest_resolves_mixed_precision_required_assets_only ... ok
+test model_assets::tests::test_manifest_rejects_asset_escape_paths ... ok
+test settings::tests::field_list_matches_the_struct ... ok
+test processing::tests::test_processing_terminal_is_once_and_video_origin_survives_expansion ... ok
+test settings::tests::llama_n_ctx_round_trips_through_settings ... ok
+test settings::tests::load_fingerprint_ignores_samplers_but_tracks_load_settings ... ok
+test settings::tests::request_llama_params_override_settings ... ok
+test settings::tests::onnx_settings_partial_update ... ok
+test tool_calls::tests::calls_become_openai_tool_calls ... ok
+test settings::tests::partial_update_keeps_other_settings ... ok
+test tool_calls::tests::canonical_calls_round_trip ... ok
+test tool_calls::tests::only_growing_content_is_sent ... ok
+test tool_calls::tests::dropped_messages_are_found ... ok
+test tool_calls::tests::text_around_a_call_is_kept_and_broken_blocks_stay_text ... ok
+test settings::tests::thinking_budget_names_numbers_and_auto ... ok
+test tool_calls::tests::tool_results_become_one_user_turn ... ok
+
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cluaiz_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling serde_core v1.0.228
+   Compiling smallvec v1.15.1
+   Compiling cc v1.2.61
+   Compiling errno v0.3.14
+   Compiling signal-hook-registry v1.4.8
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling mio v1.2.0
+   Compiling socket2 v0.6.3
+   Compiling ring v0.17.14
+   Compiling serde_json v1.0.150
+   Compiling zerocopy v0.8.48
+   Compiling tokio v1.52.3
+   Compiling getrandom v0.2.17
+   Compiling futures-io v0.3.32
+   Compiling slab v0.4.12
+   Compiling serde v1.0.228
+   Compiling futures-util v0.3.32
+   Compiling tracing v0.1.44
+   Compiling getrandom v0.3.4
+   Compiling onig_sys v69.9.2
+   Compiling icu_normalizer v2.2.0
+   Compiling rustix v1.1.4
+   Compiling chrono v0.4.34
+   Compiling rustls v0.23.39
+   Compiling ppv-lite86 v0.2.21
+   Compiling hyper v1.9.0
+   Compiling rustls-webpki v0.103.13
+   Compiling idna_adapter v1.2.1
+   Compiling getrandom v0.4.2
+   Compiling rand_core v0.9.5
+   Compiling linux-raw-sys v0.12.1
+   Compiling esaxx-rs v0.1.10
+   Compiling hyper-util v0.1.20
+   Compiling tokio-rustls v0.26.4
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling tower v0.5.3
+   Compiling rand_chacha v0.9.0
+   Compiling idna v1.1.0
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling log v0.4.33
+   Compiling spm_precompiled v0.1.4
+   Compiling tower-http v0.6.8
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling onig v6.5.2
+   Compiling console v0.16.3
+   Compiling hashbrown v0.16.1
+   Compiling tempfile v3.27.0
+   Compiling monostate v0.1.18
+   Compiling hyper-rustls v0.27.9
+   Compiling digest v0.10.7
+   Compiling url v2.5.8
+   Compiling compact_str v0.9.0
+   Compiling rand v0.9.4
+   Compiling ahash v0.8.12
+   Compiling serde_urlencoded v0.7.1
+   Compiling sysinfo v0.30.13
+   Compiling tokio-util v0.7.18
+   Compiling dary_heap v0.3.9
+   Compiling unicode-normalization-alignments v0.1.12
+   Compiling sha2 v0.10.9
+   Compiling indicatif v0.18.4
+   Compiling tokenizers v0.22.2
+   Compiling cluaiz-hw v0.1.0 (/home/Aryan/cluaiz/engine/hardware)
+   Compiling reqwest v0.12.28
+   Compiling safetensors v0.8.0
+   Compiling uuid v1.24.0
+   Compiling memmap2 v0.9.10
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling cluaiz-plan v0.1.0 (/home/Aryan/cluaiz/engine/plan)
+    Finished `release` profile [optimized] target(s) in 44.99s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_plan-5aab43052b8ea7b2)
+
+running 24 tests
+test media_budget::tests::test_in_flight_ram_charges_only_the_new_buffers ... ok
+test media_budget::tests::test_media_budget_exact_boundaries_and_cpu_fallback ... ok
+test media_budget::tests::test_media_budget_no_gpu_and_unknown_gpu_use_cpu ... ok
+test media_budget::tests::test_media_budget_rejects_missing_estimates_overflow_and_bad_ram ... ok
+test media_budget::tests::test_media_budget_uses_existing_buffer_policy_and_decoded_limit ... ok
+test media_budget::tests::test_request_ram_charges_incremental_buffers_and_reports_boundary ... ok
+test planner::tests::a_load_that_fell_back_is_not_planned_the_same_way_again ... ok
+test planner::tests::a_measured_model_is_planned_with_its_measurement_not_the_fixed_buffer ... ok
+test planner::tests::auto_never_goes_below_floor ... ok
+test planner::tests::buffers_follow_the_rule_only ... ok
+test planner::tests::auto_takes_a_smaller_context_on_the_gpu_before_splitting ... ok
+test planner::tests::dense_too_big_is_refused_with_numbers ... ok
+test planner::tests::custom_is_exact_and_max_is_native ... ok
+test planner::tests::auto_small_model_gets_at_least_4096_in_f16 ... ok
+test planner::tests::cpu_only_setting_uses_ram ... ok
+test planner::tests::plan_vram_is_weights_plus_kv_plus_logits ... ok
+test planner::tests::moe_bigger_than_vram_and_ram_is_allowed_via_disk ... ok
+test planner::tests::split_keeps_kv_with_its_layer ... ok
+test planner::tests::split_never_duplicates_full_gpu ... ok
+test planner::tests::user_kv_type_is_never_changed ... ok
+test types::tests::block_split_matches_llama_cpp_n_gpu_layers ... ok
+test planner::tests::user_placement_is_used_exactly_even_when_over_vram ... ok
+test planner::tests::split_model_keeps_the_floor_and_never_grows_its_context_in_ram ... ok
+test planner::tests::auto_more_free_vram_never_gives_a_worse_plan ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/real_models.rs (target/release/deps/real_models-708fb282042470f8)
+
+running 1 test
+test planner_on_installed_models ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cluaiz_plan
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+    Finished `release` profile [optimized] target(s) in 8.04s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_models-c79ac4b823c3e4bd)
+
+running 24 tests
+test capabilities::tests::test_capabilities_installed_package_read_only ... ignored, read-only audit requires CLUAIZ_CAPABILITY_AUDIT_ROOT
+test capabilities::tests::test_capabilities_attention_value_is_not_vision_and_missing_stays_unknown ... ok
+test capabilities::tests::test_capabilities_projector_alone_does_not_invent_model_inputs_or_stt_role ... ok
+test capabilities::tests::test_capabilities_renamed_package_preserves_audio_and_detects_actual_projector ... ok
+test fetcher::hf_hub::tests::test_bundle_onnx_variants_pairs_moonshine_encoder_and_decoders_by_quant ... ok
+test fetcher::asset_bundler::tests::test_package_layout_keeps_pooling_and_rejects_traversal ... ok
+test capabilities::tests::test_moonshine_raw_waveform_asr_package_detects_audio_and_asr_task ... ok
+test fetcher::package_bundler::tests::test_repository_missing_stage_fails_before_install ... ok
+test fetcher::package_bundler::tests::test_revision_and_graph_parent_are_preserved_without_registry_schema_change ... ok
+test capabilities::tests::test_onnx_package_helpers_nested_refresh_and_category_preservation ... ok
+test fetcher::package_bundler::tests::test_complete_bundle_replaces_stages_keeps_unrelated_graphs_and_excludes_optional_encoder ... ok
+test capabilities::tests::test_capabilities_dimension_hints_remain_unverified_ambiguity_and_precision_selection ... ok
+test prober::onnx::tests::test_corrupt_and_model_names_do_not_invent_capabilities ... ok
+test prober::gguf::tests::test_unretained_vocab_strings_preserve_summary_and_reject_truncation ... ok
+test prober::gguf::tests::test_header_cache_is_immutable_and_refreshes_replaced_or_deleted_files ... ok
+test capabilities::tests::test_capabilities_conflicting_malformed_and_unrelated_companion_reject_support ... ok
+test registry::installed_state::tests::test_registry_legacy_json_and_versioned_cache_preserve_records ... ok
+test registry::installed_state::tests::test_registry_primary_selection_excludes_named_helper ... ok
+test types::dna::tests::test_streaming_reasoning_filter_lifecycle ... ok
+test registry::installed_state::tests::test_registry_old_capability_snapshot_gains_shared_contract_without_file_change ... ok
+test registry::installed_state::tests::test_selected_lookup_reads_new_registry_without_refreshing_unrelated_packages ... ok
+test registry::installed_state::tests::test_registry_refresh_added_removed_projector_changed_config_and_primary ... ok
+test capabilities::tests::test_partial_multigraph_package_is_not_ready ... ok
+test prober::onnx::tests::test_signature_is_content_based_and_external_paths_cannot_escape ... ok
+
+test result: ok. 23 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/media_capabilities.rs (target/release/deps/media_capabilities-3d1ecf1d818c5c40)
+
+running 3 tests
+test actual_image_helper_completion_uses_selected_repository ... ignored, requires real local image export, explicitly selected source repository and fresh proof-output path
+test actual_onnx_packages_expose_graph_roles_without_loading_sessions ... ignored, requires read-only ONNX fixture model paths
+test actual_same_repository_helper_completion_preserves_pooling_directory ... ignored, requires genuine fixture repository, source graph and network
+
+test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/package_install.rs (target/release/deps/package_install-18df8400ba4a3062)
+
+running 2 tests
+test actual_component_selection_and_legacy_primary_resolve_one_package ... ignored, requires CLUAIZ_PACKAGE_REPO and CLUAIZ_PACKAGE_SELECTED_GRAPH; network metadata only
+test actual_fresh_package_install_and_repair_preserve_valid_files ... ignored, requires isolated CLUAIZ_HOME, CLUAIZ_PACKAGE_REPO and explicit CLUAIZ_ALLOW_PACKAGE_DOWNLOAD=1
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/real_geometry.rs (target/release/deps/real_geometry-769b87cc0234f17b)
+
+running 1 test
+test print_real_geometry ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_resolution.rs (target/release/deps/registry_resolution-fa0d03efff165cbf)
+
+running 2 tests
+test hf_coordinates_reject_other_hosts_and_path_injection ... ok
+test registry_client_sends_one_request_and_distinguishes_failures ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.42s
+
+   Doc-tests cluaiz_models
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling symphonia-core v0.5.5
+   Compiling tokio v1.52.3
+   Compiling serde v1.0.228
+   Compiling libc v0.2.186
+   Compiling slab v0.4.12
+   Compiling memchr v2.8.0
+   Compiling futures-task v0.3.32
+   Compiling futures-util v0.3.32
+   Compiling nom v7.1.3
+   Compiling symphonia-metadata v0.5.5
+   Compiling symphonia-utils-xiph v0.5.5
+   Compiling cexpr v0.6.0
+   Compiling clang-sys v1.8.1
+   Compiling futures-channel v0.3.32
+   Compiling either v1.15.0
+   Compiling zopfli v0.8.3
+   Compiling rayon v1.12.0
+   Compiling bindgen v0.59.2
+   Compiling hyper v1.9.0
+   Compiling serde_json v1.0.150
+   Compiling tower v0.5.3
+   Compiling chrono v0.4.34
+   Compiling sonic-rs-sys v0.1.9
+   Compiling hyper-util v0.1.20
+   Compiling jpeg-decoder v0.3.2
+   Compiling tokio-rustls v0.26.4
+   Compiling md-5 v0.10.6
+   Compiling uuid v1.24.0
+   Compiling lopdf v0.34.0
+   Compiling exr v1.74.2
+   Compiling zip v9.0.3
+   Compiling cfb v0.14.0
+   Compiling hyper-rustls v0.27.9
+   Compiling symphonia-format-riff v0.5.5
+   Compiling tokio-util v0.7.18
+   Compiling tower-http v0.6.8
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling tiff v0.9.1
+   Compiling serde_urlencoded v0.7.1
+   Compiling symphonia-bundle-flac v0.5.5
+   Compiling symphonia-codec-vorbis v0.5.5
+   Compiling symphonia-format-mkv v0.5.5
+   Compiling symphonia-format-isomp4 v0.5.5
+   Compiling symphonia-format-ogg v0.5.5
+   Compiling symphonia-bundle-mp3 v0.5.5
+   Compiling symphonia-codec-aac v0.5.5
+   Compiling symphonia-codec-pcm v0.5.5
+   Compiling symphonia-codec-adpcm v0.5.5
+   Compiling quick-xml v0.42.0
+   Compiling pdf-extract v0.7.12
+   Compiling image v0.24.9
+   Compiling reqwest v0.12.28
+   Compiling office_oxide v0.1.15
+   Compiling symphonia v0.5.5
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling zip v2.4.2
+   Compiling infer v0.22.0
+   Compiling cluaiz-media v0.1.0 (/home/Aryan/cluaiz/engine/media)
+    Finished `release` profile [optimized] target(s) in 1m 35s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_media-6423b7db8b5f7413)
+
+running 35 tests
+test audio::tests::test_audio_wav_preserves_rate_channels_samples_and_amplitude ... ok
+test audio::tests::test_audio_empty_corrupt_nonfinite_and_limits_reject ... ok
+test documents::chunker::tests::test_chunks_long_unicode_lines_respect_bytes_and_order ... ok
+test formats::tests::test_formats_signature_wins_and_contradictory_hint_rejects ... ok
+test formats::tests::test_formats_custom_matcher_is_reusable_and_path_suffix_rejects ... ok
+test image::tests::test_actual_large_image_retains_pixels_with_original_request_ceiling ... ignored, requires CLUAIZ_MEDIA_TEST_IMAGE pointing to a real local image
+test formats::tests::test_webm_audio_container_hint_equivalence ... ok
+test audio::tests::test_audio_real_opus_packet_decodes_in_ogg_container ... ok
+test formats::tests::test_unique_extensions_preserve_picker_aliases_without_duplicates ... ok
+test image::tests::test_advertised_formats_follow_the_actual_byte_decoder ... ok
+test image::tests::test_image_corrupt_input_and_workspace_limit_reject ... ok
+test audio::tests::test_audio_webm_opus_rejects_conflicting_or_unsupported_header ... ok
+test request::tests::test_actual_image_with_retained_history_across_requests ... ignored, requires CLUAIZ_MEDIA_TEST_IMAGE and CLUAIZ_MEDIA_TEST_RETAINED_BYTES
+test image::tests::test_svg_is_rejected_with_a_clear_message ... ok
+test image::tests::test_image_png_exact_pixels_and_jpeg_dimensions_decode ... ok
+test audio::tests::test_audio_webm_opus_mono_and_stereo_decode_without_channel_mask ... ok
+test request::tests::test_request_wire_parts_round_trip_and_unknown_type_field_reject ... ok
+test resample::tests::test_mono_preserve_and_explicit_peak_policy ... ok
+test resample::tests::test_resample_stereo_up_down_identity_and_invalid_target ... ok
+test audio::tests::test_audio_source_file_uri_and_inline_feed_same_decoder_and_stt_policy ... ok
+test request::tests::test_document_image_policy_keeps_source_code_as_text ... ok
+test image::tests::test_actual_color_depth_and_shared_buffer_copy_are_bounded ... ok
+test source::tests::test_source_data_uri_clone_keeps_asset_until_last_owner_drops ... ok
+test request::tests::test_request_order_options_actual_buffers_and_cloned_continuation ... ok
+test request::tests::test_preparation_reports_each_real_attachment_and_preserves_origin ... ok
+test request::tests::test_request_invalid_source_permissions_and_unsupported_provider_reject ... ok
+test tempo::tests::test_tempo_rejects_invalid_input_and_budget ... ok
+test source::tests::test_source_local_content_preserved_and_original_not_removed ... ok
+test wav::tests::test_wav_roundtrip_clipping_and_rejections ... ok
+test source::tests::test_source_http_chunked_download_preserves_content_and_cleans_up ... ok
+test source::tests::test_source_file_uri_and_growing_local_file_obey_limit ... ok
+test source::tests::test_source_oversize_bad_base64_and_denied_local_reject ... ok
+test source::tests::test_source_http_excess_length_chunked_excess_and_bad_status_reject ... ok
+test request::tests::test_request_aggregate_budget_and_literal_text_markers ... ok
+test tempo::tests::test_tempo_speed_identity_duration_pitch_and_streaming ... ok
+
+test result: ok. 33 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/documents.rs (target/release/deps/documents-fce9cc01a2bc70f0)
+
+running 3 tests
+test test_real_docx_unicode_tables_entities_and_zip_limits ... ok
+test test_document_request_prepares_real_text_in_order_and_drops_source ... ok
+test test_real_pdf_pages_order_partial_and_corruption ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/native_documents.rs (target/release/deps/native_documents-47530995621b727d)
+
+running 2 tests
+test real_native_ocr_scanned_mixed_pdf_images_and_reuse ... ignored, requires CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE with real PDFium/Tesseract/language assets
+test test_native_manifest_rejects_platform_traversal_hash_and_size ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/text_documents.rs (target/release/deps/text_documents-b687aeca1bb37153)
+
+running 5 tests
+test test_unicode_text_boms_content_and_byte_limits ... ok
+test test_legacy_doc_subdocument_order_and_non_word_container_rejection ... ok
+test test_legacy_doc_actual_unicode_ansi_tables_corruption_and_limits ... ok
+test test_all_requested_text_code_extensions_prepare_actual_text ... ok
+test test_document_extraction_timings_actual_content ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/video.rs (target/release/deps/video-dc468f60977a5662)
+
+running 1 test
+test real_packaged_video_pixels_timestamps_audio_limits_and_shared_request ... ignored, requires actual CLUAIZ_VIDEO_TEST_PACKAGE / CLUAIZ_VIDEO_TEST_FIXTURES and isolated CLUAIZ_HOME
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cluaiz_media
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling chrono v0.4.34
+   Compiling syn v2.0.117
+   Compiling serde_derive v1.0.228
+   Compiling serde v1.0.228
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+    Finished `release` profile [optimized] target(s) in 7.41s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_context-bec809dac5e01d1f)
+
+running 28 tests
+test compaction::tests::test_batched_or_nothing ... ok
+test compaction::tests::test_placeholders_and_notes_are_not_cleared_again ... ok
+test compaction::tests::test_newest_steps_stay_whole ... ok
+test compaction::tests::test_old_hints_go_first_then_the_oldest_results ... ok
+test memory::card::tests::test_cards_for_every_message ... ok
+test memory::episode::tests::test_breaks_on_pause_words_and_drift ... ok
+test memory::episode::tests::test_follow_ups_stay_in_the_episode ... ok
+test memory::graph::tests::test_edges_and_expansion_bring_the_later_message ... ok
+test memory::task::tests::test_a_task_the_model_closed_is_not_shown_again ... ok
+test memory::recall::tests::test_a_tool_run_is_found_by_its_output ... ok
+test memory::recall::tests::test_recall_finds_an_old_fact_outside_the_window ... ok
+test memory::recall::tests::test_nothing_when_everything_is_visible_or_unrelated ... ok
+test memory::recall::tests::test_a_visible_question_does_not_hide_the_answer ... ok
+test memory::recall::tests::test_time_windows ... ok
+test planner::tests::test_caps_and_groups ... ok
+test memory::task::tests::test_implicit_task_from_changes_and_model_updates_win ... ok
+test memory::task::tests::test_no_task_without_changes ... ok
+test memory::time::tests::test_days_are_the_users_days ... ok
+test planner::tests::test_evictable_left_out_does_not_ask_for_compaction ... ok
+test planner::tests::test_older_turns_go_first_and_whole ... ok
+test memory::time::tests::test_open_ends_hours_and_mistakes ... ok
+test planner::tests::test_protected_that_cannot_fit_is_a_clean_error ... ok
+test planner::tests::test_thinking_doubles_the_reserve ... ok
+test planner::tests::test_same_input_same_plan_in_any_order ... ok
+test planner::tests::test_never_exceeds_available_and_never_drops_protected ... ok
+test planner::tests::test_keeps_the_recent_turns_when_they_fit ... ok
+test memory::recall::tests::test_index_rebuild_is_fast ... ok
+test memory::card::tests::test_twenty_thousand_cards_build_fast ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+   Doc-tests cluaiz_context
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling syn v3.0.4
+   Compiling ring v0.17.14
+   Compiling rand_core v0.6.4
+   Compiling simd-adler32 v0.3.9
+   Compiling miniz_oxide v0.8.9
+   Compiling password-hash v0.4.2
+   Compiling rustls-webpki v0.103.13
+   Compiling serde_derive_internals v0.30.0
+   Compiling ref-cast-impl v1.0.27
+   Compiling rustls v0.23.39
+   Compiling schemars_derive v1.2.3
+   Compiling ref-cast v1.0.27
+   Compiling schemars v1.2.3
+   Compiling zstd-safe v5.0.2+zstd.1.5.2
+   Compiling serde_path_to_error v0.1.20
+   Compiling time v0.3.47
+   Compiling tokenizers v0.22.2
+   Compiling cluaiz-cep v0.1.0 (/home/Aryan/cluaiz/cep)
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling pbkdf2 v0.11.0
+   Compiling flate2 v1.1.9
+   Compiling bzip2 v0.4.4
+   Compiling zstd v0.11.2+zstd.1.5.2
+   Compiling zip v0.6.6
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling cluaiz-security v0.1.0 (/home/Aryan/cluaiz/security)
+   Compiling cluaiz-agents v0.1.0 (/home/Aryan/cluaiz/agents)
+    Finished `release` profile [optimized] target(s) in 35.62s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_agents-9fd3137aef4c63cc)
+
+running 63 tests
+test execution::environment::tests::test_secret_scrubbing ... ok
+test execution::policy::tests::test_cross_platform_sensitive_paths_blocked_in_sandbox ... ok
+test execution::policy::tests::test_hard_denied_destructive_commands_all_os ... ok
+test execution::policy::tests::test_non_existent_cwd_denied ... ok
+test execution::environment::tests::test_venv_path_injection ... ok
+test execution::policy::tests::test_sandboxed_safe_commands_allowed ... ok
+test execution::result::tests::test_signal_explanation ... ok
+test execution::result::tests::test_truncate_large_output ... ok
+test execution::result::tests::test_truncate_small_output ... ok
+test execution::policy::tests::test_strict_mode_confirmation_and_read_only_allowed ... ok
+test execution::terminal_runner::tests::test_dangerous_command_blocked ... ok
+test installer::runtime_env::tests::test_detect_native_runtime ... ok
+test installer::runtime_env::tests::test_detect_node_runtime ... ok
+test installer::runtime_env::tests::test_detect_pure_skill ... ok
+test lifecycle::grants::tests::test_limits_and_revoke ... ok
+test lifecycle::grants::tests::test_replay_restores_what_is_left_and_follows_revokes ... ok
+test lifecycle::ledger::tests::test_empty_turns_are_not_kept ... ok
+test lifecycle::ledger::tests::test_turn_keys_tell_repeated_messages_apart ... ok
+test lifecycle::ledger::tests::test_unloaded_tools_become_notes ... ok
+test lifecycle::session_map::tests::test_idle_loaded_tools_go_pinned_and_bound_stay ... ok
+test mcp::client::tests::test_restart_backoff_and_unavailable ... ok
+test memory::external::tests::test_external_chats_use_ram ... ok
+test memory::external::tests::test_undelivered_events_go_out_once ... ok
+test memory::notes::tests::test_scopes_and_subjects ... ok
+test memory::external::tests::test_mem_store_conformance ... ok
+test lifecycle::grants::tests::test_grants_are_per_chat_and_tool_and_run_out ... ok
+test memory::records::tests::test_files_from_known_argument_names ... ok
+test memory::records::tests::test_secrets_are_redacted ... ok
+test execution::terminal_runner::tests::test_clean_shell_and_stdin ... ok
+test execution::terminal_runner::tests::test_sandbox_runner_basic_echo ... ok
+test memory::transcript::tests::test_changes_from_events_match_diff ... ok
+test memory::transcript::tests::test_ids_take_priority_over_text ... ok
+test memory::transcript::tests::test_new_edited_and_retracted_messages ... ok
+test memory::transcript::tests::test_the_engine_answer_coming_back_is_not_an_edit ... ok
+test memory::transcript::tests::test_unindexed_turns_come_back_until_carded ... ok
+test prompt_compiler::tests::test_empty_tools_compilation ... ok
+test memory::store::tests::test_a_line_cut_by_a_crash_is_skipped_and_reported ... ok
+test prompt_compiler::tests::test_plugin_schema_synthesis ... ok
+test prompt_compiler::tests::test_resolve_target_syntax ... ok
+test memory::store::tests::test_reserved_fields_cannot_overwrite_the_event ... ok
+test registry::types::tests::test_execution_mode_parsing ... ok
+test registry::types::tests::test_matrix_9_combinations ... ok
+test registry::types::tests::test_read_only_trusted_needs_trust_and_a_read_only_mark ... ok
+test registry::types::tests::test_security_mode_parsing ... ok
+test registry::types::tests::test_serde_roundtrip ... ok
+test telemetry::types::tests::measured_context_shares_add_up ... ok
+test tool_search::tests::test_a_one_word_id_alone_is_only_a_title ... ok
+test tool_search::tests::test_actionable_messages ... ok
+test tool_search::tests::test_a_longer_message_does_not_borrow_the_previous_one ... ok
+test tool_search::tests::test_auto_load_needs_one_clear_card ... ok
+test tool_search::tests::test_file_names_count_as_files_not_by_their_words ... ok
+test tool_search::tests::test_closing_words_get_no_card_from_the_previous_message ... ok
+test tool_search::tests::test_clear_requests_get_cards ... ok
+test tool_search::tests::test_follow_up_uses_the_previous_message ... ok
+test tool_search::tests::test_parts_of_words_never_match ... ok
+test tool_search::tests::test_short_sentence_cuts_at_a_word ... ok
+test tool_search::tests::test_terms_split_and_map_words ... ok
+test tool_search::tests::test_read_in_folder_stays_inside_and_never_cuts ... ok
+test memory::notes::tests::test_a_correction_supersedes_and_both_are_kept ... ok
+test memory::store::tests::test_jsonl_store_conformance ... ok
+test memory::notes::tests::test_proposed_notes_wait_for_confirmation ... ok
+test memory::store::tests::test_full_segments_are_compressed_and_still_read ... ok
+test execution::terminal_runner::tests::test_cancel_handle ... ok
+
+test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.00s
+
+   Doc-tests cluaiz_agents
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling libc v0.2.186
+   Compiling serde_json v1.0.150
+   Compiling serde v1.0.228
+   Compiling tokio-macros v2.7.0
+   Compiling tokio v1.52.3
+   Compiling getrandom v0.4.2
+   Compiling schemars v1.2.3
+   Compiling uuid v1.24.0
+   Compiling cluaiz-cep v0.1.0 (/home/Aryan/cluaiz/cep)
+    Finished `release` profile [optimized] target(s) in 8.07s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_cep-83fc4006eaad5802)
+
+running 14 tests
+test approval::tests::test_an_approval_fits_one_call_once ... ok
+test approval::tests::test_a_waiter_gets_the_decision ... ok
+test approval::tests::test_expiry_rejection_and_key_order ... ok
+test envelope::tests::test_meta_is_split_out_and_checked ... ok
+test envelope::tests::test_limits ... ok
+test envelope::tests::test_spec_errors ... ok
+test envelope::tests::test_spec_requests_and_notifications ... ok
+test principal::tests::test_scopes_roots_and_owner_only ... ok
+test registry::tests::test_names ... ok
+test task::tests::test_cancel_failure_and_limit ... ok
+test registry::tests::test_missing_example_panics - should panic ... ok
+test registry::tests::test_duplicate_panics - should panic ... ok
+test registry::tests::test_suggestions_and_schema ... ok
+test task::tests::test_task_lifecycle_and_owner ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/dispatch.rs (target/release/deps/dispatch-fa2ecf3c0ec57700)
+
+running 5 tests
+test test_params_errors_show_the_path_and_example ... ok
+test test_one_approval_covers_every_path_of_the_call ... ok
+test test_single_notification_and_batch ... ok
+test test_scope_roots_and_approval_round_trip ... ok
+test test_tasks_panics_and_discovery_document ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+   Doc-tests cluaiz_cep
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling getrandom v0.2.17
+   Compiling openssl-sys v0.9.116
+   Compiling chrono v0.4.34
+   Compiling esaxx-rs v0.1.10
+   Compiling bindgen v0.59.2
+   Compiling ring v0.17.14
+   Compiling openssl v0.10.80
+   Compiling rustls-webpki v0.103.13
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling rustls v0.23.39
+   Compiling native-tls v0.2.18
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling rand_chacha v0.9.0
+   Compiling ureq v3.3.0
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.12.28
+   Compiling rand v0.9.4
+   Compiling ahash v0.8.12
+   Compiling sonic-rs-sys v0.1.9
+   Compiling cfb v0.14.0
+   Compiling tokenizers v0.22.2
+   Compiling ort-sys v2.0.0-rc.13
+   Compiling cluaiz-hw v0.1.0 (/home/Aryan/cluaiz/engine/hardware)
+   Compiling quick-xml v0.42.0
+   Compiling office_oxide v0.1.15
+   Compiling image v0.24.9
+   Compiling bindgen v0.69.5
+   Compiling infer v0.22.0
+   Compiling rand_core v0.6.4
+   Compiling cmake v0.1.58
+   Compiling llama-engine v0.1.0 (/home/Aryan/cluaiz/engine/llama)
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling rand_chacha v0.3.1
+   Compiling ort v2.0.0-rc.13
+   Compiling rand v0.8.6
+   Compiling cluaiz-plan v0.1.0 (/home/Aryan/cluaiz/engine/plan)
+   Compiling cluaiz-media v0.1.0 (/home/Aryan/cluaiz/engine/media)
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/Aryan/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:733:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   733 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:49:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    49 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling cluaiz-runtime v0.1.0 (/home/Aryan/cluaiz/engine/runtime)
+    Finished `release` profile [optimized] target(s) in 20m 27s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_runtime-cc01f36ea664357b)
+
+running 18 tests
+test chat_memory::tests::chat_ids_map_to_safe_file_names ... ok
+test chat_memory::tests::key_changes_with_model_settings_and_kv_type ... ok
+test embedding_host::tests::test_embedding_context_honors_auto_max_custom_and_missing_geometry ... ok
+test media_admission::tests::test_admission_keeps_permit_until_last_request_owner_drops ... ok
+test media_admission::tests::test_disconnected_preparation_keeps_permit_until_worker_finishes ... ok
+test media_admission::tests::test_preparation_result_holds_admission_and_error_releases_it ... ok
+test onnx_host::tests::test_expiry_rejects_old_request_and_different_model ... ok
+test media_support::tests::test_support_requires_real_asset_encoder_route_and_pairing ... ok
+test speech_host::tests::test_expiry_cannot_unload_a_newer_request_or_replacement ... ok
+test speech_host::tests::test_speech_admission_is_bounded_and_released_with_worker_lease ... ok
+test speech_plan::tests::test_speech_plan_full_split_codec_cpu_and_explicit_cpu ... ok
+test onnx_host::tests::test_tts_budget_counts_external_weights_once_and_rejects_escape ... ok
+test speech_plan::tests::test_speech_plan_matches_native_layout_flags_and_decoded_ceiling ... ok
+test speech_plan::tests::test_speech_plan_manual_gpu_refuses_overcommit_and_keeps_host_guard ... ok
+test speech_host::tests::test_speech_assets_cannot_escape_the_selected_package ... ok
+test speech_plan::tests::test_speech_plan_never_emits_unapplied_expert_offload ... ok
+test speech_host::tests::test_speech_residency_key_tracks_assets_and_load_settings_only ... ok
+test host::media_generation::tests::test_native_worker_keeps_document_and_image_admission_after_caller_drop ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+   Doc-tests cluaiz_runtime
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling tokio v1.52.3
+   Compiling bitflags v2.11.1
+   Compiling futures-util v0.3.32
+   Compiling serde_json v1.0.150
+   Compiling openssl v0.10.80
+   Compiling native-tls v0.2.18
+   Compiling ureq v3.3.0
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling office_oxide v0.1.15
+   Compiling ort-sys v2.0.0-rc.13
+   Compiling hyper v1.9.0
+   Compiling hyper-util v0.1.20
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper-rustls v0.27.9
+   Compiling tower-http v0.6.8
+   Compiling tokio-util v0.7.18
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling reqwest v0.12.28
+   Compiling tokenizers v0.22.2
+   Compiling cluaiz-hw v0.1.0 (/home/Aryan/cluaiz/engine/hardware)
+   Compiling ort v2.0.0-rc.13
+   Compiling cluaiz-media v0.1.0 (/home/Aryan/cluaiz/engine/media)
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+    Finished `release` profile [optimized] target(s) in 1m 09s
+     Running unittests src/lib.rs (target/release/deps/onnx_engine-ad5d4c9de96f6bd5)
+
+running 65 tests
+test audio::stt::families::tests::language_tokens_are_told_apart_from_task_and_timestamp_tokens ... ok
+test audio::stt::families::tests::long_audio_is_split_at_the_quietest_moment_before_each_window_limit ... ok
+test audio::tts::families::audio8::tests::test_audio8_prefill_differential_fixture ... ignored, requires CLUAIZ_AUDIO8_PACKAGE, CLUAIZ_TTS_TEXT_FILE, CLUAIZ_TTS_OUT_DIR
+test audio::tts::families::audio8::sampling::tests::test_sampling_rank_filter_and_invalid_logits ... ok
+test audio::tts::families::audio8::tests::test_audio8_reference_codec_roundtrip ... ignored, requires CLUAIZ_AUDIO8_PACKAGE, CLUAIZ_AUDIO8_VOICE and CLUAIZ_TTS_OUT_DIR
+test audio::tts::families::audio8::steps::tests::test_prefill_can_return_only_final_logits_and_hidden ... ok
+test audio::tts::families::audio8::tests::test_native_audio8_pcm_chunks_recovery_and_cancellation ... ignored, requires CLUAIZ_AUDIO8_PACKAGE, CLUAIZ_TTS_TEXT_FILE and CLUAIZ_TTS_OUT_DIR
+test audio::tts::families::audio8::tests::test_register_audio8_reference_fixture ... ignored, requires CLUAIZ_AUDIO8_PACKAGE, CLUAIZ_AUDIO8_ENCODER, CLUAIZ_TTS_REFERENCE_WAV, CLUAIZ_TTS_TEXT_FILE
+test audio::stt::families::tests::tokenizer_languages_lists_the_language_tokens_once_each ... ok
+test audio::stt::families::moonshine::tests::moonshine_profile_parses_config_and_scales_token_budget_with_audio_duration ... ok
+test audio::tts::families::audio8::voice::tests::test_voice_matrix_shape_range_and_truncation ... ok
+test audio::tts::ipa_dictionary::tests::source_lines_keep_the_first_pronunciation ... ok
+test audio::tts::ipa_dictionary::tests::compiled_file_round_trips ... ok
+test audio::tts::ipa_dictionary::tests::language_codes_resolve_with_base_fallback_and_license_gate ... ok
+test audio::tts::languages::tests::script_picks_the_language_most_letters_use ... ok
+test audio::tts::languages::tests::voice_prefix_resolves_declared_language ... ok
+test audio::tts::numbers::tests::print_readings ... ignored, prints every language's readings for review
+test audio::tts::families::audio8::tests::test_audio8_cache_budget_overflow_and_manifest_contract ... ok
+test audio::tts::phoneme_sets::tests::espeak_keeps_ipa_but_moves_stress_and_drops_dark_l ... ok
+test audio::tts::phoneme_map::tests::speech_requires_content_and_preserves_tokens_with_model_boundary_ids ... ok
+test audio::tts::ipa_dictionary::tests::sources_parse_and_every_language_is_pinned ... ok
+test audio::tts::phoneme_sets::tests::misaki_uses_its_diphthong_letters_and_vowel_stress ... ok
+test audio::tts::rbnf::tests::plural_forms_follow_the_cldr_conditions ... ok
+test audio::tts::phoneme_sets::tests::test_missing_tone_sequences_keep_long_contours_and_glottal_stops ... ok
+test audio::tts::rbnf::tests::quotient_remainder_optional_text_and_other_sets ... ok
+test audio::tts::reading::tests::test_pause_join_adds_only_missing_quiet_samples_and_preserves_speech ... ok
+test audio::tts::reading::tests::test_pause_join_caps_only_near_zero_padding_and_keeps_boundary_guards ... ok
+test audio::tts::reading::tests::test_pause_join_detects_low_padding_at_different_signal_gains ... ok
+test audio::tts::capabilities::tests::test_language_is_independent_of_named_voices ... ok
+test audio::tts::numbers::tests::numbers_inside_text_keep_the_words_around_them ... ok
+test audio::tts::reading::tests::test_reading_preserves_content_and_expands_symbols_at_semantic_boundaries ... ok
+test audio::tts::rules_g2p::tests::actual_pronunciations_fit_installed_model_symbols ... ignored, requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata
+test audio::tts::numbers::tests::every_number_file_says_its_examples ... ok
+test audio::tts::reading::tests::test_operator_labels_exist_for_every_configured_language ... ok
+test audio::tts::romanized::tests::the_chart_writes_hindi_from_english_letters ... ok
+test audio::tts::romanized::tests::spellings_list_only_words_the_chart_writes_differently ... ok
+test audio::tts::tts_router::tests::test_chunk_long_sentence_keeps_whole_words_and_order ... ok
+test audio::tts::rules_g2p::tests::separators_and_join_controls_preserve_words ... ok
+test audio::tts::rules_g2p::tests::canonical_spellings_keep_the_same_pronunciation ... ok
+test audio::tts::rules_g2p::tests::script_and_language_pick_the_rules ... ok
+test audio::tts::tts_router::tests::test_long_sentence_model_token_counts ... ignored, requires CLUAIZ_TTS_TEST_MODEL pointing to staged genuine model metadata
+test audio::tts::tts_router::tests::test_legacy_text_preserves_nested_bracket_content ... ok
+test audio::tts::tts_router::tests::test_english_words_in_hindi_voice_text_keep_the_model_dictionary ... ok
+test audio::tts::tts_router::tests::test_reading_script_selection_preserves_same_script_model_language ... ok
+test cudnn_driver::tests::live_provision_and_verify_cuda_ep ... ignored
+test cudnn_driver::tests::ensure_cudnn_ready_skips_when_no_nvidia_gpu ... ok
+test cudnn_driver::tests::provider_binary_inspection_distinguishes_cuda12_and_cuda13 ... ok
+test audio::tts::tts_router::tests::test_voice_language_routes_latin_and_non_english_g2p_correctly ... ok
+test cudnn_driver::tests::manifest_parses_both_cuda12_and_cuda13_with_all_four_components ... ok
+test engine::provider_tests::test_cpu_execution_retry_only_accepts_observed_provider_faults ... ok
+test cudnn_driver::tests::archive_verification_and_zip_extraction_only_keep_bin_runtime_dlls ... ok
+test cudnn_driver::tests::provider_variant_is_recorded_and_reused_until_the_binary_changes ... ok
+test cudnn_driver::tests::sentinel_detection_requires_non_empty_file ... ok
+test audio::tts::rules_g2p::tests::every_rule_file_says_its_examples ... ok
+test media::tests::test_task_contract_rejects_unimplemented_audio_tasks ... ok
+test text::tests::test_output_rejects_logits_empty_nonfinite_and_zero_vectors ... ok
+test media::tests::test_tensor_contract_rejects_wrong_dtype_and_static_shape ... ok
+test vision::tests::test_processor_respects_layout_values_and_rejects_invalid_contracts ... ok
+test vision::tests::test_shortest_resize_center_crop_preserves_pixels_and_checks_allocation ... ok
+test audio::tts::romanized::tests::words_pick_the_language_for_an_english_model ... ok
+test audio::tts::romanized::tests::every_romanization_file_converts_its_examples ... ok
+test engine::provider_tests::test_failed_cuda_registration_preserves_cpu_retry_builder ... ok
+test audio::stt::families::moonshine::tests::encode_moonshine_waveform_executes_real_onnx_graph_and_normalizes ... ok
+test engine::provider_tests::test_failed_directml_attempt_preserves_cpu_retry_builder ... ok
+test engine::provider_tests::test_cpu_provider_executes_real_graph ... ok
+
+test result: ok. 57 passed; 0 failed; 8 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/media_integration.rs (target/release/deps/media_integration-537cd3ed745a522c)
+
+running 2 tests
+test real_image_graph_signature_and_embedding_driver ... ignored, requires a real external image package with processor/tokenizer assets
+test real_installed_tts_packages_produce_nonempty_waveforms ... ignored, requires CLUAIZ_TTS_TEST_PACKAGES JSON graph paths and CLUAIZ_TTS_TEST_TEXT
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests onnx_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling tracing v0.1.44
+   Compiling parking_lot_core v0.9.12
+   Compiling uuid v1.24.0
+   Compiling ring v0.17.14
+   Compiling parking_lot v0.12.5
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling tokio v1.52.3
+   Compiling tempfile v3.27.0
+   Compiling rustls-webpki v0.103.13
+   Compiling rustls v0.23.39
+   Compiling ahash v0.8.12
+   Compiling tokenizers v0.22.2
+   Compiling hyper v1.9.0
+   Compiling hyper-util v0.1.20
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.4
+   Compiling tower-http v0.6.8
+   Compiling hyper-rustls v0.27.9
+   Compiling tokio-util v0.7.18
+   Compiling cluaiz-hw v0.1.0 (/home/Aryan/cluaiz/engine/hardware)
+   Compiling reqwest v0.12.28
+   Compiling cfb v0.14.0
+   Compiling lopdf v0.34.0
+   Compiling wayland-sys v0.31.11
+   Compiling safetensors v0.8.0
+   Compiling wayland-backend v0.3.17
+   Compiling pdf-extract v0.7.12
+   Compiling office_oxide v0.1.15
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling infer v0.22.0
+   Compiling async-signal v0.2.14
+   Compiling password-hash v0.4.2
+   Compiling async-process v2.5.0
+   Compiling wayland-client v0.31.15
+   Compiling cluaiz-cep v0.1.0 (/home/Aryan/cluaiz/cep)
+   Compiling zbus v5.19.0
+   Compiling pbkdf2 v0.11.0
+   Compiling ort v2.0.0-rc.13
+   Compiling wayland-protocols v0.32.13
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/Aryan/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:733:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   733 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:49:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    49 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling cluaiz-plan v0.1.0 (/home/Aryan/cluaiz/engine/plan)
+   Compiling ashpd v0.11.1
+   Compiling zip v0.6.6
+   Compiling cluaiz-security v0.1.0 (/home/Aryan/cluaiz/security)
+   Compiling axum-core v0.5.6
+   Compiling axum v0.8.9
+   Compiling rfd v0.15.4
+   Compiling cluaiz-agents v0.1.0 (/home/Aryan/cluaiz/agents)
+   Compiling sysinfo v0.33.1
+   Compiling cluaiz-media v0.1.0 (/home/Aryan/cluaiz/engine/media)
+   Compiling llama-engine v0.1.0 (/home/Aryan/cluaiz/engine/llama)
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+   Compiling cluaiz-runtime v0.1.0 (/home/Aryan/cluaiz/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (/home/Aryan/cluaiz/api)
+warning: function `ingest` is never used
+  --> api/tests/support/mod.rs:33:14
+   |
+33 | pub async fn ingest(router: &Router, params: Value) -> Result<std::result::Result<Value, Value>> {
+   |              ^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `cep` is never used
+  --> api/tests/support/mod.rs:40:14
+   |
+40 | pub async fn cep(router: &Router, method: &str, params: Value) -> Result<std::result::Result<Value, Value>> {
+   |              ^^^
+
+warning: `cluaiz-api` (test "media_resource_contract") generated 2 warnings
+warning: `cluaiz-api` (test "ingest_http_contract") generated 2 warnings (2 duplicates)
+warning: `cluaiz-api` (test "cep_models_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "cep_docs") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "video_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "processing_contract") generated 2 warnings (2 duplicates)
+warning: `cluaiz-api` (test "cep_tools_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "cep_fs_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "tts_hardening") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "cep_system_contract") generated 1 warning (1 duplicate)
+warning: function `cep` is never used
+  --> api/tests/support/mod.rs:40:14
+   |
+40 | pub async fn cep(router: &Router, method: &str, params: Value) -> Result<std::result::Result<Value, Value>> {
+   |              ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cluaiz-api` (test "media_contract") generated 1 warning (1 duplicate)
+warning: unused variable: `body`
+   --> api/tests/document_contract.rs:126:9
+    |
+126 |     let body = support::ingest(&router, json!({"source":"local.pdf"})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `body`
+   --> api/tests/document_contract.rs:133:9
+    |
+133 |     let body = support::ingest(&router, json!({"source":"local.pdf"})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
+    |         ^^^^ help: if this is intentional, prefix it with an underscore: `_body`
+
+warning: `cluaiz-api` (test "cep_exec_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "reasoning_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "cep_audio_contract") generated 1 warning (1 duplicate)
+warning: `cluaiz-api` (test "ingest_models") generated 1 warning
+warning: `cluaiz-api` (test "document_contract") generated 2 warnings (run `cargo fix --test "document_contract" -p cluaiz-api` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 3m 32s
+     Running unittests src/lib.rs (target/release/deps/cluaiz_api-42ba07b8f3b56e3e)
+
+running 26 tests
+test auth::tests::test_session_token_persists_in_selected_environment ... ignored, writes only in an explicitly supplied isolated CLUAIZ_HOME / CLUAIZ_MEDIA_TEST_HOME
+test auth::tests::test_constant_time_compare ... ok
+test auth::tests::test_extract_bearer_token ... ok
+test cep::methods::audio::tests::test_cancellation_closes_worker_receiver_and_sets_preparation_flag ... ok
+test cep::methods::audio::tests::test_worker_failure_or_missing_completion_is_not_success ... ok
+test cep::methods::audio::tests::test_audio_events_and_final_domain_output ... ok
+test cep::methods::storage::tests::test_storage_missing_is_empty_and_invalid_root_is_an_error ... ok
+test cep::methods::system::tests::test_chat_inputs_mark_positive_capabilities_available_without_session_state ... ok
+test cep::methods::system::tests::test_plan_overrides_apply_without_changing_saved_auto_settings ... ok
+test cep::methods::system::tests::test_plan_rejects_invalid_or_unused_fields ... ok
+test handlers::audio::tests::test_explicit_missing_model_is_not_replaced ... ok
+test handlers::audio::tests::test_unsupported_audio_options_are_errors ... ok
+test handlers::chat::tool_parser::tests::test_extract_clean_tool_call ... ok
+test handlers::chat::processing::tests::test_dropped_progress_stream_cancels_its_preflight_task ... ok
+test cep::methods::storage::tests::test_storage_counts_actual_files_and_cleanup_results ... ok
+test handlers::chat::tool_parser::tests::test_extract_markdown_fenced_tool_call ... ok
+test handlers::chat::tool_parser::tests::test_guard_hides_tool_call_markup ... ok
+test handlers::chat::tool_parser::tests::test_guard_releases_text_that_is_not_a_call ... ok
+test handlers::chat::tool_parser::tests::test_no_tool_call ... ok
+test handlers::chat::tool_turns::tests::test_each_step_is_added_once ... ok
+test handlers::chat::tool_turns::tests::test_tool_role_detection ... ok
+test handlers::chat::tool_turns::tests::test_templates_without_tool_role_get_a_user_tool_response ... ok
+test routes::tests::test_inline_body_bytes_accounts_for_base64_padding_and_overflow ... ok
+test handlers::embeddings::tests::test_requests_reject_empty_batches_audio_and_unsupported_encoding ... ok
+test utils::tests::test_standard_relative_missing_and_inline_sources_share_one_boundary ... ok
+test utils::tests::test_standard_local_source_uses_owner_and_shared_canonical_path ... ok
+
+test result: ok. 25 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running ../test/media_regression/artifact_acceptance.rs (target/release/deps/artifact_acceptance-2780eeb3d132f23d)
+
+running 4 tests
+test embedding_acceptance::real_final_executable_embeddings_and_vision ... ignored, requires isolated home, final executable and explicit GGUF/ONNX/image/chat model paths
+test processing_acceptance::real_repeated_attachments_report_progress_and_keep_loaded_plan ... ignored, requires fresh CLUAIZ_HOME, executable, explicit registry/settings/model ID and optional image
+test real_chat_planner_only_selected_models_settings_and_timings ... ignored, requires final executable, fresh CLUAIZ_HOME and explicit read-only Chat registry/settings/root
+test real_final_executable_attachments_and_onnx_apis ... ignored, requires fresh isolated CLUAIZ_HOME, final executable, native package and real model/sample paths
+
+test result: ok. 0 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/cep_audio_contract.rs (target/release/deps/cep_audio_contract-7d4596b1236fe245)
+
+running 1 test
+test test_audio_validation_tasks_policy_and_route_cutover ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/cep_contract.rs (target/release/deps/cep_contract-fb8a70ad4d086632)
+
+running 2 tests
+test test_route_table_is_the_standard_routes_and_cep ... ok
+test test_cep_endpoint_basics ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.09s
+
+     Running tests/cep_docs.rs (target/release/deps/cep_docs-f6dfce4e4126dba0)
+
+running 1 test
+test test_cep_docs_match_the_registry ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.69s
+
+     Running tests/cep_exec_contract.rs (target/release/deps/cep_exec_contract-429d85f18010ddb0)
+
+running 2 tests
+test test_download_and_pull_refuse_an_empty_model_before_any_request ... ok
+test test_exec_asks_the_owner_for_every_call_and_refuses_a_shell_line ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/cep_fs_contract.rs (target/release/deps/cep_fs_contract-a9ed369b7c2f07de)
+
+running 2 tests
+test test_real_api_router_fs_workspace_round_trip_and_old_routes_removed ... ok
+test test_delete_and_rename_act_on_a_link_not_its_target ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/cep_models_contract.rs (target/release/deps/cep_models_contract-a3bad5136d30bee9)
+
+running 1 test
+test test_models_registry_inspect_remove_validation_and_retired_routes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.70s
+
+     Running tests/cep_system_contract.rs (target/release/deps/cep_system_contract-a84ac5df98db1463)
+
+running 3 tests
+test test_system_telemetry_has_domain_results_and_old_routes_are_gone ... ok
+test test_plan_path_roots_and_storage_write_scope_are_checked ... ok
+test test_planner_rejects_bad_params_and_missing_models_without_loading ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.36s
+
+     Running tests/cep_tools_contract.rs (target/release/deps/cep_tools_contract-a48054ee301d3e33)
+
+running 1 test
+test test_tools_install_task_files_settings_cache_execution_and_boundaries ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.66s
+
+     Running tests/document_contract.rs (target/release/deps/document_contract-f176f3776b8a09f9)
+
+running 2 tests
+test real_router_pdf_attachment_reaches_text_only_llama ... ignored, requires isolated CLUAIZ_HOME / CLUAIZ_MEDIA_TEST_HOME and a real text GGUF
+test test_router_document_extraction_content_errors_auth_and_workspace ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.71s
+
+     Running tests/embedding_contract.rs (target/release/deps/embedding_contract-ca1cd5788823dac9)
+
+running 2 tests
+test real_router_selected_gguf_text_embeddings ... ignored, requires isolated home, CLUAIZ_GGUF_EMBEDDING_MODEL and test texts
+test real_router_selected_onnx_image_and_text_embeddings ... ignored, requires isolated home, real ONNX image/text packages and test text
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ingest_http_contract.rs (target/release/deps/ingest_http_contract-e4521436dcece0d5)
+
+running 2 tests
+test direct_ingest_returns_text_metadata_and_ordered_partial_results ... ok
+test direct_ingest_distinguishes_validation_schema_model_and_parse_errors ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.64s
+
+     Running tests/ingest_models.rs (target/release/deps/ingest_models-57611858461daf63)
+
+running 1 test
+test real_ingest_selected_models_and_native_fallback ... ignored, requires an isolated home, source registry and actual ONNX/GGUF packages
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/media_contract.rs (target/release/deps/media_contract-761dec2f934890e8)
+
+running 4 tests
+test real_router_image_audio_metadata_errors_and_continuation ... ignored, requires real installed model/audio and isolated CLUAIZ_HOME / CLUAIZ_MEDIA_TEST_HOME
+test real_router_onnx_audio_selected_model_and_retention ... ignored, requires installed ONNX speech packages, online WAV and isolated CLUAIZ_HOME
+test continuation_retains_real_buffers_and_request_options ... ok
+test transport_parts_preserve_order_without_reading_sources ... ok
+
+test result: ok. 2 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/media_resource_contract.rs (target/release/deps/media_resource_contract-37c261c7feb6f4df)
+
+running 2 tests
+test test_busy_attachment_rejects_before_fetch_and_releases_for_retry ... ok
+test test_inline_attachment_transport_accepts_large_json_and_bounds_oversize ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.75s
+
+     Running tests/native_contract.rs (target/release/deps/native_contract-afce8ccef8fcf998)
+
+running 5 tests
+test unix_refuses_existing_paths_and_nonprivate_parent ... ok
+test native_disconnect_drops_stream_and_shutdown_reaps_idle_connections ... ok
+test native_requires_session_auth_before_public_or_auth_disabled_routes ... ok
+test native_preserves_binary_sse_body_limits_and_partial_http_reads ... ok
+test native_connection_capacity_recovers_when_an_owned_stream_disconnects ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.71s
+
+     Running tests/processing_contract.rs (target/release/deps/processing_contract-2f3d79e27ab62e22)
+
+running 1 test
+test test_processing_unknown_model_reports_terminal_error_without_token_pollution ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.68s
+
+     Running tests/reasoning_contract.rs (target/release/deps/reasoning_contract-b380a367989c2a29)
+
+running 3 tests
+test real_skip_reasoning_ends_native_thinking_and_preserves_next_request ... ignored, requires fresh isolated CLUAIZ_HOME and a read-only thinking GGUF
+test test_skip_visibility_preserves_split_native_end_marker_and_answer ... ok
+test test_skip_control_is_scoped_and_rejects_unknown_unsupported_and_unauthenticated ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.67s
+
+     Running tests/tts_hardening.rs (target/release/deps/tts_hardening-1f2f7dc385d2ddad)
+
+running 1 test
+test test_real_tts_capabilities_admission_devices_and_backend_replacement ... ignored, requires isolated CLUAIZ_HOME under target, installed CLUAIZ_TTS_ENGINE_MODEL and CLUAIZ_TTS_ONNX_MODEL, text/output paths
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/video_contract.rs (target/release/deps/video_contract-f729f338edf4817e)
+
+running 2 tests
+test real_video_api_json_sse_and_planner_reach_selected_vision_model ... ignored, requires real vision GGUF/projector, packaged video provider, and an empty isolated CLUAIZ_HOME
+test test_video_transport_is_ordered_and_audio_is_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests cluaiz_api
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
