@@ -100,7 +100,7 @@ pub fn snapshot() -> HashMap<String, f64> {
 
 /// Measurements read back from disk (replaces what is held); entries of an older format are dropped
 pub fn restore(mut measured: HashMap<String, f64>) {
-    measured.retain(|key, _| ["pool:", "proj:", "onnx:"].iter().any(|prefix| key.starts_with(prefix)));
+    measured.retain(|key, _| ["pool:", "proj:", "onnx:", "speech:"].iter().any(|prefix| key.starts_with(prefix)));
     if let Ok(mut guard) = LEARNED.write() {
         *guard = Some(measured);
     }
