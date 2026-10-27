@@ -38,8 +38,29 @@ pub fn check_request_ram(
     live: &SystemInfo,
     settings: &ActiveUserSettings,
 ) -> Result<()> {
-    if workspace == 0
-        || !live.memory.total_gb.is_finite()
+    if workspace == 0 {
+        bail!("Invalid live RAM snapshot or media workspace estimate");
+    }
+    check_ram(workspace, additional_buffers, live, settings)
+}
+
+/// While a request runs, its workspace is already allocated and out of the live free RAM: only
+/// the buffers it adds next are checked
+pub fn check_in_flight_ram(
+    additional_buffers: u64,
+    live: &SystemInfo,
+    settings: &ActiveUserSettings,
+) -> Result<()> {
+    check_ram(0, additional_buffers, live, settings)
+}
+
+fn check_ram(
+    workspace: u64,
+    additional_buffers: u64,
+    live: &SystemInfo,
+    settings: &ActiveUserSettings,
+) -> Result<()> {
+    if !live.memory.total_gb.is_finite()
         || live.memory.total_gb <= 0.0
         || !live.memory.available_gb.is_finite()
         || live.memory.available_gb < 0.0
@@ -194,6 +215,17 @@ mod tests {
         assert!(check_request_ram(u64::MAX, 1, &hw, &settings).is_err());
         hw.memory.available_gb = f64::NAN;
         assert!(check_request_ram(4, 2, &hw, &settings).is_err());
+    }
+
+    #[test]
+    fn test_in_flight_ram_charges_only_the_new_buffers() {
+        let (mut hw, settings) = snapshot(6, 0);
+        hw.memory.available_gb = bytes_to_gib(3);
+        assert!(check_request_ram(4, 2, &hw, &settings).is_err());
+        assert!(check_in_flight_ram(2, &hw, &settings).is_ok());
+        assert!(check_in_flight_ram(4, &hw, &settings).is_err());
+        hw.memory.available_gb = f64::NAN;
+        assert!(check_in_flight_ram(1, &hw, &settings).is_err());
     }
 
     #[test]

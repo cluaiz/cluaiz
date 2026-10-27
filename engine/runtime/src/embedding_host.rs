@@ -44,13 +44,28 @@ pub struct EmbeddingHost {
     state: Arc<Mutex<Option<Resident>>>,
     transition: Arc<tokio::sync::Mutex<()>>,
     admission: crate::media_admission::MediaAdmission,
+    room: crate::media_room::MediaRoom,
 }
 
 impl EmbeddingHost {
-    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
+    pub(crate) fn with_transition(
+        transition: Arc<tokio::sync::Mutex<()>>,
+        room: crate::media_room::MediaRoom,
+    ) -> Self {
         Self {
             transition,
+            room,
             ..Self::default()
+        }
+    }
+
+    /// [`Self::unload_idle`] for another owner, without keeping this one alive
+    pub(crate) fn idle_releaser(&self) -> impl Fn() -> bool + Send + Sync + 'static {
+        let state = Arc::downgrade(&self.state);
+        move || {
+            state
+                .upgrade()
+                .is_some_and(|state| state.try_lock().ok().and_then(|mut state| state.take()).is_some())
         }
     }
 
@@ -121,20 +136,23 @@ impl EmbeddingHost {
                     *state = None;
                     let geometry = GgufProber::probe_geometry(&path)?;
                     crate::vram_use::load();
-                    let hardware = cluaiz_hw::HardwareProber::with_live_memory();
                     let captured = capture_settings(&geometry, &settings)?;
-                    let plan = cluaiz_plan::Planner::create_plan(
-                        &entry.id, &geometry, &hardware, &captured,
+                    let path = path.to_str().context("UTF-8 model path")?;
+                    let (mut hardware, mut plan) = (None, None);
+                    let model = owner.room.retry_freeing_others("embedding", || {
+                        let live = cluaiz_hw::HardwareProber::with_live_memory();
+                        let planned = cluaiz_plan::Planner::create_plan(&entry.id, &geometry, &live, &captured);
+                        if !planned.is_feasible() {
+                            bail!("{}", planned.explanation);
+                        }
+                        let model = crate::host::native_load::load_embedding_with_plan(path, &planned, &captured, &live)?;
+                        (hardware, plan) = (Some(live), Some(planned));
+                        Ok(model)
+                    })?;
+                    let (hardware, plan) = (
+                        hardware.context("Embedding plan missing")?,
+                        plan.context("Embedding plan missing")?,
                     );
-                    if !plan.is_feasible() {
-                        bail!("{}", plan.explanation);
-                    }
-                    let model = crate::host::native_load::load_embedding_with_plan(
-                        path.to_str().context("UTF-8 model path")?,
-                        &plan,
-                        &captured,
-                        &hardware,
-                    )?;
                     if plan.n_gpu_layers != 0 {
                         if let Some(gpu) = hardware.gpus.first() {
                             measuring = Some((

@@ -184,6 +184,7 @@ struct AudioState {
 pub struct OnnxHost {
     state: Arc<Mutex<AudioState>>,
     transition: Arc<tokio::sync::Mutex<()>>,
+    room: crate::media_room::MediaRoom,
 }
 
 struct AudioExecution {
@@ -273,6 +274,13 @@ fn record_device_use(key: &str, taken_gb: f64) {
     }
 }
 
+fn free_idle(state: &Mutex<AudioState>) -> bool {
+    let Ok(mut state) = state.try_lock() else { return false };
+    let parked = !state.parked.is_empty();
+    state.parked.clear();
+    state.resident.take().is_some() || parked
+}
+
 fn graph_asset_bytes(dir: &std::path::Path, graphs: &[cluaiz_models::prober::OnnxProbeResult]) -> Result<u64> {
     let mut paths = std::collections::BTreeSet::new();
     for graph in graphs {
@@ -288,17 +296,20 @@ fn graph_asset_bytes(dir: &std::path::Path, graphs: &[cluaiz_models::prober::Onn
 }
 
 impl OnnxHost {
-    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
-        Self { transition, ..Default::default() }
+    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>, room: crate::media_room::MediaRoom) -> Self {
+        Self { transition, room, ..Default::default() }
     }
 
     /// Frees the resident ONNX model (speech, transcription, embedding) when no request is using
     /// it; true when one was freed
     pub fn unload_idle(&self) -> bool {
-        let Ok(mut state) = self.state.try_lock() else { return false };
-        let parked = !state.parked.is_empty();
-        state.parked.clear();
-        state.resident.take().is_some() || parked
+        free_idle(&self.state)
+    }
+
+    /// [`Self::unload_idle`] for another owner, without keeping this one alive
+    pub(crate) fn idle_releaser(&self) -> impl Fn() -> bool + Send + Sync + 'static {
+        let state = Arc::downgrade(&self.state);
+        move || state.upgrade().is_some_and(|state| free_idle(&state))
     }
 
     /// Release only an inactive ONNX TTS resident when the GGUF speech backend is selected.
@@ -494,7 +505,8 @@ impl OnnxHost {
         if state.resident.as_ref().is_none_or(|r| r.key != key) {
             state.resident = None; // Free the previous graph before allocating its replacement.
             let _transition = self.transition.blocking_lock();
-            let (effective, measure_key, for_room) = onnx_load_settings(model, task, settings)?;
+            let (effective, measure_key, for_room) =
+                self.room.retry_freeing_others("ONNX", || onnx_load_settings(model, task, settings))?;
             if for_room {
                 cpu_for_room = Some(measure_key.clone());
             }
@@ -503,12 +515,15 @@ impl OnnxHost {
             }
             let mut engine = OnnxEngine::with_settings(effective.clone())?;
             if let Err(error) = load(&mut engine) {
-                // Models kept for other tasks may be what left too little memory: free them, once
-                if state.parked.is_empty() {
+                // Models kept for other tasks, or idle models of other kinds, may be what left too
+                // little memory: free them, once
+                let parked = !state.parked.is_empty();
+                state.parked.clear();
+                let freed = self.room.free_others("ONNX");
+                if !parked && freed.is_empty() {
                     return Err(error);
                 }
-                tracing::warn!(model = %model.id, task, %error, "ONNX load failed with other tasks' models kept; freeing them and loading again");
-                state.parked.clear();
+                tracing::warn!(model = %model.id, task, %error, ?freed, "ONNX load failed with other models kept; freeing them and loading again");
                 engine = OnnxEngine::with_settings(effective)?;
                 load(&mut engine)?;
             }
@@ -533,8 +548,9 @@ impl OnnxHost {
             .context("ONNX session was not published")?;
         resident.generation = generation;
         if task == "text_to_speech" {
-            if let Err(error) = cluaiz_plan::media_budget::check_request_ram(settings.media.projector_workspace_bytes.get(), 0,
-                &cluaiz_hw::HardwareProber::with_live_memory(), settings) {
+            // A load can take more RAM than its estimate and leave too little for the request
+            if let Err(error) = self.room.retry_freeing_others("ONNX", || cluaiz_plan::media_budget::check_request_ram(
+                settings.media.projector_workspace_bytes.get(), 0, &cluaiz_hw::HardwareProber::with_live_memory(), settings)) {
                 state.resident = None;
                 return Err(error);
             }

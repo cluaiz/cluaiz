@@ -5,6 +5,7 @@ pub mod chat_memory;
 pub mod embedding_host;
 pub mod host;
 pub mod media_admission;
+mod media_room;
 pub mod media_support;
 pub mod onnx_host;
 pub mod speech_host;
