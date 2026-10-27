@@ -97,6 +97,8 @@ pub struct EngineHost {
     pub last_context: Arc<Mutex<Option<ContextReport>>>,
     /// Chat whose KV cache the context holds now (chat memory on disk)
     memory_owner: Arc<Mutex<Option<String>>>,
+    /// The loaded model's GPU use, to learn its peak from later requests (`cluaiz_plan::margin`)
+    gpu_use: Arc<Mutex<Option<GpuUse>>>,
     /// Chat whose finished generation is in the context but not saved yet (`persist: false`)
     unsaved_chat: Arc<Mutex<Option<String>>>,
     /// Thinking tags of the loaded model per chat template (template -> tags); cleared on unload
@@ -146,6 +148,7 @@ impl EngineHost {
             last_thinking: Arc::new(Mutex::new(None)),
             last_context: Arc::new(Mutex::new(None)),
             memory_owner: Arc::new(Mutex::new(None)),
+            gpu_use: Arc::new(Mutex::new(None)),
             unsaved_chat: Arc::new(Mutex::new(None)),
             thinking_tags_cache: Arc::new(Mutex::new(None)),
             plan_report: Arc::new(Mutex::new(None)),
@@ -251,11 +254,13 @@ impl EngineHost {
 
         if self.is_model_loaded_with_fingerprint(&key).await {
             if let Some(plan) = self.current_plan.lock().await.clone() {
+                self.learn_gpu_peak().await;
                 return Ok(plan);
             }
         }
 
         self.unload_model_inner().await;
+        load_vram_margins();
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         let plan = Planner::create_plan(model_id, &geometry, &hw, settings);
@@ -265,7 +270,36 @@ impl EngineHost {
                 .await;
             return Err(anyhow::anyhow!("{}", plan.explanation));
         }
-        let plan = self.load_model_inner(&path_str, &plan, settings).await?;
+        let measured_before = cluaiz_plan::margin::learned(&geometry, settings).is_some();
+        let mut plan = self.load_model_inner(&path_str, &plan, settings).await?;
+        // First load of this model here: it was planned with llama.cpp's fixed margin and has just
+        // been measured. When the measurement allows a better placement on the same free memory,
+        // that one is loaded. If it then leaves less than the desktop reserve free, its own (larger)
+        // measurement is kept and the model is planned and loaded once more.
+        if !measured_before && cluaiz_plan::margin::learned(&geometry, settings).is_some() {
+            let better = Planner::create_plan(model_id, &geometry, &hw, settings);
+            if better.is_feasible() && is_better_placement(&better, &plan) {
+                tracing::info!(
+                    "📏 [EngineHost] Measured on this GPU: reloading with {} blocks on the GPU and {} tokens (was {} and {})",
+                    better.block_split().0, better.context_window, plan.block_split().0, plan.context_window
+                );
+                self.unload_model_inner().await;
+                plan = self.load_model_inner(&path_str, &better, settings).await?;
+                let free = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
+                let reserve = cluaiz_plan::margin::reserve_gb(&hw);
+                if free < reserve {
+                    let safe = Planner::create_plan(model_id, &geometry, &hw, settings);
+                    tracing::warn!(
+                        "⚠️ [EngineHost] Only {:.2} GB VRAM left after the reload (reserve {:.2}); loading {} blocks on the GPU and {} tokens",
+                        free, reserve, safe.block_split().0, safe.context_window
+                    );
+                    if safe.is_feasible() {
+                        self.unload_model_inner().await;
+                        plan = self.load_model_inner(&path_str, &safe, settings).await?;
+                    }
+                }
+            }
+        }
         *self.current_plan.lock().await = Some(plan.clone());
         *self.loaded_settings.lock().await = Some(settings.clone());
         Ok(plan)
@@ -288,6 +322,7 @@ impl EngineHost {
                 return Ok(plan);
             }
         }
+        load_vram_margins();
         let hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         Ok(Planner::create_plan(model_id, &geometry, &hw, settings))
@@ -401,7 +436,18 @@ impl EngineHost {
             );
             if vram_delta < 0.05 {
                 tracing::warn!("⚠️ [EngineHost] GPU layers requested but VRAM did not change: is the CUDA backend compiled in?");
-            } else if vram_delta > plan.vram_budget_gb + plan.vram_buffer_gb {
+            } else {
+                // What the model took beyond the estimate (llama.cpp buffers, the GPU pool after the
+                // full-batch warmup): the planner adds it next time instead of a fixed margin
+                cluaiz_plan::margin::record(&geometry, settings, vram_delta - plan.vram_budget_gb);
+                save_vram_margins();
+                *self.gpu_use.lock().await = Some(GpuUse {
+                    key: cluaiz_plan::margin::key(&geometry, settings),
+                    free_before_gb: pre_free_vram,
+                    planned_gb: plan.vram_budget_gb,
+                });
+            }
+            if vram_delta > plan.vram_budget_gb + plan.vram_buffer_gb {
                 tracing::warn!(
                     "⚠️ [EngineHost] Took {:.2} GB VRAM, more than plan + buffer ({:.2} GB): Windows may move the rest to shared GPU memory",
                     vram_delta, plan.vram_budget_gb + plan.vram_buffer_gb
@@ -432,6 +478,26 @@ impl EngineHost {
         Ok(loaded_plan)
     }
 
+    /// The GPU pool of a loaded model keeps growing with longer prompts after the load-time
+    /// measurement. Before each request the model's use so far is measured again and the planner
+    /// learns the larger value. Skipped while another model of this process is resident, whose
+    /// memory would be counted as this one's.
+    async fn learn_gpu_peak(&self) {
+        let Some(gpu) = self.gpu_use.lock().await.clone() else { return };
+        let others = self.speech.resident_model().is_some()
+            || self.embeddings.resident_model().is_some()
+            || self.onnx.resident_model().await.ok().flatten().is_some();
+        if others {
+            return;
+        }
+        let free_now = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
+        let gap = (gpu.free_before_gb - free_now) - gpu.planned_gb;
+        if cluaiz_plan::margin::record_key(&gpu.key, gap) {
+            tracing::info!("📏 [EngineHost] The loaded model now takes {:+.2} GB over its estimate; learned for its next load", gap);
+            save_vram_margins();
+        }
+    }
+
     async fn record_plan_report(&self, banner: String) {
         tracing::info!("{}", banner);
         *self.plan_report.lock().await = Some(banner);
@@ -459,6 +525,7 @@ impl EngineHost {
         let mut tokens_guard = self.last_prefilled_tokens.lock().await;
         tokens_guard.clear();
         *self.memory_owner.lock().await = None;
+        *self.gpu_use.lock().await = None;
         tracing::info!("♻️ [EngineHost] Model unloaded from process memory");
     }
 
@@ -851,6 +918,53 @@ impl EngineHost {
             llama.bench(n_prompt, n_gen, reps)
         })
         .await?
+    }
+}
+
+/// What the loaded model was planned to take on the GPU and how much was free before it loaded
+#[derive(Clone)]
+struct GpuUse {
+    key: String,
+    free_before_gb: f64,
+    planned_gb: f64,
+}
+
+/// Whether `candidate` runs more of the model on the GPU than `current`, or as much with a bigger
+/// context
+fn is_better_placement(candidate: &ExecutionPlan, current: &ExecutionPlan) -> bool {
+    let (gpu_new, gpu_now) = (candidate.block_split().0, current.block_split().0);
+    gpu_new > gpu_now || (gpu_new == gpu_now && candidate.context_window > current.context_window)
+}
+
+/// Where the measured VRAM margins of this machine are kept
+fn vram_margins_path() -> std::path::PathBuf {
+    cluaiz_core::EnvironmentManager::current().engine_dir().join("vram_margins.json")
+}
+
+/// Reads the measured margins once per process
+fn load_vram_margins() {
+    static LOADED: std::sync::Once = std::sync::Once::new();
+    LOADED.call_once(|| {
+        let measured = std::fs::read_to_string(vram_margins_path())
+            .ok()
+            .and_then(|text| serde_json::from_str::<std::collections::HashMap<String, f64>>(&text).ok())
+            .unwrap_or_default();
+        cluaiz_plan::margin::restore(measured);
+    });
+}
+
+fn save_vram_margins() {
+    let path = vram_margins_path();
+    let saved = serde_json::to_string_pretty(&cluaiz_plan::margin::snapshot())
+        .map_err(anyhow::Error::from)
+        .and_then(|text| {
+            if let Some(dir) = path.parent() {
+                std::fs::create_dir_all(dir)?;
+            }
+            Ok(std::fs::write(&path, text)?)
+        });
+    if let Err(e) = saved {
+        tracing::warn!("⚠️ [EngineHost] Could not save the measured VRAM margins to {}: {}", path.display(), e);
     }
 }
 

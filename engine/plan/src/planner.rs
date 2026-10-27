@@ -49,6 +49,27 @@ pub fn vram_buffer_options(settings: &ActiveUserSettings) -> Vec<f64> {
     }
 }
 
+/// VRAM buffer candidates for a model: the user's value; else, once the model was measured on
+/// this machine, what it really took over the estimate plus the desktop reserve
+/// ([`crate::margin`]); else the BUFFER rules. A measured buffer is negative when the estimate was
+/// higher than what the model took.
+pub fn model_buffer_options(geometry: &ModelGeometry, hardware: &SystemInfo, settings: &ActiveUserSettings) -> Vec<f64> {
+    match (settings.optimization.custom_vram_buffer_gb, crate::margin::learned(geometry, settings)) {
+        (None, Some(gap)) => vec![gap + crate::margin::reserve_gb(hardware)],
+        _ => vram_buffer_options(settings),
+    }
+}
+
+/// Bytes a placement may use of `free` with `buffer_gb` kept back (a negative buffer corrects an
+/// estimate that was measured too high)
+fn usable_bytes(free: u64, buffer_gb: f64) -> u64 {
+    if buffer_gb >= 0.0 {
+        free.saturating_sub(gib_to_bytes(buffer_gb))
+    } else {
+        free.saturating_add(gib_to_bytes(-buffer_gb))
+    }
+}
+
 /// RAM Cluaiz may use: 95% of total RAM minus what other apps use now, or free RAM minus the
 /// user's GB buffer when set (BUFFER rules: "GB values set by the user replace both").
 pub fn ram_budget_bytes(hardware: &SystemInfo, settings: &ActiveUserSettings) -> u64 {
@@ -77,7 +98,7 @@ pub fn resolve_context(geometry: &ModelGeometry, budget: &DeviceBudget, settings
     let most_compact = *kv_options.last().unwrap();
     let first_buffer = budget.buffers_gb.first().copied().unwrap_or(0.0);
     let fits = |ctx: u32, kv: KvCacheQuantization, buf_gb: f64| {
-        budget.fixed_bytes + geometry.kv_cache_bytes(ctx, kv, ubatch) + gib_to_bytes(buf_gb) <= budget.free_bytes
+        budget.fixed_bytes + geometry.kv_cache_bytes(ctx, kv, ubatch) <= usable_bytes(budget.free_bytes, buf_gb)
     };
 
     let exact = |ctx: u32, label: &str| -> ContextChoice {
@@ -192,15 +213,15 @@ impl Planner {
         // GPU -> dense: all weights on GPU, MoE: attention/shared weights on GPU; CPU -> everything in RAM.
         let budget = if gpu_allowed {
             let gpu_weights = if is_moe { w.full_gpu() - experts } else { w.full_gpu() };
-            DeviceBudget { free_bytes: vram_free, fixed_bytes: gpu_weights + logits, buffers_gb: vram_buffer_options(settings) }
+            DeviceBudget { free_bytes: vram_free, fixed_bytes: gpu_weights + logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
         let choice = resolve_context(geometry, &budget, settings);
         let ctx = choice.n_ctx;
         let kv = choice.kv_quant;
-        let vram_buffer = if gpu_allowed { gib_to_bytes(choice.buffer_gb) } else { 0 };
-        let vram_usable = vram_free.saturating_sub(vram_buffer);
+        let vram_buffer_gb = if gpu_allowed { choice.buffer_gb } else { 0.0 };
+        let vram_usable = usable_bytes(vram_free, vram_buffer_gb);
         let kv_total = geometry.kv_cache_bytes(ctx, kv, ubatch);
 
         // Bytes of a llama.cpp placement: n_gpu_layers (-1 = all blocks, N = output head + last N-1 blocks,
@@ -365,7 +386,7 @@ impl Planner {
             // llama.cpp default unless the user set it
             op_offload: opt.op_offload.unwrap_or(true),
             kv_cache_type: kv,
-            vram_buffer_gb: bytes_to_gib(vram_buffer),
+            vram_buffer_gb,
             ram_budget_limit_gb: bytes_to_gib(ram_budget),
             context_reason: choice.reason,
             candidates,
@@ -642,6 +663,34 @@ mod tests {
         let free = bytes_to_gib(fixed + kv(1024)) + MIN_SAFE_VRAM_BUFFER_GB;
         let c = resolve_context(&g, &gpu_budget(&g, free, &s), &s);
         assert!(!c.fits_on_device && c.n_ctx == AUTO_CONTEXT_FLOOR, "{}", c.reason);
+    }
+
+    #[test]
+    fn a_measured_model_is_planned_with_its_measurement_not_the_fixed_buffer() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // A size no other test uses: the measurements are process-wide
+        let g = qwen3_like(2.3317);
+        let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
+        let kv = g.kv_cache_bytes(4096, KvCacheQuantization::Kv8, 512);
+        let hardware = hw(bytes_to_gib(fixed + kv) + 0.30, 8.0);
+        // Not measured: the 1024 / 512 MiB rule splits it
+        let before = Planner::create_plan("m", &g, &hardware, &s);
+        assert_ne!(before.selected_tier, PlacementTier::GpuOnly, "{}", before.explanation);
+        // Measured: it took 0.18 GB more than the estimate; with the 0.20 GB reserve it runs fully
+        // on the GPU (with a context between 2048 and 4096)
+        crate::margin::record(&g, &s, 0.18);
+        let after = Planner::create_plan("m", &g, &hardware, &s);
+        assert_eq!(after.selected_tier, PlacementTier::GpuOnly, "{}", after.explanation);
+        assert!((after.vram_buffer_gb - (0.18 + 0.20)).abs() < 1e-9);
+        // The user's value still wins
+        let mut custom = s.clone();
+        custom.optimization.custom_vram_buffer_gb = Some(1.0);
+        assert_eq!(Planner::create_plan("m", &g, &hardware, &custom).vram_buffer_gb, 1.0);
+        // An estimate measured too high gives room back
+        let g2 = qwen3_like(2.3318);
+        crate::margin::record(&g2, &s, -0.40);
+        let buffer = model_buffer_options(&g2, &hardware, &s)[0];
+        assert!((buffer - (-0.40 + 0.20)).abs() < 1e-9);
     }
 
     #[test]
