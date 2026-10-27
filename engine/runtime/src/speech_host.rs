@@ -123,6 +123,9 @@ fn speak(
     if tx.is_closed() { anyhow::bail!("Speech request cancelled"); }
     let (model, projector) = speech_files(entry)?;
     let settings_key = load_key(&model, &projector, settings)?;
+    // A fresh load on the GPU is measured after its first speech: (free VRAM before, estimate)
+    let mut measuring: Option<(f64, u64)> = None;
+    let measure_key = format!("speech:{}", entry.id);
     if slot.as_ref().map(|r| r.id != entry.id || r.settings_key != settings_key).unwrap_or(true) {
         // Free the previous model before loading the next one
         *slot = None;
@@ -130,11 +133,20 @@ fn speak(
         let _transition = transition.blocking_lock();
         let geometry = cluaiz_models::GgufProber::probe_geometry(&model)?;
         let codec_bytes = std::fs::metadata(&projector)?.len();
-        let live = cluaiz_hw::HardwareProber::with_live_memory();
+        crate::vram_use::load();
+        let mut live = cluaiz_hw::HardwareProber::with_live_memory();
+        let free_before = live.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+        // What this model took on the GPU beyond its estimate last time is not free for it now
+        if let (Some(extra), Some(gpu)) = (cluaiz_plan::margin::learned_key(&measure_key), live.gpus.first_mut()) {
+            gpu.vram_available_gb = (gpu.vram_available_gb - extra.max(0.0)).max(0.0);
+        }
         let decoded = options.speaker_reference.as_ref().map_or(0, |a| a.samples().len().saturating_mul(std::mem::size_of::<f32>()) as u64);
         let plan = select_placement(&geometry, codec_bytes, decoded, &live, settings)?;
         let placement = plan.placement;
         let gpu = placement.n_gpu_layers != 0 || placement.projector_gpu;
+        if gpu {
+            measuring = Some((free_before, plan.device_bytes));
+        }
         tracing::info!(model = %entry.id, ?placement, host_estimate_bytes = plan.host_bytes,
             device_estimate_bytes = plan.device_bytes, "Speech load admission (estimates, not a reservation)");
         let speech = match SpeechModel::load_with_placement(&model, &projector, placement) {
@@ -176,6 +188,16 @@ fn speak(
         check_request_budget(settings, u64::try_from(samples.len().checked_mul(8).context("Speech WAV budget overflow")?)?)?;
         cluaiz_media::wav::encode_data_uri(&samples, rate, options.limits)
     });
+    // The speech model's GPU use grows while it speaks (Qwen3-TTS 1.7B with 5 layers and the
+    // codec on the GPU took 2.44 GB, 0.34 GB over its estimate): learn it for the next load
+    if let (Ok(_), Some((before, estimate))) = (&result, measuring) {
+        let taken = before - crate::vram_use::free_gb();
+        let extra = taken - cluaiz_core::bytes_to_gib(estimate);
+        if taken > 0.01 && cluaiz_plan::margin::record_key(&measure_key, extra) {
+            tracing::info!("📏 [Speech] {} took {:.2} GB on the GPU, {:+.2} GB over its estimate; learned for its next load", entry.id, taken, extra);
+            crate::vram_use::save();
+        }
+    }
     if result.is_err() || keep_alive == Some(0) {
         *slot = None;
     }
