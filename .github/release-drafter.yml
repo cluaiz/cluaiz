@@ -21,7 +21,7 @@ change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 template: |
   This is the official public release for cluaiz $RESOLVED_VERSION.
   
-  > **Important:** To install cluaiz, simply download and run the installer script for your operating system (`install.sh` or `install.ps1`). The installer will automatically configure your environment and securely fetch the required neural engines and drivers in the background using our zero-trust registry.
+  > **Important:** To install cluaiz, run the installer for your operating system (`install.sh` or `install.ps1`). It downloads the core and the GPU pack for your machine from this release and checks each file against `SHA256SUMS.txt`.
   
   $CHANGES
   
@@ -30,5 +30,5 @@ template: |
   ### ⬇️ Assets (Downloads)
   * 📄 `install.sh` (Mac/Linux Installer)
   * 📄 `install.ps1` (Windows Installer)
-  * 📦 Standalone CLI Bundles (Attached Below)
-  * ⚙️ `cluaiz-registry.json` (System-verified background registry)
+  * 📦 Core and GPU packs (attached below)
+  * 🔐 `SHA256SUMS.txt` (checksums of every file)

@@ -1,0 +1,321 @@
+# Builds the core (CLI + API + engine, CPU) for every platform and the GPU packs, smoke-tests the
+# core on a machine without a GPU, and publishes them together as one GitHub release.
+#
+#   push / pull request  -> core builds + smoke test (catches a broken build before a release)
+#   Run workflow (manual) -> everything above + GPU packs + the release v<version>
+#
+# The packs follow llama.cpp's own release: ggml backends built from the same pinned fork commit as
+# the core, loaded at start by the core (GGML_BACKEND_DL). See .github/workflows/README.md.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (the release tag is v<version>)"
+        required: true
+        default: "0.1.0"
+      prerelease:
+        description: "Mark as pre-release"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - "agents/**"
+      - "api/**"
+      - "cep/**"
+      - "cmd/**"
+      - "context/**"
+      - "engine/**"
+      - "security/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - ".github/workflows/release.yml"
+      - ".github/scripts/**"
+  pull_request:
+    paths:
+      - "agents/**"
+      - "api/**"
+      - "cep/**"
+      - "cmd/**"
+      - "context/**"
+      - "engine/**"
+      - "security/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".cargo/**"
+      - ".github/workflows/release.yml"
+      - ".github/scripts/**"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  VERSION: ${{ inputs.version || 'dev' }}
+  # Smoke-test model: small enough for a CI runner's CPU, a real GGUF chat model
+  SMOKE_MODEL: unsloth/Qwen3-0.6B-GGUF:Q4_K_M
+
+jobs:
+  # ── Core: everything that runs on the CPU, for every platform ──────────────────────────────────
+  core:
+    name: core (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: win-x64,     os: windows-2022,     experimental: false, features: "" }
+          - { name: linux-x64,   os: ubuntu-24.04,     experimental: false, features: "" }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, experimental: true,  features: "" }
+          - { name: mac-arm64,   os: macos-14,         experimental: true,  features: "metal" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential cmake pkg-config clang libclang-dev libssl-dev \
+            autoconf automake libtool ccache
+
+      - name: macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install ccache autoconf automake libtool
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+          cache-on-failure: true
+
+      # llama.cpp is compiled by CMake inside the llama-engine build script; ccache keeps it between runs
+      - name: ccache
+        if: runner.os != 'Windows'
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: core-${{ matrix.name }}
+          max-size: 1G
+
+      - name: Build
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          fi
+          features=()
+          [ -n "${{ matrix.features }}" ] && features=(--features "${{ matrix.features }}")
+          cargo build -p cmd --release --locked --no-default-features "${features[@]}"
+
+      - name: Package
+        id: package
+        shell: bash
+        run: |
+          name="cluaiz-${VERSION}-${{ matrix.name }}"
+          bash .github/scripts/package_core.sh target/release "$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      # The core must start and answer on a machine with no GPU and no GPU runtime: unpack it into
+      # an empty folder and use only what is inside
+      - name: Smoke test (no GPU)
+        shell: bash
+        run: bash .github/scripts/smoke_test.sh "dist/${{ steps.package.outputs.name }}" "$SMOKE_MODEL"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  # ── GPU packs for GGUF models (llama.cpp backends), Windows ────────────────────────────────────
+  gpu-windows:
+    name: gpu (win-x64-${{ matrix.backend }})
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { backend: cuda12, cuda: "12.4", target: ggml-cuda,   defines: "-DGGML_CUDA=ON -DGGML_CUDA_NCCL=OFF -DGGML_CUDA_CCCL_VERSION=v3.4.3" }
+          - { backend: vulkan, cuda: "",     target: ggml-vulkan, defines: "-DGGML_VULKAN=ON" }
+    env:
+      VULKAN_VERSION: 1.4.357.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install CUDA toolkit
+        if: matrix.cuda != ''
+        uses: ./engine/llama/llama.cpp/.github/actions/windows-setup-cuda
+        with:
+          cuda_version: ${{ matrix.cuda }}
+          cuda_arch: x64
+
+      - name: Install Vulkan SDK
+        if: matrix.backend == 'vulkan'
+        run: |
+          curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/${env:VULKAN_VERSION}/windows/vulkansdk-windows-X64-${env:VULKAN_VERSION}.exe"
+          & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\${env:VULKAN_VERSION}"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\${env:VULKAN_VERSION}\bin"
+
+      - name: Install Ninja
+        run: choco install ninja
+
+      # Only the backend library: it uses the core's ggml-base at run time (same fork commit)
+      - name: Build
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          cmake -S engine/llama/llama.cpp -B build -G "Ninja Multi-Config" ^
+            -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_NATIVE=OFF -DGGML_CPU=OFF ^
+            -DLLAMA_BUILD_COMMON=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF ^
+            -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_APP=OFF -DLLAMA_OPENSSL=OFF ^
+            ${{ matrix.defines }}
+          set /A NINJA_JOBS=%NUMBER_OF_PROCESSORS%-1
+          cmake --build build --config Release -j %NINJA_JOBS% --target ${{ matrix.target }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          7z a "dist/cluaiz-$env:VERSION-win-x64-llama-${{ matrix.backend }}.zip" ".\build\bin\Release\${{ matrix.target }}.dll"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if ("${{ matrix.cuda }}" -ne "") {
+            # The CUDA runtime the backend links (redistributable); the GPU driver itself comes from NVIDIA
+            $dst = ".\build\cudart"
+            robocopy "$env:CUDA_PATH\bin" $dst cudart64_*.dll cublas64_*.dll cublasLt64_*.dll
+            if ($LASTEXITCODE -ge 8) { exit 1 }
+            7z a "dist/cluaiz-$env:VERSION-win-x64-cudart12.zip" "$dst\*"
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpu-win-x64-${{ matrix.backend }}
+          path: dist/*.zip
+
+  # ── GPU packs, Linux ───────────────────────────────────────────────────────────────────────────
+  gpu-linux-cuda:
+    name: gpu (linux-x64-cuda12)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    container: nvidia/cuda:12.8.1-devel-ubuntu24.04
+    steps:
+      # The container has no git; install it first so checkout makes a real repository with submodules
+      - name: Install git and build tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates build-essential cmake ninja-build
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build
+        run: |
+          cmake -S engine/llama/llama.cpp -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_RPATH='$ORIGIN' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+            -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_NATIVE=OFF -DGGML_CPU=OFF \
+            -DLLAMA_BUILD_COMMON=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_APP=OFF -DLLAMA_OPENSSL=OFF \
+            -DGGML_CUDA=ON -DGGML_CUDA_NCCL=OFF -DGGML_CUDA_CCCL_VERSION=v3.4.3
+          cmake --build build -j "$(nproc)" --target ggml-cuda
+
+      - name: Package
+        run: |
+          mkdir -p dist cudart
+          tar -czf "dist/cluaiz-${VERSION}-linux-x64-llama-cuda12.tar.gz" -C build/bin libggml-cuda.so
+          # The CUDA runtime the backend links, as plain files beside it ($ORIGIN)
+          cp -L /usr/local/cuda/lib64/libcudart.so.12 /usr/local/cuda/lib64/libcublas.so.12 \
+            /usr/local/cuda/lib64/libcublasLt.so.12 cudart/
+          tar -czf "dist/cluaiz-${VERSION}-linux-x64-cudart12.tar.gz" -C cudart .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpu-linux-x64-cuda12
+          path: dist/*.tar.gz
+
+  gpu-linux-vulkan:
+    name: gpu (linux-x64-vulkan)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential glslc libvulkan-dev spirv-headers ninja-build
+
+      - name: Build
+        run: |
+          cmake -S engine/llama/llama.cpp -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_RPATH='$ORIGIN' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+            -DBUILD_SHARED_LIBS=ON -DGGML_BACKEND_DL=ON -DGGML_NATIVE=OFF -DGGML_CPU=OFF \
+            -DLLAMA_BUILD_COMMON=OFF -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_TOOLS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_APP=OFF -DLLAMA_OPENSSL=OFF \
+            -DGGML_VULKAN=ON
+          cmake --build build -j "$(nproc)" --target ggml-vulkan
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          tar -czf "dist/cluaiz-${VERSION}-linux-x64-llama-vulkan.tar.gz" -C build/bin libggml-vulkan.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpu-linux-x64-vulkan
+          path: dist/*.tar.gz
+
+  # ── One release with every file that built, and their checksums ────────────────────────────────
+  release:
+    name: release v${{ inputs.version }}
+    if: always() && github.event_name == 'workflow_dispatch' && needs.core.result == 'success'
+    needs: [core, gpu-windows, gpu-linux-cuda, gpu-linux-vulkan]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${VERSION}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # Also a Release Drafter draft with this tag: add the files and publish it
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --draft=false --prerelease=${{ inputs.prerelease }}
+          else
+            gh release create "$tag" dist/* --target "$GITHUB_SHA" --title "Cluaiz ${VERSION}" \
+              ${{ inputs.prerelease && '--prerelease' || '' }} --notes-file .github/release-notes.md
+          fi

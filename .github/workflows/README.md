@@ -1,66 +1,37 @@
 # 🏛️ cluaiz: CI/CD & RELEASE ARCHITECTURE
 
-This document serves as the **Single Source of Truth** for the cluaiz Neural Ecosystem's CI/CD pipeline and release architecture. It defines the automated workflows, security protocols, and deployment laws that govern this repository.
-
-> **Note:** Before modifying any workflow or release script, read this document thoroughly. The architecture is heavily decoupled and relies on a specific sequence to achieve Zero-Trust Security and seamless cross-platform deployments.
+This document is the entry point for the CI/CD pipeline. The full job list, file names and smoke test are in [docs/deployments/cicd.md](../../docs/deployments/cicd.md); hardware and OS coverage is in [docs/deployments/platforms.md](../../docs/deployments/platforms.md).
 
 ---
 
-## 🧬 1. MODULAR ARCHITECTURE (THE NEURAL STACK)
+## 🧬 1. CORE + GPU PACKS
 
-The ecosystem is divided into four decoupled layers. They are built separately but distributed together.
+A release is one **core** per platform plus optional **GPU packs**, the layout llama.cpp itself ships:
 
-| Layer | Component | Responsibility |
-| :--- | :--- | :--- |
-| **Edge** | `cluaiz-cli` | User interface, model management, and system orchestration. |
-| **Brain** | `cluaiz-engine` | The core orchestrator. Manages memory, context, and driver dispatch. |
-| **Kernel** | `cluaiz-kernel` | Base CPU/SIMD interpreters (AVX512, AVX2, NEON) compiled for 9 operating system targets. |
-| **Bridge** | `cluaiz-driver` | Specialized hardware/GPU drivers (CUDA, Metal, Vulkan, OpenVINO, ROCm, HIP). |
+| Part | Contents | Built by |
+|:---|:---|:---|
+| **Core** | `cluaiz` CLI + API + engine, llama.cpp with every CPU variant (`GGML_CPU_ALL_VARIANTS`), ONNX Runtime for CPU (and DirectML on Windows). Links no GPU runtime, so it starts on any machine. | `release.yml` → `core` |
+| **GGUF GPU pack** | One ggml backend library (`ggml-cuda`, `ggml-vulkan`) from the same pinned fork commit, loaded by the core at start (`GGML_BACKEND_DL`). | `release.yml` → `gpu-*` |
+| **NVIDIA runtime pack** | The redistributable CUDA runtime the CUDA backend links (`cudart`, `cuBLAS`). | `release.yml` → `gpu-*` |
+| **ONNX CUDA pack** | ONNX Runtime's CUDA provider. | `release.yml` → `core` |
 
----
-
-## 🚀 2. UNIFIED RELEASE PIPELINE (HOW IT WORKS)
-
-We have abandoned fragmented, per-component releases (e.g., `cli-v1`, `kernel-v1`) in favor of a **Unified, Professional Release Architecture**. The pipeline operates in two distinct phases to ensure maximum stability and security.
-
-### Phase 1: Parallel Matrix Compilation
-When a new tag (e.g., `v1.2.0`) is pushed, 6 separate workflows trigger simultaneously:
-1. `cluaiz-cmd.yml` (Builds Windows/Linux/macOS CLI bundles)
-2. `cluaiz-engine.yml` (Builds the core orchestrators)
-3. `cluaiz-kernel-llama.yml` (Builds CPU instructions for Llama: AVX512, AVX2, NEON)
-4. `cluaiz-kernel-onnx.yml` (Builds CPU instructions for ONNX: AVX512, AVX2, NEON)
-5. `cluaiz-llama-driver.yml` (Builds GPU accelerators for Llama: CUDA, Metal, etc.)
-6. `cluaiz-onnx-driver.yml` (Builds GPU accelerators for ONNX: CUDA, CoreML, etc.)
-
-**The Unified Tag Rule:** 
-All workflows push their compiled binaries (`.exe`, `.so`, `.dylib`, `.zip`) directly to the **SAME** GitHub Release tag (`v1.2.0`). 
-
-**Fault Tolerance (Partial Success):** 
-The build matrices are designed with `fail-fast: false`. If an experimental driver (e.g., `linux-x64-cann`) fails to compile due to network timeouts or SDK issues, the workflow will **NOT** crash the entire release. The successful binaries will still be uploaded, and the failed binary will simply be omitted.
-
-### Phase 2: Master Orchestration & Security (`publish-registry.yml`)
-Because the 6 workflows run in parallel and finish at different times, they cannot generate the final registry themselves. 
-
-Once all parallel builds finish, the **Publish Secure Registry** workflow is triggered manually via GitHub Actions (`workflow_dispatch`).
-1. It downloads all raw binaries that were just uploaded to the GitHub Release.
-2. It executes `.github/scripts/secure_registry_builder.py`.
-3. It uploads the resulting `cluaiz-registry.json` back to the GitHub Release.
+The GPU driver is never shipped: it comes from NVIDIA, AMD or Intel.
 
 ---
 
-## 🔒 3. ZERO-TRUST SECURITY REGISTRY
+## 🚀 2. ONE WORKFLOW: `release.yml`
 
-The core of the dynamic installation system is `secure_registry_builder.py`. 
+- **Every push / pull request** touching engine, CLI or API code builds the core for every platform and runs the smoke test (no GPU, fresh home, pull + answer). A broken build is caught before a release.
+- **Run workflow** (manual, version `0.1.0`) additionally builds the GPU packs and publishes the GitHub release `v<version>` with `SHA256SUMS.txt`.
+- **Partial success**: experimental platforms (Linux ARM64, macOS) and GPU packs may fail without blocking the release; a missing pack is simply absent from `SHA256SUMS.txt`, and the installers then keep that machine on the CPU.
 
-Instead of hardcoding URLs or blindly trusting the build pipeline, this Python script performs cryptographic verification:
-- It scans the downloaded release artifacts.
-- It calculates a **SHA-256 checksum** for every single `.exe`, `.so`, `.dll`, and `.zip`.
-- It dynamically generates `cluaiz-registry.json`, categorizing assets into `components`, `kernels`, and `drivers`.
-- **Self-Healing:** If a specific driver failed to compile in Phase 1, its binary won't exist. The Python script dynamically detects this and safely omits it from the JSON. The `cluaiz-cli` will therefore never attempt to download a broken or non-existent driver.
+The installers (`install.sh`, `install.ps1`) read `SHA256SUMS.txt` from the release, download only the files for the machine, and refuse any file whose checksum does not match.
+
+The older split workflows (`cluaize-*.yml`, `publish-registry.yml`) and their registry scripts were removed: they built package names that no longer exist and never produced a release.
 
 ---
 
-## 📝 4. AUTOMATED CHANGELOGS (RELEASE DRAFTER)
+## 📝 3. AUTOMATED CHANGELOGS (RELEASE DRAFTER)
 
 To maintain professional, OpenClaw-style Release Notes without manual overhead, we utilize **Release Drafter** (`.github/workflows/release-drafter.yml`).
 
@@ -70,9 +41,10 @@ To maintain professional, OpenClaw-style Release Notes without manual overhead, 
 
 ---
 
-## 🏛️ 5. THE FOUNDER'S MANDATE
-1. **Never Drift**: Do not change naming conventions or matrix structures once established. The Python registry builder relies on strict parsing of filenames (e.g., `cluaiz-driver-v1.0.0-linux-x64-cuda-12.so`).
+## 🏛️ 4. THE FOUNDER'S MANDATE
+
+1. **Never Drift**: Do not change naming conventions or matrix structures once established. The installers rely on the file names (e.g., `cluaiz-0.1.0-linux-x64-llama-cuda12.tar.gz`).
 2. **Standard over Ad-hoc**: Every fix must be architectural. Do not create inline quick-fixes.
-3. **Decoupled by Design**: Workflows must never wait on each other. Phase 1 is purely for compilation; Phase 2 is purely for aggregation and security.
+3. **Decoupled by Design**: A failing GPU pack never blocks the core; the release job only collects what built.
 
 **This is the cluaiz Standard. Professional and Optimized.**
