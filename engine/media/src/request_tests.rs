@@ -251,10 +251,16 @@ async fn test_request_invalid_source_permissions_and_unsupported_provider_reject
     )
     .await
     .is_err());
+    // Only where the packaged video decoder is missing (it is installed on a machine with
+    // `<home>/engine/media`, and then video is supported)
+    let video_unsupported = crate::video::attachment_formats().is_err();
     for part in [InputPart::Video {
         source: "not-read.mp4".into(),
         include_audio: false,
-    }] {
+    }]
+    .into_iter()
+    .filter(|_| video_unsupported)
+    {
         let result = prepare_chat(
             request(vec![
                 InputPart::Image {
