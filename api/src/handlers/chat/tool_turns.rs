@@ -20,6 +20,7 @@ pub struct ToolTurns {
 
 impl ToolTurns {
     /// `tool_role`: results go in as `tool` messages (see `PreparedChatContext::tool_role`)
+    #[cfg(test)]
     pub fn new(tool_role: bool) -> Self {
         Self { steps: Vec::new(), loaded_functions: Vec::new(), tool_role }
     }

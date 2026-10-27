@@ -21,7 +21,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde_json::{json, Value};
+use serde_json::json;
 use std::sync::Arc;
 
 pub use tool_parser::{extract_tool_call, ExtractedToolCall};

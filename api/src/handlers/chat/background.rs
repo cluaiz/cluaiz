@@ -427,7 +427,6 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
         record(&job, "stopped", started);
         return;
     }
-    use cluaiz_agents::memory::EventStore;
     // The chat's own store: RAM for an external chat (the card goes to the app with the next
     // answer). A chat no longer external (its history was deleted) gets nothing.
     if job.external && !cluaiz_agents::memory::is_external(&job.chat) {

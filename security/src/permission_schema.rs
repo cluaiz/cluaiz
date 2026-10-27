@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tracing::{info, warn};
 use cluaiz_core::EnvironmentManager;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

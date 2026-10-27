@@ -20,8 +20,6 @@ impl Spinner {
         pb.enable_steady_tick(Duration::from_millis(100));
         Self(pb)
     }
-
-    pub fn stop(self) {}
 }
 
 impl Drop for Spinner {
