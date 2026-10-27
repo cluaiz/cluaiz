@@ -267,10 +267,16 @@ impl EngineHost {
             learn_correction(&path_str, &geometry, &hw, settings);
         }
         let mut plan = Planner::create_plan(model_id, &geometry, &hw, settings);
-        // The chat comes first on the GPU: when it would not run fully there, idle models of the
-        // other kinds (speech, transcription, embeddings) are freed and the chat is planned again on
-        // what that gave back. A model serving a request right now is never freed.
-        if !hw.gpus.is_empty() && settings.optimization.n_gpu_layers != Some(0) && plan.selected_tier != cluaiz_plan::PlacementTier::GpuOnly {
+        // The chat comes first on the GPU: when it would not run fully there, or Auto would give it
+        // less than the context floor to stay there, idle models of the other kinds (speech,
+        // transcription, embeddings) are freed and the chat is planned again on what that gave back.
+        // A model serving a request right now is never freed.
+        let floor = geometry.context_length.max(1).min(cluaiz_plan::AUTO_CONTEXT_FLOOR);
+        let short_context = settings.optimization.context_setting() == cluaiz_core::ContextSetting::Auto && plan.context_window < floor;
+        if !hw.gpus.is_empty()
+            && settings.optimization.n_gpu_layers != Some(0)
+            && (plan.selected_tier != cluaiz_plan::PlacementTier::GpuOnly || short_context)
+        {
             let freed: Vec<&str> = [
                 ("ONNX", self.onnx.unload_idle()),
                 ("speech", self.speech.unload_idle()),
@@ -283,8 +289,8 @@ impl EngineHost {
                 hw = cluaiz_hw::HardwareProber::with_live_memory();
                 let replanned = Planner::create_plan(model_id, &geometry, &hw, settings);
                 tracing::info!(
-                    "♻️ [EngineHost] Freed idle {} model(s) for the chat: {} -> {} blocks on the GPU",
-                    freed.join(" + "), plan.block_split().0, replanned.block_split().0
+                    "♻️ [EngineHost] Freed idle {} model(s) for the chat: {} -> {} blocks on the GPU, {} -> {} tokens",
+                    freed.join(" + "), plan.block_split().0, replanned.block_split().0, plan.context_window, replanned.context_window
                 );
                 plan = replanned;
             }

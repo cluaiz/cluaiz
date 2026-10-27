@@ -165,6 +165,9 @@ struct Resident {
     package_key: String,
     readiness: Option<crate::media_support::ValidatedOnnxTask>,
     provider_settings_key: String,
+    /// Set when the package was put on the CPU only because the GPU had no room for it (its
+    /// measurement key): it moves back to the GPU once there is room
+    cpu_for_room: Option<String>,
 }
 
 #[derive(Default)]
@@ -222,7 +225,7 @@ fn tts_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSetting
 /// what it took then fits in the free VRAM beside whatever is loaded (the chat model first), with
 /// the desktop reserve left; otherwise it runs on the CPU. Never measured: the speech admission
 /// estimate and the engine's own check decide, and this load is measured.
-fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettings) -> Result<(cluaiz_core::OnnxSettings, String)> {
+fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettings) -> Result<(cluaiz_core::OnnxSettings, String, bool)> {
     crate::vram_use::load();
     let key = format!("onnx:{}:{}", model.id, task);
     let mut effective = settings.onnx.clone();
@@ -231,16 +234,25 @@ fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettin
             let hw = cluaiz_hw::HardwareProber::with_live_memory();
             let free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
             let reserve = cluaiz_plan::margin::reserve_gb(&hw);
-            if need + reserve > free && effective.n_gpu_layers < 0 {
+            let for_room = need + reserve > free && effective.n_gpu_layers < 0;
+            if for_room {
                 effective.n_gpu_layers = 0;
                 tracing::info!(model = %model.id, task, "ONNX on the CPU: it took {:.2} GB on the GPU, {:.2} GB is free with {:.2} GB kept back", need, free, reserve);
             } else {
                 tracing::info!(model = %model.id, task, "ONNX on the GPU: it took {:.2} GB there, {:.2} GB is free", need, free);
             }
-            return Ok((effective, key));
+            return Ok((effective, key, for_room));
         }
     }
-    Ok((tts_load_settings(model, task, settings)?, key))
+    Ok((tts_load_settings(model, task, settings)?, key, false))
+}
+
+/// Whether a package measured at `key` now fits on the GPU with the desktop reserve left
+fn fits_on_gpu_now(key: &str) -> bool {
+    let Some(need) = cluaiz_plan::margin::learned_key(key) else { return false };
+    let hw = cluaiz_hw::HardwareProber::with_live_memory();
+    let free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+    need + cluaiz_plan::margin::reserve_gb(&hw) <= free
 }
 
 /// Records what an ONNX package took on the GPU (the largest seen is kept)
@@ -439,12 +451,21 @@ impl OnnxHost {
             .checked_add(1)
             .context("ONNX request generation overflow")?;
         let generation = state.generation;
+        // A package put on the CPU for lack of room goes back to the GPU once there is room
+        if state.resident.as_ref().and_then(|r| r.cpu_for_room.as_deref()).is_some_and(fits_on_gpu_now) {
+            tracing::info!(model = %model.id, task, "ONNX back to the GPU: there is room for it now");
+            state.resident = None;
+        }
         // Free VRAM before a fresh GPU load, to measure what the package takes
         let mut measuring: Option<(String, f64)> = None;
+        let mut cpu_for_room = None;
         if state.resident.as_ref().is_none_or(|r| r.key != key) {
             state.resident = None; // Free the previous graph before allocating its replacement.
             let _transition = self.transition.blocking_lock();
-            let (effective, measure_key) = onnx_load_settings(model, task, settings)?;
+            let (effective, measure_key, for_room) = onnx_load_settings(model, task, settings)?;
+            if for_room {
+                cpu_for_room = Some(measure_key.clone());
+            }
             if effective.n_gpu_layers != 0 {
                 measuring = Some((measure_key, crate::vram_use::free_gb()));
             }
@@ -462,6 +483,7 @@ impl OnnxHost {
                 package_key: model.asset_key.clone(),
                 readiness: None,
                 provider_settings_key: serde_json::to_string(&settings.onnx)?,
+                cpu_for_room,
             });
         }
         let resident = state
@@ -516,6 +538,7 @@ impl OnnxHost {
                 package_key: model.asset_key.clone(),
                 readiness: None,
                 provider_settings_key: serde_json::to_string(&settings.onnx)?,
+                cpu_for_room: None,
             });
         }
         let resident = state
@@ -657,6 +680,7 @@ mod tests {
             package_key: "fixture".into(),
             readiness: None,
             provider_settings_key: "fixture".into(),
+            cpu_for_room: None,
         });
         assert!(!host.unload_if_current("current", 1)?);
         assert!(!host.unload_tts()?, "Switching TTS backends must preserve an embedding/STT resident");
