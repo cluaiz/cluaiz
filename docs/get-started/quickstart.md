@@ -21,7 +21,7 @@ powershell -ExecutionPolicy Bypass -Command "irm https://cluaiz.com/install.ps1 
 *   **Bypass Flag (`-ExecutionPolicy Bypass`):** Instructs PowerShell to bypass local script signing policies temporarily to execute the installer.
 *   **Request Method (`irm` / `Invoke-RestMethod`):** Downloads the raw PowerShell script from the secure gateway.
 *   **Execution block (`iex` / `Invoke-Expression`):** Runs the downloaded installer script directly inside the active terminal process.
-*   **Behind the Scenes:** The installer maps execution paths, creates `~/.cluaiz/workspace`, downloads the Windows-compatible baseline kernels (`cluaiz-kernel.exe`), and appends the binary folder to your user system path environment variables.
+*   **Behind the Scenes:** The installer downloads the Windows core from the newest GitHub release, adds the GPU pack for your GPU (NVIDIA: CUDA; AMD / Intel Arc: Vulkan), checks every file against the release's `SHA256SUMS.txt`, unpacks them into `~\.cluaiz\bin` and adds that folder to your user PATH. It installs the Microsoft Visual C++ runtime if it is missing.
 
 ---
 
@@ -35,10 +35,12 @@ curl -fsSL https://cluaiz.com/install.sh | bash
 
 *   **Silent Secure Flags (`-fsSL`):** Sets curl to fail silently on server errors, suppress progress bars, allow redirects, and connect securely over SSL.
 *   **Piped Shell (`| bash`):** Directs the downloaded shell instructions directly to the bash shell interpreter.
-*   **Behind the Scenes:** 
-    *   **On macOS:** The script checks for Apple Silicon (ARM64) or legacy Intel (x86_64) configurations to fetch the optimized dynamic framework files.
-    *   **On Linux:** The installer audits CPU SIMD levels (AVX512, AVX2) and selects the corresponding optimized compiler binary.
-    *   It populates `~/.cluaiz/workspace/` and appends the execution path to your shell configuration profile (`.bashrc` / `.zshrc`).
+*   **Behind the Scenes:**
+    *   It downloads the core for your OS and processor (Linux x64 / ARM64 with glibc 2.38+, macOS Apple Silicon) from the newest GitHub release. The core picks the fastest CPU code for your processor at start, so there is no separate AVX2 / AVX-512 download.
+    *   On Linux it adds the CUDA pack when `nvidia-smi` finds an NVIDIA GPU, or the Vulkan pack for an AMD GPU. Set `CLUAIZ_GPU=cpu|cuda|vulkan` to choose yourself.
+    *   Every file is checked against the release's `SHA256SUMS.txt`, unpacked into `~/.cluaiz/bin`, and that folder is added to your shell profile (`.bashrc` / `.zshrc` / `.profile`).
+
+See [Platform Support](../deployments/platforms.md) for what each GPU pack covers.
 
 ---
 
