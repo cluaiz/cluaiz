@@ -231,7 +231,7 @@ fn tts_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSetting
 /// estimate and the engine's own check decide, and this load is measured.
 fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettings) -> Result<(cluaiz_core::OnnxSettings, String, bool)> {
     crate::vram_use::load();
-    let key = format!("onnx:{}:{}", model.id, task);
+    let key = device_key(&model.id, task);
     let mut effective = settings.onnx.clone();
     // A package whose run failed on this GPU before goes to the CPU directly (Auto only), instead
     // of loading on the GPU, failing and loading again
@@ -258,6 +258,15 @@ fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettin
     Ok((tts_load_settings(model, task, settings)?, key, false))
 }
 
+/// What an ONNX package's GPU measurements are kept under. They hold for the GPU runtime they were
+/// taken with: with the CUDA + cuDNN runtime installed later, a package that failed or was measured
+/// on DirectML is tried and measured again on CUDA
+fn device_key(model_id: &str, task: &str) -> String {
+    let drivers = onnx_engine::cudnn_driver::default_drivers_dir();
+    let runtime = if onnx_engine::cudnn_driver::is_cuda_runtime_available_in(&drivers) { "cuda" } else { "other" };
+    format!("onnx:{model_id}:{task}:{runtime}")
+}
+
 /// Whether a package measured at `key` now fits on the GPU with the desktop reserve left
 fn fits_on_gpu_now(key: &str) -> bool {
     let Some(need) = cluaiz_plan::margin::learned_key(key) else { return false };
@@ -266,12 +275,24 @@ fn fits_on_gpu_now(key: &str) -> bool {
     need + cluaiz_plan::margin::reserve_gb(&hw) <= free
 }
 
-/// Records what an ONNX package took on the GPU (the largest seen is kept)
-fn record_device_use(key: &str, taken_gb: f64) {
+/// Records what an ONNX package took on the GPU since `before_gb` was free (the largest seen is
+/// kept). When it left less than the desktop reserve free, Windows may have put the rest in shared
+/// memory and the drop in free VRAM is less than it took: it needed at least all that was free.
+/// True when it filled the GPU.
+fn record_device_use(key: &str, before_gb: f64) -> bool {
+    let hw = cluaiz_hw::HardwareProber::with_live_memory();
+    let after = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+    let filled = after < cluaiz_plan::margin::reserve_gb(&hw);
+    let taken_gb = if filled { before_gb } else { before_gb - after };
     if taken_gb > 0.01 && cluaiz_plan::margin::record_key(key, taken_gb) {
-        tracing::info!("📏 [ONNX] {} takes {:.2} GB on the GPU", key, taken_gb);
+        if filled {
+            tracing::info!("📏 [ONNX] {} filled the GPU ({:.2} GB free after it); kept as needing at least {:.2} GB", key, after, taken_gb);
+        } else {
+            tracing::info!("📏 [ONNX] {} takes {:.2} GB on the GPU", key, taken_gb);
+        }
         crate::vram_use::save();
     }
+    filled
 }
 
 fn free_idle(state: &Mutex<AudioState>) -> bool {
@@ -524,11 +545,22 @@ impl OnnxHost {
                     return Err(error);
                 }
                 tracing::warn!(model = %model.id, task, %error, ?freed, "ONNX load failed with other models kept; freeing them and loading again");
-                engine = OnnxEngine::with_settings(effective)?;
+                engine = OnnxEngine::with_settings(effective.clone())?;
                 load(&mut engine)?;
             }
-            if let Some((key, before)) = &measuring {
-                record_device_use(key, before - crate::vram_use::free_gb());
+            if let Some((measure_key, before)) = measuring.clone() {
+                if record_device_use(&measure_key, before) && settings.onnx.n_gpu_layers < 0 {
+                    // It did not fit beside what is loaded, and spilled it runs slower than on the
+                    // CPU: it goes to the CPU now and back to the GPU when there is room
+                    tracing::info!(model = %model.id, task, "ONNX on the CPU: it filled the GPU");
+                    drop(engine);
+                    let mut cpu = effective;
+                    cpu.n_gpu_layers = 0;
+                    engine = OnnxEngine::with_settings(cpu)?;
+                    load(&mut engine)?;
+                    cpu_for_room = Some(measure_key);
+                    measuring = None;
+                }
             }
             state.resident = Some(Resident {
                 key: key.clone(),
@@ -557,10 +589,10 @@ impl OnnxHost {
         }
         let resident = state.resident.as_mut().context("ONNX session was not published")?;
         let mut result = execute(&resident.engine);
-        // The first run grows the session's GPU arena: measure again
-        if let Some((key, before)) = &measuring {
-            record_device_use(key, before - crate::vram_use::free_gb());
-        }
+        // The first run grows the session's GPU arena: measure again. If that filled the GPU, the
+        // next request loads it where the measurement says (the CPU, unless there is room)
+        let filled = measuring.as_ref().is_some_and(|(key, before)| record_device_use(key, *before))
+            && settings.onnx.n_gpu_layers < 0;
         // Never restart speech after a part was emitted or its consumer disconnected.
         if task == "text_to_speech"
             && result
@@ -574,7 +606,7 @@ impl OnnxHost {
                 .map(|error| format!("{error:#}"))
                 .unwrap_or_default();
             tracing::warn!(model = %model.id, error = %provider_error, "TTS GPU execution failed; releasing session before CPU retry");
-            if cluaiz_plan::margin::record_key(&format!("onnx:{}:{}:gpu_failed", model.id, task), 1.0) {
+            if cluaiz_plan::margin::record_key(&format!("{}:gpu_failed", device_key(&model.id, task)), 1.0) {
                 crate::vram_use::save();
             }
             state.resident = None;
@@ -634,7 +666,7 @@ impl OnnxHost {
                     inputs,
                 });
         }
-        if result.is_err() || keep_alive == Some(0) {
+        if result.is_err() || keep_alive == Some(0) || filled {
             state.resident = None;
         }
         drop(state);
