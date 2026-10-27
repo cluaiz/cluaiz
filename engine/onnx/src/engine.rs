@@ -44,6 +44,15 @@ pub(crate) fn try_directml_session(
     }
 }
 
+/// Whether a tokenizer.json is a bare vocabulary (`model` without a `type`), not a tokenizer
+fn is_vocab_only(path: &std::path::Path) -> bool {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .and_then(|json| json.get("model").cloned())
+        .is_some_and(|model| model.get("vocab").is_some() && model.get("type").is_none())
+}
+
 /// ONNX Multimodal Router (Core Engine)
 pub struct OnnxEngine {
     pub(crate) audio8_runtime: Option<std::sync::Mutex<crate::audio::tts::families::audio8::Runtime>>,
@@ -188,6 +197,11 @@ impl OnnxEngine {
                             tok_path
                         );
                         self.tokenizer = Some(Arc::new(tok));
+                    }
+                    // A speech package's tokenizer.json can be only a phoneme vocabulary (its
+                    // `model` has no `type`, Kokoro): the speech code reads that itself
+                    Err(e) if is_vocab_only(&tok_path) => {
+                        tracing::debug!("📖 [ONNX Engine] {:?} is a vocabulary only: {}", tok_path, e);
                     }
                     Err(e) => {
                         tracing::warn!(
