@@ -85,6 +85,8 @@ pub struct EngineHost {
     active_session: Arc<Mutex<Option<NativeSession>>>,
     /// Serialize load/unload transitions, including native allocations before publication.
     model_transition: Arc<Mutex<()>>,
+    /// Idle ONNX, speech and embedding models, freed for the chat or for each other
+    room: crate::media_room::MediaRoom,
     pub active_model_path: Arc<Mutex<Option<String>>>,
     pub active_fingerprint: Arc<Mutex<Option<String>>>,
     pub dna: Arc<Mutex<StructuralDNA>>,
@@ -129,13 +131,19 @@ impl EngineHost {
             llama_engine::ffi::llama_cpp::llama_backend_init();
         }
         let model_transition = Arc::new(Mutex::new(()));
+        let room = crate::media_room::MediaRoom::default();
+        let onnx = crate::onnx_host::OnnxHost::with_transition(Arc::clone(&model_transition), room.clone());
+        let embeddings = crate::embedding_host::EmbeddingHost::with_transition(Arc::clone(&model_transition), room.clone());
+        let speech = crate::speech_host::SpeechHost::with_transition(Arc::clone(&model_transition), room.clone());
+        room.register("ONNX", onnx.idle_releaser());
+        room.register("speech", speech.idle_releaser());
+        room.register("embedding", embeddings.idle_releaser());
         Self {
             media_admission: crate::media_admission::MediaAdmission::default(),
-            onnx: crate::onnx_host::OnnxHost::with_transition(Arc::clone(&model_transition)),
-            embeddings: crate::embedding_host::EmbeddingHost::with_transition(Arc::clone(
-                &model_transition,
-            )),
-            speech: crate::speech_host::SpeechHost::with_transition(Arc::clone(&model_transition)),
+            onnx,
+            embeddings,
+            speech,
+            room,
             current_plan: Arc::new(Mutex::new(None)),
             loaded_settings: Arc::new(Mutex::new(None)),
             active_session: Arc::new(Mutex::new(None)),
@@ -277,14 +285,7 @@ impl EngineHost {
             && settings.optimization.n_gpu_layers != Some(0)
             && (plan.selected_tier != cluaiz_plan::PlacementTier::GpuOnly || short_context)
         {
-            let freed: Vec<&str> = [
-                ("ONNX", self.onnx.unload_idle()),
-                ("speech", self.speech.unload_idle()),
-                ("embedding", self.embeddings.unload_idle()),
-            ]
-            .into_iter()
-            .filter_map(|(kind, freed)| freed.then_some(kind))
-            .collect();
+            let freed = self.room.free_others("chat");
             if !freed.is_empty() {
                 hw = cluaiz_hw::HardwareProber::with_live_memory();
                 let replanned = Planner::create_plan(model_id, &geometry, &hw, settings);

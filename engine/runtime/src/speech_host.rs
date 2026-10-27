@@ -34,6 +34,7 @@ pub struct SpeechHost {
     loaded: Arc<Mutex<Option<Resident<SpeechModel>>>>,
     admission: crate::media_admission::MediaAdmission,
     transition: Arc<tokio::sync::Mutex<()>>,
+    room: crate::media_room::MediaRoom,
 }
 
 struct Resident<T> {
@@ -45,8 +46,14 @@ struct Resident<T> {
 }
 
 impl SpeechHost {
-    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>) -> Self {
-        Self { transition, ..Default::default() }
+    pub(crate) fn with_transition(transition: Arc<tokio::sync::Mutex<()>>, room: crate::media_room::MediaRoom) -> Self {
+        Self { transition, room, ..Default::default() }
+    }
+
+    /// [`Self::unload_idle`] for another owner, without keeping this one alive
+    pub(crate) fn idle_releaser(&self) -> impl Fn() -> bool + Send + Sync + 'static {
+        let loaded = Arc::downgrade(&self.loaded);
+        move || loaded.upgrade().is_some_and(|loaded| free_idle(&loaded))
     }
 
     /// Called under speech admission when another TTS backend replaces this resident.
@@ -57,7 +64,7 @@ impl SpeechHost {
 
     /// Frees the speech model when no request is using it; true when one was freed
     pub fn unload_idle(&self) -> bool {
-        self.loaded.try_lock().ok().and_then(|mut loaded| loaded.take()).is_some()
+        free_idle(&self.loaded)
     }
 
     /// Admit before decoding reference audio; the lease stays owned by the native worker.
@@ -78,11 +85,12 @@ impl SpeechHost {
         let (tx, rx) = mpsc::channel(2);
         let loaded = Arc::clone(&self.loaded);
         let transition = Arc::clone(&self.transition);
+        let room = self.room.clone();
         let handle = tokio::runtime::Handle::current();
         tokio::task::spawn_blocking(move || {
             let _admission = admission;
             let lease = Arc::new(());
-            let result = speak(&loaded, &transition, &entry, &text, options, &settings, keep_alive, Arc::clone(&lease), &tx)
+            let result = speak(&loaded, &transition, &room, &entry, &text, options, &settings, keep_alive, Arc::clone(&lease), &tx)
                 .map(|uri| AudioEvent::Completed(AudioOutput::WavDataUri(uri)))
                 .map_err(|e| format!("{e:#}"));
             if result.is_ok() {
@@ -107,9 +115,14 @@ impl SpeechHost {
     }
 }
 
+fn free_idle(loaded: &Mutex<Option<Resident<SpeechModel>>>) -> bool {
+    loaded.try_lock().ok().and_then(|mut loaded| loaded.take()).is_some()
+}
+
 fn speak(
     loaded: &Mutex<Option<Resident<SpeechModel>>>,
     transition: &tokio::sync::Mutex<()>,
+    room: &crate::media_room::MediaRoom,
     entry: &ModelRegistryEntry,
     text: &str,
     mut options: SpeechOptions,
@@ -134,14 +147,18 @@ fn speak(
         let geometry = cluaiz_models::GgufProber::probe_geometry(&model)?;
         let codec_bytes = std::fs::metadata(&projector)?.len();
         crate::vram_use::load();
-        let mut live = cluaiz_hw::HardwareProber::with_live_memory();
-        let free_before = live.gpus.first().map_or(0.0, |g| g.vram_available_gb);
         // What this model took on the GPU beyond its estimate last time is not free for it now
-        if let (Some(extra), Some(gpu)) = (cluaiz_plan::margin::learned_key(&measure_key), live.gpus.first_mut()) {
-            gpu.vram_available_gb = (gpu.vram_available_gb - extra.max(0.0)).max(0.0);
-        }
+        let extra = cluaiz_plan::margin::learned_key(&measure_key).unwrap_or(0.0).max(0.0);
         let decoded = options.speaker_reference.as_ref().map_or(0, |a| a.samples().len().saturating_mul(std::mem::size_of::<f32>()) as u64);
-        let plan = select_placement(&geometry, codec_bytes, decoded, &live, settings)?;
+        let mut free_before = 0.0;
+        let plan = room.retry_freeing_others("speech", || {
+            let mut live = cluaiz_hw::HardwareProber::with_live_memory();
+            free_before = live.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+            if let Some(gpu) = live.gpus.first_mut() {
+                gpu.vram_available_gb = (gpu.vram_available_gb - extra).max(0.0);
+            }
+            select_placement(&geometry, codec_bytes, decoded, &live, settings)
+        })?;
         let placement = plan.placement;
         let gpu = placement.n_gpu_layers != 0 || placement.projector_gpu;
         if gpu {
@@ -164,7 +181,8 @@ fn speak(
         };
         *slot = Some(Resident { id: entry.id.clone(), settings_key, model: speech, lease: Arc::clone(&lease) });
     }
-    if let Err(error) = check_request_budget(settings, 0) {
+    // A load can take more RAM than its estimate and leave too little for the request
+    if let Err(error) = room.retry_freeing_others("speech", || check_request_budget(settings, 0)) {
         *slot = None;
         return Err(error);
     }
@@ -179,13 +197,16 @@ fn speak(
         let retained = samples.len().checked_add(part.len()).and_then(|n| n.checked_mul(24))
             .and_then(|n| n.checked_add(part.len().checked_mul(16)?)).context("Speech output budget overflow")?;
         options.limits.check_decoded_bytes(u64::try_from(retained)?)?;
-        check_request_budget(settings, u64::try_from(part.len().checked_mul(16).context("Speech part budget overflow")?)?)?;
+        // The weights are mapped and fill RAM once speaking starts, so the room may run out here
+        let part_bytes = u64::try_from(part.len().checked_mul(16).context("Speech part budget overflow")?)?;
+        room.retry_freeing_others("speech", || check_in_flight_budget(settings, part_bytes))?;
         samples.extend_from_slice(part);
         let uri = cluaiz_media::wav::encode_data_uri(part, sample_rate, options.limits)?;
         tx.blocking_send(Ok(AudioEvent::Chunk(uri)))
             .map_err(|_| anyhow::anyhow!("Speech request cancelled"))
     }, || tx.is_closed()).and_then(|()| {
-        check_request_budget(settings, u64::try_from(samples.len().checked_mul(8).context("Speech WAV budget overflow")?)?)?;
+        let wav_bytes = u64::try_from(samples.len().checked_mul(8).context("Speech WAV budget overflow")?)?;
+        room.retry_freeing_others("speech", || check_in_flight_budget(settings, wav_bytes))?;
         cluaiz_media::wav::encode_data_uri(&samples, rate, options.limits)
     });
     // The speech model's GPU use grows while it speaks (Qwen3-TTS 1.7B with 5 layers and the
@@ -207,6 +228,11 @@ fn speak(
 fn check_request_budget(settings: &ActiveUserSettings, additional: u64) -> Result<()> {
     cluaiz_plan::media_budget::check_request_ram(settings.media.projector_workspace_bytes.get(), additional,
         &cluaiz_hw::HardwareProber::with_live_memory(), settings)
+}
+
+/// After the first part the request's workspace is allocated: only its new buffers are checked
+fn check_in_flight_budget(settings: &ActiveUserSettings, additional: u64) -> Result<()> {
+    cluaiz_plan::media_budget::check_in_flight_ram(additional, &cluaiz_hw::HardwareProber::with_live_memory(), settings)
 }
 
 fn load_key(model: &std::path::Path, projector: &std::path::Path, settings: &ActiveUserSettings) -> Result<String> {
