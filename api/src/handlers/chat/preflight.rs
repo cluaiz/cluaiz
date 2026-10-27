@@ -581,13 +581,8 @@ impl PreparedChatContext {
         // Suggestions (cards and titles) for tools that are installed but not loaded. The model
         // loads one with load_tool when it needs it; nothing goes in whole on its own.
         let discovery = tools_allowed && request.tool_search != Some(false);
-        // recall / open_memory: offered when the prompt leaves earlier messages of the chat out, or
-        // when other chats may be searched (cross_chat not deny). No words of the message decide it.
-        let memory_tools = tools_allowed
-            && ledger_chat.is_some()
-            && ((history_mode != context_plan::HistoryMode::Recent && request.messages.len() > 1) || policy.cross_chat != "deny");
-        // remember: offered whenever notes are on; the model decides when the user asked for it
-        let remember_tool = tools_allowed && ledger_chat.is_some() && policy.notes != "off";
+        // The prompt leaves earlier messages of the chat out (adaptive / none)
+        let history_hidden = history_mode != context_plan::HistoryMode::Recent && request.messages.len() > 1;
         // An open task (work that changed something over several turns, or one the model keeps):
         // looked up only when this chat's tools changed something
         let changed_something = ledger.as_ref().is_some_and(|saved| {
@@ -596,7 +591,7 @@ impl PreparedChatContext {
                 ["write", "edit", "create", "move", "delete", "execute", "run"].iter().any(|w| name.contains(w))
             })
         });
-        let open_task = if tools_allowed && changed_something || memory_tools {
+        let open_task = if tools_allowed && (changed_something || history_hidden) {
             ledger_chat.as_deref().and_then(super::recall::open_task)
         } else {
             None
@@ -662,10 +657,17 @@ impl PreparedChatContext {
                 || chat_has_tool_history;
         }
         // Earlier messages not shown (adaptive / none): the model can look them up, also when
-        // tool suggestions are off
+        // tool suggestions are off. Otherwise the memory functions only come along when tools are
+        // in the prompt anyway: on a plain message ("tell me a story") a small model took them as
+        // all it can do and refused. No words of the message decide it.
         let tool_meta = offer_meta_tools;
+        let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta);
+        // recall / open_memory, also for other chats when cross_chat is not deny
+        let memory_tools = memory_room && (history_hidden || policy.cross_chat != "deny");
+        // remember, when notes are on; the model decides when the user asked for it
+        let remember_tool = memory_room && policy.notes != "off";
         if memory_tools {
-            if hint_lines.is_empty() {
+            if hint_lines.is_empty() && history_hidden {
                 hint_lines = "Earlier messages of this chat are not all shown. To look something up, call recall with a query; open_memory gives one message in full.\n".to_string();
             }
             offer_meta_tools = true;
@@ -677,7 +679,7 @@ impl PreparedChatContext {
         if remember_tool {
             meta_schemas.push(super::recall::remember_schema());
             offer_meta_tools = true;
-            if hint_lines.is_empty() {
+            if hint_lines.is_empty() && history_hidden {
                 hint_lines = "To keep something the user wants remembered beyond this chat, call remember.\n".to_string();
             }
         }
