@@ -225,7 +225,14 @@ impl Planner {
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
-        let choice = resolve_context(geometry, &budget, settings);
+        let mut choice = resolve_context(geometry, &budget, settings);
+        // CTX rule 3 on the CPU too: Auto does not fill RAM with context (that RAM is what other
+        // models and apps need); the floor, or less when only less fits
+        let floor_ctx = geometry.context_length.max(1).min(AUTO_CONTEXT_FLOOR);
+        if !gpu_allowed && opt.context_setting() == ContextSetting::Auto && choice.n_ctx > floor_ctx {
+            choice.n_ctx = floor_ctx;
+            choice.reason = format!("Auto on the CPU: {} tokens, KV {:?} (the floor; RAM is not filled with context)", floor_ctx, choice.kv_quant);
+        }
         let ctx = choice.n_ctx;
         let kv = choice.kv_quant;
         let vram_buffer_gb = if gpu_allowed { choice.buffer_gb } else { 0.0 };
@@ -709,5 +716,9 @@ mod tests {
         assert_eq!(plan.selected_tier, PlacementTier::CpuOnly, "{}", plan.explanation);
         assert_eq!(plan.n_gpu_layers, 0);
         assert_eq!(plan.vram_budget_gb, 0.0);
+        // Auto does not fill RAM with context; Custom still gets its number
+        assert_eq!(plan.context_window, AUTO_CONTEXT_FLOOR, "{}", plan.context_reason);
+        s.optimization.set_context_setting(ContextSetting::Custom(16384));
+        assert_eq!(Planner::create_plan("m", &qwen3_like(1.08), &hw(2.95, 8.0), &s).context_window, 16384);
     }
 }
