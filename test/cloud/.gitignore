@@ -1,0 +1,3 @@
+# Large raw outputs stay local
+runs/*/server.log
+runs/*/*.wav

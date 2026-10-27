@@ -1,0 +1,1056 @@
+== machine
+Linux cluaiz-build.us-central1-a.c.fluid-furnace-485116-q4.internal 7.0.0-1014-gcp #14~24.04.1-Ubuntu SMP PREEMPT Thu Sep 17 19:52:35 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Ubuntu 24.04.5 LTS
+8
+               total        used        free      shared  buff/cache   available
+Mem:              31           0          30           0           0          30
+Swap:              0           0           0
+NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.
+
+W: http://packages.cloud.google.com/apt/dists/apt-transport-artifact-registry-stable/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+W: https://us-apt.pkg.dev/projects/gce-ai-infra/dists/gpudirect-gib-apt/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+info: downloading installer
+info: profile set to minimal
+info: default host tuple is x86_64-unknown-linux-gnu
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+info: downloading 3 components
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu installed - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source the
+corresponding env file under $HOME/.cargo.
+
+Consider running the right command for your shell (note the leading DOT):
+. "$HOME/.cargo/env" # For sh/ash/dash/pdksh/bash
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+Build cuda_12.9.r12.9/compiler.35813241_0
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded async-net v2.0.0
+  Downloaded async-recursion v1.2.0
+  Downloaded async-task v4.7.1
+  Downloaded atomic-waker v1.1.2
+  Downloaded adler2 v2.0.1
+  Downloaded adobe-cmap-parser v0.4.1
+  Downloaded md-5 v0.10.6
+  Downloaded macro_rules_attribute-proc_macro v0.2.2
+  Downloaded bit_field v0.10.3
+  Downloaded base64ct v1.8.3
+  Downloaded async-stream v0.3.6
+  Downloaded downcast-rs v1.2.1
+  Downloaded async-stream-impl v0.3.6
+  Downloaded colorchoice v1.0.5
+  Downloaded constant_time_eq v0.1.5
+  Downloaded cpufeatures v0.2.17
+  Downloaded cfg_aliases v0.2.1
+  Downloaded darling_macro v0.20.11
+  Downloaded async-signal v0.2.14
+  Downloaded peeking_take_while v0.1.2
+  Downloaded block-buffer v0.10.4
+  Downloaded crypto-common v0.1.7
+  Downloaded dirs v5.0.1
+  Downloaded anstyle-query v1.1.5
+  Downloaded clap_lex v1.1.0
+  Downloaded dlib v0.5.3
+  Downloaded cfg-if v1.0.4
+  Downloaded color_quant v1.1.0
+  Downloaded debug_unsafe v0.1.4
+  Downloaded derive_builder_macro v0.20.2
+  Downloaded castaway v0.2.4
+  Downloaded color-spantrace v0.3.0
+  Downloaded ctrlc v3.5.2
+  Downloaded dirs-sys v0.4.1
+  Downloaded async-broadcast v0.7.2
+  Downloaded crossbeam-deque v0.8.6
+  Downloaded newline-converter v0.3.0
+  Downloaded anstyle-parse v1.0.0
+  Downloaded async-fs v2.2.0
+  Downloaded atoi_simd v0.18.1
+  Downloaded autocfg v1.5.0
+  Downloaded axum-core v0.5.6
+  Downloaded displaydoc v0.2.5
+  Downloaded async-channel v2.5.0
+  Downloaded audiopus v0.2.0
+  Downloaded powerfmt v0.2.0
+  Downloaded pbkdf2 v0.11.0
+  Downloaded primal-check v0.3.4
+  Downloaded anstyle v1.0.14
+  Downloaded concurrent-queue v2.5.0
+  Downloaded percent-encoding v2.3.2
+  Downloaded utf8parse v0.2.2
+  Downloaded yoke-derive v0.8.2
+  Downloaded addr2line v0.25.1
+  Downloaded arrayvec v0.7.8
+  Downloaded async-executor v1.14.0
+  Downloaded bitflags v1.3.2
+  Downloaded cmake v0.1.58
+  Downloaded cexpr v0.6.0
+  Downloaded digest v0.10.7
+  Downloaded dary_heap v0.3.9
+  Downloaded cipher v0.4.4
+  Downloaded derive_builder_core v0.20.2
+  Downloaded deranged v0.5.8
+  Downloaded openssl-probe v0.2.1
+  Downloaded want v0.3.1
+  Downloaded zcheapstr v1.1.0
+  Downloaded ahash v0.8.12
+  Downloaded anstream v1.0.0
+  Downloaded anyhow v1.0.102
+  Downloaded async-lock v3.4.2
+  Downloaded async-trait v0.1.89
+  Downloaded axum-macros v0.5.1
+  Downloaded bitflags v2.11.1
+  Downloaded blocking v1.7.0
+  Downloaded byteorder v1.5.0
+  Downloaded bzip2 v0.4.4
+  Downloaded clang-sys v1.8.1
+  Downloaded clap_derive v4.6.1
+  Downloaded crc32fast v1.5.0
+  Downloaded derive_builder v0.20.2
+  Downloaded async-process v2.5.0
+  Downloaded colored v2.2.0
+  Downloaded darling v0.20.11
+  Downloaded monostate-impl v0.1.18
+  Downloaded num-integer v0.1.46
+  Downloaded openssl-macros v0.1.1
+  Downloaded pollster v0.4.0
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded pulp-wasm-simd-flag v0.1.1
+  Downloaded async-io v2.6.0
+  Downloaded console v0.16.3
+  Downloaded crossbeam-utils v0.8.21
+  Downloaded endi v1.1.1
+  Downloaded matchit v0.8.4
+  Downloaded mime_guess v2.0.5
+  Downloaded minimal-lexical v0.2.1
+  Downloaded nu-ansi-term v0.50.3
+  Downloaded num-conv v0.2.1
+  Downloaded clap v4.6.1
+  Downloaded potential_utf v0.1.5
+  Downloaded ref-cast v1.0.27
+  Downloaded unicode-ident v1.0.24
+  Downloaded base64 v0.13.1
+  Downloaded bytemuck v1.25.0
+  Downloaded cfb v0.14.0
+  Downloaded crossbeam-epoch v0.9.18
+  Downloaded zerovec-derive v0.11.3
+  Downloaded allocator-api2 v0.2.21
+  Downloaded bytes v1.11.1
+  Downloaded compact_str v0.9.0
+  Downloaded darling_core v0.20.11
+  Downloaded backtrace v0.3.76
+  Downloaded bumpalo v3.20.2
+  Downloaded url v2.5.8
+  Downloaded base64 v0.22.1
+  Downloaded cc v1.2.61
+  Downloaded unicode-normalization-alignments v0.1.12
+  Downloaded rawpointer v0.2.1
+  Downloaded zip v0.6.6
+  Downloaded ashpd v0.11.1
+  Downloaded crossterm v0.25.0
+  Downloaded der v0.8.1
+  Downloaded find-msvc-tools v0.1.9
+  Downloaded futures-channel v0.3.32
+  Downloaded mime v0.3.17
+  Downloaded monostate v0.1.18
+  Downloaded parking v2.2.1
+  Downloaded proc-macro-crate v3.5.0
+  Downloaded rayon-cond v0.4.0
+  Downloaded unicode-normalization v0.1.25
+  Downloaded zip v2.4.2
+  Downloaded aes v0.8.4
+  Downloaded option-ext v0.2.0
+  Downloaded rand_chacha v0.3.1
+  Downloaded reborrow v0.5.5
+  Downloaded ref-cast-impl v1.0.27
+  Downloaded zerofrom v0.1.7
+  Downloaded num-complex v0.4.6
+  Downloaded pem-rfc7468 v1.0.0
+  Downloaded pkg-config v0.3.33
+  Downloaded quote v1.0.45
+  Downloaded onig v6.5.2
+  Downloaded ordered-stream v0.2.0
+  Downloaded pin-project-lite v0.2.17
+  Downloaded password-hash v0.4.2
+  Downloaded rand_core v0.6.4
+  Downloaded piper v0.2.5
+  Downloaded rand_core v0.9.5
+  Downloaded raw-window-handle v0.6.2
+  Downloaded rand_chacha v0.9.0
+  Downloaded native-tls v0.2.18
+  Downloaded once_cell v1.21.4
+  Downloaded postscript v0.14.1
+  Downloaded wayland-scanner v0.31.11
+  Downloaded aho-corasick v1.1.4
+  Downloaded axum v0.8.9
+  Downloaded clap_builder v4.6.0
+  Downloaded crossterm v0.28.1
+  Downloaded flate2 v1.1.9
+  Downloaded futures-lite v2.6.1
+  Downloaded futures-macro v0.3.32
+  Downloaded futures-sink v0.3.32
+  Downloaded glob v0.3.3
+  Downloaded http-body v1.0.1
+  Downloaded httpdate v1.0.3
+  Downloaded lazy_static v1.5.0
+  Downloaded memmap2 v0.9.10
+  Downloaded num-traits v0.2.19
+  Downloaded nvml-wrapper-sys v0.9.1
+  Downloaded ort-sys v2.0.0-rc.13
+  Downloaded parking_lot v0.12.5
+  Downloaded paste v1.0.15
+  Downloaded quinn-udp v0.5.14
+  Downloaded rangemap v1.7.1
+  Downloaded rfd v0.15.4
+  Downloaded serde_path_to_error v0.1.20
+  Downloaded signal-hook-mio v0.2.5
+  Downloaded strength_reduce v0.2.4
+  Downloaded tinystr v0.8.3
+  Downloaded unicase v2.9.0
+  Downloaded winnow v1.0.4
+  Downloaded zip v9.0.3
+  Downloaded bindgen v0.59.2
+  Downloaded bindgen v0.69.5
+  Downloaded chrono v0.4.34
+  Downloaded esaxx-rs v0.1.10
+  Downloaded eyre v0.6.12
+  Downloaded half v2.7.1
+  Downloaded hyper-rustls v0.27.9
+  Downloaded hyper-util v0.1.20
+  Downloaded indexmap v2.14.0
+  Downloaded indicatif v0.18.4
+  Downloaded lazycell v1.3.0
+  Downloaded lebe v0.5.3
+  Downloaded libloading v0.8.9
+  Downloaded matrixmultiply v0.3.11
+  Downloaded miniz_oxide v0.8.9
+  Downloaded mio v1.2.0
+  Downloaded openssl-sys v0.9.116
+  Downloaded owo-colors v4.3.0
+  Downloaded parking_lot_core v0.9.12
+  Downloaded pdf-extract v0.7.12
+  Downloaded polling v3.11.0
+  Downloaded prettyplease v0.2.37
+  Downloaded proc-macro2 v1.0.106
+  Downloaded qoi v0.4.1
+  Downloaded quinn v0.11.9
+  Downloaded rayon-core v1.13.0
+  Downloaded rustc-hash v2.1.2
+  Downloaded scoped-tls v1.0.1
+  Downloaded shlex v1.3.0
+  Downloaded signal-hook v0.3.18
+  Downloaded sonic-rs-sys v0.1.9
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded static_assertions v1.1.0
+  Downloaded strsim v0.11.1
+  Downloaded tokio-rustls v0.26.4
+  Downloaded transpose v0.2.3
+  Downloaded try-lock v0.2.5
+  Downloaded type1-encoding-parser v0.1.1
+  Downloaded unit-prefix v0.5.2
+  Downloaded untrusted v0.9.0
+  Downloaded zvariant_derive v5.15.0
+  Downloaded zvariant_utils v4.2.0
+  Downloaded dyn-clone v1.0.20
+  Downloaded either v1.15.0
+  Downloaded futures-executor v0.3.32
+  Downloaded futures-io v0.3.32
+  Downloaded futures-task v0.3.32
+  Downloaded hyper v1.9.0
+  Downloaded jobserver v0.1.34
+  Downloaded litemap v0.8.2
+  Downloaded lock_api v0.4.14
+  Downloaded memchr v2.8.0
+  Downloaded mio v0.8.11
+  Downloaded nom v7.1.3
+  Downloaded nvml-wrapper v0.12.1
+  Downloaded png v0.17.16
+  Downloaded rand v0.8.6
+  Downloaded rand v0.9.4
+  Downloaded raw-cpuid v11.6.0
+  Downloaded regex v1.12.3
+  Downloaded rustc-demangle v0.1.27
+  Downloaded schemars_derive v1.2.3
+  Downloaded subtle v2.6.1
+  Downloaded tracing-error v0.2.1
+  Downloaded tracing-log v0.2.0
+  Downloaded wayland-sys v0.31.11
+  Downloaded zerofrom-derive v0.1.7
+  Downloaded enumflags2 v0.7.12
+  Downloaded gimli v0.32.3
+  Downloaded iana-time-zone v0.1.65
+  Downloaded ident_case v1.0.1
+  Downloaded iri-string v0.7.12
+  Downloaded log v0.4.33
+  Downloaded ort v2.0.0-rc.13
+  Downloaded pom v1.1.0
+  Downloaded portable-atomic v1.13.1
+  Downloaded pulp v0.22.3
+  Downloaded quick-xml v0.39.4
+  Downloaded rayon v1.12.0
+  Downloaded reqwest v0.12.28
+  Downloaded serde_json v1.0.150
+  Downloaded serde_urlencoded v0.7.1
+  Downloaded sha1 v0.10.6
+  Downloaded tempfile v3.27.0
+  Downloaded tower-http v0.6.8
+  Downloaded webpki-roots v1.0.7
+  Downloaded zerocopy-derive v0.8.48
+  Downloaded zeroize v1.8.2
+  Downloaded futures-util v0.3.32
+  Downloaded icu_normalizer_data v2.2.0
+  Downloaded ndarray v0.15.6
+  Downloaded ndarray v0.17.2
+  Downloaded quick-xml v0.41.0
+  Downloaded quick-xml v0.42.0
+  Downloaded quinn-proto v0.11.14
+  Downloaded rustc-hash v1.1.0
+  Downloaded sha2 v0.10.9
+  Downloaded socks v0.3.4
+  Downloaded symphonia-codec-pcm v0.5.5
+  Downloaded tokio-macros v2.7.0
+  Downloaded wrapcenum-derive v0.4.1
+  Downloaded zerovec v0.11.6
+  Downloaded enumflags2_derive v0.7.12
+  Downloaded symphonia-format-mkv v0.5.5
+  Downloaded thiserror-impl v2.0.18
+  Downloaded tracing-subscriber v0.3.23
+  Downloaded symphonia-format-ogg v0.5.5
+  Downloaded tower-layer v0.3.3
+  Downloaded writeable v0.6.3
+  Downloaded zbus_names v4.3.4
+  Downloaded icu_normalizer v2.2.0
+  Downloaded openssl v0.10.80
+  Downloaded rustls-pki-types v1.14.1
+  Downloaded serde_core v1.0.228
+  Downloaded symphonia-metadata v0.5.5
+  Downloaded thiserror-impl v1.0.69
+  Downloaded tower-service v0.3.3
+  Downloaded icu_collections v2.2.0
+  Downloaded icu_locale_core v2.2.0
+  Downloaded nix v0.31.3
+  Downloaded symphonia-format-isomp4 v0.5.5
+  Downloaded symphonia-format-riff v0.5.5
+  Downloaded regex-syntax v0.8.10
+  Downloaded serde v1.0.228
+  Downloaded toml v0.5.11
+  Downloaded toml_parser v1.1.5+spec-1.1.0
+  Downloaded tracing-attributes v0.1.31
+  Downloaded zbus_macros v5.19.0
+  Downloaded symphonia-codec-vorbis v0.5.5
+  Downloaded object v0.37.3
+  Downloaded unsafe-libyaml v0.2.11
+  Downloaded sharded-slab v0.1.7
+  Downloaded icu_properties v2.2.0
+  Downloaded typenum v1.20.0
+  Downloaded tracing-core v0.1.36
+  Downloaded yoke v0.8.2
+  Downloaded extended v0.1.0
+  Downloaded serde_derive v1.0.228
+  Downloaded zerotrie v0.2.4
+  Downloaded rustix v0.38.44
+  Downloaded symphonia-codec-adpcm v0.5.5
+  Downloaded serde_yaml v0.9.34+deprecated
+  Downloaded tokenizers v0.22.2
+  Downloaded unicode_categories v0.1.1
+  Downloaded ureq-proto v0.6.0
+  Downloaded which v4.4.2
+  Downloaded errno v0.3.14
+  Downloaded fast-float2 v0.2.4
+  Downloaded icu_provider v2.2.0
+  Downloaded rustix v1.1.4
+  Downloaded sysinfo v0.30.13
+  Downloaded tower v0.5.3
+  Downloaded version_check v0.9.5
+  Downloaded fnv v1.0.7
+  Downloaded form_urlencoded v1.2.2
+  Downloaded futures-core v0.3.32
+  Downloaded onig_sys v69.9.2
+  Downloaded regex-automata v0.4.14
+  Downloaded rustls v0.23.39
+  Downloaded foreign-types v0.3.2
+  Downloaded foreign-types-shared v0.1.1
+  Downloaded schemars v1.2.3
+  Downloaded fastrand v2.4.1
+  Downloaded symphonia-utils-xiph v0.5.5
+  Downloaded foldhash v0.2.0
+  Downloaded futures v0.3.32
+  Downloaded socket2 v0.6.3
+  Downloaded unicode-segmentation v1.13.2
+  Downloaded zune-inflate v0.2.54
+  Downloaded fuzzy-matcher v0.3.7
+  Downloaded scopeguard v1.2.0
+  Downloaded symphonia-core v0.5.5
+  Downloaded fdeflate v0.3.7
+  Downloaded rustversion v1.0.22
+  Downloaded ryu v1.0.23
+  Downloaded serde_repr v0.1.20
+  Downloaded slab v0.4.12
+  Downloaded sysinfo v0.33.1
+  Downloaded typed-path v0.12.3
+  Downloaded euclid v0.20.14
+  Downloaded exr v1.74.2
+  Downloaded getrandom v0.2.17
+  Downloaded lru-slab v0.1.2
+  Downloaded office_oxide v0.1.15
+  Downloaded safetensors v0.8.0
+  Downloaded sync_wrapper v1.0.2
+  Downloaded tokio-util v0.7.18
+  Downloaded ureq v3.3.0
+  Downloaded wayland-client v0.31.15
+  Downloaded smallvec v1.15.1
+  Downloaded ring v0.17.14
+  Downloaded serde_derive_internals v0.30.0
+  Downloaded inout v0.1.4
+  Downloaded web-time v1.1.0
+  Downloaded idna_adapter v1.2.1
+  Downloaded zstd-safe v5.0.2+zstd.1.5.2
+  Downloaded hashbrown v0.17.0
+  Downloaded symphonia v0.5.5
+  Downloaded equivalent v1.0.2
+  Downloaded inquire v0.7.5
+  Downloaded is_terminal_polyfill v1.70.2
+  Downloaded simd-adler32 v0.3.9
+  Downloaded syn v2.0.117
+  Downloaded tinyvec v1.11.0
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded winres v0.1.12
+  Downloaded getrandom v0.4.2
+  Downloaded weezl v0.1.12
+  Downloaded wayland-backend v0.3.17
+  Downloaded rustfft v6.4.1
+  Downloaded hex v0.4.3
+  Downloaded event-listener-strategy v0.5.4
+  Downloaded time v0.3.47
+  Downloaded time-core v0.1.8
+  Downloaded color-eyre v0.6.5
+  Downloaded signal-hook-registry v1.4.8
+  Downloaded time-macros v0.2.27
+  Downloaded zmij v1.0.21
+  Downloaded getrandom v0.3.4
+  Downloaded gif v0.13.3
+  Downloaded synstructure v0.13.2
+  Downloaded thiserror v2.0.18
+  Downloaded hound v3.5.1
+  Downloaded utf8-zero v0.8.1
+  Downloaded utf8_iter v1.0.4
+  Downloaded zstd v0.11.2+zstd.1.5.2
+  Downloaded urlencoding v2.1.3
+  Downloaded itoa v1.0.18
+  Downloaded thiserror v1.0.69
+  Downloaded thread_local v1.1.9
+  Downloaded generic-array v0.14.7
+  Downloaded home v0.5.12
+  Downloaded event-listener v5.4.2
+  Downloaded icu_properties_data v2.2.0
+  Downloaded infer v0.22.0
+  Downloaded macro_rules_attribute v0.2.2
+  Downloaded http-body-util v0.1.3
+  Downloaded bzip2-sys v0.1.13+1.0.8
+  Downloaded ipnet v2.12.0
+  Downloaded heck v0.5.0
+  Downloaded lzma-rust2 v0.15.8
+  Downloaded httparse v1.10.1
+  Downloaded symphonia-codec-aac v0.5.5
+  Downloaded itertools v0.14.0
+  Downloaded symphonia-bundle-flac v0.5.5
+  Downloaded symphonia-bundle-mp3 v0.5.5
+  Downloaded http v1.4.0
+  Downloaded itertools v0.12.1
+  Downloaded toml_datetime v1.1.2+spec-1.1.0
+  Downloaded zbus v5.19.0
+  Downloaded fxhash v0.2.1
+  Downloaded indenter v0.3.4
+  Downloaded zopfli v0.8.3
+  Downloaded rustls-webpki v0.103.13
+  Downloaded zvariant v5.15.0
+  Downloaded hmac v0.12.1
+  Downloaded hmac-sha256 v1.1.14
+  Downloaded zlib-rs v0.6.8
+  Downloaded uuid v1.24.0
+  Downloaded tiff v0.9.1
+  Downloaded unicode-width v0.1.14
+  Downloaded unicode-width v0.2.2
+  Downloaded wayland-protocols v0.32.13
+  Downloaded webpki-root-certs v1.0.7
+  Downloaded zerocopy v0.8.48
+  Downloaded idna v1.1.0
+  Downloaded libm v0.2.16
+  Downloaded hashbrown v0.16.1
+  Downloaded toml_edit v0.25.17+spec-1.1.0
+  Downloaded vcpkg v0.2.15
+  Downloaded lopdf v0.34.0
+  Downloaded jpeg-decoder v0.3.2
+  Downloaded syn v3.0.4
+  Downloaded spm_precompiled v0.1.4
+  Downloaded libc v0.2.186
+  Downloaded tracing v0.1.44
+  Downloaded zstd-sys v2.0.16+zstd.1.5.7
+  Downloaded encoding_rs v0.8.35
+  Downloaded tokio v1.52.3
+  Downloaded linux-raw-sys v0.4.15
+  Downloaded audiopus_sys v0.1.8
+  Downloaded linux-raw-sys v0.12.1
+  Downloaded image v0.24.9
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling libc v0.2.186
+   Compiling log v0.4.33
+   Compiling shlex v1.3.0
+   Compiling find-msvc-tools v0.1.9
+   Compiling pin-project-lite v0.2.17
+   Compiling pkg-config v0.3.33
+   Compiling smallvec v1.15.1
+   Compiling serde_core v1.0.228
+   Compiling once_cell v1.21.4
+   Compiling memchr v2.8.0
+   Compiling autocfg v1.5.0
+   Compiling futures-core v0.3.32
+   Compiling serde v1.0.228
+   Compiling bitflags v2.11.1
+   Compiling version_check v0.9.5
+   Compiling syn v2.0.117
+   Compiling itoa v1.0.18
+   Compiling crossbeam-utils v0.8.21
+   Compiling num-traits v0.2.19
+   Compiling tracing-core v0.1.36
+   Compiling futures-io v0.3.32
+   Compiling jobserver v0.1.34
+   Compiling bytemuck v1.25.0
+   Compiling cc v1.2.61
+   Compiling stable_deref_trait v1.2.1
+   Compiling generic-array v0.14.7
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling typenum v1.20.0
+   Compiling slab v0.4.12
+   Compiling errno v0.3.14
+   Compiling lazy_static v1.5.0
+   Compiling signal-hook-registry v1.4.8
+   Compiling mio v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling subtle v2.6.1
+   Compiling bytes v1.11.1
+   Compiling parking_lot v0.12.5
+   Compiling bitflags v1.3.2
+   Compiling zerocopy v0.8.48
+   Compiling rustix v1.1.4
+   Compiling simd-adler32 v0.3.9
+   Compiling zmij v1.0.21
+   Compiling futures-sink v0.3.32
+   Compiling fastrand v2.4.1
+   Compiling linux-raw-sys v0.12.1
+   Compiling writeable v0.6.3
+   Compiling crypto-common v0.1.7
+   Compiling litemap v0.8.2
+   Compiling serde_json v1.0.150
+   Compiling futures-channel v0.3.32
+   Compiling socket2 v0.6.3
+   Compiling getrandom v0.2.17
+   Compiling crossbeam-epoch v0.9.18
+   Compiling syn v3.0.4
+   Compiling getrandom v0.4.2
+   Compiling icu_properties_data v2.2.0
+   Compiling adler2 v2.0.1
+   Compiling atomic-waker v1.1.2
+   Compiling equivalent v1.0.2
+   Compiling utf8_iter v1.0.4
+   Compiling percent-encoding v2.3.2
+   Compiling rayon-core v1.13.0
+   Compiling icu_normalizer_data v2.2.0
+   Compiling crossbeam-deque v0.8.6
+   Compiling miniz_oxide v0.8.9
+   Compiling block-buffer v0.10.4
+   Compiling futures-task v0.3.32
+   Compiling arrayvec v0.7.8
+   Compiling crc32fast v1.5.0
+   Compiling synstructure v0.13.2
+   Compiling symphonia-core v0.5.5
+   Compiling digest v0.10.7
+   Compiling encoding_rs v0.8.35
+   Compiling serde_derive v1.0.228
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling tracing-attributes v0.1.31
+   Compiling zerovec-derive v0.11.3
+   Compiling zerofrom v0.1.7
+   Compiling displaydoc v0.2.5
+   Compiling yoke v0.8.2
+   Compiling zerocopy-derive v0.8.48
+   Compiling zerotrie v0.2.4
+   Compiling tracing v0.1.44
+   Compiling tokio-macros v2.7.0
+   Compiling zerovec v0.11.6
+   Compiling futures-macro v0.3.32
+   Compiling libloading v0.8.9
+   Compiling hashbrown v0.17.0
+   Compiling tokio v1.52.3
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling icu_locale_core v2.2.0
+   Compiling icu_collections v2.2.0
+   Compiling futures-util v0.3.32
+   Compiling either v1.15.0
+   Compiling indexmap v2.14.0
+   Compiling icu_provider v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling icu_normalizer v2.2.0
+   Compiling form_urlencoded v1.2.2
+   Compiling http v1.4.0
+   Compiling strsim v0.11.1
+   Compiling fnv v1.0.7
+   Compiling ident_case v1.0.1
+   Compiling ryu v1.0.23
+   Compiling parking v2.2.1
+   Compiling glob v0.3.3
+   Compiling http-body v1.0.1
+   Compiling darling_core v0.20.11
+   Compiling idna_adapter v1.2.1
+   Compiling rayon v1.12.0
+   Compiling ring v0.17.14
+   Compiling clang-sys v1.8.1
+   Compiling getrandom v0.3.4
+   Compiling zlib-rs v0.6.8
+   Compiling idna v1.1.0
+   Compiling uuid v1.24.0
+   Compiling cpufeatures v0.2.17
+   Compiling zeroize v1.8.2
+   Compiling vcpkg v0.2.15
+   Compiling rustversion v1.0.22
+   Compiling paste v1.0.15
+   Compiling tower-service v0.3.3
+   Compiling httparse v1.10.1
+   Compiling openssl-sys v0.9.116
+   Compiling rustls-pki-types v1.14.1
+   Compiling ppv-lite86 v0.2.21
+   Compiling darling_macro v0.20.11
+   Compiling darling v0.20.11
+   Compiling url v2.5.8
+   Compiling symphonia-metadata v0.5.5
+   Compiling thiserror v1.0.69
+   Compiling regex-syntax v0.8.10
+   Compiling flate2 v1.1.9
+   Compiling winnow v1.0.4
+   Compiling iana-time-zone v0.1.65
+   Compiling try-lock v0.2.5
+   Compiling untrusted v0.9.0
+   Compiling minimal-lexical v0.2.1
+   Compiling want v0.3.1
+   Compiling nom v7.1.3
+   Compiling chrono v0.4.34
+   Compiling regex-automata v0.4.14
+   Compiling thiserror-impl v1.0.69
+   Compiling sync_wrapper v1.0.2
+   Compiling thiserror v2.0.18
+   Compiling rustls v0.23.39
+   Compiling httpdate v1.0.3
+   Compiling option-ext v0.2.0
+   Compiling anyhow v1.0.102
+   Compiling tower-layer v0.3.3
+   Compiling regex v1.12.3
+   Compiling hyper v1.9.0
+   Compiling dirs-sys v0.4.1
+   Compiling cexpr v0.6.0
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling rand_core v0.9.5
+   Compiling sha2 v0.10.9
+   Compiling event-listener v5.4.2
+   Compiling thiserror-impl v2.0.18
+   Compiling num-complex v0.4.6
+   Compiling concurrent-queue v2.5.0
+   Compiling raw-cpuid v11.6.0
+   Compiling toml_datetime v1.1.2+spec-1.1.0
+   Compiling lazycell v1.3.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling rustc-hash v1.1.0
+   Compiling base64 v0.22.1
+   Compiling ipnet v2.12.0
+   Compiling hyper-util v0.1.20
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling toml_edit v0.25.17+spec-1.1.0
+   Compiling event-listener-strategy v0.5.4
+   Compiling rand_chacha v0.9.0
+   Compiling dirs v5.0.1
+   Compiling tower v0.5.3
+   Compiling cluaiz-context v0.1.0 (/home/Aryan/cluaiz/context)
+   Compiling symphonia-utils-xiph v0.5.5
+   Compiling http-body-util v0.1.3
+   Compiling futures-lite v2.6.1
+   Compiling enumflags2_derive v0.7.12
+   Compiling onig_sys v69.9.2
+   Compiling foreign-types-shared v0.1.1
+   Compiling openssl v0.10.80
+   Compiling portable-atomic v1.13.1
+   Compiling static_assertions v1.1.0
+   Compiling powerfmt v0.2.0
+   Compiling unicode-segmentation v1.13.2
+   Compiling deranged v0.5.8
+   Compiling foreign-types v0.3.2
+   Compiling proc-macro-crate v3.5.0
+   Compiling cluaiz-core v0.1.0 (/home/Aryan/cluaiz/engine/core)
+   Compiling rand v0.9.4
+   Compiling zvariant_utils v4.2.0
+   Compiling derive_builder_core v0.20.2
+   Compiling webpki-roots v1.0.7
+   Compiling serde_urlencoded v0.7.1
+   Compiling openssl-macros v0.1.1
+   Compiling esaxx-rs v0.1.10
+   Compiling ahash v0.8.12
+   Compiling aho-corasick v1.1.4
+   Compiling unicode-width v0.2.2
+   Compiling native-tls v0.2.18
+   Compiling libm v0.2.16
+   Compiling bindgen v0.59.2
+   Compiling weezl v0.1.12
+   Compiling byteorder v1.5.0
+   Compiling base64ct v1.8.3
+   Compiling iri-string v0.7.12
+   Compiling num-conv v0.2.1
+   Compiling rustls-webpki v0.103.13
+   Compiling time-core v0.1.8
+   Compiling time v0.3.47
+   Compiling tower-http v0.6.8
+   Compiling pem-rfc7468 v1.0.0
+   Compiling console v0.16.3
+   Compiling zvariant_derive v5.15.0
+   Compiling tokio-rustls v0.26.4
+   Compiling derive_builder_macro v0.20.2
+   Compiling hyper-rustls v0.27.9
+   Compiling castaway v0.2.4
+   Compiling wrapcenum-derive v0.4.1
+   Compiling tokio-util v0.7.18
+   Compiling itertools v0.14.0
+   Compiling nvml-wrapper-sys v0.9.1
+   Compiling tempfile v3.27.0
+   Compiling monostate-impl v0.1.18
+   Compiling rand_core v0.6.4
+   Compiling num-integer v0.1.46
+   Compiling pulp v0.22.3
+   Compiling async-io v2.6.0
+   Compiling openssl-probe v0.2.1
+   Compiling peeking_take_while v0.1.2
+   Compiling unit-prefix v0.5.2
+   Compiling macro_rules_attribute-proc_macro v0.2.2
+   Compiling base64 v0.13.1
+   Compiling async-task v4.7.1
+   Compiling rustix v0.38.44
+   Compiling bumpalo v3.20.2
+   Compiling prettyplease v0.2.37
+   Compiling socks v0.3.4
+   Compiling zopfli v0.8.3
+   Compiling ureq-proto v0.6.0
+   Compiling macro_rules_attribute v0.2.2
+   Compiling spm_precompiled v0.1.4
+   Compiling rayon-cond v0.4.0
+   Compiling indicatif v0.18.4
+   Compiling nvml-wrapper v0.12.1
+   Compiling monostate v0.1.18
+   Compiling reqwest v0.12.28
+   Compiling webpki-root-certs v1.0.7
+   Compiling compact_str v0.9.0
+   Compiling onig v6.5.2
+   Compiling derive_builder v0.20.2
+   Compiling der v0.8.1
+   Compiling async-channel v2.5.0
+   Compiling sysinfo v0.30.13
+   Compiling half v2.7.1
+   Compiling dary_heap v0.3.9
+   Compiling polling v3.11.0
+   Compiling audiopus_sys v0.1.8
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling matrixmultiply v0.3.11
+   Compiling wayland-sys v0.31.11
+   Compiling unicode-normalization-alignments v0.1.12
+   Compiling pom v1.1.0
+   Compiling utf8-zero v0.8.1
+   Compiling tinyvec_macros v0.1.1
+   Compiling foldhash v0.2.0
+   Compiling reborrow v0.5.5
+   Compiling linux-raw-sys v0.4.15
+   Compiling allocator-api2 v0.2.21
+   Compiling pulp-wasm-simd-flag v0.1.1
+   Compiling mime v0.3.17
+   Compiling unicase v2.9.0
+   Compiling unicode_categories v0.1.1
+   Compiling mime_guess v2.0.5
+   Compiling hashbrown v0.16.1
+   Compiling tokenizers v0.22.2
+   Compiling ureq v3.3.0
+   Compiling tinyvec v1.11.0
+   Compiling cluaiz-hw v0.1.0 (/home/Aryan/cluaiz/engine/hardware)
+   Compiling sonic-rs-sys v0.1.9
+   Compiling enumflags2 v0.7.12
+   Compiling jpeg-decoder v0.3.2
+   Compiling zcheapstr v1.1.0
+   Compiling dlib v0.5.3
+   Compiling md-5 v0.10.6
+   Compiling piper v0.2.5
+   Compiling wayland-backend v0.3.17
+   Compiling zune-inflate v0.2.54
+   Compiling fdeflate v0.3.7
+   Compiling lzma-rust2 v0.15.8
+   Compiling web-time v1.1.0
+   Compiling bit_field v0.10.3
+   Compiling extended v0.1.0
+   Compiling hmac-sha256 v1.1.14
+   Compiling color_quant v1.1.0
+   Compiling rawpointer v0.2.1
+   Compiling endi v1.1.1
+   Compiling lebe v0.5.3
+   Compiling rangemap v1.7.1
+   Compiling typed-path v0.12.3
+   Compiling home v0.5.12
+   Compiling debug_unsafe v0.1.4
+   Compiling zip v2.4.2
+   Compiling bindgen v0.69.5
+   Compiling ref-cast v1.0.27
+   Compiling cfb v0.14.0
+   Compiling zip v9.0.3
+   Compiling atoi_simd v0.18.1
+   Compiling which v4.4.2
+   Compiling lopdf v0.34.0
+   Compiling exr v1.74.2
+   Compiling zvariant v5.15.0
+   Compiling gif v0.13.3
+   Compiling ort-sys v2.0.0-rc.13
+   Compiling symphonia-format-riff v0.5.5
+   Compiling png v0.17.16
+   Compiling blocking v1.7.0
+   Compiling tiff v0.9.1
+   Compiling unicode-normalization v0.1.25
+   Compiling safetensors v0.8.0
+   Compiling itertools v0.12.1
+   Compiling type1-encoding-parser v0.1.1
+   Compiling adobe-cmap-parser v0.4.1
+   Compiling symphonia-bundle-flac v0.5.5
+   Compiling symphonia-codec-vorbis v0.5.5
+   Compiling symphonia-format-mkv v0.5.5
+   Compiling symphonia-format-ogg v0.5.5
+   Compiling symphonia-format-isomp4 v0.5.5
+   Compiling async-lock v3.4.2
+   Compiling symphonia-bundle-mp3 v0.5.5
+   Compiling quick-xml v0.42.0
+   Compiling ref-cast-impl v1.0.27
+   Compiling serde_derive_internals v0.30.0
+   Compiling symphonia-codec-pcm v0.5.5
+   Compiling symphonia-codec-adpcm v0.5.5
+   Compiling symphonia-codec-aac v0.5.5
+   Compiling quick-xml v0.41.0
+   Compiling bzip2-sys v0.1.13+1.0.8
+   Compiling euclid v0.20.14
+   Compiling memmap2 v0.9.10
+   Compiling qoi v0.4.1
+   Compiling thread_local v1.1.9
+   Compiling downcast-rs v1.2.1
+   Compiling wayland-client v0.31.15
+   Compiling scoped-tls v1.0.1
+   Compiling signal-hook v0.3.18
+   Compiling fast-float2 v0.2.4
+   Compiling postscript v0.14.1
+   Compiling zstd-safe v5.0.2+zstd.1.5.2
+   Compiling dyn-clone v1.0.20
+   Compiling pdf-extract v0.7.12
+   Compiling office_oxide v0.1.15
+   Compiling image v0.24.9
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling wayland-scanner v0.31.11
+   Compiling symphonia v0.5.5
+   Compiling schemars_derive v1.2.3
+   Compiling zbus_names v4.3.4
+   Compiling audiopus v0.2.0
+   Compiling infer v0.22.0
+   Compiling async-signal v0.2.14
+   Compiling async-trait v0.1.89
+   Compiling inout v0.1.4
+   Compiling serde_path_to_error v0.1.20
+   Compiling cmake v0.1.58
+   Compiling quick-xml v0.39.4
+   Compiling strength_reduce v0.2.4
+   Compiling hound v3.5.1
+   Compiling password-hash v0.4.2
+   Compiling transpose v0.2.3
+   Compiling llama-engine v0.1.0 (/home/Aryan/cluaiz/engine/llama)
+   Compiling cipher v0.4.4
+   Compiling async-process v2.5.0
+   Compiling zbus_macros v5.19.0
+   Compiling schemars v1.2.3
+   Compiling ndarray v0.17.2
+   Compiling async-executor v1.14.0
+   Compiling primal-check v0.3.4
+   Compiling rand_chacha v0.3.1
+   Compiling async-broadcast v0.7.2
+   Compiling async-recursion v1.2.0
+   Compiling serde_repr v0.1.20
+   Compiling hmac v0.12.1
+   Compiling sharded-slab v0.1.7
+   Compiling mio v0.8.11
+   Compiling tracing-log v0.2.0
+   Compiling ordered-stream v0.2.0
+   Compiling owo-colors v4.3.0
+   Compiling cfg_aliases v0.2.1
+   Compiling hex v0.4.3
+   Compiling nu-ansi-term v0.50.3
+   Compiling object v0.37.3
+   Compiling utf8parse v0.2.2
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+   Compiling anstyle-parse v1.0.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling zbus v5.19.0
+   Compiling nix v0.31.3
+   Compiling signal-hook-mio v0.2.5
+   Compiling pbkdf2 v0.11.0
+   Compiling rand v0.8.6
+   Compiling rustfft v6.4.1
+   Compiling zstd v0.11.2+zstd.1.5.2
+   Compiling wayland-protocols v0.32.13
+   Compiling ort v2.0.0-rc.13
+   Compiling cluaiz-cep v0.1.0 (/home/Aryan/cluaiz/cep)
+   Compiling bzip2 v0.4.4
+   Compiling aes v0.8.4
+   Compiling cluaiz-plan v0.1.0 (/home/Aryan/cluaiz/engine/plan)
+   Compiling async-fs v2.2.0
+   Compiling async-net v2.0.0
+   Compiling ndarray v0.15.6
+   Compiling sha1 v0.10.6
+   Compiling toml v0.5.11
+   Compiling eyre v0.6.12
+   Compiling colorchoice v1.0.5
+   Compiling gimli v0.32.3
+   Compiling rfd v0.15.4
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling constant_time_eq v0.1.5
+   Compiling raw-window-handle v0.6.2
+   Compiling anstyle v1.0.14
+   Compiling anstyle-query v1.1.5
+   Compiling color-spantrace v0.3.0
+   Compiling addr2line v0.25.1
+   Compiling anstream v1.0.0
+   Compiling ashpd v0.11.1
+   Compiling zip v0.6.6
+   Compiling winres v0.1.12
+   Compiling cluaiz-security v0.1.0 (/home/Aryan/cluaiz/security)
+   Compiling tracing-error v0.2.1
+   Compiling axum-core v0.5.6
+   Compiling futures-executor v0.3.32
+   Compiling async-stream-impl v0.3.6
+   Compiling axum-macros v0.5.1
+   Compiling heck v0.5.0
+   Compiling clap_lex v1.1.0
+   Compiling indenter v0.3.4
+   Compiling rustc-demangle v0.1.27
+   Compiling matchit v0.8.4
+   Compiling pollster v0.4.0
+   Compiling urlencoding v2.1.3
+   Compiling axum v0.8.9
+   Compiling backtrace v0.3.76
+   Compiling clap_builder v4.6.0
+   Compiling clap_derive v4.6.1
+   Compiling async-stream v0.3.6
+   Compiling futures v0.3.32
+   Compiling cluaiz-agents v0.1.0 (/home/Aryan/cluaiz/agents)
+   Compiling cmd v0.1.0 (/home/Aryan/cluaiz/cmd)
+   Compiling crossterm v0.25.0
+   Compiling fuzzy-matcher v0.3.7
+   Compiling fxhash v0.2.1
+   Compiling newline-converter v0.3.0
+   Compiling sysinfo v0.33.1
+   Compiling unicode-width v0.1.14
+   Compiling inquire v0.7.5
+   Compiling clap v4.6.1
+   Compiling ctrlc v3.5.2
+   Compiling color-eyre v0.6.5
+   Compiling crossterm v0.28.1
+   Compiling colored v2.2.0
+   Compiling cluaiz-media v0.1.0 (/home/Aryan/cluaiz/engine/media)
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/Aryan/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:733:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   733 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:49:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    49 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling cluaiz-runtime v0.1.0 (/home/Aryan/cluaiz/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (/home/Aryan/cluaiz/api)
+warning: trailing semicolon in macro used in expression position
+  --> cmd/src/cli/run.rs:50:17
+   |
+50 |         None => color_eyre::eyre::bail!("no model given and no active chat model (see `cluaiz list`)"),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: `#[warn(semicolon_in_expressions_from_non_local_macros)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: this warning originates in the macro `color_eyre::eyre::bail` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: variable does not need to be mutable
+   --> cmd/src/core/bootstrapper.rs:148:17
+    |
+148 |             let mut res = std::fs::copy(src, dest);
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `e`
+   --> cmd/src/core/bootstrapper.rs:149:24
+    |
+149 |             if let Err(ref e) = res {
+    |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cmd` (bin "cluaiz") generated 3 warnings (run `cargo fix --bin "cluaiz" -p cmd` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 19m 16s
+== build exit 0 after 1157 s
+-rwxrwxr-x 2 Aryan Aryan 190090848 Oct 27 15:54 target/release/cluaiz
+	libcudart.so.12 => /usr/local/cuda-12.9/targets/x86_64-linux/lib/libcudart.so.12 (0x000077e598400000)
+	libcublas.so.12 => /usr/local/cuda-12.9/targets/x86_64-linux/lib/libcublas.so.12 (0x000077e591c00000)
+	libcuda.so.1 => /lib/x86_64-linux-gnu/libcuda.so.1 (0x000077e58be00000)
+	libopus.so.0 => not found
+	libcublasLt.so.12 => /usr/local/cuda-12.9/targets/x86_64-linux/lib/libcublasLt.so.12 (0x000077e559800000)

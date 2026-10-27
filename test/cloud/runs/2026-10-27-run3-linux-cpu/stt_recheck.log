@@ -1,0 +1,10 @@
+warning: `cmd` (bin "cluaiz") generated 3 warnings (run `cargo fix --bin "cluaiz" -p cmd` to apply 2 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 02s
+Removed 'whisper-large-v3-turbo-INT8' (/home/Aryan/ch/models/stt/whisper-large-v3-turbo-INT8)
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_merged_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+  │ 🆔 Registered ID:  whisper-large-v3-turbo-INT8
+{"status":"success","task":"speech_to_text","model":"whisper-large-v3-turbo-INT8","info":null,"output":{"text":"Rivers carry water to the sea.","audio_data":null,"segments":null}}  [9.338862s]
+{"status":"success","task":"speech_to_text","model":"whisper-large-v3-turbo-INT8","info":null,"output":{"text":"Rivers carry water to the sea.","audio_data":null,"segments":null}}  [3.361126s]

@@ -1,0 +1,8 @@
+== pulls
+chat unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 17s
+chat unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 55s
+chat unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 192s
+embed ggml-org/bge-m3-Q8_0-GGUF exit 0 6s
+tts onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 17s
+stt onnx-community/whisper-large-v3-turbo:int8 exit 0 28s
+tts ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF:Q4_K_M exit 0 13s

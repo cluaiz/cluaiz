@@ -1,0 +1,72 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/cluaiz/target/release/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/whisper-large-v3-turbo:int8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/whisper-large-v3-turbo'...
+  ⚡ Direct Quantization Tag Matched: ':int8' -> encoder_model_int8.onnx (3.03 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: whisper-large-v3-turbo-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: transformer
+    ├─ 📁 Category: stt
+    ├─ 💾 Total Download Size: 3.03 GB
+    └─ 📁 Files to Download (18 files):
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_merged_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_merged_uint8.onnx
+       ├─ ⚖️  onnx/decoder_model_uint8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_uint8.onnx
+       ├─ 📄 added_tokens.json
+       ├─ 📄 config.json
+       ├─ 📄 generation_config.json
+       ├─ 📄 merges.txt
+       ├─ 📄 normalizer.json
+       ├─ 📄 preprocessor_config.json
+       ├─ 📄 quantize_config.json
+       ├─ 📄 special_tokens_map.json
+       ├─ 📄 tokenizer.json
+       ├─ 📄 tokenizer_config.json
+       └─ 📄 vocab.json
+   ├─ [1/18] Downloading onnx/encoder_model_int8.onnx
+   ├─ [2/18] Downloading onnx/decoder_model_int8.onnx
+   ├─ [3/18] Downloading onnx/decoder_model_merged_int8.onnx
+   ├─ [4/18] Downloading onnx/decoder_model_merged_uint8.onnx
+   ├─ [5/18] Downloading onnx/decoder_model_uint8.onnx
+   ├─ [6/18] Downloading onnx/decoder_with_past_model_int8.onnx
+   ├─ [7/18] Downloading onnx/decoder_with_past_model_uint8.onnx
+   ├─ [8/18] Downloading added_tokens.json
+   ├─ [9/18] Downloading config.json
+   ├─ [10/18] Downloading generation_config.json
+   ├─ [11/18] Downloading merges.txt
+   ├─ [12/18] Downloading normalizer.json
+   ├─ [13/18] Downloading preprocessor_config.json
+   ├─ [14/18] Downloading quantize_config.json
+   ├─ [15/18] Downloading special_tokens_map.json
+   ├─ [16/18] Downloading tokenizer.json
+   ├─ [17/18] Downloading tokenizer_config.json
+   ├─ [18/18] Downloading vocab.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  whisper-large-v3-turbo-INT8
+  │ 📁 Vault Path:     /home/Aryan/ch/models/stt/whisper-large-v3-turbo-INT8
+  │ 🚀 Run Command:   cluaiz run whisper-large-v3-turbo-INT8
+  └─────────────────────────────────────────────────────────────┘
+
