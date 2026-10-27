@@ -4,9 +4,13 @@
 
 [package]
 name = "comprehensive_e2e_trace"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
+version = "0.1.0"
+edition = "2021"
+authors = ["Cluaiz Technologies"]
+
+# Its own workspace: it needs the sibling cluaiz-tools checkout, which a clone of this repo
+# does not have (the engine workspace excludes it)
+[workspace]
 
 [dependencies]
 reqwest = { version = "0.13.4", features = ["json", "stream"] }
