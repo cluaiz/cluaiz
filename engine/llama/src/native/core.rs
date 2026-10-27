@@ -639,7 +639,10 @@ impl NativeLlama {
 
     /// llama.cpp's own load-time warmup (`common_init_from_params`): one decode of BOS + EOS, then the
     /// memory is cleared. Weights get paged in and GPU kernels initialised during load instead of on
-    /// the user's first message. A failure only logs: the model itself is loaded and usable.
+    /// the user's first message. With layers on the GPU the decode is one full batch instead, so the
+    /// GPU's memory pool grows to its peak now (about 0.6 GB for Qwen3-4B at batch 512): the memory
+    /// measured after load is then what the model really takes, and the planner learns it
+    /// (`cluaiz_plan::margin`). A failure only logs: the model itself is loaded and usable.
     fn warmup(&mut self) {
         unsafe {
             // Encoder-decoder models need an encode pass first (llama.cpp does that); not used for chat here
@@ -654,6 +657,11 @@ impl NativeLlama {
                 .collect();
             if tokens.is_empty() {
                 tokens.push(0);
+            }
+            if self.n_gpu_layers_loaded != 0 {
+                let full = self.n_batch.min(self.n_ctx).max(1) as usize;
+                let fill = tokens[0];
+                tokens.resize(full, fill);
             }
             tokens.truncate(self.n_batch.max(1) as usize);
             let batch = llama_cpp::llama_batch_get_one(tokens.as_mut_ptr(), tokens.len() as i32);

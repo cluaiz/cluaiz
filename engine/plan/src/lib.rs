@@ -4,6 +4,7 @@
 pub mod types;
 pub mod planner;
 pub mod media_budget;
+pub mod margin;
 
 pub use types::{ExecutionPlan, ExecutionCandidate, PlacementTier};
 pub use planner::{

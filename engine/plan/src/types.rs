@@ -160,11 +160,7 @@ impl ExecutionPlan {
         let gpu_name = hardware.gpus.first().map(|g| g.name.clone()).unwrap_or_else(|| "none".to_string());
         let total_vram = hardware.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
         let free_vram = hardware.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
-        let buffer_tag = if settings.optimization.custom_vram_buffer_gb.is_some() {
-            "user setting".to_string()
-        } else {
-            format!("{:.0} MiB rule", self.vram_buffer_gb * 1024.0)
-        };
+        let buffer_tag = crate::margin::describe(geometry, settings, hardware, self.vram_buffer_gb);
         let (gpu_blocks, ram_blocks) = self.block_split();
         let mode = self.placement_label();
         let moe_line = if geometry.is_moe() {
