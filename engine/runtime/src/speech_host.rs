@@ -55,6 +55,11 @@ impl SpeechHost {
         Ok(())
     }
 
+    /// Frees the speech model when no request is using it; true when one was freed
+    pub fn unload_idle(&self) -> bool {
+        self.loaded.try_lock().ok().and_then(|mut loaded| loaded.take()).is_some()
+    }
+
     /// Admit before decoding reference audio; the lease stays owned by the native worker.
     pub fn try_acquire(&self) -> Result<crate::media_admission::MediaLease, tokio::sync::TryAcquireError> {
         self.admission.try_acquire()
