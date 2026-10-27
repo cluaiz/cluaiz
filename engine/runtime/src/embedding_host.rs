@@ -91,6 +91,8 @@ impl EmbeddingHost {
         let result = tokio::task::spawn_blocking(move || {
             let _admission = admission;
             let lease = Arc::new(());
+            // A fresh load on the GPU is measured after its first batch: (key, free VRAM before, estimate)
+            let mut measuring: Option<(String, f64, f64)> = None;
             let mut state = owner
                 .state
                 .lock()
@@ -118,6 +120,7 @@ impl EmbeddingHost {
                     let _transition = owner.transition.blocking_lock();
                     *state = None;
                     let geometry = GgufProber::probe_geometry(&path)?;
+                    crate::vram_use::load();
                     let hardware = cluaiz_hw::HardwareProber::with_live_memory();
                     let captured = capture_settings(&geometry, &settings)?;
                     let plan = cluaiz_plan::Planner::create_plan(
@@ -132,6 +135,15 @@ impl EmbeddingHost {
                         &captured,
                         &hardware,
                     )?;
+                    if plan.n_gpu_layers != 0 {
+                        if let Some(gpu) = hardware.gpus.first() {
+                            measuring = Some((
+                                cluaiz_plan::margin::pool_key(&geometry, &captured),
+                                gpu.vram_available_gb,
+                                plan.vram_budget_gb,
+                            ));
+                        }
+                    }
                     *state = Some(Resident {
                         id: entry.id.clone(),
                         key,
@@ -160,6 +172,18 @@ impl EmbeddingHost {
                 }
                 Ok(outputs)
             })();
+            // What the model took beyond its estimate once a batch ran (llama.cpp buffers, the GPU
+            // pool): the planner plans its next load with it instead of the fixed margin
+            if let (Ok(_), Some((gap_key, before, estimate))) = (&result, measuring) {
+                let taken = before - crate::vram_use::free_gb();
+                if taken > 0.01 && cluaiz_plan::margin::record_key(&gap_key, taken - estimate) {
+                    tracing::info!(
+                        "📏 [Embedding] {} took {:.2} GB on the GPU, {:+.2} GB over its estimate; learned for its next load",
+                        entry.id, taken, taken - estimate
+                    );
+                    crate::vram_use::save();
+                }
+            }
             if result.is_err() || keep_alive == Some(0) {
                 *state = None;
             }
