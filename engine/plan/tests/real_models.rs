@@ -2,7 +2,7 @@
 //! Run: cargo test -p cluaiz-plan --test real_models -- --ignored --nocapture
 
 use cluaiz_core::{ActiveUserSettings, ContextSetting, EnvironmentManager, KvCacheQuantization};
-use cluaiz_plan::{Planner, AUTO_CONTEXT_FLOOR};
+use cluaiz_plan::{Planner, AUTO_CONTEXT_MIN};
 
 fn installed_ggufs() -> Vec<std::path::PathBuf> {
     let root = EnvironmentManager::current().models_dir().join("chat");
@@ -51,7 +51,7 @@ fn planner_on_installed_models() {
                 println!("    -> {}", plan.explanation);
             }
             if ctx == ContextSetting::Auto {
-                assert!(plan.context_window >= AUTO_CONTEXT_FLOOR.min(g.context_length), "Auto below floor for {:?}", path);
+                assert!(plan.context_window >= AUTO_CONTEXT_MIN.min(g.context_length), "Auto below the minimum for {:?}", path);
                 assert!(plan.vram_budget_gb + plan.vram_buffer_gb <= 2.79 + 1e-9 || plan.vram_budget_gb == 0.0,
                     "plan uses more VRAM than free for {:?}", path);
             }
