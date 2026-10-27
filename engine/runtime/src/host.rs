@@ -263,6 +263,9 @@ impl EngineHost {
         crate::vram_use::load();
         let mut hw = cluaiz_hw::HardwareProber::with_live_memory();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
+        if !hw.gpus.is_empty() && settings.optimization.n_gpu_layers != Some(0) && cluaiz_plan::margin::correction(&geometry, settings).is_none() {
+            learn_correction(&path_str, &geometry, &hw, settings);
+        }
         let mut plan = Planner::create_plan(model_id, &geometry, &hw, settings);
         // The chat comes first on the GPU: when it would not run fully there, idle models of the
         // other kinds (speech, transcription, embeddings) are freed and the chat is planned again on
@@ -464,7 +467,7 @@ impl EngineHost {
                 cluaiz_plan::margin::record(&geometry, settings, vram_delta - plan.vram_budget_gb);
                 crate::vram_use::save();
                 *self.gpu_use.lock().await = Some(GpuUse {
-                    key: cluaiz_plan::margin::key(&geometry, settings),
+                    key: cluaiz_plan::margin::pool_key(&geometry, settings),
                     free_before_gb: pre_free_vram,
                     planned_gb: plan.vram_budget_gb,
                 });
@@ -940,6 +943,42 @@ impl EngineHost {
             llama.bench(n_prompt, n_gen, reps)
         })
         .await?
+    }
+}
+
+/// Once per model and settings: llama.cpp's dry run of the model fully on the GPU (no allocation)
+/// against the planner's estimate of the same placement; the planner corrects its estimate by the
+/// difference from then on (`cluaiz_plan::margin::correction`)
+fn learn_correction(model_path: &str, geometry: &ModelGeometry, hw: &SystemInfo, settings: &ActiveUserSettings) {
+    let ubatch = settings.optimization.resolved_ubatch_size();
+    let kv = cluaiz_core::KvCacheQuantization::Kv8;
+    let n_ctx = geometry.context_length.max(1).min(cluaiz_plan::AUTO_CONTEXT_FLOOR);
+    let placement = native_load::Placement {
+        n_gpu_layers: -1,
+        n_cpu_moe: 0,
+        use_mmap: true,
+        disk_stream: false,
+        n_ctx,
+        kv,
+        kv_offload: true,
+        op_offload: true,
+    };
+    let started = std::time::Instant::now();
+    match native_load::project(model_path, &placement, settings, hw) {
+        Ok(projected) if projected.gpu.total() > 0 => {
+            let estimate = geometry.weights.full_gpu() + geometry.kv_cache_bytes(n_ctx, kv, ubatch) + geometry.logits_buffer_bytes(ubatch);
+            let gib = cluaiz_core::bytes_to_gib;
+            let correction = gib(projected.gpu.total()) - gib(estimate);
+            tracing::info!(
+                "📐 [EngineHost] llama.cpp dry run, full GPU at {} tokens: model {:.2} + context {:.2} + compute {:.2} = {:.2} GB vs estimate {:.2} GB ({:+.2}) in {} ms",
+                n_ctx, gib(projected.gpu.model), gib(projected.gpu.context), gib(projected.gpu.compute),
+                gib(projected.gpu.total()), gib(estimate), correction, started.elapsed().as_millis()
+            );
+            cluaiz_plan::margin::record_correction(geometry, settings, correction);
+            crate::vram_use::save();
+        }
+        Ok(_) => tracing::info!("📐 [EngineHost] llama.cpp dry run placed nothing on a GPU; the estimate is kept"),
+        Err(e) => tracing::warn!("⚠️ [EngineHost] llama.cpp dry run failed ({}); the estimate is kept", e),
     }
 }
 
