@@ -58,10 +58,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut config = cmake::Config::new(&llama_path);
 
+    // Windows and Linux: every ggml backend is a library the engine loads at start (llama.cpp's
+    // GGML_BACKEND_DL), so the core starts without any GPU runtime and a GPU pack is one more file
+    // beside it. Apple keeps Metal built in.
+    let dynamic_backends = matches!(target_os.as_str(), "windows" | "linux");
+
     // ── CPU SIMD Vectorization Optimization ──────────────────────────
     let is_ci = env::var("GITHUB_ACTIONS").is_ok();
-    
-    if is_ci {
+
+    if dynamic_backends {
+        // One CPU backend per instruction set; ggml loads the best one this processor supports
+        config.define("GGML_NATIVE", "OFF");
+        let variants = target_arch == "x86_64" || (target_arch == "aarch64" && target_os == "linux");
+        config.define("GGML_CPU_ALL_VARIANTS", if variants { "ON" } else { "OFF" });
+    } else if is_ci {
         // CI Build: Target baseline optimizations for distribution
         if target_arch == "x86_64" {
             // Enable AVX2 by default for distributed builds (standard for modern hardware)
@@ -91,8 +101,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .define("MTMD_VIDEO",           "OFF")
         .define("LLAMA_BUILD_APP",      "OFF")
         .define("LLAMA_BUILD_COMMON",   "ON")
-        .define("LLAMA_STATIC",         "ON")
-        .define("BUILD_SHARED_LIBS",    "OFF")
+        .define("LLAMA_STATIC",         if dynamic_backends { "OFF" } else { "ON" })
+        .define("BUILD_SHARED_LIBS",    if dynamic_backends { "ON" } else { "OFF" })
+        .define("GGML_BACKEND_DL",      if dynamic_backends { "ON" } else { "OFF" })
         // Use MultiThreadedDLL (/MD) to match Rust's default dynamic CRT on Windows MSVC,
         // and to avoid LNK2038 mismatch with other C++ libraries like ONNX Runtime (ort) which use /MD.
         // CMAKE_POLICY_DEFAULT_CMP0091=NEW is required for CMake 3.14 to respect CMAKE_MSVC_RUNTIME_LIBRARY
@@ -141,7 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     config.define("GGML_METAL",    if feature_metal    { "ON" } else { "OFF" });
     config.define("GGML_VULKAN",   if feature_vulkan   { "ON" } else { "OFF" });
-    config.define("GGML_HIPBLAS",  if feature_rocm     { "ON" } else { "OFF" });
+    config.define("GGML_HIP",      if feature_rocm     { "ON" } else { "OFF" });
     config.define("GGML_OPENVINO", if feature_openvino { "ON" } else { "OFF" });
     config.define("GGML_SYCL",     if feature_sycl     { "ON" } else { "OFF" });
     config.define("GGML_QNN",      if feature_qnn      { "ON" } else { "OFF" });
@@ -172,6 +183,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if target_os == "windows" {
         config.cxxflag("/EHsc");
     }
+    // A GPU pack finds the runtime libraries shipped beside it (cudart, cuBLAS)
+    if dynamic_backends && target_os == "linux" {
+        config.define("CMAKE_INSTALL_RPATH", "$ORIGIN");
+    }
 
     if feature_cann {
         config.define("SOC_TYPE", "ascend910b");
@@ -183,7 +198,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=src/ffi/reasoning_bridge.cpp");
     println!("cargo:rerun-if-changed=src/ffi/chat_bridge.cpp");
     println!("cargo:rerun-if-changed=src/ffi/memory_bridge.cpp");
-    cc::Build::new()
+    let mut bridge = cc::Build::new();
+    if dynamic_backends {
+        // The bridge calls into the llama / ggml libraries, not into copies linked beside it
+        bridge.define("LLAMA_SHARED", None).define("GGML_SHARED", None);
+    }
+    bridge
         .cpp(true)
         .std("c++17")
         .include(llama_path.join("include"))
@@ -203,6 +223,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-search=native={}/lib64", dst.display());
     find_and_link_search_paths(&dst);
 
+    if dynamic_backends {
+        // Only the libraries the engine calls are linked; the CPU and GPU backends are loaded at start
+        for lib in ["mtmd", "llama", "llama-common", "ggml", "ggml-base"] {
+            println!("cargo:rustc-link-lib=dylib={}", lib);
+        }
+        println!("cargo:rustc-link-lib=static=llama-common-base");
+        copy_runtime_libraries(&dst, Path::new(&out_dir))?;
+        if target_os == "windows" {
+            println!("cargo:rustc-link-lib=dylib=advapi32");
+            println!("cargo:rustc-link-lib=dylib=user32");
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+        } else {
+            println!("cargo:rustc-link-lib=dylib=stdc++");
+        }
+        println!("cargo:warning=🧿 [Llama-Engine] Industrial CMake Build Complete.");
+        return Ok(());
+    }
+
     // ── Core libs (always present) ────────────────────────────────────
     println!("cargo:rustc-link-lib=static=mtmd");
     // mtmd's helper object uses vendor hashing; Cargo does not inherit CMake target links.
@@ -211,59 +249,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-lib=static=llama-common");
     println!("cargo:rustc-link-lib=static=llama-common-base");
     println!("cargo:rustc-link-lib=static=ggml");
-    // GNU ld resolves in order: the CUDA backend goes before ggml-base, which it uses
-    if feature_cuda && target_os == "linux" {
-        println!("cargo:rustc-link-lib=static:+whole-archive=ggml-cuda");
-    }
     println!("cargo:rustc-link-lib=static=ggml-base");
     println!("cargo:rustc-link-lib=static=ggml-cpu");
 
-    // ── Windows: explicit backend static libs ─────────────────────────
-    // On Windows DLL builds, ALL symbols must resolve at link time.
-    // ggml.lib's backend-registry calls backend-specific functions which
-    // live in their own libs. Without explicit linking → LNK2019.
-    // On Linux/macOS, the dynamic linker resolves these at runtime.
-    if target_os == "windows" {
-        if feature_cuda   {
-            println!("cargo:rustc-link-lib=static=ggml-cuda");
-            println!("cargo:rustc-link-arg=/WHOLEARCHIVE:ggml-cuda.lib");
-        }
-        if feature_vulkan { 
-            println!("cargo:rustc-link-lib=static:+whole-archive=ggml-vulkan"); 
-            if let Ok(vulkan_sdk) = env::var("VULKAN_SDK") {
-                println!("cargo:rustc-link-search=native={}/Lib", vulkan_sdk);
-            }
-            println!("cargo:rustc-link-lib=dylib=vulkan-1");
-        }
-        if feature_rocm   { println!("cargo:rustc-link-lib=static:+whole-archive=ggml-hip"); }
-        if feature_openvino { 
-            println!("cargo:rustc-link-lib=static:+whole-archive=ggml-openvino");
-            println!("cargo:rustc-link-lib=dylib=OpenCL"); 
-            println!("cargo:rustc-link-lib=dylib=openvino"); // Core OpenVINO Runtime symbols
-        }
-        if feature_sycl {
-            println!("cargo:rustc-link-lib=static:+whole-archive=ggml-sycl");
-            println!("cargo:rustc-link-lib=dylib=sycl"); // Intel oneAPI SYCL runtime
-            
-            // Link Intel oneMKL using the Single Dynamic Library (mkl_rt) for reliable dispatching
-            println!("cargo:rustc-link-lib=dylib=mkl_rt");
-            
-            // Link Intel oneDNN (required for ggml-sycl neural operations)
-            println!("cargo:rustc-link-lib=dylib=dnnl");
-            
-            // Link TBB (dependency for MKL/DNNL)
-            println!("cargo:rustc-link-lib=dylib=tbb12");
-
-            // Hard-link search paths for SYCL, MKL, and DNNL on Windows
-            let oneapi_root = env::var("ONEAPI_ROOT").unwrap_or_else(|_| "C:\\Program Files (x86)\\Intel\\oneAPI".to_string());
-            println!("cargo:rustc-link-search=native={}\\compiler\\latest\\windows\\lib", oneapi_root);
-            println!("cargo:rustc-link-search=native={}\\compiler\\latest\\windows\\lib\\intel64", oneapi_root);
-            println!("cargo:rustc-link-search=native={}\\mkl\\latest\\lib\\intel64", oneapi_root);
-            println!("cargo:rustc-link-search=native={}\\dnnl\\latest\\lib", oneapi_root);
-            println!("cargo:rustc-link-search=native={}\\tbb\\latest\\lib\\intel64\\vc14", oneapi_root);
-        }
-    }
-
+    // ── Apple / Android: backends linked in ───────────────────────────
     if target_os == "macos" || target_os == "ios" {
         println!("cargo:rustc-link-lib=static=ggml-metal");
         println!("cargo:rustc-link-lib=static=ggml-blas");
@@ -271,34 +260,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ── OS-specific system libraries ──────────────────────────────────
-    if target_os == "windows" {
-        println!("cargo:rustc-link-lib=dylib=advapi32");
-        println!("cargo:rustc-link-lib=dylib=user32");
-        println!("cargo:rustc-link-lib=dylib=ws2_32");
-
-        // FIX 1: CUDA Runtime + cuBLAS import libraries.
-        //
-        // These are NOT statically embedded inside ggml-cuda.lib.
-        // ggml-cuda.lib calls cudaLaunchCooperativeKernel, cudaFuncSetAttribute,
-        // __cudaRegisterFatBinary, cublasCreate_v2 etc. which live in:
-        //   cudart.lib  → cudart64_*.dll  (CUDA Runtime API)
-        //   cublas.lib  → cublas64_*.dll  (cuBLAS)
-        //   cublasLt.lib→ cublasLt64_*.dll
-        //   cuda.lib    → nvcuda.dll      (CUDA Driver API: cuDeviceGet, cuMemCreate...)
-        //
-        // jimver/cuda-toolkit GHA action sets CUDA_PATH to the toolkit root.
-        // e.g. "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8"
-        // Import libs are at $CUDA_PATH\lib\x64\*.lib
-        if feature_cuda {
-            if let Ok(cuda_path) = env::var("CUDA_PATH") {
-                println!("cargo:rustc-link-search=native={}/lib/x64", cuda_path);
-            }
-            println!("cargo:rustc-link-lib=dylib=cudart");
-            println!("cargo:rustc-link-lib=dylib=cublas");
-            println!("cargo:rustc-link-lib=dylib=cublasLt");
-            println!("cargo:rustc-link-lib=dylib=cuda");
-        }
-    } else if target_os == "macos" {
+    if target_os == "macos" {
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=Metal");
         println!("cargo:rustc-link-lib=framework=MetalKit");
@@ -311,22 +273,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rustc-link-lib=framework=Accelerate");
         println!("cargo:rustc-link-lib=dylib=c++");
     } else {
-        // Linux / Android
-        if feature_cuda && target_os == "linux" {
-            let cuda = env::var("CUDA_PATH")
-                .or_else(|_| env::var("CUDA_HOME"))
-                .unwrap_or_else(|_| "/usr/local/cuda".to_string());
-            println!("cargo:rustc-link-search=native={}/lib64", cuda);
-            println!("cargo:rustc-link-search=native={}/lib64/stubs", cuda);
-            for lib in ["cudart", "cublas", "cublasLt", "cuda"] {
-                println!("cargo:rustc-link-lib=dylib={}", lib);
-            }
-        }
+        // Android
         println!("cargo:rustc-link-lib=dylib=stdc++");
-        // ggml-cpu is built with OpenMP by gcc (GGML_OPENMP is on by default)
-        if target_os == "linux" {
-            println!("cargo:rustc-link-lib=dylib=gomp");
-        }
     }
 
     println!("cargo:warning=🧿 [Llama-Engine] Industrial CMake Build Complete.");
@@ -355,6 +303,42 @@ fn generate_mtmd_bindings(source: &Path, output: &Path) -> Result<(), Box<dyn st
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()?;
     bindings.write_to_file(output.join("mtmd_bindings.rs"))?;
+    Ok(())
+}
+
+/// Puts the llama / ggml libraries and backend modules beside the binaries of this profile
+/// (`target/<profile>` and its `deps` for tests), where the loader and ggml look for them.
+fn copy_runtime_libraries(dst: &Path, out_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let profile = out_dir.ancestors().nth(3).ok_or("OUT_DIR is not inside a target profile")?;
+    for dir in [dst.join("bin"), dst.join("lib")] {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.filter_map(Result::ok) {
+            let name = entry.file_name();
+            let text = name.to_string_lossy();
+            if !(text.ends_with(".dll") || text.ends_with(".so") || text.contains(".so.")) {
+                continue;
+            }
+            for to in [profile.to_path_buf(), profile.join("deps")] {
+                let target = to.join(&name);
+                if entry.file_type()?.is_symlink() {
+                    // libllama.so -> libllama.so.0: keep the link, not a second copy
+                    #[cfg(unix)]
+                    {
+                        let _ = std::fs::remove_file(&target);
+                        std::os::unix::fs::symlink(std::fs::read_link(entry.path())?, &target)?;
+                    }
+                    continue;
+                }
+                let source = entry.metadata()?;
+                let same = std::fs::metadata(&target)
+                    .map(|t| t.len() == source.len() && t.modified().ok() >= source.modified().ok())
+                    .unwrap_or(false);
+                if !same {
+                    std::fs::copy(entry.path(), &target)?;
+                }
+            }
+        }
+    }
     Ok(())
 }
 

@@ -6,6 +6,7 @@ use std::os::raw::{c_char, c_float};
 pub const GGML_TYPE_F16: i32 = 1;
 pub const GGML_TYPE_Q8_0: i32 = 8;
 pub const GGML_TYPE_Q4_0: i32 = 2;
+pub const GGML_BACKEND_DEVICE_TYPE_CPU: i32 = 0;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -153,11 +154,14 @@ extern "C" {
     /// 🛑 Free the global llama + ggml backend.
     pub fn llama_backend_free();
 
-    /// 🔥 Sovereign Injection: Manually register a backend (bypass CMake CMake auto-detection).
-    pub fn ggml_backend_register(reg: *mut std::ffi::c_void);
+    /// Loads every backend library in `dir_path`: the best CPU variant for this processor and any GPU pack.
+    pub fn ggml_backend_load_all_from_path(dir_path: *const c_char);
 
-    /// 🔥 Sovereign Injection: Get CUDA backend registry
-    pub fn ggml_backend_cuda_reg() -> *mut std::ffi::c_void;
+    /// True when a loaded backend can hold model layers (a GPU pack whose device was found).
+    pub fn llama_supports_gpu_offload() -> bool;
+
+    /// First registered device of a type (`GGML_BACKEND_DEVICE_TYPE_*`), null when none.
+    pub fn ggml_backend_dev_by_type(kind: i32) -> *mut std::ffi::c_void;
 
     /// 🛠️ Get default model parameters.
     pub fn llama_model_default_params() -> LlamaModelParams;
@@ -327,7 +331,7 @@ extern "C" {
     pub fn llama_log_set(log_callback: Option<LlamaLogCallback>, user_data: *mut std::ffi::c_void);
 
     /// 🧠 Backend Buffer Types
-    pub fn ggml_backend_cpu_buffer_type() -> *const std::ffi::c_void;
+    pub fn ggml_backend_dev_buffer_type(device: *mut std::ffi::c_void) -> *const std::ffi::c_void;
 
     /// 💾 State Save
     pub fn llama_state_save_file(

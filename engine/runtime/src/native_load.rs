@@ -5,6 +5,16 @@ use cluaiz_models::types::StructuralDNA;
 use cluaiz_plan::ExecutionPlan;
 use llama_engine::NativeLlama;
 
+/// Live hardware for planning a GGUF model. Without a loaded GPU backend (no GPU pack, or its driver
+/// is missing) llama.cpp has no GPU to place layers on, so the plan sees none.
+pub(crate) fn gguf_hardware() -> SystemInfo {
+    let mut hw = cluaiz_hw::HardwareProber::with_live_memory();
+    if !llama_engine::gpu_offload_available() {
+        hw.gpus.clear();
+    }
+    hw
+}
+
 /// Builds the llama.cpp model/context params from the plan and loads the model.
 /// Synchronous on purpose: the params and the MoE override list hold raw C pointers,
 /// which must not live inside an async state machine.

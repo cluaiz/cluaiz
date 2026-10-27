@@ -269,7 +269,7 @@ impl EngineHost {
 
         self.unload_model_inner().await;
         crate::vram_use::load();
-        let mut hw = cluaiz_hw::HardwareProber::with_live_memory();
+        let mut hw = crate::host::native_load::gguf_hardware();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         if !hw.gpus.is_empty() && settings.optimization.n_gpu_layers != Some(0) && cluaiz_plan::margin::correction(&geometry, settings).is_none() {
             learn_correction(&path_str, &geometry, &hw, settings);
@@ -287,7 +287,7 @@ impl EngineHost {
         {
             let freed = self.room.free_others("chat");
             if !freed.is_empty() {
-                hw = cluaiz_hw::HardwareProber::with_live_memory();
+                hw = crate::host::native_load::gguf_hardware();
                 let replanned = Planner::create_plan(model_id, &geometry, &hw, settings);
                 tracing::info!(
                     "♻️ [EngineHost] Freed idle {} model(s) for the chat: {} -> {} blocks on the GPU, {} -> {} tokens",
@@ -355,7 +355,7 @@ impl EngineHost {
             }
         }
         crate::vram_use::load();
-        let hw = cluaiz_hw::HardwareProber::with_live_memory();
+        let hw = crate::host::native_load::gguf_hardware();
         let geometry = cluaiz_models::GgufProber::probe_geometry(model_path)?;
         Ok(Planner::create_plan(model_id, &geometry, &hw, settings))
     }
@@ -394,7 +394,7 @@ impl EngineHost {
         settings: &ActiveUserSettings,
     ) -> anyhow::Result<ExecutionPlan> {
         let geometry = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path))?;
-        let hw = cluaiz_hw::HardwareProber::with_live_memory();
+        let hw = crate::host::native_load::gguf_hardware();
 
         // The plan carries the exact llama.cpp values; nothing is re-derived here
         let n_gpu_layers = plan.n_gpu_layers;

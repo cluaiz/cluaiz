@@ -338,13 +338,38 @@ extern "C" fn mtmd_log_callback(
     llama_log_callback(level, text, user_data);
 }
 
-/// Sends llama.cpp / ggml and mtmd / CLIP logs to tracing. Call before `llama_backend_init` so
-/// backend start-up lines (e.g. `ggml_cuda_init`) do not go straight to the terminal.
+/// Sends llama.cpp / ggml and mtmd / CLIP logs to tracing, then loads the backends. Call before
+/// `llama_backend_init` so backend start-up lines (e.g. `ggml_cuda_init`) do not go straight to the terminal.
 pub fn route_llama_logs() {
     unsafe {
         llama_cpp::llama_log_set(Some(llama_log_callback), std::ptr::null_mut());
         crate::ffi::mtmd::mtmd_helper_log_set(Some(mtmd_log_callback), std::ptr::null_mut());
     }
+    load_backends();
+}
+
+/// Loads the backend libraries beside the executable once: the CPU variant this processor supports
+/// and any GPU pack. A GPU pack whose driver or device is missing is skipped by ggml, so models
+/// then run on the CPU.
+fn load_backends() {
+    static LOADED: std::sync::Once = std::sync::Once::new();
+    LOADED.call_once(|| {
+        let dir = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(|dir| dir.to_string_lossy().into_owned()))
+            .and_then(|dir| CString::new(dir).ok());
+        // null: ggml's own search (the executable's folder, then the working folder)
+        unsafe { llama_cpp::ggml_backend_load_all_from_path(dir.as_ref().map_or(std::ptr::null(), |d| d.as_ptr())) };
+        let gpu = unsafe { llama_cpp::llama_supports_gpu_offload() };
+        info!("🧩 [Llama-Engine] Backends loaded; GPU offload {}", if gpu { "available" } else { "not available, models run on the CPU" });
+    });
+}
+
+/// True when a loaded backend can hold model layers. Without a GPU pack (or its driver) it is false
+/// even on a machine with a GPU, and GGUF models are planned for the CPU.
+pub fn gpu_offload_available() -> bool {
+    load_backends();
+    unsafe { llama_cpp::llama_supports_gpu_offload() }
 }
 
 pub fn print_memory_trace(step: &str) {

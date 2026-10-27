@@ -14,6 +14,6 @@ pub mod projection;
 mod tokenizer;
 pub use tokenizer::VocabHandle;
 
-pub use core::{route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
+pub use core::{gpu_offload_available, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;
 pub use templater::extract_thinking_tags_native;
