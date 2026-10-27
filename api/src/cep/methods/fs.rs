@@ -480,7 +480,7 @@ async fn pick_folder(ctx: CallCtx, call: Call) -> Result<Value, CepError> {
         if let Some(home) = dirs::home_dir() {
             dialog = dialog.set_directory(home);
         }
-        dialog.pick_folder()
+        super::fs_picker::open(|| dialog.pick_folder())
     })
     .await
     .map_err(worker_error)?;

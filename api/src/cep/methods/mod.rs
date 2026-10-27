@@ -11,6 +11,7 @@ pub mod chat;
 pub mod config;
 pub mod context;
 pub mod fs;
+mod fs_picker;
 pub mod kv;
 pub mod memory;
 pub mod models;

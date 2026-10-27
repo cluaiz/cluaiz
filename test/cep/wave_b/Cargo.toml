@@ -29,3 +29,7 @@ path = "roots_contract.rs"
 [[test]]
 name = "fs_methods_contract"
 path = "fs_methods_contract.rs"
+
+[[test]]
+name = "folder_picker_contract"
+path = "folder_picker_contract.rs"

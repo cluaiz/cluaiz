@@ -5,6 +5,8 @@
 
 #[path = "../../../api/src/cep/methods/fs.rs"]
 mod files;
+#[path = "../../../api/src/cep/methods/fs_picker.rs"]
+mod fs_picker;
 #[path = "../../../api/src/cep/roots.rs"]
 pub mod roots;
 #[path = "../../../api/src/cep/methods/workspace.rs"]
