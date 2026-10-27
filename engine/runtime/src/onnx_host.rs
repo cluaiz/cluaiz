@@ -229,6 +229,13 @@ fn onnx_load_settings(model: &OnnxModel, task: &str, settings: &ActiveUserSettin
     crate::vram_use::load();
     let key = format!("onnx:{}:{}", model.id, task);
     let mut effective = settings.onnx.clone();
+    // A package whose run failed on this GPU before goes to the CPU directly (Auto only), instead
+    // of loading on the GPU, failing and loading again
+    if effective.n_gpu_layers < 0 && cluaiz_plan::margin::learned_key(&format!("{key}:gpu_failed")).is_some() {
+        effective.n_gpu_layers = 0;
+        tracing::info!(model = %model.id, task, "ONNX on the CPU: its run failed on this GPU before");
+        return Ok((effective, key, false));
+    }
     if effective.n_gpu_layers != 0 {
         if let Some(need) = cluaiz_plan::margin::learned_key(&key) {
             let hw = cluaiz_hw::HardwareProber::with_live_memory();
@@ -517,6 +524,9 @@ impl OnnxHost {
                 .map(|error| format!("{error:#}"))
                 .unwrap_or_default();
             tracing::warn!(model = %model.id, error = %provider_error, "TTS GPU execution failed; releasing session before CPU retry");
+            if cluaiz_plan::margin::record_key(&format!("onnx:{}:{}:gpu_failed", model.id, task), 1.0) {
+                crate::vram_use::save();
+            }
             state.resident = None;
             let engine = {
                 let _transition = self.transition.blocking_lock();
