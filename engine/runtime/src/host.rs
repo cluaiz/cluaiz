@@ -517,7 +517,7 @@ impl EngineHost {
         let Some(gpu) = self.gpu_use.lock().await.clone() else { return };
         let others = self.speech.resident_model().is_some()
             || self.embeddings.resident_model().is_some()
-            || self.onnx.resident_model().await.ok().flatten().is_some();
+            || self.onnx.any_resident().await;
         if others {
             return;
         }
