@@ -105,6 +105,9 @@ fn native_params(
         )
     };
     model_params.n_gpu_layers = n_gpu_layers;
+    if n_gpu_layers == 0 {
+        model_params.set_cpu_only();
+    }
     // STEP 3: MoE over the RAM limit reads experts from disk -> mmap on, CPU repack off
     model_params.set_mmap(placement.use_mmap);
     if placement.disk_stream {
