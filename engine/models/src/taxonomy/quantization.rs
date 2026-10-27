@@ -42,7 +42,8 @@ impl UniversalQuantization {
         "FP8_E4M3", "FP8_E5M2", "FP8", "MXFP8",
         "FP6", "MXFP6",
         "FP4", "MXFP4",
-        "UINT8F16", "INT8", "UINT8", "INT4", "UINT4", "BNB4", "INT2", "UINT2",
+        // A name containing another goes first ("UINT8" contains "INT8")
+        "UINT8F16", "UINT8", "INT8", "UINT4", "INT4", "BNB4", "UINT2", "INT2",
         "QUANTIZED",
         "1.58BIT", "BITNET", "1BIT", "1-BIT",
     ];

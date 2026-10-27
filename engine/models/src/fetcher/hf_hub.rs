@@ -625,4 +625,35 @@ mod tests {
             .all_files
             .contains(&"onnx/decoder_model_merged.onnx".to_string()));
     }
+
+    #[test]
+    fn test_int8_bundle_leaves_out_uint8_graphs() {
+        // onnx-community/whisper-large-v3-turbo: pulling :int8 brought the uint8 decoders too, and
+        // the engine then refused the package ("Ambiguous uncached STT decoder graphs")
+        let file = |path: &str| HfTreeItem {
+            r#type: Some("file".to_string()),
+            path: path.to_string(),
+            size: Some(1),
+        };
+        let items = vec![
+            file("onnx/encoder_model_int8.onnx"),
+            file("onnx/encoder_model_uint8.onnx"),
+            file("onnx/decoder_model_int8.onnx"),
+            file("onnx/decoder_model_uint8.onnx"),
+            file("onnx/decoder_with_past_model_int8.onnx"),
+            file("onnx/decoder_with_past_model_uint8.onnx"),
+        ];
+        let variants = HuggingFaceHub::bundle_onnx_variants(&items, &[]);
+        let int8 = variants
+            .iter()
+            .find(|v| v.primary_file == "onnx/encoder_model_int8.onnx")
+            .expect("missing int8 encoder variant");
+        assert!(int8.all_files.contains(&"onnx/decoder_model_int8.onnx".to_string()));
+        assert!(!int8.all_files.iter().any(|f| f.contains("uint8")), "{:?}", int8.all_files);
+        let uint8 = variants
+            .iter()
+            .find(|v| v.primary_file == "onnx/encoder_model_uint8.onnx")
+            .expect("missing uint8 encoder variant");
+        assert!(!uint8.all_files.iter().any(|f| f.contains("_int8")), "{:?}", uint8.all_files);
+    }
 }
