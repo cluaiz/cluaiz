@@ -1,0 +1,71 @@
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.56 of 15.00 GB | buffer kept free 0.09 GB (measured: GPU pool -0.66 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 27.42 of 29.37 GB | Cluaiz may use 25.95 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 24 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 23 on GPU, 37 in RAM (of 60)
+║   • VRAM            : 14.41 GB (weights + KV 0.30 + logits)
+║   • RAM             : 19.75 GB (incl. KV 0.49)
+║   • Reason          : GPU + RAM split: 23 / 60 blocks + output head on GPU (14.41 GB), 37 blocks in RAM
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 14.46 GB
+║   • GPU + RAM split  [FITS]     VRAM 14.41 GB | RAM 19.75 GB | 23 / 60 blocks + output head on GPU (14.41 GB), 37 blocks in RAM
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 5.72 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T12:03:08.808724Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-4-31b-it-gguf-Q8_0/gemma-4-31B-it-Q8_0.gguf | ctx: 4096 tokens
+2026-10-28T12:07:16.630907Z  INFO 🔍 [EngineHost] VRAM planned 14.41 GB, taken 13.88 GB | n_ctx planned 4096 created 4096 | n_gpu_layers 24 n_cpu_moe 0
+2026-10-28T12:11:14.711873Z  INFO 📏 [EngineHost] The loaded model now takes -0.52 GB over its estimate; learned for its next load
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.44 of 15.00 GB | buffer kept free 0.23 GB (measured: GPU pool -0.52 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 27.91 of 29.37 GB | Cluaiz may use 26.45 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 31 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 30 on GPU, 30 in RAM (of 60)
+║   • VRAM            : 17.87 GB (weights + KV 0.39 + logits)
+║   • RAM             : 16.28 GB (incl. KV 0.39)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 31 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 17.87 of usable 14.21 GB; 3.66 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 17.87 GB | RAM 16.28 GB | planner bypassed: n_gpu_layers 31 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 17.87 of usable 14.21 GB; 3.66 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 14.21 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.92 GB | RAM 20.23 GB | 22 / 60 blocks + output head on GPU (13.92 GB), 38 blocks in RAM
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 5.22 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T12:18:27.793445Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-4-31b-it-gguf-Q8_0/gemma-4-31B-it-Q8_0.gguf | ctx: 4096 tokens

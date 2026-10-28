@@ -1,0 +1,102 @@
+== pulls (ram29)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 340s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 558s
+== pulls (ram29_qwen3-4b)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 7s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 4s
+== pulls (ram29_gemma-3-12b)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 5s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 4s
+== pulls (ram29_mistral)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 4s
+== pulls (ram29_mistral)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 7s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 3s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 4s
+== pulls (ram29_gemma-4-31b-it-gguf-q4)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 3s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 3s
+== pulls (ram29_gemma-4-31b-it-gguf-q8)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 6s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 4s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 4s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 3s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 4s
+== pulls (fix_qwen3-4b)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 1s
+== pulls (fix_gemma-3-12b)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 1s
+== pulls (fix_mistral)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 1s
+== pulls (fix_gemma-4-31b-it-gguf-q4)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (fix_gemma-4-31b-it-gguf-q8)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (fix2_gemma-3-12b)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 1s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (fix2_gemma-4-31b-it-gguf-q4)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (fix2_gemma-4-31b-it-gguf-q4)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (fix2_gemma-4-31b-it-gguf-q8)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 1s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s
+== pulls (ram15_gemma-4-31b-it-gguf-q4)
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 0s
+unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 0s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 1s
+unsloth/gemma-4-31B-it-GGUF:Q8_0 exit 0 0s

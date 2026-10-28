@@ -6,7 +6,8 @@
 > ho aur prompt 512 ke thoda upar ho (jaise 535) to Cluaiz 1.3x–1.5x tez; baaki jagah release mein llama.cpp
 > 7–22% aage tha (prompt ke tukde, aur Gemma ka 4-token checkpoint). Do fix (`6120d017`, `4228752a`) ke baad
 > T4 par prompt bhi barabar: poore GPU par 2–5% ke andar, split par barabar ya Cluaiz 1.6x tak tez. Gemma 4 31B Q4 (17 GB) aur Q8 (32 GB)
-> dono chale; planner ne khud GPU + RAM mein baanta aur wahi sabse tez mode nikla. SSD streaming (15 GB RAM) baaki.
+> dono chale; planner ne khud GPU + RAM mein baanta aur wahi sabse tez mode nikla. 15 GB RAM par 32 GB dense model
+> planner ne saaf reason ke saath mana kiya; zabardasti chalane par disk se padh kar ~1 token / 70–120 s.
 
 ## Who is who in this file
 
@@ -214,9 +215,30 @@ batch / ubatch / mmap that Cluaiz reported for that test, `-r 2`. Prompt: `-p <t
 3 runs per test. Run 1 is the cold run (also checks thinking and leaks); the speeds are the average of runs 2–3
 with thinking off.
 
-## Abhi baaki (still running)
+## Less RAM, and a model bigger than RAM + VRAM (15 GB RAM)
 
-- SSD streaming: the same VM with 15 GB RAM, Gemma 4 31B Q8 (32 GB file > 15 GB RAM + 15 GB VRAM).
+The same VM resized to `n1-standard-4` (2 cores / 4 threads, 15 GB RAM, same T4), engine with both prompt fixes.
+
+| Model | Mode | What happened | Prompt t/s (Cluaiz / llama.cpp) | Gen t/s (Cluaiz / llama.cpp) |
+|---|---|---|---|---|
+| Gemma 4 31B Q4 (17.1 GB) | auto | Planner: 41 of 60 blocks + output head on GPU | 112 / 112 | 2.3 / 2.3 |
+| | split | half the blocks on GPU (`ngl 31`) | 88 / 81 | 1.6 / 1.7 |
+| Gemma 4 31B Q8 (30.4 GB, dense) | auto | **Refused by the planner**: "closest placement (GPU + RAM split) is 8.04 GB short … Free memory, lower the context, or use a smaller quantization" (`planner_ssd_ram15_q8.log`) | - | - |
+| | user setting `n_gpu_layers 23` | Load took 7 min (88 GB read from the disk), then the KV cache did not fit the GPU: "Context Init Failure" (`ssd_ram15_q8_forced.log`) | - | - |
+| | user setting `n_gpu_layers 20` | Runs, reading the weights from the disk on every token: 385 GB read for the first request (31 min), 156 GB for the second (13 min) (`ssd_ram15_q8_ngl20.log`) | 1.5–3.0 / not measured | 0.008–0.014 / not measured |
+
+- Generation is lower than on the 29 GB VM (Gemma 4 Q4 auto 3.2 → 2.3 t/s): the blocks in RAM run on 2 cores.
+- Cluaiz streams from the SSD only for MoE experts (Gemma 4 26B on the laptop, 7–18 t/s). A dense model that
+  does not fit RAM + VRAM is refused with the reason; forced by the user it runs, at disk speed (this disk:
+  206 MB/s), about one token per 70–120 s. llama.cpp for that case was not measured: the cloud test was ended
+  during that step.
+
+**Finding: the hardware profile is not refreshed after a hardware change.** After the resize, the plan still said
+"RAM free 13.66 of **29.37 GB**" and the engine used 4 threads: `hardware_profile.json` (written on the first start)
+still had 4 cores / 8 threads and 29.4 GB. Free RAM and VRAM are measured live, so the placement decisions above
+were right; the total RAM, the 95% RAM ceiling and the thread count stay old until `cluaiz calibrate`. Proposed
+(not changed): refresh total RAM and the core count with the free memory on every start. Both engines used the
+same 4 threads here, so the comparison is fair.
 
 ## Not covered by this test
 
@@ -227,10 +249,17 @@ with thinking off.
 
 ## Files
 
-- `RESULTS_ram29_<model>.md`: `run.py`'s report per model, with every setting per test and the exact
-  llama-bench command.
+- `RESULTS_<round>_<model>.md`: `run.py`'s report per model, with every setting per test and the exact
+  llama-bench command. Rounds: `ram29` (release v0.1.0, 29 GB RAM), `fix` (prompt fix 1), `fix2` (fixes 1 + 2,
+  Gemma 3 / 4), `ram15` (15 GB RAM).
+- `planner_<round>_<model>.log`: the planner's blocks and load lines from the server log of that round.
+- `cpu_devnone.log`: llama-bench CPU only (`-dev none`) for Qwen3 4B, Gemma 3 12B, Mistral 24B.
+- `ssd_ram15_q8_planner.log`, `ssd_ram15_q8_forced.log` (`ngl 23`), `ssd_ram15_q8_ngl20.log`, with
+  `planner_ssd_*.log`: Gemma 4 31B Q8 on 15 GB RAM, disk reads per request.
+- `machine_ram29.txt`, `machine_ram15_*.txt`, `pulls.log`: the VM and the downloads. Server logs stay out of git.
 - Scripts: `test/cloud/remote/regression_tests.sh` (one model), `test/cloud/remote/regression_all.sh` (one
-  model at a time, picks up after a Spot stop), models in `test/cloud/remote/models_regression.txt`.
+  model at a time, picks up after a Spot stop), `test/cloud/remote/ssd_test.sh` (a model bigger than RAM +
+  VRAM), models in `test/cloud/remote/models_regression.txt`.
 
 ## Run it again
 

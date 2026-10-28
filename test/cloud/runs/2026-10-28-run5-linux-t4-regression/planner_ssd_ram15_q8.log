@@ -1,0 +1,50 @@
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.56 of 15.00 GB | buffer kept free 0.23 GB (measured: GPU pool -0.52 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 13.69 of 29.37 GB | Cluaiz may use 12.22 GB
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 60 in RAM (of 60)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (GPU + RAM split) is 8.01 GB short (22 / 60 blocks + output head on GPU (13.92 GB), 38 blocks in RAM; needs 8.01 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 14.33 GB
+║   • GPU + RAM split  [NO]       VRAM 13.92 GB | RAM 20.23 GB | 22 / 60 blocks + output head on GPU (13.92 GB), 38 blocks in RAM; needs 8.01 GB more RAM than allowed
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 19.45 GB more RAM than allowed
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.56 of 15.00 GB | buffer kept free 0.23 GB (measured: GPU pool -0.52 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 13.66 of 29.37 GB | Cluaiz may use 12.19 GB
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 60 in RAM (of 60)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (GPU + RAM split) is 8.04 GB short (22 / 60 blocks + output head on GPU (13.92 GB), 38 blocks in RAM; needs 8.04 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 14.33 GB
+║   • GPU + RAM split  [NO]       VRAM 13.92 GB | RAM 20.23 GB | 22 / 60 blocks + output head on GPU (13.92 GB), 38 blocks in RAM; needs 8.04 GB more RAM than allowed
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 19.47 GB more RAM than allowed
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true

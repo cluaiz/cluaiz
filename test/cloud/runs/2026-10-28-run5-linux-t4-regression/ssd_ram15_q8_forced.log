@@ -1,0 +1,20 @@
+== machine
+               total        used        free      shared  buff/cache   available
+Mem:              14           1           0           0          12          12
+Swap:              0           0           0
+name, memory.total [MiB], memory.used [MiB]
+Tesla T4, 15360 MiB, 2091 MiB
+total 33041672
+drwxrwxr-x 3 Aryan Aryan        4096 Oct 28 09:16 .
+drwxrwxr-x 7 Aryan Aryan        4096 Oct 28 09:07 ..
+drwxrwxr-x 2 Aryan Aryan        4096 Oct 28 09:16 MTP
+-rw-rw-r-- 1 Aryan Aryan        4702 Oct 28 09:16 config.json
+-rw-rw-r-- 1 Aryan Aryan 32635677632 Oct 28 09:16 gemma-4-31B-it-Q8_0.gguf
+-rw-rw-r-- 1 Aryan Aryan  1198957024 Oct 28 09:16 mmproj-F16.gguf
+-rw-rw-r-- 1 Aryan Aryan         902 Oct 28 09:16 model_manifest.json
+== cluaiz request 1: HTTP 500: {"error":{"code":null,"message":"Model could not be loaded: Context Init Failure","type":"engine_load_error"}}
+   wall 428 s, disk read 87.78 GB
+== cluaiz request 2: HTTP 500: {"error":{"code":null,"message":"Model could not be loaded: Context Init Failure","type":"engine_load_error"}}
+   wall 295 s, disk read 60.78 GB
+== Cluaiz did not load the model, so there is no placement to give llama-bench
+== done ram15_q8_forced

@@ -1,0 +1,63 @@
+== machine
+               total        used        free      shared  buff/cache   available
+Mem:              14           0           1           0          12          13
+Swap:              0           0           0
+name, memory.total [MiB], memory.used [MiB]
+Tesla T4, 15360 MiB, 0 MiB
+total 33041672
+drwxrwxr-x 3 Aryan Aryan        4096 Oct 28 09:16 .
+drwxrwxr-x 7 Aryan Aryan        4096 Oct 28 09:07 ..
+drwxrwxr-x 2 Aryan Aryan        4096 Oct 28 09:16 MTP
+-rw-rw-r-- 1 Aryan Aryan        4702 Oct 28 09:16 config.json
+-rw-rw-r-- 1 Aryan Aryan 32635677632 Oct 28 09:16 gemma-4-31B-it-Q8_0.gguf
+-rw-rw-r-- 1 Aryan Aryan  1198957024 Oct 28 09:16 mmproj-F16.gguf
+-rw-rw-r-- 1 Aryan Aryan         902 Oct 28 09:16 model_manifest.json
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+  File "/usr/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+   wall 1 s, disk read 0.03 GB
+Traceback (most recent call last):
+  File "<stdin>", line 12, in <module>
+  File "/usr/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 500: Internal Server Error
+   wall 0 s, disk read 0.00 GB
+== llama-bench -ngl 0 -ncmoe 0 -ctk f16 -ctv f16 -p 535 -n 0
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 14911 MiB):
+  Device 0: Tesla T4, compute capability 7.5, VMM: yes, VRAM: 14911 MiB
+   wall 75 s, disk read 14.72 GB
+== llama-bench -ngl 0 -ncmoe 0 -ctk f16 -ctv f16 -p 0 -n 8 -d 535
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 14911 MiB):
+  Device 0: Tesla T4, compute capability 7.5, VMM: yes, VRAM: 14911 MiB

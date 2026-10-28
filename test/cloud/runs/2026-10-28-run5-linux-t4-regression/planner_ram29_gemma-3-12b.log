@@ -1,0 +1,141 @@
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-12b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 48 layers | heads 16 | KV heads 8 | head size K 256 / V 256 | dense
+║   • Weights         : file 6.80 GB | input embeddings 0.77 GB (always CPU) | output head 0.77 GB | vocab 262208
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 17408 tokens, KV Kv16 (Auto: largest that fits = 17408 tokens, KV Kv16, buffer 0.80 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.56 of 15.00 GB | buffer kept free 0.80 GB (measured: GPU pool +0.05 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.47 of 29.37 GB | Cluaiz may use 26.01 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 17408 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 48 on GPU, 0 in RAM (of 48)
+║   • VRAM            : 13.71 GB (weights + KV 6.38 + logits)
+║   • RAM             : 0.77 GB (incl. KV 0.00)
+║   • Reason          : Full GPU: weights 6.79 + KV 6.38 + buffers 0.54 = 13.71 GB vs usable VRAM 13.76 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.71 GB | RAM  0.77 GB | weights 6.79 + KV 6.38 + buffers 0.54 = 13.71 GB vs usable VRAM 13.76 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.44 GB | RAM  1.04 GB | 47 / 48 blocks + output head on GPU (13.44 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.67 GB | weights 6.79 + KV 6.38 + logits 0.50 = 13.67 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T10:30:29.919873Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf | ctx: 17408 tokens
+2026-10-28T10:31:09.058667Z  INFO 🔍 [EngineHost] VRAM planned 13.71 GB, taken 13.85 GB | n_ctx planned 17408 created 17408 | n_gpu_layers -1 n_cpu_moe 0
+2026-10-28T10:31:12.690322Z  INFO 📏 [EngineHost] The loaded model now takes +0.16 GB over its estimate; learned for its next load
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-12b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 48 layers | heads 16 | KV heads 8 | head size K 256 / V 256 | dense
+║   • Weights         : file 6.80 GB | input embeddings 0.77 GB (always CPU) | output head 0.77 GB | vocab 262208
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16896 tokens, KV Kv16 (Auto: largest that fits = 16896 tokens, KV Kv16, buffer 0.91 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.43 of 15.00 GB | buffer kept free 0.91 GB (measured: GPU pool +0.16 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.96 of 29.37 GB | Cluaiz may use 26.50 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16896 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 48 on GPU, 0 in RAM (of 48)
+║   • VRAM            : 13.52 GB (weights + KV 6.19 + logits)
+║   • RAM             : 0.77 GB (incl. KV 0.00)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.52 of usable 13.53 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 13.52 GB | RAM  0.77 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.52 of usable 13.53 GB
+║   • Full GPU         [FITS]     VRAM 13.52 GB | RAM  0.77 GB | weights 6.79 + KV 6.19 + buffers 0.54 = 13.52 GB vs usable VRAM 13.53 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.26 GB | RAM  1.03 GB | 47 / 48 blocks + output head on GPU (13.26 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.48 GB | weights 6.79 + KV 6.19 + logits 0.50 = 13.48 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T10:31:38.166972Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf | ctx: 16896 tokens
+2026-10-28T10:31:41.604354Z  INFO 🔍 [EngineHost] VRAM planned 13.52 GB, taken 13.55 GB | n_ctx planned 16896 created 16896 | n_gpu_layers -1 n_cpu_moe 0
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-12b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 48 layers | heads 16 | KV heads 8 | head size K 256 / V 256 | dense
+║   • Weights         : file 6.80 GB | input embeddings 0.77 GB (always CPU) | output head 0.77 GB | vocab 262208
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16896 tokens, KV Kv16 (Auto: largest that fits = 16896 tokens, KV Kv16, buffer 0.91 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.43 of 15.00 GB | buffer kept free 0.91 GB (measured: GPU pool +0.16 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.90 of 29.37 GB | Cluaiz may use 26.42 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 25 | n_cpu_moe = 0 | n_ctx = 16896 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 24 on GPU, 24 in RAM (of 48)
+║   • VRAM            : 7.41 GB (weights + KV 3.09 + logits)
+║   • RAM             : 6.87 GB (incl. KV 3.09)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 25 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 7.41 of usable 13.53 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  7.41 GB | RAM  6.87 GB | planner bypassed: n_gpu_layers 25 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 7.41 of usable 13.53 GB
+║   • Full GPU         [FITS]     VRAM 13.52 GB | RAM  0.77 GB | weights 6.79 + KV 6.19 + buffers 0.54 = 13.52 GB vs usable VRAM 13.53 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.26 GB | RAM  1.03 GB | 47 / 48 blocks + output head on GPU (13.26 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.48 GB | weights 6.79 + KV 6.19 + logits 0.50 = 13.48 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T10:32:14.500048Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf | ctx: 16896 tokens
+2026-10-28T10:32:20.936837Z  INFO 🔍 [EngineHost] VRAM planned 7.41 GB, taken 7.42 GB | n_ctx planned 16896 created 16896 | n_gpu_layers 25 n_cpu_moe 0
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-12b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 48 layers | heads 16 | KV heads 8 | head size K 256 / V 256 | dense
+║   • Weights         : file 6.80 GB | input embeddings 0.77 GB (always CPU) | output head 0.77 GB | vocab 262208
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Auto on the CPU: 4096 tokens, KV Kv16 (the floor; RAM is not filled with context))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.43 of 15.00 GB | buffer kept free 0.00 GB (measured: GPU pool +0.16 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.91 of 29.37 GB | Cluaiz may use 26.45 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 48 in RAM (of 48)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 8.79 GB (incl. KV 1.50)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 14.43 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  8.79 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 14.43 GB
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  8.79 GB | weights 6.79 + KV 1.50 + logits 0.50 = 8.79 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T10:33:36.061366Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf | ctx: 4096 tokens
