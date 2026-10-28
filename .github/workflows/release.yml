@@ -59,6 +59,12 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y build-essential cmake pkg-config clang libclang-dev libssl-dev \
             autoconf automake libtool ccache
+          # GCC 13 does not know the 'sme' feature of the armv9.2 CPU variant (llama.cpp uses GCC 14 too)
+          if [ "$(uname -m)" = aarch64 ]; then
+            sudo apt-get install -y gcc-14 g++-14
+            echo "CC=gcc-14" >> "$GITHUB_ENV"
+            echo "CXX=g++-14" >> "$GITHUB_ENV"
+          fi
 
       - name: macOS build dependencies
         if: runner.os == 'macOS'
