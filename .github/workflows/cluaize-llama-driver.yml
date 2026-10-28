@@ -1,0 +1,405 @@
+name: "cluaiz Interface Drivers"
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0-alpha)'
+        required: true
+        default: 'alpha-release'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "release-driver-${{ github.ref }}"
+  cancel-in-progress: false
+
+env:
+  CARGO_BUILD_JOBS: 4
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ─── STAGE 1: Silicon Driver Compilation (GPU/NPU) ──────────────────
+  build-drivers:
+    name: "⚙️ Driver [${{ matrix.platform }}-${{ matrix.backend }}${{ matrix.cuda_v && format('-{0}', matrix.cuda_v) || '' }}]"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- NVIDIA CUDA v13 (Windows/Linux) ---
+          - platform: win-x64
+            backend: cuda
+            cuda_v: "v13"
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: cuda
+            ext: dll
+            prefix: ""
+          - platform: linux-x64
+            backend: cuda
+            cuda_v: "v13"
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: cuda
+            ext: so
+            prefix: "lib"
+
+          # --- NVIDIA CUDA v12 (Windows/Linux) ---
+          - platform: win-x64
+            backend: cuda
+            cuda_v: "v12"
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: cuda
+            ext: dll
+            prefix: ""
+          - platform: linux-x64
+            backend: cuda
+            cuda_v: "v12"
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: cuda
+            ext: so
+            prefix: "lib"
+
+          # --- NVIDIA CUDA v11 (Windows/Linux) ---
+          - platform: win-x64
+            backend: cuda
+            cuda_v: "v11"
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: cuda
+            ext: dll
+            prefix: ""
+          - platform: linux-x64
+            backend: cuda
+            cuda_v: "v11"
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: cuda
+            ext: so
+            prefix: "lib"
+
+          # --- Apple Metal (Integrated) ---
+          - platform: mac-arm64
+            backend: metal
+            os: macos-latest
+            target: aarch64-apple-darwin
+            features: metal
+            ext: dylib
+            prefix: "lib"
+          - platform: mac-x64
+            backend: metal
+            os: macos-latest
+            target: x86_64-apple-darwin
+            features: metal
+            ext: dylib
+            prefix: "lib"
+
+          # --- Universal Vulkan ---
+          - platform: win-x64
+            backend: vulkan
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: vulkan
+            ext: dll
+            prefix: ""
+          - platform: linux-x64
+            backend: vulkan
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: vulkan
+            ext: so
+            prefix: "lib"
+
+          # --- Intel OpenVINO ---  
+          - platform: win-x64
+            backend: openvino
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            features: openvino
+            ext: dll
+            prefix: ""
+          - platform: linux-x64
+            backend: openvino
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: openvino
+            ext: so
+            prefix: "lib"
+
+          # --- AMD ROCm / HIP (Linux Only) ---
+          - platform: linux-x64
+            backend: rocm
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: rocm
+            ext: so
+            prefix: "lib"
+          - platform: linux-x64
+            backend: hip
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: rocm
+            ext: so
+            prefix: "lib"
+
+          # --- Intel SYCL (oneAPI) ---
+          # - platform: win-x64
+          #   backend: sycl
+          #   os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   features: sycl
+          #   ext: dll
+          #   prefix: ""
+          - platform: linux-x64
+            backend: sycl
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: sycl
+            ext: so
+            prefix: "lib"
+
+
+          # --- Huawei CANN (Ascend NPU) ---
+          - platform: linux-x64
+            backend: cann
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            features: cann
+            ext: so
+            prefix: "lib"
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Cache Cargo Registry & Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ matrix.backend }}-driver-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-${{ matrix.backend }}-driver-cargo-
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Configure Windows Environment (LongPaths & Short Target Dir)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+          git config --global core.longpaths true
+          New-Item -ItemType Directory -Force -Path "D:\t"
+          Add-Content $env:GITHUB_ENV "CARGO_TARGET_DIR=D:\t"
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup CUDA Toolkit
+        if: contains(matrix.backend, 'cuda')
+        uses: jimver/cuda-toolkit@v0.2.21
+        with:
+          cuda: ${{ matrix.backend == 'cuda-v11' && '11.8.0' || matrix.backend == 'cuda-v12' && '12.2.0' || '12.5.0' }}
+
+      # ── Vulkan: Linux installs glslc via the official LunarG apt repo.
+      # Ubuntu universe shaderc package does NOT provide /usr/bin/glslc on 22.04.
+      # The LunarG repo is the ONLY reliable source of glslc on Ubuntu 22.04.
+      - name: Setup Vulkan SDK (Linux)
+        if: matrix.backend == 'vulkan' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gpg
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo tee /etc/apt/trusted.gpg.d/lunarg.asc
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt-get update
+          sudo apt-get install -y vulkan-sdk
+
+      # ── Vulkan: Windows uses the official Lunarg installer method as per llama.cpp CI.
+      - name: Setup Vulkan SDK (Windows)
+        if: matrix.backend == 'vulkan' && runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $VULKAN_VERSION = "1.4.313.2"
+          curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/$VULKAN_VERSION/windows/vulkansdk-windows-X64-$VULKAN_VERSION.exe"
+          & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$VULKAN_VERSION\bin"
+
+      - name: Setup OpenVINO SDK (Windows)
+        if: matrix.backend == 'openvino' && runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://storage.openvinotoolkit.org/repositories/openvino/packages/2026.0/windows/openvino_toolkit_windows_2026.0.0.20965.c6d6a13a886_x86_64.zip" -OutFile openvino.zip
+          Expand-Archive -Path openvino.zip -DestinationPath .
+          Rename-Item openvino_toolkit_windows_2026.0.0.20965.c6d6a13a886_x86_64 openvino
+          Add-Content $env:GITHUB_ENV "INTEL_OPENVINO_DIR=$PWD\openvino"
+          Add-Content $env:GITHUB_ENV "OpenVINO_DIR=$PWD\openvino\runtime\cmake"
+          Add-Content $env:GITHUB_PATH "$PWD\openvino\runtime\bin\intel64\Release"
+          # Add TBB library path for llama.cpp linking
+          Add-Content $env:GITHUB_ENV "TBB_LIB_DIR=$PWD\openvino\runtime\lib\intel64\Release"
+          Add-Content $env:GITHUB_ENV "LIB=$PWD\openvino\runtime\lib\intel64\Release;$env:LIB"
+          # Install OpenCL via vcpkg
+          vcpkg install opencl:x64-windows
+          Add-Content $env:GITHUB_ENV "OpenCL_INCLUDE_DIR=C:\vcpkg\installed\x64-windows\include"
+          Add-Content $env:GITHUB_ENV "OpenCL_LIBRARY=C:\vcpkg\installed\x64-windows\lib\OpenCL.lib"
+
+      - name: Setup OpenVINO SDK (Linux)
+        if: matrix.backend == 'openvino' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ocl-icd-opencl-dev opencl-headers opencl-clhpp-headers intel-opencl-icd wget gnupg2
+          wget https://storage.openvinotoolkit.org/repositories/openvino/packages/2026.0/linux/openvino_toolkit_ubuntu24_2026.0.0.20965.c6d6a13a886_x86_64.tgz
+          tar -xf openvino_toolkit_ubuntu24_2026.0.0.20965.c6d6a13a886_x86_64.tgz
+          sudo openvino_toolkit_ubuntu24_2026.0.0.20965.c6d6a13a886_x86_64/install_dependencies/install_openvino_dependencies.sh
+          echo "OpenVINO_DIR=$PWD/openvino_toolkit_ubuntu24_2026.0.0.20965.c6d6a13a886_x86_64/runtime/cmake" >> $GITHUB_ENV
+          echo "OpenCL_INCLUDE_DIR=/usr/include" >> $GITHUB_ENV
+          echo "OpenCL_LIBRARY=/usr/lib/x86_64-linux-gnu/libOpenCL.so.1" >> $GITHUB_ENV
+
+      - name: Setup Intel oneAPI SYCL SDK (Windows)
+        if: matrix.backend == 'sycl' && runner.os == 'Windows'
+        shell: cmd
+        run: |
+          curl.exe --output %TEMP%\webimage.exe --url https://registrationcenter-download.intel.com/akdlm/IRC_NAS/b60765d1-2b85-4e85-86b6-cb0e9563a699/intel-deep-learning-essentials-2025.3.3.18_offline.exe --retry 5 --retry-delay 5
+          start /b /wait %TEMP%\webimage.exe -s -x -f webimage_extracted --log extract.log
+          del %TEMP%\webimage.exe
+          start /b /wait webimage_extracted\bootstrapper.exe -s --action install --components=intel.oneapi.win.cpp-dpcpp-common:intel.oneapi.win.mkl.devel:intel.oneapi.win.dnnl:intel.oneapi.win.tbb.devel --eula=accept -p=NEED_VS2017_INTEGRATION=0 -p=NEED_VS2019_INTEGRATION=0 -p=NEED_VS2022_INTEGRATION=0 --log-dir=.
+          rd /s/q "webimage_extracted"
+          set "ONEAPI_ROOT=C:\Program Files (x86)\Intel\oneAPI"
+          echo DPCPP_CXX=icx>> %GITHUB_ENV%
+          echo DPCPP_CC=icx>> %GITHUB_ENV%
+          choco install ninja -y
+
+      - name: Setup Intel oneAPI SYCL SDK
+        if: matrix.backend == 'sycl' && runner.os == 'Linux'
+        shell: bash
+        run: |
+          wget -q -O - https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | sudo apt-key add -
+          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-mkl-devel
+          source /opt/intel/oneapi/setvars.sh 2>/dev/null || true
+          ICPX=$(which icpx || echo "/opt/intel/oneapi/compiler/latest/linux/bin/icpx")
+          ICX=$(which icx  || echo "/opt/intel/oneapi/compiler/latest/linux/bin/icx")
+          echo "/opt/intel/oneapi/compiler/latest/linux/bin" >> $GITHUB_PATH
+          echo "DPCPP_CXX=$ICPX" >> $GITHUB_ENV
+          echo "DPCPP_CC=$ICX"   >> $GITHUB_ENV
+
+      - name: Setup AMD ROCm / HIP SDK
+        if: matrix.backend == 'rocm' || matrix.backend == 'hip'
+        run: |
+          # Remove any pre-installed conflicting ROCm 5.x packages first
+          sudo apt-get remove -y --purge rocm-dev rocm-cmake rocm-device-libs rocm-utils 2>/dev/null || true
+          sudo apt-get autoremove -y 2>/dev/null || true
+          # Install ROCm 6.0 from official AMD repo for Ubuntu 22.04 (jammy)
+          sudo apt-get install -y wget gnupg2
+          wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/rocm.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/6.0 jammy main" | sudo tee /etc/apt/sources.list.d/rocm.list
+          # Pin ROCm repo so it wins over any system packages
+          printf 'Package: *\nPin: release o=repo.radeon.com\nPin-Priority: 1001\n' | sudo tee /etc/apt/preferences.d/rocm-pin-600
+          sudo apt-get update
+          sudo apt-get install -y rocm-hip-sdk hip-runtime-amd
+
+
+
+      - name: Setup Python 3.9 for CANN (Ascend)
+        if: matrix.backend == 'cann'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Setup Huawei CANN SDK
+        if: matrix.backend == 'cann'
+        run: |
+          echo "Using self-contained official Docker image for CANN compilation, host setup bypassed."
+          echo "ASCEND_TOOLKIT_HOME=$HOME/Ascend/ascend-toolkit/latest/x86_64-linux" >> $GITHUB_ENV
+          echo "CANN_INSTALL_DIR=$HOME/Ascend/ascend-toolkit/latest/x86_64-linux" >> $GITHUB_ENV
+
+      - name: Build Driver (Foundry)
+        shell: bash
+        env:
+          IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            rm -f /usr/bin/link
+          fi
+          if [[ "${{ matrix.backend }}" == "sycl" || "${{ matrix.backend }}" == "openvino" ]] && [[ "${{ runner.os }}" == "Linux" ]]; then
+            source /opt/intel/oneapi/setvars.sh 2>/dev/null || true
+          fi
+          if [[ "${{ matrix.target }}" == *"-android"* ]]; then
+            cargo install cross --git https://github.com/cross-rs/cross
+            cross build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"
+          elif [[ "${{ matrix.backend }}" == "sycl" && "${{ runner.os }}" == "Windows" ]]; then
+            # Clean target directory and force /MD (Dynamic CRT) globally via .cargo/config.toml
+            rm -rf D:/t/*
+            mkdir -p .cargo
+            echo '[target.x86_64-pc-windows-msvc]' > .cargo/config.toml
+            echo 'rustflags = ["-C", "target-feature=-crt-static"]' >> .cargo/config.toml
+            
+            echo 'call "C:\Program Files (x86)\Intel\oneAPI\setvars.bat"' > run_sycl.bat
+            echo 'set CMAKE_GENERATOR=Ninja' >> run_sycl.bat
+            echo 'cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"' >> run_sycl.bat
+            cmd.exe //c run_sycl.bat
+          elif [[ "${{ matrix.backend }}" == "vulkan" && "${{ runner.os }}" == "Windows" ]]; then
+            choco install ninja -y
+            echo 'set CMAKE_GENERATOR=Ninja' > run_vulkan.bat
+            echo 'cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"' >> run_vulkan.bat
+            cmd.exe //c run_vulkan.bat
+          elif [[ "${{ matrix.backend }}" == "cann" ]]; then
+            docker run --rm -v "${{ github.workspace }}:/workspace" -w /workspace ascendai/cann:8.5.0-310p-openeuler24.03-py3.11 bash -c "
+              yum install -y --setopt=install_weak_deps=False --setopt=tsflags=nodocs git gcc gcc-c++ make cmake openssl-devel
+              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+              source \$HOME/.cargo/env
+              export LD_LIBRARY_PATH=\${ASCEND_TOOLKIT_HOME}/lib64:\${ASCEND_TOOLKIT_HOME}/\$(uname -m)-linux/devlib/:\${LD_LIBRARY_PATH}
+              cargo build --release --target ${{ matrix.target }} -p llama --features \"${{ matrix.features }}\"
+              chown -R $(id -u):$(id -g) /workspace/target || true
+            "
+          else
+            cargo build --release --target ${{ matrix.target }} -p llama --features "${{ matrix.features }}"
+          fi
+
+      - name: Prepare Driver Binary
+        id: naming
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.tag_name }}"
+          else
+            VERSION="${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'dev' }}"
+          fi
+
+          mkdir -p artifacts
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            SRC="D:/t/${{ matrix.target }}/release/${{ matrix.prefix }}cluaiz_llama.${{ matrix.ext }}"
+          else
+            SRC="target/${{ matrix.target }}/release/${{ matrix.prefix }}cluaiz_llama.${{ matrix.ext }}"
+          fi
+          PREFIX="${{ matrix.prefix }}"
+
+          if [ -n "${{ matrix.cuda_v }}" ]; then
+            DEST="artifacts/${PREFIX}cluaiz-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v }}.${{ matrix.ext }}"
+          else
+            DEST="artifacts/${PREFIX}cluaiz-driver-${VERSION}-${{ matrix.platform }}-${{ matrix.backend }}.${{ matrix.ext }}"
+          fi
+
+          cp "$SRC" "$DEST"
+          echo "binary_path=${DEST}" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluaiz-llama-driver-${{ matrix.platform }}-${{ matrix.backend }}-${{ matrix.cuda_v || 'cpu' }}
+          path: artifacts/*
+          retention-days: 1
