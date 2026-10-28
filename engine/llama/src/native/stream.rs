@@ -587,17 +587,21 @@ pub(crate) fn stream_tokens_with_media(
                                tokens: &[i32],
                                start_pos: usize|
              -> bool {
-                let mut step = llama.prompt_chunk_len(tokens.len());
-                if background {
-                    step = step.min(BACKGROUND_PROMPT_CHUNK);
-                }
-                for (chunk_idx, chunk) in tokens.chunks(step).enumerate() {
+                let cap = if background { BACKGROUND_PROMPT_CHUNK } else { usize::MAX };
+                let mut start = 0;
+                for len in llama.prompt_chunk_lens(tokens.len(), cap) {
+                    let chunk = &tokens[start..(start + len).min(tokens.len())];
+                    let chunk_start = start;
+                    start += chunk.len();
+                    if chunk.is_empty() {
+                        break;
+                    }
                     if cancel.is_some_and(|c| c.load(Ordering::SeqCst)) {
                         stopped.set(true);
                         return false;
                     }
                     for (i, token) in chunk.iter().enumerate() {
-                        let index = chunk_idx * step + i;
+                        let index = chunk_start + i;
                         *batch.token.add(i) = *token;
                         *batch.pos.add(i) = (start_pos + index) as i32;
                         *batch.n_seq_id.add(i) = 1;
@@ -610,7 +614,7 @@ pub(crate) fn stream_tokens_with_media(
                         tracing::warn!(
                             "⚠️ [Llama-Lib] Prefill chunk decode failed with code {} at position {}",
                             rc,
-                            start_pos + chunk_idx * step
+                            start_pos + chunk_start
                         );
                         return false;
                     }

@@ -18,6 +18,9 @@ pub struct NativeLlama {
     pub moe_controller: Option<Arc<std::sync::Mutex<()>>>,
     /// n_gpu_layers the model really loaded with (differs from the request when a load fallback ran)
     pub n_gpu_layers_loaded: i32,
+    /// Some weights stay in RAM while a GPU computes large batches for them (op offload): prefill then
+    /// avoids a small last chunk, which llama.cpp would compute on the CPU (`prompt_chunk_lens`)
+    pub weights_in_ram_with_gpu: bool,
     /// Chat templates parsed once at load (null if llama.cpp could not parse them); freed before the model
     chat_templates: *mut std::ffi::c_void,
     /// The custom template the parsed handle was built from (`dna.chat_template` at load)
@@ -128,14 +131,37 @@ pub struct GenerationTimings {
     pub predicted_per_second: f64,
 }
 
-/// Tokens per llama_decode call so a prompt of `n_tokens` is split into equal chunks of at most `max`.
-/// llama.cpp runs a micro-batch smaller than its op-offload size (a backend setting) on the CPU for
-/// layers kept in RAM, so a 512 + 10 split computes the 10-token tail slowly; 261 + 261 keeps both
-/// chunks on the batched path. Never returns 0 (safe for `slice::chunks`).
-pub fn even_chunk_len(n_tokens: usize, max: usize) -> usize {
+/// llama.cpp's op-offload size: a micro-batch smaller than this runs on the CPU for layers kept in RAM
+/// (`GGML_OP_OFFLOAD_MIN_BATCH`, 32 in every GPU backend)
+fn op_offload_min_batch() -> usize {
+    static MIN: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *MIN.get_or_init(|| {
+        std::env::var("GGML_OP_OFFLOAD_MIN_BATCH").ok().and_then(|v| v.parse().ok()).unwrap_or(32)
+    })
+}
+
+/// Lengths of the llama_decode calls that prefill `n_tokens`, each at most `max`: full chunks like
+/// llama.cpp, except that a tail below `min_batch` (the op-offload size; 0 = never) is evened out with
+/// the chunk before it (512 + 10 -> 261 + 261), so layers in RAM do not compute the tail slowly on the
+/// CPU. A larger tail stays as it is: on a Tesla T4 one chunk of 512 was 7-22% faster than two of 272.
+/// Never empty and never a 0 length when `n_tokens` > 0.
+pub fn prompt_chunk_lens(n_tokens: usize, max: usize, min_batch: usize) -> Vec<usize> {
     let max = max.max(1);
-    let chunks = n_tokens.div_ceil(max).max(1);
-    n_tokens.div_ceil(chunks).max(1)
+    let mut lens = vec![max; n_tokens / max];
+    let tail = n_tokens % max;
+    if tail > 0 {
+        lens.push(tail);
+    }
+    if lens.is_empty() {
+        lens.push(1);
+    }
+    if lens.len() >= 2 && tail > 0 && tail < min_batch && max + tail >= 2 * min_batch {
+        lens.truncate(lens.len() - 2);
+        let pair = max + tail;
+        lens.push(pair.div_ceil(2));
+        lens.push(pair / 2);
+    }
+    lens
 }
 
 impl NativeLlama {
@@ -164,10 +190,13 @@ impl NativeLlama {
         }
     }
 
-    /// Chunk length for prefilling `n_tokens`: at most one micro-batch (and one batch), split evenly.
-    pub fn prompt_chunk_len(&self, n_tokens: usize) -> usize {
+    /// Chunk lengths for prefilling `n_tokens`: at most one micro-batch (and one batch, and `cap`) each.
+    /// Full chunks like llama.cpp; a small tail is evened out only when weights in RAM would compute it
+    /// on the CPU. Fully on the GPU, or with no GPU, one large chunk is the faster one.
+    pub fn prompt_chunk_lens(&self, n_tokens: usize, cap: usize) -> Vec<usize> {
         let n_ubatch = unsafe { llama_cpp::llama_n_ubatch(self.ctx_ptr) };
-        even_chunk_len(n_tokens, n_ubatch.min(self.n_batch) as usize)
+        let min_batch = if self.weights_in_ram_with_gpu { op_offload_min_batch() } else { 0 };
+        prompt_chunk_lens(n_tokens, (n_ubatch.min(self.n_batch) as usize).min(cap), min_batch)
     }
 
     /// Starts a new timing window (call before a generation).
@@ -636,6 +665,16 @@ impl NativeLlama {
             return Err(anyhow::anyhow!("Context Init Failure"));
         }
 
+        // All repeating layers on the GPU (the output head works on one token per prompt) and no tensor
+        // sent to the CPU by an override (MoE experts) = nothing of the prompt is computed in RAM
+        let n_layer = unsafe { llama_cpp::llama_model_n_layer(model_ptr) };
+        let weights_in_ram = !model_params.tensor_buft_overrides.is_null()
+            || (n_gpu_layers_loaded >= 0 && n_gpu_layers_loaded < n_layer);
+        let weights_in_ram_with_gpu = weights_in_ram
+            && !model_params.is_cpu_only()
+            && ctx_params.op_offload != 0
+            && unsafe { llama_cpp::llama_supports_gpu_offload() };
+
         let mut llama = Self {
             model_ptr,
             ctx_ptr,
@@ -651,6 +690,7 @@ impl NativeLlama {
             speculative_decoding_mode,
             moe_controller,
             n_gpu_layers_loaded,
+            weights_in_ram_with_gpu,
             chat_templates: crate::native::templater::parse_templates(model_ptr, dna.chat_template.as_deref()),
             chat_templates_src: dna.chat_template.clone(),
             chat_tools: None,
@@ -844,10 +884,12 @@ impl NativeLlama {
             let mut batch = llama_cpp::llama_batch_init(chunk_size, 0, 1);
 
             let mut tokens_processed = 0;
-            let step = self.prompt_chunk_len(tokens.len());
 
-            while tokens_processed < tokens.len() {
-                let current_chunk = std::cmp::min(step, tokens.len() - tokens_processed);
+            for current_chunk in self.prompt_chunk_lens(tokens.len(), usize::MAX) {
+                let current_chunk = current_chunk.min(tokens.len() - tokens_processed);
+                if current_chunk == 0 {
+                    break;
+                }
 
                 for i in 0..current_chunk {
                     let global_i = tokens_processed + i;
@@ -934,25 +976,34 @@ unsafe impl Sync for NativeLlama {}
 
 #[cfg(test)]
 mod tests {
-    use super::even_chunk_len;
+    use super::prompt_chunk_lens;
 
     #[test]
-    fn prompt_chunks_are_even_and_never_exceed_the_micro_batch() {
-        // the case from the benchmark: 522 tokens, ubatch 512 -> 261 + 261 instead of 512 + 10
-        assert_eq!(even_chunk_len(522, 512), 261);
-        // fits in one micro-batch -> one chunk; exact multiples stay full
-        assert_eq!(even_chunk_len(300, 512), 300);
-        assert_eq!(even_chunk_len(1024, 512), 512);
-        // never 0, even for empty input or a broken max
-        assert_eq!(even_chunk_len(0, 512), 1);
-        assert_eq!(even_chunk_len(10, 0), 1);
+    fn prompt_chunks_are_full_with_no_small_tail() {
+        // a tail below 32 is evened out with the chunk before it (the laptop benchmark: 522 -> 261 + 261)
+        assert_eq!(prompt_chunk_lens(522, 512, 32), vec![261, 261]);
+        assert_eq!(prompt_chunk_lens(535, 512, 32), vec![268, 267]);
+        assert_eq!(prompt_chunk_lens(1040, 512, 32), vec![512, 264, 264]);
+        // a tail of 32 or more stays, like llama.cpp (the T4 benchmark: 544, 1085)
+        assert_eq!(prompt_chunk_lens(544, 512, 32), vec![512, 32]);
+        assert_eq!(prompt_chunk_lens(1085, 512, 32), vec![512, 512, 61]);
+        // one chunk, exact multiples, a small cap (background prompts: 64)
+        assert_eq!(prompt_chunk_lens(300, 512, 32), vec![300]);
+        assert_eq!(prompt_chunk_lens(1024, 512, 32), vec![512, 512]);
+        assert_eq!(prompt_chunk_lens(74, 64, 32), vec![37, 37]);
+        // min_batch 0 (model fully on the GPU, or no GPU): always llama.cpp's cut
+        assert_eq!(prompt_chunk_lens(535, 512, 0), vec![512, 23]);
+        // evening out would still leave chunks below 32: kept as llama.cpp cuts it
+        assert_eq!(prompt_chunk_lens(50, 40, 32), vec![40, 10]);
+        // never empty or 0, even for empty input or a broken max
+        assert_eq!(prompt_chunk_lens(0, 512, 32), vec![1]);
+        assert_eq!(prompt_chunk_lens(10, 0, 32), vec![1; 10]);
         for n in 1..3000usize {
-            for max in [1usize, 7, 32, 256, 512, 2048] {
-                let len = even_chunk_len(n, max);
-                assert!(len >= 1 && len <= max, "n {} max {} -> {}", n, max, len);
-                let chunks = n.div_ceil(len);
-                assert_eq!(chunks, n.div_ceil(max), "n {} max {}: chunk count must not grow", n, max);
-                assert!(n - (chunks - 1) * len >= len.saturating_sub(chunks), "n {} max {}: uneven tail", n, max);
+            for max in [1usize, 7, 32, 64, 256, 512, 2048] {
+                let lens = prompt_chunk_lens(n, max, 32);
+                assert_eq!(lens.iter().sum::<usize>(), n, "n {} max {}: covers the prompt", n, max);
+                assert!(lens.iter().all(|&l| l >= 1 && l <= max), "n {} max {} -> {:?}", n, max, lens);
+                assert_eq!(lens.len(), n.div_ceil(max), "n {} max {}: chunk count must not grow", n, max);
             }
         }
     }
