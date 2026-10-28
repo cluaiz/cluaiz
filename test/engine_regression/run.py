@@ -142,6 +142,10 @@ def llama_bench(exe, gguf, load, prompt_n, gen_n):
     base = [exe, "-m", str(gguf), "-ngl", str(99 if ngl < 0 else ngl), "-ncmoe", str(load.get("n_cpu_moe", 0)),
             "-ctk", kv, "-ctv", kv, "-fa", fa, "-nopo", "0" if load.get("op_offload", True) else "1",
             "-r", "2", "-o", "json"]
+    if load.get("placement") == "CpuOnly":
+        # The engine gives a CPU-only model no device at all; with -ngl 0 alone llama.cpp still sends the
+        # prompt's big matrix work to the GPU (op offload), so its prompt speed would not be a CPU number
+        base[-2:-2] = ["-dev", "none"]
     if s:
         base += ["-t", str(s["n_threads"]), "-b", str(s["n_batch"]), "-ub", str(s["n_ubatch"]),
                  "-lm", "mmap" if s.get("use_mmap", True) else "none"]
