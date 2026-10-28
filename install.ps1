@@ -10,6 +10,7 @@
 #   CLUAIZ_VERSION      release to install, e.g. 0.1.0 (default: the newest release)
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~\.cluaiz\bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
+#   CLUAIZ_CUDA         12 | 13 (default: 13 with NVIDIA driver 580+ on an RTX 20 series or newer, else 12)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -73,7 +74,20 @@ try {
     $Core = "cluaiz-$Version-$Platform.zip"
     $Files = @($Core)
     switch ($Gpu) {
-        'cuda'   { $Files += "cluaiz-$Version-$Platform-llama-cuda12.zip", "cluaiz-$Version-$Platform-cudart12.zip", "cluaiz-$Version-$Platform-onnx-cuda.zip" }
+        'cuda'   {
+            $Cuda = $env:CLUAIZ_CUDA
+            if (-not $Cuda) {
+                # CUDA 13 needs driver 580+ and compute capability 7.5+ (Turing); older drivers and GPUs use CUDA 12
+                $Cuda = '12'
+                try {
+                    $driver = [int]((& nvidia-smi --query-gpu=driver_version --format=csv,noheader | Select-Object -First 1).Split('.')[0])
+                    $cap = (& nvidia-smi --query-gpu=compute_cap --format=csv,noheader | ForEach-Object { [int]($_.Trim().Replace('.', '')) } | Measure-Object -Minimum).Minimum
+                    if ($driver -ge 580 -and $cap -ge 75) { $Cuda = '13' }
+                } catch { }
+            }
+            Write-Host "  $GRAY- NVIDIA: CUDA $Cuda drivers$NC"
+            $Files += "cluaiz-$Version-$Platform-llama-cuda$Cuda.zip", "cluaiz-$Version-$Platform-cudart$Cuda.zip", "cluaiz-$Version-$Platform-onnx-cuda$Cuda.zip"
+        }
         'vulkan' { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
     }
 
