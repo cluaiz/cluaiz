@@ -1,8 +1,7 @@
 # Builds the core (CLI + API + engine, CPU) for every platform, smoke-tests it on a machine without
 # a GPU, and publishes it with every GPU driver as ONE GitHub release page per version.
 #
-#   push / pull request   -> core builds + smoke test (catches a broken build before a release)
-#   Run workflow (manual) -> everything above + the drivers + the release v<version>
+# It runs only when started by hand (Actions -> Release -> Run workflow): pushes never build.
 #
 # Drivers come from their own workflows, called here so their files land on the same page:
 #   cluaize-llama-driver.yml  GGUF: llama.cpp CUDA 12 / CUDA 13 / Vulkan + NVIDIA CUDA runtime
@@ -21,46 +20,17 @@ on:
         description: "Mark as pre-release"
         type: boolean
         default: true
-  push:
-    branches: [main]
-    paths:
-      - "agents/**"
-      - "api/**"
-      - "cep/**"
-      - "cmd/**"
-      - "context/**"
-      - "engine/**"
-      - "security/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".cargo/**"
-      - ".github/workflows/release.yml"
-      - ".github/scripts/**"
-  pull_request:
-    paths:
-      - "agents/**"
-      - "api/**"
-      - "cep/**"
-      - "cmd/**"
-      - "context/**"
-      - "engine/**"
-      - "security/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".cargo/**"
-      - ".github/workflows/release.yml"
-      - ".github/scripts/**"
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  VERSION: ${{ inputs.version || 'dev' }}
+  VERSION: ${{ inputs.version }}
   # Smoke-test model: small enough for a CI runner's CPU, a real GGUF chat model
   SMOKE_MODEL: unsloth/Qwen3-0.6B-GGUF:Q4_K_M
 
@@ -144,14 +114,12 @@ jobs:
   # ── Drivers: built by their own workflows, published on this release page ──────────────────
   gguf-drivers:
     name: GGUF drivers
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/cluaize-llama-driver.yml
     with:
       version: ${{ inputs.version }}
 
   onnx-drivers:
     name: ONNX drivers
-    if: github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/cluaize-onnx-driver.yml
     with:
       version: ${{ inputs.version }}
@@ -159,7 +127,7 @@ jobs:
   # ── One release with every file that built, and their checksums ────────────────────────────────
   release:
     name: release v${{ inputs.version }}
-    if: always() && github.event_name == 'workflow_dispatch' && needs.core.result == 'success'
+    if: always() && needs.core.result == 'success'
     needs: [core, gguf-drivers, onnx-drivers]
     runs-on: ubuntu-24.04
     permissions:

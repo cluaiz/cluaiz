@@ -20,8 +20,8 @@ The display driver of the GPU itself is never shipped: it comes from NVIDIA, AMD
 
 ## 🚀 2. ONE RELEASE PAGE: `release.yml`
 
-- **Every push / pull request** touching engine, CLI or API code builds the core for every platform and runs the smoke test (no GPU, fresh home, pull + answer). A broken build is caught before a release.
-- **Run workflow** (manual, version `0.1.0`) additionally calls `cluaize-llama-driver.yml` and `cluaize-onnx-driver.yml` and publishes everything on one GitHub release `v<version>` with `SHA256SUMS.txt`. Each driver workflow can also be run alone to build its drivers without a release.
+- **Only by hand**: pushes and pull requests never start a build.
+- **Run workflow** (manual, version `0.1.0`) builds the core for every platform, runs the smoke test (no GPU, fresh home, pull + answer), calls `cluaize-llama-driver.yml` and `cluaize-onnx-driver.yml` and publishes everything on one GitHub release `v<version>` with `SHA256SUMS.txt`. Each driver workflow can also be run alone to build its drivers without a release.
 - **Partial success**: experimental platforms (Linux ARM64, macOS) and drivers may fail without blocking the release; a missing driver is simply absent from `SHA256SUMS.txt`, and the installers then keep that machine on the CPU.
 
 The installers (`install.sh`, `install.ps1`) read `SHA256SUMS.txt` from the release, download only the files for the machine, and refuse any file whose checksum does not match.
