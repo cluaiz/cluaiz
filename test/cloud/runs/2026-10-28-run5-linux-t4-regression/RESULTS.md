@@ -1,13 +1,14 @@
 # Cluaiz vs llama.cpp on a cloud Tesla T4: test results (2026-10-28)
 
-> **Saar (Hinglish).** Laptop wala test (`test/engine_regression/RESULTS.md`) ab Google Cloud ke Tesla T4
-> (16 GB) par, release v0.1.0 ko ek command se install karke. **Jawab likhne ki speed (generation) har test mein
-> llama.cpp ke barabar** (18 mein se 18, -6% se +13%). Prompt padhne mein mila-jula: model GPU + RAM mein bata
-> ho aur prompt 512 ke thoda upar ho (jaise 535) to Cluaiz 1.3x–1.5x tez; baaki jagah release mein llama.cpp
-> 7–22% aage tha (prompt ke tukde, aur Gemma ka 4-token checkpoint). Do fix (`6120d017`, `4228752a`) ke baad
-> T4 par prompt bhi barabar: poore GPU par 2–5% ke andar, split par barabar ya Cluaiz 1.6x tak tez. Gemma 4 31B Q4 (17 GB) aur Q8 (32 GB)
-> dono chale; planner ne khud GPU + RAM mein baanta aur wahi sabse tez mode nikla. 15 GB RAM par 32 GB dense model
-> planner ne saaf reason ke saath mana kiya; zabardasti chalane par disk se padh kar ~1 token / 70–120 s.
+> **Summary.** The laptop test (`test/engine_regression/RESULTS.md`) repeated on a Google Cloud Tesla T4
+> (16 GB) with release v0.1.0 installed by its one command. **Generation equals llama.cpp in every test**
+> (18 of 18, -6% to +13%). Prompt processing in the release: Cluaiz 1.3x–1.5x faster when a model is split
+> across GPU and RAM and the prompt is just over 512 tokens (e.g. 535); llama.cpp 7–22% faster elsewhere (prompt
+> chunking, and the 4-token checkpoint of sliding-window models). With two fixes (`6120d017`, `4228752a`) the
+> prompt is equal too: within 2–5% fully on the GPU, equal or up to 1.6x faster when split. Gemma 4 31B Q4
+> (17 GB) and Q8 (32 GB) both ran; the planner split them across GPU and RAM and its choice was the fastest
+> mode. With 15 GB RAM the planner refused the 32 GB dense model with the reason; forced, it read the weights
+> from the disk at about one token per 70–120 s.
 
 ## Who is who in this file
 

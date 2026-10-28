@@ -1,6 +1,10 @@
 # Run 3 — Linux, CPU only (2026-10-27)
 
-> **Saar (Hinglish).** Engine pehli baar Linux par bana aur chala. 10 crates ke 366 unit tests pass, 7 models `cluaiz pull` se sahi aaye, 4B / 12B / 24B chat CPU par sahi jawab ke saath chale, Kokoro → Whisper round trip ne apni hi awaaz sahi padhi ("Rivers carry water to the sea."). Linux build mein 7 dikkatein mili aur theek hui (neeche). Whisper ki 4 failure pull bundler ka bug tha (`95165aa`), Linux ka nahi.
+> **Summary.** The engine built and ran on Linux for the first time. The 366 unit tests of 10 crates pass,
+> 7 models came down correctly with `cluaiz pull`, the 4B / 12B / 24B chat models answered correctly on the CPU,
+> and the Kokoro → Whisper round trip read its own voice back ("Rivers carry water to the sea."). The Linux build
+> hit 7 problems, all fixed (below). The 4 Whisper failures were a bug in the pull bundler (`95165aa`), not in
+> Linux.
 
 ## Machine
 | | |

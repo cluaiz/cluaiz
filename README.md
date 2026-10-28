@@ -241,41 +241,185 @@ $ cluaiz plugin install web-scraper
 
 ### Technical Specification
 
-- **Purpose:** A decoupled, three-tier orchestration layer to manage memory, inference state, and API requests across disparate inference backends (`llama.cpp`, `ONNX`).
-
-- **Platform Support:** Windows (MSVC), Linux (GNU/Musl), macOS (Mach-O)
-- **Reusability Level:** Global Orchestrator Gateway
+- **Purpose:** One local engine process that serves chat, embeddings, speech and transcription through
+  OpenAI-compatible routes and its own JSON-RPC protocol (CEP), and decides by itself where each model runs
+  (GPU, GPU + RAM, CPU) from live hardware measurements.
+- **Backends:** `llama.cpp` (cluaiz fork, linked into the engine) for GGUF models; ONNX Runtime for speech and
+  vision models.
+- **Platforms:** Windows x64 (MSVC), Linux x64 / ARM64 (glibc 2.38+), macOS Apple Silicon.
+- **Delivery:** a CPU core plus optional GPU packs (CUDA 12, CUDA 13, Vulkan); the engine loads the GPU backend
+  libraries it finds next to its executable at start.
 
 ### Architectural Flow
 
 ```mermaid
-graph TD
-    A["Client (HTTP/CLI)"] --> B["cluaiz Engine (Rust)"]
-    B --> C["VRAM Arbiter"]
-    B --> D["LogitSteer (Token Masking)"]
-    C --> E["Memory Boundary (FFI)"]
-    D --> E
-    E --> F["llama.cpp / ONNX Runtime"]
-    F --> G["Hardware (CUDA/Metal)"]
+flowchart TB
+    subgraph CLIENTS["Clients"]
+        CLI["cmd/<br/>CLI and TUI dashboard"]
+        APP["Cluaiz App<br/>(desktop GUI)"]
+        HTTP["Any OpenAI-compatible client"]
+        MCPC["MCP clients"]
+        EMB["Embedding apps<br/>(C ABI)"]
+    end
+
+    subgraph GATEWAY["Gateway: api/ (Axum HTTP + SSE)"]
+        AUTH["Session token auth<br/>host and port from settings"]
+        ROUTES["/v1/chat/completions · /v1/embeddings<br/>/v1/audio/speech · /v1/audio/transcriptions<br/>/v1/models · /v1/ingest · /health"]
+        CEPR["/v1/cep and /mcp"]
+    end
+
+    FFI["ffi/<br/>cep_call · cep_free"]
+    CEP["cep/: Cluaiz Engine Protocol<br/>JSON-RPC 2.0 envelope, method registry,<br/>principals, approvals, tasks, discovery"]
+
+    subgraph SERVICES["Request services"]
+        SEC["security/<br/>permissions, filesystem jail, audit"]
+        CTX["context/<br/>pure context planning: fit, compaction,<br/>memory cards, episodes, recall"]
+        AGT["agents/<br/>tools, skills, plugins, MCP client,<br/>tool search, sandboxed execution"]
+        MEDIA["engine/media<br/>bounded sources, image / audio / video<br/>decoding, resampling"]
+    end
+
+    subgraph RUNTIME["engine/runtime: single engine host"]
+        HOST["Model host<br/>load / unload, keep_alive,<br/>one model transition at a time"]
+        CHATMEM["Chat memory and KV cache reuse"]
+        SPEECH["Speech, transcription and<br/>embedding hosts"]
+        VRAMUSE["Measured VRAM use<br/>(learned margins)"]
+    end
+
+    subgraph PLANNING["Placement planning"]
+        PLAN["engine/plan<br/>candidates: full GPU · GPU + RAM split ·<br/>MoE experts in RAM / SSD · CPU only<br/>context size, KV type, VRAM buffer"]
+        HW["engine/hardware<br/>CPU, RAM, GPU (NVML), disk<br/>free memory measured live"]
+        MODELS["engine/models<br/>GGUF reader, model registry,<br/>Hugging Face fetcher, capabilities"]
+        CORE["engine/core<br/>settings snapshot, paths, units, contracts"]
+    end
+
+    subgraph EXEC["Execution"]
+        LLAMA["engine/llama<br/>FFI to the llama.cpp fork: chat templates, tokenizer,<br/>prompt chunks, sliding-window checkpoints,<br/>sampling, tool-call parsing, token streaming"]
+        ONNX["engine/onnx<br/>ONNX Runtime: Kokoro and other TTS,<br/>Whisper STT, vision encoders"]
+    end
+
+    subgraph BACKENDS["Backends loaded at start (core + GPU packs)"]
+        GCPU["ggml CPU<br/>(best build for the processor)"]
+        GCUDA["ggml CUDA 12 / 13<br/>+ cudart, cuBLAS"]
+        GVK["ggml Vulkan"]
+        GMTL["ggml Metal<br/>(inside the macOS core)"]
+        ORTP["ONNX providers<br/>CUDA (+ cuDNN fetched) · DirectML · CPU"]
+    end
+
+    subgraph HARDWARE["Hardware"]
+        NV["NVIDIA GPU"]
+        AMDI["AMD / Intel GPU"]
+        APL["Apple Silicon"]
+        CPUH["CPU and RAM"]
+        SSD["SSD<br/>(memory-mapped weights)"]
+    end
+
+    STORE[("CLUAIZ_HOME<br/>models, settings, session token,<br/>hardware profile, VRAM margins")]
+
+    CLI --> ROUTES
+    APP --> ROUTES
+    APP --> CEPR
+    HTTP --> ROUTES
+    MCPC --> CEPR
+    EMB --> FFI
+    AUTH --- ROUTES
+    AUTH --- CEPR
+    CEPR --> CEP
+    FFI --> CEP
+    ROUTES --> SERVICES
+    CEP --> SERVICES
+    ROUTES --> HOST
+    CEP --> HOST
+    SERVICES --> HOST
+    HOST --> PLAN
+    PLAN --> HW
+    PLAN --> MODELS
+    PLAN --> CORE
+    VRAMUSE --> PLAN
+    HOST --> CHATMEM
+    HOST --> SPEECH
+    HOST --> LLAMA
+    SPEECH --> ONNX
+    LLAMA --> GCPU
+    LLAMA --> GCUDA
+    LLAMA --> GVK
+    LLAMA --> GMTL
+    ONNX --> ORTP
+    GCUDA --> NV
+    ORTP --> NV
+    GVK --> AMDI
+    GMTL --> APL
+    GCPU --> CPUH
+    LLAMA -. mmap .-> SSD
+    MODELS --- STORE
+    HW --- STORE
+    VRAMUSE --- STORE
 ```
 
-### Deep File Breakdown
+### One Chat Request, Step by Step
 
-- `cmd/src/main.rs`:
-  - **Logic:** CLI Gateway and Argument Router.
-  - **Flow:** Evaluates user commands and routes to the appropriate core logic (API server, dashboard, or headless inference).
-  - **Why:** To maintain a strict separation between the CLI user interface and the background Rust kernel.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant A as api/
+    participant X as context/ + agents/
+    participant H as engine/runtime
+    participant P as engine/plan
+    participant L as engine/llama
+    participant G as llama.cpp (ggml backend)
 
-- `inference-engine/engines/core/src/hardware/governor.rs`:
-  - **Logic:** Manages the `llm_optimization.json` state.
-  - **Flow:** Implements the Memory Governor, dynamically allocating and reserving KV Cache limits based on actual physical hardware capacity. Allows toggling `hybrid_memory`, `context_shifting`, and `flash_attention` natively.
-  - **Why:** To safely manage memory margins before execution and provide native context-shifting control.
+    C->>A: POST /v1/chat/completions (stream)
+    A->>A: check the session token, validate the request
+    A->>X: fit the chat into the context, attach tools and memory
+    A->>H: generate(model, messages, settings)
+    alt model not loaded, or load settings changed
+        H->>P: plan(model geometry, live free RAM and VRAM, settings)
+        P-->>H: placement (n_gpu_layers, n_cpu_moe), n_ctx, KV type, VRAM buffer
+        H->>L: load the model and context with that plan
+        L->>G: llama_model_load, llama_init_from_model, warm-up decode
+        H->>H: compare the measured VRAM with the plan, learn the margin
+    end
+    H->>L: render the chat template, tokenize, reuse the cached prefix
+    L->>G: prefill in chunks of 512 (a small tail evened out when weights sit in RAM)
+    loop each token
+        L->>G: decode one token, sample
+        L-->>A: token (answer or reasoning; tool calls parsed)
+        A-->>C: SSE chunk
+    end
+    L-->>A: timings (prompt and generation tokens per second)
+    A-->>C: final chunk with usage and engine timings
+```
+
+### Workspace Crates
+
+| Crate | Path | Responsibility |
+| :--- | :--- | :--- |
+| `cmd` | [`cmd/`](cmd/) | The `cluaiz` executable: CLI commands, TUI dashboard, `serve`, `pull`, `run`. |
+| `cluaiz-api` | [`api/`](api/) | HTTP and SSE gateway: OpenAI-compatible routes, `/v1/cep`, `/mcp`, auth, boot. |
+| `cluaiz-cep` | [`cep/`](cep/) | Cluaiz Engine Protocol: JSON-RPC 2.0 envelope, method registry, approvals, tasks, discovery. |
+| `cluaiz-ffi` | [`ffi/`](ffi/) | The engine as a C library: `cep_call` / `cep_free`, the same messages as `POST /v1/cep`. |
+| `cluaiz-context` | [`context/`](context/) | Pure context planning (no I/O): fitting, compaction policy, memory cards, episodes, recall. |
+| `cluaiz-agents` | [`agents/`](agents/) | Tools, skills, plugins, MCP client, tool search, sandboxed execution. |
+| `cluaiz-security` | [`security/`](security/) | Permission schema, filesystem jail, audit log. |
+| `cluaiz-runtime` | [`engine/runtime/`](engine/runtime/) | The single model host: load / unload, chat sessions, speech and embedding hosts, VRAM use. |
+| `cluaiz-plan` | [`engine/plan/`](engine/plan/) | Placement planner: GPU / split / MoE / CPU candidates, context size, KV type, buffers, learned margins. |
+| `cluaiz-hw` | [`engine/hardware/`](engine/hardware/) | Hardware discovery: CPU, RAM, GPU (NVML), disks; free memory measured live. |
+| `cluaiz-models` | [`engine/models/`](engine/models/) | GGUF reader, model registry, Hugging Face fetcher, capabilities and taxonomy. |
+| `cluaiz-core` | [`engine/core/`](engine/core/) | Settings snapshot, environment paths, units, shared contracts. |
+| `cluaiz-media` | [`engine/media/`](engine/media/) | Bounded media sources and decoding: images, audio (resampling), video, documents. |
+| `llama-engine` | [`engine/llama/`](engine/llama/) | Safe wrapper over the llama.cpp fork (`engine/llama/llama.cpp`): load, prefill, sampling, streaming, multimodal projection. |
+| `onnx-engine` | [`engine/onnx/`](engine/onnx/) | ONNX Runtime models: text-to-speech, Whisper speech-to-text, vision; CUDA / DirectML / CPU providers. |
 
 ### Failure & Recovery Logic
 
-- **Potential Failure Point:** `llama.cpp` FFI pointer segfaults due to invalid VRAM calculations.
-
-- **Recovery Logic:** The Engine probes physical silicon and applies a mandatory `7.5% Safe VRAM Allocation Margin` prior to execution. If VRAM is exhausted, the Engine triggers an Agentic Pause and falls back to CPU computation.
+| Situation | What the engine does |
+| :--- | :--- |
+| The model does not fit any placement | The planner refuses before loading and says how much is missing (free memory, lower the context, or a smaller quantization). |
+| The planner's estimate is off | llama.cpp's own dry run corrects the estimate once per model; after a load, the measured VRAM is kept as a learned margin for the next plan. |
+| llama.cpp cannot allocate the planned GPU layers | The load is retried with fewer GPU layers, then on the CPU if the model fits the free RAM; the response reports the fallback. |
+| A load would page the model from the disk without end | A CPU load larger than the free RAM is refused instead of thrashing the SSD (MoE experts are the exception the planner chooses on purpose). |
+| The user sets placement or memory values | They are passed to llama.cpp as they are; the planner only reports its estimate. |
+| A GPU pack or driver is missing | ggml skips that backend and the model runs on the CPU. |
 
 </details>
 
