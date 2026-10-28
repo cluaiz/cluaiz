@@ -17,10 +17,15 @@ rm -rf "$CLUAIZ_HOME"
 
 "$exe" --version
 "$exe" status
-"$exe" pull "$model"
+# `run` takes the registered ID: given the download name of a model that is already installed, it
+# only prints that ID (cmd/src/cli/run.rs)
+pull_log="${RUNNER_TEMP:-/tmp}/cluaiz-smoke-pull.log"
+"$exe" pull "$model" | tee "$pull_log"
+id=$(awk '/Registered ID:/ { gsub(/\033\[[0-9;]*m|\r/, ""); print $NF }' "$pull_log")
+[ -n "$id" ] || { echo "pull did not print the registered ID"; exit 1; }
 
 log="${RUNNER_TEMP:-/tmp}/cluaiz-smoke-run.log"
-"$exe" -v run "$model" -n 32 "Reply with one short sentence: what is the capital of France?" 2>"$log" | tee "${log%.log}.out"
+"$exe" -v run "$id" -n 32 "Reply with one short sentence: what is the capital of France?" 2>"$log" | tee "${log%.log}.out"
 
 # The CPU backend was loaded from the folder and the model answered
 grep -q "Backends loaded" "$log" || { echo "backends were not loaded"; cat "$log"; exit 1; }
