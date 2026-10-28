@@ -38,7 +38,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # No CMAKE_CUDA_ARCHITECTURES: llama.cpp's default set covers every GPU generation the toolkit supports
+          # No CMAKE_CUDA_ARCHITECTURES: llama.cpp's default set covers every GPU generation the toolkit supports.
+          # install.ps1 chooses a pack from these toolkit versions: change both together
           - { backend: cuda12, cuda: "12.4", target: ggml-cuda,   defines: "-DGGML_CUDA=ON -DGGML_CUDA_NCCL=OFF -DGGML_CUDA_CCCL_VERSION=v3.4.3" }
           - { backend: cuda13, cuda: "13.4", target: ggml-cuda,   defines: "-DGGML_CUDA=ON -DGGML_CUDA_NCCL=OFF -DGGML_CUDA_CCCL_VERSION=v3.4.3" }
           - { backend: vulkan, cuda: "",     target: ggml-vulkan, defines: "-DGGML_VULKAN=ON" }
@@ -112,6 +113,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # install.sh chooses a pack from these toolkit versions: change both together
           - { backend: cuda12, major: "12", image: "12.8.1" }
           - { backend: cuda13, major: "13", image: "13.4.1" }
     steps:

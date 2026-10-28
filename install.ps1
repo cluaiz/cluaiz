@@ -10,7 +10,7 @@
 #   CLUAIZ_VERSION      release to install, e.g. 0.1.0 (default: the newest release)
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~\.cluaiz\bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
-#   CLUAIZ_CUDA         12 | 13 (default: 13 with NVIDIA driver 580+ on an RTX 20 series or newer, else 12)
+#   CLUAIZ_CUDA         12 | 13 (default: the newest pack the NVIDIA driver and GPU can run, see below)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -77,19 +77,39 @@ try {
         'cuda'   {
             $Cuda = $env:CLUAIZ_CUDA
             if (-not $Cuda) {
-                # CUDA 13 needs driver 580+ and compute capability 7.5+ (Turing); older drivers and GPUs use CUDA 12
-                $Cuda = '12'
+                # A pack runs on a GPU it has ready-made code for, given a driver of the same CUDA major version.
+                # For other GPUs (e.g. Turing, RTX 20) the driver compiles the pack's code on first use, and only
+                # a driver at least as new as the pack's toolkit can: nvidia-smi prints the newest CUDA version
+                # the driver supports. Toolkits and ready-made GPUs of cluaize-llama-driver.yml (windows,
+                # llama.cpp's default architectures): CUDA 13.4 for 8.6 8.9 12.0 12.1, needs 7.5+; CUDA 12.4 for 8.6 8.9
+                $drv = [version]'0.0'; $caps = @()
                 try {
-                    $driver = [int]((& nvidia-smi --query-gpu=driver_version --format=csv,noheader | Select-Object -First 1).Split('.')[0])
-                    $cap = (& nvidia-smi --query-gpu=compute_cap --format=csv,noheader | ForEach-Object { [int]($_.Trim().Replace('.', '')) } | Measure-Object -Minimum).Minimum
-                    if ($driver -ge 580 -and $cap -ge 75) { $Cuda = '13' }
+                    if ((& nvidia-smi | Out-String) -match 'CUDA (UMD )?Version:\s*(\d+\.\d+)') { $drv = [version]$Matches[2] }
+                    $caps = @(& nvidia-smi --query-gpu=compute_cap --format=csv,noheader | ForEach-Object { [int]($_.Trim().Replace('.', '')) })
                 } catch { }
+                # True when every GPU can run the pack
+                function Test-Pack ([int]$major, [version]$toolkit, [int]$lowest, [int[]]$ready) {
+                    if ($drv.Major -lt $major -or $caps.Count -eq 0) { return $false }
+                    foreach ($c in $caps) {
+                        if ($c -lt $lowest) { return $false }
+                        if ($drv -lt $toolkit -and $ready -notcontains $c) { return $false }
+                    }
+                    return $true
+                }
+                if (Test-Pack 13 '13.4' 75 @(86, 89, 120, 121)) { $Cuda = '13' }
+                elseif (Test-Pack 12 '12.4' 50 @(86, 89)) { $Cuda = '12' }
+                else {
+                    Write-Host "  $GRAY- The NVIDIA driver (CUDA $drv) is too old for the CUDA packs; update it for CUDA. Using Vulkan meanwhile$NC"
+                    $Gpu = 'vulkan'
+                }
             }
-            Write-Host "  $GRAY- NVIDIA: CUDA $Cuda drivers$NC"
-            $Files += "cluaiz-$Version-$Platform-llama-cuda$Cuda.zip", "cluaiz-$Version-$Platform-cudart$Cuda.zip", "cluaiz-$Version-$Platform-onnx-cuda$Cuda.zip"
+            if ($Gpu -eq 'cuda') {
+                Write-Host "  $GRAY- NVIDIA: CUDA $Cuda drivers$NC"
+                $Files += "cluaiz-$Version-$Platform-llama-cuda$Cuda.zip", "cluaiz-$Version-$Platform-cudart$Cuda.zip", "cluaiz-$Version-$Platform-onnx-cuda$Cuda.zip"
+            }
         }
-        'vulkan' { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
     }
+    if ($Gpu -eq 'vulkan') { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
 
     # --- Download, check, unpack ---
     $Got = @()
