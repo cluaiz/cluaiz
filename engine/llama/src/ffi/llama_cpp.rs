@@ -73,6 +73,11 @@ impl LlamaModelParams {
     /// No GPU at all: an empty device list (llama.cpp uses every device when the list is NULL).
     /// With n_gpu_layers 0 alone llama.cpp still sets up the GPU and takes a little of its memory
     /// (34 MiB for Qwen3-4B on an RTX 3050), which a model placed on the CPU must not take.
+    /// True after `set_cpu_only`: no device at all
+    pub fn is_cpu_only(&self) -> bool {
+        !self.devices.is_null() && unsafe { *self.devices } == 0
+    }
+
     pub fn set_cpu_only(&mut self) {
         static NO_DEVICES: [usize; 1] = [0];
         self.devices = NO_DEVICES.as_ptr();
@@ -245,6 +250,7 @@ extern "C" {
     pub fn llama_get_embeddings_ith(ctx: *mut std::ffi::c_void, i: i32) -> *mut c_float;
     pub fn llama_model_n_embd(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_n_head(model: *const std::ffi::c_void) -> i32;
+    pub fn llama_model_n_layer(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_is_recurrent(model: *const std::ffi::c_void) -> bool;
     pub fn llama_model_is_hybrid(model: *const std::ffi::c_void) -> bool;
     pub fn llama_model_n_expert(model: *const std::ffi::c_void) -> i32;
