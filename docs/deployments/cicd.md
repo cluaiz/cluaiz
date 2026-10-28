@@ -61,6 +61,5 @@ The CUDA jobs take the longest (the CUDA backend is compiled for every supported
 | `release.yml` | Builds and tests the core, calls the driver workflows, publishes one release page. |
 | `cluaize-llama-driver.yml` | GGUF drivers (llama.cpp CUDA 12 / 13, Vulkan) and the NVIDIA CUDA runtime. |
 | `cluaize-onnx-driver.yml` | ONNX drivers (ONNX Runtime CUDA 12 / 13 providers). |
-| `release-drafter.yml` | Keeps a draft changelog from merged pull requests; `release.yml` publishes that draft when it has the same tag. |
 
-The earlier split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-registry`) and their registry scripts were removed; they built package names that no longer exist and never produced a release.
+The earlier split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-registry`), their registry scripts and Release Drafter (it ran on every push but builds its changelog only from pull requests, which this repository does not use) were removed; they built package names that no longer exist and never produced a release.
